@@ -145,6 +145,15 @@ LEFT JOIN users u ON u.tenant_id = rs.tenant_id AND u.id = rs.closed_by_user_id
 WHERE rs.tenant_id = sqlc.arg('tenant_id')
     AND rs.period = sqlc.arg('period');
 
+-- name: ListRoyaltyStatementPeriodsFrom :many
+-- The months of a tenant already closed, from a month on, for the automatic
+-- close to tell which of the months it owes are still open.
+SELECT period
+FROM royalty_statements
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND period >= sqlc.arg('from_period')::date
+ORDER BY period;
+
 -- name: ListRoyaltyStatementsDesc :many
 -- Newest month first. The period is unique per tenant, so it alone is the
 -- keyset.

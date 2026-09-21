@@ -7,11 +7,11 @@ task server:build
 ./server/bin/batch aggregate-content-stats
 ```
 
-Without an argument, or with a name that is not one of the nine below, the binary prints its usage to stderr and exits non-zero.
+Without an argument, or with a name that is not one of the ten below, the binary prints its usage to stderr and exits non-zero.
 
-Nothing needs to schedule it. The [worker](../worker/README.md) runs all nine jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. This binary is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds or purges once and exits.
+Nothing needs to schedule it. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. This binary is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
 
-Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same nine jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete.
+Every subcommand here is a thin invocation of `internal/maintenance`, and the worker registers the same ten jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
 
 | Subcommand | What it does |
 | --- | --- |
@@ -24,6 +24,7 @@ Every subcommand here is a thin invocation of `internal/maintenance`, and the wo
 | `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
+| `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 
 Each subcommand reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<subcommand>`, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -340,3 +341,24 @@ Neither table is complete, and an inference path that assumes otherwise breaks o
 - **Rows can disappear between runs.** A reader whose activity aged out of the window loses their row on the next build. Nothing about a previously present row is durable.
 - **The snapshot is up to a day stale.** Same-day behaviour is out of scope for v1; a reader's very first sessions are invisible to it.
 - **`feature_version` may not be the one you compiled against.** Read the value rather than assuming it, and treat an unexpected version as no signal.
+
+## close-royalty-statements
+
+Closes, for every tenant that chose automatic closing, each month whose close day has come and that has no statement yet. A tenant closing by hand is never touched.
+
+A month is owed when two things hold in the tenant's own zone: today is on or after the close day (`auto_close_day`) of the month after it, and the month ended after the tenant chose automatic closing (`automatic_since`). So a run closes every owed month still open, oldest first, which includes the months a missed run left behind, and a month that ended before the choice stays the tenant's to close by hand. The close is the one the console's close button runs, and it writes the same audit entry, under the `system` role and with no user.
+
+A month someone closed by hand, before the run or during it, stays as it was closed: a month has one statement, so the run's close of it fails and is logged as already closed.
+
+For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/batch close-royalty-statements
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+
+The structured log records, per tenant, each month closed with its totals, a month already closed, the previous month when its close day has not come (`due_on`), and a tenant skipped because the previous month ended before automatic closing began; then how many tenants the run went through, how many months it closed, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.

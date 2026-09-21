@@ -1,6 +1,6 @@
 // Command batch runs one of this repository's maintenance jobs by hand. The
 // first argument names the job; every job is configured through environment
-// variables, rebuilds or purges a period of data once, and exits. The worker
+// variables, rebuilds, purges, or closes a period of data once, and exits. The worker
 // schedules the same jobs, so nothing needs to schedule this command.
 //
 // Each subcommand is a thin invocation of internal/maintenance, which the
@@ -82,6 +82,11 @@ var subcommands = []subcommand{
 		name:    "build-recommend-features",
 		summary: "Rebuild the daily user and item recommend feature snapshots",
 		run:     runBuildRecommendFeatures,
+	},
+	{
+		name:    "close-royalty-statements",
+		summary: "Close the royalty statements tenants on automatic closing are owed",
+		run:     runCloseRoyaltyStatements,
 	},
 }
 

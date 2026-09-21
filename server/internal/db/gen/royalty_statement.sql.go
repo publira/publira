@@ -591,6 +591,44 @@ func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg Li
 	return items, nil
 }
 
+const listRoyaltyStatementPeriodsFrom = `-- name: ListRoyaltyStatementPeriodsFrom :many
+SELECT period
+FROM royalty_statements
+WHERE tenant_id = $1
+    AND period >= $2::date
+ORDER BY period
+`
+
+type ListRoyaltyStatementPeriodsFromParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	FromPeriod time.Time `json:"from_period"`
+}
+
+// The months of a tenant already closed, from a month on, for the automatic
+// close to tell which of the months it owes are still open.
+func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListRoyaltyStatementPeriodsFromParams) ([]time.Time, error) {
+	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementPeriodsFrom, arg.TenantID, arg.FromPeriod)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []time.Time
+	for rows.Next() {
+		var period time.Time
+		if err := rows.Scan(&period); err != nil {
+			return nil, err
+		}
+		items = append(items, period)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
     rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,

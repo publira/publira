@@ -32,6 +32,44 @@ func (q *Queries) GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID
 	return i, err
 }
 
+const listAutomaticRoyaltyConfigs = `-- name: ListAutomaticRoyaltyConfigs :many
+SELECT tenant_id, close_mode, auto_close_day, automatic_since, updated_at
+FROM tenant_royalty_config
+WHERE close_mode = 'automatic'
+ORDER BY tenant_id
+`
+
+// Every tenant that chose automatic closing, for the maintenance pass that
+// closes their months across tenants.
+func (q *Queries) ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomaticRoyaltyConfigs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TenantRoyaltyConfig
+	for rows.Next() {
+		var i TenantRoyaltyConfig
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.CloseMode,
+			&i.AutoCloseDay,
+			&i.AutomaticSince,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertTenantRoyaltyConfig = `-- name: UpsertTenantRoyaltyConfig :one
 INSERT INTO tenant_royalty_config (
     tenant_id,

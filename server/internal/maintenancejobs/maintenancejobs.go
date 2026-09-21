@@ -46,6 +46,8 @@ const (
 	ServiceNamePurgeMfaChallenges     = "publira-purge-mfa-challenges"
 	ServiceNamePurgeWithdrawnComments = "publira-purge-withdrawn-comments"
 	ServiceNamePurgeOrphanImages      = "publira-purge-orphan-images"
+
+	ServiceNameCloseRoyaltyStatements = "publira-close-royalty-statements"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -70,6 +72,8 @@ const (
 	kindPurgeMfaChallenges     = "maintenance.purge_mfa_challenges"
 	kindPurgeWithdrawnComments = "maintenance.purge_withdrawn_comments"
 	kindPurgeOrphanImages      = "maintenance.purge_orphan_images"
+
+	kindCloseRoyaltyStatements = "maintenance.close_royalty_statements"
 )
 
 const (
@@ -88,6 +92,10 @@ const (
 	// dailyRebuildInterval is how often the daily rebuild chain looks for a
 	// finished day. Each tenant's midnight falls on a different hour.
 	dailyRebuildInterval = time.Hour
+
+	// royaltyCloseInterval is how often the automatic close looks for a
+	// tenant whose close day has begun, for the same reason.
+	royaltyCloseInterval = time.Hour
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
@@ -116,6 +124,7 @@ func ServiceNames() []string {
 		ServiceNamePurgeMfaChallenges,
 		ServiceNamePurgeWithdrawnComments,
 		ServiceNamePurgeOrphanImages,
+		ServiceNameCloseRoyaltyStatements,
 	}
 }
 
@@ -150,6 +159,8 @@ type Jobs struct {
 	mfaChallenges     maintenance.MfaChallengePurge
 	withdrawnComments maintenance.WithdrawnCommentPurge
 	orphanImages      maintenance.OrphanImagePurge
+
+	royaltyStatements maintenance.RoyaltyStatementClose
 }
 
 // New reads every job's tunables and holds them with the pool they run on.
@@ -224,6 +235,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &purgeOrphanImagesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register purge-orphan-images worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &closeRoyaltyStatementsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register close-royalty-statements worker: %w", err)
+	}
 	return nil
 }
 
@@ -233,7 +247,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 // Every one runs on start as well. A purge deletes whatever is past its cutoff
 // at the time it runs, so the first pass after a restart drains everything
 // that expired while the worker was down, and a worker restarted more often
-// than a day is not a worker whose daily purges never come due.
+// than a day is not a worker whose daily purges never come due. The automatic
+// royalty close likewise closes every month it is owed, so a close day the
+// worker was down for is closed on its return.
 func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 	schedules := []struct {
 		interval time.Duration
@@ -245,6 +261,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{mfaChallengePurgeInterval, PurgeMfaChallengesArgs{}},
 		{withdrawnCommentPurgeInterval, PurgeWithdrawnCommentsArgs{}},
 		{orphanImagePurgeInterval, PurgeOrphanImagesArgs{}},
+		{royaltyCloseInterval, CloseRoyaltyStatementsArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {

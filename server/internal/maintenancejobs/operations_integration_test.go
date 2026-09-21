@@ -19,6 +19,7 @@ var everyKind = []string{
 	"maintenance.purge_mfa_challenges",
 	"maintenance.purge_withdrawn_comments",
 	"maintenance.purge_orphan_images",
+	"maintenance.close_royalty_statements",
 }
 
 // Two workers against one database are what a deployment with more than one
