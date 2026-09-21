@@ -23,9 +23,15 @@ const openMonthPath = (period: string): string => `/royalties?period=${period}`;
 const signIn = (page: Page, nextPath: string): Promise<void> =>
   signInAsAdmin(page, ROYALTIES_ADMIN, nextPath, WEB_ADMIN_ROYALTIES_BASE_URL);
 
-/** Every body row of the lines table, author headings and subtotals included. */
-const lineRows = (page: Page): Promise<string[]> =>
-  page.getByRole("table").locator("tbody tr").allInnerTexts();
+/**
+ * Every body row of the lines table, author headings and subtotals included,
+ * read once each of the scenario's two subtotal labels has streamed in.
+ */
+const lineRows = async (page: Page): Promise<string[]> => {
+  const rows = page.getByRole("table").locator("tbody tr");
+  await expect(rows.getByText("Subtotal", { exact: true })).toHaveCount(2);
+  return rows.allInnerTexts();
+};
 
 test.beforeAll(() => {
   applyScenarioSql(ROYALTIES_SCENARIO);
