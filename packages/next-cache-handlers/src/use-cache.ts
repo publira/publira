@@ -13,8 +13,22 @@
  * the same Redis-backed handler so multi-instance deployments share one store.
  * `"use cache: private"` is not configurable by Next.js.
  */
+import type { UseCacheHandler } from "./use-cache-handler";
 import { createUseCacheHandler } from "./use-cache-handler";
 
-const handler = createUseCacheHandler();
+/**
+ * Next.js loads this module at startup without awaiting it, so a throw would
+ * only be logged; exiting is what stops a server whose config was refused.
+ */
+const createOrExit = (): UseCacheHandler => {
+  try {
+    return createUseCacheHandler();
+  } catch (error) {
+    console.error("[next-cache-handlers]", error);
+    process.exit(1);
+  }
+};
+
+const handler = createOrExit();
 
 export default handler;
