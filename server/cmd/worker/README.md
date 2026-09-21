@@ -28,7 +28,7 @@ It also handles these non-mail events:
 | `announcement_notification` | A `notifications` row for every reader one posted announcement addresses — every user of the tenant on a broadcast, the single named recipient on a targeted one |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
 
-The push handler is registered when either Firebase or Web Push credentials are configured; see [Main environment variables](#main-environment-variables).
+The push handler is always registered and reads its credentials per delivery: a mobile device is sent with its tenant's stored FCM credentials and skipped while the tenant has none, and a browser with the platform's VAPID key pair; see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging) and [Web Push](../../README.md#web-push).
 
 Both comment events are keyed by the episode and the hour they arrived in, so an episode a hundred readers comment on within the hour produces one alert rather than a hundred. The window is held by `outbox_events.idempotency_key`, which is why a burst writes a single row here, and by the notification's own `(user_id, notification_type, subject_key)`, which is why a redelivered event writes no second row for anyone.
 
