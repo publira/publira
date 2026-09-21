@@ -4,6 +4,7 @@ import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/config.dart';
 
@@ -37,6 +38,13 @@ class HttpAuthRepository implements AuthRepository {
       '/publira.v1.AuthService/ConfirmPasswordReset';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
   static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
+  static const _changePasswordProcedure =
+      '/publira.v1.AuthService/ChangePassword';
+  static const _requestEmailChangeProcedure =
+      '/publira.v1.AuthService/RequestEmailChange';
+  static const _confirmEmailChangeProcedure =
+      '/publira.v1.AuthService/ConfirmEmailChange';
+  static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
 
   final ConnectClient _client;
@@ -241,6 +249,152 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<AuthSession> updateName(AuthSession session, String name) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _updateMeProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'name': name,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      final user = _expectMap(body['user'], 'user');
+      return session.withUser(
+        userPublicId: _readString(user, 'publicId'),
+        userName: _readString(user, 'name'),
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<AuthSession> changePassword(
+    AuthSession session, {
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _changePasswordProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      final accessToken = _expectMap(body['accessToken'], 'accessToken');
+      final token = _readString(accessToken, 'token');
+      if (token.isEmpty) {
+        // The change has been made and the token this device held is over, so
+        // there is no session left to keep.
+        throw const AuthFailure(
+          AuthFailureKind.sessionExpired,
+          message: 'ChangePassword returned an empty access token',
+        );
+      }
+      return session.withAccessToken(
+        token,
+        expiresAt: DateTime.tryParse(
+          _readString(accessToken, 'expiresAt'),
+        )?.toUtc(),
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> requestEmailChange(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _requestEmailChangeProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'currentEmail': currentEmail,
+          'newEmail': newEmail,
+          'currentPassword': currentPassword,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      if (body['requested'] != true) {
+        throw const AuthFailure(
+          AuthFailureKind.unexpected,
+          message: 'RequestEmailChange answered without sending the links',
+        );
+      }
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<EmailChangeProgress> confirmEmailChange(String token) async {
+    final Map<String, Object?> body;
+    try {
+      final tenantId = await _tenants.resolve();
+      body = await _client.unary(_confirmEmailChangeProcedure, {
+        'tenant': {'tenantId': tenantId},
+        'token': token,
+      }, tenantId: tenantId);
+    } on ConnectException catch (error) {
+      // Another account took the new address after the change was asked for.
+      // The link can never finish it, so it is as spent as an expired one and
+      // the way on is to ask again for a different address.
+      if (error.code == 'already_exists') {
+        throw AuthFailure(AuthFailureKind.linkExpired, message: error.message);
+      }
+      throw _toLinkFailure(error);
+    }
+    if (body['changed'] == true) {
+      return EmailChangeProgress.changed;
+    }
+    if (body['confirmed'] != true) {
+      throw const AuthFailure(
+        AuthFailureKind.unexpected,
+        message: 'ConfirmEmailChange answered without confirming the link',
+      );
+    }
+    return _readString(body, 'pendingConfirmationFor') == 'current_email'
+        ? EmailChangeProgress.awaitingCurrentEmail
+        : EmailChangeProgress.awaitingNewEmail;
+  }
+
+  @override
+  Future<void> deleteAccount(
+    AuthSession session, {
+    required String password,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _deleteMeProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'password': password,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
   Future<Map<String, Object?>> _getTenant() async {
     try {
       final tenantId = await _tenants.resolve();
@@ -308,6 +462,34 @@ class HttpAuthRepository implements AuthRepository {
     }
     return switch (error.code) {
       'invalid_argument' => AuthFailure(
+        AuthFailureKind.invalidInput,
+        message: error.message,
+      ),
+      'resource_exhausted' => AuthFailure(
+        AuthFailureKind.rateLimited,
+        message: error.message,
+      ),
+      _ => AuthFailure(AuthFailureKind.unexpected, message: error.message),
+    };
+  }
+
+  /// What the RPCs that change the signed-in reader's own account refuse
+  /// with.
+  ///
+  /// A wrong current password is `invalid_argument` rather than
+  /// `unauthenticated`, so a typo stays a form error instead of signing the
+  /// reader out. An address another account already holds is refused the same
+  /// way the form refuses one it cannot send.
+  AuthFailure _toAccountFailure(ConnectException error) {
+    if (error.isUnavailable) {
+      return AuthFailure(AuthFailureKind.network, message: error.message);
+    }
+    return switch (error.code) {
+      'unauthenticated' => AuthFailure(
+        AuthFailureKind.sessionExpired,
+        message: error.message,
+      ),
+      'invalid_argument' || 'already_exists' => AuthFailure(
         AuthFailureKind.invalidInput,
         message: error.message,
       ),

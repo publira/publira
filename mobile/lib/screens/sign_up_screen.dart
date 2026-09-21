@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/forms/email_input.dart';
+import 'package:publira/forms/name_input.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -21,10 +22,6 @@ import 'package:publira/router.dart';
 /// app takes it at [AppRoutes.verifyEmail].
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
-
-  /// The limit `CreateUser` and the site's own form enforce, counted in code
-  /// points the way they count it.
-  static const maxNameLength = 100;
 
   /// The oldest birth date the picker offers, matching
   /// `oldestPlausibleAge` in `server/internal/ageverification`.
@@ -185,7 +182,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             autofillHints: const [AutofillHints.name],
             textInputAction: TextInputAction.next,
-            validator: (value) => _validateName(messages, value ?? ''),
+            validator: (value) => validateDisplayName(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -263,17 +260,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ],
       ),
     );
-  }
-
-  String? _validateName(AppMessages messages, String value) {
-    final name = value.trim();
-    if (name.isEmpty) {
-      return messages.signUpNameRequired;
-    }
-    if (name.runes.length > SignUpScreen.maxNameLength) {
-      return messages.signUpNameTooLong;
-    }
-    return null;
   }
 
   String _failureCopy(AppMessages messages, AuthFailureKind failure) {

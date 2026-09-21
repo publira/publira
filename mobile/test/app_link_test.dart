@@ -106,6 +106,16 @@ void main() {
       );
     });
 
+    test('an email change link keeps the token the mail carried', () {
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/zh-Hant/confirm-email?token=abc123'),
+          tenantHost: host,
+        ),
+        '/confirm-email?token=abc123',
+      );
+    });
+
     test('http is accepted the same way https is', () {
       expect(
         appLocationFor(

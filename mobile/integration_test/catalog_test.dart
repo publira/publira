@@ -986,6 +986,205 @@ void main() {
       },
     );
 
+    testWidgets(
+      'a member renames the account and changes the password in the app',
+      (tester) async {
+        const newPassword = 'replaced-member-password';
+        await withFailureScreenshot(tester, 'fixture-account-edit', () async {
+          await pumpApp(tester, initialLocation: AppRoutes.signIn);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          await signIn(tester);
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('catalog-account')),
+          );
+          await tester.tap(find.byKey(const ValueKey('catalog-account')));
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-name')),
+          );
+
+          await tester.tap(find.byKey(const ValueKey('account-name')));
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('edit-name-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('edit-name-name')),
+            'Renamed Member',
+          );
+          await tester.tap(find.byKey(const ValueKey('edit-name-submit')));
+          await pumpUntilRouteSettled(
+            tester,
+            find.descendant(
+              of: find.byKey(const ValueKey('account-name')),
+              matching: find.text('Renamed Member'),
+            ),
+          );
+          expect(server.memberCurrentName, 'Renamed Member');
+
+          await tapVisible(
+            tester,
+            find.byKey(const ValueKey('account-change-password')),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('change-password-submit')),
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('change-password-current')),
+            ConnectFixtureServer.memberPassword,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('change-password-new')),
+            newPassword,
+          );
+          await tester.enterText(
+            find.byKey(const ValueKey('change-password-confirm')),
+            newPassword,
+          );
+          await tester.tap(
+            find.byKey(const ValueKey('change-password-submit')),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-sign-out')),
+          );
+          expect(server.memberCurrentPassword, newPassword);
+
+          // The change ended the token the member signed in with, so a
+          // request that still goes through proves the app moved to the one
+          // the API handed back.
+          await tapVisible(
+            tester,
+            find.byKey(const ValueKey('account-change-email')),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('change-email-current')),
+          );
+          expect(find.text(ConnectFixtureServer.memberEmail), findsOneWidget);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        });
+      },
+    );
+
+    testWidgets('an email change is requested and its link opens the app', (
+      tester,
+    ) async {
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      await withFailureScreenshot(tester, 'fixture-email-change', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.signIn,
+          incomingLinks: links,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await signIn(tester);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('catalog-account')),
+        );
+        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-change-email')),
+        );
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('account-change-email')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('change-email-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('change-email-new')),
+          'moved@example.com',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('change-email-password')),
+          ConnectFixtureServer.memberPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('change-email-submit')));
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('change-email-requested')),
+        );
+        expect(server.requestedEmailChanges, ['moved@example.com']);
+
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/confirm-email'
+            '?token=${ConnectFixtureServer.emailChangeToken}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.text('Your email address has been changed.'),
+        );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testWidgets('deleting the account signs the device out for good', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-account-delete', () async {
+        await pumpApp(tester, initialLocation: AppRoutes.signIn);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await signIn(tester);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('catalog-account')),
+        );
+        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-delete')),
+        );
+        await tapVisible(tester, find.byKey(const ValueKey('account-delete')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('delete-account-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('delete-account-password')),
+          ConnectFixtureServer.memberPassword,
+        );
+        await tester.tap(find.byKey(const ValueKey('delete-account-submit')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('delete-account-confirm-delete')),
+        );
+        expect(server.memberDeleted, isFalse);
+
+        await tester.tap(
+          find.byKey(const ValueKey('delete-account-confirm-delete')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.text(
+            'Your account has been deleted. Thank you for using the site.',
+          ),
+        );
+        expect(server.memberDeleted, isTrue);
+        // The catalog's account entry leads to sign-in once nobody is.
+        expect(find.byIcon(Icons.person_outline), findsOneWidget);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
     testWidgets('an expired reset link leads to a fresh request', (
       tester,
     ) async {

@@ -14,7 +14,8 @@ import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
 
-/// The signed-in reader and the way out of that session.
+/// The signed-in reader, the settings of their account, and the way out of
+/// that session.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
@@ -60,11 +61,27 @@ class AccountScreen extends StatelessWidget {
                           ? messages.accountNameUnset
                           : session.userName,
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountName),
                   ),
                   const Divider(height: 1),
                   // Keyed by the reader, so another account signing in reads
                   // its own date rather than showing the last one's.
                   _BirthDateRow(key: ValueKey(session.userPublicId)),
+                  ListTile(
+                    key: const ValueKey('account-change-email'),
+                    title: Text(messages.accountChangeEmail),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountEmail),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    key: const ValueKey('account-change-password'),
+                    title: Text(messages.accountChangePassword),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountPassword),
+                  ),
+                  const Divider(height: 1),
                   const _FollowsEntry(),
                   const _DownloadsEntry(),
                   const _NotificationSwitch(),
@@ -78,6 +95,18 @@ class AccountScreen extends StatelessWidget {
                       onPressed: () => unawaited(_signOut(context)),
                       child: Text(messages.accountSignOut),
                     ),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    key: const ValueKey('account-delete'),
+                    title: Text(
+                      messages.accountDelete,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountDelete),
                   ),
                 ],
               ),

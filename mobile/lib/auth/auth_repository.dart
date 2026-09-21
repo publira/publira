@@ -1,9 +1,10 @@
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 
-/// Sign-up, sign-in, password reset, and session checks against the public
-/// API.
+/// Sign-up, sign-in, password reset, session checks, and the signed-in
+/// reader's own account settings against the public API.
 abstract class AuthRepository {
   /// Signs [email] in with [password] and returns the session the API issued.
   ///
@@ -100,4 +101,51 @@ abstract class AuthRepository {
   ///
   /// Throws [AuthFailure].
   Future<String> recordBirthDate(AuthSession session, DateTime birthDate);
+
+  /// Renames the account behind [session] to [name] and returns the session
+  /// carrying the name the account then holds.
+  ///
+  /// Throws [AuthFailure].
+  Future<AuthSession> updateName(AuthSession session, String name);
+
+  /// Replaces the password of the account behind [session] and returns the
+  /// session to keep.
+  ///
+  /// The API ends every token minted before the change, [session]'s included,
+  /// and hands back a replacement so the device that made the change stays
+  /// signed in while every other one has to sign in again.
+  ///
+  /// Throws [AuthFailure]; a wrong [currentPassword] is
+  /// [AuthFailureKind.invalidInput], not a rejected session.
+  Future<AuthSession> changePassword(
+    AuthSession session, {
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  /// Asks to move the account behind [session] from [currentEmail] to
+  /// [newEmail], which the API answers by mailing a confirmation link to each.
+  ///
+  /// Throws [AuthFailure]; a wrong [currentPassword] and an address another
+  /// account holds are both [AuthFailureKind.invalidInput].
+  Future<void> requestEmailChange(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String currentPassword,
+  });
+
+  /// Spends the [token] one of an email change's two links carries, which
+  /// needs no session: the link may be opened on a device that holds none.
+  ///
+  /// Throws [AuthFailure]; the kind tells a link the API never issued from
+  /// one whose time has run out or whose request has been overtaken.
+  Future<EmailChangeProgress> confirmEmailChange(String token);
+
+  /// Deletes the account behind [session], once [password] confirms it is
+  /// the reader asking.
+  ///
+  /// Throws [AuthFailure]; a wrong [password] is
+  /// [AuthFailureKind.invalidInput].
+  Future<void> deleteAccount(AuthSession session, {required String password});
 }

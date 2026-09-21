@@ -121,6 +121,30 @@ class ConnectFixtureServer {
   /// out.
   static const expiredPasswordResetToken = 'fixture-expired-reset-token';
 
+  /// The token `ChangePassword` hands back, which is then the only one the
+  /// member's requests are accepted with.
+  static const changedPasswordAccessToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      '.eyJzdWIiOiJTZWVkTU1CUkFBQTEiLCJ2IjoyfQ'
+      '.fixture-signature';
+
+  /// An address another account holds, which `RequestEmailChange` refuses to
+  /// move the member to.
+  static const takenEmail = 'taken@example.com';
+
+  /// The tokens an email change's two links carry. `ConfirmEmailChange`
+  /// answers the first as the link that completes the change, the second as
+  /// one opened while the link to the current address is still waited on,
+  /// and the third as one whose time has run out.
+  static const emailChangeToken = 'fixture-email-change-token';
+  static const pendingEmailChangeToken = 'fixture-pending-email-change-token';
+  static const expiredEmailChangeToken = 'fixture-expired-email-change-token';
+
+  /// A link opened after another account took the new address, which
+  /// `ConfirmEmailChange` refuses as `already_exists`.
+  static const conflictingEmailChangeToken =
+      'fixture-conflicting-email-change-token';
+
   /// Unsigned JWT whose `sub` is the synthetic subject a free body's media
   /// token carries (`server/internal/auth`.`FreeEpisodeMediaSubject`). The API
   /// puts one of these on every free page's URL, and it is the whole of the
@@ -474,8 +498,18 @@ class ConnectFixtureServer {
   String passwordResetRequestErrorCode;
 
   /// The member's password as `Login` checks it, which `ConfirmPasswordReset`
-  /// replaces for [passwordResetToken].
+  /// replaces for [passwordResetToken] and `ChangePassword` replaces too.
   String memberCurrentPassword = memberPassword;
+
+  /// The member's name as `GetMe` reports it, which `UpdateMe` replaces.
+  String memberCurrentName = memberName;
+
+  /// The addresses `RequestEmailChange` has accepted a move to, in order.
+  final requestedEmailChanges = <String>[];
+
+  /// Set once `DeleteMe` has gone through, after which the member can
+  /// neither sign in nor use the token they held.
+  var memberDeleted = false;
 
   /// The accounts `CreateUser` has opened here, keyed by address: what
   /// `Login` then accepts, and whether the address has been confirmed.
@@ -694,7 +728,7 @@ class ConnectFixtureServer {
       await _write(request, HttpStatus.ok, {
         'user': {
           'publicId': memberPublicId,
-          'name': memberName,
+          'name': memberCurrentName,
           'role': 'member',
           // protojson omits an empty string, the way the API does for a
           // reader who has recorded no date.
@@ -719,6 +753,26 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/UpdateMe')) {
       await _writeUpdateMe(request, body);
+      return;
+    }
+
+    if (path.endsWith('/ChangePassword')) {
+      await _writeChangePassword(request, body);
+      return;
+    }
+
+    if (path.endsWith('/RequestEmailChange')) {
+      await _writeRequestEmailChange(request, body);
+      return;
+    }
+
+    if (path.endsWith('/ConfirmEmailChange')) {
+      await _writeConfirmEmailChange(request, body);
+      return;
+    }
+
+    if (path.endsWith('/DeleteMe')) {
+      await _writeDeleteMe(request, body);
       return;
     }
 
@@ -1313,11 +1367,13 @@ class ConnectFixtureServer {
   ) async {
     final email = _trimmed(body['email']);
     final password = _trimmed(body['password']);
-    if (email == memberEmail && password == memberCurrentPassword) {
+    if (!memberDeleted &&
+        email == memberEmail &&
+        password == memberCurrentPassword) {
       await _write(request, HttpStatus.ok, {
         'user': {
           'publicId': memberPublicId,
-          'name': memberName,
+          'name': memberCurrentName,
           'role': 'member',
         },
         'accessToken': _accessToken(memberAccessToken),
@@ -1461,7 +1517,8 @@ class ConnectFixtureServer {
       });
       return;
     }
-    if (body['name'] != memberName) {
+    final name = _trimmed(body['name']);
+    if (name.isEmpty || name.runes.length > 100) {
       await _write(request, HttpStatus.badRequest, {
         'code': 'invalid_argument',
         'message': 'name is required',
@@ -1469,6 +1526,17 @@ class ConnectFixtureServer {
       return;
     }
     final birthDate = body['birthDate'];
+    // A date is sent beside the name the account already holds, so a form
+    // recording one that sent any other name has lost track of the account.
+    if (birthDate is String &&
+        birthDate.isNotEmpty &&
+        name != memberCurrentName) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'unexpected name beside a birth date',
+      });
+      return;
+    }
     if (birthDate is String && birthDate.isNotEmpty) {
       if (memberBirthDate.isNotEmpty) {
         await _write(request, HttpStatus.badRequest, {
@@ -1488,13 +1556,141 @@ class ConnectFixtureServer {
       }
       memberBirthDate = birthDate;
     }
+    memberCurrentName = name;
     await _write(request, HttpStatus.ok, {
       'user': {
         'publicId': memberPublicId,
-        'name': memberName,
+        'name': memberCurrentName,
         'role': 'member',
         if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
       },
+    });
+  }
+
+  /// `ChangePassword` as the API answers it: the current password has to be
+  /// the member's, the new one has to differ, and the token the request came
+  /// with is replaced by the one handed back.
+  Future<void> _writeChangePassword(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    final current = _trimmed(body['currentPassword']);
+    final next = _trimmed(body['newPassword']);
+    if (current != memberCurrentPassword || next.isEmpty || next == current) {
+      await _writeInvalidArgument(request, 'invalid password change');
+      return;
+    }
+    memberCurrentPassword = next;
+    activeAccessToken = changedPasswordAccessToken;
+    await _write(request, HttpStatus.ok, {
+      'accessToken': _accessToken(changedPasswordAccessToken),
+    });
+  }
+
+  /// `RequestEmailChange` as the API answers it: the current address and
+  /// password have to be the member's, and an address another account holds
+  /// is refused as `already_exists`.
+  Future<void> _writeRequestEmailChange(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    final current = _trimmed(body['currentEmail']);
+    final next = _trimmed(body['newEmail']);
+    if (current != memberEmail ||
+        next.isEmpty ||
+        next == current ||
+        _trimmed(body['currentPassword']) != memberCurrentPassword) {
+      await _writeInvalidArgument(request, 'invalid email change');
+      return;
+    }
+    if (next == takenEmail) {
+      await _write(request, HttpStatus.conflict, {
+        'code': 'already_exists',
+        'message': 'email already exists',
+      });
+      return;
+    }
+    requestedEmailChanges.add(next);
+    await _write(request, HttpStatus.ok, {'requested': true});
+  }
+
+  /// `ConfirmEmailChange` for the tokens this fixture names, which needs no
+  /// session the way the API needs none.
+  Future<void> _writeConfirmEmailChange(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    switch (_trimmed(body['token'])) {
+      case emailChangeToken:
+        await _write(request, HttpStatus.ok, {
+          'confirmed': true,
+          'changed': true,
+        });
+      case pendingEmailChangeToken:
+        // protojson omits `changed` while it is false.
+        await _write(request, HttpStatus.ok, {
+          'confirmed': true,
+          'pendingConfirmationFor': 'current_email',
+        });
+      case conflictingEmailChangeToken:
+        await _write(request, HttpStatus.conflict, {
+          'code': 'already_exists',
+          'message': 'email already exists',
+        });
+      case expiredEmailChangeToken:
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'failed_precondition',
+          'message': 'email change token expired',
+        });
+      default:
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'email change token not found',
+        });
+    }
+  }
+
+  /// `DeleteMe` as the API answers it: the password has to be the member's,
+  /// and the account is then gone along with every token it held.
+  Future<void> _writeDeleteMe(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    if (_trimmed(body['password']) != memberCurrentPassword) {
+      await _writeInvalidArgument(request, 'invalid password');
+      return;
+    }
+    memberDeleted = true;
+    activeAccessToken = null;
+    await _write(request, HttpStatus.ok, const <String, Object?>{});
+  }
+
+  /// Answers `unauthenticated` for a request without the active token, and
+  /// reports whether the request may go on.
+  Future<bool> _writeUnlessAuthorized(HttpRequest request) async {
+    if (_isAuthorized(request)) {
+      return true;
+    }
+    await _write(request, HttpStatus.unauthorized, {
+      'code': 'unauthenticated',
+      'message': 'invalid token',
+    });
+    return false;
+  }
+
+  Future<void> _writeInvalidArgument(HttpRequest request, String message) {
+    return _write(request, HttpStatus.badRequest, {
+      'code': 'invalid_argument',
+      'message': message,
     });
   }
 

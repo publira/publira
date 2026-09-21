@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 
@@ -28,6 +29,11 @@ class AuthController extends ChangeNotifier {
   /// working on is still the one in hand — two sessions can be equal, or even
   /// the same object, so the count is what makes the check reliable.
   var _revision = 0;
+
+  /// Bumped only when the reader in hand changes — a sign-in, a sign-out, an
+  /// expiry — and not when the same reader's session is renamed or re-keyed,
+  /// so a settings change still lands after another one has finished.
+  var _reader = 0;
   var _expired = false;
 
   AuthSession? get session => _session;
@@ -69,7 +75,7 @@ class AuthController extends ChangeNotifier {
       if (_revision != revision) {
         return;
       }
-      _setSession(refreshed);
+      _setSession(refreshed, sameReader: true);
       await _store.write(refreshed);
       notifyListeners();
     } on AuthFailure catch (failure) {
@@ -200,11 +206,131 @@ class AuthController extends ChangeNotifier {
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
   Future<String> recordBirthDate(DateTime birthDate) async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.recordBirthDate(session, birthDate));
+  }
+
+  /// Renames the signed-in account, so the account screen shows the new name
+  /// without another round trip.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> updateName(String name) => _replaceSession(
+    (session) => _repository.updateName(session, name),
+    (current, renamed) => current.withUser(
+      userPublicId: renamed.userPublicId,
+      userName: renamed.userName,
+    ),
+  );
+
+  /// Replaces the signed-in account's password and holds on to the token the
+  /// API hands back, because the change ends the one this device had.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => _replaceSession(
+    (session) => _repository.changePassword(
+      session,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    ),
+    (current, rekeyed) => current.withAccessToken(
+      rekeyed.accessToken,
+      expiresAt: rekeyed.expiresAt,
+    ),
+  );
+
+  /// Asks to move the signed-in account from [currentEmail] to [newEmail].
+  /// Nothing changes until both mailed links have been opened.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> requestEmailChange({
+    required String currentEmail,
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(
+      () => _repository.requestEmailChange(
+        session,
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        currentPassword: currentPassword,
+      ),
+    );
+  }
+
+  /// Spends one of an email change's two links. The session carries no
+  /// address, so whichever one is held stays as it is.
+  ///
+  /// Throws [AuthFailure].
+  Future<EmailChangeProgress> confirmEmailChange(String token) =>
+      _repository.confirmEmailChange(token);
+
+  /// Deletes the signed-in account and drops the session it was held with,
+  /// so nothing is left signed in to an account that no longer exists.
+  ///
+  /// Throws [AuthFailure] and keeps the session when the API refuses, such as
+  /// for a wrong [password]. Once the API has deleted the account the session
+  /// is dropped even if the credential store refuses to forget it: the token
+  /// it keeps is refused at the next launch, while one kept in hand would go
+  /// on presenting an account that is gone.
+  Future<void> deleteAccount({required String password}) async {
+    final session = _requireSession();
+    final reader = _reader;
+    await _whileHeld(
+      () => _repository.deleteAccount(session, password: password),
+    );
+    if (_reader != reader) {
+      return;
+    }
+    _setSession(null);
+    _expired = false;
+    notifyListeners();
+    try {
+      await _store.clear();
+    } on Object {
+      // Settled at the next launch, when the stored token is refused.
+    }
+  }
+
+  AuthSession _requireSession() {
     final session = _session;
     if (session == null) {
       throw const AuthFailure(AuthFailureKind.sessionExpired);
     }
-    return _whileHeld(() => _repository.recordBirthDate(session, birthDate));
+    return session;
+  }
+
+  /// Runs [call] on the session in hand and folds what it returns into the
+  /// session in hand by then with [merge], unless the reader signed out or in
+  /// again while it was in flight.
+  ///
+  /// Merging rather than replacing lets two changes to the same reader finish
+  /// in either order: a rename that lands after a password change keeps the
+  /// new token, and the new token keeps the new name.
+  ///
+  /// The replacement is held before it is stored, so a keychain that refuses
+  /// it still leaves this run working with the token the API now accepts.
+  Future<void> _replaceSession(
+    Future<AuthSession> Function(AuthSession session) call,
+    AuthSession Function(AuthSession current, AuthSession returned) merge,
+  ) async {
+    final session = _requireSession();
+    final reader = _reader;
+    final returned = await _whileHeld(() => call(session));
+    final current = _session;
+    if (_reader != reader || current == null) {
+      return;
+    }
+    final replaced = merge(current, returned);
+    _setSession(replaced, sameReader: true);
+    notifyListeners();
+    await _store.write(replaced);
   }
 
   /// Runs [call], and signs out when the API rejects the token while that
@@ -244,8 +370,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setSession(AuthSession? session) {
+  void _setSession(AuthSession? session, {bool sameReader = false}) {
     _session = session;
     _revision++;
+    if (!sameReader) {
+      _reader++;
+    }
   }
 }

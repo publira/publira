@@ -118,14 +118,15 @@ bool _isOpenablePath(String path) {
       segments[1] == 'return') {
     return true;
   }
-  // The account mails' links: a confirmation, a password reset request, and
-  // the reset link itself. A token rides along in the query, which
-  // `appLocationFor` keeps.
+  // The account mails' links: a confirmation, a password reset request, the
+  // reset link itself, and either link of an email change. A token rides
+  // along in the query, which `appLocationFor` keeps.
   if (segments.length == 1 &&
       const {
         'verify',
         'reset-password',
         'confirm-password',
+        'confirm-email',
       }.contains(segments[0])) {
     return true;
   }

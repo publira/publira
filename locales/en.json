@@ -2834,8 +2834,11 @@
       "birth_date_save": "Save",
       "birth_date_save_failed": "Could not save your date of birth. Try again.",
       "birth_date_set_help": "Your date of birth cannot be changed. Contact this site if it is wrong.",
+      "change_email": "Change email address",
+      "change_password": "Change password",
       "contact": "Contact",
       "contact_description": "Send a message to the people who run this site.",
+      "delete": "Delete account",
       "downloads": "Downloads",
       "downloads_description": "Episodes saved on this device for reading offline.",
       "follows": "Follows",
@@ -3114,6 +3117,8 @@
       "email_invalid": "Enter a valid email address.",
       "email_label": "Email address",
       "email_required": "Enter your email address.",
+      "name_required": "Enter a display name.",
+      "name_too_long": "Use 100 characters or fewer for the display name.",
       "password_confirm_required": "Confirm your password.",
       "password_label": "Password",
       "password_mismatch": "The passwords do not match. Enter the same password in both fields.",
@@ -3131,8 +3136,6 @@
       "failed": "Could not create your account. Please check what you entered.",
       "have_account": "Already have an account?",
       "name_label": "Name",
-      "name_required": "Enter a display name.",
-      "name_too_long": "Use 100 characters or fewer for the display name.",
       "password_confirm_label": "Confirm password",
       "submit": "Sign up",
       "title": "Sign up"
@@ -3173,6 +3176,56 @@
       "request_again": "Request a new reset email",
       "submit": "Reset password",
       "title": "Set a new password"
+    },
+    "edit_name": {
+      "failed": "Could not update your profile. Try again.",
+      "label": "Display name",
+      "save": "Save",
+      "title": "Display name",
+      "updated": "Your profile has been updated."
+    },
+    "change_email": {
+      "current_label": "Current email address",
+      "failed": "Could not request the email change. Check what you entered.",
+      "load_failed": "Could not load your email address.",
+      "new_label": "New email address",
+      "password_label": "Current password",
+      "requested": "We sent a confirmation email to both your current and your new address. Open both links to finish the change.",
+      "same_email": "Enter an address different from your current one.",
+      "submit": "Send confirmation emails",
+      "title": "Change email address"
+    },
+    "change_password": {
+      "changed": "Your password has been changed. Your other devices have been signed out.",
+      "current_label": "Current password",
+      "failed": "Could not change your password. Check what you entered.",
+      "new_confirm_label": "Confirm new password",
+      "new_label": "New password",
+      "submit": "Change password",
+      "title": "Change password",
+      "unchanged": "Enter a new password that is different from your current one."
+    },
+    "delete_account": {
+      "confirm": "Delete",
+      "confirm_description": "You will be signed out, and the account cannot be restored.",
+      "confirm_title": "Delete your account?",
+      "deleted": "Your account has been deleted. Thank you for using the site.",
+      "description": "Deleting your account permanently removes your access to it. This cannot be undone.",
+      "failed": "Could not delete your account. Check what you entered.",
+      "password_label": "Current password",
+      "submit": "Delete my account",
+      "title": "Delete account"
+    },
+    "confirm_email": {
+      "changed": "Your email address has been changed.",
+      "confirming": "Confirming the change to your email address…",
+      "expired": "This confirmation link has expired or no longer applies. Request the change again.",
+      "failed": "Could not confirm the change to your email address. Try again.",
+      "invalid_token": "This confirmation link is not valid.",
+      "pending_current_email": "This confirmation is complete. The change takes effect once the current address is confirmed as well.",
+      "pending_new_email": "This confirmation is complete. The change takes effect once the new address is confirmed as well.",
+      "title": "Email change confirmation",
+      "to_account": "Back to account"
     }
   },
   "platform": {

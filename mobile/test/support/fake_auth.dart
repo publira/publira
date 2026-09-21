@@ -4,6 +4,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
 
@@ -12,12 +13,15 @@ import 'package:publira/auth/session_store.dart';
 /// `flutter test` has no platform keychain behind `SecureSessionStore`, and a
 /// widget test wants to seed the stored session anyway.
 class InMemorySessionStore implements SessionStore {
-  InMemorySessionStore({this.session, this.writeError});
+  InMemorySessionStore({this.session, this.writeError, this.clearError});
 
   AuthSession? session;
 
   /// Thrown by [write], standing in for a keychain that refuses one.
   Object? writeError;
+
+  /// Thrown by [clear], standing in for a keychain that refuses to forget.
+  Object? clearError;
 
   @override
   Future<AuthSession?> read() async => session;
@@ -33,6 +37,10 @@ class InMemorySessionStore implements SessionStore {
 
   @override
   Future<void> clear() async {
+    final error = clearError;
+    if (error != null) {
+      throw error;
+    }
     session = null;
   }
 }
@@ -131,6 +139,41 @@ class FakeAuthRepository implements AuthRepository {
   AuthFailure? refreshFailureAfterReset = const AuthFailure(
     AuthFailureKind.sessionExpired,
   );
+
+  /// The password [changePassword], [requestEmailChange], and
+  /// [deleteAccount] check the one they are given against, the way the API
+  /// does. [changePassword] replaces it.
+  String password = 'current-password';
+
+  /// Thrown by [updateName], [changePassword], [requestEmailChange], and
+  /// [deleteAccount] in place of what they would otherwise do, standing in
+  /// for an API that is gone or a session it has stopped accepting.
+  AuthFailure? accountFailure;
+
+  /// The names [updateName] has been asked for, in order.
+  final renames = <String>[];
+
+  /// Held open by a test that needs to act while [changePassword] is in
+  /// flight.
+  Completer<void>? changePasswordGate;
+
+  /// The token [changePassword] hands back.
+  static const changedAccessToken = 'changed-access-token';
+
+  /// What [requestEmailChange] has been asked for, in order.
+  final emailChanges = <EmailChangeCall>[];
+
+  /// What [confirmEmailChange] answers for each token it accepts. Anything
+  /// else is answered the way the API answers a token it never issued.
+  Map<String, EmailChangeProgress> emailChangeTokens = {};
+
+  /// Thrown by [confirmEmailChange] in place of reading
+  /// [emailChangeTokens].
+  AuthFailure? confirmEmailChangeFailure;
+
+  /// Set once [deleteAccount] has gone through, after which [refresh] refuses
+  /// the session the way the API refuses one of an account it no longer has.
+  var deleted = false;
 
   @override
   Future<AuthSession> signIn({
@@ -271,6 +314,103 @@ class FakeAuthRepository implements AuthRepository {
     this.birthDate = formatBirthDate(birthDate);
     return this.birthDate;
   }
+
+  @override
+  Future<AuthSession> updateName(AuthSession session, String name) async {
+    renames.add(name);
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    this.session = this.session.withUser(
+      userPublicId: this.session.userPublicId,
+      userName: name,
+    );
+    return session.withUser(userPublicId: session.userPublicId, userName: name);
+  }
+
+  @override
+  Future<AuthSession> changePassword(
+    AuthSession session, {
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await changePasswordGate?.future;
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (currentPassword != password || newPassword == currentPassword) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+    password = newPassword;
+    return session.withAccessToken(changedAccessToken);
+  }
+
+  @override
+  Future<void> requestEmailChange(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    emailChanges.add(
+      EmailChangeCall(
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        currentPassword: currentPassword,
+      ),
+    );
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (currentPassword != password || currentEmail != email) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+  }
+
+  @override
+  Future<EmailChangeProgress> confirmEmailChange(String token) async {
+    final failure = confirmEmailChangeFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    final progress = emailChangeTokens[token];
+    if (progress == null) {
+      throw const AuthFailure(AuthFailureKind.linkInvalid);
+    }
+    return progress;
+  }
+
+  @override
+  Future<void> deleteAccount(
+    AuthSession session, {
+    required String password,
+  }) async {
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (password != this.password) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+    deleted = true;
+    refreshFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+  }
+}
+
+/// One call to [FakeAuthRepository.requestEmailChange].
+class EmailChangeCall {
+  const EmailChangeCall({
+    required this.currentEmail,
+    required this.newEmail,
+    required this.currentPassword,
+  });
+
+  final String currentEmail;
+  final String newEmail;
+  final String currentPassword;
 }
 
 /// One call to [FakeAuthRepository.signUp], so a test can assert on what the

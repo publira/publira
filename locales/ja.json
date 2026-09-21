@@ -2834,8 +2834,11 @@
       "birth_date_save": "登録する",
       "birth_date_save_failed": "生年月日を登録できませんでした。もう一度お試しください。",
       "birth_date_set_help": "生年月日は変更できません。誤りがある場合はサイト運営者へお問い合わせください。",
+      "change_email": "メールアドレス変更",
+      "change_password": "パスワード変更",
       "contact": "お問い合わせ",
       "contact_description": "このサイトの運営者にメッセージを送ります。",
+      "delete": "アカウントを削除",
       "downloads": "ダウンロード",
       "downloads_description": "オフラインで読むためにこの端末に保存したエピソード",
       "follows": "フォロー中",
@@ -3114,6 +3117,8 @@
       "email_invalid": "メールアドレスの形式が正しくありません。",
       "email_label": "メールアドレス",
       "email_required": "メールアドレスを入力してください",
+      "name_required": "表示名を入力してください。",
+      "name_too_long": "表示名は100文字以内で入力してください。",
       "password_confirm_required": "パスワード確認を入力してください。",
       "password_label": "パスワード",
       "password_mismatch": "パスワード確認が一致しません。同じパスワードを入力してください。",
@@ -3131,8 +3136,6 @@
       "failed": "新規登録に失敗しました。入力内容をご確認ください。",
       "have_account": "すでにアカウントをお持ちの方は",
       "name_label": "お名前",
-      "name_required": "表示名を入力してください。",
-      "name_too_long": "表示名は100文字以内で入力してください。",
       "password_confirm_label": "パスワード（確認）",
       "submit": "新規登録",
       "title": "新規登録"
@@ -3173,6 +3176,56 @@
       "request_again": "再設定メールを送り直す",
       "submit": "パスワードを再設定",
       "title": "新しいパスワード設定"
+    },
+    "edit_name": {
+      "failed": "プロフィールの更新に失敗しました。もう一度お試しください。",
+      "label": "表示名",
+      "save": "保存",
+      "title": "表示名",
+      "updated": "プロフィールを更新しました。"
+    },
+    "change_email": {
+      "current_label": "現在のメールアドレス",
+      "failed": "メール変更リクエストに失敗しました。入力内容をご確認ください。",
+      "load_failed": "メールアドレスを読み込めませんでした。",
+      "new_label": "新しいメールアドレス",
+      "password_label": "現在のパスワード",
+      "requested": "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+      "same_email": "現在とは異なるメールアドレスを入力してください。",
+      "submit": "確認メールを送信",
+      "title": "メールアドレス変更"
+    },
+    "change_password": {
+      "changed": "パスワードを変更しました。他の端末はログアウトされました。",
+      "current_label": "現在のパスワード",
+      "failed": "パスワードの変更に失敗しました。入力内容をご確認ください。",
+      "new_confirm_label": "新しいパスワード（確認）",
+      "new_label": "新しいパスワード",
+      "submit": "パスワードを変更",
+      "title": "パスワード変更",
+      "unchanged": "現在のパスワードとは異なるパスワードを入力してください。"
+    },
+    "delete_account": {
+      "confirm": "削除する",
+      "confirm_description": "ログアウトされ、アカウントは元に戻せません。",
+      "confirm_title": "アカウントを削除しますか？",
+      "deleted": "アカウントを削除しました。ご利用ありがとうございました。",
+      "description": "退会するとアカウント情報にアクセスできなくなります。この操作は取り消せません。",
+      "failed": "退会処理に失敗しました。入力内容をご確認ください。",
+      "password_label": "現在のパスワード",
+      "submit": "退会する",
+      "title": "アカウントを削除"
+    },
+    "confirm_email": {
+      "changed": "メールアドレスの変更が完了しました。",
+      "confirming": "メールアドレスの変更を確認しています…",
+      "expired": "この確認リンクは有効期限が切れたか、使えなくなっています。もう一度変更を申請してください。",
+      "failed": "メールアドレスの変更を確認できませんでした。もう一度お試しください。",
+      "invalid_token": "この確認リンクは無効です。",
+      "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
+      "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
+      "title": "メール変更確認",
+      "to_account": "アカウントへ戻る"
     }
   },
   "platform": {

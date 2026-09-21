@@ -2834,8 +2834,11 @@
       "birth_date_save": "登錄",
       "birth_date_save_failed": "無法登錄出生日期。請重試。",
       "birth_date_set_help": "出生日期無法變更。如有錯誤，請聯絡本網站。",
+      "change_email": "變更電子郵件地址",
+      "change_password": "變更密碼",
       "contact": "聯絡我們",
       "contact_description": "向本網站的營運者傳送訊息。",
+      "delete": "刪除帳戶",
       "downloads": "下載",
       "downloads_description": "為離線閱讀而儲存到此裝置的集數",
       "follows": "我的追蹤",
@@ -3114,6 +3117,8 @@
       "email_invalid": "請輸入有效的電子郵件地址。",
       "email_label": "電子郵件地址",
       "email_required": "請輸入電子郵件地址。",
+      "name_required": "請輸入顯示名稱。",
+      "name_too_long": "顯示名稱請控制在 100 個字元以內。",
       "password_confirm_required": "請再次輸入密碼以確認。",
       "password_label": "密碼",
       "password_mismatch": "兩次輸入的密碼不一致。",
@@ -3131,8 +3136,6 @@
       "failed": "無法建立您的帳戶。請檢查您輸入的內容。",
       "have_account": "已經有帳戶了嗎？",
       "name_label": "名稱",
-      "name_required": "請輸入顯示名稱。",
-      "name_too_long": "顯示名稱請控制在 100 個字元以內。",
       "password_confirm_label": "確認密碼",
       "submit": "註冊",
       "title": "註冊"
@@ -3173,6 +3176,56 @@
       "request_again": "重新申請重設郵件",
       "submit": "重設密碼",
       "title": "設定新密碼"
+    },
+    "edit_name": {
+      "failed": "無法更新您的個人資料。請重試。",
+      "label": "顯示名稱",
+      "save": "儲存",
+      "title": "顯示名稱",
+      "updated": "您的個人資料已更新。"
+    },
+    "change_email": {
+      "current_label": "目前的電子郵件地址",
+      "failed": "無法申請電子郵件地址變更。請檢查您輸入的內容。",
+      "load_failed": "無法讀取您的電子郵件地址。",
+      "new_label": "新的電子郵件地址",
+      "password_label": "目前的密碼",
+      "requested": "我們已向您目前的電子郵件地址與新的電子郵件地址各寄出一封確認郵件。請開啟兩個連結完成變更。",
+      "same_email": "請輸入與目前不同的電子郵件地址。",
+      "submit": "寄送確認郵件",
+      "title": "變更電子郵件地址"
+    },
+    "change_password": {
+      "changed": "您的密碼已變更。您其他裝置上的登入已登出。",
+      "current_label": "目前的密碼",
+      "failed": "無法變更您的密碼。請檢查您輸入的內容。",
+      "new_confirm_label": "確認新密碼",
+      "new_label": "新密碼",
+      "submit": "變更密碼",
+      "title": "變更密碼",
+      "unchanged": "請輸入與目前密碼不同的新密碼。"
+    },
+    "delete_account": {
+      "confirm": "刪除",
+      "confirm_description": "您將被登出，且帳戶無法復原。",
+      "confirm_title": "要刪除您的帳戶嗎？",
+      "deleted": "您的帳戶已刪除。感謝您的使用。",
+      "description": "刪除帳戶會永久取消您對它的存取權限，且無法復原。",
+      "failed": "無法刪除您的帳戶。請檢查您輸入的內容。",
+      "password_label": "目前的密碼",
+      "submit": "刪除我的帳戶",
+      "title": "刪除帳戶"
+    },
+    "confirm_email": {
+      "changed": "您的電子郵件地址已變更。",
+      "confirming": "正在確認電子郵件地址的變更…",
+      "expired": "此確認連結已失效或不再適用。請重新申請變更。",
+      "failed": "無法確認電子郵件地址的變更。請重試。",
+      "invalid_token": "此確認連結無效。",
+      "pending_current_email": "此確認已完成。待目前的電子郵件地址也完成確認後，變更才會生效。",
+      "pending_new_email": "此確認已完成。待新的電子郵件地址也完成確認後，變更才會生效。",
+      "title": "電子郵件地址變更確認",
+      "to_account": "返回帳戶"
     }
   },
   "platform": {

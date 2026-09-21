@@ -2834,8 +2834,11 @@
       "birth_date_save": "登记",
       "birth_date_save_failed": "无法登记出生日期。请重试。",
       "birth_date_set_help": "出生日期无法更改。如有错误，请联系本站点。",
+      "change_email": "变更邮箱地址",
+      "change_password": "变更密码",
       "contact": "联系我们",
       "contact_description": "向本站点的运营者发送消息。",
+      "delete": "注销账户",
       "downloads": "下载",
       "downloads_description": "为离线阅读而保存到此设备的剧集",
       "follows": "我的关注",
@@ -3114,6 +3117,8 @@
       "email_invalid": "请输入有效的邮箱地址。",
       "email_label": "邮箱地址",
       "email_required": "请输入邮箱地址。",
+      "name_required": "请输入显示名称。",
+      "name_too_long": "显示名称请控制在 100 个字符以内。",
       "password_confirm_required": "请再次输入密码进行确认。",
       "password_label": "密码",
       "password_mismatch": "两次输入的密码不一致。",
@@ -3131,8 +3136,6 @@
       "failed": "无法创建您的账户。请检查您输入的内容。",
       "have_account": "已经有账户了？",
       "name_label": "昵称",
-      "name_required": "请输入显示名称。",
-      "name_too_long": "显示名称请控制在 100 个字符以内。",
       "password_confirm_label": "确认密码",
       "submit": "注册",
       "title": "注册"
@@ -3173,6 +3176,56 @@
       "request_again": "重新申请重设邮件",
       "submit": "重设密码",
       "title": "设置新密码"
+    },
+    "edit_name": {
+      "failed": "无法更新您的个人资料。请重试。",
+      "label": "显示名称",
+      "save": "保存",
+      "title": "显示名称",
+      "updated": "您的个人资料已更新。"
+    },
+    "change_email": {
+      "current_label": "当前邮箱地址",
+      "failed": "无法申请邮箱地址变更。请检查您输入的内容。",
+      "load_failed": "无法读取您的邮箱地址。",
+      "new_label": "新的邮箱地址",
+      "password_label": "当前密码",
+      "requested": "我们已向您的当前邮箱地址和新邮箱地址各发送一封确认邮件。请打开两个链接完成变更。",
+      "same_email": "请输入与当前不同的邮箱地址。",
+      "submit": "发送确认邮件",
+      "title": "变更邮箱地址"
+    },
+    "change_password": {
+      "changed": "您的密码已变更。您其他设备上的登录已退出。",
+      "current_label": "当前密码",
+      "failed": "无法变更您的密码。请检查您输入的内容。",
+      "new_confirm_label": "确认新密码",
+      "new_label": "新密码",
+      "submit": "变更密码",
+      "title": "变更密码",
+      "unchanged": "请输入与当前密码不同的新密码。"
+    },
+    "delete_account": {
+      "confirm": "注销",
+      "confirm_description": "您将退出登录，且账户无法恢复。",
+      "confirm_title": "要注销您的账户吗？",
+      "deleted": "您的账户已注销。感谢您的使用。",
+      "description": "注销账户会永久取消您对它的访问权限，且无法撤销。",
+      "failed": "无法注销您的账户。请检查您输入的内容。",
+      "password_label": "当前密码",
+      "submit": "注销我的账户",
+      "title": "注销账户"
+    },
+    "confirm_email": {
+      "changed": "您的邮箱地址已变更。",
+      "confirming": "正在确认邮箱地址的变更…",
+      "expired": "此确认链接已失效或不再适用。请重新申请变更。",
+      "failed": "无法确认邮箱地址的变更。请重试。",
+      "invalid_token": "此确认链接无效。",
+      "pending_current_email": "此确认已完成。待当前邮箱地址也完成确认后，变更即会生效。",
+      "pending_new_email": "此确认已完成。待新的邮箱地址也完成确认后，变更即会生效。",
+      "title": "邮箱地址变更确认",
+      "to_account": "返回账户"
     }
   },
   "platform": {

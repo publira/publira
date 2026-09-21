@@ -13,8 +13,9 @@ enum AuthFailureKind {
   sessionExpired,
 
   /// The API would not take what the form sent — an address that is not one,
-  /// or a birth date that is not a past calendar date. The form is the only
-  /// place that can say which field it was.
+  /// a birth date that is not a past calendar date, or a current password that
+  /// is not the account's. The form is the only place that can say which field
+  /// it was.
   invalidInput,
 
   /// The API would not take the birth date as a past calendar date.

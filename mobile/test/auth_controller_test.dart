@@ -246,4 +246,52 @@ void main() {
     expect(repository.refreshCount, 0);
     expect(controller.acknowledgeExpiry(), isTrue);
   });
+
+  test('a rename that lands during a password change keeps both', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    final gate = repository.changePasswordGate = Completer<void>();
+
+    final changing = controller.changePassword(
+      currentPassword: 'current-password',
+      newPassword: 'replaced-password',
+    );
+    await controller.updateName('Renamed Reader');
+    gate.complete();
+    await changing;
+
+    expect(controller.accessToken, FakeAuthRepository.changedAccessToken);
+    expect(controller.session?.userName, 'Renamed Reader');
+    expect(store.session?.accessToken, FakeAuthRepository.changedAccessToken);
+    expect(store.session?.userName, 'Renamed Reader');
+  });
+
+  test('a password change answered after a sign-out is dropped', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    final gate = repository.changePasswordGate = Completer<void>();
+
+    final changing = controller.changePassword(
+      currentPassword: 'current-password',
+      newPassword: 'replaced-password',
+    );
+    await controller.signOut();
+    gate.complete();
+    await changing;
+
+    expect(controller.isSignedIn, isFalse);
+    expect(store.session, isNull);
+  });
+
+  test('a deleted account is signed out though the store refuses', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    store.clearError = Exception('keystore refused');
+
+    await controller.deleteAccount(password: 'current-password');
+
+    expect(repository.deleted, isTrue);
+    expect(controller.isSignedIn, isFalse);
+    expect(controller.accessToken, isEmpty);
+  });
 }
