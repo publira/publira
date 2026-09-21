@@ -16,7 +16,13 @@ import (
 // limit than not answering them at all.
 func NewFromEnv(logger *slog.Logger) *Limiter {
 	memory := NewMemoryStore()
-	url := redisurl.FromEnv()
+	url, err := redisurl.FromEnv()
+	if err != nil {
+		if logger != nil {
+			logger.Error("rate limiter: redis refused, limiting per instance", "error", err)
+		}
+		return New(memory)
+	}
 	if url == "" {
 		return New(memory)
 	}
