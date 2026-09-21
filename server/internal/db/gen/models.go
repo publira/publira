@@ -169,6 +169,16 @@ type CreatorRole struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type DailyRebuildProgress struct {
+	TenantID                 uuid.UUID `json:"tenant_id"`
+	EpisodeReadsProjectedAt  time.Time `json:"episode_reads_projected_at"`
+	ContentStatsThrough      time.Time `json:"content_stats_through"`
+	RankingsThrough          time.Time `json:"rankings_through"`
+	RecommendFeaturesThrough time.Time `json:"recommend_features_through"`
+	CreatedAt                time.Time `json:"created_at"`
+	UpdatedAt                time.Time `json:"updated_at"`
+}
+
 type Episode struct {
 	ID               uuid.UUID      `json:"id"`
 	SeriesID         uuid.UUID      `json:"series_id"`

@@ -51,12 +51,9 @@ const (
 // it is counting on for as long as the rebuild takes.
 const QueueName = "maintenance"
 
-// queueMaxWorkers runs one pass at a time, which is what orders the daily
-// rebuilds: each link of that chain reads what the one before it wrote, and a
-// second worker could only start a rebuild over input another is still
-// producing. Nothing else here wants the second slot either — these share one
-// database with every request the platform is serving, and a purge that ran
-// beside a rebuild would only take the rows out from under it.
+// queueMaxWorkers runs one pass at a time. These share one database with every
+// request the platform is serving, and a purge that ran beside a rebuild would
+// only take the rows out from under it.
 const queueMaxWorkers = 1
 
 const (
@@ -84,6 +81,10 @@ const (
 	// have been accumulating for as long as the deployment has existed. A run
 	// that reaches this has stopped making progress.
 	jobTimeout = time.Hour
+
+	// dailyRebuildInterval is how often the daily rebuild chain looks for a
+	// finished day. Each tenant's midnight falls on a different hour.
+	dailyRebuildInterval = time.Hour
 )
 
 // ServiceNames lists every service.name these jobs record under, for the
@@ -117,9 +118,9 @@ type Config struct {
 // They are read once, in New, so a value an operator mistyped stops startup
 // rather than failing every scheduled pass from then on.
 //
-// The dated rebuilds keep their zero date, which covers each tenant's own
-// yesterday in that tenant's zone. A date names one run rather than the
-// deployment, so it is the operator's to pass through cmd/batch.
+// The dated rebuilds keep their zero date: which days a scheduled pass covers
+// comes from the progress each tenant has recorded, and a date naming one run
+// is the operator's to pass through cmd/batch.
 type Jobs struct {
 	deps maintenance.Deps
 
@@ -210,11 +211,18 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	return nil
 }
 
-// PeriodicJobs is the schedule River enqueues them on. What each kind's cadence
-// and catch-up semantics are is still open: https://github.com/publira/publira/issues/2558
-// settles it for the dated rebuilds and https://github.com/publira/publira/issues/2559
-// for the purges, so until then a run is one an operator enqueues.
-func (j *Jobs) PeriodicJobs() []*river.PeriodicJob { return nil }
+// PeriodicJobs is the schedule River enqueues them on. Only the head of the
+// daily rebuild chain is scheduled, and each link enqueues the next. The
+// purges' cadence is still open: https://github.com/publira/publira/issues/2559
+func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
+	return []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			river.PeriodicInterval(dailyRebuildInterval),
+			func() (river.JobArgs, *river.InsertOpts) { return ProjectEpisodeReadsArgs{}, nil },
+			&river.PeriodicJobOpts{RunOnStart: true},
+		),
+	}
+}
 
 // Queues is the queue they are enqueued on, for the client that runs them.
 func (j *Jobs) Queues() map[string]river.QueueConfig {

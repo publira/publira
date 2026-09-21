@@ -85,6 +85,18 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	}
 }
 
+// Only the head of the daily rebuild chain is scheduled, and it runs on start
+// so a worker that was down picks up the days it missed without waiting an
+// interval. Each link enqueues the next.
+func TestTheDailyRebuildChainIsScheduledFromItsHead(t *testing.T) {
+	jobs := newJobs(t, Config{DB: &sql.DB{}})
+
+	periodic := jobs.PeriodicJobs()
+	if len(periodic) != 1 {
+		t.Fatalf("periodic jobs = %d, want only the head of the chain", len(periodic))
+	}
+}
+
 func TestEveryKindIsNamespacedAndDistinct(t *testing.T) {
 	seen := make(map[string]bool)
 	for _, args := range everyArgs() {

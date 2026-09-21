@@ -130,11 +130,10 @@ var (
 // leaves the tenants already ranked with a complete set of snapshots rather
 // than a half-written one.
 //
-// One tenant's failure does not stop the others. The cron that drives this
-// ranks yesterday and never comes back for a day it missed, so letting a lock
-// timeout on one tenant cost every tenant after it their snapshot would lose
-// that day for good. The run finishes what it can and returns every failure
-// together, so the exit status still reports the day as failed.
+// One tenant's failure does not stop the others: a lock timeout on one tenant
+// is no reason to leave every tenant after it without the day's snapshots. The
+// run finishes what it can and returns every failure together, so the exit
+// status still reports the day as failed.
 func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("ranking aggregation requires a database")
@@ -176,6 +175,23 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 		result.ItemCount += items
 	}
 	return result, errors.Join(failures...)
+}
+
+// RunTenant rebuilds every snapshot of one tenant ending on referenceDate, one
+// of that tenant's calendar days. It is how a caller that tracks each tenant's
+// progress on its own ranks the days one tenant is missing without touching
+// the others.
+func (a *Aggregator) RunTenant(ctx context.Context, tenantID uuid.UUID, referenceDate time.Time, itemLimit int) (snapshotCount, itemCount int, err error) {
+	if a == nil || a.db == nil {
+		return 0, 0, errors.New("ranking aggregation requires a database")
+	}
+	if itemLimit <= 0 {
+		itemLimit = DefaultItemLimit
+	}
+	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
+		return 0, 0, err
+	}
+	return a.rankTenant(ctx, tenantID, referenceDate, itemLimit)
 }
 
 // requireBypassRLS refuses a connection that row-level security would scope to

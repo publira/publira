@@ -75,9 +75,9 @@ The rebuild and purge work runs here as well, on the same River client:
 | Kind | What it does |
 | --- | --- |
 | `maintenance.project_episode_reads` | Files the missing `episode_complete` events for stored `episode_reads` |
-| `maintenance.aggregate_content_stats` | Rebuilds one calendar day of `content_daily_stats` per tenant |
-| `maintenance.aggregate_rankings` | Rebuilds the daily and weekly `content_ranking_snapshots` |
-| `maintenance.build_recommend_features` | Rebuilds the daily user and item recommend feature snapshots |
+| `maintenance.aggregate_content_stats` | Rebuilds each day of `content_daily_stats` a tenant is owed |
+| `maintenance.aggregate_rankings` | Rebuilds the daily and weekly `content_ranking_snapshots` of each day a tenant is owed |
+| `maintenance.build_recommend_features` | Rebuilds the user and item recommend feature snapshots |
 | `maintenance.purge_content_events` | Deletes `content_events` rows past their retention window |
 | `maintenance.purge_ranking_snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
 | `maintenance.purge_mfa_challenges` | Deletes the spent admin MFA challenges whose tokens have expired |
@@ -86,9 +86,22 @@ The rebuild and purge work runs here as well, on the same River client:
 
 Each kind is a thin wrapper around `internal/maintenance`, which is the same implementation [`batch`](../batch/README.md) invokes for an explicit operator run — a backfill of a named date, a recovery after an incident, a dry-run purge. A pass only the schedule could reach would be a second copy of the maintenance, free to diverge from the one an operator recovers with.
 
-What cadence each kind runs on is still open: <https://github.com/publira/publira/issues/2558> settles it for the dated rebuilds, which need a record of the days they have completed, and <https://github.com/publira/publira/issues/2559> for the purges. Until then a run is one that is enqueued rather than one that comes due.
+The first four are one chain, in this order, and only its head is scheduled: `maintenance.project_episode_reads` runs when the client starts and then once an hour, and each link enqueues the next when its pass ends. Hourly is how soon a tenant's day is rebuilt after it ends, since each tenant's midnight falls on a different hour.
 
-They run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, which is what orders the daily rebuilds — each link of that chain reads what the one before it wrote, and these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
+How far the chain has got is recorded per tenant in `daily_rebuild_progress`, in that tenant's own calendar days:
+
+| Link | Rebuilds, for each tenant |
+| --- | --- |
+| `maintenance.project_episode_reads` | Every pending read, then records when the pass began. A tenant the table has no row for starts its chain on its own yesterday |
+| `maintenance.aggregate_content_stats` | Each day after `content_stats_through` whose end came before that recorded instant, so no read finished on it is filed after its stats. A day that began before the tenant's content event retention cutoff has lost its events, so it is logged as missing and passed over rather than rebuilt from what is left |
+| `maintenance.aggregate_rankings` | Each day after `rankings_through`, up to `content_stats_through` |
+| `maintenance.build_recommend_features` | The day at `rankings_through`, once it has moved past `recommend_features_through`. The feature tables hold one snapshot per tenant, so the days in between are not built |
+
+So a worker that was down for days rebuilds each of them on its return, in order, and a link never reads a day the one before it has not finished. A day that fails stops that tenant's progress there: the other tenants carry on, the job is recorded as failed and retried, and the next pass starts again on the day that failed rather than after it. A run of [`batch`](../batch/README.md) neither reads nor moves this record.
+
+The purges' cadence is still open: <https://github.com/publira/publira/issues/2559>. Until then a purge runs when it is enqueued.
+
+They run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, because these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
 
 They connect as `publira_content_stats`, the role the batch subcommands have always used for this work, on a third pool. What the work may reach is decided by the role, and hosting three kinds of job in one process is not a reason for any of them to borrow another's privileges.
 
