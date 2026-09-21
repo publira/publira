@@ -1,6 +1,7 @@
 // The Android build configuration generated from an app manifest, which
 // `android/app/build.gradle.kts` reads.
 
+import 'generated_files.dart';
 import 'manifest.dart';
 
 /// The file Gradle reads the app's identity from.
@@ -13,7 +14,8 @@ Map<String, String> androidGeneratedFiles(
   required String source,
 }) => {
   androidAppProperties: [
-    '# Generated from $source by scripts/app_manifest.dart. Do not edit;',
+    '# Generated from ${commentText(source)} by scripts/app_manifest.dart. '
+        'Do not edit;',
     '# change the manifest and generate again.',
     'publira.applicationId=${_escape(manifest.androidApplicationId)}',
     'publira.tenantHost=${_escape(manifest.tenantHost)}',

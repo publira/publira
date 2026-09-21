@@ -58,3 +58,9 @@ Future<void> writeGeneratedFiles(
     }
   }
 }
+
+/// [text] as it can be written into a comment line of a generated file: each
+/// character that could end the line, which would let the rest of [text] be
+/// read as a setting, is replaced.
+String commentText(String text) =>
+    text.replaceAll(RegExp('[\\x00-\\x1F\\x7F\\u2028\\u2029]'), '�');

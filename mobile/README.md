@@ -92,10 +92,10 @@ The app builds in two flavors, so a development build and a production build can
 
 | Flavor | Android application ID | iOS bundle identifier | Launcher name | Icon set |
 | --- | --- | --- | --- | --- |
-| `dev` | `<android.applicationId>.dev` | `com.publira.publira.dev` | `<app.name> Dev` on Android, Publira Dev on iOS | `AppIcon-dev` / `android/app/src/dev/res` |
-| `production` | `<android.applicationId>` | `com.publira.publira` | `<app.name>` on Android, Publira on iOS | `AppIcon` / `android/app/src/main/res` |
+| `dev` | `<android.applicationId>.dev` | `<ios.bundleIdentifier>.dev` | `<app.name> Dev` | `AppIcon-dev` / `android/app/src/dev/res` |
+| `production` | `<android.applicationId>` | `<ios.bundleIdentifier>` | `<app.name>` | `AppIcon` / `android/app/src/main/res` |
 
-`<android.applicationId>` and `<app.name>` come from the [app manifest](#app-manifest) the build configuration was generated from: `dev.publira.app` and Publira for Publira's own.
+`<android.applicationId>`, `<ios.bundleIdentifier>`, and `<app.name>` come from the [app manifest](#app-manifest) the build configuration was generated from: `dev.publira.app`, `dev.publira.app`, and Publira for Publira's own.
 
 Both icon sets still hold the same placeholder art, so today the two builds are told apart by their launcher name. Give the development build its own icon by replacing the images in `ios/Runner/Assets.xcassets/AppIcon-dev.appiconset/` and adding `android/app/src/dev/res/mipmap-*/ic_launcher.png`; nothing else has to change, because both platforms already read the flavor's own icon.
 
@@ -105,14 +105,13 @@ Both icon sets still hold the same placeholder art, so today the two builds are 
 dart run scripts/app_manifest.dart --generate path/to/app.yaml
 flutter build appbundle --flavor production \\
   --dart-define=PUBLIRA_TENANT_HOST=tenant.example
-PUBLIRA_ASSOCIATED_DOMAIN=tenant.example \\
-  flutter build ipa --flavor production \\
-    --dart-define=PUBLIRA_TENANT_HOST=tenant.example
+flutter build ipa --flavor production \\
+  --dart-define=PUBLIRA_TENANT_HOST=tenant.example
 ```
 
 A flavor decides identity — application ID, launcher name, icon, and the associated domain Universal Links claim. Where the app connects stays with `--dart-define` (see [Connecting to the public API](#connecting-to-the-public-api)), because the same development build points at a local `task dev` stack, an emulator loopback to the host, or an E2E stack depending on who runs it.
 
-Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, which reads the application ID, launcher name, and App Links host from the generated build configuration, and `dev` overrides from `android/app/src/dev/res/` whatever else it wants to differ. A production Android build refuses a `PUBLIRA_TENANT_HOST` other than the manifest's `tenant.host`. The source namespace, `dev.publira.app`, is Publira's own and does not follow the application ID. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations carry `PRODUCT_BUNDLE_IDENTIFIER`, `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`), `ASSETCATALOG_COMPILER_APPICON_NAME`, and `PUBLIRA_ASSOCIATED_DOMAIN`. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
+Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`, which reads the application ID, launcher name, and App Links host from the generated build configuration, and `dev` overrides from `android/app/src/dev/res/` whatever else it wants to differ. A production Android build refuses a `PUBLIRA_TENANT_HOST` other than the manifest's `tenant.host`. The source namespace, `dev.publira.app`, is Publira's own and does not follow the application ID. iOS takes it from the `dev` and `production` Xcode schemes, whose `Debug-`, `Release-`, and `Profile-` configurations derive `PRODUCT_BUNDLE_IDENTIFIER` and `APP_DISPLAY_NAME` (which `Info.plist` reads as `CFBundleDisplayName`) from the generated `PUBLIRA_BUNDLE_IDENTIFIER` and `PUBLIRA_APP_NAME`, and choose `ASSETCATALOG_COMPILER_APPICON_NAME`; the entitlements claim the generated `PUBLIRA_ASSOCIATED_DOMAIN`. A production iOS build refuses a `PUBLIRA_TENANT_HOST` other than the manifest's `tenant.host` as well. A new flavor has to appear on both platforms under one name, because `default-flavor` and `--flavor` name a single flavor for whichever platform is being built.
 
 ## App manifest
 
@@ -155,8 +154,9 @@ dart run scripts/app_manifest.dart --generate path/to/app.yaml
 | Generated file | Read by |
 | --- | --- |
 | `app.properties` | `android/app/build.gradle.kts`, which stops with the command to run when the file is missing |
+| `App.xcconfig` | `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`, which include it; the Runner target's first build phase, `scripts/ios-check-app-config.sh`, stops with the command to run when it is missing |
 
-The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`), which the platform build reads as well; builds for two tenants running at once each name their own. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated.
+The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`); builds for two tenants running at once each name their own. Gradle reads the directory the variable names, but Xcode reads `.generated/` only, and an iOS build stops when the variable names another directory. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated.
 
 ## Quality gates (format / analyze / test)
 
@@ -264,7 +264,7 @@ The catalog's app bar carries the account entry point, which opens `/sign-in` fo
 
 ### Tenant links and sharing
 
-A link to a series, an episode, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the host through `com.apple.developer.associated-domains`; a production archive receives it as the `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same `PUBLIRA_TENANT_HOST` as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
@@ -444,10 +444,10 @@ Use `--dart-define` to switch the test API and tenant host.
 | --- | --- | --- |
 | `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | Public API Connect HTTP (`api-server` port 8000, not gRPC port 8100) |
 | `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | `image-server`, which returns episode-body images |
-| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host`. Android App Links claim this host at build time |
+| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host`. A production build must pass the manifest's `tenant.host` |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
-A store build passes the same host as the iOS `PUBLIRA_ASSOCIATED_DOMAIN` build setting, so Universal Links claim the tenant the binary is pinned to. The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
+The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
 
 The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the three values out of it.
 

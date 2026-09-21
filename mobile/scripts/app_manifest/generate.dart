@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'android.dart';
 import 'generated_files.dart';
+import 'ios.dart';
 import 'manifest.dart';
 
 /// Validates the manifest at [file] and writes the build configuration for it
@@ -13,9 +14,9 @@ Future<AppManifest> generateBuildConfiguration(
   Directory directory,
 ) async {
   final manifest = await AppManifest.load(file);
-  await writeGeneratedFiles(
-    directory,
-    androidGeneratedFiles(manifest, source: file.path),
-  );
+  await writeGeneratedFiles(directory, {
+    ...androidGeneratedFiles(manifest, source: file.path),
+    ...iosGeneratedFiles(manifest, source: file.path),
+  });
   return manifest;
 }
