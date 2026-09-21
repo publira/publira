@@ -101,14 +101,16 @@ const ResetPasswordRequestedPage = () => (
 
       <AuthScreenFooter>
         <p>
-          <LocaleLink
-            href="/login"
-            className="text-primary underline underline-offset-4"
+          <Suspense
+            fallback={<SkeletonLine className="inline-block h-4 w-32" />}
           >
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <LocaleLink
+              href="/login"
+              className="text-primary underline underline-offset-4"
+            >
               <Message message="host.auth.fields.to_login" />
-            </Suspense>
-          </LocaleLink>
+            </LocaleLink>
+          </Suspense>
         </p>
       </AuthScreenFooter>
     </AuthScreenMain>
