@@ -595,6 +595,9 @@ type Querier interface {
 	// whole "mobile push is disabled" state.
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
+	// The pages a tenant names as its terms of service and its privacy policy,
+	// each with whether it is published. No row where the tenant has no config.
+	GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	// One reader in the shape ListTenantReaders* returns. A staff account and an
 	// account of another tenant are both no rows.
@@ -2063,6 +2066,9 @@ type Querier interface {
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
+	// written together because the console offers them as one card.
+	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. The default and
 	// the store listings are written together because the console offers them as

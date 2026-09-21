@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCLYAwoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkSFQoNYXBwX3N0b3JlX3VybBgOIAEoCRIXCg9nb29nbGVfcGxheV91cmwYDyABKAkyWwoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCIuCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCSK8BAoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkSFQoNYXBwX3N0b3JlX3VybBgOIAEoCRIXCg9nb29nbGVfcGxheV91cmwYDyABKAkSLwoKdGVybXNfcGFnZRgQIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlEjEKDHByaXZhY3lfcGFnZRgRIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlMlsKDVRlbmFudFNlcnZpY2USSgoJR2V0VGVuYW50EhwucHVibGlyYS52MS5HZXRUZW5hbnRSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRUZW5hbnRSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -30,6 +30,31 @@ export type GetTenantRequest = Message<"publira.v1.GetTenantRequest"> & {
  */
 export const GetTenantRequestSchema: GenMessage<GetTenantRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_tenant, 0);
+
+/**
+ * A published page the tenant names for a role. The slug is in storage form
+ * ("/privacy"), which is also the path the storefront serves it at.
+ *
+ * @generated from message publira.v1.TenantLegalPage
+ */
+export type TenantLegalPage = Message<"publira.v1.TenantLegalPage"> & {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message publira.v1.TenantLegalPage.
+ * Use `create(TenantLegalPageSchema)` to create a new message.
+ */
+export const TenantLegalPageSchema: GenMessage<TenantLegalPage> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 1);
 
 /**
  * @generated from message publira.v1.GetTenantResponse
@@ -138,6 +163,20 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
    * @generated from field: string google_play_url = 15;
    */
   googlePlayUrl: string;
+
+  /**
+   * The pages the tenant names as its terms of service and its privacy policy.
+   * Absent where it has named none, and where the page it named is not
+   * published, so a link built from one always resolves.
+   *
+   * @generated from field: publira.v1.TenantLegalPage terms_page = 16;
+   */
+  termsPage?: TenantLegalPage | undefined;
+
+  /**
+   * @generated from field: publira.v1.TenantLegalPage privacy_page = 17;
+   */
+  privacyPage?: TenantLegalPage | undefined;
 };
 
 /**
@@ -145,7 +184,7 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
  * Use `create(GetTenantResponseSchema)` to create a new message.
  */
 export const GetTenantResponseSchema: GenMessage<GetTenantResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 1);
+  messageDesc(file_publira_v1_tenant, 2);
 
 /**
  * @generated from service publira.v1.TenantService

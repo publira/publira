@@ -10,6 +10,13 @@ message GetTenantRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
 
+// A published page the tenant names for a role. The slug is in storage form
+// ("/privacy"), which is also the path the storefront serves it at.
+message TenantLegalPage {
+  string slug = 1;
+  string title = 2;
+}
+
 message GetTenantResponse {
   string tenant_public_id = 1;
   string tenant_name = 2;
@@ -47,6 +54,11 @@ message GetTenantResponse {
   // no listing in that store.
   string app_store_url = 14;
   string google_play_url = 15;
+  // The pages the tenant names as its terms of service and its privacy policy.
+  // Absent where it has named none, and where the page it named is not
+  // published, so a link built from one always resolves.
+  TenantLegalPage terms_page = 16;
+  TenantLegalPage privacy_page = 17;
 }
 
 service TenantService {

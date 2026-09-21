@@ -210,3 +210,36 @@ SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
 RETURNING *;
+
+-- name: GetTenantLegalPages :one
+-- The pages a tenant names as its terms of service and its privacy policy,
+-- each with whether it is published. No row where the tenant has no config.
+SELECT tc.terms_page_id,
+    terms.slug AS terms_slug,
+    terms.title AS terms_title,
+    (terms.published_version_id IS NOT NULL)::boolean AS terms_published,
+    tc.privacy_page_id,
+    privacy.slug AS privacy_slug,
+    privacy.title AS privacy_title,
+    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published
+FROM tenant_config tc
+    LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
+    AND terms.id = tc.terms_page_id
+    LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
+    AND privacy.id = tc.privacy_page_id
+WHERE tc.tenant_id = $1;
+
+-- name: UpsertTenantLegalPages :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
+-- written together because the console offers them as one card.
+INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.narg('terms_page_id'),
+        sqlc.narg('privacy_page_id')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET terms_page_id = EXCLUDED.terms_page_id,
+    privacy_page_id = EXCLUDED.privacy_page_id,
+    updated_at = NOW()
+RETURNING *;
