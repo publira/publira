@@ -28,10 +28,12 @@ const tenantHostPattern =
     r'^(?=.{1,253}$)(?!(.*\.)?[0-9]+$)'
     r'[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$';
 
-/// A name the home screen can show: no control characters, and no whitespace
-/// at either end.
+/// A name the home screen can show: no control characters or line separators,
+/// no whitespace at either end, and no backslash at the end, which an xcconfig
+/// reads as a line continuation.
 const appNamePattern =
-    r'^[^\s\x00-\x1F\x7F]([^\x00-\x1F\x7F]*[^\s\x00-\x1F\x7F])?$';
+    r'^(?!.*\\$)[^\s\x00-\x1F\x7F\u2028\u2029]'
+    r'([^\x00-\x1F\x7F\u2028\u2029]*[^\s\x00-\x1F\x7F\u2028\u2029])?$';
 
 /// The fields of each section, in the order a problem is reported in.
 const _sections = <String, List<String>>{
@@ -224,6 +226,10 @@ String? _validateAppName(String value) {
   }
   if (value.trim() != value) {
     return '"$value" must not start or end with whitespace';
+  }
+  if (value.endsWith(r'\')) {
+    return '"$value" must not end with a backslash, which an iOS build reads '
+        'as a line continuation';
   }
   if (!RegExp(appNamePattern).hasMatch(value)) {
     return 'must not contain control characters such as a line break';

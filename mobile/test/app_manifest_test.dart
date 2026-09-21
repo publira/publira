@@ -39,6 +39,72 @@ List<String> _issuesOf(String text) {
   fail('the manifest was accepted');
 }
 
+/// The settings an xcconfig [text] assigns, each evaluated as a string, as
+/// Xcode's build system (swift-build's `MacroConfigFileParser` and
+/// `MacroExpressionParser`) reads them. Whatever Xcode would read differently
+/// from what was meant, such as a continued line or a reference to a setting
+/// the file does not assign, fails the test.
+Map<String, String> _xcconfigSettings(String text) {
+  final raw = <String, String>{};
+  for (final line in text.split(RegExp('\r\n|[\r\n  ]'))) {
+    final statement = line.trimLeft();
+    if (statement.isEmpty ||
+        statement.startsWith('//') ||
+        statement.startsWith('#')) {
+      continue;
+    }
+    final assignment = RegExp(
+      r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$',
+    ).firstMatch(statement);
+    if (assignment == null) {
+      fail('Xcode cannot read the line "$line"');
+    }
+    var value = assignment[2]!.split('//').first.trimRight();
+    if (value.endsWith(';')) {
+      value = value.substring(0, value.length - 1).trimRight();
+    }
+    if (value.endsWith(r'\')) {
+      fail('Xcode continues the line "$line" onto the next one');
+    }
+    raw[assignment[1]!] = value;
+  }
+
+  String evaluate(String value) {
+    final result = StringBuffer();
+    for (var i = 0; i < value.length; i++) {
+      final c = value[i];
+      final next = i + 1 < value.length ? value[i + 1] : null;
+      if (c == r'\') {
+        // Kept in the string form, and the next character is taken literally.
+        result.write(c);
+        if (next != null) {
+          result.write(next);
+          i++;
+        }
+      } else if (c == r'$' && next == '(') {
+        final close = value.indexOf(')', i);
+        final name = value.substring(i + 2, close);
+        if (!raw.containsKey(name)) {
+          fail('"$value" refers to "$name", which the file does not assign');
+        }
+        result.write(evaluate(raw[name]!));
+        i = close;
+      } else if (c == r'$' && next == r'$') {
+        result.write(c);
+        i++;
+      } else if (c == r'$' &&
+          (next == null || RegExp('[A-Za-z0-9_{]').hasMatch(next))) {
+        fail('"$value" holds a "\$" Xcode reads as a reference');
+      } else {
+        result.write(c);
+      }
+    }
+    return result.toString();
+  }
+
+  return {for (final name in raw.keys) name: evaluate(raw[name]!)};
+}
+
 void main() {
   group('the checked-in manifests', () {
     test('Publira defaults to its own identity', () async {
@@ -240,6 +306,16 @@ android:
       ('padded', '" Reader"', 'must not start or end with whitespace'),
       ('multi-line', r'"Example\nReader"', 'must not contain control'),
       ('holding a tab', r'"Example\tReader"', 'must not contain control'),
+      (
+        'holding a line separator',
+        r'"Example\u2028Reader"',
+        'must not contain control',
+      ),
+      (
+        'ending in a backslash',
+        r'"Reader \\"',
+        'must not end with a backslash',
+      ),
     ]) {
       test('rejects a name that is $name', () {
         expect(_issuesOf(_with('app.name', value)), [
@@ -502,6 +578,25 @@ android:
       }
     });
 
+    test('keeps the path it was generated from inside its comment', () {
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
+
+      for (final source in [
+        'app.yaml\npublira.applicationId=injected',
+        'app.yaml\rpublira.applicationId=injected',
+      ]) {
+        final text = androidGeneratedFiles(
+          manifest,
+          source: source,
+        )[androidAppProperties]!;
+
+        expect(
+          text.split(RegExp('[\r\n]')).where((l) => l.contains('injected')),
+          everyElement(startsWith('#')),
+        );
+      }
+    });
+
     test('is generated from a manifest file into a directory', () async {
       final temporary = await Directory.systemTemp.createTemp('app_android_');
       addTearDown(() => temporary.delete(recursive: true));
@@ -538,31 +633,13 @@ android:
   });
 
   group('the iOS build configuration', () {
-    /// The settings [manifest] generates, as Xcode reads an xcconfig: a `//`
-    /// starts a comment, a trailing `;` is dropped, and each reference is
-    /// expanded.
-    Map<String, String> settingsOf(AppManifest manifest) {
-      final text = iosGeneratedFiles(
-        manifest,
-        source: 'app.yaml',
-      )[iosAppXcconfig]!;
-      return {
-        for (final line in const LineSplitter().convert(text))
-          if (line.split('//').first.trim() case final setting
-              when setting.isNotEmpty)
-            setting.substring(0, setting.indexOf(' = ')): setting
-                .substring(setting.indexOf(' = ') + 3)
-                .replaceFirst(RegExp(r';$'), '')
-                .replaceAllMapped(
-                  RegExp(r'\$\((\w*)\)'),
-                  (m) => switch (m[1]) {
-                    '' => '',
-                    'DOLLAR' => r'$',
-                    _ => fail('an unexpected reference ${m[0]}'),
-                  },
-                ),
-      };
-    }
+    Map<String, String> settingsOf(AppManifest manifest, {String? source}) =>
+        _xcconfigSettings(
+          iosGeneratedFiles(
+            manifest,
+            source: source ?? 'app.yaml',
+          )[iosAppXcconfig]!,
+        );
 
     test('carries the tenant identity Xcode reads', () {
       final manifest = AppManifest.parse(
@@ -571,6 +648,7 @@ android:
       );
 
       expect(settingsOf(manifest), {
+        'PUBLIRA_EMPTY': '',
         'PUBLIRA_BUNDLE_IDENTIFIER': 'jp.example.reader-ios',
         'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.jp',
         'PUBLIRA_APP_NAME': 'Example Reader',
@@ -580,19 +658,46 @@ android:
     test('keeps whatever characters the name is written in', () {
       for (final name in [
         'Reader // Club',
+        'https://reader.example.jp/',
+        'Reader;',
+        'Reader ;',
         r'$(HOME) Reader',
         r'${HOME}',
-        'Reader;',
-        'https://reader.example.jp/',
+        r'$HOME',
+        r'Reader $',
+        r'$$',
         r'Reader \ "Club"',
-        '漫画リーダー',
+        r'\Reader',
+        r'a\$b',
+        r'a\\$b',
+        r'a\//b',
+        r'a\;',
+        "Reader's",
+        'Say "Hi"',
+        'Two  spaces',
+        '漫画リーダー 😀',
       ]) {
         final manifest = AppManifest.parse(
           _with('app.name', jsonEncode(name)),
           source: 'app.yaml',
         );
 
-        expect(settingsOf(manifest)['PUBLIRA_APP_NAME'], name);
+        expect(settingsOf(manifest)['PUBLIRA_APP_NAME'], name, reason: name);
+      }
+    });
+
+    test('keeps the path it was generated from inside its comment', () {
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
+
+      for (final source in [
+        'app.yaml\nPUBLIRA_INJECTED = 1',
+        'app.yaml\rPUBLIRA_INJECTED = 1',
+        'app.yaml\u2028PUBLIRA_INJECTED = 1',
+      ]) {
+        expect(
+          settingsOf(manifest, source: source).keys,
+          isNot(contains('PUBLIRA_INJECTED')),
+        );
       }
     });
 

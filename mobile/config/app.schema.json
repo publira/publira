@@ -19,7 +19,7 @@
         "name": {
           "description": "The name the app is shown under on the home screen.",
           "type": "string",
-          "pattern": "^[^\\s\\x00-\\x1F\\x7F]([^\\x00-\\x1F\\x7F]*[^\\s\\x00-\\x1F\\x7F])?$"
+          "pattern": "^(?!.*\\\\$)[^\\s\\x00-\\x1F\\x7F\\u2028\\u2029]([^\\x00-\\x1F\\x7F\\u2028\\u2029]*[^\\s\\x00-\\x1F\\x7F\\u2028\\u2029])?$"
         }
       }
     },
