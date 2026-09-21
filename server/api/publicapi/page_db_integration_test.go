@@ -82,6 +82,12 @@ func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing
 		Title:           "Terms (draft)",
 		DisplayInFooter: true,
 	})
+	// Stored past the admin API, which refuses a reserved slug.
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:      "login",
+		Title:     "Sign-in help",
+		Published: true,
+	})
 	env.PG.SeedPage(t, second.ID, testutil.PageSeed{
 		Slug:      "contact",
 		Title:     "Tenant B Contact",
@@ -95,7 +101,7 @@ func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing
 		t.Fatalf("ListPublishedPageSlugs: %v", err)
 	}
 	if got := strings.Join(resp.Msg.Slugs, ","); got != "/privacy,/series" {
-		t.Fatalf("slugs = %q, want the published pages of tenant A, footer or not", got)
+		t.Fatalf("slugs = %q, want the published pages of tenant A, footer or not, less the reserved one", got)
 	}
 }
 

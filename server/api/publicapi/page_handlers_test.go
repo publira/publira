@@ -55,6 +55,8 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// A page stored under a reserved path before the admin API refused one is left
+// out, so the public site never serves it over a sign-in or settings screen.
 func TestPagesListPublishedPageSlugsSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -66,6 +68,7 @@ func TestPagesListPublishedPageSlugsSuccess(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"slug"}).
 			AddRow("/legal/terms").
+			AddRow("/login").
 			AddRow("/series"))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
