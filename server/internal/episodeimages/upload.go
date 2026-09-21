@@ -81,6 +81,10 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 		return nil, uuid.Nil, err
 	}
 
+	// Every variant of every image goes to the one store resolved here.
+	if s.Storage, err = storage.Pin(ctx, s.Storage); err != nil {
+		return nil, uuid.Nil, storageUploadError(err)
+	}
 	items, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
 	if err != nil {
 		return nil, uuid.Nil, err

@@ -170,8 +170,8 @@ func newObjectStore(cfg *config.Config, admin *sql.DB, logger *slog.Logger) (ima
 		}
 		return imageserver.NewS3Store(client, snapshot.Settings.Bucket), nil
 	})
-	return imageserver.ResolvingStore{Resolve: func(ctx context.Context) (imageserver.ObjectStore, error) {
-		store, _, err := resolver.Resolve(ctx)
-		return store, err
+	return imageserver.ResolvingStore{Resolve: func(ctx context.Context) (imageserver.ObjectStore, string, error) {
+		resolved, err := resolver.Resolve(ctx)
+		return resolved.Value, resolved.Version, err
 	}}, nil
 }

@@ -75,6 +75,15 @@ type Config struct {
 	Logger   *slog.Logger
 }
 
+// Resolved is the value built from one saved configuration.
+type Resolved[T any] struct {
+	Value  T
+	Bucket string
+	// Version names the saved row the value was built from, and changes with
+	// every save.
+	Version string
+}
+
 // Resolver answers the value built from the current configuration.
 type Resolver[T any] struct {
 	queries  Querier
@@ -106,6 +115,10 @@ func (v version) same(other version) bool {
 	return v.revision == other.revision && v.updatedAt.Equal(other.updatedAt)
 }
 
+func (v version) String() string {
+	return fmt.Sprintf("%d.%d", v.revision, v.updatedAt.UnixNano())
+}
+
 // New returns a Resolver that builds its value with build.
 func New[T any](cfg Config, build Build[T]) *Resolver[T] {
 	interval := cfg.Interval
@@ -129,11 +142,11 @@ func New[T any](cfg Config, build Build[T]) *Resolver[T] {
 	}
 }
 
-// Resolve answers the value built from the current configuration and the
-// bucket it addresses, or [storage.ErrNotConfigured] while nothing is saved.
+// Resolve answers the value built from the current configuration, or
+// [storage.ErrNotConfigured] while nothing is saved.
 // A failed reread keeps the last value built; a saved row that cannot be built
 // from is answered as its error, never with the configuration it replaced.
-func (r *Resolver[T]) Resolve(ctx context.Context) (T, string, error) {
+func (r *Resolver[T]) Resolve(ctx context.Context) (Resolved[T], error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -143,7 +156,7 @@ func (r *Resolver[T]) Resolve(ctx context.Context) (T, string, error) {
 		row, found, err := r.readRow(ctx)
 		switch {
 		case err != nil && !r.read:
-			return zero, "", err
+			return Resolved[T]{}, err
 		case err != nil:
 			r.logger.WarnContext(ctx, "serving the last platform storage configuration read", "error", err)
 		case !found:
@@ -151,15 +164,15 @@ func (r *Resolver[T]) Resolve(ctx context.Context) (T, string, error) {
 		default:
 			if buildErr := r.rebuild(ctx, row); buildErr != nil {
 				r.read, r.configured, r.key, r.value, r.bucket = false, false, version{}, zero, ""
-				return zero, "", buildErr
+				return Resolved[T]{}, buildErr
 			}
 		}
 		r.nextReadAt = now.Add(r.interval)
 	}
 	if !r.configured {
-		return zero, "", storage.ErrNotConfigured
+		return Resolved[T]{}, storage.ErrNotConfigured
 	}
-	return r.value, r.bucket, nil
+	return Resolved[T]{Value: r.value, Bucket: r.bucket, Version: r.key.String()}, nil
 }
 
 func (r *Resolver[T]) readRow(ctx context.Context) (dbmodels.PlatformStorageConfig, bool, error) {
@@ -229,11 +242,20 @@ type Provider struct {
 
 // Upload implements storage.Provider.
 func (p Provider) Upload(ctx context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
-	store, _, err := p.Resolver.Resolve(ctx)
+	store, err := p.Pin(ctx)
 	if err != nil {
 		return storage.UploadResult{}, err
 	}
 	return store.Upload(ctx, req)
+}
+
+// Pin implements storage.Pinner.
+func (p Provider) Pin(ctx context.Context) (storage.Provider, error) {
+	resolved, err := p.Resolver.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return resolved.Value, nil
 }
 
 // Reclaimers is a [storage.ReclaimerSource] over the resolved bucket.
@@ -243,9 +265,9 @@ type Reclaimers struct {
 
 // Reclaimer implements storage.ReclaimerSource.
 func (r Reclaimers) Reclaimer(ctx context.Context) (storage.Reclaimer, string, error) {
-	store, bucket, err := r.Resolver.Resolve(ctx)
+	resolved, err := r.Resolver.Resolve(ctx)
 	if err != nil {
 		return nil, "", err
 	}
-	return store, bucket, nil
+	return resolved.Value, resolved.Bucket, nil
 }

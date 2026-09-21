@@ -1744,3 +1744,78 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+// pinningStorageProvider answers Pin with a store of its own and refuses an
+// upload that did not go through it, the way a switch of the platform's store
+// between two variants would otherwise split one image across two buckets.
+type pinningStorageProvider struct {
+	pins   atomic.Int32
+	pinned recordingStorageProvider
+}
+
+func (p *pinningStorageProvider) Upload(context.Context, storage.UploadRequest) (storage.UploadResult, error) {
+	return storage.UploadResult{}, errors.New("upload did not go through the pinned store")
+}
+
+func (p *pinningStorageProvider) Pin(context.Context) (storage.Provider, error) {
+	p.pins.Add(1)
+	return &p.pinned, nil
+}
+
+func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
+	provider := &pinningStorageProvider{}
+	testServer, mock := newTestAdminServerWithStorage(t, provider)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+
+	createdImageID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(createdImageID, tenantID, episodeID, int32(1), now))
+	for _, variant := range []struct {
+		label         string
+		width, height int32
+	}{{"w480", 480, 270}, {"w960", 960, 540}, {"w1440", 1440, 810}, {"w1600", 1600, 900}} {
+		mock.ExpectQuery("INSERT INTO episode_image_variants").
+			WithArgs(sqlmock.AnyArg(), tenantID, createdImageID, variant.label, "s3", sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), variant.width, variant.height).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
+				AddRow(uuid.Must(uuid.NewV7()), createdImageID, variant.label, "s3", "obj", "image/jpeg", int64(2048), variant.width, variant.height, now, tenantID))
+	}
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodePublicId: "EPISODE001",
+		Images: []*publiraadminv1.EpisodeImageUpload{
+			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
+		},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	if _, err := client.UploadEpisodeImages(context.Background(), req); err != nil {
+		t.Fatalf("UploadEpisodeImages: %v", err)
+	}
+	if pins := provider.pins.Load(); pins != 1 {
+		t.Fatalf("pins = %d, want one for the whole upload", pins)
+	}
+	if uploads := len(provider.pinned.recorded()); uploads != 4 {
+		t.Fatalf("uploads to the pinned store = %d, want all 4 variants", uploads)
+	}
+	assertExpectations(t, mock)
+}

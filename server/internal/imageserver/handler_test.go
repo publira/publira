@@ -1327,7 +1327,7 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}
-	if _, ok := h.cache.Get(context.Background(), cacheKey("obj", req)); ok {
+	if _, ok := h.cache.Get(context.Background(), cacheKey("", "obj", req)); ok {
 		t.Fatal("oversized conversion was cached")
 	}
 }
@@ -1579,12 +1579,15 @@ func TestEpisodeImageChecksTheReaderAgainstTheAgeRule(t *testing.T) {
 	}
 }
 
-// The store is resolved for each read, so an image is read from whichever
-// store the platform's settings name at the time it is requested.
+// The store is resolved for each read, and a converted result is cached under
+// the configuration it was read from: a save moves the next request to the new
+// store rather than answering it from the previous one's cache, and a platform
+// left with no store answers 503 even for an image converted before.
 func TestResolvingStoreReadsFromTheStoreResolvedForEachRequest(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
 	var current ObjectStore
+	version := ""
 	srv := newTestServer(t,
 		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
 		stubFactory{q: stubTenantQueries{
@@ -1593,11 +1596,11 @@ func TestResolvingStoreReadsFromTheStoreResolvedForEachRequest(t *testing.T) {
 				ContentType: "image/jpeg",
 			},
 		}},
-		ResolvingStore{Resolve: func(context.Context) (ObjectStore, error) {
+		ResolvingStore{Resolve: func(context.Context) (ObjectStore, string, error) {
 			if current == nil {
-				return nil, storage.ErrNotConfigured
+				return nil, "", storage.ErrNotConfigured
 			}
-			return current, nil
+			return current, version, nil
 		}},
 	)
 	serve := func() *httptest.ResponseRecorder {
@@ -1608,19 +1611,38 @@ func TestResolvingStoreReadsFromTheStoreResolvedForEachRequest(t *testing.T) {
 		srv.ServeHTTP(rec, req)
 		return rec
 	}
+	newStore := func() *countingStore {
+		return &countingStore{objects: map[string]storedObject{
+			"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+		}}
+	}
 
 	if rec := serve(); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status without storage = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 
-	store := &countingStore{objects: map[string]storedObject{
-		"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
-	}}
-	current = store
-	if rec := serve(); rec.Code != http.StatusOK {
-		t.Fatalf("status once storage is saved = %d, body = %q", rec.Code, rec.Body.String())
+	first := newStore()
+	current, version = first, "1"
+	for range 2 {
+		if rec := serve(); rec.Code != http.StatusOK {
+			t.Fatalf("status once storage is saved = %d, body = %q", rec.Code, rec.Body.String())
+		}
 	}
-	if store.getCount() != 1 {
-		t.Fatalf("gets = %d, want the read served by the resolved store", store.getCount())
+	if first.getCount() != 1 {
+		t.Fatalf("gets from the first store = %d, want one read and one cache hit", first.getCount())
+	}
+
+	second := newStore()
+	current, version = second, "2"
+	if rec := serve(); rec.Code != http.StatusOK {
+		t.Fatalf("status after the store changed = %d, body = %q", rec.Code, rec.Body.String())
+	}
+	if second.getCount() != 1 {
+		t.Fatalf("gets from the second store = %d, want the request read from it rather than the cache", second.getCount())
+	}
+
+	current = nil
+	if rec := serve(); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status once storage is gone = %d, want %d rather than a cached image", rec.Code, http.StatusServiceUnavailable)
 	}
 }

@@ -77,22 +77,22 @@ func TestResolveAnswersNotConfiguredUntilARowIsSaved(t *testing.T) {
 	rec := &recorder{}
 	r, c := newTestResolver(q, nil, rec)
 
-	if _, _, err := r.Resolve(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
+	if _, err := r.Resolve(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Resolve error = %v, want %v", err, storage.ErrNotConfigured)
 	}
 
 	q.save("publira-first", 1)
-	if _, _, err := r.Resolve(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
+	if _, err := r.Resolve(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Resolve within the interval error = %v, want the cached %v", err, storage.ErrNotConfigured)
 	}
 
 	c.advance(time.Minute)
-	got, bucket, err := r.Resolve(context.Background())
+	got, err := r.Resolve(context.Background())
 	if err != nil {
 		t.Fatalf("Resolve after the interval: %v", err)
 	}
-	if bucket != "publira-first" || got.Settings.Bucket != "publira-first" {
-		t.Fatalf("Resolve = %q (built for %q), want publira-first", bucket, got.Settings.Bucket)
+	if got.Bucket != "publira-first" || got.Value.Settings.Bucket != "publira-first" {
+		t.Fatalf("Resolve = %q (built for %q), want publira-first", got.Bucket, got.Value.Settings.Bucket)
 	}
 }
 
@@ -102,8 +102,10 @@ func TestResolveRebuildsOnlyWhenTheSavedRowChanges(t *testing.T) {
 	rec := &recorder{}
 	r, c := newTestResolver(q, nil, rec)
 
+	var first Resolved[Snapshot]
 	for range 3 {
-		if _, _, err := r.Resolve(context.Background()); err != nil {
+		var err error
+		if first, err = r.Resolve(context.Background()); err != nil {
 			t.Fatalf("Resolve: %v", err)
 		}
 	}
@@ -112,7 +114,7 @@ func TestResolveRebuildsOnlyWhenTheSavedRowChanges(t *testing.T) {
 	}
 
 	c.advance(time.Minute)
-	if _, _, err := r.Resolve(context.Background()); err != nil {
+	if _, err := r.Resolve(context.Background()); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	if q.reads != 2 || len(rec.builds) != 1 {
@@ -121,12 +123,15 @@ func TestResolveRebuildsOnlyWhenTheSavedRowChanges(t *testing.T) {
 
 	q.save("publira-second", 2)
 	c.advance(time.Minute)
-	_, bucket, err := r.Resolve(context.Background())
+	second, err := r.Resolve(context.Background())
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if bucket != "publira-second" || len(rec.builds) != 2 {
-		t.Fatalf("bucket = %q, builds = %d, want a rebuild for publira-second", bucket, len(rec.builds))
+	if second.Bucket != "publira-second" || len(rec.builds) != 2 {
+		t.Fatalf("bucket = %q, builds = %d, want a rebuild for publira-second", second.Bucket, len(rec.builds))
+	}
+	if second.Version == first.Version {
+		t.Fatalf("Version = %q after a save, want it to differ from %q", second.Version, first.Version)
 	}
 }
 
@@ -136,19 +141,19 @@ func TestResolveServesTheLastBuildWhenARereadFails(t *testing.T) {
 	rec := &recorder{}
 	r, c := newTestResolver(q, nil, rec)
 
-	if _, _, err := r.Resolve(context.Background()); err != nil {
+	if _, err := r.Resolve(context.Background()); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 
 	q.err = errors.New("connection refused")
 	c.advance(time.Minute)
-	_, bucket, err := r.Resolve(context.Background())
-	if err != nil || bucket != "publira-first" {
-		t.Fatalf("Resolve = %q, %v, want the last build of publira-first", bucket, err)
+	got, err := r.Resolve(context.Background())
+	if err != nil || got.Bucket != "publira-first" {
+		t.Fatalf("Resolve = %q, %v, want the last build of publira-first", got.Bucket, err)
 	}
 	// The failure waits out an interval too, so an outage is one query per
 	// interval rather than one per upload.
-	if _, _, err := r.Resolve(context.Background()); err != nil || q.reads != 2 {
+	if _, err := r.Resolve(context.Background()); err != nil || q.reads != 2 {
 		t.Fatalf("reads = %d, err = %v, want no second reread within the interval", q.reads, err)
 	}
 }
@@ -157,7 +162,7 @@ func TestResolveFailsWhenTheFirstReadFails(t *testing.T) {
 	readErr := errors.New("connection refused")
 	r, _ := newTestResolver(&fakeQuerier{err: readErr}, nil, &recorder{})
 
-	if _, _, err := r.Resolve(context.Background()); !errors.Is(err, readErr) {
+	if _, err := r.Resolve(context.Background()); !errors.Is(err, readErr) {
 		t.Fatalf("Resolve error = %v, want %v", err, readErr)
 	}
 }
@@ -170,7 +175,7 @@ func TestResolveDoesNotKeepTheOldBuildWhenTheNewRowFails(t *testing.T) {
 	rec := &recorder{}
 	r, c := newTestResolver(q, nil, rec)
 
-	if _, _, err := r.Resolve(context.Background()); err != nil {
+	if _, err := r.Resolve(context.Background()); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 
@@ -178,10 +183,10 @@ func TestResolveDoesNotKeepTheOldBuildWhenTheNewRowFails(t *testing.T) {
 	q.row.AccessKeyID = sql.NullString{String: "AKIAEXAMPLE", Valid: true}
 	q.row.SecretAccessKeyEncrypted = sql.NullString{String: "ciphertext", Valid: true}
 	c.advance(time.Minute)
-	if _, _, err := r.Resolve(context.Background()); !errors.Is(err, ErrSecretManagerUnavailable) {
+	if _, err := r.Resolve(context.Background()); !errors.Is(err, ErrSecretManagerUnavailable) {
 		t.Fatalf("Resolve error = %v, want %v", err, ErrSecretManagerUnavailable)
 	}
-	if _, _, err := r.Resolve(context.Background()); !errors.Is(err, ErrSecretManagerUnavailable) {
+	if _, err := r.Resolve(context.Background()); !errors.Is(err, ErrSecretManagerUnavailable) {
 		t.Fatalf("second Resolve error = %v, want %v again", err, ErrSecretManagerUnavailable)
 	}
 }
@@ -194,10 +199,11 @@ func TestResolveHandsTheDecryptedCredentialToBuild(t *testing.T) {
 	rec := &recorder{}
 	r, _ := newTestResolver(q, fakeSecrets{}, rec)
 
-	got, _, err := r.Resolve(context.Background())
+	resolved, err := r.Resolve(context.Background())
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
+	got := resolved.Value
 	if got.Credentials.AccessKeyID != "AKIAEXAMPLE" || got.Credentials.SecretAccessKey != "decrypted:ciphertext" {
 		t.Fatalf("built with %q / %q, want the decrypted credential", got.Credentials.AccessKeyID, got.Credentials.SecretAccessKey)
 	}
@@ -212,12 +218,12 @@ func TestResolveRetriesABuildThatFailed(t *testing.T) {
 	rec := &recorder{err: errors.New("no region")}
 	r, _ := newTestResolver(q, nil, rec)
 
-	if _, _, err := r.Resolve(context.Background()); err == nil {
+	if _, err := r.Resolve(context.Background()); err == nil {
 		t.Fatal("Resolve succeeded with a failing build")
 	}
 	rec.err = nil
-	if _, bucket, err := r.Resolve(context.Background()); err != nil || bucket != "publira-first" {
-		t.Fatalf("Resolve = %q, %v, want the build retried", bucket, err)
+	if got, err := r.Resolve(context.Background()); err != nil || got.Bucket != "publira-first" {
+		t.Fatalf("Resolve = %q, %v, want the build retried", got.Bucket, err)
 	}
 }
 
@@ -226,6 +232,9 @@ func TestProviderAndReclaimersAnswerNotConfigured(t *testing.T) {
 
 	if _, err := (Provider{Resolver: resolver}).Upload(context.Background(), storage.UploadRequest{ObjectKey: "k"}); !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Upload error = %v, want %v", err, storage.ErrNotConfigured)
+	}
+	if _, err := (Provider{Resolver: resolver}).Pin(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
+		t.Fatalf("Pin error = %v, want %v", err, storage.ErrNotConfigured)
 	}
 	if _, _, err := (Reclaimers{Resolver: resolver}).Reclaimer(context.Background()); !errors.Is(err, storage.ErrNotConfigured) {
 		t.Fatalf("Reclaimer error = %v, want %v", err, storage.ErrNotConfigured)

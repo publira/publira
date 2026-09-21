@@ -67,16 +67,16 @@ func TestCacheKeyIncludesAcceptAndTransform(t *testing.T) {
 	reqC := httptest.NewRequest(http.MethodGet, "/images/episodes/x?w=800", nil)
 	reqC.Header.Set("Accept", "image/webp")
 
-	keyA := cacheKey("obj", reqA)
-	keyB := cacheKey("obj", reqB)
-	keyC := cacheKey("obj", reqC)
+	keyA := cacheKey("", "obj", reqA)
+	keyB := cacheKey("", "obj", reqB)
+	keyC := cacheKey("", "obj", reqC)
 	if keyA == keyB {
 		t.Fatal("Accept change must change cache key")
 	}
 	if keyA == keyC {
 		t.Fatal("w change must change cache key")
 	}
-	if cacheKey("obj", reqA) != keyA {
+	if cacheKey("", "obj", reqA) != keyA {
 		t.Fatal("cache key must be stable")
 	}
 }

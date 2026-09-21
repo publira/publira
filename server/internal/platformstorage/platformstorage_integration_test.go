@@ -45,8 +45,20 @@ func TestProviderFollowsTheSavedBucket(t *testing.T) {
 		t.Fatalf("Upload to the second bucket: %v", err)
 	}
 
+	// A pinned store stays where it was pinned, so the variants of one image
+	// cannot be split across a save.
+	pinned, err := storage.Pin(ctx, provider)
+	if err != nil {
+		t.Fatalf("Pin: %v", err)
+	}
+	s3.SavePlatformStorage(t, pg.DB, s3.Bucket)
+	if _, err := pinned.Upload(ctx, storage.UploadRequest{ObjectKey: "tenants/x/pinned.txt", ContentType: "text/plain", Data: []byte("pinned")}); err != nil {
+		t.Fatalf("Upload through the pinned store: %v", err)
+	}
+	s3.SavePlatformStorage(t, pg.DB, secondBucket)
+
 	assertKeys(t, s3, s3.Bucket, "tenants/x/first.txt")
-	assertKeys(t, s3, secondBucket, "tenants/x/second.txt")
+	assertKeys(t, s3, secondBucket, "tenants/x/pinned.txt", "tenants/x/second.txt")
 
 	// The sweep resolves the same bucket, named for its log.
 	reclaimer, bucket, err := platformstorage.Reclaimers{Resolver: platformstorage.New(platformstorage.Config{
@@ -62,8 +74,8 @@ func TestProviderFollowsTheSavedBucket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(page.Objects) != 1 || page.Objects[0].ObjectKey != "tenants/x/second.txt" {
-		t.Fatalf("List = %+v, want only tenants/x/second.txt", page.Objects)
+	if len(page.Objects) != 2 {
+		t.Fatalf("List = %+v, want the two objects in %s", page.Objects, secondBucket)
 	}
 }
 

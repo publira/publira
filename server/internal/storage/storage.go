@@ -28,6 +28,22 @@ type Provider interface {
 	Upload(ctx context.Context, req UploadRequest) (UploadResult, error)
 }
 
+// Pinner is a Provider whose store can change between uploads. Pin answers
+// the store as it is now, for an operation that writes several objects.
+type Pinner interface {
+	Pin(ctx context.Context) (Provider, error)
+}
+
+// Pin answers the provider every upload of one operation should go to, so the
+// variants of one image cannot be split across a configuration change. A
+// provider that cannot change is its own answer.
+func Pin(ctx context.Context, provider Provider) (Provider, error) {
+	if pinner, ok := provider.(Pinner); ok {
+		return pinner.Pin(ctx)
+	}
+	return provider, nil
+}
+
 // Object is one stored object as a listing reports it.
 type Object struct {
 	ObjectKey    string
