@@ -26,6 +26,7 @@ export const RPC_ERROR_REASON = {
   smtpTestTLS: "SMTP_TEST_TLS",
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",
   smtpTestUnknown: "SMTP_TEST_UNKNOWN",
+  storageNotConfigured: "STORAGE_NOT_CONFIGURED",
 } as const;
 
 /** ErrorInfo metadata keys Publira APIs attach. Values are always strings. */

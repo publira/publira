@@ -21,6 +21,7 @@ import {
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
+import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -74,11 +75,22 @@ export type GetCreatorResult =
       requiresSignIn?: boolean;
     };
 
-const mapErrorToMessage = (
+const mapErrorToMessage = async (
   error: unknown,
   fallbackMessage: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallbackMessage, { locale });
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
+  });
+};
 
 /** The generated `Creator` fields {@link mapCreator} reads (see `series.ts`). */
 type RawCreator = Pick<

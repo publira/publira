@@ -737,7 +737,8 @@
       "console_description": "請稍後再試。如果問題持續發生，請提供錯誤 ID 聯絡管理員。",
       "console_title": "無法顯示此頁面",
       "root_description": "無法載入管理主控台。請稍後再試。",
-      "root_title": "無法顯示管理主控台"
+      "root_title": "無法顯示管理主控台",
+      "storage_not_configured": "平台尚未設定圖片儲存空間，因此無法上傳圖片。請聯絡平台營運人員進行設定。"
     },
     "eye_catch": {
       "label": "封面圖",

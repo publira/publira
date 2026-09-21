@@ -25,6 +25,7 @@ import {
 import {
   mentionsAspectImageRejection,
   mentionsImageRejection,
+  mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
@@ -101,11 +102,16 @@ const mapErrorToMessage = async (
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
-  const invalidArgument = await invalidArgumentMessage(error, locale);
+  const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(error, fallbackMessage, {
     locale,
-    overrides: { "invalid-argument": invalidArgument },
+    overrides: {
+      "invalid-argument": await invalidArgumentMessage(error, locale),
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
   });
 };
 

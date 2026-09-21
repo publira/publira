@@ -33,6 +33,7 @@ import {
 import {
   mentionsAspectImageRejection,
   mentionsImageRejection,
+  mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import {
@@ -218,6 +219,9 @@ const mapErrorToMessage = async (
     overrides: {
       "invalid-argument": await invalidArgumentMessage(error, locale),
       "not-found": t("admin.series.not_found"),
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
     },
   });
 };

@@ -737,7 +737,8 @@
       "console_description": "请稍后再试。如果问题持续出现，请携带错误 ID 联系管理员。",
       "console_title": "无法显示此页面",
       "root_description": "无法加载管理控制台。请稍后再试。",
-      "root_title": "无法显示管理控制台"
+      "root_title": "无法显示管理控制台",
+      "storage_not_configured": "平台尚未设置图片存储，因此无法上传图片。请联系平台运营人员进行设置。"
     },
     "eye_catch": {
       "label": "封面图",
