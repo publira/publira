@@ -22,7 +22,7 @@ import (
 // What one run covers is not among them. The calendar date a rebuild targets
 // and the dry-run switch that reports a deletion without performing it belong
 // to a single invocation rather than to the deployment, so they stay fields the
-// caller fills: cmd/batch reads them from the operator's environment, and a
+// caller fills: cmd/publiractl reads them from the operator's environment, and a
 // scheduled run leaves them at the zero value.
 
 // EpisodeReadProjection files the missing episode_complete events for stored

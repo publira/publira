@@ -14,8 +14,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/internal/batchlock"
 	"github.com/publira/publira/server/internal/tenantday"
+	"github.com/publira/publira/server/internal/tenantlock"
 )
 
 const (
@@ -179,7 +179,7 @@ func (b *Builder) buildTenant(
 	// replacement from a concurrent run for the same tenant. Its
 	// bounded wait turns an overlapping run into a failed run rather than one
 	// that waits out the day holding a transaction open.
-	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":recommend-features"); err != nil {
+	if err := tenantlock.Take(ctx, tx, tenantID.String()+":recommend-features"); err != nil {
 		return 0, 0, err
 	}
 

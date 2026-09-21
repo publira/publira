@@ -306,10 +306,10 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
-            docker_batch:
+            docker_publiractl:
               - *docs_excluded
               - 'server/**'
-              - 'infra/docker/batch/**'
+              - 'infra/docker/publiractl/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
@@ -333,7 +333,7 @@ jobs:
               - 'infra/docker/web/**'
               - 'infra/docker/api/**'
               - 'infra/docker/image/**'
-              - 'infra/docker/batch/**'
+              - 'infra/docker/publiractl/**'
               - 'infra/docker/node/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
@@ -361,7 +361,7 @@ jobs:
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
           FILTER_DOCKER_IMAGE: ${{ steps.filter.outputs.docker_image }}
-          FILTER_DOCKER_BATCH: ${{ steps.filter.outputs.docker_batch }}
+          FILTER_DOCKER_PUBLIRACTL: ${{ steps.filter.outputs.docker_publiractl }}
           FILTER_DOCKER_NODE: ${{ steps.filter.outputs.docker_node }}
           FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
         run: bash scripts/ci-plan-jobs.sh
@@ -1109,7 +1109,7 @@ jobs:
           DOCKER_EXTRA: ${{ matrix.extra }}
         run: |
           set -euo pipefail
-          # The batch role takes no build ARG, so an empty entry must not reach
+          # The publiractl role takes no build ARG, so an empty entry must not reach
           # task as an empty task name.
           args=()
           if [ -n "${DOCKER_ARG}" ]; then

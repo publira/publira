@@ -2,7 +2,7 @@
 
 # Long-running Node.js service image for apps/* that are not Next.js
 # (turbo prune + pnpm production install).
-# Build on Debian (glibc); run on distroless — same split as web/api/batch.
+# Build on Debian (glibc); run on distroless — same split as web/api/publiractl.
 # https://turborepo.dev/docs/guides/tools/docker
 #
 # Build from the repository root:

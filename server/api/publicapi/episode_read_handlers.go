@@ -90,7 +90,7 @@ func (s *apiServer) MarkEpisodeAsRead(
 // It reports nothing for the same reason the view instrumentation does not: the
 // member's read is already persisted, and failing their request over the
 // engagement projection would trade the state they asked for against a number
-// nobody is waiting on. What is lost is a row `batch project-episode-reads`
+// nobody is waiting on. What is lost is a row `publiractl job project-episode-reads`
 // puts back, because the projection is keyed by the read it came from and can
 // be replayed from episode_reads at any time.
 func (s *apiServer) projectEpisodeCompleteEvent(ctx context.Context, read dbmodels.EpisodeRead) {

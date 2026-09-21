@@ -16,8 +16,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/internal/batchlock"
 	"github.com/publira/publira/server/internal/tenantday"
+	"github.com/publira/publira/server/internal/tenantlock"
 )
 
 const (
@@ -244,7 +244,7 @@ func (a *Aggregator) rankTenant(
 	// snapshots underneath this one. Its bounded wait turns an overlapping run
 	// into a failed run rather than one that waits out the day holding a
 	// transaction open.
-	if err := batchlock.TakeTenant(ctx, tx, tenantID.String()+":content-ranking"); err != nil {
+	if err := tenantlock.Take(ctx, tx, tenantID.String()+":content-ranking"); err != nil {
 		return 0, 0, err
 	}
 

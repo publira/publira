@@ -6,7 +6,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 
 | Path | Role |
 | --- | --- |
-| `cmd/` | Thin entrypoints only (`api-server`, image servers, `worker` for the long-lived process that schedules every recurring job, and `batch` for running a maintenance job by hand) |
+| `cmd/` | Thin entrypoints only (`api-server`, image servers, `worker` for the long-lived process that schedules every recurring job, and `publiractl`, the command that operates an install, including running a maintenance job by hand) |
 | `api/` | ConnectRPC handlers (admin / platform / public). Each package exports the registrar `api-server` mounts on a mux, never a whole listener's handler |
 | `internal/` | Shared business logic, middleware, storage, auth |
 | `internal/db/` | Hand-written PostgreSQL integration tests for the schema in `db/migrations/` and the queries in `db/query/` |
@@ -30,7 +30,9 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 4. **Which family a recurring job joins follows what it answers to.**
    - A job that has to act the moment a stored instant passes — a scheduled publication, a free window boundary, a tenant's midnight — is a ticker job in `internal/tickerjobs`, on the `ticker` queue, connecting as `publira_ticker`. It runs on start and then on a short interval, so an instant that passed while the worker was down is acted on when it returns.
    - A job that rebuilds or purges a period of data is a maintenance job, connecting as `publira_content_stats` on the `maintenance` queue. Its work is a settings type and a `Run` method in `internal/maintenance`, and its River kind in `internal/maintenancejobs` only wraps it. A rebuild of dated state records per tenant how far it has got (`daily_rebuild_progress`) and rebuilds every day it missed, in the chain's dependency order, rather than only the latest one. A purge drains everything past its cutoff at the moment it runs, so it needs no such record and is unique per interval instead, which keeps a restart from being another pass.
-   - Every maintenance job is also a subcommand of `cmd/batch`, the manual interface for backfilling a named date, recovering after an incident, a dry-run purge, or a one-off pass. Nothing schedules it. It invokes the same `internal/maintenance` job the River kind does, so a new job is an entry in both tables and an implementation in neither, and never code inside `cmd/`. `batch` is one binary and one image, selected by the first argument, resolving `service.name` as `publira-<subcommand>` — the name the River kind's runs report as well. A new one is a new entry in that command's subcommand table, never a new `cmd/` directory: per-batch directories multiply the Docker matrix and the registrations in `infra/docker/Taskfile.yaml` and `scripts/ci-plan-jobs.sh`.
+   - Every maintenance job is also a `publiractl job <kind>` subcommand (`cmd/publiractl`), the manual interface for backfilling a named date, recovering after an incident, a dry-run purge, or a one-off pass. Nothing schedules it. The correspondence is one-to-one: each subcommand is exactly one River kind in `internal/maintenancejobs`, named alike, and invokes the same `internal/maintenance` job that kind does, so a new job is an entry in both tables and an implementation in neither, and never code inside `cmd/`. It resolves `service.name` as `publira-<kind>`, the name the River kind's runs report as well; `TestJobsMatchTheWorkerMaintenanceKinds` fails when the two tables drift. `publiractl` is one binary and one image, so a new job is a new entry in its job table, never a new `cmd/` directory: per-job directories multiply the Docker matrix and the registrations in `infra/docker/Taskfile.yaml` and `scripts/ci-plan-jobs.sh`.
+   - Ticker jobs get no `publiractl job` subcommand. A ticker job acts on every instant that has passed each time it runs, the first run after the worker starts included, so a manual run could do nothing the worker does not.
+   - The correspondence binds the `job` group only. A `publiractl` command outside it — an install's own operation, such as creating a tenant — is not a worker job and is not held to it.
 5. Never commit hand-edits to generated output. Regenerate instead. Every generator in this module writes into a `gen/` directory under the `internal/` package it belongs to — buf into `internal/proto/gen/`, sqlc into `internal/db/gen/`, the locale registry into `internal/locale/gen/` — so no file outside one is generated and the rule needs no list of file names.
 
 ## UI locale: no default
@@ -59,7 +61,7 @@ No lint covers this — nothing can compare a React component against a list of 
 
 Each connection is made with the dedicated PostgreSQL login named for the work it does, read from that role's own `PUBLIRA_*_DB_URL` and falling back to its development URL. `PUBLIRA_DB_URL` is not a link in that chain: it is the migration tooling's connection and the superuser locally, so a process that falls back to it runs with more privilege than the role it was given, in exactly the deployment where the variable was forgotten. Failing to authenticate on a development password is the better outcome, and it is what every server already does.
 
-Neither may one chain reach into another's variable. A shared fallback looks harmless while both happen to run on the same connection and turns into a silent role change the day either one is repointed. The `cmd/batch` subcommands are the one place a chain runs several variables deep, and it stays inside the batches' own names before ending at `PUBLIRA_DB_URL`.
+Neither may one chain reach into another's variable. A shared fallback looks harmless while both happen to run on the same connection and turns into a silent role change the day either one is repointed. The `publiractl job` subcommands are the one place a chain runs several variables deep, and it stays inside the jobs' own names before ending at `PUBLIRA_DB_URL`.
 
 The rule is about roles rather than about processes, and two processes show why. `worker` opens a pool for its ticker jobs (`PUBLIRA_TICKER_DB_URL`) and another for its maintenance jobs (`PUBLIRA_CONTENT_STATS_DB_URL`) because the login that owns River's schema is not the one either should write with, and neither is the other's. And `api-server` serves all three Connect namespaces and therefore opens a pool per login — `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` — picking the pool by the namespace the procedure path names. Three chains in one process are still three chains; sharing a pool between namespaces would hand `publira.v1` the `BYPASSRLS` reach of `publira_platform`.
 
@@ -69,11 +71,11 @@ No lint covers this — the variable names are strings in each `cmd/` entrypoint
 
 ## Stored objects must be named by a row the sweep knows
 
-The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `batch purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no `*_image_variants` row names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.
+The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `publiractl job purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no `*_image_variants` row names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.
 
 So a new kind of stored object either records its key in one of the existing `*_image_variants` tables, or brings its own table and a clause in `ListReferencedObjectKeys` (`db/query/storage.sql`) — never a bare `Upload` with the key kept somewhere else. Where the row points at an image an entity elects (an icon, an eye catch), add the matching `DeleteUnreferenced*Images` query too, so a replaced image's row stops protecting its objects.
 
-No lint covers this. The reclamation logic is `internal/orphanimages`, documented in [`cmd/batch/README.md`](cmd/batch/README.md).
+No lint covers this. The reclamation logic is `internal/orphanimages`, documented in [`cmd/publiractl/README.md`](cmd/publiractl/README.md).
 
 ## A reader-writable RPC charges the shared flood control
 

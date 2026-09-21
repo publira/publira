@@ -29,7 +29,7 @@ BEGIN
 END
 $$;
 
--- Maintenance jobs (the worker's and cmd/batch): a separate BYPASSRLS login so
+-- Maintenance jobs (the worker's and publiractl's): a separate BYPASSRLS login so
 -- they cannot accidentally run through a tenant-scoped API role.
 DO $$
 BEGIN

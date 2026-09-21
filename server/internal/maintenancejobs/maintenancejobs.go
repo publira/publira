@@ -4,7 +4,7 @@
 // River jobs on the resident worker's own client.
 //
 // Each kind wraps the matching job in internal/maintenance, which is the same
-// implementation cmd/batch invokes for an explicit operator run. A pass that
+// implementation cmd/publiractl invokes for an explicit operator run. A pass that
 // only the schedule can reach would be a second copy of the maintenance,
 // diverging from the one an operator uses to recover from an incident.
 //
@@ -145,7 +145,7 @@ type Config struct {
 //
 // The dated rebuilds keep their zero date: which days a scheduled pass covers
 // comes from the progress each tenant has recorded, and a date naming one run
-// is the operator's to pass through cmd/batch.
+// is the operator's to pass through cmd/publiractl.
 type Jobs struct {
 	deps maintenance.Deps
 
