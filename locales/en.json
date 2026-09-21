@@ -2419,7 +2419,7 @@
         "loading": "Loading…",
         "navigation": "Page navigation",
         "no_pages": "No pages",
-        "page_error": "This page could not be loaded. Try again.",
+        "page_error": "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.",
         "page_status": "Page {$first} of {$total}",
         "page_status_range": "Pages {$first}–{$last} of {$total}",
         "page_title": "{$title}, page {$page}",

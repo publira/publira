@@ -2419,7 +2419,7 @@
         "loading": "正在加载…",
         "navigation": "翻页导航",
         "no_pages": "暂无页面",
-        "page_error": "无法加载本页。",
+        "page_error": "网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。",
         "page_status": "第 {$first} 页，共 {$total} 页",
         "page_status_range": "第 {$first}–{$last} 页，共 {$total} 页",
         "page_title": "{$title} 第 {$page} 页",

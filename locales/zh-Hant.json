@@ -2419,7 +2419,7 @@
         "loading": "正在載入…",
         "navigation": "翻頁導覽",
         "no_pages": "目前沒有頁面",
-        "page_error": "無法載入本頁。",
+        "page_error": "網路錯誤或伺服器暫時發生問題，導致本頁無法載入。請重新載入。",
         "page_status": "第 {$first} 頁，共 {$total} 頁",
         "page_status_range": "第 {$first}–{$last} 頁，共 {$total} 頁",
         "page_title": "{$title} 第 {$page} 頁",
