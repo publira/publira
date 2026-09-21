@@ -439,9 +439,9 @@ func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, publicID string, now time.Time, labelID uuid.NullUUID) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO series").
-		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title, "all").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability"}).
-			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all"))
+		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title, "all", nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
+			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all", nil))
 	expectPublicIDAttemptReleased(mock)
 }
 
@@ -475,9 +475,9 @@ func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesI
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO episodes").
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), title, orderIndex, tenantID, nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability"}).
-			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID, nil, nil, nil))
+		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), title, orderIndex, tenantID, nil, nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability"}).
+			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID, nil, nil, nil, nil))
 	expectPublicIDAttemptReleased(mock)
 }
 

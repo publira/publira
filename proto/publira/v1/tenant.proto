@@ -42,6 +42,11 @@ message GetTenantResponse {
   publira.types.v1.AgeVerification age_verification = 12;
   // VAPID public key for Web Push. Empty means Web Push is not configured.
   string web_push_vapid_public_key = 13;
+  // The store listings of the tenant's app, where the storefront sends a
+  // reader to buy an episode sold in the app alone. Empty where the tenant has
+  // no listing in that store.
+  string app_store_url = 14;
+  string google_play_url = 15;
 }
 
 service TenantService {

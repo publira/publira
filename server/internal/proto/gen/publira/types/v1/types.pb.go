@@ -357,14 +357,19 @@ func (ClientSurface) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{5}
 }
 
-// Which surfaces a work may be shown on. A series states it
-// (series.availability) and an episode may narrow it (episodes.availability):
-// an episode is shown only where its series is, so its own value can take it
-// off a surface but never put it on one its series is kept off.
+// Which surfaces a work may be shown on, or an episode bought on.
 //
-// A work kept off a surface is absent from every list, search, ranking, and
-// recommendation read that surface makes, and a read of it by public ID
-// answers not_found exactly as it does for an unpublished one.
+// Where a work is shown, a series states it (series.availability) and an
+// episode may narrow it (episodes.availability): an episode is shown only where
+// its series is, so its own value can take it off a surface but never put it on
+// one its series is kept off. A work kept off a surface is absent from every
+// list, search, ranking, and recommendation read that surface makes, and a read
+// of it by public ID answers not_found exactly as it does for an unpublished
+// one.
+//
+// Where an episode is bought, the tenant states a default
+// (tenant_config.purchase_availability), and a series and then an episode may
+// each replace the value above it rather than narrow it.
 type SurfaceAvailability int32
 
 const (
@@ -1448,9 +1453,16 @@ type Episode struct {
 	// a resolved value because the series bounds it: an episode is shown only
 	// where its series is too, so a series and an episode naming different
 	// single surfaces leave the episode shown nowhere, which no one value says.
-	Availability  SurfaceAvailability `protobuf:"varint,13,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Availability SurfaceAvailability `protobuf:"varint,13,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	// Which surfaces the episode may be bought on, resolved: the episode's own
+	// value, else its series', else the tenant's. Set on GetEpisodeDetail, on
+	// the episodes GetSeriesDetail lists, and on the console's GetEpisode and
+	// the episode writes that answer in its shape; SURFACE_AVAILABILITY_UNSPECIFIED
+	// elsewhere. A client offers the checkout only where this names its own
+	// surface, because StartEpisodeCheckout refuses it anywhere else.
+	PurchaseAvailability SurfaceAvailability `protobuf:"varint,14,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1570,6 +1582,13 @@ func (x *Episode) GetSpreadStartIndex() int32 {
 func (x *Episode) GetAvailability() SurfaceAvailability {
 	if x != nil {
 		return x.Availability
+	}
+	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
+}
+
+func (x *Episode) GetPurchaseAvailability() SurfaceAvailability {
+	if x != nil {
+		return x.PurchaseAvailability
 	}
 	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
 }
@@ -2418,7 +2437,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCount\x12%\n" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
-	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailabilityJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xa7\x04\n" +
+	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailabilityJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x05\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2434,7 +2453,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	" \x01(\x03R\vratingCount\x12O\n" +
 	"\x11reading_direction\x18\v \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
 	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\x12I\n" +
-	"\favailability\x18\r \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\"\xd9\x01\n" +
+	"\favailability\x18\r \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
+	"\x15purchase_availability\x18\x0e \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -2613,13 +2633,14 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	12, // 11: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
 	3,  // 12: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	6,  // 13: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
-	21, // 14: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	21, // 15: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	6,  // 14: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	21, // 15: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	21, // 16: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

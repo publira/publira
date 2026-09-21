@@ -66,6 +66,10 @@ message CreateSeriesRequest {
   // stores the default the column carries, both surfaces. The stored value
   // comes back as Series.availability.
   publira.types.v1.SurfaceAvailability availability = 22;
+  // Which surfaces this series' episodes may be bought on, replacing the
+  // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED follows the tenant,
+  // including afterwards, when its default changes.
+  publira.types.v1.SurfaceAvailability purchase_availability = 23;
 }
 
 message CreateSeriesResponse {
@@ -81,6 +85,9 @@ message CreateSeriesResponse {
   // The series' credit records, share included, in the order `series.creators`
   // lists them. Creator carries no share because the storefront reads it too.
   repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability as it was stored, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
 }
 
 message UpdateSeriesRequest {
@@ -133,6 +140,11 @@ message UpdateSeriesRequest {
   // SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
   // The stored value comes back as Series.availability.
   optional publira.types.v1.SurfaceAvailability availability = 22;
+  // Which surfaces this series' episodes may be bought on, replacing the
+  // tenant's default. An absent value keeps the one stored, for the reason
+  // availability gives; SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
+  // returns the series to following the tenant.
+  optional publira.types.v1.SurfaceAvailability purchase_availability = 23;
 }
 
 message UpdateSeriesResponse {
@@ -145,6 +157,9 @@ message UpdateSeriesResponse {
   // The series' credit records, share included, in the order `series.creators`
   // lists them. Creator carries no share because the storefront reads it too.
   repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability as it was stored, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -191,6 +206,9 @@ message GetSeriesResponse {
   // The series' credit records, share included, in the order `series.creators`
   // lists them. Creator carries no share because the storefront reads it too.
   repeated SeriesCreatorCredit creator_credits = 5;
+  // The series' own purchase availability, and SURFACE_AVAILABILITY_UNSPECIFIED
+  // while it follows the tenant's default.
+  publira.types.v1.SurfaceAvailability purchase_availability = 6;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -225,6 +243,10 @@ message GetEpisodeResponse {
   // as a choice of its own, so it needs these apart from the resolved pair.
   publira.types.v1.ReadingDirection reading_direction = 2;
   optional int32 spread_start_index = 3;
+  // The episode's own purchase availability, and
+  // SURFACE_AVAILABILITY_UNSPECIFIED where it follows its series. The resolved
+  // value is Episode.purchase_availability.
+  publira.types.v1.SurfaceAvailability purchase_availability = 4;
 }
 
 // Sets how one episode is laid out, overriding its series. Both overrides are
@@ -265,6 +287,24 @@ message UpdateEpisodeAvailabilityResponse {
   publira.types.v1.Episode episode = 1;
 }
 
+// Sets which surfaces one episode may be bought on, replacing its series'.
+// Unlike where it is shown, the episode's value is not bounded by the series:
+// it may be sold on a surface its series' other episodes are not.
+message UpdateEpisodePurchaseAvailabilityRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
+  // series.
+  publira.types.v1.SurfaceAvailability purchase_availability = 3;
+}
+
+message UpdateEpisodePurchaseAvailabilityResponse {
+  // Carries the resolved value, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+  // The override as it was stored, in GetEpisodeResponse's shape.
+  publira.types.v1.SurfaceAvailability purchase_availability = 2;
+}
+
 message ReorderEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
@@ -294,10 +334,15 @@ message CreateEpisodeRequest {
   // Which surfaces this episode may be shown on, narrowing its series'.
   // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
   publira.types.v1.SurfaceAvailability availability = 8;
+  // Which surfaces this episode may be bought on, replacing its series'.
+  // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
+  publira.types.v1.SurfaceAvailability purchase_availability = 9;
 }
 
 message CreateEpisodeResponse {
   publira.types.v1.Episode episode = 1;
+  // The episode's own purchase availability, as it was stored.
+  publira.types.v1.SurfaceAvailability purchase_availability = 2;
 }
 
 message EpisodeImageUpload {
@@ -550,6 +595,7 @@ service AdminSeriesService {
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
   rpc UpdateEpisodeAvailability(UpdateEpisodeAvailabilityRequest) returns (UpdateEpisodeAvailabilityResponse) {}
+  rpc UpdateEpisodePurchaseAvailability(UpdateEpisodePurchaseAvailabilityRequest) returns (UpdateEpisodePurchaseAvailabilityResponse) {}
   rpc ListEpisodeCredits(ListEpisodeCreditsRequest) returns (ListEpisodeCreditsResponse) {}
   rpc ReplaceEpisodeCredits(ReplaceEpisodeCreditsRequest) returns (ReplaceEpisodeCreditsResponse) {}
   rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCKoAwoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkyWwoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCLYAwoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkSFQoNYXBwX3N0b3JlX3VybBgOIAEoCRIXCg9nb29nbGVfcGxheV91cmwYDyABKAkyWwoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -124,6 +124,20 @@ export type GetTenantResponse = Message<"publira.v1.GetTenantResponse"> & {
    * @generated from field: string web_push_vapid_public_key = 13;
    */
   webPushVapidPublicKey: string;
+
+  /**
+   * The store listings of the tenant's app, where the storefront sends a
+   * reader to buy an episode sold in the app alone. Empty where the tenant has
+   * no listing in that store.
+   *
+   * @generated from field: string app_store_url = 14;
+   */
+  appStoreUrl: string;
+
+  /**
+   * @generated from field: string google_play_url = 15;
+   */
+  googlePlayUrl: string;
 };
 
 /**

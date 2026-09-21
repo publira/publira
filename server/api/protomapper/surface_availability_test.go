@@ -71,3 +71,26 @@ func TestClientSurfaceDefaultsToTheWeb(t *testing.T) {
 		t.Fatalf("error = %v, want ErrInvalidClientSurface", err)
 	}
 }
+
+func TestPurchasableOn(t *testing.T) {
+	tests := []struct {
+		stored, surface string
+		want            bool
+	}{
+		{availabilityAll, surfaceWeb, true},
+		{availabilityAll, surfaceApp, true},
+		{surfaceWeb, surfaceWeb, true},
+		{surfaceWeb, surfaceApp, false},
+		{surfaceApp, surfaceApp, true},
+		{surfaceApp, surfaceWeb, false},
+	}
+	for _, tc := range tests {
+		got, err := PurchasableOn(tc.stored, tc.surface)
+		if err != nil || got != tc.want {
+			t.Fatalf("PurchasableOn(%q, %q) = %v, %v, want %v", tc.stored, tc.surface, got, err, tc.want)
+		}
+	}
+	if _, err := PurchasableOn("tv", surfaceWeb); !errors.Is(err, ErrUnknownSurfaceAvailability) {
+		t.Fatalf("PurchasableOn of an unknown value error = %v, want ErrUnknownSurfaceAvailability", err)
+	}
+}

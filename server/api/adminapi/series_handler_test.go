@@ -51,6 +51,7 @@ func seriesDetailColumns() []string {
 		"reading_period_hours", "status", "schedule_weekdays", "age_rating",
 		"comment_mode", "reading_direction", "spread_start_index", "is_published", "published_at", "eye_catch_image_id",
 		"eye_catch_image_updated_at", "eye_catch_image_file_size_bytes", "availability",
+		"purchase_availability",
 	}
 }
 
@@ -555,7 +556,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIESNEW001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIESNEW001", "New Series", "LABEL001", "Weekly", "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIESNEW001", "New Series", "LABEL001", "Weekly", "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -597,14 +598,14 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 	mock.ExpectBegin()
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO series").
-		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all").
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "series_public_id_key"})
 	expectPublicIDAttemptRolledBack(mock)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO series").
-		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability"}).
-			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all"))
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
+			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all", nil))
 	expectPublicIDAttemptReleased(mock)
 
 	mock.ExpectQuery("INSERT INTO series_listings").
@@ -619,7 +620,7 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "4ERDqTx5YB8m").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, false, nil, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, false, nil, nil, nil, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -704,11 +705,11 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
-		WithArgs(seriesID, "After", uuid.NullUUID{}, "all").
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery("INSERT INTO series_listings").
@@ -728,7 +729,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -774,11 +775,11 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
-		WithArgs(seriesID, "After", uuid.NullUUID{}, "all").
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "hiatus", pq.Array([]int32{1, 4}), "r18", sql.NullString{}, "rtl", int32(1)).
@@ -796,7 +797,7 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "After", nil, nil, "Synopsis", nil, "hiatus", []byte("{1,4}"), "r18", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "After", nil, nil, "Synopsis", nil, "hiatus", []byte("{1,4}"), "r18", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -871,7 +872,7 @@ func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectSeriesRelationLookups(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -958,7 +959,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIESNEW001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIESNEW001", "New Series", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIESNEW001", "New Series", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -1001,7 +1002,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectQuery("FROM creators").
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -1012,7 +1013,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
-		WithArgs(seriesID, "After", uuid.NullUUID{}, "all").
+		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery("INSERT INTO series_listings").
@@ -1040,7 +1041,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -1142,7 +1143,7 @@ func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
-			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all"))
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	mock.ExpectQuery("FROM creators").
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
@@ -1213,7 +1214,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 			name:     "normal",
 			publicID: "SERIES001",
 			rows: sqlmock.NewRows(seriesDetailColumns()).
-				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, time.Now(), nil, nil, int64(0), "all"),
+				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, time.Now(), nil, nil, int64(0), "all", nil),
 			wantSeriesID: "SERIES001",
 		},
 		{

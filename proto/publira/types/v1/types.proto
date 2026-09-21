@@ -248,6 +248,13 @@ message Episode {
   // where its series is too, so a series and an episode naming different
   // single surfaces leave the episode shown nowhere, which no one value says.
   SurfaceAvailability availability = 13;
+  // Which surfaces the episode may be bought on, resolved: the episode's own
+  // value, else its series', else the tenant's. Set on GetEpisodeDetail, on
+  // the episodes GetSeriesDetail lists, and on the console's GetEpisode and
+  // the episode writes that answer in its shape; SURFACE_AVAILABILITY_UNSPECIFIED
+  // elsewhere. A client offers the checkout only where this names its own
+  // surface, because StartEpisodeCheckout refuses it anywhere else.
+  SurfaceAvailability purchase_availability = 14;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
@@ -383,14 +390,19 @@ enum ClientSurface {
   CLIENT_SURFACE_APP = 2;
 }
 
-// Which surfaces a work may be shown on. A series states it
-// (series.availability) and an episode may narrow it (episodes.availability):
-// an episode is shown only where its series is, so its own value can take it
-// off a surface but never put it on one its series is kept off.
+// Which surfaces a work may be shown on, or an episode bought on.
 //
-// A work kept off a surface is absent from every list, search, ranking, and
-// recommendation read that surface makes, and a read of it by public ID
-// answers not_found exactly as it does for an unpublished one.
+// Where a work is shown, a series states it (series.availability) and an
+// episode may narrow it (episodes.availability): an episode is shown only where
+// its series is, so its own value can take it off a surface but never put it on
+// one its series is kept off. A work kept off a surface is absent from every
+// list, search, ranking, and recommendation read that surface makes, and a read
+// of it by public ID answers not_found exactly as it does for an unpublished
+// one.
+//
+// Where an episode is bought, the tenant states a default
+// (tenant_config.purchase_availability), and a series and then an episode may
+// each replace the value above it rather than narrow it.
 enum SurfaceAvailability {
   // On a series write, the default the column carries: both surfaces. On an
   // episode, following its series.

@@ -176,6 +176,24 @@ SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
 RETURNING *;
 
+-- name: UpsertTenantPurchaseSettings :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. The default and
+-- the store listings are written together because the console offers them as
+-- one card, and the listings are where an app-only purchase sends a reader.
+INSERT INTO tenant_config (tenant_id, purchase_availability, app_store_url, google_play_url)
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('purchase_availability'),
+        sqlc.narg('app_store_url'),
+        sqlc.narg('google_play_url')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET purchase_availability = EXCLUDED.purchase_availability,
+    app_store_url = EXCLUDED.app_store_url,
+    google_play_url = EXCLUDED.google_play_url,
+    updated_at = NOW()
+RETURNING *;
+
 -- name: UpsertTenantCommentSettings :one
 -- The settings screen can save what the tenant has decided about commenting
 -- for a tenant whose config row does not exist yet, so both columns are

@@ -17,6 +17,7 @@ import (
 	"github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/webhook"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pagination"
@@ -58,6 +59,16 @@ func tenantSiteURL(tenant dbmodels.Tenant) (*url.URL, error) {
 	return &url.URL{Scheme: "https", Host: domain}, nil
 }
 
+// checkoutSurface is the surface a checkout is started from, named by the
+// client it returns to. Every client other than the app is the storefront, as
+// an unnamed catalog surface is.
+func checkoutSurface(client publirav1.StartEpisodeCheckoutRequest_Client) (string, error) {
+	if client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+		return catalogSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
+	}
+	return catalogSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB)
+}
+
 func (s *apiServer) StartEpisodeCheckout(
 	ctx context.Context,
 	req *connect.Request[publirav1.StartEpisodeCheckoutRequest],
@@ -65,6 +76,10 @@ func (s *apiServer) StartEpisodeCheckout(
 	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
 	if episodePublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	surface, err := checkoutSurface(req.Msg.Client)
+	if err != nil {
+		return nil, err
 	}
 
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
@@ -89,6 +104,7 @@ func (s *apiServer) StartEpisodeCheckout(
 	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeByPublicIDForTenant(ctx, dbmodels.GetPurchasableEpisodeByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: episodePublicID,
+		Surface:  surface,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -98,6 +114,13 @@ func (s *apiServer) StartEpisodeCheckout(
 	}
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes do not require checkout"))
+	}
+	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+	}
+	if !soldHere {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold on this surface"))
 	}
 
 	hasPurchase, err := s.queriesFor(ctx).UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
