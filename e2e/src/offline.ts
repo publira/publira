@@ -48,6 +48,73 @@ export const expectNoticeClearOf = async (
   }
 };
 
+/** How tall a strip the notice can draw in, from the top of the viewport. */
+const NOTICE_BAND_HEIGHT = 72;
+
+/** How many reads in a row a strip gets to differ before it counts as moving. */
+const BAND_SETTLE_READS = 10;
+
+/** The strip of the screen the notice floats in, as a screenshot clip. */
+const noticeBand = (page: Page) => {
+  const viewport = page.viewportSize();
+  if (viewport === null) {
+    throw new Error("the page has no viewport to photograph");
+  }
+
+  return { height: NOTICE_BAND_HEIGHT, width: viewport.width, x: 0, y: 0 };
+};
+
+const readSettledBand = async (
+  page: Page,
+  clip: ReturnType<typeof noticeBand>,
+  previous: Buffer,
+  reads: number
+): Promise<Buffer> => {
+  if (reads <= 0) {
+    throw new Error("the strip the notice floats in never stopped changing");
+  }
+
+  const current = await page.screenshot({ clip });
+
+  return current.equals(previous)
+    ? current
+    : readSettledBand(page, clip, current, reads - 1);
+};
+
+/**
+ * What that strip shows once two reads in a row come back the same, so a
+ * transition still running is not what `expectNoticeOver` later sees change.
+ */
+export const captureNoticeBand = async (page: Page): Promise<Buffer> => {
+  const clip = noticeBand(page);
+  const first = await page.screenshot({ clip });
+
+  return readSettledBand(page, clip, first, BAND_SETTLE_READS);
+};
+
+/**
+ * Fails unless the notice is painted into that strip. Playwright calls the
+ * notice visible from its box alone, which an element the browser never paints
+ * — one left under a full-screen element — still has.
+ */
+export const expectNoticeOver = async (
+  page: Page,
+  withoutNotice: Buffer
+): Promise<void> => {
+  const clip = noticeBand(page);
+
+  await expect
+    .poll(
+      async () => {
+        const current = await page.screenshot({ clip });
+
+        return current.equals(withoutNotice);
+      },
+      { message: "the notice is not painted over what fills the screen" }
+    )
+    .toBe(false);
+};
+
 /**
  * Takes the page offline, checks the notice appears as a polite live region
  * without taking focus, runs `whileOffline`, and checks that reconnecting
