@@ -1,1 +1,4 @@
 #include "Generated.xcconfig"
+// The app's identity, generated from an app manifest by
+// `scripts/app_manifest.dart --generate`.
+#include "../../.generated/App.xcconfig"

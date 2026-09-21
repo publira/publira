@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../scripts/app_manifest/android.dart';
 import '../scripts/app_manifest/generate.dart';
 import '../scripts/app_manifest/generated_files.dart';
+import '../scripts/app_manifest/ios.dart';
 import '../scripts/app_manifest/manifest.dart';
 
 const _valid = '''
@@ -438,13 +439,15 @@ android:
 
     test('default to the ignored directory beside the app', () async {
       final directory = defaultGeneratedDirectory(Directory('.'));
-      final ignored = await Process.run('git', [
-        'check-ignore',
-        '--quiet',
-        '${directory.path}/app.properties',
-      ]);
+      for (final name in [androidAppProperties, iosAppXcconfig]) {
+        final ignored = await Process.run('git', [
+          'check-ignore',
+          '--quiet',
+          '${directory.path}/$name',
+        ]);
 
-      expect(ignored.exitCode, 0);
+        expect(ignored.exitCode, 0, reason: name);
+      }
     });
   });
 
@@ -531,6 +534,215 @@ android:
         throwsA(isA<AppManifestException>()),
       );
       expect(directory.existsSync(), isFalse);
+    });
+  });
+
+  group('the iOS build configuration', () {
+    /// The settings [manifest] generates, as Xcode reads an xcconfig: a `//`
+    /// starts a comment, a trailing `;` is dropped, and each reference is
+    /// expanded.
+    Map<String, String> settingsOf(AppManifest manifest) {
+      final text = iosGeneratedFiles(
+        manifest,
+        source: 'app.yaml',
+      )[iosAppXcconfig]!;
+      return {
+        for (final line in const LineSplitter().convert(text))
+          if (line.split('//').first.trim() case final setting
+              when setting.isNotEmpty)
+            setting.substring(0, setting.indexOf(' = ')): setting
+                .substring(setting.indexOf(' = ') + 3)
+                .replaceFirst(RegExp(r';$'), '')
+                .replaceAllMapped(
+                  RegExp(r'\$\((\w*)\)'),
+                  (m) => switch (m[1]) {
+                    '' => '',
+                    'DOLLAR' => r'$',
+                    _ => fail('an unexpected reference ${m[0]}'),
+                  },
+                ),
+      };
+    }
+
+    test('carries the tenant identity Xcode reads', () {
+      final manifest = AppManifest.parse(
+        _with('ios.bundleIdentifier', 'jp.example.reader-ios'),
+        source: 'app.yaml',
+      );
+
+      expect(settingsOf(manifest), {
+        'PUBLIRA_BUNDLE_IDENTIFIER': 'jp.example.reader-ios',
+        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.jp',
+        'PUBLIRA_APP_NAME': 'Example Reader',
+      });
+    });
+
+    test('keeps whatever characters the name is written in', () {
+      for (final name in [
+        'Reader // Club',
+        r'$(HOME) Reader',
+        r'${HOME}',
+        'Reader;',
+        'https://reader.example.jp/',
+        r'Reader \ "Club"',
+        '漫画リーダー',
+      ]) {
+        final manifest = AppManifest.parse(
+          _with('app.name', jsonEncode(name)),
+          source: 'app.yaml',
+        );
+
+        expect(settingsOf(manifest)['PUBLIRA_APP_NAME'], name);
+      }
+    });
+
+    test('is read by every Xcode configuration from the default directory', () {
+      final generated = defaultGeneratedDirectory(Directory('.')).absolute.uri;
+
+      for (final name in ['Debug', 'Release']) {
+        final file = File('ios/Flutter/$name.xcconfig');
+        final included = [
+          for (final m in RegExp(
+            r'^#include "(.+)"$',
+            multiLine: true,
+          ).allMatches(file.readAsStringSync()))
+            file.absolute.uri.resolve(m[1]!),
+        ];
+
+        expect(included, contains(generated.resolve(iosAppXcconfig)));
+      }
+    });
+
+    test('is generated from a manifest file into a directory', () async {
+      final temporary = await Directory.systemTemp.createTemp('app_ios_');
+      addTearDown(() => temporary.delete(recursive: true));
+      final directory = Directory('${temporary.path}/out');
+
+      await generateBuildConfiguration(
+        File('config/app.example.yaml'),
+        directory,
+      );
+
+      expect(
+        await File('${directory.path}/App.xcconfig').readAsString(),
+        allOf(
+          startsWith('// Generated from config/app.example.yaml'),
+          contains('PUBLIRA_BUNDLE_IDENTIFIER = jp.example.reader\n'),
+        ),
+      );
+    });
+  });
+
+  group('the Xcode build check', () {
+    late Directory mobile;
+
+    setUp(() async {
+      mobile = await Directory.systemTemp.createTemp('app_xcode_');
+      await Directory('${mobile.path}/ios').create();
+      await Directory('${mobile.path}/.generated').create();
+    });
+
+    tearDown(() async {
+      await mobile.delete(recursive: true);
+    });
+
+    /// Runs the check as Xcode does, with the build settings in [settings].
+    Future<ProcessResult> check(Map<String, String> settings) => Process.run(
+      'sh',
+      ['scripts/ios-check-app-config.sh'],
+      environment: {
+        'SRCROOT': '${mobile.path}/ios',
+        'CONFIGURATION': 'Debug-dev',
+        'PUBLIRA_BUNDLE_IDENTIFIER': 'jp.example.reader',
+        'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.jp',
+        ...settings,
+      },
+    );
+
+    /// Flutter's DART_DEFINES build setting for [defines].
+    String dartDefines(List<String> defines) =>
+        defines.map((d) => base64.encode(utf8.encode(d))).join(',');
+
+    test('lets a generated development build through', () async {
+      final result = await check({});
+
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+    });
+
+    test('stops a build that was not generated', () async {
+      final result = await check({'PUBLIRA_BUNDLE_IDENTIFIER': ''});
+
+      expect(result.exitCode, isNot(0));
+      expect(
+        result.stderr,
+        allOf(
+          startsWith('error: '),
+          contains('.generated/App.xcconfig does not exist'),
+          contains('dart run scripts/app_manifest.dart --generate'),
+        ),
+      );
+    });
+
+    test('stops a build generated into a directory Xcode does not read', () {
+      return Future.wait([
+        for (final (named, passes) in [
+          ('.generated', true),
+          ('${mobile.path}/.generated', true),
+          ('build/tenant-a', false),
+          ('/nonexistent', false),
+        ])
+          check({generatedDirectoryVariable: named}).then((result) {
+            expect(result.exitCode == 0, passes, reason: named);
+            if (!passes) {
+              expect(result.stderr, contains('Unset the variable'));
+            }
+          }),
+      ]);
+    });
+
+    test('pins a production build to the manifest tenant', () async {
+      for (final (defines, passes) in [
+        (['PUBLIRA_TENANT_HOST=reader.example.jp'], true),
+        (
+          [
+            'PUBLIRA_API_BASE_URL=https://api.example.jp',
+            'PUBLIRA_TENANT_HOST=reader.example.jp',
+          ],
+          true,
+        ),
+        (['PUBLIRA_TENANT_HOST=localhost'], false),
+        (<String>[], false),
+      ]) {
+        for (final configuration in [
+          'Debug-production',
+          'Release-production',
+          'Profile-production',
+        ]) {
+          final result = await check({
+            'CONFIGURATION': configuration,
+            'DART_DEFINES': dartDefines(defines),
+          });
+
+          expect(result.exitCode == 0, passes, reason: '$defines');
+          if (!passes) {
+            expect(
+              result.stderr,
+              contains(
+                'error: Production builds require '
+                '--dart-define=PUBLIRA_TENANT_HOST=reader.example.jp',
+              ),
+            );
+          }
+        }
+      }
+    });
+
+    test('leaves the development build free to use any tenant', () async {
+      final result = await check({
+        'DART_DEFINES': dartDefines(['PUBLIRA_TENANT_HOST=localhost']),
+      });
+
+      expect(result.exitCode, 0, reason: '${result.stderr}');
     });
   });
 }
