@@ -472,6 +472,14 @@ func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesI
 		WillReturnResult(sqlmock.NewResult(0, 0))
 }
 
+// expectResolvedEpisodePurchaseAvailability is the read of where a new episode
+// may be bought, resolved through its series and the tenant.
+func expectResolvedEpisodePurchaseAvailability(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, resolved string) {
+	mock.ExpectQuery("-- name: GetResolvedEpisodePurchaseAvailability :one").
+		WithArgs(tenantID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"purchase_availability"}).AddRow(resolved))
+}
+
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO episodes").

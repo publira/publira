@@ -524,6 +524,8 @@ type Querier interface {
 	// staff notification the report raises names what the queue is about, and
 	// reading it here keeps the report one round trip.
 	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
+	// Where one episode may be bought, resolved through its series and the tenant.
+	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
 	// Totals the month's sales once each, however many creators a sale is
 	// credited to. The month and the refund rule are those of
 	// ListRoyaltyLinesForPeriod.

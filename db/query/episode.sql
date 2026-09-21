@@ -660,6 +660,13 @@ SET availability = sqlc.narg('availability')
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');
 
+-- name: GetResolvedEpisodePurchaseAvailability :one
+-- Where one episode may be bought, resolved through its series and the tenant.
+SELECT purchase_availability
+FROM episode_purchase_availability
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id');
+
 -- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
 -- NULL returns the episode to following its series.
 UPDATE episodes

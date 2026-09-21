@@ -193,8 +193,19 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	if created.Msg.PurchaseAvailability != purchaseWeb {
-		t.Fatalf("created episode override = %s, want WEB", created.Msg.PurchaseAvailability)
+	if created.Msg.PurchaseAvailability != purchaseWeb || created.Msg.Episode.PurchaseAvailability != purchaseWeb {
+		t.Fatalf("created episode override, resolved = %s, %s, want WEB, WEB", created.Msg.PurchaseAvailability, created.Msg.Episode.PurchaseAvailability)
+	}
+	inheriting, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+		Title:          "Chapter Three",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode following its series: %v", err)
+	}
+	if inheriting.Msg.PurchaseAvailability != purchaseNil || inheriting.Msg.Episode.PurchaseAvailability != purchaseApp {
+		t.Fatalf("created episode following its series = %s, %s, want UNSPECIFIED, APP", inheriting.Msg.PurchaseAvailability, inheriting.Msg.Episode.PurchaseAvailability)
 	}
 	createdSeries, err := client.CreateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
 		Tenant:               tenant.tenantContext(),

@@ -613,6 +613,13 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to bake series credits onto episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
+	resolvedPurchaseAvailability, err := q.GetResolvedEpisodePurchaseAvailability(ctx, dbmodels.GetResolvedEpisodePurchaseAvailabilityParams{
+		TenantID:  tenant.ID,
+		EpisodeID: base.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to resolve created episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
@@ -629,7 +636,7 @@ func (s *adminServer) CreateEpisode(
 	if err := setEpisodeAvailability(episode, base.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", base.PublicID)
 	}
-	savedPurchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideFromStored(base.PurchaseAvailability)
+	savedPurchaseAvailability, err := episodePurchaseAvailability(episode, base.PurchaseAvailability, resolvedPurchaseAvailability)
 	if err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", base.PublicID)
 	}

@@ -50,6 +50,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
+	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "app")
 	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -72,6 +73,12 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	}
 	if resp.Msg.Episode == nil {
 		t.Fatalf("episode is nil")
+	}
+	// The created episode states nothing of its own and carries what it
+	// inherits, so a form shows the purchase action without reading it again.
+	if resp.Msg.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED ||
+		resp.Msg.Episode.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
+		t.Fatalf("purchase availability override, resolved = %s, %s, want UNSPECIFIED, APP", resp.Msg.PurchaseAvailability, resp.Msg.Episode.PurchaseAvailability)
 	}
 	if resp.Msg.Episode.Status != "scheduled" {
 		t.Fatalf("episode status = %q, want scheduled", resp.Msg.Episode.Status)
@@ -107,6 +114,7 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
+	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
 	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))

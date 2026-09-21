@@ -419,6 +419,26 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 	return i, err
 }
 
+const getResolvedEpisodePurchaseAvailability = `-- name: GetResolvedEpisodePurchaseAvailability :one
+SELECT purchase_availability
+FROM episode_purchase_availability
+WHERE tenant_id = $1
+    AND episode_id = $2
+`
+
+type GetResolvedEpisodePurchaseAvailabilityParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Where one episode may be bought, resolved through its series and the tenant.
+func (q *Queries) GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getResolvedEpisodePurchaseAvailability, arg.TenantID, arg.EpisodeID)
+	var purchase_availability string
+	err := row.Scan(&purchase_availability)
+	return purchase_availability, err
+}
+
 const listEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
