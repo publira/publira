@@ -64,6 +64,12 @@ const RESEND_SENT_MESSAGE =
   "We sent a confirmation email. Open the link in it to finish signing up.";
 /** What a failed confirmation offers instead of a dead end. */
 const RESEND_VERIFICATION_LINK = "Send a new confirmation email";
+/** What each flow says about a link that arrived without its token. */
+const VERIFY_LINK_INVALID_MESSAGE =
+  "This confirmation link is not valid. Request a new confirmation email.";
+const RESET_LINK_INVALID_MESSAGE =
+  "This password reset link is not valid. Request a new reset email.";
+const RESET_PASSWORD_LINK = "Back to password reset";
 
 const accountStatus = (email: string): string =>
   querySql(`SELECT status FROM users WHERE email = '${email}';`);
@@ -493,6 +499,27 @@ test.describe("web-host reader account lifecycle", () => {
 
     expect(accountCount(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe("0");
     expect(await countMessagesTo(ACCOUNT_LIFECYCLE_UNKNOWN_EMAIL)).toBe(0);
+  });
+
+  test("a verification link without a token says so and offers a new confirmation email", async ({
+    page,
+  }) => {
+    await page.goto(hostUrl(VERIFY_PATH));
+
+    await expect(page.getByText(VERIFY_LINK_INVALID_MESSAGE)).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: RESEND_VERIFICATION_LINK })
+    ).toBeVisible();
+  });
+
+  test("a reset link without a token names the reset link and leads back to the request", async ({
+    page,
+  }) => {
+    await page.goto(hostUrl(CONFIRM_PASSWORD_PATH));
+
+    await expect(page.getByText(RESET_LINK_INVALID_MESSAGE)).toBeVisible();
+    await page.getByRole("link", { name: RESET_PASSWORD_LINK }).click();
+    await page.waitForURL(/\/reset-password\/?$/u);
   });
 
   test("an expired reset link reports the failure and leaves the password alone", async ({

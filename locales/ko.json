@@ -2387,6 +2387,7 @@
         "to_settings": "설정으로 돌아가기"
       },
       "confirm_password": {
+        "invalid": "이 재설정 링크는 유효하지 않습니다. 재설정 메일을 다시 요청해 주세요.",
         "password_confirm_label": "새 비밀번호 확인",
         "password_label": "새 비밀번호",
         "submit": "비밀번호 재설정",
