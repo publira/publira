@@ -43,8 +43,8 @@ Finder signedInAccountEntry() => find.descendant(
   matching: find.byIcon(Icons.person),
 );
 
-/// The signed-in account screen's list, which builds only the rows near its
-/// viewport.
+/// The signed-in account screen's list, whose rows a finder matches only while
+/// they are on screen.
 Finder accountList() => find.descendant(
   of: find.byKey(const ValueKey('account-list')),
   matching: find.byType(Scrollable),

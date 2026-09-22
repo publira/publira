@@ -95,8 +95,8 @@ Widget _coveredButton({
   );
 }
 
-/// A window-high list of forty rows built from a `children:` list, which
-/// builds only the rows near its viewport.
+/// A window-high list of forty rows built from a `children:` list, whose rows
+/// a finder matches only while they are on screen.
 Widget _longList({required void Function(int index) onRowTapped}) {
   return MaterialApp(
     home: Scaffold(
@@ -153,7 +153,7 @@ void main() {
     expect(tapped, isFalse);
   });
 
-  group('a row the list has not built', () {
+  group('a row scrolled out of view', () {
     final list = find.descendant(
       of: find.byKey(const ValueKey('long-list')),
       matching: find.byType(Scrollable),
@@ -180,6 +180,22 @@ void main() {
       expect(tapped, 1);
     });
 
+    testWidgets('is tapped while the list still holds it in its cache extent', (
+      tester,
+    ) async {
+      await pumpScrolledTo(tester, 200);
+      final target = find.byKey(const ValueKey('row-1'));
+      expect(target, findsNothing);
+      expect(
+        find.byKey(const ValueKey('row-1'), skipOffstage: false),
+        findsOne,
+      );
+
+      await tapVisible(tester, target, scrollable: list);
+
+      expect(tapped, 1);
+    });
+
     testWidgets('is tapped after scrolling down to it', (tester) async {
       await pumpScrolledTo(tester, 0);
       final target = find.byKey(const ValueKey('row-38'));
@@ -199,7 +215,7 @@ void main() {
           isA<TestFailure>().having(
             (failure) => failure.message,
             'message',
-            allOf(contains('row-1'), contains('is not built')),
+            allOf(contains('row-1'), contains('is not on screen')),
           ),
         ),
       );
