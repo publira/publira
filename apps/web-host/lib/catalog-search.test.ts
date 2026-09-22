@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { searchPublishedSeries } from "./catalog";
@@ -51,6 +52,7 @@ describe("searchPublishedSeries", () => {
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 12,
       query: "Series",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "abc",
     });
@@ -90,6 +92,7 @@ describe("searchPublishedSeries", () => {
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 20,
       query: "Seed",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "",
     });

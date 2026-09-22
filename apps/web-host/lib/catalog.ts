@@ -18,6 +18,7 @@ import type {
   PublishedTag,
 } from "@publira/api-client/public/catalog";
 import {
+  ClientSurface,
   CommentMode,
   ReadingDirection,
   SeriesStatus,
@@ -682,6 +683,7 @@ export const listPublishedSeries = async (
       limit,
       order: seriesOrders[order],
       status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
       tagSlug,
       tenant: { tenantId: normalizedTenantId },
       token,
@@ -758,6 +760,7 @@ export const listPublishedGenres = async (
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedGenres({
           limit,
+          surface: ClientSurface.WEB,
           tenant: { tenantId: normalizedTenantId },
           token,
         });
@@ -839,6 +842,7 @@ export const findPublishedTagBySlug = async (
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedTags({
           limit,
+          surface: ClientSurface.WEB,
           tenant: { tenantId: normalizedTenantId },
           token,
         });
@@ -905,6 +909,7 @@ export const listRecommendedSeries = async (
   try {
     response = await apiClient.catalog.listRecommendedSeries({
       limit,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -974,6 +979,7 @@ export const listRelatedSeries = async (
     response = await apiClient.catalog.listRelatedSeries({
       limit,
       seriesPublicId: normalizedSeriesPublicId,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -1079,6 +1085,7 @@ export const listRankedSeries = async (
     response = await apiClient.catalog.listRankedSeries({
       limit,
       period: rankingPeriods[period],
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -1150,6 +1157,7 @@ export const searchPublishedSeries = async (
     response = await apiClient.catalog.searchPublishedSeries({
       limit,
       query,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -1237,6 +1245,7 @@ export const searchPublishedLabels = async (
     response = await apiClient.catalog.searchPublishedLabels({
       limit,
       query,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -1281,6 +1290,7 @@ export const getSeriesDetail = async (
   try {
     response = await apiClient.catalog.getSeriesDetail({
       publicId: normalizedSeriesPublicId,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
@@ -1387,6 +1397,7 @@ export const getEpisodeDetail = async (
   try {
     response = await apiClient.catalog.getEpisodeDetail({
       publicId: normalizedEpisodePublicId,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
@@ -1481,6 +1492,7 @@ export const getEpisodeViewer = async (
     response = await apiClient.catalog.getEpisodeDetail(
       {
         publicId: normalizedEpisodePublicId,
+        surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },
       },
       buildSessionHeaders(sessionId)

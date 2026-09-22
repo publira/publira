@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPublishedLabelDetail } from "./labels";
@@ -59,6 +60,7 @@ describe("getPublishedLabelDetail", () => {
     expect(mockGetPublishedLabelDetail).toHaveBeenCalledWith({
       limit: 12,
       publicId: "LABEL_A",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "",
     });

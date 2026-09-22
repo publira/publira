@@ -1,4 +1,5 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { PublishedCreator } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -86,6 +87,7 @@ export const listPublishedCreators = async (
   try {
     response = await apiClient.catalog.listPublishedCreators({
       limit,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -145,6 +147,7 @@ export const searchPublishedCreators = async (
     response = await apiClient.catalog.searchPublishedCreators({
       limit,
       query,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
@@ -204,6 +207,7 @@ export const getPublishedCreatorDetail = async (
     response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
       publicId: normalizedCreatorId,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });

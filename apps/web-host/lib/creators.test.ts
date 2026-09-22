@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPublishedCreatorDetail, listPublishedCreators } from "./creators";
@@ -52,6 +53,7 @@ describe("listPublishedCreators", () => {
 
     expect(mockListPublishedCreators).toHaveBeenCalledWith({
       limit: 12,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "abc",
     });
@@ -89,6 +91,7 @@ describe("listPublishedCreators", () => {
 
     expect(mockListPublishedCreators).toHaveBeenCalledWith({
       limit: 20,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "",
     });
@@ -160,6 +163,7 @@ describe("getPublishedCreatorDetail", () => {
     expect(mockGetPublishedCreatorDetail).toHaveBeenCalledWith({
       limit: 12,
       publicId: "CREATOR_A",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "",
     });
