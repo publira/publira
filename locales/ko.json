@@ -1198,7 +1198,11 @@
         "spread_start": "펼침면을 시작할 페이지",
         "spread_start_description": "이 페이지 앞은 한 페이지씩 표시하고, 이 페이지부터 두 페이지를 나란히 표시합니다. 2로 하면 표지만 단독으로 표시하고, 1로 하면 첫 페이지부터 펼침면으로 표시합니다. 페이지 수가 이보다 적은 에피소드는 펼침면 없이 표시합니다. 에피소드별 설정은 각 에피소드의 편집 화면에서 할 수 있습니다.",
         "availability": "표시 위치",
-        "availability_description": "독자가 이 작품을 찾을 수 있는 곳입니다. 에피소드는 따로 지정하지 않는 한 이 설정을 따르며, 작품이 표시되지 않는 곳에는 표시되지 않습니다."
+        "availability_description": "독자가 이 작품을 찾을 수 있는 곳입니다. 에피소드는 따로 지정하지 않는 한 이 설정을 따르며, 작품이 표시되지 않는 곳에는 표시되지 않습니다.",
+        "purchase_availability": "판매 위치",
+        "purchase_availability_description": "이 작품의 유료 에피소드를 구매할 수 있는 곳입니다. 작품이 아무것도 지정하지 않으면 테넌트 설정을 따르며, 에피소드마다 따로 지정할 수 있습니다.",
+        "purchase_availability_follow_tenant": "테넌트 설정을 따름",
+        "purchase_availability_follow_tenant_value": "테넌트 설정을 따름({$availability})"
       },
       "validation": {
         "label_required": "레이블은 필수입니다.",
@@ -1215,7 +1219,8 @@
         "creator_credits_invalid": "작가 크레딧에는 작가와 역할이 모두 필요합니다.",
         "reading_direction_invalid": "읽는 방향을 선택하세요.",
         "spread_start_invalid": "펼침면을 시작할 페이지는 1 이상의 정수로 입력하세요.",
-        "availability_invalid": "표시 위치를 선택하세요."
+        "availability_invalid": "표시 위치를 선택하세요.",
+        "purchase_availability_invalid": "작품의 판매 위치를 선택하거나 테넌트 설정을 따르세요."
       },
       "created": "시리즈를 만들었습니다.",
       "updated": "시리즈를 변경했습니다.",
@@ -1344,7 +1349,8 @@
           "reading_direction_invalid": "읽는 방향을 선택하거나 작품 설정을 따르세요.",
           "spread_start_invalid": "펼침면을 시작할 페이지는 1 이상의 정수로 입력하세요.",
           "spread_start_past_last_page": "에피소드의 마지막 페이지보다 뒤에서 펼침면을 시작할 수 없습니다. 이 에피소드의 페이지를 지정하세요.",
-          "availability_invalid": "표시 위치를 선택하거나 작품 설정을 따르세요."
+          "availability_invalid": "표시 위치를 선택하거나 작품 설정을 따르세요.",
+          "purchase_availability_invalid": "에피소드의 판매 위치를 선택하거나 작품 설정을 따르세요."
         },
         "layout": {
           "title": "페이지 레이아웃",
@@ -1440,6 +1446,18 @@
           "update": "표시 위치 변경",
           "updated": "표시 위치를 변경했습니다.",
           "failed": "표시 위치를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        },
+        "purchase_availability": {
+          "title": "판매 위치",
+          "description": "독자가 이 에피소드를 구매할 수 있는 곳입니다. 작품 설정을 따르는 값은 작품이나 테넌트 설정이 바뀌면 함께 바뀝니다.",
+          "error": "이 에피소드의 판매 위치를 표시할 수 없습니다",
+          "label": "판매 위치",
+          "follow_series": "작품 설정을 따름",
+          "follow_series_value": "작품 설정을 따름({$availability})",
+          "field_description": "표시 위치와 달리, 작품이 판매하지 않는 곳에서도 에피소드 단위로 판매할 수 있습니다.",
+          "update": "판매 위치 변경",
+          "updated": "에피소드의 판매 위치를 변경했습니다.",
+          "failed": "에피소드의 판매 위치를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요."
         }
       },
       "status": {
@@ -1921,6 +1939,30 @@
         "validation": {
           "secret_key_required": "시크릿 키를 입력해 주세요.",
           "webhook_secret_required": "웹훅 서명 시크릿을 입력해 주세요."
+        }
+      },
+      "purchase": {
+        "title": "판매 위치",
+        "description": "독자가 유료 에피소드를 구매할 수 있는 곳과 앱의 스토어 등록 주소입니다. 작품이나 에피소드에서 따로 지정하지 않는 한 이 설정을 따릅니다.",
+        "section_error": "판매 위치를 표시할 수 없습니다",
+        "availability": "판매 위치",
+        "availability_description": "아무것도 지정하지 않은 작품과 에피소드는 이 설정을 따르며, 설정이 바뀐 뒤에도 함께 바뀝니다. 앱에서만 판매하는 에피소드는 웹 스토어프런트가 독자를 아래 스토어 주소로 안내합니다.",
+        "options": {
+          "all": "웹과 앱",
+          "web": "웹 전용",
+          "app": "앱 전용"
+        },
+        "app_store_url": "App Store 주소",
+        "google_play_url": "Google Play 주소",
+        "store_url_description": "각 스토어에 등록된 앱 페이지의 https:// 주소입니다. 등록하지 않은 스토어는 비워 두세요.",
+        "submit": "판매 위치 저장",
+        "saved": "판매 위치를 저장했습니다.",
+        "load_failed": "판매 위치를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "판매 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "availability_invalid": "판매 위치를 선택해 주세요.",
+          "app_store_url_invalid": "App Store 주소는 https:// URL로 입력하거나 비워 두세요.",
+          "google_play_url_invalid": "Google Play 주소는 https:// URL로 입력하거나 비워 두세요."
         }
       },
       "mobile_push": {

@@ -10,6 +10,7 @@ const {
   mockUpdateTenantDefaultLocale,
   mockUpdateTenantEmailSettings,
   mockUpdateTenantPaymentSettings,
+  mockUpdateTenantPurchaseSettings,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantThemeSettings,
   mockUpdateTenantTimezone,
@@ -24,6 +25,7 @@ const {
   mockUpdateTenantDefaultLocale: vi.fn(),
   mockUpdateTenantEmailSettings: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
+  mockUpdateTenantPurchaseSettings: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantThemeSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
@@ -84,6 +86,12 @@ vi.mock("#lib/payment-settings", () => ({
   tenantPaymentSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:payment-settings`,
   updateTenantPaymentSettings: mockUpdateTenantPaymentSettings,
+}));
+
+vi.mock("#lib/tenant-purchase-settings", () => ({
+  tenantPurchaseSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:purchase-settings`,
+  updateTenantPurchaseSettings: mockUpdateTenantPurchaseSettings,
 }));
 
 vi.mock("#lib/theme-settings", () => ({
@@ -597,6 +605,134 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(result).toEqual({
       message:
         "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantPurchaseSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const storedPurchaseSettings = {
+    appStoreUrl: "https://apps.apple.com/app/id123",
+    googlePlayUrl: "",
+    purchaseAvailability: "app",
+  } as const;
+
+  it("saves the default and the store addresses, then revalidates the cache tag", async () => {
+    mockUpdateTenantPurchaseSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPurchaseSettings,
+    });
+
+    const { updateTenantPurchaseSettingsAction } = await import("./actions");
+    const result = await updateTenantPurchaseSettingsAction(
+      null,
+      textFormData({
+        app_store_url: " https://apps.apple.com/app/id123 ",
+        google_play_url: "",
+        purchase_availability: "app",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Where episodes are sold was saved.",
+      ok: true,
+      settings: storedPurchaseSettings,
+    });
+    expect(mockUpdateTenantPurchaseSettings).toHaveBeenCalledWith(
+      {
+        appStoreUrl: "https://apps.apple.com/app/id123",
+        googlePlayUrl: "",
+        purchaseAvailability: "app",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:purchase-settings"
+    );
+  });
+
+  // The addresses are links the storefront hands a reader, so they are
+  // checked before they are saved rather than left to the API alone.
+  it("returns a field error for each address that is not an https:// URL and skips the API", async () => {
+    const { updateTenantPurchaseSettingsAction } = await import("./actions");
+    const result = await updateTenantPurchaseSettingsAction(
+      null,
+      textFormData({
+        // Assembled, because lint refuses the insecure literal outright.
+        app_store_url: `${"http"}://apps.apple.com/app/id123`,
+        google_play_url: "play.google.com/store/apps/details?id=a.b",
+        purchase_availability: "all",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        appStoreUrl:
+          "Enter the App Store address as an https:// URL, or leave it empty.",
+        googlePlayUrl:
+          "Enter the Google Play address as an https:// URL, or leave it empty.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantPurchaseSettings).not.toHaveBeenCalled();
+  });
+
+  // Following a level above is what a series or an episode does; the tenant
+  // has nothing above it, so it has to name one of the three.
+  it("refuses a default that names no surface", async () => {
+    const { updateTenantPurchaseSettingsAction } = await import("./actions");
+    const result = await updateTenantPurchaseSettingsAction(
+      null,
+      textFormData({
+        app_store_url: "",
+        google_play_url: "",
+        purchase_availability: "",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        purchaseAvailability: "Choose where episodes are sold.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantPurchaseSettings).not.toHaveBeenCalled();
+  });
+
+  it("returns the message and leaves the cache tag alone when the save fails", async () => {
+    mockUpdateTenantPurchaseSettings.mockResolvedValueOnce({
+      message:
+        "Could not save where episodes are sold. Please try again later.",
+      ok: false,
+    });
+
+    const { updateTenantPurchaseSettingsAction } = await import("./actions");
+    const result = await updateTenantPurchaseSettingsAction(
+      null,
+      textFormData({
+        app_store_url: "",
+        google_play_url: "",
+        purchase_availability: "web",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Could not save where episodes are sold. Please try again later.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

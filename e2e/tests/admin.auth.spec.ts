@@ -207,17 +207,24 @@ test.describe("web-admin auth", () => {
       page.getByRole("heading", { exact: true, name: "Settings" })
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Payments" })).toBeVisible();
+    // The Stripe settings and where episodes are sold are two sections, and
+    // each says it is read-only.
     await expect(
       page.getByText(
         "Only a tenant administrator can change this setting. You have read-only access."
       )
-    ).toBeVisible();
+    ).toHaveCount(2);
     await expect(
       page.getByText(
         "You do not have permission to perform this action. Go back or use an account that does."
       )
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { exact: true, name: "Save" })
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Save where episodes are sold" })
+    ).toBeDisabled();
   });
 });
 

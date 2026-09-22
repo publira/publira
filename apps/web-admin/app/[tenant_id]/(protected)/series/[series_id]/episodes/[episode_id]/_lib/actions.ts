@@ -17,6 +17,7 @@ import {
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
+  updateEpisodePurchaseAvailability,
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
   uploadEpisodePages,
@@ -31,6 +32,7 @@ import {
   spreadStartPageFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -270,6 +272,56 @@ export const updateEpisodeAvailabilityAction = async (
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?availability_updated=1`
+  );
+};
+
+const purchaseAvailabilityFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    // The empty value is the episode following its series.
+    purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
+      error: t(
+        "admin.series.episodes.validation.purchase_availability_invalid"
+      ),
+    }),
+  });
+};
+
+export const updateEpisodePurchaseAvailabilityAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await purchaseAvailabilityFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      purchaseAvailability: { kind: "value", name: "purchase_availability" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { episodePublicId, purchaseAvailability, seriesPublicId, tenantId } =
+    parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodePurchaseAvailability(
+      { episodePublicId, purchaseAvailability, tenantId },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?purchase_availability_updated=1`
   );
 };
 

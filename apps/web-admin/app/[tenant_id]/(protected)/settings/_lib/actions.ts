@@ -32,6 +32,7 @@ import {
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
+  optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import type { AdminMessageKey } from "#lib/locale";
@@ -44,6 +45,7 @@ import {
   tenantSiteSettingsCacheTag,
   updateTenantSiteSettings,
 } from "#lib/site-settings";
+import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import {
   tenantAgeVerificationCacheTag,
   updateTenantAgeVerification,
@@ -61,6 +63,10 @@ import {
   tenantDefaultLocaleCacheTag,
   updateTenantDefaultLocale,
 } from "#lib/tenant-default-locale";
+import {
+  tenantPurchaseSettingsCacheTag,
+  updateTenantPurchaseSettings,
+} from "#lib/tenant-purchase-settings";
 import {
   tenantTimezoneCacheTag,
   updateTenantTimezone,
@@ -84,6 +90,7 @@ import type {
   TenantIconActionState,
   TenantLogoActionState,
   TenantPaymentSettingsFormState,
+  TenantPurchaseSettingsFormState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
   ThemeSettingsActionState,
@@ -1030,6 +1037,68 @@ export const updateTenantPaymentSettingsAction = async (
 
   return {
     message: t("admin.settings.payment.saved"),
+    ok: true,
+    settings: result.settings,
+  };
+};
+
+const tenantPurchaseSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    appStoreUrl: optionalHttpsUrlFormSchema(
+      t("admin.settings.purchase.validation.app_store_url_invalid")
+    ),
+    googlePlayUrl: optionalHttpsUrlFormSchema(
+      t("admin.settings.purchase.validation.google_play_url_invalid")
+    ),
+    purchaseAvailability: z.enum(SURFACE_AVAILABILITIES, {
+      error: t("admin.settings.purchase.validation.availability_invalid"),
+    }),
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
+};
+
+export const updateTenantPurchaseSettingsAction = async (
+  _prevState: TenantPurchaseSettingsFormState,
+  formData: FormData
+): Promise<TenantPurchaseSettingsFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantPurchaseSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      appStoreUrl: { kind: "value", name: "app_store_url" },
+      googlePlayUrl: { kind: "value", name: "google_play_url" },
+      purchaseAvailability: { kind: "value", name: "purchase_availability" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantPurchaseSettings(parsed.data, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The settings screen and the series and episode forms that name the default
+  // read it through a private cache. The storefront's copies are dropped by the
+  // API as the update lands.
+  updateTag(tenantPurchaseSettingsCacheTag(parsed.data.tenantId));
+
+  return {
+    message: t("admin.settings.purchase.saved"),
     ok: true,
     settings: result.settings,
   };

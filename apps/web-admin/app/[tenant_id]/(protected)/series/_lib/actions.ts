@@ -27,6 +27,7 @@ import {
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
   createSeries,
@@ -135,6 +136,10 @@ const seriesCommonSchema = async (locale: Locale) => {
       t("admin.series.validation.label_required")
     ),
     publishedAt: optionalTrimmedString(),
+    // The empty value follows the tenant's default.
+    purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
+      error: t("admin.series.validation.purchase_availability_invalid"),
+    }),
     readingDirection: z.enum(READING_DIRECTIONS, {
       error: t("admin.series.validation.reading_direction_invalid"),
     }),
@@ -177,9 +182,9 @@ const seriesUpdateSchema = async (locale: Locale) => {
 const seriesEyeCatchSchema = async (locale: Locale) => {
   const base = await seriesUpdateSchema(locale);
 
-  // The cover image tab does not offer the surfaces, and a save that names
-  // none keeps the ones stored.
-  return base.omit({ availability: true }).extend({
+  // The cover image tab offers neither where the series is shown nor where it
+  // is sold, and a save that names neither keeps the values stored.
+  return base.omit({ availability: true, purchaseAvailability: true }).extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
   });
@@ -194,6 +199,7 @@ const seriesFormFields = {
   isPublished: { kind: "value", name: "is_published" },
   labelPublicId: { kind: "value", name: "label_public_id" },
   publishedAt: { kind: "value", name: "published_at" },
+  purchaseAvailability: { kind: "value", name: "purchase_availability" },
   readingDirection: { kind: "value", name: "reading_direction" },
   readingPeriodHours: { kind: "value", name: "reading_period_hours" },
   scheduleWeekdays: { kind: "values", name: "schedule_weekdays" },
@@ -291,6 +297,7 @@ export const createSeriesAction = async (
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
         labelPublicId: parsed.data.labelPublicId,
         publishedAt: schedule.publishedAt,
+        purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
@@ -360,6 +367,7 @@ export const updateSeriesAction = async (
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
+        purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,

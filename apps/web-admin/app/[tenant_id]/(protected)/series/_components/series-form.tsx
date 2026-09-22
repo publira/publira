@@ -35,6 +35,7 @@ import type { ChangeEventHandler } from "react";
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
+import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import {
   DEFAULT_READING_DIRECTION,
   DEFAULT_SPREAD_START_INDEX,
@@ -47,6 +48,7 @@ import {
 } from "#lib/series-classification";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import { DEFAULT_SURFACE_AVAILABILITY } from "#lib/surface-availability";
+import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -66,6 +68,7 @@ import type {
   CreatorOption,
   CreatorRoleOption,
 } from "./series-creator-credits-field";
+import { SeriesPurchaseAvailabilityField } from "./series-purchase-availability-field";
 import {
   SeriesReadingDirectionField,
   SeriesSpreadStartField,
@@ -105,6 +108,14 @@ interface SeriesFormProps {
   initialCommentMode?: SeriesCommentMode;
   /** What the tenant publishes comments under, for the option that follows it. */
   tenantCommentMode?: TenantCommentMode;
+  /**
+   * Where the series' episodes may be bought, empty while it follows its
+   * tenant. It comes in beside the series for the reason the comment mode
+   * does. Absent on create, which opens on following the tenant.
+   */
+  initialPurchaseAvailability?: PurchaseAvailabilityOverride;
+  /** Where the tenant sells by default, for the option that follows it. */
+  tenantPurchaseAvailability?: SurfaceAvailabilityValue;
   /**
    * The layout the series states, beside {@link SeriesFormProps.initialSeries}
    * for the reason the comment mode is. Absent on create, which opens on the
@@ -305,11 +316,15 @@ const EyeCatchImageField = ({
 
 const useSeriesFormState = ({
   initialCommentMode,
+  initialPurchaseAvailability,
   initialReadingLayout,
   initialSeries,
 }: Pick<
   SeriesFormProps,
-  "initialCommentMode" | "initialReadingLayout" | "initialSeries"
+  | "initialCommentMode"
+  | "initialPurchaseAvailability"
+  | "initialReadingLayout"
+  | "initialSeries"
 >) => {
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' label.
@@ -335,6 +350,10 @@ const useSeriesFormState = ({
   const [commentMode, setCommentMode] = useState<SeriesCommentMode>(
     () => initialCommentMode ?? ""
   );
+  const [purchaseAvailability, setPurchaseAvailability] =
+    useState<PurchaseAvailabilityOverride>(
+      () => initialPurchaseAvailability ?? ""
+    );
   const [readingDirection, setReadingDirection] = useState(
     () => initialReadingLayout?.readingDirection ?? DEFAULT_READING_DIRECTION
   );
@@ -381,6 +400,7 @@ const useSeriesFormState = ({
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
     selectedGenrePublicIds,
@@ -388,6 +408,7 @@ const useSeriesFormState = ({
     setAgeRating,
     setAvailability,
     setCommentMode,
+    setPurchaseAvailability,
     setReadingDirection,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
@@ -415,8 +436,10 @@ export const SeriesForm = ({
   tagSuggestionsErrorMessage,
   initialSeries,
   initialCommentMode,
+  initialPurchaseAvailability,
   initialReadingLayout,
   tenantCommentMode,
+  tenantPurchaseAvailability,
   timeZone,
 }: SeriesFormProps) => {
   const locale = useContext(AdminLocaleContext);
@@ -448,6 +471,7 @@ export const SeriesForm = ({
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
     handleLabelFallbackInputChange,
+    purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
     selectedGenrePublicIds,
@@ -455,6 +479,7 @@ export const SeriesForm = ({
     setAgeRating,
     setAvailability,
     setCommentMode,
+    setPurchaseAvailability,
     setReadingDirection,
     setScheduleWeekdays,
     setSelectedGenrePublicIds,
@@ -465,6 +490,7 @@ export const SeriesForm = ({
     tagNames,
   } = useSeriesFormState({
     initialCommentMode,
+    initialPurchaseAvailability,
     initialReadingLayout,
     initialSeries,
   });
@@ -593,6 +619,12 @@ export const SeriesForm = ({
         <SeriesAvailabilityField
           onChange={setAvailability}
           value={availability}
+        />
+
+        <SeriesPurchaseAvailabilityField
+          onChange={setPurchaseAvailability}
+          tenantPurchaseAvailability={tenantPurchaseAvailability}
+          value={purchaseAvailability}
         />
 
         <SeriesStatusField onChange={setStatus} value={status} />

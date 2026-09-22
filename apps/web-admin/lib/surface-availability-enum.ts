@@ -34,3 +34,12 @@ export const toSurfaceAvailabilityValue = (
     (value) => SURFACE_AVAILABILITY_ENUM[value] === availability
   );
 };
+
+/**
+ * An override as the API takes it: the empty value is the unspecified one,
+ * which a level reads as following the level above.
+ */
+export const toSurfaceAvailabilityOverrideEnum = (
+  value: "" | SurfaceAvailabilityValue
+): SurfaceAvailability =>
+  value ? SURFACE_AVAILABILITY_ENUM[value] : SurfaceAvailability.UNSPECIFIED;

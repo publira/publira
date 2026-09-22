@@ -23,6 +23,7 @@ export type {
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
   TenantCommunityLimitOverrides,
+  TenantPurchaseSettings,
   TenantRetentionOverrides,
 } from "../gen/publira/admin/v1/tenant_pb.js";
 export type {

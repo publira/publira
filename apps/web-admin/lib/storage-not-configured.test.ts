@@ -107,6 +107,7 @@ const seriesInput: Parameters<typeof createSeries>[0] = {
   genrePublicIds: [],
   isPublished: false,
   labelPublicId: "LABEL001",
+  purchaseAvailability: "",
   readingDirection: "rtl",
   readingPeriodHours: 24,
   scheduleWeekdays: [],

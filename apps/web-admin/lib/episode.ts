@@ -33,6 +33,7 @@ import {
 } from "./cursor-page";
 import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import type { PurchaseAvailabilityOverride } from "./purchase-availability";
 import {
   READING_DIRECTION_ENUM,
   toReadingDirectionValue,
@@ -42,6 +43,7 @@ import { getAccessToken } from "./session";
 import type { EpisodeAvailabilityOverride } from "./surface-availability";
 import {
   SURFACE_AVAILABILITY_ENUM,
+  toSurfaceAvailabilityOverrideEnum,
   toSurfaceAvailabilityValue,
 } from "./surface-availability-enum";
 
@@ -104,6 +106,12 @@ export type GetEpisodeResult =
        * know which values are the series' rather than what they add up to.
        */
       layout: EpisodeReadingLayoutOverrides;
+      /**
+       * Where the episode states it may be bought, empty while it follows its
+       * series. The form offers following the series as a choice, so it needs
+       * this apart from the resolved value.
+       */
+      purchaseAvailability: PurchaseAvailabilityOverride;
     }
   | { notFound: true; ok: false }
   | {
@@ -120,6 +128,10 @@ export type UpdateEpisodePublishScheduleResult =
 
 export type UpdateEpisodeAvailabilityResult =
   | { ok: true; availability: EpisodeAvailabilityOverride }
+  | { ok: false; message: string };
+
+export type UpdateEpisodePurchaseAvailabilityResult =
+  | { ok: true; purchaseAvailability: PurchaseAvailabilityOverride }
   | { ok: false; message: string };
 
 export type UpdateEpisodeLayoutResult =
@@ -518,6 +530,8 @@ export const createEpisode = async (
     readingPeriodHours: number;
     publishAt: string;
     availability: EpisodeAvailabilityOverride;
+    /** The empty value follows the series. */
+    purchaseAvailability: PurchaseAvailabilityOverride;
   },
   locale: Locale
 ): Promise<CreateEpisodeResult> => {
@@ -540,6 +554,9 @@ export const createEpisode = async (
           : undefined,
         // Omitting orderIndex makes the server append to the end.
         price: input.price,
+        purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
+          input.purchaseAvailability
+        ),
         readingPeriodHours: input.readingPeriodHours,
         scheduledAt: input.publishAt,
         seriesPublicId: input.seriesPublicId,
@@ -752,11 +769,15 @@ export const getEpisode = async (
     );
 
     const layout = toEpisodeLayoutOverrides(response);
+    const purchaseAvailability = toSurfaceAvailabilityValue(
+      response.purchaseAvailability
+    );
     // An unknown availability would open the form on following the series,
     // and the next save would write that over the episode's own value.
     if (
       !response.episode?.publicId?.trim() ||
       layout === undefined ||
+      purchaseAvailability === undefined ||
       toSurfaceAvailabilityValue(response.episode.availability) === undefined
     ) {
       return {
@@ -769,6 +790,7 @@ export const getEpisode = async (
       episode: mapEpisode(response.episode),
       layout,
       ok: true,
+      purchaseAvailability,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -891,6 +913,63 @@ export const updateEpisodeAvailability = async (
       message: await mapErrorToMessage(
         error,
         t("admin.series.episodes.availability.failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** The empty value puts the episode back on following its series. */
+export const updateEpisodePurchaseAvailability = async (
+  input: {
+    tenantId: string;
+    episodePublicId: string;
+    purchaseAvailability: PurchaseAvailabilityOverride;
+  },
+  locale: Locale
+): Promise<UpdateEpisodePurchaseAvailabilityResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.updateEpisodePurchaseAvailability(
+      {
+        episodePublicId: input.episodePublicId,
+        purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
+          input.purchaseAvailability
+        ),
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const purchaseAvailability = toSurfaceAvailabilityValue(
+      response.purchaseAvailability
+    );
+    if (purchaseAvailability === undefined) {
+      return {
+        message: t("admin.series.episodes.purchase_availability.failed"),
+        ok: false,
+      };
+    }
+
+    return { ok: true, purchaseAvailability };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.purchase_availability.failed"),
         locale
       ),
       ok: false,

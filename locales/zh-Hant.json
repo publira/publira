@@ -1198,7 +1198,11 @@
         "spread_start": "跨頁起始頁",
         "spread_start_description": "此頁之前逐頁顯示，從此頁起兩頁並排顯示。填寫 2 表示封面單獨顯示，填寫 1 表示從第一頁起跨頁顯示。頁數少於此值的章節不以跨頁顯示。可在各章節的編輯頁面為單一章節另行設定。",
         "availability": "顯示位置",
-        "availability_description": "讀者可以找到本作品的位置。除非章節另行指定，否則章節沿用此設定，且不會顯示在作品不顯示的位置。"
+        "availability_description": "讀者可以找到本作品的位置。除非章節另行指定，否則章節沿用此設定，且不會顯示在作品不顯示的位置。",
+        "purchase_availability": "販售位置",
+        "purchase_availability_description": "可以購買本作品付費章節的位置。作品未指定時沿用租戶設定，章節可以另行指定。",
+        "purchase_availability_follow_tenant": "沿用租戶設定",
+        "purchase_availability_follow_tenant_value": "沿用租戶設定（{$availability}）"
       },
       "validation": {
         "label_required": "品牌為必填。",
@@ -1215,7 +1219,8 @@
         "creator_credits_invalid": "作者署名需要同時指定作者與角色。",
         "reading_direction_invalid": "請選擇閱讀方向。",
         "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。",
-        "availability_invalid": "請選擇顯示位置。"
+        "availability_invalid": "請選擇顯示位置。",
+        "purchase_availability_invalid": "請選擇作品的販售位置，或沿用租戶設定。"
       },
       "created": "系列已建立。",
       "updated": "系列已更新。",
@@ -1344,7 +1349,8 @@
           "reading_direction_invalid": "請選擇閱讀方向，或沿用作品設定。",
           "spread_start_invalid": "跨頁起始頁請填寫 1 或以上的整數。",
           "spread_start_past_last_page": "跨頁不能從章節最後一頁之後開始。請指定該章節中的一頁。",
-          "availability_invalid": "請選擇顯示位置，或沿用作品設定。"
+          "availability_invalid": "請選擇顯示位置，或沿用作品設定。",
+          "purchase_availability_invalid": "請選擇章節的販售位置，或沿用作品設定。"
         },
         "layout": {
           "title": "頁面版面",
@@ -1440,6 +1446,18 @@
           "update": "更新顯示位置",
           "updated": "顯示位置已更新。",
           "failed": "無法更新顯示位置。請稍後再試。"
+        },
+        "purchase_availability": {
+          "title": "販售位置",
+          "description": "讀者可以購買該章節的位置。沿用作品設定的值會隨作品或租戶設定的變更而變化。",
+          "error": "無法顯示該章節的販售位置",
+          "label": "販售位置",
+          "follow_series": "沿用作品設定",
+          "follow_series_value": "沿用作品設定（{$availability}）",
+          "field_description": "與顯示位置不同，章節可以在作品未販售的位置單獨販售。",
+          "update": "更新販售位置",
+          "updated": "章節的販售位置已更新。",
+          "failed": "無法更新章節的販售位置。請稍後再試。"
         }
       },
       "status": {
@@ -1921,6 +1939,30 @@
         "validation": {
           "secret_key_required": "請輸入密鑰。",
           "webhook_secret_required": "請輸入 webhook 簽章密鑰。"
+        }
+      },
+      "purchase": {
+        "title": "販售位置",
+        "description": "讀者可以購買付費章節的位置，以及應用程式在各商店的上架網址。除非作品或章節另行指定，否則沿用此設定。",
+        "section_error": "無法顯示販售位置",
+        "availability": "販售位置",
+        "availability_description": "未指定的作品與章節沿用此設定，且在設定變更後隨之變化。僅在應用程式中販售的章節，網頁店面會引導讀者前往下方的商店網址。",
+        "options": {
+          "all": "網頁與應用程式",
+          "web": "僅網頁",
+          "app": "僅應用程式"
+        },
+        "app_store_url": "App Store 網址",
+        "google_play_url": "Google Play 網址",
+        "store_url_description": "應用程式在各商店上架頁面的 https:// 網址。未上架的商店請留空。",
+        "submit": "儲存販售位置",
+        "saved": "販售位置已儲存。",
+        "load_failed": "無法載入販售位置。請稍後再試。",
+        "save_failed": "無法儲存販售位置。請稍後再試。",
+        "validation": {
+          "availability_invalid": "請選擇販售位置。",
+          "app_store_url_invalid": "請以 https:// URL 輸入 App Store 網址，或將其留空。",
+          "google_play_url_invalid": "請以 https:// URL 輸入 Google Play 網址，或將其留空。"
         }
       },
       "mobile_push": {

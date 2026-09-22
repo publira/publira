@@ -1198,7 +1198,11 @@
         "spread_start": "見開きを始めるページ",
         "spread_start_description": "このページより前は 1 ページずつ表示し、このページから 2 ページを並べて表示します。2 にすると表紙だけを単独で表示し、1 にすると最初のページから見開きにします。これよりページ数の少ないエピソードは見開きなしで表示します。エピソードごとの設定は各エピソードの編集画面で行えます。",
         "availability": "表示先",
-        "availability_description": "読者がこの作品を見つけられる場所です。エピソードは個別に指定しない限りこの設定に従い、作品が表示されない場所には表示されません。"
+        "availability_description": "読者がこの作品を見つけられる場所です。エピソードは個別に指定しない限りこの設定に従い、作品が表示されない場所には表示されません。",
+        "purchase_availability": "販売先",
+        "purchase_availability_description": "この作品の有料エピソードを購入できる場所です。作品が何も指定しなければテナントの設定に従い、エピソードでは個別に指定できます。",
+        "purchase_availability_follow_tenant": "テナントの設定に従う",
+        "purchase_availability_follow_tenant_value": "テナントの設定に従う（{$availability}）"
       },
       "validation": {
         "label_required": "レーベルは必須です。",
@@ -1215,7 +1219,8 @@
         "creator_credits_invalid": "著者のクレジットには著者と役割の両方が必要です。",
         "reading_direction_invalid": "読む方向を選択してください。",
         "spread_start_invalid": "見開きを始めるページは 1 以上の整数で入力してください。",
-        "availability_invalid": "表示先を選択してください。"
+        "availability_invalid": "表示先を選択してください。",
+        "purchase_availability_invalid": "作品の販売先を選択するか、テナントの設定に従ってください。"
       },
       "created": "シリーズを作成しました。",
       "updated": "シリーズを更新しました。",
@@ -1344,7 +1349,8 @@
           "reading_direction_invalid": "読む方向を選択するか、作品の設定に従ってください。",
           "spread_start_invalid": "見開きを始めるページは 1 以上の整数で入力してください。",
           "spread_start_past_last_page": "エピソードの最後のページより後から見開きを始めることはできません。このエピソードのページを指定してください。",
-          "availability_invalid": "表示先を選択するか、作品の設定に従ってください。"
+          "availability_invalid": "表示先を選択するか、作品の設定に従ってください。",
+          "purchase_availability_invalid": "エピソードの販売先を選択するか、作品の設定に従ってください。"
         },
         "layout": {
           "title": "ページレイアウト",
@@ -1440,6 +1446,18 @@
           "update": "表示先を更新",
           "updated": "表示先を更新しました。",
           "failed": "表示先の更新に失敗しました。時間をおいて再試行してください。"
+        },
+        "purchase_availability": {
+          "title": "販売先",
+          "description": "読者がこのエピソードを購入できる場所です。作品に従う値は、作品またはテナントの設定を変えるとそれに合わせて変わります。",
+          "error": "このエピソードの販売先を表示できませんでした",
+          "label": "販売先",
+          "follow_series": "作品の設定に従う",
+          "follow_series_value": "作品の設定に従う（{$availability}）",
+          "field_description": "表示先と違い、作品が販売していない場所でもエピソード単位で販売できます。",
+          "update": "販売先を更新",
+          "updated": "エピソードの販売先を更新しました。",
+          "failed": "エピソードの販売先の更新に失敗しました。時間をおいて再試行してください。"
         }
       },
       "status": {
@@ -1921,6 +1939,30 @@
         "validation": {
           "secret_key_required": "シークレットキーを入力してください。",
           "webhook_secret_required": "Webhook 署名シークレットを入力してください。"
+        }
+      },
+      "purchase": {
+        "title": "販売先",
+        "description": "有料エピソードを読者が購入できる場所と、アプリの掲載先です。作品やエピソードで個別に指定しない限り、この設定に従います。",
+        "section_error": "販売先を表示できませんでした",
+        "availability": "販売先",
+        "availability_description": "何も指定していない作品とエピソードはこの設定に従い、設定を変えたあとも追随します。アプリだけで販売するエピソードでは、ウェブのストアフロントから下のストアの掲載先へ読者を案内します。",
+        "options": {
+          "all": "ウェブとアプリ",
+          "web": "ウェブのみ",
+          "app": "アプリのみ"
+        },
+        "app_store_url": "App Store の掲載先",
+        "google_play_url": "Google Play の掲載先",
+        "store_url_description": "各ストアにあるアプリの掲載ページの https:// から始まるアドレスです。掲載していないストアは空欄にしてください。",
+        "submit": "販売先を保存",
+        "saved": "販売先を保存しました。",
+        "load_failed": "販売先の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "販売先の保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "availability_invalid": "販売先を選択してください。",
+          "app_store_url_invalid": "App Store の掲載先は https:// から始まる URL で入力するか、空欄にしてください。",
+          "google_play_url_invalid": "Google Play の掲載先は https:// から始まる URL で入力するか、空欄にしてください。"
         }
       },
       "mobile_push": {

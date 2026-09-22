@@ -9,6 +9,7 @@ const {
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePublishSchedule,
+  mockUpdateEpisodePurchaseAvailability,
   mockUpdateTag,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
@@ -20,6 +21,7 @@ const {
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
+  mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUploadEpisodePages: vi.fn(),
 }));
@@ -56,6 +58,7 @@ vi.mock("#lib/episode", () => ({
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
+  updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
   uploadEpisodePages: mockUploadEpisodePages,
 }));
 
@@ -276,6 +279,90 @@ describe("episode actions", () => {
     expect(result).toEqual({
       message:
         "Could not update where the episode is shown. Please try again later.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("updating where it is sold sends the value the episode states", async () => {
+    mockUpdateEpisodePurchaseAvailability.mockResolvedValueOnce({
+      ok: true,
+      purchaseAvailability: "app",
+    });
+
+    const { updateEpisodePurchaseAvailabilityAction } =
+      await import("./actions");
+    await updateEpisodePurchaseAvailabilityAction(
+      null,
+      layoutFormData({ purchase_availability: "app" })
+    );
+
+    expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
+      {
+        episodePublicId: "EP001",
+        purchaseAvailability: "app",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?purchase_availability_updated=1"
+    );
+  });
+
+  // The empty value is what returns an overridden episode to its series, so a
+  // later change to the series or the tenant default reaches it again.
+  it("updating where it is sold sends the empty value to follow the series", async () => {
+    mockUpdateEpisodePurchaseAvailability.mockResolvedValueOnce({
+      ok: true,
+      purchaseAvailability: "",
+    });
+
+    const { updateEpisodePurchaseAvailabilityAction } =
+      await import("./actions");
+    await updateEpisodePurchaseAvailabilityAction(
+      null,
+      layoutFormData({ purchase_availability: "" })
+    );
+
+    expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ purchaseAvailability: "" }),
+      "en"
+    );
+  });
+
+  it("updating where it is sold refuses a value the form could not have offered", async () => {
+    const { updateEpisodePurchaseAvailabilityAction } =
+      await import("./actions");
+    const result = await updateEpisodePurchaseAvailabilityAction(
+      null,
+      layoutFormData({ purchase_availability: "everywhere" })
+    );
+
+    expect(result).toEqual({
+      message: "Choose where the episode is sold, or follow the series.",
+      ok: false,
+    });
+    expect(mockUpdateEpisodePurchaseAvailability).not.toHaveBeenCalled();
+  });
+
+  it("updating where it is sold shows the failure the API reported", async () => {
+    mockUpdateEpisodePurchaseAvailability.mockResolvedValueOnce({
+      message:
+        "Could not update where the episode is sold. Please try again later.",
+      ok: false,
+    });
+
+    const { updateEpisodePurchaseAvailabilityAction } =
+      await import("./actions");
+    const result = await updateEpisodePurchaseAvailabilityAction(
+      null,
+      layoutFormData({ purchase_availability: "web" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Could not update where the episode is sold. Please try again later.",
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();

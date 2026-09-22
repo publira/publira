@@ -18,6 +18,7 @@ import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeAvailabilityField } from "./episode-availability-field";
+import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availability-field";
 import { PublishAtInput } from "./publish-at-input";
 
 interface EpisodeFormProps {
@@ -31,6 +32,11 @@ interface EpisodeFormProps {
    * that read failed.
    */
   seriesAvailability?: SurfaceAvailabilityValue;
+  /**
+   * Where the series sells, resolved through the tenant's default, for the
+   * option that follows it. Absent when that could not be read.
+   */
+  seriesPurchaseAvailability?: SurfaceAvailabilityValue;
   timeZone: string;
 }
 
@@ -38,6 +44,7 @@ export const EpisodeForm = ({
   seriesPublicId,
   action,
   seriesAvailability,
+  seriesPurchaseAvailability,
   timeZone,
 }: EpisodeFormProps) => {
   const t = useClientMessages();
@@ -114,6 +121,11 @@ export const EpisodeForm = ({
       <EpisodeAvailabilityField
         initialValue=""
         seriesAvailability={seriesAvailability}
+      />
+
+      <EpisodePurchaseAvailabilityField
+        initialValue=""
+        seriesPurchaseAvailability={seriesPurchaseAvailability}
       />
 
       {state ? (

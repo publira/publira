@@ -361,7 +361,77 @@ it("leaves that option unnamed when the tenant setting could not be read", async
     />
   );
 
-  expect(await screen.findByText("Follow the tenant setting")).toBeDefined();
+  const comments = await screen.findByRole("combobox", { name: /Comments/u });
+  expect(comments.textContent).toBe("Follow the tenant setting");
+});
+
+// Where the series' episodes may be bought is carried back on every save, for
+// the reason the comment mode is: the form offers following the tenant as a
+// choice, and opening on it would write that over the series' own value.
+it("opens on where the series states its episodes are sold", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialPurchaseAvailability="app"
+      initialSeries={series}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      tenantPurchaseAvailability="all"
+      timeZone="UTC"
+    />
+  );
+
+  expect(posted("purchase_availability")).toEqual(["app"]);
+  const soldOn = await screen.findByRole("combobox", { name: /Sold on/u });
+  expect(soldOn.textContent).toBe("App only");
+});
+
+// A series that states nothing follows its tenant, so the option names where
+// the tenant sells — the operator is not left to look it up on the settings
+// screen.
+it("names where the tenant sells in the option that follows it", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      tenantPurchaseAvailability="web"
+      timeZone="UTC"
+    />
+  );
+
+  expect(posted("purchase_availability")).toEqual([""]);
+  const soldOn = await screen.findByRole("combobox", { name: /Sold on/u });
+  expect(soldOn.textContent).toBe("Follow the tenant setting (Web only)");
+});
+
+it("leaves where the tenant sells unnamed when it could not be read", async () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      timeZone="UTC"
+    />
+  );
+
+  const soldOn = await screen.findByRole("combobox", { name: /Sold on/u });
+  expect(soldOn.textContent).toBe("Follow the tenant setting");
 });
 
 // A series with no weekly schedule says so, rather than showing seven empty

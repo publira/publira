@@ -95,3 +95,27 @@ it("creates an episode that follows its series unless told otherwise", () => {
     "Follow the series (App only)"
   );
 });
+
+// Where it may be bought follows the series too, and the option names where
+// the series sells once the tenant's default has been resolved into it.
+it("creates an episode sold where its series is unless told otherwise", () => {
+  render(
+    <EpisodeForm
+      action={action}
+      seriesPublicId="SERIES001"
+      seriesPurchaseAvailability="web"
+      timeZone="UTC"
+    />
+  );
+
+  expect(
+    [
+      ...document.querySelectorAll<HTMLInputElement>(
+        'input[type="hidden"][name="purchase_availability"]'
+      ),
+    ].map((input) => input.value)
+  ).toEqual([""]);
+  expect(screen.getByRole("combobox", { name: "Sold on" }).textContent).toBe(
+    "Follow the series (Web only)"
+  );
+});

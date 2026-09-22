@@ -1198,7 +1198,11 @@
         "spread_start": "跨页起始页",
         "spread_start_description": "此页之前逐页显示，从此页起两页并排显示。填写 2 表示封面单独显示，填写 1 表示从第一页起跨页显示。页数少于此值的章节不以跨页显示。可在各章节的编辑页面为单个章节另行设置。",
         "availability": "显示位置",
-        "availability_description": "读者可以找到本作品的位置。除非章节单独指定，否则章节沿用此设置，且不会显示在作品不显示的位置。"
+        "availability_description": "读者可以找到本作品的位置。除非章节单独指定，否则章节沿用此设置，且不会显示在作品不显示的位置。",
+        "purchase_availability": "销售位置",
+        "purchase_availability_description": "可以购买本作品付费章节的位置。作品未指定时沿用租户设置，章节可以单独指定。",
+        "purchase_availability_follow_tenant": "沿用租户设置",
+        "purchase_availability_follow_tenant_value": "沿用租户设置（{$availability}）"
       },
       "validation": {
         "label_required": "品牌为必填项。",
@@ -1215,7 +1219,8 @@
         "creator_credits_invalid": "作者署名需要同时指定作者和角色。",
         "reading_direction_invalid": "请选择阅读方向。",
         "spread_start_invalid": "跨页起始页请填写 1 或以上的整数。",
-        "availability_invalid": "请选择显示位置。"
+        "availability_invalid": "请选择显示位置。",
+        "purchase_availability_invalid": "请选择作品的销售位置，或沿用租户设置。"
       },
       "created": "系列已创建。",
       "updated": "系列已更新。",
@@ -1344,7 +1349,8 @@
           "reading_direction_invalid": "请选择阅读方向，或沿用作品设置。",
           "spread_start_invalid": "跨页起始页请填写 1 或以上的整数。",
           "spread_start_past_last_page": "跨页不能从章节最后一页之后开始。请指定该章节中的一页。",
-          "availability_invalid": "请选择显示位置，或沿用作品设置。"
+          "availability_invalid": "请选择显示位置，或沿用作品设置。",
+          "purchase_availability_invalid": "请选择章节的销售位置，或沿用作品设置。"
         },
         "layout": {
           "title": "页面布局",
@@ -1440,6 +1446,18 @@
           "update": "更新显示位置",
           "updated": "显示位置已更新。",
           "failed": "无法更新显示位置。请稍后再试。"
+        },
+        "purchase_availability": {
+          "title": "销售位置",
+          "description": "读者可以购买该章节的位置。沿用作品设置的值会随作品或租户设置的变更而变化。",
+          "error": "无法显示该章节的销售位置",
+          "label": "销售位置",
+          "follow_series": "沿用作品设置",
+          "follow_series_value": "沿用作品设置（{$availability}）",
+          "field_description": "与显示位置不同，章节可以在作品未销售的位置单独销售。",
+          "update": "更新销售位置",
+          "updated": "章节的销售位置已更新。",
+          "failed": "无法更新章节的销售位置。请稍后再试。"
         }
       },
       "status": {
@@ -1921,6 +1939,30 @@
         "validation": {
           "secret_key_required": "请输入密钥。",
           "webhook_secret_required": "请输入 webhook 签名密钥。"
+        }
+      },
+      "purchase": {
+        "title": "销售位置",
+        "description": "读者可以购买付费章节的位置，以及应用在各商店的上架地址。除非作品或章节单独指定，否则沿用此设置。",
+        "section_error": "无法显示销售位置",
+        "availability": "销售位置",
+        "availability_description": "未指定的作品和章节沿用此设置，且在设置变更后随之变化。仅在应用中销售的章节，网页店面会引导读者前往下方的商店地址。",
+        "options": {
+          "all": "网页和应用",
+          "web": "仅网页",
+          "app": "仅应用"
+        },
+        "app_store_url": "App Store 地址",
+        "google_play_url": "Google Play 地址",
+        "store_url_description": "应用在各商店上架页面的 https:// 地址。未上架的商店请留空。",
+        "submit": "保存销售位置",
+        "saved": "销售位置已保存。",
+        "load_failed": "无法加载销售位置。请稍后再试。",
+        "save_failed": "无法保存销售位置。请稍后再试。",
+        "validation": {
+          "availability_invalid": "请选择销售位置。",
+          "app_store_url_invalid": "请以 https:// URL 输入 App Store 地址，或将其留空。",
+          "google_play_url_invalid": "请以 https:// URL 输入 Google Play 地址，或将其留空。"
         }
       },
       "mobile_push": {
