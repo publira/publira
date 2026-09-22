@@ -43,6 +43,13 @@ Finder signedInAccountEntry() => find.descendant(
   matching: find.byIcon(Icons.person),
 );
 
+/// The signed-in account screen's list, which builds only the rows near its
+/// viewport.
+Finder accountList() => find.descendant(
+  of: find.byKey(const ValueKey('account-list')),
+  matching: find.byType(Scrollable),
+);
+
 /// Waits for the reader to draw the pages it built.
 ///
 /// [pumpUntilFound] on the page view returns on the first frame the reader
@@ -1106,6 +1113,7 @@ void main() {
           await tapVisible(
             tester,
             find.byKey(const ValueKey('account-change-password')),
+            scrollable: accountList(),
           );
           await pumpUntilRouteSettled(
             tester,
@@ -1139,6 +1147,7 @@ void main() {
           await tapVisible(
             tester,
             find.byKey(const ValueKey('account-change-email')),
+            scrollable: accountList(),
           );
           await pumpUntilRouteSettled(
             tester,

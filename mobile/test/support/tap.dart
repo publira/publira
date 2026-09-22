@@ -19,11 +19,23 @@ import 'package:flutter_test/flutter_test.dart';
 /// The frame pumped after scrolling can push the row off screen again, as a
 /// late soft keyboard or a row above it growing does, so the row is held by
 /// its element and scrolled back in until a frame leaves it whole.
+///
+/// A lazy list builds only the rows near its viewport, so a row scrolled far
+/// enough away has no element to scroll to. Pass that list as [scrollable] and
+/// the list is scrolled until the row is built; without it, an unbuilt row
+/// fails naming [finder].
 Future<void> tapVisible(
   WidgetTester tester,
   Finder finder, {
+  Finder? scrollable,
   Duration timeout = const Duration(seconds: 10),
 }) async {
+  if (finder.evaluate().isEmpty) {
+    if (scrollable == null) {
+      fail('$finder is not built; pass the list that holds it as scrollable');
+    }
+    await _scrollUntilBuilt(tester, finder, scrollable);
+  }
   final element = tester.element(finder);
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
@@ -72,6 +84,43 @@ Object _topHit(WidgetTester tester, Finder finder) {
   }
   final path = tester.hitTestOnBinding(tester.getCenter(finder)).path;
   return path.isEmpty ? 'nothing' : path.first.target;
+}
+
+/// Scrolls [scrollable] toward its start and then toward its end until
+/// [finder] is built.
+///
+/// Each step moves one viewport, which never passes over a row without
+/// building it, and the start comes first because the row may lie either way.
+Future<void> _scrollUntilBuilt(
+  WidgetTester tester,
+  Finder finder,
+  Finder scrollable,
+) async {
+  final position = tester.state<ScrollableState>(scrollable).position;
+  for (final forward in [false, true]) {
+    while (finder.evaluate().isEmpty) {
+      final limit = forward
+          ? position.maxScrollExtent
+          : position.minScrollExtent;
+      if (position.pixels == limit) {
+        break;
+      }
+      final step = forward
+          ? position.viewportDimension
+          : -position.viewportDimension;
+      position.jumpTo(
+        (position.pixels + step).clamp(
+          position.minScrollExtent,
+          position.maxScrollExtent,
+        ),
+      );
+      await tester.pump();
+    }
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+  fail('$finder is not in $scrollable at any scroll offset');
 }
 
 /// Whether [element] lies entirely inside every scrollable that holds it.

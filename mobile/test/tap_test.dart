@@ -95,6 +95,26 @@ Widget _coveredButton({
   );
 }
 
+/// A window-high list of forty rows built from a `children:` list, which
+/// builds only the rows near its viewport.
+Widget _longList({required void Function(int index) onRowTapped}) {
+  return MaterialApp(
+    home: Scaffold(
+      body: ListView(
+        key: const ValueKey('long-list'),
+        children: [
+          for (var index = 0; index < 40; index++)
+            ListTile(
+              key: ValueKey('row-$index'),
+              title: Text('Row $index'),
+              onTap: () => onRowTapped(index),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Runs [change] at the start of the next frame, which is the one tapVisible
 /// pumps between bringing its target in and tapping it.
 void onNextFrame(WidgetTester tester, VoidCallback change) {
@@ -131,6 +151,83 @@ void main() {
 
     expect(tester.getRect(onScreen), before);
     expect(tapped, isFalse);
+  });
+
+  group('a row the list has not built', () {
+    final list = find.descendant(
+      of: find.byKey(const ValueKey('long-list')),
+      matching: find.byType(Scrollable),
+    );
+    int? tapped;
+
+    setUp(() => tapped = null);
+
+    Future<void> pumpScrolledTo(WidgetTester tester, double offset) async {
+      await tester.pumpWidget(
+        _longList(onRowTapped: (index) => tapped = index),
+      );
+      tester.state<ScrollableState>(list).position.jumpTo(offset);
+      await tester.pump();
+    }
+
+    testWidgets('is tapped after scrolling back up to it', (tester) async {
+      await pumpScrolledTo(tester, 2000);
+      final target = find.byKey(const ValueKey('row-1'));
+      expect(target, findsNothing);
+
+      await tapVisible(tester, target, scrollable: list);
+
+      expect(tapped, 1);
+    });
+
+    testWidgets('is tapped after scrolling down to it', (tester) async {
+      await pumpScrolledTo(tester, 0);
+      final target = find.byKey(const ValueKey('row-38'));
+      expect(target, findsNothing);
+
+      await tapVisible(tester, target, scrollable: list);
+
+      expect(tapped, 38);
+    });
+
+    testWidgets('fails naming the row when no list is given', (tester) async {
+      await pumpScrolledTo(tester, 2000);
+
+      await expectLater(
+        tapVisible(tester, find.byKey(const ValueKey('row-1'))),
+        throwsA(
+          isA<TestFailure>().having(
+            (failure) => failure.message,
+            'message',
+            allOf(contains('row-1'), contains('is not built')),
+          ),
+        ),
+      );
+      expect(tapped, isNull);
+    });
+
+    testWidgets('fails naming the row when the list does not hold it', (
+      tester,
+    ) async {
+      await pumpScrolledTo(tester, 1000);
+
+      TestFailure? failure;
+      try {
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('row-40')),
+          scrollable: list,
+        );
+      } on TestFailure catch (error) {
+        failure = error;
+      }
+
+      expect(
+        failure?.message,
+        allOf(contains('row-40'), contains('at any scroll offset')),
+      );
+      expect(tapped, isNull);
+    });
   });
 
   group('a row that moves while the tap is aimed', () {
