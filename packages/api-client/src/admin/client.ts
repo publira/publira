@@ -18,6 +18,7 @@ import { AdminEngagementService } from "../gen/publira/admin/v1/engagement_pb.js
 import { AdminFcmSettingsService } from "../gen/publira/admin/v1/fcm_pb.js";
 import { AdminGenreService } from "../gen/publira/admin/v1/genre_pb.js";
 import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
+import { AdminTenantMemberService } from "../gen/publira/admin/v1/member_pb.js";
 import { AdminNotificationService } from "../gen/publira/admin/v1/notification_pb.js";
 import { AdminPagesService } from "../gen/publira/admin/v1/page_pb.js";
 import { AdminPaymentSettingsService } from "../gen/publira/admin/v1/payment_pb.js";
@@ -53,6 +54,7 @@ export interface AdminApiClient {
   fcmSettings: Client<typeof AdminFcmSettingsService>;
   genre: Client<typeof AdminGenreService>;
   label: Client<typeof AdminLabelService>;
+  members: Client<typeof AdminTenantMemberService>;
   announcement: Client<typeof AdminAnnouncementService>;
   notification: Client<typeof AdminNotificationService>;
   pages: Client<typeof AdminPagesService>;
@@ -111,6 +113,7 @@ export const createAdminApiClient = (
     fcmSettings: createClient(AdminFcmSettingsService, transportInstance),
     genre: createClient(AdminGenreService, transportInstance),
     label: createClient(AdminLabelService, transportInstance),
+    members: createClient(AdminTenantMemberService, transportInstance),
     notification: createClient(AdminNotificationService, transportInstance),
     pages: createClient(AdminPagesService, transportInstance),
     paymentSettings: createClient(

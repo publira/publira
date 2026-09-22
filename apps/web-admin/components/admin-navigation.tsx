@@ -28,6 +28,7 @@ import {
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
+import { MembersNavigationItem } from "./members-navigation-item";
 import { Message } from "./message";
 import { PendingCommentBadge } from "./pending-comment-badge";
 import { PendingCommentBadgeErrorCatch } from "./pending-comment-badge-error-catch";
@@ -54,6 +55,7 @@ const hrefs = [
   "/contact-messages",
   "/engagement",
   "/royalties",
+  "/members",
   "/audit-logs",
   "/settings",
 ];
@@ -239,6 +241,9 @@ export const AdminNavigation = () => (
         </Suspense>
       </ConsoleSidebarNavigationTitle>
       <ConsoleSidebarNavigationItems>
+        <Suspense fallback={null}>
+          <MembersNavigationItem />
+        </Suspense>
         <ConsoleSidebarNavigationItem href="/audit-logs">
           <ConsoleSidebarNavigationItemIcon>
             <ScrollTextIcon className="size-4" />

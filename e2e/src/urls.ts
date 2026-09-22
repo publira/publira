@@ -266,6 +266,16 @@ export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the members tenant from
+ * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
+ * administers the tenant, so it needs a console of its own.
+ */
+export const WEB_ADMIN_TENANT_MEMBERS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_TENANT_MEMBERS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.team.localhost")
+);
+
+/**
  * Public site of the commenting tenant from the scenario seed
  * `db/seeds/scenarios/140_episode_comments.sql`.
  *

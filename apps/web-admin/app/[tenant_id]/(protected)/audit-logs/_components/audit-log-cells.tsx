@@ -35,12 +35,32 @@ export const auditActionOptions = [
   },
   { messageKey: "admin.audit.actions.label_created", value: "label_created" },
   { messageKey: "admin.audit.actions.label_updated", value: "label_updated" },
+  {
+    messageKey: "admin.audit.actions.tenant_member_role_updated",
+    value: "tenant_member_role_updated",
+  },
+  {
+    messageKey: "admin.audit.actions.tenant_member_removed",
+    value: "tenant_member_removed",
+  },
+  {
+    messageKey: "admin.audit.actions.tenant_admin_invited",
+    value: "tenant_admin_invited",
+  },
+  {
+    messageKey: "admin.audit.actions.tenant_admin_invite_resent",
+    value: "tenant_admin_invite_resent",
+  },
+  {
+    messageKey: "admin.audit.actions.tenant_admin_invite_canceled",
+    value: "tenant_admin_invite_canceled",
+  },
 ] as const satisfies readonly { messageKey: AdminMessageKey; value: string }[];
 
 const actionMessageKeys: Record<string, AdminMessageKey> = Object.fromEntries(
-  auditActionOptions
-    .filter((option) => option.value)
-    .map((option) => [option.value, option.messageKey])
+  auditActionOptions.flatMap((option) =>
+    option.value ? [[option.value, option.messageKey]] : []
+  )
 );
 
 const actionLabel = async (action: string, locale: Locale): Promise<string> => {
