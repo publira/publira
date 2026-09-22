@@ -16,6 +16,7 @@ import '../test/support/connect_fixture_server.dart';
 import '../test/support/fake_auth.dart';
 import '../test/support/fake_links.dart';
 import '../test/support/fake_purchase.dart';
+import '../test/support/live_api_precondition.dart';
 import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
 import 'support/artifacts.dart';
@@ -1510,6 +1511,16 @@ void main() {
     const liveImageBaseUrl = String.fromEnvironment(
       'PUBLIRA_IMAGE_BASE_URL',
       defaultValue: AppConfig.androidEmulatorImageBaseUrl,
+    );
+
+    // A failing setUpAll skips the rest of the group, so a run with nothing
+    // to read fails once, here, instead of once per test.
+    setUpAll(
+      () => expectLiveSeed(
+        apiBaseUrl: liveBaseUrl,
+        tenantHost: liveTenantHost,
+        seriesPublicId: ConnectFixtureServer.seedSeriesId,
+      ),
     );
 
     Future<void> pumpLive(
