@@ -40,6 +40,7 @@ describe("SettingsTabNav", () => {
         "Payments",
         "Royalties",
         "Mobile push",
+        "App links",
         "Limits and retention",
       ]
     );

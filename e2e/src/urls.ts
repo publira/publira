@@ -246,6 +246,16 @@ export const WEB_ADMIN_MOBILE_PUSH_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the app links tenant from
+ * `db/seeds/scenarios/280_app_links.sql`. Its suite saves and clears the apps
+ * the tenant's links open in, so it needs a console of its own.
+ */
+export const WEB_ADMIN_APP_LINKS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_APP_LINKS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.app-links.localhost")
+);
+
+/**
  * Admin console of the royalties tenant from
  * `db/seeds/scenarios/260_royalties.sql`. Its suite closes a month, which is
  * tenant-wide and never undone, so it needs a console of its own.

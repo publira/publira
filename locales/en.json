@@ -1482,6 +1482,7 @@
       "email_error": "Could not display the email settings",
       "payment_error": "Could not display the payment settings",
       "mobile_push_error": "Could not display the mobile push settings",
+      "app_links_error": "Could not display the app link settings",
       "royalties_error": "Could not display the royalty settings",
       "section_error": "Could not display the settings",
       "theme_error": "Could not display the theme",
@@ -1677,6 +1678,8 @@
       "payment_description": "Manage this tenant's Stripe payment settings.",
       "mobile_push_title": "Settings — Mobile push",
       "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
+      "app_links_title": "Settings — App links",
+      "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
       "royalties_title": "Settings — Royalties",
       "royalties_description": "Choose how this tenant's royalty months are closed into statements.",
       "account_title": "Account settings",
@@ -1695,6 +1698,7 @@
         "payment": "Payments",
         "royalties": "Royalties",
         "mobile_push": "Mobile push",
+        "app_links": "App links",
         "policy": "Limits and retention"
       },
       "image": {
@@ -1997,6 +2001,35 @@
           "not_service_account": "That file is not a service account key. Download one from Project settings → Service accounts in the Firebase console.",
           "project_mismatch": "The key belongs to the Firebase project \"{$key}\", not \"{$entered}\". Upload a key from the project the mobile app is built with, or correct the project ID.",
           "key_invalid": "The service account key could not be used. Download a new private key from Project settings → Service accounts in the Firebase console and upload it."
+        }
+      },
+      "app_links": {
+        "title": "App links",
+        "description": "Links to this site open in the tenant's own apps when the site names them here. Enter the identifiers of the app actually published in each store: a value that differs from the published app by a single character leaves its links opening in the browser.",
+        "android_legend": "Android",
+        "android_enabled": "Links open in the tenant's Android app",
+        "application_id": "Application ID",
+        "application_id_description": "The package name of the published app: android.applicationId in the app manifest it was built from, and the id= in its Google Play address.",
+        "fingerprints": "SHA-256 signing certificate fingerprints",
+        "fingerprints_description": "One per line, up to {$max}, as colon-separated hex (AA:BB:…). With Play App Signing, copy the app signing key certificate's fingerprint from Play Console; otherwise run keytool -list -v on the release keystore.",
+        "ios_legend": "iOS",
+        "ios_enabled": "Links open in the tenant's iOS app",
+        "team_id": "Apple Team ID",
+        "team_id_description": "The ten-character ID of the Apple Developer team the app is published under, shown in the membership details of the Apple Developer account.",
+        "bundle_identifier": "Bundle identifier",
+        "bundle_identifier_description": "The bundle ID of the published app: ios.bundleIdentifier in the app manifest it was built from, also shown in App Store Connect under App Information.",
+        "submit": "Save the app links",
+        "saved": "The app links were saved.",
+        "load_failed": "Could not load the app links. Please try again later.",
+        "save_failed": "Could not save the app links. Please try again later.",
+        "validation": {
+          "application_id_invalid": "Enter the application ID as two or more dot-separated parts, such as com.example.reader. Each part starts with a letter and holds only letters, digits, and underscores.",
+          "fingerprints_count": "Enter from 1 to {$max} SHA-256 certificate fingerprints, one per line.",
+          "fingerprint_invalid": "Not a SHA-256 certificate fingerprint: {$fingerprint}. Enter each as 32 colon-separated hex bytes (AA:BB:…).",
+          "fingerprint_duplicate": "A certificate fingerprint is listed twice: {$fingerprint}",
+          "fingerprint_refused": "The certificate fingerprint was refused: {$fingerprint}. Enter each fingerprint once, as 32 colon-separated hex bytes.",
+          "team_id_invalid": "Enter the Team ID as ten letters and digits, such as ABCDE12345.",
+          "bundle_identifier_invalid": "Enter the bundle identifier as two or more dot-separated parts of letters, digits, and hyphens, such as com.example.reader."
         }
       },
       "royalties": {

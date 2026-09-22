@@ -1482,6 +1482,7 @@
       "email_error": "메일 설정을 표시할 수 없습니다",
       "payment_error": "결제 설정을 표시할 수 없습니다",
       "mobile_push_error": "모바일 푸시 설정을 표시할 수 없습니다",
+      "app_links_error": "앱 링크 설정을 표시할 수 없습니다",
       "royalties_error": "인세 설정을 표시할 수 없습니다",
       "section_error": "설정을 표시할 수 없습니다",
       "theme_error": "테마를 표시할 수 없습니다",
@@ -1677,6 +1678,8 @@
       "payment_description": "이 테넌트의 Stripe 결제 설정을 관리합니다.",
       "mobile_push_title": "설정 — 모바일 푸시",
       "mobile_push_description": "이 테넌트의 모바일 앱에 푸시 알림을 보낼 때 사용하는 Firebase 인증 정보를 관리합니다.",
+      "app_links_title": "설정 — 앱 링크",
+      "app_links_description": "이 테넌트의 링크가 열리는 Android 및 iOS 앱을 관리합니다.",
       "royalties_title": "설정 — 인세",
       "royalties_description": "이 테넌트의 인세 월을 명세서로 마감하는 방식을 선택합니다.",
       "account_title": "계정 설정",
@@ -1695,6 +1698,7 @@
         "payment": "결제",
         "royalties": "인세",
         "mobile_push": "모바일 푸시",
+        "app_links": "앱 링크",
         "policy": "제한 및 보존"
       },
       "image": {
@@ -1997,6 +2001,35 @@
           "not_service_account": "서비스 계정 키가 아닙니다. Firebase 콘솔의 프로젝트 설정 → 서비스 계정에서 내려받아 주세요.",
           "project_mismatch": "이 키는 \"{$entered}\"가 아니라 Firebase 프로젝트 \"{$key}\"의 키입니다. 모바일 앱이 빌드된 프로젝트의 키를 올리거나 프로젝트 ID를 고쳐 주세요.",
           "key_invalid": "이 서비스 계정 키는 사용할 수 없습니다. Firebase 콘솔의 프로젝트 설정 → 서비스 계정에서 새 비공개 키를 생성해 올려 주세요."
+        }
+      },
+      "app_links": {
+        "title": "앱 링크",
+        "description": "여기에 앱을 지정하면 이 사이트로 향하는 링크가 테넌트의 앱에서 열립니다. 각 스토어에 실제로 게시된 앱의 식별자를 입력하세요. 게시된 앱과 한 글자라도 다르면 링크는 브라우저에서 열립니다.",
+        "android_legend": "Android",
+        "android_enabled": "테넌트의 Android 앱에서 링크 열기",
+        "application_id": "애플리케이션 ID",
+        "application_id_description": "게시된 앱의 패키지 이름으로, 빌드에 사용한 앱 매니페스트의 android.applicationId이며 Google Play 주소의 id=에도 표시됩니다.",
+        "fingerprints": "SHA-256 서명 인증서 지문",
+        "fingerprints_description": "한 줄에 하나씩 최대 {$max}개까지, 콜론으로 구분한 16진수(AA:BB:…)로 입력합니다. Play 앱 서명을 사용한다면 Play Console에서 앱 서명 키 인증서의 지문을, 그렇지 않다면 릴리스 키스토어에 keytool -list -v를 실행한 결과를 복사하세요.",
+        "ios_legend": "iOS",
+        "ios_enabled": "테넌트의 iOS 앱에서 링크 열기",
+        "team_id": "Apple Team ID",
+        "team_id_description": "앱을 게시한 Apple Developer 팀의 10자리 ID로, Apple Developer 계정의 멤버십 세부 사항에 표시됩니다.",
+        "bundle_identifier": "번들 ID",
+        "bundle_identifier_description": "게시된 앱의 번들 ID로, 빌드에 사용한 앱 매니페스트의 ios.bundleIdentifier이며 App Store Connect의 앱 정보에도 표시됩니다.",
+        "submit": "앱 링크 저장",
+        "saved": "앱 링크를 저장했습니다.",
+        "load_failed": "앱 링크 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "앱 링크를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "application_id_invalid": "애플리케이션 ID는 com.example.reader처럼 점으로 구분한 두 부분 이상으로 입력하세요. 각 부분은 영문자로 시작하고 영문자, 숫자, 밑줄만 포함합니다.",
+          "fingerprints_count": "SHA-256 인증서 지문을 한 줄에 하나씩 1~{$max}개 입력하세요.",
+          "fingerprint_invalid": "SHA-256 인증서 지문이 아닙니다: {$fingerprint}. 콜론으로 구분한 16진수 32바이트(AA:BB:…)로 입력하세요.",
+          "fingerprint_duplicate": "같은 인증서 지문이 두 번 입력되었습니다: {$fingerprint}",
+          "fingerprint_refused": "인증서 지문이 거부되었습니다: {$fingerprint}. 각 지문을 한 번씩, 콜론으로 구분한 16진수 32바이트로 입력하세요.",
+          "team_id_invalid": "Team ID는 ABCDE12345처럼 영문자와 숫자 10자로 입력하세요.",
+          "bundle_identifier_invalid": "번들 ID는 com.example.reader처럼 영문자, 숫자, 하이픈으로 된 부분을 점으로 구분해 두 개 이상 입력하세요."
         }
       },
       "royalties": {
