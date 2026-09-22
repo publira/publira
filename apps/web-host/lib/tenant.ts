@@ -105,12 +105,18 @@ export interface TenantSiteInfo {
   acceptsPayments: boolean;
   /** Which ratings this tenant makes a reader prove an age for. */
   ageVerification: TenantAgeVerification;
+  /**
+   * The store listings of the tenant's app, where an episode sold in the app
+   * alone sends the reader. Absent where the app is not listed in that store.
+   */
+  appStoreUrl?: string;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
   copyrightText?: string;
   /** UI locale a reader gets when the URL does not name one. */
   defaultLocale: Locale;
   domain: string;
+  googlePlayUrl?: string;
   /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
@@ -224,6 +230,7 @@ export const getTenantSiteInfo = async (
     return {
       acceptsPayments: response.acceptsPayments === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
+      appStoreUrl: nonEmpty(response.appStoreUrl),
       commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
       // The server resolves the tenant value against the platform default
@@ -232,6 +239,7 @@ export const getTenantSiteInfo = async (
       // language would hide that mismatch behind pages nobody asked for.
       defaultLocale: requireSupportedLocale(response.defaultLocale),
       domain: trimmed(response.tenantDomain) ?? "",
+      googlePlayUrl: nonEmpty(response.googlePlayUrl),
       iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),
       iconImageVariants: toTenantImageVariants(
         response.theme?.iconImageVariants

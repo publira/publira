@@ -50,7 +50,9 @@ vi.mock("#lib/mfa-challenge", () => ({
   readMfaChallenge: mockReadMfaChallenge,
 }));
 
-vi.mock("#lib/qr-code", () => ({ toQrCodePath: mockToQrCodePath }));
+vi.mock("@publira/ui-components/qr-code", () => ({
+  toQrCodePath: mockToQrCodePath,
+}));
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 

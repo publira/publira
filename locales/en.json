@@ -2491,6 +2491,7 @@
       "retry": "Try again",
       "series_count": "{$count} published series",
       "site_fallback": "Site",
+      "sold_in_app": "Sold in the app",
       "unread": "Unread",
       "unset": "Not set",
       "updating": "Updating…",
@@ -2604,11 +2605,15 @@
         "up_to_date_title": "You are up to date"
       },
       "gate": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "guest_app_only_description": "This episode is sold in the app. If you have already bought it there, sign in with the same account.",
         "guest_payable_description": "To read this episode, sign in and buy it, or ask an administrator to grant you a ticket.",
         "guest_title": "This episode is paid",
         "guest_unpayable_description": "To read this episode, sign in and ask an administrator to grant you a ticket. This site cannot take purchases at the moment.",
         "login": "Sign in to read",
         "purchase": "Buy this episode",
+        "signed_in_app_only_description": "This episode is sold in the app. Buy it there with this account, and it opens here as well.",
         "signed_in_payable_description": "You do not have access. Your ticket has expired or has not been granted yet. If you have already bought this episode, check whether you are signed in with a different account.",
         "signed_in_title": "You cannot read this episode",
         "signed_in_unpayable_description": "This site cannot take purchases at the moment. Check whether your ticket has expired or has not been granted yet."

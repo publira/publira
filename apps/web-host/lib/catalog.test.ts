@@ -10,6 +10,7 @@ import {
   ReadingDirection,
   SeriesAgeRating,
   SeriesStatus,
+  SurfaceAvailability,
 } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +25,7 @@ import {
   listRankedSeries,
   listRelatedSeries,
   toEpisodeAccessState,
+  toEpisodePurchaseSurface,
 } from "./catalog";
 
 const {
@@ -89,6 +91,20 @@ describe("toEpisodeAccessState", () => {
   });
 });
 
+describe("toEpisodePurchaseSurface", () => {
+  it("Names the surfaces the server resolved", () => {
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.ALL)).toBe("all");
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.WEB)).toBe("web");
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.APP)).toBe("app");
+  });
+
+  it("Reads an unspecified value as sold on both surfaces", () => {
+    expect(toEpisodePurchaseSurface(SurfaceAvailability.UNSPECIFIED)).toBe(
+      "all"
+    );
+  });
+});
+
 describe("catalog.getSeriesDetail", () => {
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
@@ -116,6 +132,35 @@ describe("catalog.getSeriesDetail", () => {
         },
       },
     });
+  });
+
+  it("Carries where each listed episode may be bought", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        {
+          orderIndex: 1,
+          price: 300,
+          publicId: "EP_001",
+          purchaseAvailability: SurfaceAvailability.APP,
+        },
+        {
+          orderIndex: 2,
+          price: 300,
+          publicId: "EP_002",
+          purchaseAvailability: SurfaceAvailability.ALL,
+        },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(
+      result.ok && result.value?.episodes.map((e) => e.purchaseSurface)
+    ).toEqual(["app", "all"]);
   });
 });
 
@@ -186,9 +231,37 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.episode.ratingCount).toBe(12);
     expect(detail?.episode.readingDirection).toBe("rtl");
     expect(detail?.episode.spreadStartIndex).toBe(1);
+    expect(detail?.episode.purchaseSurface).toBe("all");
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+  });
+
+  it("Carries an episode sold in the app alone", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        orderIndex: 1,
+        price: 300,
+        publicId: "EP_001",
+        purchaseAvailability: SurfaceAvailability.APP,
+        title: "Episode 1",
+      },
+      images: [],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    expect(result.ok && result.value?.episode.purchaseSurface).toBe("app");
   });
 
   it("Carries the series rating so the episode page can interpose a confirmation", async () => {

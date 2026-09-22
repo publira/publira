@@ -2,6 +2,7 @@
 
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { toQrCodePath } from "@publira/ui-components/qr-code";
 import { updateTag } from "next/cache";
 
 import { getActionLocale } from "#lib/action-messages";
@@ -21,7 +22,6 @@ import type {
   MfaEnrollmentStartState,
   MfaRecoveryCodesState,
 } from "#lib/mfa-action-state";
-import { toQrCodePath } from "#lib/qr-code";
 
 /**
  * The operator's own second factor, managed from their account settings.

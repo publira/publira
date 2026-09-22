@@ -1,9 +1,9 @@
 "use client";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { QrCodePath } from "#lib/qr-code";
+import { QrCode } from "@publira/ui-components/qr-code";
+import type { QrCodePath } from "@publira/ui-components/qr-code";
 
-import { QrCode } from "./qr-code";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 interface MfaEnrollmentSecretProps {
   qr: QrCodePath;
@@ -34,7 +34,7 @@ export const MfaEnrollmentSecret = ({
 
       <div className="flex justify-center">
         <QrCode
-          label={t("admin.auth.mfa.enroll_qr_label")}
+          aria-label={t("admin.auth.mfa.enroll_qr_label")}
           path={qr.path}
           size={qr.size}
         />

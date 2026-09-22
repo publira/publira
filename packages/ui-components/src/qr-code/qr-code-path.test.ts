@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toQrCodePath } from "./qr-code";
+import { toQrCodePath } from "./qr-code-path";
 
 /** An enrollment URI of the shape `StartMfaEnrollment` answers with. */
 const OTPAUTH_URI = `otpauth://totp/Publira:admin@example.com?${new URLSearchParams(

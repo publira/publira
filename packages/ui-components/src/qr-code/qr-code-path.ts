@@ -1,10 +1,10 @@
 /**
  * QR codes for the screen, as SVG geometry rather than markup.
  *
- * The enrollment URI is produced by a Server Action and drawn by a Client
- * Component, so what crosses that boundary is one path string and the module
- * count — not the matrix (thousands of booleans) and not a blob of SVG that
- * would have to be injected as raw HTML.
+ * The text is often encoded on the server and drawn by a Client Component, so
+ * what crosses that boundary is one path string and the module count — not
+ * the matrix (thousands of booleans) and not a blob of SVG that would have to
+ * be injected as raw HTML.
  */
 
 import { encode } from "uqr";

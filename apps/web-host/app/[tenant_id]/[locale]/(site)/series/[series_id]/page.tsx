@@ -1,4 +1,3 @@
-import { toIntlLocale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import {
@@ -22,6 +21,7 @@ import { AgeRatingGate } from "#components/age-rating-gate";
 import { CHIP, TAG_CHIP } from "#components/chip";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
+import { EpisodePrice } from "#components/episode-price";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -525,15 +525,11 @@ const SeriesDetailContent = async (
                       <span className="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground sm:mt-0 sm:w-56 sm:shrink-0">
                         <span className="flex items-baseline gap-3">
                           <span className="tabular-nums">
-                            {episode.price > 0 ? (
-                              `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
-                            ) : (
-                              <Suspense
-                                fallback={<SkeletonLine className="h-4 w-8" />}
-                              >
-                                <Message message="host.common.free" />
-                              </Suspense>
-                            )}
+                            <EpisodePrice
+                              locale={locale}
+                              price={episode.price}
+                              purchaseSurface={episode.purchaseSurface}
+                            />
                           </span>
                           <Suspense fallback={null}>
                             <EpisodeReadMarker

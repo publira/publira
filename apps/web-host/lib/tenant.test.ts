@@ -102,6 +102,34 @@ describe("tenant", () => {
     expect(info?.acceptsPayments).toBe(false);
   });
 
+  it("Carry the store listings of the tenant's app", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      appStoreUrl: " https://apps.apple.com/app/id123 ",
+      googlePlayUrl: "https://play.google.com/store/apps/details?id=test",
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.appStoreUrl).toBe("https://apps.apple.com/app/id123");
+    expect(info?.googlePlayUrl).toBe(
+      "https://play.google.com/store/apps/details?id=test"
+    );
+  });
+
+  it("Treat a store the app is not listed in as absent", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      appStoreUrl: "",
+      googlePlayUrl: "",
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.appStoreUrl).toBeUndefined();
+    expect(info?.googlePlayUrl).toBeUndefined();
+  });
+
   it("Carry the VAPID public key a browser subscribes to Web Push with", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,

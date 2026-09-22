@@ -2491,6 +2491,7 @@
       "retry": "다시 시도",
       "series_count": "공개 중인 시리즈 {$count}건",
       "site_fallback": "사이트",
+      "sold_in_app": "앱에서 판매",
       "unread": "읽지 않음",
       "unset": "미설정",
       "updating": "업데이트 중…",
@@ -2604,11 +2605,15 @@
         "up_to_date_title": "최신 에피소드까지 읽었습니다"
       },
       "gate": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "guest_app_only_description": "이 에피소드는 앱에서 판매합니다. 이미 앱에서 구매하셨다면 같은 계정으로 로그인해 주세요.",
         "guest_payable_description": "이 에피소드를 읽으려면 로그인한 뒤 구매하거나, 관리자에게 이용권을 받아야 합니다.",
         "guest_title": "이 에피소드는 유료입니다",
         "guest_unpayable_description": "이 에피소드를 읽으려면 로그인한 뒤 관리자에게 이용권을 받아야 합니다. 현재 이 사이트에서는 구매할 수 없습니다.",
         "login": "로그인하고 읽기",
         "purchase": "결제 진행하기",
+        "signed_in_app_only_description": "이 에피소드는 앱에서 판매합니다. 이 계정으로 앱에서 구매하면 여기에서도 읽을 수 있습니다.",
         "signed_in_payable_description": "열람 권한이 없습니다. 이용권이 만료되었거나 아직 부여되지 않았습니다. 이미 구매하셨다면 다른 계정으로 로그인하지 않았는지 확인해 주세요.",
         "signed_in_title": "이 에피소드는 읽을 수 없습니다",
         "signed_in_unpayable_description": "현재 이 사이트에서는 구매할 수 없습니다. 이용권이 만료되었거나 아직 부여되지 않았는지 확인해 주세요."

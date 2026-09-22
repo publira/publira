@@ -22,6 +22,7 @@ import {
   CommentMode,
   ReadingDirection,
   SeriesStatus,
+  SurfaceAvailability,
 } from "@publira/api-client/public/types";
 import type {
   Creator,
@@ -204,6 +205,7 @@ export interface EpisodeItem {
   title: string;
   orderIndex: number;
   price: number;
+  purchaseSurface: EpisodePurchaseSurface;
   status: string;
   publishedAt: string;
 }
@@ -230,6 +232,7 @@ export interface EpisodeDetail {
   price: number;
   publicId: string;
   publishedAt: string;
+  purchaseSurface: EpisodePurchaseSurface;
   /**
    * How many readers have reacted to this episode. Headcount, not presses,
    * so a five-press rating still counts as one.
@@ -262,6 +265,7 @@ type RawEpisode = Pick<
   | "price"
   | "publicId"
   | "publishedAt"
+  | "purchaseAvailability"
   | "ratingCount"
   | "readingDirection"
   | "readingPeriodHours"
@@ -292,12 +296,36 @@ const toEpisodeReadingDirection = (
   return DEFAULT_READING_DIRECTION;
 };
 
+/**
+ * Where an episode may be bought, already resolved by the server from the
+ * tenant through the series to the episode. The storefront offers its checkout
+ * unless this is `"app"`, which `StartEpisodeCheckout` refuses from the web.
+ */
+export type EpisodePurchaseSurface = "all" | "app" | "web";
+
+/**
+ * Unspecified is read as both surfaces, which is how every episode was sold
+ * before the setting existed; the server still refuses a checkout it forbids.
+ */
+export const toEpisodePurchaseSurface = (
+  availability: SurfaceAvailability | undefined
+): EpisodePurchaseSurface => {
+  if (availability === SurfaceAvailability.APP) {
+    return "app";
+  }
+  if (availability === SurfaceAvailability.WEB) {
+    return "web";
+  }
+  return "all";
+};
+
 const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
   orderIndex: episode.orderIndex ?? 0,
   price: episode.price ?? 0,
   publicId: episode.publicId ?? "",
   publishedAt: episode.publishedAt ?? "",
+  purchaseSurface: toEpisodePurchaseSurface(episode.purchaseAvailability),
   ratingCount: Number(episode.ratingCount ?? 0),
   readingDirection: toEpisodeReadingDirection(episode.readingDirection),
   readingPeriodHours: episode.readingPeriodHours ?? 0,
@@ -1307,6 +1335,7 @@ export const getSeriesDetail = async (
         price: e.price ?? 0,
         publicId: e.publicId ?? "",
         publishedAt: e.publishedAt ?? "",
+        purchaseSurface: toEpisodePurchaseSurface(e.purchaseAvailability),
         status: e.status ?? "",
         title: e.title ?? "",
       }))

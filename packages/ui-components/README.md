@@ -46,6 +46,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 - [SectionError](./src/section-error) - one section of a page that failed to load
 - [sectionErrorFallback](./src/section-error-fallback) - the body of a section-level error boundary
 - [OfflineNotice](./src/offline-notice) - the floating notice shown while the connection is gone
+- [QrCode / toQrCodePath](./src/qr-code) - a QR code for a camera to read
 
 ## Usage
 

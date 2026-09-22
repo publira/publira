@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import type { QrCodePath } from "@publira/ui-components/qr-code";
 import { useActionState } from "react";
 
 import {
@@ -22,7 +23,6 @@ import type {
   MfaEnrollmentStartState,
   MfaRecoveryCodesState,
 } from "#lib/mfa-action-state";
-import type { QrCodePath } from "#lib/qr-code";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
