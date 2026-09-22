@@ -62,9 +62,10 @@ e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 # RustFS through the published port, so a container-only probe would miss it.
 wait_http "rustfs" "http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}/health"
 
-# One probe for all three namespaces: the internal listener reports a check per
-# database role, so this is ready only once every one of them answers.
-wait_http "api/readyz" \
+# One probe for all three namespaces and the images: the internal listener
+# reports a check per database role, so this is ready only once every one of
+# them answers.
+wait_http "server/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
@@ -74,10 +75,6 @@ wait_http "email-renderer/readyz" \
 
 wait_http "worker/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_WORKER_PORT}/readyz" \
-  --expect-body-regex "${JSON_OK_REGEX}"
-
-wait_http "image-server/readyz" \
-  "http://127.0.0.1:${PUBLIRA_E2E_IMAGE_SERVER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.

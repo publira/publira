@@ -25,9 +25,9 @@ start_worker() {
     return 0
   fi
 
-  local bin="${REPO_ROOT}/server/bin/worker"
+  local bin="${REPO_ROOT}/server/bin/publira"
   if [[ ! -x "${bin}" ]]; then
-    e2e_err "worker binary not found at ${bin}; run: task server:build"
+    e2e_err "publira binary not found at ${bin}; run: task server:build"
     exit 1
   fi
 
@@ -52,7 +52,7 @@ start_worker() {
       PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
       AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
       AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-      "${bin}"
+      "${bin}" worker
   ) >> "${LOG_DIR}/worker.log" 2>&1 &
   write_pid "worker" $!
 }

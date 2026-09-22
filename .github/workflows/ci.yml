@@ -190,11 +190,10 @@ jobs:
               - *docs_excluded
               - 'mobile/**'
               - 'e2e/compose.yaml'
-              - 'e2e/scripts/api-server.sh'
               - 'e2e/scripts/db-setup.sh'
               - 'e2e/scripts/down.sh'
-              - 'e2e/scripts/image-server.sh'
               - 'e2e/scripts/lib.sh'
+              - 'e2e/scripts/server.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
               - 'e2e/scripts/upload-episode-pages.sh'
@@ -290,18 +289,10 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
-            docker_api:
+            docker_server:
               - *docs_excluded
               - 'server/**'
-              - 'infra/docker/api/**'
-              - 'infra/docker/Taskfile.yaml'
-              - '.dockerignore'
-              - '.github/workflows/ci.yml'
-              - 'scripts/ci-plan-jobs.sh'
-            docker_image:
-              - *docs_excluded
-              - 'server/**'
-              - 'infra/docker/image/**'
+              - 'infra/docker/server/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
@@ -331,8 +322,7 @@ jobs:
             docker_core:
               - *docs_excluded
               - 'infra/docker/web/**'
-              - 'infra/docker/api/**'
-              - 'infra/docker/image/**'
+              - 'infra/docker/server/**'
               - 'infra/docker/publiractl/**'
               - 'infra/docker/node/**'
               - 'infra/docker/Taskfile.yaml'
@@ -359,8 +349,7 @@ jobs:
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
-          FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
-          FILTER_DOCKER_IMAGE: ${{ steps.filter.outputs.docker_image }}
+          FILTER_DOCKER_SERVER: ${{ steps.filter.outputs.docker_server }}
           FILTER_DOCKER_PUBLIRACTL: ${{ steps.filter.outputs.docker_publiractl }}
           FILTER_DOCKER_NODE: ${{ steps.filter.outputs.docker_node }}
           FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
@@ -762,16 +751,15 @@ jobs:
       - name: Dependencies / Install
         run: task mobile:deps
 
-      - name: Build / Public API
+      - name: Build / Server
         run: task server:build
 
-      - name: Start / Public API stack
+      - name: Start / Server stack
         run: |
           set -euo pipefail
           bash e2e/scripts/up.sh
           bash e2e/scripts/db-setup.sh
-          bash e2e/scripts/api-server.sh start-wait
-          bash e2e/scripts/image-server.sh start-wait
+          bash e2e/scripts/server.sh start-wait
 
       - name: Enable KVM
         run: |
@@ -796,14 +784,12 @@ jobs:
       - name: Build / Tenant Android app
         run: task mobile:build -- mobile/config/app.example.yaml apk
         env:
-          PUBLIRA_API_BASE_URL: https://reader.example.com/api
-          PUBLIRA_IMAGE_BASE_URL: https://reader.example.com
+          PUBLIRA_BASE_URL: https://reader.example.com
 
-      - name: Teardown / Public API stack
+      - name: Teardown / Server stack
         if: always()
         run: |
-          bash e2e/scripts/image-server.sh stop || true
-          bash e2e/scripts/api-server.sh stop || true
+          bash e2e/scripts/server.sh stop || true
           bash e2e/scripts/down.sh || true
 
       - name: Upload / Mobile E2E artifacts
@@ -1100,8 +1086,8 @@ jobs:
           DOCKER_EXTRA: ${{ matrix.extra }}
         run: |
           set -euo pipefail
-          # The publiractl role takes no build ARG, so an empty entry must not reach
-          # task as an empty task name.
+          # The server and publiractl roles take no build ARG, so an empty entry
+          # must not reach task as an empty task name.
           args=()
           if [ -n "${DOCKER_ARG}" ]; then
             args+=("${DOCKER_ARG}")

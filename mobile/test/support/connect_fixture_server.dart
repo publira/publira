@@ -649,6 +649,12 @@ class ConnectFixtureServer {
       await request.response.close();
       return;
     }
+    // `publira server` answers the public API under `/api` alone.
+    if (!path.startsWith('/api/')) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
 
     final body = await _readBody(request);
     requests.add(

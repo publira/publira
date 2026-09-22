@@ -84,7 +84,7 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 	}
 }
 
-// startWorkerWithMaintenanceJobs boots the worker the way cmd/worker does:
+// startWorkerWithMaintenanceJobs boots the worker the way `publira worker` does:
 // River on the superuser pool that owns its schema, and the jobs on the
 // maintenance role's own connection. It answers a function that stops it.
 func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv, source storage.ReclaimerSource) func() {

@@ -30,7 +30,7 @@ void main() {
 
   Future<void> expectSeed({String? baseUrl, String? seriesPublicId}) =>
       expectLiveSeed(
-        apiBaseUrl: baseUrl ?? server.baseUrl,
+        baseUrl: baseUrl ?? server.baseUrl,
         tenantHost: 'localhost',
         seriesPublicId: seriesPublicId ?? ConnectFixtureServer.seedSeriesId,
       );

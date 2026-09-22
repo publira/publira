@@ -7,58 +7,49 @@ import 'package:publira/push/firebase_config.dart';
 /// of flavors.
 class AppConfig {
   const AppConfig({
-    required this.apiBaseUrl,
+    required this.baseUrl,
     required this.tenantHost,
-    this.imageBaseUrl = defaultImageBaseUrl,
     this.firebase,
   });
 
   factory AppConfig.fromEnvironment() {
     return AppConfig(
-      apiBaseUrl: const String.fromEnvironment(
-        'PUBLIRA_API_BASE_URL',
-        defaultValue: defaultApiBaseUrl,
+      baseUrl: const String.fromEnvironment(
+        'PUBLIRA_BASE_URL',
+        defaultValue: defaultBaseUrl,
       ),
       tenantHost: const String.fromEnvironment(
         'PUBLIRA_TENANT_HOST',
         defaultValue: defaultTenantHost,
       ),
-      imageBaseUrl: const String.fromEnvironment(
-        'PUBLIRA_IMAGE_BASE_URL',
-        defaultValue: defaultImageBaseUrl,
-      ),
       firebase: FirebaseConfig.fromEnvironment(),
     );
   }
 
-  /// Connect HTTP listener of `api-server` (not the internal gRPC port).
-  static const defaultApiBaseUrl = 'http://127.0.0.1:8000';
-
-  /// HTTP listener of `image-server`, which serves episode body images.
-  static const defaultImageBaseUrl = 'http://127.0.0.1:8200';
+  /// The edge listener of `publira server` (not the internal gRPC port),
+  /// which serves the public API under `/api` and the images under `/images`.
+  static const defaultBaseUrl = 'http://127.0.0.1:8000';
 
   /// Dev-seed tenant host (`db/seeds/dev/001_tenant_users.sql`).
   static const defaultTenantHost = 'localhost';
 
   /// Android emulator loopback to the host machine.
-  static const androidEmulatorApiBaseUrl = 'http://10.0.2.2:8000';
-  static const androidEmulatorImageBaseUrl = 'http://10.0.2.2:8200';
+  static const androidEmulatorBaseUrl = 'http://10.0.2.2:8000';
 
-  final String apiBaseUrl;
-  final String imageBaseUrl;
+  /// The origin the public API and the images are served from, whether that
+  /// is the tenant's site behind the edge or `publira server` itself.
+  final String baseUrl;
   final String tenantHost;
 
   /// The Firebase project the push notifications arrive from, or `null` when
   /// this build was given none and push is off.
   final FirebaseConfig? firebase;
 
-  Uri get apiBaseUri => Uri.parse(apiBaseUrl);
-
-  /// Resolves an `image_url` from the API against [imageBaseUrl]. The API
+  /// Resolves an `image_url` from the API against [baseUrl]. The API
   /// hands out a host-relative path, and keeps the media token it may carry in
   /// the query, so the whole reference has to survive the join.
   Uri imageUri(String imageUrl) =>
-      Uri.parse(imageBaseUrl).resolveUri(Uri.parse(imageUrl));
+      Uri.parse(baseUrl).resolveUri(Uri.parse(imageUrl));
 
   /// Headers a public image request carries.
   ///

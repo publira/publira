@@ -11,12 +11,11 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | Role | Path | Target | Primary ARGs |
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
-| API (long-running) | [`api/Dockerfile`](./api/Dockerfile) | HTTP servers in `server/cmd/*` without CGO | `CMD_NAME`, `PORT` |
-| Image (long-running) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` (Manael / libvips) | `CMD_NAME`, `PORT` |
+| Server (long-running) | [`server/Dockerfile`](./server/Dockerfile) | `server/cmd/publira`, run as `publira server` (the API and image delivery, Manael / libvips) or `publira worker` | `VERSION` |
 | publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line, including manual runs of every maintenance job) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
-A deployment runs the long-running images and nothing on a timer: the worker (the API role with `CMD_NAME=worker`) schedules every recurring job, the maintenance jobs included. The publiractl image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
+A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
 
 Keep the Dev Container separate from production images.
 
@@ -46,15 +45,9 @@ What is being containerized?
 │    → --build-arg APP_NAME=<name>   # package name is @publira/<name>
 │    → Set PORT when needed (default: 3000)
 │
-├─ A long-running Go HTTP server (server/cmd/<name>, no CGO)
-│    → infra/docker/api/Dockerfile
-│    → --build-arg CMD_NAME=<name>
-│    → Set PORT when needed (default: 8000)
-│
-├─ The Go image server (image-server)
-│    → infra/docker/image/Dockerfile
-│    → --build-arg CMD_NAME=<name>
-│    → Set PORT when needed (default: 8200)
+├─ A long-lived Go process (`publira server` or `publira worker`)
+│    → infra/docker/server/Dockerfile (no build ARG; one image for both)
+│    → Select the process with container arguments: docker run publira/publira:local worker
 │
 ├─ A Go maintenance job (run by hand; the worker schedules it)
 │    → infra/docker/publiractl/Dockerfile (no build ARG)
@@ -72,9 +65,8 @@ What is being containerized?
 
 ### Naming
 
-- **Role directories** use a short category name (`web` / `api` / `image` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for.
+- **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
-- **`CMD_NAME`** is the directory name directly under `server/cmd/` (for example, `api-server`).
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
 
 ## Build conventions
@@ -105,19 +97,12 @@ docker build -f infra/docker/web/Dockerfile \
   --build-arg APP_NAME=web-platform --build-arg PORT=4100 \
   -t publira/web-platform:local .
 
-# API
-docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=api-server --build-arg PORT=8000 \
-  -t publira/api-server:local .
+# Server (one image; the container argument picks the process)
+docker build -f infra/docker/server/Dockerfile \
+  -t publira/publira:local .
 
-docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=worker --build-arg PORT=8003 \
-  -t publira/worker:local .
-
-# Image (Manael / libvips)
-docker build -f infra/docker/image/Dockerfile \
-  --build-arg CMD_NAME=image-server --build-arg PORT=8200 \
-  -t publira/image-server:local .
+docker run --rm publira/publira:local          # publira server
+docker run --rm publira/publira:local worker   # publira worker
 
 # publiractl (all jobs share one image; choose the job with container arguments)
 docker build -f infra/docker/publiractl/Dockerfile \
@@ -136,7 +121,7 @@ docker build -f infra/docker/node/Dockerfile \
 | Stage | Contents |
 | --- | --- |
 | Build | Debian-based image with the full toolchain (Node bookworm-slim / golang bookworm) |
-| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; Go API / publiractl: `static:nonroot`). Image servers alone use `debian:bookworm-slim` plus `libvips42` (CGO). |
+| Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; publiractl: `static:nonroot`). The server image alone uses `debian:bookworm-slim` plus `libvips42` (CGO, for Manael). |
 | Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
 | Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the same form as [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
 
@@ -145,7 +130,7 @@ Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide
 ### Main runtime environment variables (reference)
 
 - Web: `PORT`, `HOSTNAME` (an image default is present), **`PUBLIRA_AUTH_SECRET` (required; at least 32 bytes; leaving it unset makes session-Cookie encryption and decryption throw)**, `PUBLIRA_REDIS_URL`, and `PUBLIRA_CACHE_APP` (defaults to `APP_NAME` at build time)
-- API: **`PUBLIRA_AUTH_JWT_SECRET` (required; at least 32 bytes; without it, the server cannot start because it has no access-token signing key)**, app-specific values such as `PUBLIRA_*_DB_URL`. The binary configures its listener; `PORT` is `EXPOSE` and documentation metadata.
+- Server: **`PUBLIRA_AUTH_JWT_SECRET` (required for `server`; at least 32 bytes; without it, the process cannot start because it has no access-token signing key)**, and the `PUBLIRA_*_DB_URL` of the roles each process connects as. The binary configures its listeners; the `EXPOSE` lines are documentation metadata.
 - Node: `PORT` (default: 8080) and `HOST` (image default: `0.0.0.0`). The email renderer has no external dependencies, so it requires no other variables.
 
 See each service's README and Dockerfile comments for details.
@@ -172,18 +157,17 @@ Prerequisites: run from the repository root with Docker Engine and Buildx availa
 
 ### Representative images (routine verification)
 
-The five primary build paths for Issues and CI are the following representatives, one for each role:
+The four primary build paths for Issues and CI are the following representatives, one for each role:
 
 ```bash
-# All at once (web-host / api-server / publiractl / email-renderer / image-server)
+# All at once (web-host / publira / publiractl / email-renderer)
 task docker:verify
 
 # Or individually
 task docker:build:web APP_NAME=web-host PORT=3000
-task docker:build:api CMD_NAME=api-server PORT=8000
+task docker:build:server
 task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
-task docker:build:image CMD_NAME=image-server PORT=8200
 ```
 
 Runtime smoke tests for distroless images without external dependencies:
@@ -193,7 +177,7 @@ task docker:smoke:web APP_NAME=web-host PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. API and publiractl runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
+`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. Server and publiractl runtime smoke tests need dependencies such as the database and object storage, so **a successful image build is their gate**. Check startup through the orchestrator or an integration environment.
 
 ### All images (before release or after large Dockerfile changes)
 
@@ -241,14 +225,13 @@ Use **change detection (role representatives) plus nightly full builds**.
 | Role | Representative target | Watched paths (summary) |
 | --- | --- | --- |
 | web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
-| api | `api-server` | `server/**`, `infra/docker/api/**` |
-| image | `image-server` | `server/**`, `infra/docker/image/**` |
+| server | `publira` | `server/**`, `infra/docker/server/**` |
 | publiractl | `publiractl` | `server/**`, `infra/docker/publiractl/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
-Changes under `server/**` build the api, publiractl, and image representatives because they share modules. `locales/**` is used by web and node because `@publira/i18n/catalog` and `@publira/email-templates` bundle repository-root message catalogs through relative imports.
+Changes under `server/**` build the server and publiractl representatives because they share modules. `locales/**` is used by web and node because `@publira/i18n/catalog` and `@publira/email-templates` bundle repository-root message catalogs through relative imports.
 
-Implementation: the `docker` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Job planning: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), which turns path-filter results into the Docker matrix. The local commands are the same: `task docker:build:web|api|image|publiractl|node` (Web then runs `task docker:smoke:web`, and Node then runs `task docker:smoke:node`).
+Implementation: the `docker` job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Job planning: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), which turns path-filter results into the Docker matrix. The local commands are the same: `task docker:build:web|server|publiractl|node` (Web then runs `task docker:smoke:web`, and Node then runs `task docker:smoke:node`).
 
 Like other jobs, `Docker / <target>` can be skipped by its path filter. The only required check in the branch ruleset is the final aggregation job **`Summary`** (shown as `CI / Summary` in the UI); skipped intermediate jobs count as success.
 
@@ -273,7 +256,7 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
 
    | Symptom | Likely cause |
    | --- | --- |
-   | `ERROR: APP_NAME/CMD_NAME is required` | A missing build argument |
+   | `ERROR: APP_NAME is required` | A missing build argument |
    | context / file not found | Running outside the root, or an overly broad `.dockerignore` exclusion |
    | `turbo prune` / `pnpm install` failure | Lockfile inconsistency, workspace name, or incorrect `APP_NAME` |
    | `pnpm turbo run build` failure | An application build error; first run `pnpm build --filter @publira/<app>` on the host |

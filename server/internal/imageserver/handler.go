@@ -16,7 +16,6 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/tracing"
@@ -159,6 +158,10 @@ type imageCredential struct {
 // Which of the two a request arrived on is decided per request by
 // resolveTenantFromHost, and that answer picks the pool the request is
 // answered from as well as the rules the episode body route applies.
+//
+// The handler carries the image routes and nothing else: the health probes
+// belong to the listener it is mounted on, which names a check per pool that
+// listener serves, and the image routes may be one of several things on it.
 func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectStore, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
@@ -179,12 +182,6 @@ func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectSt
 	}
 	h.proxy = proxy
 	mux := http.NewServeMux()
-	// One check per pool: with two logins behind one listener, a single "db"
-	// could not say which of them stopped answering.
-	health.Register(mux,
-		health.WithDBNamed("db.public", public.Pool),
-		health.WithDBNamed("db.admin", admin.Pool),
-	)
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)

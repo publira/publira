@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
-import { startApiServer, stopApiServer } from "../src/api-server";
+import { startServer, stopServer } from "../src/server";
 import { hostPath, uncachedTenantBaseUrl } from "../src/urls";
 
 /**
@@ -27,11 +27,11 @@ test.describe("web-host public API outage", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeAll(() => {
-    stopApiServer();
+    stopServer();
   });
 
   test.afterAll(() => {
-    startApiServer();
+    startServer();
   });
 
   test("answers 503 with Retry-After while the tenant cannot be resolved", async ({
@@ -64,7 +64,7 @@ test.describe("web-host public API outage", () => {
    * seen a failure.
    *
    * Unlike its neighbours this one navigates the default Host, and that is
-   * load-bearing: `stopApiServer()` breaks tenant resolution too, and `proxy`
+   * load-bearing: `stopServer()` breaks tenant resolution too, and `proxy`
    * answers 503 for a Host it cannot resolve — which would end the request
    * before any section renders. The default Host survives only because an
    * earlier navigation resolved it into the `createTenantIdResolver` LRU
@@ -81,7 +81,7 @@ test.describe("web-host public API outage", () => {
     // no published page and no route is still resolved to the tenant by
     // `proxy` before it answers "not found", and fills no catalog cache entry,
     // which is what keeps the reads below cold.
-    startApiServer();
+    startServer();
     const warmup = await page.goto(hostPath("/no-such-page-in-any-spec"));
     expect(warmup?.status(), await page.content()).toBe(404);
     await expect(
@@ -89,7 +89,7 @@ test.describe("web-host public API outage", () => {
     ).toBeVisible();
 
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
 
@@ -120,7 +120,7 @@ test.describe("web-host public API outage", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      startApiServer();
+      startServer();
     }
 
     // Same URL, no revalidation and no wait: the failure just rendered must not
@@ -145,7 +145,7 @@ test.describe("web-host public API outage", () => {
   });
 
   test("the same paths answer normally after recovery", async ({ page }) => {
-    startApiServer();
+    startServer();
 
     // Another never-resolved Host: 503 → 404 means tenant resolution reached
     // the API again and got a definitive answer, not a cached one.

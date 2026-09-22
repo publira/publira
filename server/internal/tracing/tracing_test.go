@@ -310,7 +310,7 @@ func TestHTTPMiddlewareContinuesTheIncomingTrace(t *testing.T) {
 		span.End()
 	})
 
-	server := httptest.NewServer(HTTPMiddleware(mux))
+	server := httptest.NewServer(HTTPMiddleware("publira-test", mux))
 	t.Cleanup(server.Close)
 
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/images/creators/01J0", nil)
@@ -357,7 +357,7 @@ func TestHTTPMiddlewareSkipsHealthProbes(t *testing.T) {
 	mux.HandleFunc("GET /livez", func(http.ResponseWriter, *http.Request) {})
 	mux.HandleFunc("GET /readyz", func(http.ResponseWriter, *http.Request) {})
 
-	server := httptest.NewServer(HTTPMiddleware(mux))
+	server := httptest.NewServer(HTTPMiddleware("publira-test", mux))
 	t.Cleanup(server.Close)
 
 	for _, path := range []string{"/livez", "/readyz"} {

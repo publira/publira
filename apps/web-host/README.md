@@ -67,7 +67,7 @@ The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over t
 
 ### Image delivery (`next/image`)
 
-`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of image-server. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through image-server — a temporary `blob:` preview, for instance — is `unoptimized`.
+`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of the server's image routes. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through `/images` — a temporary `blob:` preview, for instance — is `unoptimized`.
 
 ### Episode viewer (Canvas)
 
@@ -91,13 +91,13 @@ Which read supplies the pages depends on the episode's access, and so does the t
 
 `_lib/viewer-fetch.ts` derives the decryption key from that token and its subject, the same way for both, and decrypting a free body therefore needs no session. A page whose stream cannot be reversed fails on its own and keeps the reader's reload control; the rest of the body still draws.
 
-image-server encrypts every body it serves, free and entitled alike. A page that still arrives as an ordinary image is passed through untouched, which is what answers a reader a rolling deploy is still routing to an instance it has not replaced yet. What each body is bound to on the server side, and the `Cache-Control` it keeps, is in the [server README](../../server/README.md#image-delivery-manael).
+The server encrypts every body it serves, free and entitled alike. A page that still arrives as an ordinary image is passed through untouched, which is what answers a reader a rolling deploy is still routing to an instance it has not replaced yet. What each body is bound to on the server side, and the `Cache-Control` it keeps, is in the [server README](../../server/README.md#image-delivery-manael).
 
-`e2e/tests/host.viewer-performance.spec.ts` holds the drawing budget — time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero — against a seeded episode served through image-server. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
+`e2e/tests/host.viewer-performance.spec.ts` holds the drawing budget — time to the first page, the response and the drawn page of a page turn, and a cumulative layout shift of zero — against a seeded episode served through the server's image routes. The numbers, what each one covers, and how to measure them again are in [`e2e/README.md`](../../e2e/README.md).
 
 ### Brand images
 
-`link rel="icon"` and `link rel="apple-touch-icon"` are resolved by `lib/tenant-icon.ts`, and the header's brand mark by `lib/tenant-logo.ts`. Both read the tenant's branding variants from `getTenantSiteInfo()`, and image-server delivers them (`/images/tenants/{media_id}/icon`, `/images/tenants/{media_id}/logo`).
+`link rel="icon"` and `link rel="apple-touch-icon"` are resolved by `lib/tenant-icon.ts`, and the header's brand mark by `lib/tenant-logo.ts`. Both read the tenant's branding variants from `getTenantSiteInfo()`, and the server delivers them (`/images/tenants/{media_id}/icon`, `/images/tenants/{media_id}/logo`).
 
 ### Browser notifications (Web Push)
 

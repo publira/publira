@@ -235,7 +235,7 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 `Test / TypeScript` starts a Valkey service — the same image as `compose.yaml` — and sets `PUBLIRA_REDIS_URL` so `@publira/next-cache-handlers` integration tests reach Redis. Reproduce it with `pnpm test` in the Dev Container.
 
-`Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|api|image|publiractl|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
+`Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|server|publiractl|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
 
 ## Flutter SDK setup
 

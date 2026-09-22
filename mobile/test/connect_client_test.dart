@@ -229,7 +229,7 @@ void main() {
 
     expect(
       sent.url.toString(),
-      'https://example.test/publira.v1.CatalogService/ListPublishedSeries',
+      'https://example.test/api/publira.v1.CatalogService/ListPublishedSeries',
     );
     expect(sent.method, 'POST');
     expect(sent.headers['connect-protocol-version'], '1');
@@ -238,38 +238,23 @@ void main() {
     expect(jsonDecode(sent.body), const {'limit': 20});
   });
 
-  for (final (baseUrl, expected) in const [
-    (
-      'http://127.0.0.1:8000',
-      'http://127.0.0.1:8000/publira.v1.DomainService/GetTenantByDomain',
-    ),
-    (
-      'https://reader.example.com/api',
-      'https://reader.example.com/api/publira.v1.DomainService/GetTenantByDomain',
-    ),
-    (
-      'https://reader.example.com/api/',
-      'https://reader.example.com/api/publira.v1.DomainService/GetTenantByDomain',
-    ),
-  ]) {
-    test('unary sends the procedure under the path of $baseUrl', () async {
-      late http.Request sent;
-      final client = ConnectClient(
-        baseUrl: baseUrl,
-        httpClient: MockClient((request) async {
-          sent = request;
-          return http.Response('{}', 200);
-        }),
-      );
+  test('unary sends the procedure under /api on the base origin', () async {
+    late http.Request sent;
+    final client = ConnectClient(
+      baseUrl: 'http://127.0.0.1:8000',
+      httpClient: MockClient((request) async {
+        sent = request;
+        return http.Response('{}', 200);
+      }),
+    );
 
-      await client.unary(
-        '/publira.v1.DomainService/GetTenantByDomain',
-        const {},
-      );
+    await client.unary('/publira.v1.DomainService/GetTenantByDomain', const {});
 
-      expect(sent.url.toString(), expected);
-    });
-  }
+    expect(
+      sent.url.toString(),
+      'http://127.0.0.1:8000/api/publira.v1.DomainService/GetTenantByDomain',
+    );
+  });
 
   test('unary omits the tenant header when no tenant is given', () async {
     late http.Request sent;

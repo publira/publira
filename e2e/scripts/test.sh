@@ -4,7 +4,7 @@
 #
 # Sources lib.sh so a standalone `task e2e:test` gets the same environment as a
 # full run: scenario SQL needs PUBLIRA_DB_URL, and the outage scenario shells
-# out to api-server.sh with the PUBLIRA_E2E_* ports.
+# out to server.sh with the PUBLIRA_E2E_* ports.
 set -euo pipefail
 
 # shellcheck source=lib.sh

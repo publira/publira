@@ -7,10 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -33,7 +31,7 @@ import (
 )
 
 const (
-	serviceName = "publira-worker"
+	workerServiceName = "publira-worker"
 
 	defaultWorkerAddr        = ":8003"
 	defaultWorkerDBURL       = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
@@ -41,7 +39,10 @@ const (
 	defaultContentStatsDBURL = "postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable"
 )
 
-func main() {
+// runWorker hosts the one River client a deployment needs: it drains the
+// Outbox, runs the periodic jobs, and owns the maintenance jobs, so nothing
+// beside it has to invoke a job on a timer.
+func runWorker() int {
 	logger := logging.New(os.Stdout, nil)
 	slog.SetDefault(logger)
 
@@ -49,7 +50,7 @@ func main() {
 	// of publish-episodes is still a publira-publish-episodes trace, and a
 	// rebuild of the daily stats a publira-aggregate-content-stats one, now
 	// that none of them has a process or a schedule of its own.
-	serviceNames := append([]string{serviceName}, tickerjobs.ServiceNames()...)
+	serviceNames := append([]string{workerServiceName}, tickerjobs.ServiceNames()...)
 	serviceNames = append(serviceNames, maintenancejobs.ServiceNames()...)
 	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
 	if err != nil {
@@ -59,25 +60,25 @@ func main() {
 	cfg, err := config.New()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
-	db, err := sqldb.Open(resolveWorkerDBURL())
+	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer db.Close() //nolint:errcheck
 
 	// The periodic jobs get a pool of their own rather than sharing the one
 	// above. publira_outbox owns River's schema and holds CREATE on the public
-	// schema so rivermigrate can alter it; the three jobs promote episodes and
-	// drop caches and create nothing, so they connect as the role that can do
-	// only that.
-	tickerDB, err := sqldb.Open(resolveTickerDBURL())
+	// schema so rivermigrate can alter it; the jobs promote episodes and drop
+	// caches and create nothing, so they connect as the role that can do only
+	// that.
+	tickerDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_TICKER_DB_URL", defaultTickerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize the ticker jobs db", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer tickerDB.Close() //nolint:errcheck
 
@@ -103,19 +104,19 @@ func main() {
 	})
 	if err != nil {
 		logger.Error("failed to initialize the ticker jobs", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	logger.Info("ticker jobs registered", jobs.Settings()...)
 
 	// The rebuild and purge work connects as publira_content_stats, the role
-	// the batch subcommands have always used for it. It is the third login in
-	// this process and the third pool: what the work may reach is decided by
-	// the role, and a process that hosts three kinds of job is still not a
-	// reason for any of them to borrow another's privileges.
-	contentStatsDB, err := sqldb.Open(resolveContentStatsDBURL())
+	// the publiractl subcommands use for it. It is the third login in this
+	// process and the third pool: what the work may reach is decided by the
+	// role, and a process that hosts three kinds of job is still not a reason
+	// for any of them to borrow another's privileges.
+	contentStatsDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_CONTENT_STATS_DB_URL", defaultContentStatsDBURL))
 	if err != nil {
 		logger.Error("failed to initialize the maintenance jobs db", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer contentStatsDB.Close() //nolint:errcheck
 
@@ -129,7 +130,7 @@ func main() {
 		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
 		if managerErr != nil {
 			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
-			os.Exit(1)
+			return 1
 		}
 		encryptor = manager
 	}
@@ -148,7 +149,7 @@ func main() {
 	})
 	if err != nil {
 		logger.Error("failed to initialize the maintenance jobs", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
 
@@ -179,7 +180,7 @@ func main() {
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger}, invalidator))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	mux := http.NewServeMux()
@@ -192,10 +193,7 @@ func main() {
 		health.WithReady(worker.Ready),
 	)
 
-	addr := strings.TrimSpace(os.Getenv("PUBLIRA_WORKER_ADDR"))
-	if addr == "" {
-		addr = defaultWorkerAddr
-	}
+	addr := addrFromEnv("PUBLIRA_WORKER_ADDR", defaultWorkerAddr)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -209,42 +207,9 @@ func main() {
 		return errors.Join(db.Close(), tickerDB.Close(), contentStatsDB.Close())
 	}); err != nil {
 		logger.Error("worker failed", "error", err)
-		os.Exit(1)
+		return 1
 	}
-}
-
-// PUBLIRA_DB_URL is deliberately not a fallback here. It is the connection the
-// migration tooling uses — the superuser locally — so falling back to it would
-// hand the worker more privilege than publira_outbox wherever the variable is
-// left unset, which is exactly the mistake production must not make. Every
-// other server resolves its own role variable the same way, so an unset
-// variable lands on this role's development password and fails to authenticate
-// instead.
-func resolveWorkerDBURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_WORKER_DB_URL")); url != "" {
-		return url
-	}
-	return defaultWorkerDBURL
-}
-
-// resolveTickerDBURL returns the connection the periodic jobs run on.
-// PUBLIRA_DB_URL is no more a fallback here than it is for the worker's own
-// URL above, and for the same reason.
-func resolveTickerDBURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_TICKER_DB_URL")); url != "" {
-		return url
-	}
-	return defaultTickerDBURL
-}
-
-// resolveContentStatsDBURL returns the connection the maintenance jobs run on.
-// PUBLIRA_DB_URL is no more a fallback here than it is for the two URLs above,
-// and for the same reason.
-func resolveContentStatsDBURL() string {
-	if url := strings.TrimSpace(os.Getenv("PUBLIRA_CONTENT_STATS_DB_URL")); url != "" {
-		return url
-	}
-	return defaultContentStatsDBURL
+	return 0
 }
 
 // newRevalidateClient builds the client that sends Next.js cache tags. A
@@ -317,47 +282,4 @@ func resolveEmailRenderer(logger *slog.Logger) emailrenderer.Renderer {
 	}
 	logger.Info("html email parts are enabled", "email_renderer_url", url)
 	return emailrenderer.NewClient(url)
-}
-
-func envDuration(name string, fallback time.Duration) time.Duration {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return fallback
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil || d < 0 {
-		return fallback
-	}
-	return d
-}
-
-func envInt(name string, fallback int) int {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n < 0 {
-		return fallback
-	}
-	return n
-}
-
-// envSeconds reads a whole number of seconds, which is the unit the three
-// interval variables have carried since they configured processes of their own.
-func envSeconds(name string, fallback time.Duration) time.Duration {
-	raw := strings.TrimSpace(os.Getenv(name))
-	if raw == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n <= 0 {
-		return fallback
-	}
-	return time.Duration(n) * time.Second
-}
-
-func envInt32(name string, fallback int32) int32 {
-	n := envInt(name, int(fallback))
-	return int32(n)
 }

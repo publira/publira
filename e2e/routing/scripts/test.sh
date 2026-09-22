@@ -24,13 +24,14 @@ assert_route "web-platform other domain" GET platform.example.com /tenants web-p
 assert_route "web-admin host with port" GET admin.localhost:3080 / web-admin /
 assert_route "web-platform host with port" GET platform.localhost:3080 / web-platform /
 
-# /api is stripped before the request reaches api-server :8000, on every host.
-assert_route "api strip /api" GET localhost /api api /
-assert_route "api strip /api/" GET localhost /api/ api /
-assert_route "api strip nested path" GET localhost /api/readyz api /readyz
-assert_route "api strip deeper path" GET localhost /api/foo/bar api /foo/bar
-assert_route "api strip on admin host" GET admin.localhost /api/readyz api /readyz
-assert_route "api strip on platform host" GET platform.localhost /api/readyz api /readyz
+# /api reaches the server :8000 with the path intact, on every host: the
+# server's own routes carry the prefix.
+assert_route "api keeps /api" GET localhost /api api /api
+assert_route "api keeps /api/" GET localhost /api/ api /api/
+assert_route "api keeps a procedure path" GET localhost /api/publira.v1.CatalogService/ListPublishedSeries api /api/publira.v1.CatalogService/ListPublishedSeries
+assert_route "api keeps a deeper path" GET localhost /api/foo/bar api /api/foo/bar
+assert_route "api on admin host" GET admin.localhost /api/foo api /api/foo
+assert_route "api on platform host" GET platform.localhost /api/foo api /api/foo
 
 # /api/v1 is the exception: it is where the Next.js apps mount their Route
 # Handlers, so it stays on the app the host rules picked, prefix intact.
@@ -46,15 +47,15 @@ assert_route "bare /api/v1 stays on web-host" GET localhost /api/v1 web-host /ap
 
 # The exception ends at the path segment: /api/v1abc is not one of the Route
 # Handlers, so it is the public API like any other /api path.
-assert_route "api keeps /api/v1abc" GET localhost /api/v1abc api /v1abc
+assert_route "api keeps /api/v1abc" GET localhost /api/v1abc api /api/v1abc
 
-# /images outranks the host routers and is host-agnostic: one image server
-# answers for every host, and picks the rules it applies from the host name the
-# edge forwarded unrewritten.
-assert_route "images on default host" GET localhost /images/cover image-server /images/cover
-assert_route "images on platform host" GET platform.localhost /images/cover image-server /images/cover
-assert_route "images on admin host" GET admin.localhost /images/cover image-server /images/cover
-assert_route "images on numbered admin host" GET admin1.localhost /images/x image-server /images/x
+# /images outranks the host routers and is host-agnostic: the api backend
+# answers it for every host with the path intact, and picks the rules it
+# applies from the host name the edge forwarded unrewritten.
+assert_route "images on default host" GET localhost /images/cover api /images/cover
+assert_route "images on platform host" GET platform.localhost /images/cover api /images/cover
+assert_route "images on admin host" GET admin.localhost /images/cover api /images/cover
+assert_route "images on numbered admin host" GET admin1.localhost /images/x api /images/x
 
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The
 # Go servers adopt an inbound `traceparent` as the parent span, so a caller
@@ -64,11 +65,11 @@ assert_route "images on numbered admin host" GET admin1.localhost /images/x imag
 assert_trace_context_stripped "web-host drops trace context" GET localhost / web-host /
 assert_trace_context_stripped "web-admin drops trace context" GET admin.localhost / web-admin /
 assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
-assert_trace_context_stripped "api drops trace context" GET localhost /api/readyz api /readyz
-assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/readyz api /readyz
+assert_trace_context_stripped "api drops trace context" GET localhost /api/foo api /api/foo
+assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/foo api /api/foo
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-host /api/v1/revalidate
-assert_trace_context_stripped "image-server drops trace context" GET localhost /images/cover image-server /images/cover
-assert_trace_context_stripped "image-server on admin host drops trace context" GET admin.localhost /images/cover image-server /images/cover
+assert_trace_context_stripped "images drop trace context" GET localhost /images/cover api /images/cover
+assert_trace_context_stripped "images on admin host drop trace context" GET admin.localhost /images/cover api /images/cover
 
 # The headers the edge sets for the backend, on requests that forge all of
 # them. Tenant resolution reads `Host` and `X-Forwarded-Host`, the CSRF origin
@@ -79,8 +80,8 @@ assert_trace_context_stripped "image-server on admin host drops trace context" G
 assert_forwarded_headers "web-host is given the edge's forwarded headers" GET localhost / web-host
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
-assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/readyz api
-assert_forwarded_headers "image-server is given the edge's forwarded headers" GET localhost /images/cover image-server
-assert_forwarded_headers "image-server on admin host is given the edge's forwarded headers" GET admin.localhost /images/cover image-server
+assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/foo api
+assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
+assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api
 
 routing_log "=== route probes passed ==="

@@ -69,7 +69,7 @@ The role users and their development passwords come from `db/seeds/baseline`; ev
 
 Two things stay Dev Container only.
 
-- **Traefik.** The backend addresses it is given name the `app` container, so they do not reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API, `8200` for the image server), or point `infra/proxy/traefik/dynamic/services.yaml` at loopback.
+- **Traefik.** The backend addresses it is given name the `app` container, so they do not reach a process on the host. Open each app on its own port instead (`3000` / `4000` / `4100` for the three Next.js apps, `8000` for the API and the images), or point `infra/proxy/traefik/dynamic/services.yaml` at loopback.
 - **The seeded SMTP host.** `db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
 The per-worktree `dev-env` profiles described in [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) take their PostgreSQL, Valkey, and RustFS hosts from `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` when a profile is created, so export the values above before `task dev-env:create` as well.
@@ -119,7 +119,7 @@ The values written in this repository are **for local development and testing on
 
 ## API access token signing key (`PUBLIRA_AUTH_JWT_SECRET`)
 
-The Go API server (api-server) and the image server (image-server) issue an **HS256 JWT access token** at login and verify it on subsequent requests. `PUBLIRA_AUTH_JWT_SECRET` is that signing key.
+The Go server (`publira server`) issues an **HS256 JWT access token** at login and verifies it on subsequent requests, on the image routes included. `PUBLIRA_AUTH_JWT_SECRET` is that signing key.
 
 - It is **required**. There is no fallback in the code, and both of them exit at startup when it is unset or shorter than 32 bytes (`auth.NewTokenManagerFromEnv()`)
 - Leaking the key allows forging a token with an arbitrary `sub` / `aud` and calling the public API, the admin API, the platform API, and the image server. Issue one per environment (for example, `openssl rand -base64 32`)
@@ -146,7 +146,7 @@ For self-hosted and multi-instance deployments, the server-side cache of Next.js
 
 ## Object storage for development (RustFS)
 
-An S3-compatible **RustFS** container is part of the dependency stack (`compose.yaml`), so the apps take the same path as in production (episode image uploads and delivery by the image-server).
+An S3-compatible **RustFS** container is part of the dependency stack (`compose.yaml`), so the apps take the same path as in production (episode image uploads and delivery by `publira server`).
 
 - Console UI: `http://localhost:9001/rustfs/console/`
 - S3 endpoint: `http://rustfs:9000` from inside a container, `http://127.0.0.1:9000` from the host (path-style)

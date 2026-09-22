@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { imageServerLoader } from "./image-loader";
 
 describe("imageServerLoader", () => {
-  it("asks image-server for the requested width", () => {
+  it("asks the image routes for the requested width", () => {
     const url = new URL(
       imageServerLoader({
         src: "/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8",

@@ -1,4 +1,4 @@
-# The six backends, for the proxies that do not come with a compose file of
+# The four backends, for the proxies that do not come with a compose file of
 # their own. The Traefik half of the check overlays the Dev Container files
 # instead and gets its `app` from there; nginx and Caddy pair this file with
 # compose.nginx.yaml / compose.caddy.yaml.

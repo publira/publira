@@ -4,7 +4,7 @@
 The routing check puts one proxy in front of this process, which listens on
 every backend port the contract names and echoes what arrived — the path,
 and the headers the edge is supposed to have removed or set. That is how the
-suite asserts prefix removal, host matching, and the request headers each
+suite asserts the path each backend receives, host matching, and the request headers each
 backend is promised.
 """
 
@@ -28,13 +28,13 @@ FORWARDED_HEADERS: tuple[str, ...] = (
 )
 
 # Port -> backend name. Must match the addresses the proxy under test is
-# given, which are the ports every backend listens on.
+# given, which are the ports every backend listens on. The api backend
+# answers /images too, so there is no port of its own for the images.
 BACKENDS: dict[int, str] = {
     3000: "web-host",
     4000: "web-admin",
     4100: "web-platform",
     8000: "api",
-    8200: "image-server",
 }
 
 

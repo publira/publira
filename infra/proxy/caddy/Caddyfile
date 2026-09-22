@@ -52,18 +52,17 @@
 	}
 
 	route {
-		# Host-agnostic, like the API: one image server answers for the tenant
-		# site and the tenant console alike.
+		# Host-agnostic, like the API, and answered by the same process, with
+		# the path as it is: the server's own routes carry /images.
 		handle @images {
-			reverse_proxy {$PUBLIRA_UPSTREAM_IMAGE_SERVER:app:8200} {
+			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
 				import publira_forwarded
 			}
 		}
 
-		# The public API, reached with the prefix removed: /api/readyz arrives
-		# as /readyz and a bare /api arrives as /.
+		# The public API, reached with the path as it is: the server's own
+		# routes carry /api.
 		handle @api {
-			uri strip_prefix /api
 			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
 				import publira_forwarded
 			}

@@ -9,8 +9,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | Path | Role |
 | --- | --- |
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
-| `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) that stay `CGO_ENABLED=0` |
-| `image/Dockerfile` | The image server, which links Manael / libvips (`image-server`) |
+| `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
 | `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install; carries every maintenance job an operator runs by hand, which the worker schedules as well |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
@@ -25,15 +24,14 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    `docker build -f infra/docker/<role>/Dockerfile ... .`
 3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`.
 4. **Do not** reintroduce template → copy expansion under service directories.
-5. New runtime family (not web/api/image/publiractl/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
+5. New runtime family (not web/server/publiractl/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
 
 ### ARG map
 
 | Role | Required ARG | Optional | Resolves to |
 | --- | --- | --- | --- |
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
-| `api` | `CMD_NAME` (e.g. `api-server`) | `PORT` (default `8000`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
-| `image` | `CMD_NAME` (e.g. `image-server`) | `PORT` (default `8200`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
+| `server` | — | `VERSION` | `server/cmd/publira` → binary `/app/publira`; the process is the container argument (`server`, the default, or `worker`), not a build ARG |
 | `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`job <kind>`), not a build ARG |
 | `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
@@ -41,8 +39,8 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 
 1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
    - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
-   - Go API / publiractl: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
-   - Go image server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips)
+   - publiractl: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
+   - server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, same style as `.devcontainer/Dockerfile`:
 
@@ -51,15 +49,15 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    ARG TURBO_VERSION=2.10.8
    ```
 
-4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for API / image-server / Web:
+4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for server / Web:
    - liveness `GET /livez`
    - readiness `GET /readyz`
 5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`). `turbo prune` does not carry repo-root assets; `@publira/i18n/catalog` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
    - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
-7. **Go API / publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
-8. **Go image server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips.
+7. **publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
+8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
 9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
 
 ## Verification after Dockerfile changes
@@ -67,15 +65,14 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 From the **repository root**, prefer Task (same entrypoint as CI):
 
 ```bash
-# Role representatives (web-host / api-server / publiractl / email-renderer / image-server)
+# Role representatives (web-host / publira / publiractl / email-renderer)
 task docker:verify
 
 # Or only what you touched
 task docker:build:web APP_NAME=web-admin PORT=4000
-task docker:build:api CMD_NAME=api-server PORT=8000
+task docker:build:server
 task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
-task docker:build:image CMD_NAME=image-server PORT=8200
 
 # Runtime smoke (the roles that have no external dependencies)
 task docker:smoke:web APP_NAME=web-host PORT=3000

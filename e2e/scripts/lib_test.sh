@@ -37,7 +37,6 @@ stack_env() {
     -u PUBLIRA_E2E_PUBLIC_API_PORT \
     -u PUBLIRA_E2E_PUBLIC_API_GRPC_PORT \
     -u PUBLIRA_E2E_WORKER_PORT \
-    -u PUBLIRA_E2E_IMAGE_SERVER_PORT \
     -u PUBLIRA_E2E_EMAIL_RENDERER_PORT \
     -u PUBLIRA_E2E_EDGE_PORT \
     -u PUBLIRA_E2E_LOCK_HELD \
@@ -96,15 +95,6 @@ elif [[ "${mailpit_override_dir}" != *"-mp1027-"* ]]; then
   fail "PUBLIRA_E2E_MAILPIT_SMTP_PORT override dir ${mailpit_override_dir} does not encode mp1027"
 else
   pass "PUBLIRA_E2E_MAILPIT_SMTP_PORT override isolates RUN_DIR"
-fi
-
-image_override_dir="$(compute_run_dir PUBLIRA_E2E_IMAGE_SERVER_PORT=8210)"
-if [[ "${image_override_dir}" == "${default_run_dir}" ]]; then
-  fail "PUBLIRA_E2E_IMAGE_SERVER_PORT override still uses ${image_override_dir}"
-elif [[ "${image_override_dir}" != *"-img8210-"* ]]; then
-  fail "PUBLIRA_E2E_IMAGE_SERVER_PORT override dir ${image_override_dir} does not encode img8210"
-else
-  pass "PUBLIRA_E2E_IMAGE_SERVER_PORT override isolates RUN_DIR"
 fi
 
 renderer_override_dir="$(compute_run_dir PUBLIRA_E2E_EMAIL_RENDERER_PORT=8310)"

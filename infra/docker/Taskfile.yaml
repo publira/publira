@@ -5,7 +5,7 @@ version: "3"
 #
 # Examples:
 #   task docker:build:web APP_NAME=web-host PORT=3000
-#   task docker:build:api CMD_NAME=api-server PORT=8000
+#   task docker:build:server
 #   task docker:build:publiractl
 #   task docker:build:node APP_NAME=email-renderer PORT=8080
 #   task docker:verify
@@ -26,36 +26,16 @@ tasks:
           -t "publira/{{.APP_NAME}}:local" \
           .
 
-  build:api:
-    desc: Build a long-running Go API image (CMD_NAME required; PORT and VERSION optional)
-    requires:
-      vars: [CMD_NAME]
+  build:server:
+    desc: Build the publira image that runs `server` and `worker`, linking Manael/libvips (VERSION optional)
     vars:
-      PORT: '{{.PORT | default "8000"}}'
       VERSION: '{{.VERSION | default "dev"}}'
     cmds:
       - |
         docker build \
-          -f infra/docker/api/Dockerfile \
-          --build-arg "CMD_NAME={{.CMD_NAME}}" \
-          --build-arg "PORT={{.PORT}}" \
+          -f infra/docker/server/Dockerfile \
           --build-arg "VERSION={{.VERSION}}" \
-          -t "publira/{{.CMD_NAME}}:local" \
-          .
-
-  build:image:
-    desc: Build a Go image-server image that links Manael/libvips (CMD_NAME required; PORT optional, default 8200)
-    requires:
-      vars: [CMD_NAME]
-    vars:
-      PORT: '{{.PORT | default "8200"}}'
-    cmds:
-      - |
-        docker build \
-          -f infra/docker/image/Dockerfile \
-          --build-arg "CMD_NAME={{.CMD_NAME}}" \
-          --build-arg "PORT={{.PORT}}" \
-          -t "publira/{{.CMD_NAME}}:local" \
+          -t "publira/publira:local" \
           .
 
   build:publiractl:
@@ -86,27 +66,20 @@ tasks:
           .
 
   # Representative set shared by local checks and CI (path-filtered / PR).
-  # Covers each role once: web / api / publiractl / node / image.
+  # Covers each role once: web / server / publiractl / node.
   verify:
-    desc: Build representative images (web-host, api-server, publiractl, email-renderer, image-server)
+    desc: Build representative images (web-host, publira, publiractl, email-renderer)
     cmds:
       - task: build:web
         vars:
           APP_NAME: web-host
           PORT: "3000"
-      - task: build:api
-        vars:
-          CMD_NAME: api-server
-          PORT: "8000"
+      - task: build:server
       - task: build:publiractl
       - task: build:node
         vars:
           APP_NAME: email-renderer
           PORT: "8080"
-      - task: build:image
-        vars:
-          CMD_NAME: image-server
-          PORT: "8200"
 
   # Full matrix used by nightly CI and manual full verification.
   verify:full:
@@ -118,15 +91,10 @@ tasks:
         vars: { APP_NAME: web-admin, PORT: "4000" }
       - task: build:web
         vars: { APP_NAME: web-platform, PORT: "4100" }
-      - task: build:api
-        vars: { CMD_NAME: api-server, PORT: "8000" }
-      - task: build:api
-        vars: { CMD_NAME: worker, PORT: "8003" }
+      - task: build:server
       - task: build:publiractl
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
-      - task: build:image
-        vars: { CMD_NAME: image-server, PORT: "8200" }
 
   smoke:web:
     desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)

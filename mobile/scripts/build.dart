@@ -5,8 +5,8 @@
 //   dart run scripts/build.dart <manifest> <apk|appbundle|ios|ipa> [flutter build arguments]
 //
 // The flavor is production unless the arguments name another. A production
-// build reads the addresses it connects to from $PUBLIRA_API_BASE_URL and
-// $PUBLIRA_IMAGE_BASE_URL. The build fails when it changed the working tree.
+// build reads the origin it connects to from $PUBLIRA_BASE_URL. The build
+// fails when it changed the working tree.
 
 import 'dart:io';
 

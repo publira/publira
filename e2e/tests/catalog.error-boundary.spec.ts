@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
-import { startApiServer, stopApiServer } from "../src/api-server";
+import { startServer, stopServer } from "../src/server";
 import { hostPath } from "../src/urls";
 
 /**
@@ -45,11 +45,11 @@ test.describe("web-host site error boundary", () => {
   // Isolated project `catalog-error-boundary` (see playwright.config.ts).
   // Filename `.error-boundary.` is what keeps this file off the parallel
   // web-host project; it is chained after `catalog-outage` so the two
-  // stopApiServer specs cannot overlap.
+  // stopServer specs cannot overlap.
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {
-    startApiServer();
+    startServer();
   });
 
   /**
@@ -72,7 +72,7 @@ test.describe("web-host site error boundary", () => {
     ).toBeVisible();
 
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
 
@@ -87,7 +87,7 @@ test.describe("web-host site error boundary", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      startApiServer();
+      startServer();
     }
 
     // "can retry" means the retry recovers, not that a button exists: a

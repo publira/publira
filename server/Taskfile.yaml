@@ -27,35 +27,25 @@ tasks:
       - task: tidy
 
   dev:
-    desc: Run all server development APIs together
+    desc: Run the server and the worker together in development mode
     deps:
-      - task: dev-api
-      - task: dev-image-server
+      - task: dev-server
       - task: dev-worker
 
-  dev-api:
-    desc: Run the API server in development mode
-    cmds: [{ task: run, vars: { NAME: api-server } }]
-
-  dev-image-server:
-    desc: Run the image server in development mode
-    cmds: [{ task: run, vars: { NAME: image-server } }]
+  dev-server:
+    desc: Run the API and image delivery server in development mode
+    cmds:
+      - go run ./cmd/publira server
 
   dev-worker:
     desc: Run the background worker in development mode
-    cmds: [{ task: run, vars: { NAME: worker } }]
+    cmds:
+      - go run ./cmd/publira worker
 
   lint:
     desc: Run golangci-lint over the server module
     cmds:
       - golangci-lint run ./...
-
-  run:
-    desc: Run a specific server command by name
-    cmds:
-      - go run ./cmd/{{.NAME}}
-    requires:
-      vars: [NAME]
 
   setup:
     desc: Prepare server dependency setup

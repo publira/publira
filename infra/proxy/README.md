@@ -1,6 +1,6 @@
 # Edge routing
 
-Every Publira deployment puts one reverse proxy in front of five backends, and this directory is that proxy's configuration. The contract below is what the edge has to do; each subdirectory writes it for one proxy.
+Every Publira deployment puts one reverse proxy in front of four backends, and this directory is that proxy's configuration. The contract below is what the edge has to do; each subdirectory writes it for one proxy.
 
 | Proxy | Files | Where it runs |
 | --- | --- | --- |
@@ -21,8 +21,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-host` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
-| `api` | The public API — `api-server`, Connect RPC plus `/readyz` | `8000` |
-| `image-server` | Image delivery for the tenant site and the tenant console alike | `8200` |
+| `api` | The edge listener of `publira server`: the public API (Connect RPC plus `/readyz`) and image delivery for the tenant site and the tenant console alike | `8000` |
 
 ### Host rules
 
@@ -38,16 +37,18 @@ The hostname decides which Next.js app answers. Matching ignores the port the `H
 
 ### Path rules
 
-| Path                       | Backend                       | Prefix removal |
-| -------------------------- | ----------------------------- | -------------- |
-| `/images…`                 | `image-server`                | none           |
-| `/api/v1…`                 | the app the host rules picked | none           |
-| `/api`, `/api/…` otherwise | `api`                         | `/api`         |
-| Everything else            | the app the host rules picked | none           |
+| Path                       | Backend                       |
+| -------------------------- | ----------------------------- |
+| `/images…`                 | `api`                         |
+| `/api/v1…`                 | the app the host rules picked |
+| `/api`, `/api/…` otherwise | `api`                         |
+| Everything else            | the app the host rules picked |
 
-`/api` is host-agnostic: the public API answers on the tenant site, the tenant console, and the platform console alike.
+No rule rewrites the path.
 
-`/api/v1…` is the exception because it belongs to the Next.js apps rather than to `api-server`. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, and on the public site the view beacon, the read beacon, and the Stripe webhook — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/publira.v1.<Service>/<Method>` and whose only other path is `/readyz`.
+`/api` and `/images` are host-agnostic: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/api/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
+
+`/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, and on the public site the view beacon, the read beacon, and the Stripe webhook — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/api/publira.v1.<Service>/<Method>`.
 
 ### Precedence
 
@@ -84,4 +85,4 @@ Two things are deployment decisions, and each proxy's files mark them.
 
 ## Verification
 
-`task e2e:routing` runs the contract against all three proxies. It starts each one in front of an echo server that answers on the five backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs the contract against all three proxies. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

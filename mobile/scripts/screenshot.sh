@@ -41,20 +41,19 @@ route_name() {
 # it is given is a device's view of this machine rather than this machine's.
 require_profile_stack() {
   wait4x http "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}/readyz" --timeout 5s
-  wait4x http "http://127.0.0.1:${PUBLIRA_IMAGE_SERVER_PORT}/readyz" --timeout 5s
 }
 
 screenshot_on_device() {
   local device="$1" app_id activity route name attempt
   mobile_load_app_config "$(mobile_device_address "${device}")"
   mobile_bind_device_ports "${device}"
-  printf 'profile %s on %s: api %s, images %s, tenant %s\n' \
-    "${MOBILE_PROFILE_NAME}" "${device}" "${PUBLIRA_API_BASE_URL}" \
-    "${PUBLIRA_IMAGE_BASE_URL}" "${PUBLIRA_TENANT_HOST}"
+  printf 'profile %s on %s: server %s, tenant %s\n' \
+    "${MOBILE_PROFILE_NAME}" "${device}" "${PUBLIRA_BASE_URL}" \
+    "${PUBLIRA_TENANT_HOST}"
   require_profile_stack
 
   mapfile -t defines < <(
-    mobile_dart_defines "${PUBLIRA_API_BASE_URL}" "${PUBLIRA_IMAGE_BASE_URL}"
+    mobile_dart_defines "${PUBLIRA_BASE_URL}"
   )
   mobile_generate_build_config
   app_id="$(mobile_dev_application_id)"
@@ -96,13 +95,11 @@ stop_web_app_server() {
 }
 
 screenshot_in_browser() {
-  local api_base_url image_base_url port origin route name
+  local server_url port origin route name
   mobile_load_app_config 127.0.0.1
-  api_base_url="${PUBLIRA_API_BASE_URL}"
-  image_base_url="${PUBLIRA_IMAGE_BASE_URL}"
-  printf 'profile %s in a browser: api %s, images %s, tenant %s\n' \
-    "${MOBILE_PROFILE_NAME}" "${api_base_url}" "${image_base_url}" \
-    "${PUBLIRA_TENANT_HOST}"
+  server_url="${PUBLIRA_BASE_URL}"
+  printf 'profile %s in a browser: server %s, tenant %s\n' \
+    "${MOBILE_PROFILE_NAME}" "${server_url}" "${PUBLIRA_TENANT_HOST}"
   require_profile_stack
 
   # A profile owns the whole thousand its ports are numbered in, and hands them
@@ -111,12 +108,11 @@ screenshot_in_browser() {
   # picked from whatever is free.
   port="$((PUBLIRA_WEB_HOST_PORT + 60))"
   origin="http://127.0.0.1:${port}"
-  mapfile -t defines < <(mobile_dart_defines "${origin}" "${origin}")
+  mapfile -t defines < <(mobile_dart_defines "${origin}")
   flutter build web "${defines[@]}"
 
   dart run scripts/web_app_server.dart \
-    --port "${port}" --api "${api_base_url}" --images "${image_base_url}" \
-    --root build/web &
+    --port "${port}" --server "${server_url}" --root build/web &
   server_pid=$!
   trap stop_web_app_server EXIT
   wait4x http "${origin}/index.html" --timeout 30s

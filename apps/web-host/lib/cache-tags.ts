@@ -27,7 +27,7 @@ export const tenantSiteTag = (tenantId: string) =>
  *
  * Such an answer goes stale at the tenant's own midnight rather than on an
  * edit, so the `ticker.roll_tenant_day` job drops this tag when that tenant's
- * calendar day turns (`server/cmd/worker/README.md`). It is a tag of its own
+ * calendar day turns (`server/cmd/publira/README.md`). It is a tag of its own
  * for exactly that reason: a daily drop aimed at the catalog's tags would take
  * every series list and every series page with it, for a value that is one
  * number on one module.
@@ -73,7 +73,7 @@ export const tenantAnnouncementsTag = (tenantId: string) =>
  * It is a tag of its own because it goes stale on its own schedule: the console
  * drops it when an operator pins or unpins one, and the
  * `ticker.expire_pinned_announcements` job drops it when a pinned window closes
- * (`server/cmd/worker/README.md`). Aiming either of those at the announcements
+ * (`server/cmd/publira/README.md`). Aiming either of those at the announcements
  * tag would rebuild every reader's inbox for a band that has nothing to do
  * with it.
  */

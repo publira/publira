@@ -122,7 +122,7 @@ class PubliraApp extends StatefulWidget {
         offline ?? FileOfflineLibrary(tenantHost: resolved.tenantHost);
     late final AuthController auth;
     final client = ConnectClient(
-      baseUrl: resolved.apiBaseUrl,
+      baseUrl: resolved.baseUrl,
       accessToken: () => auth.accessToken,
     );
     final tenants = TenantResolver(

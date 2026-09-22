@@ -15,7 +15,7 @@ class HttpAuthRepository implements AuthRepository {
     ConnectClient? client,
     TenantResolver? tenants,
   }) {
-    final resolved = client ?? ConnectClient(baseUrl: config.apiBaseUrl);
+    final resolved = client ?? ConnectClient(baseUrl: config.baseUrl);
     return HttpAuthRepository._(
       client: resolved,
       tenants:

@@ -193,7 +193,7 @@ func testJPEG() []byte {
 }
 
 // newTestServer builds the handler with the token manager an encrypted
-// episode-body response needs, the way cmd/image-server does.
+// episode-body response needs, the way `publira server` does.
 func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore) *Server {
 	t.Helper()
 	return newTestServerWithTokens(t, resolver, factory, store, auth.NewTokenManager([]byte(testMediaJWTSecret)))

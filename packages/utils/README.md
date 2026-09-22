@@ -20,7 +20,7 @@ The package that provides the shared frontend utilities.
 | `@publira/utils/form-data` | `toFormDataInput`, which turns `FormData` into an object zod can validate |
 | `@publira/utils/field-errors` | `toFieldErrors` / `toFormErrorMessage` / `validationErrorMessage(locale)`, which map a `safeParse` failure into a Server Action's ActionState shape |
 | `@publira/utils/cached-read` | `cachedReadFailure` / `dropFailedCacheEntry`, which return a failed `"use cache"` read as a value and keep that failure out of the cache |
-| `@publira/utils/image-loader` | `imageServerLoader`, the custom loader that lets `next/image` use the image-server (Manael) for conversion and resizing |
+| `@publira/utils/image-loader` | `imageServerLoader`, the custom loader that lets `next/image` use the server's image routes (Manael) for conversion and resizing |
 | `@publira/utils/resolved-locale` | The helper a cookie console's `proxy.ts` publishes its server-resolved display locale to the browser with |
 | `@publira/utils/health` | The `/livez` and `/readyz` handlers. Node-only, so it is deliberately outside the barrel |
 
@@ -235,7 +235,7 @@ images: {
 },
 ```
 
-An `<Image>` that does not go through the image-server, such as a temporary `blob:` preview, keeps its `unoptimized`.
+An `<Image>` that does not go through the server's image routes, such as a temporary `blob:` preview, keeps its `unoptimized`.
 
 ## Build
 

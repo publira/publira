@@ -18,7 +18,7 @@ void main() {
     server = ConnectFixtureServer();
     await server.start();
     auth = HttpAuthRepository(
-      config: AppConfig(apiBaseUrl: server.baseUrl, tenantHost: 'localhost'),
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
     );
   });
 
@@ -59,7 +59,7 @@ void main() {
     final closedBaseUrl = server.baseUrl;
     await server.close();
     final offline = HttpAuthRepository(
-      config: AppConfig(apiBaseUrl: closedBaseUrl, tenantHost: 'localhost'),
+      config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
     );
 
     expect(

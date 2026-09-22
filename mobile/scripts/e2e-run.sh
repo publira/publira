@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Full mobile E2E lifecycle: e2e postgres + seed + api-server + image-server
-# + Flutter integration tests, always tear down.
+# Full mobile E2E lifecycle: e2e postgres + seed + the server + Flutter
+# integration tests, always tear down.
 set -euo pipefail
 
 MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,8 +24,7 @@ cleanup() {
   fi
   cleanup_done=1
   e2e_log "teardown (always)"
-  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" stop || true
-  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" stop || true
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" stop || true
   bash "${PUBLIRA_E2E_SCRIPTS_DIR}/down.sh" || true
 }
 trap cleanup EXIT INT TERM
@@ -36,11 +35,10 @@ e2e_log "=== Mobile E2E run start (project=${COMPOSE_PROJECT_NAME}) ==="
 
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/db-setup.sh"
-bash "${PUBLIRA_E2E_SCRIPTS_DIR}/api-server.sh" start-wait
-# Every seeded episode carries a body, so the reader fetches its pages as soon
-# as a test opens one, and an unanswered fetch fails the run from outside the
-# test that caused it.
-bash "${PUBLIRA_E2E_SCRIPTS_DIR}/image-server.sh" start-wait
+# The one process answers the API and the images. Every seeded episode
+# carries a body, so the reader fetches its pages as soon as a test opens one,
+# and an unanswered fetch fails the run from outside the test that caused it.
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" start-wait
 
 e2e_log "=== Flutter integration_test phase ==="
 set +e

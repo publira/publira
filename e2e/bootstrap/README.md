@@ -19,7 +19,7 @@ This check therefore starts the repository-root **`compose.yaml` itself** — th
 | Bootstrap Postgres | `5434` | Change with `PUBLIRA_BOOTSTRAP_POSTGRES_PORT`. |
 | Bootstrap Redis | `6381` | Change with `PUBLIRA_BOOTSTRAP_REDIS_PORT`. |
 | Bootstrap RustFS (S3) | `9002` | Change with `PUBLIRA_BOOTSTRAP_RUSTFS_PORT`. |
-| All services from `task dev` | `3000` `4000` `4100` `8000` `8100` `8200` | **Cannot change**; Next.js ports are fixed in `apps/*/package.json` `dev` commands. |
+| All services from `task dev` | `3000` `4000` `4100` `8000` `8100` | **Cannot change**; Next.js ports are fixed in `apps/*/package.json` `dev` commands. |
 
 The data-store ports differ from Playwright E2E (`5433` / `6380` / `9003`), so both can run together. `task dev` ports are fixed, however, so phase 4 cannot run while another development `task dev` is active; the check detects the collision before startup.
 
@@ -53,7 +53,7 @@ To preserve a local development `task dev`, run `PUBLIRA_BOOTSTRAP_SKIP_DEV=1 ta
 | 1 | Start `db`, `redis`, and `rustfs` in dedicated project `publira-bootstrap`. | `publira-bootstrap_postgres-data` mounts at `/var/lib/postgresql`; `data_directory` is below it (for PG 18, `/var/lib/postgresql/18/docker`); `PG_VERSION` exists; `schema_migrations` does not yet exist; teardown removes the Postgres and RustFS volumes. |
 | 2 | Run `task setup` (or `task deps` + `task db:setup` + `task storage:seed` without Flutter). | `schema_migrations` is current and clean; seed tenant `localhost` exists; main tables are non-empty; a second `task db:seed` leaves counts unchanged; a second `task storage:seed` succeeds, proving the bucket and the images it names are both idempotent. |
 | 3 | `compose stop db rustfs`, wait until neither is up any more, then `compose up --wait db rustfs`. | Data directory, migration state, and all seed counts match before restart; a sentinel object and its contents remain in the bucket before rerunning the storage seed; subsequent `task db:setup` and `task storage:seed` stay clean. |
-| 4 | Run `task dev`. | Two Go servers (the API server, on its edge and its internal listener, and the image server) and three Next.js apps return 200 from `/livez` and `/readyz`; all 6 ports listen; the bootstrap Redis has application connections. |
+| 4 | Run `task dev`. | `publira server` (on its edge and its internal listener) and three Next.js apps return 200 from `/livez` and `/readyz`; all 5 ports listen; the bootstrap Redis has application connections. |
 
 `scripts/lib.sh` exports `PUBLIRA_DB_URL`, `PUBLIRA_*_DB_URL`, `PUBLIRA_REDIS_URL`, `PUBLIRA_S3_*`, `AWS_*`, `PUBLIRA_AUTH_SECRET`, and `PUBLIRA_AUTH_JWT_SECRET` so `task dev` uses the bootstrap stack. Storage uses Dev-Container path style, with `PUBLIRA_S3_ENDPOINT` fixed to bootstrap RustFS at `http://127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT}`. API targets keep their usual localhost ports.
 

@@ -155,13 +155,12 @@ The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED
 A tenant builds the app it publishes from its own manifest:
 
 1. Copy `config/app.example.yaml` out of the repository and replace every value with the tenant's. The identifiers are what the stores know the app by, so they stay the same for every later release.
-2. Export the addresses the app connects to, which a production build requires and the app manifest does not carry.
+2. Export the origin the app connects to, which a production build requires and the app manifest does not carry.
 3. Run `task mobile:build` with the manifest and the `flutter build` target.
 
 ```bash
 # From the repository root; a relative manifest path is read from where the task starts
-export PUBLIRA_API_BASE_URL=https://reader.example.com/api
-export PUBLIRA_IMAGE_BASE_URL=https://reader.example.com
+export PUBLIRA_BASE_URL=https://reader.example.com
 
 task mobile:build -- ../tenant/app.yaml appbundle
 task mobile:build -- ../tenant/app.yaml ipa
@@ -175,7 +174,7 @@ The command checks the manifest and the arguments, reports every problem before 
 | `<target>` | One of `apk`, `appbundle`, `ios`, and `ipa` |
 | `--flavor` | `production` when no flavor is named; `--flavor dev` builds the development app under the same manifest |
 | `tenant.host` | Passed as `--dart-define=PUBLIRA_TENANT_HOST`, so the app asks the API about the tenant whose links it claims. Giving the define as well is refused |
-| `PUBLIRA_API_BASE_URL`, `PUBLIRA_IMAGE_BASE_URL` | Passed as the defines of the same names. A production build requires both, as `https://` URLs; a development build without them keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
+| `PUBLIRA_BASE_URL` | Passed as the define of the same name. A production build requires it, as an `https://` origin with no path, query, or fragment; a development build without it keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
 | Any other argument | Passed on to `flutter build` after the command's own, such as the [Firebase configuration](#firebase-configuration) defines, `--build-name`, and `--build-number` |
 
 The build fails when it leaves a change behind in a file Git tracks or does not ignore: a tenant's identity lives only in the generated files, so every tenant builds from the same unmodified checkout.
@@ -210,7 +209,7 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
-When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the public API, image-server, and development seeds.
+When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the server (the public API and the images) and development seeds.
 
 For the full CI job layout, path filters, and triage, see [.github/workflows/README.md](../.github/workflows/README.md).
 
@@ -378,11 +377,11 @@ The viewer displays the images returned by `GetEpisodeDetail` as episode content
 
 - The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
 - Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
-- Images come from image-server. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer`, using the token of whoever is signed in. Preserve the media token the API adds to an episode image URL: a paid body's names the reader, a free body's names the episode
-- A body page arrives encrypted whether it is free or paid: `application/octet-stream` plus `X-Publira-Image-Encryption`, `X-Publira-Image-Content-Type`, and `X-Publira-Image-Key-Id`. The app reverses that stream before decoding the page. Its content key is derived from material the request itself carried, so image-server never sends a key: read the `Authorization` bearer first and the media token in the URL only when there is no header, the order image-server resolves the two in
-- A signed-out reader sends no header, so a free page's key comes from the media token on its own URL. The API issues that one for the episode and a 24-hour rotation window rather than for a reader, so every reader of the episode inside one window is handed the same token, and it stops decoding after at most two days. A signed-in reader's free page still decrypts with the bearer, the material image-server resolves first
-- A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working when a rolling deploy answers them from an image-server instance it has not replaced yet. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
-- Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because image-server's converter negotiates the rendition from that header and Flutter has no AVIF codec
+- Images come from the server's `/images` routes. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer`, using the token of whoever is signed in. Preserve the media token the API adds to an episode image URL: a paid body's names the reader, a free body's names the episode
+- A body page arrives encrypted whether it is free or paid: `application/octet-stream` plus `X-Publira-Image-Encryption`, `X-Publira-Image-Content-Type`, and `X-Publira-Image-Key-Id`. The app reverses that stream before decoding the page. Its content key is derived from material the request itself carried, so the server never sends a key: read the `Authorization` bearer first and the media token in the URL only when there is no header, the order the server resolves the two in
+- A signed-out reader sends no header, so a free page's key comes from the media token on its own URL. The API issues that one for the episode and a 24-hour rotation window rather than for a reader, so every reader of the episode inside one window is handed the same token, and it stops decoding after at most two days. A signed-in reader's free page still decrypts with the bearer, the material the server resolves first
+- A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working when a rolling deploy answers them from a server instance it has not replaced yet. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
+- Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because the server's image converter negotiates the rendition from that header and Flutter has no AVIF codec
 - Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
 - A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-host` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
 - The screen after the last page ends the episode: it offers the next one `GetEpisodeDetail` names, with what it costs, and leads back to the series; the last published episode of a series says so instead. The bottom bar carries the episodes either side of this one beside the page controls, and taking either of them replaces the reader rather than stacking a second one on it
@@ -437,7 +436,7 @@ Everything is written under the app-private directory `path_provider` resolves (
 
 Every write carries a fresh random nonce in front of its ciphertext, and the nonce goes into the key derivation. Without it two versions of `index.json` would be encrypted under the same keystream, and whoever held both copies could XOR them together and read the difference — which, for a document of known JSON shape, means the saved episode ids and grants. The index is also written through a temporary file and a rename, so an interrupted write cannot leave a half-file the app can only answer by wiping itself.
 
-The pages image-server delivers cannot be saved as they arrive: their content key is derived from the JWT the request carried, and that token is gone in a day. The app saves what it decoded, re-encrypted under the device key, under an address the media token is stripped from — so a free page saved under one rotation window still opens under the next, and neither the reader's bearer token nor the media token in a page's URL is written down.
+The pages the server delivers cannot be saved as they arrive: their content key is derived from the JWT the request carried, and that token is gone in a day. The app saves what it decoded, re-encrypted under the device key, under an address the media token is stripped from — so a free page saved under one rotation window still opens under the next, and neither the reader's bearer token nor the media token in a page's URL is written down.
 
 Nothing here fails a screen. A platform with no app-private directory, or with no credential store to hold the key, reads online only; a file this build cannot decrypt is treated as one the device does not have.
 
@@ -452,7 +451,7 @@ A paid episode is bought through the public site's Stripe Checkout in the system
 
 ## Sign-in
 
-A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image-server request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-host`.
+A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-host`.
 
 - The session lives in the OS keychain / Keystore through `flutter_secure_storage`, never in `shared_preferences`, and is restored at launch
 - The launch confirms a restored token with `AuthService/GetMe`. A rejected token is dropped and the reader is told, with the sign-in screen one tap away; an unreachable API leaves the session alone, so a launch without a network still opens signed in
@@ -508,32 +507,29 @@ Use `--dart-define` to switch the test API and tenant host.
 
 | Definition | Default | Meaning |
 | --- | --- | --- |
-| `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | Public API Connect HTTP (`api-server` port 8000, not gRPC port 8100) |
-| `PUBLIRA_IMAGE_BASE_URL` | `http://127.0.0.1:8200` | `image-server`, which returns episode-body images |
-| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent to image-server as `X-Forwarded-Host`. A production build must pass the manifest's `tenant.host` |
+| `PUBLIRA_BASE_URL` | `http://127.0.0.1:8000` | The origin the app asks for the public API under `/api` and for images under `/images`: the tenant's site, or the edge listener of `publira server` itself (port 8000, not gRPC port 8100) |
+| `PUBLIRA_TENANT_HOST` | `localhost` | Host passed to `GetTenantByDomain`; development seeds use `localhost`. Sent with the image requests as `X-Forwarded-Host`. A production build must pass the manifest's `tenant.host` |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |
 
 The Debug and Profile entitlements append `?mode=developer` so a locally hosted association file can be tried; Release does not.
 
-The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the three values out of it.
+The defaults are the shared default stack's ports. A worktree that has selected a development profile (`task dev-env:start`) does not listen on them: that profile holds a port block of its own, and `task mobile:run` reads the two values out of it.
 
 ```bash
-# Local api-server (task dev / E2E stack)
-flutter run --dart-define=PUBLIRA_API_BASE_URL=http://127.0.0.1:8000 \
-  --dart-define=PUBLIRA_IMAGE_BASE_URL=http://127.0.0.1:8200 \
+# Local server (task dev / E2E stack)
+flutter run --dart-define=PUBLIRA_BASE_URL=http://127.0.0.1:8000 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 
-# Host api-server from an Android emulator
+# The host's server from an Android emulator
 flutter run -d android \
-  --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
-  --dart-define=PUBLIRA_IMAGE_BASE_URL=http://10.0.2.2:8200 \
+  --dart-define=PUBLIRA_BASE_URL=http://10.0.2.2:8000 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 
 # The worktree's selected development profile, on its own ports
 task mobile:run -- -d android
 ```
 
-It addresses that profile's `api-server` and `image-server` themselves rather than its edge, and reaches them at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `PUBLIRA_MOBILE_DEVICE` names the device the addresses are resolved for when several are attached.
+It addresses that profile's `publira server` itself rather than its edge, and reaches it at `10.0.2.2` from an Android emulator and through `adb reverse` from a device on a cable. A value already exported is left as it is, which is how a stack of another kind is named without editing anything. `PUBLIRA_MOBILE_DEVICE` names the device the address is resolved for when several are attached.
 
 ## Screenshots
 
@@ -595,4 +591,4 @@ task mobile:e2e
 task mobile:test-integration
 ```
 
-On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the public API, image-server, and development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure. image-server is part of the stack because every seeded episode carries a body, so the live group's reader fetches pages as soon as it opens one.
+On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the server and the development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure. The server's image routes matter here because every seeded episode carries a body, so the live group's reader fetches pages as soon as it opens one.

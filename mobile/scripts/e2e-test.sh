@@ -36,14 +36,11 @@ fi
 
 # `10.0.2.2` is the host as an emulator sees it; loopback there is the emulator
 # itself. The device the tests run on decides, not whatever else adb lists.
-# image-server needs the same treatment as the API: every seeded episode
-# carries a body, so the reader fetches pages on any run that opens one.
 case "${device}" in
   emulator-*) host_address="10.0.2.2" ;;
   *) host_address="127.0.0.1" ;;
 esac
-export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
-export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_IMAGE_SERVER_PORT}}"
+export PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
 export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
 # Whether the device gets an HTTP answer from the API port on the host.
@@ -80,7 +77,7 @@ if [[ "${PUBLIRA_LIVE_API}" == 'true' && "${device}" == emulator-* ]]; then
   ensure_emulator_reaches_api
 fi
 
-e2e_log "flutter test integration_test -d ${device} (API=${PUBLIRA_API_BASE_URL} images=${PUBLIRA_IMAGE_BASE_URL} live=${PUBLIRA_LIVE_API})"
+e2e_log "flutter test integration_test -d ${device} (server=${PUBLIRA_BASE_URL} live=${PUBLIRA_LIVE_API})"
 
 collect_failure_artifacts() {
   e2e_err "collecting mobile E2E artifacts under ${ART_DIR}"
@@ -103,7 +100,7 @@ collect_failure_artifacts() {
       -H 'content-type: application/json' \
       -H 'connect-protocol-version: 1' \
       --data "{\"domains\":[\"${PUBLIRA_TENANT_HOST}\"]}" \
-      "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/publira.v1.DomainService/GetTenantByDomain" || true
+      "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/api/publira.v1.DomainService/GetTenantByDomain" || true
     echo
     echo "=== ping ${host_address} from the device ==="
     adb -s "${device}" shell ping -c 3 -W 2 "${host_address}" || true
@@ -124,8 +121,7 @@ set +e
     -d "${device}" \
     --reporter expanded \
     --dart-define="PUBLIRA_LIVE_API=${PUBLIRA_LIVE_API}" \
-    --dart-define="PUBLIRA_API_BASE_URL=${PUBLIRA_API_BASE_URL}" \
-    --dart-define="PUBLIRA_IMAGE_BASE_URL=${PUBLIRA_IMAGE_BASE_URL}" \
+    --dart-define="PUBLIRA_BASE_URL=${PUBLIRA_BASE_URL}" \
     --dart-define="PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}"
 )
 status=$?

@@ -13,8 +13,6 @@ import 'package:publira/models/series_item.dart';
 
 import 'support/connect_fixture_server.dart';
 
-const imageBaseUrl = 'http://images.test';
-
 void main() {
   late ConnectFixtureServer server;
   late HttpCatalogRepository catalog;
@@ -29,11 +27,7 @@ void main() {
     );
     await server.start();
     catalog = HttpCatalogRepository(
-      config: AppConfig(
-        apiBaseUrl: server.baseUrl,
-        tenantHost: 'localhost',
-        imageBaseUrl: imageBaseUrl,
-      ),
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
     );
   });
 
@@ -256,7 +250,7 @@ void main() {
     expect(covers, hasLength(5));
     expect(
       covers.first.url.toString(),
-      '$imageBaseUrl/images/series/'
+      '${server.baseUrl}/images/series/'
       '${ConnectFixtureServer.seedSeriesImageId}/portrait/400',
     );
     expect(covers.first.variantType, 'portrait');
@@ -622,7 +616,7 @@ void main() {
     final creator = page.creators.single;
     expect(
       creator.iconUrl.toString(),
-      '$imageBaseUrl/images/creators/portrait',
+      '${server.baseUrl}/images/creators/portrait',
     );
     // A portrait is served to every reader alike, so only the tenant travels.
     expect(creator.imageRequestHeaders.containsKey('authorization'), isFalse);
@@ -810,7 +804,7 @@ void main() {
     // on it: it is what a signed-out reader decrypts the page with.
     expect(
       detail!.images.first.url.toString(),
-      '$imageBaseUrl/images/episodes/${ConnectFixtureServer.seedEpisodeId}-page-1'
+      '${server.baseUrl}/images/episodes/${ConnectFixtureServer.seedEpisodeId}-page-1'
       '?t=${ConnectFixtureServer.freeEpisodeMediaToken}',
     );
   });
@@ -1112,11 +1106,7 @@ void main() {
 
   test('an access token reaches both the API and image-server', () async {
     var accessToken = '';
-    final config = AppConfig(
-      apiBaseUrl: server.baseUrl,
-      tenantHost: 'localhost',
-      imageBaseUrl: imageBaseUrl,
-    );
+    final config = AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost');
     final authenticated = HttpCatalogRepository(
       config: config,
       client: ConnectClient(
@@ -1150,11 +1140,7 @@ void main() {
       'replaced it', () async {
     var accessToken = ConnectFixtureServer.memberAccessToken;
     final authenticated = HttpCatalogRepository(
-      config: AppConfig(
-        apiBaseUrl: server.baseUrl,
-        tenantHost: 'localhost',
-        imageBaseUrl: imageBaseUrl,
-      ),
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
       client: ConnectClient(
         baseUrl: server.baseUrl,
         accessToken: () => accessToken,
@@ -1264,14 +1250,13 @@ void main() {
 
   test('listSeries maps a timed-out request to network', () async {
     const config = AppConfig(
-      apiBaseUrl: 'https://example.test',
+      baseUrl: 'https://example.test',
       tenantHost: 'localhost',
-      imageBaseUrl: imageBaseUrl,
     );
     final unresponsive = HttpCatalogRepository(
       config: config,
       client: ConnectClient(
-        baseUrl: config.apiBaseUrl,
+        baseUrl: config.baseUrl,
         timeout: const Duration(milliseconds: 20),
         httpClient: MockClient((request) async {
           if (request.url.path.endsWith('/GetTenantByDomain')) {
@@ -1547,11 +1532,7 @@ void main() {
         ..readingPositions = {ConnectFixtureServer.seedEpisodeId: 11}
         ..recentSeries = ConnectFixtureServer.populatedRecentSeries();
       signedIn = HttpCatalogRepository(
-        config: AppConfig(
-          apiBaseUrl: server.baseUrl,
-          tenantHost: 'localhost',
-          imageBaseUrl: imageBaseUrl,
-        ),
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
         client: ConnectClient(
           baseUrl: server.baseUrl,
           accessToken: () => ConnectFixtureServer.memberAccessToken,
