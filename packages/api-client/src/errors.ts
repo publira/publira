@@ -17,6 +17,7 @@ export const RPC_ERROR_REASON = {
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
   creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   invitationCanceled: "INVITATION_CANCELED",
+  lastTenantAdmin: "LAST_TENANT_ADMIN",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
