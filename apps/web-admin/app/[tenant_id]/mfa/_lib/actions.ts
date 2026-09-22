@@ -1,6 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import { toQrCodePath } from "@publira/ui-components/qr-code";
 import { redirect } from "next/navigation";
 
 import { getActionLocale } from "#lib/action-messages";
@@ -22,7 +23,6 @@ import type {
 } from "#lib/mfa-action-state";
 import { clearMfaChallenge, readMfaChallenge } from "#lib/mfa-challenge";
 import type { MfaChallenge, MfaChallengeKindName } from "#lib/mfa-challenge";
-import { toQrCodePath } from "#lib/qr-code";
 
 /**
  * The challenge this Action is spending.

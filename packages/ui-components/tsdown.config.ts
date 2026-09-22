@@ -21,6 +21,7 @@ export default defineConfig({
     "src/locale-switcher/index.ts",
     "src/offline-notice/index.ts",
     "src/popover/index.ts",
+    "src/qr-code/index.ts",
     "src/radio-group/index.ts",
     "src/section-error/index.ts",
     "src/section-error-fallback/index.ts",

@@ -106,6 +106,8 @@ export {
   PopoverTrigger,
 } from "./popover";
 export type { PopoverContentProps } from "./popover";
+export { QrCode, toQrCodePath } from "./qr-code";
+export type { QrCodePath, QrCodeProps } from "./qr-code";
 export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
 export {

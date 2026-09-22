@@ -7,7 +7,7 @@
  * account settings.
  */
 
-import type { QrCodePath } from "./qr-code";
+import type { QrCodePath } from "@publira/ui-components/qr-code";
 
 export type MfaEnrollmentStartState =
   | {
