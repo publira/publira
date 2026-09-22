@@ -53,6 +53,10 @@ const (
 	// its own screens.
 	FieldReasonPageSlugReserved = "PAGE_SLUG_RESERVED"
 
+	// FieldReasonPageSlugUnreachable is a BadRequest field-violation reason:
+	// the public site answers the page slug's path before it looks at pages.
+	FieldReasonPageSlugUnreachable = "PAGE_SLUG_UNREACHABLE"
+
 	// MetadataCreditCount is the ErrorInfo metadata key for how many credits
 	// still name a creator role that cannot be deleted. The value is a decimal
 	// integer in decimal digits, with no sign or thousands separator.

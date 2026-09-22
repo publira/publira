@@ -36,6 +36,7 @@ export const RPC_ERROR_REASON = {
  */
 export const RPC_FIELD_VIOLATION_REASON = {
   pageSlugReserved: "PAGE_SLUG_RESERVED",
+  pageSlugUnreachable: "PAGE_SLUG_UNREACHABLE",
 } as const;
 
 export type RpcFieldViolationReason =

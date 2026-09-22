@@ -179,6 +179,20 @@ describe("createPage", () => {
     });
   });
 
+  it("puts a slug the site answers before its pages on the slug field with its own message", async () => {
+    mockCreatePage.mockRejectedValue(slugViolation("PAGE_SLUG_UNREACHABLE"));
+
+    const { createPage } = await import("./page");
+    const result = await createPage({ ...input, slug: "/ja" }, "en");
+
+    expect(result).toEqual({
+      field: "slug",
+      message:
+        "The site answers this path itself, as a language prefix, its API, or a health check, before it looks for a page. Choose a different slug.",
+      ok: false,
+    });
+  });
+
   it("puts a malformed slug on the slug field", async () => {
     mockCreatePage.mockRejectedValue(slugViolation());
 

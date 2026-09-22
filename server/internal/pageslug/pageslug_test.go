@@ -27,3 +27,28 @@ func TestReservedFirstSegment(t *testing.T) {
 		}
 	}
 }
+
+func TestUnreachableFirstSegment(t *testing.T) {
+	tests := []struct {
+		slug            string
+		wantSegment     string
+		wantUnreachable bool
+	}{
+		{slug: "/ja", wantSegment: "ja", wantUnreachable: true},
+		{slug: "/en/about", wantSegment: "en", wantUnreachable: true},
+		{slug: "/ko", wantSegment: "ko", wantUnreachable: true},
+		{slug: "/api/x", wantSegment: "api", wantUnreachable: true},
+		{slug: "/livez", wantSegment: "livez", wantUnreachable: true},
+		{slug: "/readyz", wantSegment: "readyz", wantUnreachable: true},
+		{slug: "/japan", wantSegment: "japan"},
+		{slug: "/about/en", wantSegment: "about"},
+		{slug: "/apis", wantSegment: "apis"},
+		{slug: "", wantSegment: ""},
+	}
+	for _, tt := range tests {
+		segment, unreachable := pageslug.UnreachableFirstSegment(tt.slug)
+		if segment != tt.wantSegment || unreachable != tt.wantUnreachable {
+			t.Errorf("UnreachableFirstSegment(%q) = (%q, %v), want (%q, %v)", tt.slug, segment, unreachable, tt.wantSegment, tt.wantUnreachable)
+		}
+	}
+}

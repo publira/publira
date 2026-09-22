@@ -132,12 +132,21 @@ const slugInvalidMessage = (
   ) {
     return t("admin.pages.slug_reserved");
   }
+  if (
+    rpcErrorHasFieldViolation(
+      error,
+      "slug",
+      RPC_FIELD_VIOLATION_REASON.pageSlugUnreachable
+    )
+  ) {
+    return t("admin.pages.slug_unreachable");
+  }
   return rpcErrorHasFieldViolation(error, "slug")
     ? t("admin.pages.slug_invalid")
     : t("errors.validation");
 };
 
-/** Whether a failed save is about the slug: its format, a reserved path, or a duplicate. */
+/** Whether a failed save is about the slug: its format, a reserved or unreachable path, or a duplicate. */
 const isSlugError = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "slug") ||
   rpcErrorDisposition(error) === "conflict";
