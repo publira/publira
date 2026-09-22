@@ -81,7 +81,12 @@ export const startEpisodeCheckoutAction = async (
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
-    if (isRpcError(error, Code.AlreadyExists)) {
+    // Already bought, or refused for a reason the episode page states: free,
+    // sold in the app alone, or a tenant that cannot take payments right now.
+    if (
+      isRpcError(error, Code.AlreadyExists) ||
+      isRpcError(error, Code.FailedPrecondition)
+    ) {
       const returnPath = await tenantLocalePath(tenantId, locale, returnTo);
       redirect(returnPath);
     }

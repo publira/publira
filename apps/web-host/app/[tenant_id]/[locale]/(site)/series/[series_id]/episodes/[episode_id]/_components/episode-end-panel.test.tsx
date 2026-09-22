@@ -94,6 +94,7 @@ const episode: EpisodeDetail = {
   price: 0,
   publicId: "EPISODE_002",
   publishedAt: "2026-08-01T00:00:00Z",
+  purchaseSurface: "all",
   ratingCount: 0,
   readingDirection: "rtl",
   readingPeriodHours: 0,

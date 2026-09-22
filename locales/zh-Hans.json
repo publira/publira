@@ -2491,6 +2491,7 @@
       "retry": "重试",
       "series_count": "已发布 {$count} 部系列",
       "site_fallback": "站点",
+      "sold_in_app": "在应用内销售",
       "unread": "未读",
       "unset": "未设置",
       "updating": "正在更新…",
@@ -2604,11 +2605,15 @@
         "up_to_date_title": "已看到最新一章"
       },
       "gate": {
+        "app_store": "App Store",
+        "google_play": "Google Play",
+        "guest_app_only_description": "本章在应用内销售。如果您已在应用内购买，请使用同一账户登录。",
         "guest_payable_description": "要阅读本章，请登录并购买，或请管理员为您发放阅读券。",
         "guest_title": "本章为付费内容",
         "guest_unpayable_description": "要阅读本章，请登录并请管理员为您发放阅读券。本站点目前无法受理购买。",
         "login": "登录后阅读",
         "purchase": "前往结算",
+        "signed_in_app_only_description": "本章在应用内销售。使用此账户在应用内购买后，也可以在这里阅读。",
         "signed_in_payable_description": "您暂无阅读权限。您的阅读券已过期或尚未发放。如果您已经购买过本章，请确认是否使用了其他账户登录。",
         "signed_in_title": "您无法阅读本章",
         "signed_in_unpayable_description": "本站点目前无法受理购买。请确认您的阅读券是否已过期或尚未发放。"

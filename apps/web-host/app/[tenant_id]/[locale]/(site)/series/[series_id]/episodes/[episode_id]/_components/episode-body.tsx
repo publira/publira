@@ -28,10 +28,12 @@ import { EpisodeViewer } from "./episode-viewer";
 export const EpisodeBody = async ({
   acceptsPayments,
   access,
+  appStoreUrl,
   checkoutSessionId,
   commentMode,
   commentToken,
   episode,
+  googlePlayUrl,
   images,
   nextEpisode,
   previousEpisode,
@@ -40,12 +42,15 @@ export const EpisodeBody = async ({
 }: {
   acceptsPayments: boolean;
   access: EpisodeAccessState;
+  /** Where the tenant's app is listed, for an episode sold there alone. */
+  appStoreUrl?: string;
   checkoutSessionId: string;
   /** Passed to the viewer, which ends the episode on the comment section. */
   commentMode: SeriesCommentMode;
   /** Cursor of the comment page the URL asks for. Empty on the newest page. */
   commentToken: string;
   episode: EpisodeDetail;
+  googlePlayUrl?: string;
   images: EpisodeImageItem[];
   /** Absent at the ends of the series; the viewer's own chrome links to them. */
   nextEpisode?: EpisodeNeighborItem;
@@ -76,7 +81,10 @@ export const EpisodeBody = async ({
       <EpisodeBodyNotice>
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
+          appStoreUrl={appStoreUrl}
           episodePublicId={episode.publicId}
+          googlePlayUrl={googlePlayUrl}
+          purchaseSurface={episode.purchaseSurface}
           seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
@@ -135,7 +143,10 @@ export const EpisodeBody = async ({
     <EpisodeBodyNotice>
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
+        appStoreUrl={appStoreUrl}
         episodePublicId={episode.publicId}
+        googlePlayUrl={googlePlayUrl}
+        purchaseSurface={episode.purchaseSurface}
         seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}

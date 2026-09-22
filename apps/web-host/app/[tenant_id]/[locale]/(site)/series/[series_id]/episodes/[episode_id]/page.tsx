@@ -1,4 +1,3 @@
-import { toIntlLocale } from "@publira/i18n";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -14,6 +13,7 @@ import { z } from "zod";
 
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
+import { EpisodePrice } from "#components/episode-price";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -270,10 +270,12 @@ const EpisodeContent = async (
               <EpisodeBody
                 access={access}
                 acceptsPayments={tenant?.acceptsPayments ?? false}
+                appStoreUrl={tenant?.appStoreUrl}
                 checkoutSessionId={checkoutSessionId}
                 commentMode={commentMode}
                 commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
                 episode={episode}
+                googlePlayUrl={tenant?.googlePlayUrl}
                 images={images}
                 nextEpisode={nextEpisode}
                 previousEpisode={previousEpisode}
@@ -316,13 +318,11 @@ const EpisodeContent = async (
               of it there is, and how long it stays open. */}
             <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="tabular-nums">
-                {episode.price > 0 ? (
-                  `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
-                ) : (
-                  <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-                    <Message message="host.common.free" />
-                  </Suspense>
-                )}
+                <EpisodePrice
+                  locale={locale}
+                  price={episode.price}
+                  purchaseSurface={episode.purchaseSurface}
+                />
               </span>
               {publishedAt ? (
                 <span className="tabular-nums">
