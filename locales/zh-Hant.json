@@ -3255,6 +3255,23 @@
       "unread": "未讀",
       "unread_count": "{$count} 則未讀"
     },
+    "announcements": {
+      "title": "公告",
+      "empty": "目前沒有可顯示的公告。",
+      "failed": "無法顯示公告。請重試。",
+      "detail_failed": "無法顯示該公告。請重試。",
+      "not_found": "該公告已無法查看。",
+      "unread": "未讀",
+      "unread_shown": "已顯示的公告中有 {$count} 則未讀",
+      "mark_read": "標示為已讀",
+      "mark_read_failed": "無法標示為已讀。請稍後再試。",
+      "mark_all_read": "全部標示為已讀",
+      "mark_all_read_failed": "無法將全部標示為已讀。請稍後再試。",
+      "open_link": "開啟連結",
+      "open_link_failed": "無法開啟連結。",
+      "banner_link": "閱讀公告",
+      "banner_dismiss": "關閉該公告"
+    },
     "purchase": {
       "buy": "以{$price}購買",
       "cancelled": "購買已取消，未產生任何扣款。",

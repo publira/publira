@@ -116,6 +116,23 @@ void main() {
       );
     });
 
+    test('the announcements open in the app', () {
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/en/announcements'),
+          tenantHost: host,
+        ),
+        '/announcements',
+      );
+      expect(
+        appLocationFor(
+          Uri.parse('https://shop.example/announcements/a-1'),
+          tenantHost: host,
+        ),
+        isNull,
+      );
+    });
+
     test('http is accepted the same way https is', () {
       expect(
         appLocationFor(

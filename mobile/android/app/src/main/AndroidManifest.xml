@@ -53,36 +53,42 @@
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/announcements"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ja/series/"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/checkout/return"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/verify"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ja/announcements"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/en/series/"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/en/checkout/return"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/en/verify"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/en/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/en/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/en/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/en/announcements"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/ko/series/"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/checkout/return"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/verify"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/ko/announcements"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hans/series/"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/checkout/return"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/verify"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hans/announcements"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:pathPrefix="/zh-Hant/series/"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/checkout/return"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/verify"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/reset-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/confirm-password"/>
                 <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/confirm-email"/>
+                <data android:scheme="https" android:host="${tenantHost}" android:path="/zh-Hant/announcements"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

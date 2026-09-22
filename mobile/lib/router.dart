@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
+import 'package:publira/screens/announcement_screen.dart';
+import 'package:publira/screens/announcements_screen.dart';
 import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/change_email_screen.dart';
 import 'package:publira/screens/change_password_screen.dart';
@@ -71,6 +73,14 @@ abstract final class AppRoutes {
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
+
+  /// The site's own path for the announcements, claimed as an App Link, and
+  /// one announcement under it, which the site shows inline instead.
+  static const announcements = '/announcements';
+  static const announcementDetail = ':announcementId';
+
+  static String announcementPath(String announcementId) =>
+      '$announcements/${Uri.encodeComponent(announcementId)}';
 
   /// The resend form, with [email] already in its field for a reader sent
   /// from a form that knows the address.
@@ -257,6 +267,22 @@ GoRouter createAppRouter({String? initialLocation}) {
             path: AppRoutes.contact,
             name: 'contact',
             builder: (context, state) => const ContactScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.announcements,
+        name: 'announcements',
+        builder: (context, state) => const AnnouncementsScreen(),
+        // Nested so going back from an announcement lands on the list, even
+        // when the banner or a notification opened it.
+        routes: [
+          GoRoute(
+            path: AppRoutes.announcementDetail,
+            name: 'announcement',
+            builder: (context, state) => AnnouncementScreen(
+              announcementId: state.pathParameters['announcementId']!,
+            ),
           ),
         ],
       ),
