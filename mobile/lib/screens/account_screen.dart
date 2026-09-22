@@ -48,6 +48,7 @@ class AccountScreen extends StatelessWidget {
                 ],
               )
             : ListView(
+                key: const ValueKey('account-list'),
                 children: [
                   ListTile(
                     key: const ValueKey('account-name'),
