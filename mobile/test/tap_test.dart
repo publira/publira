@@ -60,6 +60,41 @@ Widget _screenWithLastRow({
   );
 }
 
+/// A button under a layer that takes every pointer for as long as [covered]
+/// holds, the way a screen can still sit under another one for a few frames
+/// after its own route has settled.
+Widget _coveredButton({
+  required VoidCallback onTapped,
+  required ValueNotifier<bool> covered,
+}) {
+  return MaterialApp(
+    home: Scaffold(
+      body: Stack(
+        children: [
+          Center(
+            child: TextButton(
+              key: const ValueKey('button'),
+              onPressed: onTapped,
+              child: const Text('Button'),
+            ),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: covered,
+            builder: (context, covered, _) => covered
+                ? const Positioned.fill(
+                    child: ColoredBox(
+                      key: ValueKey('cover'),
+                      color: Colors.white,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Runs [change] at the start of the next frame, which is the one tapVisible
 /// pumps between bringing its target in and tapping it.
 void onNextFrame(WidgetTester tester, VoidCallback change) {
@@ -167,6 +202,70 @@ void main() {
           ),
         ),
       );
+      expect(tapped, isFalse);
+    });
+  });
+  group('a control something else still covers', () {
+    late ValueNotifier<bool> covered;
+    late bool tapped;
+
+    setUp(() {
+      covered = ValueNotifier(true);
+      tapped = false;
+      // As the integration suite runs, so a tap that misses fails here too.
+      WidgetController.hitTestWarningShouldBeFatal = true;
+    });
+
+    tearDown(() {
+      WidgetController.hitTestWarningShouldBeFatal = false;
+      covered.dispose();
+    });
+
+    Future<void> pumpScreen(WidgetTester tester) => tester.pumpWidget(
+      _coveredButton(onTapped: () => tapped = true, covered: covered),
+    );
+
+    testWidgets('is tapped once the cover lifts', (tester) async {
+      await pumpScreen(tester);
+      expect(find.byKey(const ValueKey('button')).hitTestable(), findsNothing);
+
+      onNextFrame(tester, () => covered.value = false);
+      await tapReachable(tester, find.byKey(const ValueKey('button')));
+
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('is tapped by tapVisible once the cover lifts', (tester) async {
+      await pumpScreen(tester);
+
+      // Past the frame tapVisible pumps after scrolling, so that frame alone
+      // cannot be what lets the tap through.
+      onNextFrame(
+        tester,
+        () => onNextFrame(tester, () => covered.value = false),
+      );
+      await tapVisible(tester, find.byKey(const ValueKey('button')));
+
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('fails naming what takes the pointer when it never lifts', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      TestFailure? failure;
+      try {
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('button')),
+          timeout: const Duration(milliseconds: 200),
+        );
+      } on TestFailure catch (error) {
+        failure = error;
+      }
+
+      expect(failure?.message, contains('takes the pointer instead'));
       expect(tapped, isFalse);
     });
   });
