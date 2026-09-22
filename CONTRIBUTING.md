@@ -120,7 +120,7 @@ Run the commands that match the area you changed, from the repository root. They
 
 | Area | Commands |
 | --- | --- |
-| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typegen`, `typecheck`, `check`, `test`, `test:scripts`) |
+| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typecheck`, `check`, `test`, `test:scripts`) |
 | `server/` | `task server:lint`, `task server:test-short`, and `task server:test` before finishing (it needs Docker for Testcontainers); `task server:build` when `cmd/` changes |
 | `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` must be clean, then the `server/` commands again; commit the regenerated output |
 | `db/migrations/` | `task db:reset`; the history is append-only once merged, so fix a mistake in a migration already on `main` with a new migration rather than by editing it |

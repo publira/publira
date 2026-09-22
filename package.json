@@ -12,7 +12,7 @@
     "fix": "ultracite fix",
     "locales:check": "node scripts/generate-locale-registry.ts --check",
     "locales:generate": "node scripts/generate-locale-registry.ts",
-    "preflight": "pnpm locales:check && pnpm typegen && pnpm typecheck && pnpm check && pnpm test && pnpm test:scripts",
+    "preflight": "pnpm locales:check && pnpm typecheck && pnpm check && pnpm test && pnpm test:scripts",
     "test": "turbo run test",
     "test:scripts": "node --test \"scripts/*.test.ts\"",
     "typecheck": "turbo run typecheck",
