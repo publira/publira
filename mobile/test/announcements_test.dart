@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -315,6 +317,76 @@ void main() {
 
       expect(repository.marked, contains('a-1'));
       expect(repository.announcements.first.isRead, isTrue);
+    });
+
+    testWidgets('a mark landing while the list is read again stays marked', (
+      tester,
+    ) async {
+      await openList(tester);
+      final mark = repository.markGate = Completer<void>();
+      await tester.tap(
+        find.byKey(const ValueKey('announcement-mark-read-a-2')),
+      );
+      await tester.pump();
+
+      // The page is taken while a-2 is still unread on the API.
+      final page = repository.listGate = Completer<void>();
+      await tester.fling(
+        find.byKey(const ValueKey('announcements-list')),
+        const Offset(0, 400),
+        1000,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('announcements-loading')),
+      );
+      mark.complete();
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('announcements-loading')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('announcements-empty')), findsNothing);
+
+      page.complete();
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('announcement-row-a-2')),
+      );
+      expect(unreadDot('a-2'), findsNothing);
+      expect(unreadDot('a-1'), findsOneWidget);
+    });
+
+    testWidgets('marking everything read covers a page still in flight', (
+      tester,
+    ) async {
+      repository
+        ..announcements = [for (var i = 0; i < 25; i++) announcement('p-$i')]
+        ..pageSize = 20;
+      await openList(tester);
+
+      final page = repository.listGate = Completer<void>();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('announcement-row-p-19')),
+        300,
+      );
+      await pumpUntilTrue(tester, () => repository.listTokens.length == 2);
+
+      await tester.tap(
+        find.byKey(const ValueKey('announcements-mark-all-read')),
+      );
+      await pumpUntilTrue(tester, () => repository.listTokens.length == 3);
+      repository.listGate = null;
+      page.complete();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('announcement-row-p-24')),
+        300,
+      );
+
+      expect(repository.listTokens, ['', '20', '20']);
+      expect(unreadDot('p-24'), findsNothing);
+      expect(unreadDot('p-0'), findsNothing);
     });
 
     testWidgets('shows a visitor the list without read state', (tester) async {

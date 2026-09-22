@@ -33,6 +33,14 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
   AnnouncementFailure? pinnedFailure;
   AnnouncementFailure? markFailure;
 
+  /// Holds [list] until a test completes it, so a test can land a mark while
+  /// a page is in flight. The page is taken when the request is made, as the
+  /// API answers from the rows it held then.
+  Completer<void>? listGate;
+
+  /// Holds [markRead] and [markAllRead] until a test completes it.
+  Completer<void>? markGate;
+
   /// What was asked for, in order, so a test can assert what the screen sent.
   final listTokens = <String>[];
   final fetched = <String>[];
@@ -47,15 +55,19 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     if (failure != null) {
       throw failure;
     }
+    final AnnouncementPage page;
     if (pageSize <= 0) {
-      return AnnouncementPage(announcements: List.of(announcements));
+      page = AnnouncementPage(announcements: List.of(announcements));
+    } else {
+      final start = token.isEmpty ? 0 : int.parse(token);
+      final end = (start + pageSize).clamp(0, announcements.length);
+      page = AnnouncementPage(
+        announcements: announcements.sublist(start, end),
+        nextToken: end < announcements.length ? '$end' : '',
+      );
     }
-    final start = token.isEmpty ? 0 : int.parse(token);
-    final end = (start + pageSize).clamp(0, announcements.length);
-    return AnnouncementPage(
-      announcements: announcements.sublist(start, end),
-      nextToken: end < announcements.length ? '$end' : '',
-    );
+    await listGate?.future;
+    return page;
   }
 
   @override
@@ -91,9 +103,13 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
   @override
   Future<void> markRead(String announcementId) async {
     marked.add(announcementId);
+    await markGate?.future;
     final failure = markFailure;
     if (failure != null) {
       throw failure;
+    }
+    if (!announcements.any((row) => row.id == announcementId)) {
+      throw const AnnouncementFailure(AnnouncementFailureKind.notFound);
     }
     announcements = [
       for (final row in announcements)
@@ -104,6 +120,7 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
   @override
   Future<void> markAllRead() async {
     markAllCalls++;
+    await markGate?.future;
     final failure = markFailure;
     if (failure != null) {
       throw failure;

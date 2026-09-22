@@ -46,6 +46,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   /// it builds.
   var _reading = false;
 
+  /// The token of the page in flight, so a page asked for before a mark-all
+  /// landed can be asked for again.
+  var _readingToken = '';
+
+  /// What this reader marked read here. A page asked for before a mark landed
+  /// still carries the row unread, and read state never goes back, so every
+  /// page is laid over it.
+  final _markedIds = <String>{};
+
   /// Counts the reads this screen has started, so an answer meant for the
   /// reader before this one cannot land on the list.
   var _reads = 0;
@@ -68,6 +77,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     }
     _started = true;
     _accessToken = accessToken;
+    _markedIds.clear();
     _readFirstPage();
   }
 
@@ -85,6 +95,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       _failure = null;
       _moreFailure = null;
       _reading = true;
+      _readingToken = '';
     });
     unawaited(_read(++_reads, ''));
   }
@@ -105,6 +116,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       return;
     }
     _reading = true;
+    _readingToken = _nextToken;
     unawaited(_read(++_reads, _nextToken));
   }
 
@@ -140,7 +152,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       }
       _announcements = [
         if (!isFirstPage) ...?_announcements,
-        ...page.announcements,
+        for (final row in page.announcements)
+          _markedIds.contains(row.id) ? row.markedRead() : row,
       ];
       _nextToken = page.nextToken;
     });
@@ -181,9 +194,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     if (!mounted || accessToken != _accessToken) {
       return;
     }
+    _markedIds.add(announcement.id);
+    final announcements = _announcements;
+    // A first page still in flight lays the mark over its rows when it lands.
+    if (announcements == null) {
+      return;
+    }
     setState(() {
       _announcements = [
-        for (final row in _announcements ?? const <Announcement>[])
+        for (final row in announcements)
           row.id == announcement.id ? row.markedRead() : row,
       ];
     });
@@ -211,15 +230,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     if (!mounted || accessToken != _accessToken) {
       return;
     }
+    final announcements = _announcements;
     setState(() {
       _markingAll = false;
-      if (failure == null) {
-        _announcements = [
-          for (final row in _announcements ?? const <Announcement>[])
-            row.markedRead(),
-        ];
+      if (failure == null && announcements != null) {
+        _markedIds.addAll([for (final row in announcements) row.id]);
+        _announcements = [for (final row in announcements) row.markedRead()];
       }
     });
+    // A page asked for before the mark landed holds rows it does not cover,
+    // unread as they were, so that page is asked for again.
+    if (failure == null && _reading) {
+      unawaited(_read(++_reads, _readingToken));
+    }
     if (failure != null) {
       messenger.showSnackBar(
         SnackBar(
