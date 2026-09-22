@@ -165,7 +165,7 @@ void main() {
         find.byKey(const ValueKey('sign-in-password')),
         ConnectFixtureServer.memberPassword,
       );
-      await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+      await tapReachable(tester, find.byKey(const ValueKey('sign-in-submit')));
     }
 
     testApp('launches onto a catalog populated from the public API', (
@@ -273,7 +273,7 @@ void main() {
         // The episode count, rather than the heading over the episodes, which
         // the follow controls and the authors above it push off a phone.
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
-        await tester.pageBack();
+        await tapBack(tester);
         // The catalog names the series on its new-arrivals shelf as well as in
         // its list, so the screen that has to be gone is the detail one.
         await pumpUntilRouteSettled(
@@ -297,7 +297,7 @@ void main() {
           tester,
           find.byKey(const ValueKey('tab-search')),
         );
-        await tester.tap(find.byKey(const ValueKey('tab-search')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-search')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('search-field')),
@@ -333,29 +333,32 @@ void main() {
         await tapVisible(tester, seriesTile);
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
 
-        await tester.tap(find.byKey(const ValueKey('tab-search')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-search')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('search-field')),
         );
-        await tester.tap(find.byKey(const ValueKey('tab-library')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-library')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('library-continue-signed-out')),
         );
-        await tester.tap(find.byKey(const ValueKey('tab-notifications')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('tab-notifications')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('notifications-signed-out')),
         );
-        await tester.tap(find.byKey(const ValueKey('tab-account')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('account-sign-in')),
         );
 
         // The home tab is still on the series it was left on.
-        await tester.tap(find.byKey(const ValueKey('tab-home')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-home')));
         await pumpUntilRouteSettled(tester, find.text('2 episodes'));
 
         // The page takes the whole screen, and the bar is back once the
@@ -366,7 +369,7 @@ void main() {
         await pumpUntilPagesDrawn(tester);
         expect(tabBar, findsNothing);
 
-        await tester.pageBack();
+        await tapBack(tester);
         await pumpUntilRouteSettled(tester, episode);
         expect(tabBar, findsOneWidget);
       });
@@ -391,7 +394,7 @@ void main() {
           ),
         );
 
-        await tester.tap(find.byKey(const ValueKey('search-clear')));
+        await tapReachable(tester, find.byKey(const ValueKey('search-clear')));
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('search-prompt')),
@@ -556,7 +559,10 @@ void main() {
           find.byKey(const ValueKey('episode-page-view')),
         );
 
-        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('episode-next-page')),
+        );
         await pumpUntilFound(
           tester,
           find.text('2 / ${ConnectFixtureServer.seedEpisodePageCount}'),
@@ -598,7 +604,7 @@ void main() {
           find.byKey(const ValueKey('episode-locked')),
         );
 
-        await tester.tap(find.text('Sign in'));
+        await tapReachable(tester, find.text('Sign in'));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -669,16 +675,19 @@ void main() {
         await tapVisible(tester, paidEpisode);
         await settleOn(find.byKey(const ValueKey('episode-page-view')));
 
-        await tester.pageBack();
+        await tapBack(tester);
         await settleOn(paidEpisode);
-        await tester.pageBack();
+        await tapBack(tester);
         await settleOn(seriesTile);
 
-        await tester.tap(find.byKey(const ValueKey('tab-account')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await settleOn(find.byKey(const ValueKey('account-sign-out')));
-        await tester.tap(find.byKey(const ValueKey('account-sign-out')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('account-sign-out')),
+        );
         await settleOn(find.text('You are not signed in.'));
-        await tester.tap(find.byKey(const ValueKey('tab-home')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-home')));
         await settleOn(seriesTile);
 
         await tapVisible(tester, seriesTile);
@@ -725,7 +734,7 @@ void main() {
         );
         await pumpUntilRouteSettled(tester, buy);
 
-        await tester.tap(buy);
+        await tapReachable(tester, buy);
         await pumpUntilPagesDrawn(tester);
 
         expect(launcher.opened, [
@@ -757,7 +766,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           'wrong-password',
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         await pumpUntilFound(
           tester,
@@ -802,7 +814,10 @@ void main() {
           find.byKey(const ValueKey('sign-up-password-confirm')),
           password,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-up-pending')),
@@ -819,7 +834,10 @@ void main() {
           find.byKey(const ValueKey('verify-email-verified')),
         );
 
-        await tester.tap(find.byKey(const ValueKey('verify-email-sign-in')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('verify-email-sign-in')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -832,7 +850,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           password,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         await pumpUntilFound(tester, signedInAccountEntry());
         expect(server.signups[email]!.verified, isTrue);
@@ -867,14 +888,20 @@ void main() {
           find.byKey(const ValueKey('sign-up-password-confirm')),
           password,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-up-pending')),
         );
 
         // The first mail never arrived, so the reader asks for another.
-        await tester.tap(find.byKey(const ValueKey('sign-up-pending-resend')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending-resend')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-up-pending-resent')),
@@ -915,7 +942,10 @@ void main() {
             find.byKey(const ValueKey('sign-in-password')),
             password,
           );
-          await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
           await pumpUntilFound(
             tester,
             find.byKey(const ValueKey('sign-in-resend-verification')),
@@ -955,12 +985,18 @@ void main() {
           ConnectFixtureServer.memberEmail,
         );
 
-        await tester.tap(find.byKey(const ValueKey('sign-in-forgot-password')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-forgot-password')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('reset-password-submit')),
         );
-        await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('reset-password-sent')),
@@ -988,13 +1024,17 @@ void main() {
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           newPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('confirm-password-done')),
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('confirm-password-sign-in')),
         );
         await pumpUntilRouteSettled(
@@ -1009,7 +1049,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           newPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         await pumpUntilFound(tester, signedInAccountEntry());
         expect(server.memberCurrentPassword, newPassword);
@@ -1029,13 +1072,16 @@ void main() {
           );
           await signIn(tester);
           await pumpUntilFound(tester, signedInAccountEntry());
-          await tester.tap(find.byKey(const ValueKey('tab-account')));
+          await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
           await pumpUntilRouteSettled(
             tester,
             find.byKey(const ValueKey('account-name')),
           );
 
-          await tester.tap(find.byKey(const ValueKey('account-name')));
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('account-name')),
+          );
           await pumpUntilRouteSettled(
             tester,
             find.byKey(const ValueKey('edit-name-submit')),
@@ -1044,7 +1090,10 @@ void main() {
             find.byKey(const ValueKey('edit-name-name')),
             'Renamed Member',
           );
-          await tester.tap(find.byKey(const ValueKey('edit-name-submit')));
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('edit-name-submit')),
+          );
           await pumpUntilRouteSettled(
             tester,
             find.descendant(
@@ -1074,7 +1123,8 @@ void main() {
             find.byKey(const ValueKey('change-password-confirm')),
             newPassword,
           );
-          await tester.tap(
+          await tapReachable(
+            tester,
             find.byKey(const ValueKey('change-password-submit')),
           );
           await pumpUntilRouteSettled(
@@ -1117,7 +1167,7 @@ void main() {
         );
         await signIn(tester);
         await pumpUntilFound(tester, signedInAccountEntry());
-        await tester.tap(find.byKey(const ValueKey('tab-account')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('account-change-email')),
@@ -1138,7 +1188,10 @@ void main() {
           find.byKey(const ValueKey('change-email-password')),
           ConnectFixtureServer.memberPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('change-email-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('change-email-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('change-email-requested')),
@@ -1170,7 +1223,7 @@ void main() {
         );
         await signIn(tester);
         await pumpUntilFound(tester, signedInAccountEntry());
-        await tester.tap(find.byKey(const ValueKey('tab-account')));
+        await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('account-delete')),
@@ -1184,14 +1237,18 @@ void main() {
           find.byKey(const ValueKey('delete-account-password')),
           ConnectFixtureServer.memberPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('delete-account-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('delete-account-submit')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('delete-account-confirm-delete')),
         );
         expect(server.memberDeleted, isFalse);
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('delete-account-confirm-delete')),
         );
         await pumpUntilRouteSettled(
@@ -1227,13 +1284,17 @@ void main() {
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           'replaced-member-password',
         );
-        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('confirm-password-link-error')),
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('confirm-password-request-again')),
         );
         await pumpUntilRouteSettled(
@@ -1254,7 +1315,7 @@ void main() {
           tester,
           find.textContaining('Series not found'),
         );
-        await tester.tap(find.text('Back to the catalog'));
+        await tapReachable(tester, find.text('Back to the catalog'));
         await pumpUntilFound(
           tester,
           find.byKey(
@@ -1340,7 +1401,10 @@ void main() {
           find.byKey(const ValueKey('episode-page-view')),
         );
 
-        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('episode-next-page')),
+        );
         await pumpUntilTrue(
           tester,
           () =>
@@ -1379,7 +1443,10 @@ void main() {
         await pumpApp(tester, session: memberSession());
         await pumpUntilFound(tester, find.byTooltip('Notifications, 1 unread'));
 
-        await tester.tap(find.byKey(const ValueKey('tab-notifications')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('tab-notifications')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(
@@ -1387,7 +1454,8 @@ void main() {
           ),
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('notification-fixture-notification-1')),
         );
         await pumpUntilPagesDrawn(tester);
@@ -1431,7 +1499,8 @@ void main() {
           ),
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('pinned-announcement-open')),
         );
         await pumpUntilRouteSettled(
@@ -1443,13 +1512,14 @@ void main() {
           () => server.announcements.first['isRead'] == true,
           description: 'the opened announcement to be marked read',
         );
-        await tester.pageBack();
+        await tapBack(tester);
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('pinned-announcement-dismiss')),
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('pinned-announcement-dismiss')),
         );
         await tester.pump();
@@ -1460,7 +1530,10 @@ void main() {
           findsNothing,
         );
 
-        await tester.tap(find.byKey(const ValueKey('catalog-announcements')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('catalog-announcements')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(
@@ -1473,7 +1546,8 @@ void main() {
           findsOneWidget,
         );
 
-        await tester.tap(
+        await tapReachable(
+          tester,
           find.byKey(const ValueKey('announcements-mark-all-read')),
         );
         await pumpUntilTrue(
@@ -1646,7 +1720,7 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.pageBack();
+        await tapBack(tester);
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('search-field')),
@@ -1760,7 +1834,7 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.tap(find.text('Sign in'));
+        await tapReachable(tester, find.text('Sign in'));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -1773,7 +1847,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           ConnectFixtureServer.memberPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         // `db/seeds/dev/050_access_tickets.sql` gives this member an access
         // ticket for the episode, so the pages the development seed gave it
@@ -1815,7 +1892,10 @@ void main() {
           find.byKey(const ValueKey('sign-up-password-confirm')),
           'live-signup-password',
         );
-        await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-up-pending')),
@@ -1825,7 +1905,10 @@ void main() {
         // The link is in a mailbox this test cannot read, so what it can
         // prove is the half the API owns: the account exists and Login keeps
         // refusing it until the address is confirmed.
-        await tester.tap(find.byKey(const ValueKey('sign-up-pending-sign-in')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-pending-sign-in')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -1838,7 +1921,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           'live-signup-password',
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('sign-in-resend-verification')),
@@ -1865,7 +1951,10 @@ void main() {
           find.byKey(const ValueKey('reset-password-email')),
           email,
         );
-        await tester.tap(find.byKey(const ValueKey('reset-password-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('reset-password-sent')),
@@ -1898,7 +1987,10 @@ void main() {
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           'live-reset-password',
         );
-        await tester.tap(find.byKey(const ValueKey('confirm-password-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('confirm-password-submit')),
+        );
         await pumpUntilFound(
           tester,
           find.byKey(const ValueKey('confirm-password-request-again')),
@@ -1917,7 +2009,10 @@ void main() {
           find.byKey(const ValueKey('notifications-sign-in')),
         );
 
-        await tester.tap(find.byKey(const ValueKey('notifications-sign-in')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('notifications-sign-in')),
+        );
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
@@ -1930,7 +2025,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           ConnectFixtureServer.memberPassword,
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         // The development seed delivers the member no notification, so what
         // this proves is that both inbox reads are answered, not what they
@@ -1984,7 +2082,10 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           'wrong-password',
         );
-        await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
 
         await pumpUntilFound(
           tester,
@@ -2311,7 +2412,10 @@ void main() {
           find.byKey(const ValueKey('episode-page-view')),
         );
 
-        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('episode-next-page')),
+        );
         await pumpUntilTrue(
           tester,
           () =>

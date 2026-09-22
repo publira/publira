@@ -13,7 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// [Scrollable.ensureVisible] scrolls the row fully in, and a row already
 /// whole on screen does not move. Use this wherever the target is a row of a
-/// list; a control that belongs to the screen itself needs nothing.
+/// list; a control that belongs to the screen itself goes through
+/// [tapReachable], whose wait this also makes before tapping.
 ///
 /// The frame pumped after scrolling can push the row off screen again, as a
 /// late soft keyboard or a row above it growing does, so the row is held by
@@ -31,12 +32,46 @@ Future<void> tapVisible(
     if (!element.mounted) {
       fail('$finder left the tree while a tap was being aimed at it');
     }
-    if (_isWholeOnScreen(element)) {
+    if (_isWholeOnScreen(element) && _isReachable(finder)) {
       await tester.tap(finder);
       return;
     }
   }
-  fail('Timed out waiting for $finder to stay whole on screen');
+  fail('Timed out waiting for $finder to stay whole on screen and reachable');
+}
+
+/// Taps what [finder] matches once a pointer at its centre would reach it.
+///
+/// A settled route can still sit under something drawn above it for a few
+/// frames, which takes the pointer instead, so this waits out the same hit test
+/// [WidgetTester.tap] would only report after sending the tap.
+Future<void> tapReachable(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (!_isReachable(finder)) {
+    if (!DateTime.now().isBefore(end)) {
+      fail(
+        'Timed out waiting for a tap on $finder to reach it; '
+        '${_topHit(tester, finder)} takes the pointer instead',
+      );
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  await tester.tap(finder);
+}
+
+bool _isReachable(Finder finder) => finder.hitTestable().evaluate().isNotEmpty;
+
+/// What a tap at the centre of [finder] hits first, for a failure message.
+Object _topHit(WidgetTester tester, Finder finder) {
+  if (finder.evaluate().isEmpty) {
+    return 'nothing matching it';
+  }
+  final path = tester.hitTestOnBinding(tester.getCenter(finder)).path;
+  return path.isEmpty ? 'nothing' : path.first.target;
 }
 
 /// Whether [element] lies entirely inside every scrollable that holds it.
@@ -66,3 +101,7 @@ Rect? _globalRect(BuildContext context) {
     Offset.zero & box.size,
   );
 }
+
+/// [WidgetTester.pageBack] through [tapReachable].
+Future<void> tapBack(WidgetTester tester) =>
+    tapReachable(tester, find.byTooltip('Back'));
