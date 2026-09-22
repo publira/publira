@@ -5,6 +5,7 @@ import {
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
 import {
+  ClientSurface,
   CommentMode,
   ReadingDirection,
   SeriesAgeRating,
@@ -172,6 +173,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
       publicId: "EP_001",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
     });
     const detail = result.ok ? result.value : null;
@@ -522,6 +524,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
       publicId: "EP_001",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
     });
     expect(result.ok && result.value?.episode.title).toBe("Episode 1");
@@ -596,6 +599,7 @@ describe("catalog.getEpisodeViewer", () => {
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
       {
         publicId: "EP_010",
+        surface: ClientSurface.WEB,
         tenant: { tenantId: "TENANT_001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -770,6 +774,7 @@ describe("catalog.listPublishedSeries", () => {
       limit: 24,
       order: SeriesOrder.PUBLISHED_AT_DESC,
       status: SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
       tagSlug: "",
       tenant: { tenantId: "TENANT_001" },
       token: "",
@@ -834,6 +839,7 @@ describe("catalog.listPublishedSeries", () => {
       limit: 6,
       order: SeriesOrder.PUBLISHED_AT_DESC,
       status: SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
       tagSlug: "",
       tenant: { tenantId: "TENANT_001" },
       token: "",
@@ -862,6 +868,7 @@ describe("catalog.listPublishedSeries", () => {
       limit: 24,
       order: SeriesOrder.LATEST_EPISODE_AT_DESC,
       status: SeriesStatus.COMPLETED,
+      surface: ClientSurface.WEB,
       tagSlug: "time-travel",
       tenant: { tenantId: "TENANT_001" },
       token: "",
@@ -1292,6 +1299,7 @@ describe("catalog.listRankedSeries", () => {
     expect(mockListRankedSeries).toHaveBeenCalledWith({
       limit: 10,
       period: RankingPeriod.WEEKLY,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
       token: "",
     });
@@ -1408,6 +1416,7 @@ describe("catalog.listRelatedSeries", () => {
     expect(mockListRelatedSeries).toHaveBeenCalledWith({
       limit: 4,
       seriesPublicId: "SERIES_1",
+      surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
       token: "",
     });

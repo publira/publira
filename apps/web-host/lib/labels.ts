@@ -1,4 +1,5 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
@@ -59,6 +60,7 @@ export const getPublishedLabelDetail = async (
     response = await apiClient.catalog.getPublishedLabelDetail({
       limit,
       publicId: normalizedLabelId,
+      surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
     });
