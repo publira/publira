@@ -105,11 +105,11 @@ collect_failure_artifacts() {
       "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/publira.v1.DomainService/GetTenantByDomain" || true
     echo
     echo "=== ping ${host_address} from the device ==="
-    adb shell ping -c 3 -W 2 "${host_address}" || true
-    echo "=== ip route on the device ==="
-    adb shell ip route || true
+    adb -s "${device}" shell ping -c 3 -W 2 "${host_address}" || true
+    echo "=== routes on the device ==="
+    adb -s "${device}" shell ip route show table all || true
     echo "=== dumpsys connectivity ==="
-    adb shell dumpsys connectivity || true
+    adb -s "${device}" shell dumpsys connectivity || true
   } > "${ART_DIR}/network.txt" 2>&1 || true
 }
 
