@@ -94,7 +94,7 @@ void main() {
     await pumpApp(tester);
 
     await tester.tap(find.byKey(ValueKey('series-tile-${withCover.id}')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     final request = _requestOf(
       tester,

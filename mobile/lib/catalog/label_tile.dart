@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/models/published_label.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// One row of a list of labels, which opens the label's screen.
@@ -29,7 +29,7 @@ class LabelTile extends StatelessWidget {
         ),
       ),
       title: Text(label.name),
-      onTap: () => context.push(AppRoutes.labelDetailPath(label.id)),
+      onTap: () => context.pushInTab(AppRoutes.labelDetailPath(label.id)),
     );
   }
 }

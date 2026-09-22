@@ -28,6 +28,7 @@ import 'package:publira/links/app_link.dart';
 import 'package:publira/links/incoming_links.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/links/share_sheet.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/notifications/http_notification_repository.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/offline/episode_downloader.dart';
@@ -515,7 +516,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           content: Text(messages.errorsRpcUnauthenticated),
           action: SnackBarAction(
             label: messages.commonSignIn,
-            onPressed: () => widget.router.push(AppRoutes.signIn),
+            // The account tab's, which is where a reader goes to sign in, so
+            // every other tab keeps the screen it was on.
+            onPressed: () =>
+                widget.router.go(AppTab.account.locate(AppRoutes.signIn)),
           ),
         ),
       );
@@ -532,8 +536,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     final route = push.acknowledgePendingRoute();
     if (route != null) {
       // A payload naming no route the app can open still opened the app, so
-      // the reader lands on the catalog rather than nowhere.
-      widget.router.push(route.isEmpty ? AppRoutes.catalog : route);
+      // the reader lands on the catalog rather than nowhere. The route opens
+      // on the tab it belongs to, which a push onto the tab on screen would
+      // not.
+      widget.router.go(route.isEmpty ? AppRoutes.catalog : route);
     }
     final message = push.acknowledgeForegroundMessage();
     if (message == null) {
@@ -557,7 +563,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
               ? null
               : SnackBarAction(
                   label: messages.pushOpen,
-                  onPressed: () => widget.router.push(target),
+                  onPressed: () => widget.router.go(target),
                 ),
         ),
       );

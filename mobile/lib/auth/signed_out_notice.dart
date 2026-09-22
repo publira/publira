@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// What an account settings screen shows once nobody is signed in, such as
@@ -22,7 +23,7 @@ class SignedOutNotice extends StatelessWidget {
           const SizedBox(height: 16),
           FilledButton(
             key: const ValueKey('account-settings-sign-in'),
-            onPressed: () => context.push(AppRoutes.signIn),
+            onPressed: () => context.pushInTab(AppRoutes.signIn),
             child: Text(messages.commonSignIn),
           ),
         ],

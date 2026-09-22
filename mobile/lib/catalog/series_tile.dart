@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// One row of a vertical list of series: the catalog itself, and the search
@@ -68,7 +68,7 @@ class SeriesTile extends StatelessWidget {
               ],
             ),
       trailing: _label(context),
-      onTap: () => context.push(AppRoutes.seriesDetailPath(series.id)),
+      onTap: () => context.pushInTab(AppRoutes.seriesDetailPath(series.id)),
     );
   }
 
@@ -84,7 +84,8 @@ class SeriesTile extends StatelessWidget {
     }
     return TextButton(
       key: ValueKey('series-tile-label-${series.id}'),
-      onPressed: () => context.push(AppRoutes.labelDetailPath(series.labelId)),
+      onPressed: () =>
+          context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
       child: Text(series.labelName),
     );
   }

@@ -11,6 +11,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/localizations.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -74,15 +75,21 @@ void main() {
     await pumpUntilRouteSettled(tester, find.text('Episodes'));
   }
 
-  /// The list of what the reader follows, open and settled.
+  /// The library's list of what the reader follows, open and settled.
   Future<void> openFollows(
     WidgetTester tester, {
     AuthSession? session = fakeSession,
-    bool withFollows = true,
   }) async {
-    router = createAppRouter(initialLocation: AppRoutes.accountFollows);
-    await pumpApp(tester, session: session, withFollows: withFollows);
-    await pumpUntilRouteSettled(tester, find.text('Follows'));
+    router = createAppRouter(initialLocation: AppRoutes.library);
+    await pumpApp(tester, session: session);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('library-tab-follows')),
+    );
+    await tester.tap(find.byKey(const ValueKey('library-tab-follows')));
+    // The tab view slides the list in.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   group('the control on a series screen', () {
@@ -281,18 +288,36 @@ void main() {
   });
 
   group('the list of what a reader follows', () {
-    testWidgets('is reached from the account screen', (tester) async {
-      router = createAppRouter(initialLocation: AppRoutes.account);
+    testWidgets('is a tab of the library', (tester) async {
+      router = createAppRouter();
       await pumpApp(tester, session: fakeSession);
       await pumpUntilRouteSettled(
         tester,
-        find.byKey(const ValueKey('account-follows')),
+        find.byKey(const ValueKey('tab-library')),
       );
 
-      await tester.tap(find.byKey(const ValueKey('account-follows')));
+      await tester.tap(find.byKey(const ValueKey('tab-library')));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('library-tab-follows')),
+      );
+      await tester.tap(find.byKey(const ValueKey('library-tab-follows')));
       await pumpUntilFound(tester, find.byKey(const ValueKey('follows-empty')));
 
-      expect(router.state.uri.path, AppRoutes.accountFollows);
+      expect(router.state.uri.path, AppRoutes.library);
+    });
+
+    testWidgets('is left out of the library of a build that follows nothing', (
+      tester,
+    ) async {
+      router = createAppRouter(initialLocation: AppRoutes.library);
+      await pumpApp(tester, session: fakeSession, withFollows: false);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('library-tab-continue')),
+      );
+
+      expect(find.byKey(const ValueKey('library-tab-follows')), findsNothing);
     });
 
     testWidgets('names each row from the catalog', (tester) async {
@@ -336,7 +361,10 @@ void main() {
       await tester.tap(find.byKey(ValueKey('follow-row-${series.id}')));
       await pumpUntilFound(tester, find.text('Episodes'));
 
-      expect(router.state.uri.path, AppRoutes.seriesDetailPath(series.id));
+      expect(
+        router.state.uri.path,
+        AppTab.library.locate(AppRoutes.seriesDetailPath(series.id)),
+      );
     });
 
     testWidgets('opens the author a row stands for', (tester) async {
@@ -353,7 +381,10 @@ void main() {
         find.byKey(const ValueKey('creator-body')),
       );
 
-      expect(router.state.uri.path, AppRoutes.creatorDetailPath(creator.id));
+      expect(
+        router.state.uri.path,
+        AppTab.library.locate(AppRoutes.creatorDetailPath(creator.id)),
+      );
     });
 
     testWidgets('offers to unfollow without asking for the state', (
@@ -437,7 +468,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('follows-sign-in')));
       await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
 
-      expect(router.state.uri.path, AppRoutes.signIn);
+      expect(router.state.uri.path, AppTab.library.locate(AppRoutes.signIn));
     });
   });
 }

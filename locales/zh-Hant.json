@@ -3067,10 +3067,6 @@
       "contact": "聯絡我們",
       "contact_description": "向本網站的營運者傳送訊息。",
       "delete": "刪除帳戶",
-      "downloads": "下載",
-      "downloads_description": "為離線閱讀而儲存到此裝置的集數",
-      "follows": "我的追蹤",
-      "follows_description": "您追蹤的系列與作者",
       "name": "名稱",
       "name_unset": "未設定",
       "notifications": "新章節通知",
@@ -3219,13 +3215,24 @@
       "series_heading": "該品牌的系列",
       "title": "品牌"
     },
+    "library": {
+      "continue_empty": "您還沒有正在閱讀的作品。開始閱讀集數後，就會顯示在這裡。",
+      "continue_sign_in_prompt": "登入後即可查看您正在閱讀的作品。",
+      "title": "書架"
+    },
+    "navigation": {
+      "account": "帳戶",
+      "home": "首頁",
+      "library": "書架",
+      "notifications": "通知",
+      "notifications_unread": "通知，{$count} 則未讀",
+      "search": "搜尋"
+    },
     "not_found": {
       "message": "「{$uri}」不存在。",
       "title": "找不到頁面"
     },
     "notifications": {
-      "account_description": "新章節等寄給您的通知。",
-      "account_unread": "帳戶，{$count} 則未讀通知",
       "announcement_posted_description": "營運方發布了《{$title}》。",
       "announcement_posted_description_unknown": "營運方發布了新公告。",
       "announcement_posted_title": "新公告",

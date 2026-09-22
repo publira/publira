@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -89,21 +90,53 @@ void main() {
     }
   }
 
-  testWidgets('the catalog app bar opens the search screen', (tester) async {
+  bool fieldHasFocus(WidgetTester tester) => tester
+      .widget<TextField>(
+        find.byKey(const ValueKey('search-field'), skipOffstage: false),
+      )
+      .focusNode!
+      .hasFocus;
+
+  testWidgets('the search tab opens the search screen with the field focused', (
+    tester,
+  ) async {
     await pumpApp(tester, location: AppRoutes.catalog);
 
-    await pumpUntilRouteSettled(
-      tester,
-      find.byKey(const ValueKey('catalog-search')),
-    );
-    await tester.tap(find.byKey(const ValueKey('catalog-search')));
+    await tester.tap(find.byKey(const ValueKey('tab-search')));
     await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('search-field')),
     );
+    await tester.pump();
 
     expect(find.byKey(const ValueKey('search-prompt')), findsOneWidget);
+    expect(fieldHasFocus(tester), isTrue);
   });
+
+  testWidgets(
+    'leaving the search tab takes the focus off the field, and coming back '
+    'to a keyword leaves it off',
+    (tester) async {
+      await pumpApp(tester);
+      await tester.pump();
+      await type(tester, 'Kitchen');
+      await pumpUntilFound(tester, tileOf('series-kitchen'));
+      expect(fieldHasFocus(tester), isTrue);
+
+      await tester.tap(find.byKey(const ValueKey('tab-home')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(fieldHasFocus(tester), isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('tab-search')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(tileOf('series-kitchen'), findsOneWidget);
+      expect(fieldHasFocus(tester), isFalse);
+    },
+  );
 
   testWidgets('an empty field asks for a keyword instead of searching', (
     tester,
@@ -158,26 +191,34 @@ void main() {
     expect(catalog.searchRequests, hasLength(1));
   });
 
-  testWidgets('the search screen leads back to the catalog', (tester) async {
-    await pumpApp(tester, location: AppRoutes.catalog);
+  testWidgets('a series opened from the results opens on the search tab, '
+      'and going back returns to the results', (tester) async {
+    await pumpApp(tester);
 
+    await type(tester, 'Kitchen');
+    await pumpUntilFound(tester, tileOf('series-kitchen'));
+    await tester.tap(tileOf('series-kitchen'));
     await pumpUntilRouteSettled(
       tester,
-      find.byKey(const ValueKey('catalog-search')),
+      find.byKey(const ValueKey('series-detail-body')),
     );
-    await tester.tap(find.byKey(const ValueKey('catalog-search')));
-    await pumpUntilRouteSettled(
-      tester,
-      find.byKey(const ValueKey('search-field')),
+
+    expect(
+      router.state.uri.path,
+      AppTab.search.locate(AppRoutes.seriesDetailPath('series-kitchen')),
     );
 
     router.pop();
-    await pumpUntilRouteSettled(
-      tester,
-      find.byKey(const ValueKey('catalog-search')),
-    );
+    await pumpUntilRouteSettled(tester, tileOf('series-kitchen'));
 
-    expect(find.byKey(const ValueKey('search-field')), findsNothing);
+    expect(router.state.uri.path, AppRoutes.search);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('search-field')))
+          .controller!
+          .text,
+      'Kitchen',
+    );
   });
 
   testWidgets('a keyword asks every group for it once', (tester) async {

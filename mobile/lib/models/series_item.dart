@@ -298,6 +298,20 @@ class RecentSeriesItem {
   final EpisodeItem episode;
 }
 
+/// One page of the reader's continue-reading list, as
+/// `ListMyRecentSeriesResponse` answers it.
+class RecentSeriesPage {
+  const RecentSeriesPage({required this.series, this.nextToken = ''});
+
+  /// A reader who is signed out or in the middle of nothing.
+  static const empty = RecentSeriesPage(series: []);
+
+  final List<RecentSeriesItem> series;
+
+  /// What the API calls the page after this one. Empty at the end of it.
+  final String nextToken;
+}
+
 /// The window one ranking snapshot covers, as `publira.v1.RankingPeriod` names
 /// them. The batch writes a snapshot per window on every run, so a tenant it
 /// has ranked has both.

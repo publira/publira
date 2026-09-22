@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/announcement_link.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
+import 'package:publira/navigation/app_tabs.dart';
 
 /// Where [linkUrl] takes the reader from [context], or `null` when it is not
 /// a link the app may follow, which is also what a run with no tenant site
@@ -33,7 +33,7 @@ void followAnnouncementDestination(
 ) {
   switch (destination) {
     case InAppAnnouncementDestination(:final location):
-      unawaited(context.push(location));
+      context.openInTab(location);
     case ExternalAnnouncementDestination(:final url):
       final board = AnnouncementScope.maybeOf(context);
       final messenger = ScaffoldMessenger.of(context);

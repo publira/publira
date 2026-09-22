@@ -4,6 +4,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
@@ -85,9 +86,9 @@ class _SignInScreenState extends State<SignInScreen> {
     if (returnTo != null) {
       // In place of the form, so going back from there does not land on it.
       if (context.canPop()) {
-        context.pushReplacement(returnTo);
+        context.pushReplacementInTab(returnTo);
       } else {
-        context.go(returnTo);
+        context.goInTab(returnTo);
       }
       return;
     }
@@ -102,14 +103,14 @@ class _SignInScreenState extends State<SignInScreen> {
 
   /// The reset request form, carrying whatever address is typed so far.
   void _openResetPassword() {
-    context.push(
+    context.pushInTab(
       AppRoutes.resetPasswordPath(email: _emailController.text.trim()),
     );
   }
 
   /// The resend form, carrying the address the refused attempt used.
   void _openResendVerification() {
-    context.push(
+    context.pushInTab(
       AppRoutes.resendVerificationPath(email: _emailController.text.trim()),
     );
   }
@@ -203,7 +204,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 8),
                 OutlinedButton(
                   key: const ValueKey('sign-in-to-sign-up'),
-                  onPressed: () => context.push(AppRoutes.signUp),
+                  onPressed: () => context.pushInTab(AppRoutes.signUp),
                   child: Text(messages.signInSignUp),
                 ),
               ],

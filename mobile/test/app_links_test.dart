@@ -107,7 +107,26 @@ void main() {
       find.byKey(const ValueKey('series-detail-body')),
     );
 
-    expect(find.text('Episodes'), findsOneWidget);
+    expect(find.text('Episodes', skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('a link that arrives on another tab opens on the home tab and '
+      'leaves that tab as it was', (tester) async {
+    await pumpApp(tester, initialLocation: AppRoutes.search);
+    await pumpUntilFound(tester, find.byKey(const ValueKey('search-field')));
+
+    incoming.deliver(Uri.parse('https://localhost/series/$seriesId'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('series-detail-body')),
+    );
+
+    expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
+
+    await tester.tap(find.byKey(const ValueKey('tab-search')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('search-field')));
+
+    expect(router.state.uri.path, AppRoutes.search);
   });
 
   testWidgets('a runtime link still opens after the initial lookup fails', (

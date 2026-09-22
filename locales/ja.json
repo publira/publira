@@ -3067,10 +3067,6 @@
       "contact": "お問い合わせ",
       "contact_description": "このサイトの運営者にメッセージを送ります。",
       "delete": "アカウントを削除",
-      "downloads": "ダウンロード",
-      "downloads_description": "オフラインで読むためにこの端末に保存したエピソード",
-      "follows": "フォロー中",
-      "follows_description": "フォローしているシリーズと著者",
       "name": "お名前",
       "name_unset": "（未設定）",
       "notifications": "新着エピソードの通知",
@@ -3219,13 +3215,24 @@
       "series_heading": "所属シリーズ",
       "title": "レーベル"
     },
+    "library": {
+      "continue_empty": "読みかけの作品はまだありません。エピソードを読み始めると、ここに表示されます。",
+      "continue_sign_in_prompt": "サインインすると、読みかけの作品を確認できます。",
+      "title": "本棚"
+    },
+    "navigation": {
+      "account": "アカウント",
+      "home": "ホーム",
+      "library": "本棚",
+      "notifications": "通知",
+      "notifications_unread": "通知、未読{$count}件",
+      "search": "検索"
+    },
     "not_found": {
       "message": "「{$uri}」は存在しません。",
       "title": "ページが見つかりません"
     },
     "notifications": {
-      "account_description": "新しいエピソードなど、自分宛の通知です。",
-      "account_unread": "アカウント（未読の通知 {$count} 件）",
       "announcement_posted_description": "運営から「{$title}」が届きました。",
       "announcement_posted_description_unknown": "運営から新しいお知らせが届きました。",
       "announcement_posted_title": "新しいお知らせ",

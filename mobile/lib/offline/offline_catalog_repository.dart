@@ -301,8 +301,10 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// the reader has not read yet, and what a reader without a network can open
   /// is what the series screen already marks as saved.
   @override
-  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) =>
-      _origin.listRecentSeries(limit: limit);
+  Future<RecentSeriesPage> listRecentSeries({
+    required int limit,
+    String token = '',
+  }) => _origin.listRecentSeries(limit: limit, token: token);
 
   /// Answers an episode the network could not, from what the device holds.
   Future<EpisodeDetail> _openSaved(

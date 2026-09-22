@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/inbox_notification.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/notifications/notification_copy.dart';
 import 'package:publira/notifications/notification_failure.dart';
 import 'package:publira/notifications/notification_inbox.dart';
@@ -256,7 +257,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context.go(AppRoutes.catalog);
       return;
     }
-    unawaited(context.push(location));
+    context.openInTab(location);
   }
 
   @override
@@ -295,9 +296,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         message: messages.notificationsSignInPrompt,
         actionKey: const ValueKey('notifications-sign-in'),
         actionLabel: messages.commonSignIn,
-        onAction: () => context.push(
-          AppRoutes.signInPath(returnTo: AppRoutes.accountNotifications),
-        ),
+        // The inbox is the tab's root, so the way back from signing in lands
+        // on it.
+        onAction: () => context.pushInTab(AppRoutes.signIn),
       );
     }
     final failure = _failure;

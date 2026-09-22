@@ -13,6 +13,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 
 /// How long the field stays still before the keyword in it is searched for.
 ///
@@ -33,9 +34,10 @@ enum _SearchGroup { series, creators, labels }
 ///
 /// The field is the app bar, and it is the whole of the screen's input: the
 /// results under it answer whatever is in it, and emptying it takes them away
-/// rather than searching for nothing. The catalog stands behind this screen,
-/// so a reader who cleared the field and changed their mind leaves by going
-/// back.
+/// rather than searching for nothing. It is focused whenever the search tab
+/// comes on screen with nothing typed in it, and left alone when there is a
+/// keyword, so a reader returning to their results is not handed a keyboard
+/// over them.
 ///
 /// Every group is read on its own, so an author a keyword names arrives
 /// whether or not a series matched, and one group the API could not answer
@@ -51,6 +53,10 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _field = TextEditingController();
+  final _focus = FocusNode();
+
+  /// Whether the tab was on screen the last time this screen looked.
+  var _active = false;
 
   /// The keyword the rows on screen answer. Empty is the prompt: a reader who
   /// has typed nothing is asked for a keyword rather than told there are no
@@ -75,6 +81,16 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final active = AppTabScope.isActive(context);
+    if (active && !_active && _field.text.isEmpty) {
+      // After this frame, which is when the tab stops excluding focus.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? true)) {
+          _focus.requestFocus();
+        }
+      });
+    }
+    _active = active;
     final catalog = CatalogScope.of(context);
     if (identical(catalog, _catalog)) {
       return;
@@ -90,6 +106,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void dispose() {
     _pending?.cancel();
     _field.dispose();
+    _focus.dispose();
     _series.dispose();
     _creators.dispose();
     _labels.dispose();
@@ -165,7 +182,7 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         title: TextField(
           key: const ValueKey('search-field'),
-          autofocus: true,
+          focusNode: _focus,
           controller: _field,
           textInputAction: TextInputAction.search,
           inputFormatters: const [_RuneLimitingFormatter(searchQueryMaxRunes)],

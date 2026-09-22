@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -12,24 +11,25 @@ import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/follow.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the catalog and the search results use.
 const _readAheadRows = 5;
 
-/// The series and authors the reader follows, newest follow first.
+/// The series and authors the reader follows, newest follow first, as the
+/// library shows them.
 ///
-/// A series row opens the series. An author row opens nothing: the app has no
-/// author screen, and the row is there to be named and unfollowed.
-class FollowsScreen extends StatefulWidget {
-  const FollowsScreen({super.key});
+/// A row opens its series or its author.
+class FollowsList extends StatefulWidget {
+  const FollowsList({super.key});
 
   @override
-  State<FollowsScreen> createState() => _FollowsScreenState();
+  State<FollowsList> createState() => _FollowsListState();
 }
 
-class _FollowsScreenState extends State<FollowsScreen> {
+class _FollowsListState extends State<FollowsList> {
   /// Every page read so far as one list, and `null` while the first is still
   /// in flight.
   List<_FollowedTarget>? _targets;
@@ -173,13 +173,6 @@ class _FollowsScreenState extends State<FollowsScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(messages.followsTitle)),
-      body: SafeArea(child: _body(messages)),
-    );
-  }
-
-  Widget _body(AppMessages messages) {
     if (FollowScope.maybeOf(context) == null) {
       return const SizedBox.shrink();
     }
@@ -189,7 +182,7 @@ class _FollowsScreenState extends State<FollowsScreen> {
         message: messages.followsSignInPrompt,
         actionKey: const ValueKey('follows-sign-in'),
         actionLabel: messages.commonSignIn,
-        onAction: () => context.push(AppRoutes.signIn),
+        onAction: () => context.pushInTab(AppRoutes.signIn),
       );
     }
     final failure = _failure;
@@ -294,7 +287,7 @@ class _FollowRow extends StatelessWidget {
         // without asking for it once per row.
         following: true,
       ),
-      onTap: () => context.push(
+      onTap: () => context.pushInTab(
         isSeries
             ? AppRoutes.seriesDetailPath(follow.targetId)
             : AppRoutes.creatorDetailPath(follow.targetId),

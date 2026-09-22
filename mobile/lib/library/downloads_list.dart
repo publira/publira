@@ -1,29 +1,30 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
 
-/// What the device keeps for reading offline: the bytes it spends against the
-/// cap, the saved episodes by series, and the way to delete them.
+/// What the device keeps for reading offline, as the library shows it: the
+/// bytes it spends against the cap, the saved episodes by series, and the way
+/// to delete them.
 ///
 /// Only episodes the reader holding the device could open are listed. A body
 /// saved for another account names what that account bought, so it counts
 /// towards the bytes shown and goes with "Clear all", and is not listed.
-class DownloadsScreen extends StatefulWidget {
-  const DownloadsScreen({super.key});
+class DownloadsList extends StatefulWidget {
+  const DownloadsList({super.key});
 
   @override
-  State<DownloadsScreen> createState() => _DownloadsScreenState();
+  State<DownloadsList> createState() => _DownloadsListState();
 }
 
-class _DownloadsScreenState extends State<DownloadsScreen> {
+class _DownloadsListState extends State<DownloadsList> {
   OfflineLibrary? _library;
   StreamSubscription<void>? _changes;
 
@@ -155,47 +156,34 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = AppMessages.of(context);
     final storage = _storage;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(messages.downloadsTitle),
-        actions: [
-          if (storage != null &&
-              (storage.bytes > 0 || storage.episodes.isNotEmpty))
-            TextButton(
-              key: const ValueKey('downloads-clear'),
-              onPressed: () => unawaited(_clear()),
-              child: Text(messages.downloadsClear),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: storage == null
-            ? const Center(
-                key: ValueKey('downloads-loading'),
-                child: CircularProgressIndicator(),
-              )
-            : _DownloadsList(
-                storage: storage,
-                readerId: _readerId,
-                onDelete: (episode) => unawaited(_delete(episode)),
-              ),
-      ),
+    if (storage == null) {
+      return const Center(
+        key: ValueKey('downloads-loading'),
+        child: CircularProgressIndicator(),
+      );
+    }
+    return _SavedEpisodes(
+      storage: storage,
+      readerId: _readerId,
+      onDelete: (episode) => unawaited(_delete(episode)),
+      onClear: () => unawaited(_clear()),
     );
   }
 }
 
-class _DownloadsList extends StatelessWidget {
-  const _DownloadsList({
+class _SavedEpisodes extends StatelessWidget {
+  const _SavedEpisodes({
     required this.storage,
     required this.readerId,
     required this.onDelete,
+    required this.onClear,
   });
 
   final OfflineStorage storage;
   final String readerId;
   final ValueChanged<SavedEpisode> onDelete;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -221,13 +209,25 @@ class _DownloadsList extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                key: const ValueKey('downloads-usage'),
-                messages.downloadsUsage(
-                  used: messages.formatByteSize(storage.bytes),
-                  limit: messages.formatByteSize(storage.byteLimit),
-                ),
-                style: theme.textTheme.bodyLarge,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      key: const ValueKey('downloads-usage'),
+                      messages.downloadsUsage(
+                        used: messages.formatByteSize(storage.bytes),
+                        limit: messages.formatByteSize(storage.byteLimit),
+                      ),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ),
+                  if (storage.bytes > 0 || storage.episodes.isNotEmpty)
+                    TextButton(
+                      key: const ValueKey('downloads-clear'),
+                      onPressed: onClear,
+                      child: Text(messages.downloadsClear),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               LinearProgressIndicator(
@@ -328,7 +328,7 @@ class _DownloadTile extends StatelessWidget {
         tooltip: messages.downloadsDeleteAria(title: detail.episode.title),
         onPressed: () => onDelete(episode),
       ),
-      onTap: () => context.push(
+      onTap: () => context.pushInTab(
         AppRoutes.episodeViewerPath(detail.seriesId, detail.episode.id),
       ),
     );

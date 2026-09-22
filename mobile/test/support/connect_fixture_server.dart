@@ -436,7 +436,8 @@ class ConnectFixtureServer {
   Map<String, int> readingPositions;
 
   /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
-  /// with, in the order they are given.
+  /// with, in the order they are given, at most the request's `limit` to a
+  /// page with the token written the way [followsPageSize] writes one.
   List<Map<String, Object?>> recentSeries;
 
   /// The tenant's comment policy, as `GetTenant` answers it. Set it to
@@ -553,6 +554,10 @@ class ConnectFixtureServer {
   /// The accounts `CreateUser` has opened here, keyed by address: what
   /// `Login` then accepts, and whether the address has been confirmed.
   final signups = <String, FixtureSignup>{};
+
+  /// The address and sign-up `Login` last issued [signedUpAccessToken] for,
+  /// which `GetMe` answers that session with.
+  ({String email, FixtureSignup signup})? _signedUpSession;
 
   /// The bearer `GetMe` accepts and `GetEpisodeDetail` unlocks for. Set it to
   /// another value to act out a token the API has stopped accepting.
@@ -756,6 +761,23 @@ class ConnectFixtureServer {
       return;
     }
 
+    final signedUp = _signedUpSession;
+    if (path.endsWith('/GetMe') &&
+        signedUp != null &&
+        request.headers.value(HttpHeaders.authorizationHeader) ==
+            'Bearer $signedUpAccessToken') {
+      final birthDate = signedUp.signup.birthDate;
+      await _write(request, HttpStatus.ok, {
+        'user': {
+          'publicId': signedUpPublicId,
+          'name': signedUp.signup.name,
+          'role': 'member',
+          if (birthDate.isNotEmpty) 'birthDate': birthDate,
+          'email': signedUp.email,
+        },
+      });
+      return;
+    }
     if (path.endsWith('/GetMe')) {
       if (!_isAuthorized(request)) {
         await _write(request, HttpStatus.unauthorized, {
@@ -1537,7 +1559,19 @@ class ConnectFixtureServer {
     Map<String, Object?> body,
   ) async {
     if (path.endsWith('/ListMyRecentSeries')) {
-      await _write(request, HttpStatus.ok, {'series': recentSeries});
+      final limit = body['limit'] as int? ?? 0;
+      final token = body['token'] as String? ?? '';
+      final start = min(
+        token.isEmpty ? 0 : int.parse(token),
+        recentSeries.length,
+      );
+      final end = limit <= 0
+          ? recentSeries.length
+          : min(start + limit, recentSeries.length);
+      await _write(request, HttpStatus.ok, {
+        'series': recentSeries.sublist(start, end),
+        if (end < recentSeries.length) 'nextToken': '$end',
+      });
       return;
     }
     final episodeId = body['episodePublicId'] as String? ?? '';
@@ -1629,6 +1663,7 @@ class ConnectFixtureServer {
       });
       return;
     }
+    _signedUpSession = (email: email, signup: signup);
     await _write(request, HttpStatus.ok, {
       'user': {
         'publicId': signedUpPublicId,

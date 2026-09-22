@@ -62,7 +62,7 @@ void main() {
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
     );
-    await pumpUntilFound(tester, find.text('エピソード一覧'));
+    await pumpUntilFound(tester, find.text('エピソード一覧', skipOffstage: false));
 
     // The back button is Material's, and its tooltip is what it ships for
     // `ja`, which only reaches the screen through the global delegates.

@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// Where a password reset link lands: it takes a new password and spends the
@@ -196,9 +197,9 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
   /// that has been spent or is dead.
   void _leaveFor(String location) {
     if (context.canPop()) {
-      context.pushReplacement(location);
+      context.pushReplacementInTab(location);
     } else {
-      context.go(location);
+      context.goInTab(location);
     }
   }
 

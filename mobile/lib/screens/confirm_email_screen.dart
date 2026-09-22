@@ -144,13 +144,10 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
     ];
   }
 
-  /// Replaces this screen, so the back gesture does not spend the link again.
+  /// Replaces the account tab's stack with the account screen, so the back
+  /// gesture does not spend the link again.
   void _leaveForAccount() {
-    if (context.canPop()) {
-      context.pushReplacement(AppRoutes.account);
-    } else {
-      context.go(AppRoutes.account);
-    }
+    context.go(AppRoutes.account);
   }
 
   String _failureCopy(AppMessages messages, AuthFailureKind failure) {

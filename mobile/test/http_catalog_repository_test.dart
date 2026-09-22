@@ -1599,13 +1599,43 @@ void main() {
     });
 
     test('listRecentSeries maps the series and the episode to open', () async {
-      final items = await signedIn.listRecentSeries(limit: 6);
+      final items = (await signedIn.listRecentSeries(limit: 6)).series;
 
       expect(items, hasLength(1));
       expect(items.single.series.id, ConnectFixtureServer.seedSeriesId);
       expect(items.single.series.eyeCatchVariants, isNotEmpty);
       expect(items.single.episode.id, ConnectFixtureServer.seedEpisodeId);
       expect(server.requestsTo('ListMyRecentSeries').single.body['limit'], 6);
+    });
+
+    test('listRecentSeries asks for the page the token names', () async {
+      server.recentSeries = [
+        for (final id in ['series-a', 'series-b', 'series-c'])
+          {
+            ...server.recentSeries.single,
+            'series': {
+              ...server.recentSeries.single['series']! as Map<String, Object?>,
+              'publicId': id,
+            },
+          },
+      ];
+
+      final first = await signedIn.listRecentSeries(limit: 2);
+      final second = await signedIn.listRecentSeries(
+        limit: 2,
+        token: first.nextToken,
+      );
+
+      expect(first.series.map((item) => item.series.id), [
+        'series-a',
+        'series-b',
+      ]);
+      expect(first.nextToken, isNotEmpty);
+      expect(second.series.single.series.id, 'series-c');
+      expect(second.nextToken, isEmpty);
+      final requests = server.requestsTo('ListMyRecentSeries');
+      expect(requests.first.body.containsKey('token'), isFalse);
+      expect(requests.last.body['token'], first.nextToken);
     });
 
     test('a guest asks the API for none of it', () async {
@@ -1621,7 +1651,7 @@ void main() {
         ConnectFixtureServer.seedEpisodeId,
         4,
       );
-      expect(await catalog.listRecentSeries(limit: 6), isEmpty);
+      expect((await catalog.listRecentSeries(limit: 6)).series, isEmpty);
 
       // Nothing was asked, so nothing was refused: the API answers a request
       // without a session `unauthenticated`, and there is no answer in that
