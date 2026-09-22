@@ -92,11 +92,35 @@ var publicDataTables = []struct {
 	// Where an episode may be bought, which the episode reads and the checkout
 	// take from the tenant, the series, and the episode together.
 	{name: "episode_purchase_availability", count: "SELECT count(*) FROM episode_purchase_availability"},
-	// The catalog reads a credit through its role, so the role list is on the
-	// storefront's read path as much as the genre list is.
+	// Every series row the catalog returns carries its credits, joined from
+	// the creator, the credit, and the credit's role.
+	{name: "creators", count: "SELECT count(*) FROM creators"},
+	{name: "series_creators", count: "SELECT count(*) FROM series_creators"},
 	{name: "creator_roles", count: "SELECT count(*) FROM creator_roles"},
 	// Every episode carries its own credits, which the episode detail reads.
 	{name: "episode_creators", count: "SELECT count(*) FROM episode_creators"},
+	{name: "labels", count: "SELECT count(*) FROM labels"},
+	// The rows behind every picture the storefront shows, each of which names
+	// the object key a tenant's image is stored under.
+	{name: "series_images", count: "SELECT count(*) FROM series_images"},
+	{name: "series_image_variants", count: "SELECT count(*) FROM series_image_variants"},
+	{name: "creator_images", count: "SELECT count(*) FROM creator_images"},
+	{name: "creator_image_variants", count: "SELECT count(*) FROM creator_image_variants"},
+	{name: "label_images", count: "SELECT count(*) FROM label_images"},
+	{name: "label_image_variants", count: "SELECT count(*) FROM label_image_variants"},
+	{name: "tenant_images", count: "SELECT count(*) FROM tenant_images"},
+	{name: "tenant_image_variants", count: "SELECT count(*) FROM tenant_image_variants"},
+	{name: "episode_images", count: "SELECT count(*) FROM episode_images"},
+	// The tenant's own settings, which every storefront page reads to decide
+	// how it looks and what it allows.
+	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
+	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
+	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
+	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
+	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
+	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
+	{name: "content_ranking_snapshots", count: "SELECT count(*) FROM content_ranking_snapshots"},
+	{name: "content_events", count: "SELECT count(*) FROM content_events"},
 	{name: "genres", count: "SELECT count(*) FROM genres"},
 	{name: "tags", count: "SELECT count(*) FROM tags"},
 	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},
@@ -119,6 +143,18 @@ var publicDataTables = []struct {
 	{name: "content_daily_stats", count: "SELECT count(*) FROM content_daily_stats"},
 	{name: "tenant_rating_totals", count: "SELECT count(*) FROM tenant_rating_totals"},
 	{name: "users", count: "SELECT count(*) FROM users"},
+	{name: "tenant_user_roles", count: "SELECT count(*) FROM tenant_user_roles"},
+	// A sign-in link, a reset link, and an address change are each answered
+	// by looking one of these up on the storefront's connection.
+	{name: "user_email_verification_tokens", count: "SELECT count(*) FROM user_email_verification_tokens"},
+	{name: "user_password_reset_tokens", count: "SELECT count(*) FROM user_password_reset_tokens"},
+	{name: "user_email_change_tokens", count: "SELECT count(*) FROM user_email_change_tokens"},
+	{name: "user_push_devices", count: "SELECT count(*) FROM user_push_devices"},
+	{name: "series_follows", count: "SELECT count(*) FROM series_follows"},
+	{name: "episode_follows", count: "SELECT count(*) FROM episode_follows"},
+	{name: "creator_follows", count: "SELECT count(*) FROM creator_follows"},
+	{name: "episode_comments", count: "SELECT count(*) FROM episode_comments"},
+	{name: "episode_comment_reports", count: "SELECT count(*) FROM episode_comment_reports"},
 	{name: "purchases", count: "SELECT count(*) FROM purchases"},
 	// Written by the Stripe webhook rather than read by a page, and on the same
 	// connection: a row names one tenant's payment intent and the money behind
@@ -146,6 +182,9 @@ var publicDataTables = []struct {
 	// storefront's connection is what stores. A missing policy here would put
 	// one tenant's messages, and the addresses on them, in another's inbox.
 	{name: "contact_messages", count: "SELECT count(*) FROM contact_messages"},
+	// The auth mails and the staff alerts a reader's comment raises are queued
+	// here on the storefront's connection.
+	{name: "outbox_events", count: "SELECT count(*) FROM outbox_events"},
 }
 
 // The fail-closed direction: a connection that never set app.current_tenant_id
@@ -172,54 +211,90 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		Title:    "Tenant A Free Episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
+	seed := func(what, query string, args ...any) {
+		t.Helper()
+		if _, err := env.PG.DB.ExecContext(context.Background(), query, args...); err != nil {
+			t.Fatalf("seed %s: %v", what, err)
+		}
+	}
+
 	creator := env.PG.SeedCreator(t, first.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})
+	env.PG.SeedSeriesCreator(t, first.ID, series.ID, creator.ID, "")
 	env.PG.SeedEpisodeCreator(t, first.ID, episode.ID, creator.ID, "")
+	label := env.PG.SeedLabel(t, first.ID, testutil.LabelSeed{PublicID: "LABELA000001", Name: "Tenant A Label"})
 	genre := env.PG.SeedGenre(t, first.ID, testutil.GenreSeed{PublicID: "GENREA000001", Name: "Fantasy"})
 	env.PG.SeedSeriesGenre(t, first.ID, series.ID, genre.ID)
 	tag := env.PG.SeedTag(t, first.ID, testutil.TagSeed{Name: "Swordplay"})
 	env.PG.SeedSeriesTag(t, first.ID, series.ID, tag.ID)
+	env.PG.SeedEpisodeFreeWindow(t, first.ID, episode.ID, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
+
+	seriesImageID := uuid.Must(uuid.NewV7())
+	seed("series image", "INSERT INTO series_images (id, tenant_id, series_id) VALUES ($1, $2, $3)", seriesImageID, first.ID, series.ID)
+	seed("series image variant", `INSERT INTO series_image_variants
+		(id, tenant_id, series_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/series.webp', 'image/webp', 1, 320, 480)`,
+		uuid.Must(uuid.NewV7()), first.ID, seriesImageID)
+	creatorImageID := uuid.Must(uuid.NewV7())
+	seed("creator image", "INSERT INTO creator_images (id, tenant_id, creator_id) VALUES ($1, $2, $3)", creatorImageID, first.ID, creator.ID)
+	seed("creator image variant", `INSERT INTO creator_image_variants
+		(id, tenant_id, creator_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'avatar-160', 's3', 'tenants/creator.webp', 'image/webp', 1, 160, 160)`,
+		uuid.Must(uuid.NewV7()), first.ID, creatorImageID)
+	labelImageID := uuid.Must(uuid.NewV7())
+	seed("label image", "INSERT INTO label_images (id, tenant_id, label_id) VALUES ($1, $2, $3)", labelImageID, first.ID, label.ID)
+	seed("label image variant", `INSERT INTO label_image_variants
+		(id, tenant_id, label_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/label.webp', 'image/webp', 1, 320, 480)`,
+		uuid.Must(uuid.NewV7()), first.ID, labelImageID)
+	tenantImageID := uuid.Must(uuid.NewV7())
+	seed("tenant image", "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", tenantImageID, first.ID)
+	seed("tenant image variant", `INSERT INTO tenant_image_variants
+		(id, tenant_id, tenant_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'logo-1x', 'logo', 's3', 'tenants/logo.webp', 'image/webp', 1, 320, 320)`,
+		uuid.Must(uuid.NewV7()), first.ID, tenantImageID)
+	seed("tenant config", "INSERT INTO tenant_config (tenant_id) VALUES ($1)", first.ID)
+	seed("tenant theme", "INSERT INTO tenant_themes (tenant_id) VALUES ($1)", first.ID)
+	seed("community limit overrides", "INSERT INTO tenant_community_limit_overrides (tenant_id) VALUES ($1)", first.ID)
+	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, items)
+		VALUES ($1, $2, 'daily', CURRENT_DATE, CURRENT_DATE, 'series', '[]')`, uuid.Must(uuid.NewV7()), first.ID)
+
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	// A reader holds no tenant role, so the role row comes from a staff account.
+	env.PG.SeedTenantAdmin(t, first.ID, "ADMINA000001", "admin@tenant-a.example.com", "Admin")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO unapplied_stripe_refunds (tenant_id, stripe_payment_intent_id, refunded_amount) VALUES ($1, $2, $3)", first.ID, "pi_rls_held", 500); err != nil {
-		t.Fatalf("seed held refund: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID); err != nil {
-		t.Fatalf("seed episode read: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID); err != nil {
-		t.Fatalf("seed reading position: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled) VALUES ($1, $2, true)", first.ID, member.ID); err != nil {
-		t.Fatalf("seed viewer preferences: %v", err)
-	}
+	seed("held refund", "INSERT INTO unapplied_stripe_refunds (tenant_id, stripe_payment_intent_id, refunded_amount) VALUES ($1, $2, $3)", first.ID, "pi_rls_held", 500)
+	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
+	seed("content event", "INSERT INTO content_events (id, tenant_id, event_type, user_id, series_id, debounce_bucket) VALUES ($1, $2, 'series_view', $3, $4, 0)", uuid.Must(uuid.NewV7()), first.ID, member.ID, series.ID)
+	seed("episode read", "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID)
+	seed("reading position", "INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count) VALUES ($1, $2, $3, 1, 10)", first.ID, member.ID, episode.ID)
+	seed("viewer preferences", "INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled) VALUES ($1, $2, true)", first.ID, member.ID)
 	// The rating carries its own count rows: the triggers on episode_ratings
 	// write the episode's tally and the series' one, so three tables are seeded
 	// by this single insert.
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score) VALUES ($1, $2, $3, 5)", first.ID, member.ID, episode.ID); err != nil {
-		t.Fatalf("seed episode rating: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, complete_count, rating_count, rating_sum) VALUES ($1, $2, CURRENT_DATE, 'series', $3, 1, 1, 5)", uuid.Must(uuid.NewV7()), first.ID, series.ID); err != nil {
-		t.Fatalf("seed content daily stats: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 5, 1)", first.ID); err != nil {
-		t.Fatalf("seed tenant rating totals: %v", err)
-	}
+	seed("episode rating", "INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score) VALUES ($1, $2, $3, 5)", first.ID, member.ID, episode.ID)
+	seed("content daily stats", "INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, complete_count, rating_count, rating_sum) VALUES ($1, $2, CURRENT_DATE, 'series', $3, 1, 1, 5)", uuid.Must(uuid.NewV7()), first.ID, series.ID)
+	seed("tenant rating totals", "INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 5, 1)", first.ID)
+	seed("email verification token", "INSERT INTO user_email_verification_tokens (id, tenant_id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, 'verify-hash', NOW() + INTERVAL '1 hour')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
+	seed("password reset token", "INSERT INTO user_password_reset_tokens (id, tenant_id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, 'reset-hash', NOW() + INTERVAL '1 hour')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
+	seed("email change token", `INSERT INTO user_email_change_tokens (id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, expires_at)
+		VALUES ($1, $2, $3, 'member@tenant-a.example.com', 'moved@tenant-a.example.com', 'current-hash', 'new-hash', NOW() + INTERVAL '1 hour')`,
+		uuid.Must(uuid.NewV7()), first.ID, member.ID)
+	seed("push device", "INSERT INTO user_push_devices (tenant_id, user_id, token, platform) VALUES ($1, $2, 'fcm-token-a', 'android')", first.ID, member.ID)
+	seed("series follow", "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", first.ID, member.ID, series.ID)
+	seed("episode follow", "INSERT INTO episode_follows (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)", first.ID, member.ID, episode.ID)
+	seed("creator follow", "INSERT INTO creator_follows (tenant_id, user_id, creator_id) VALUES ($1, $2, $3)", first.ID, member.ID, creator.ID)
+	commentID := uuid.Must(uuid.NewV7())
+	seed("comment", "INSERT INTO episode_comments (id, tenant_id, public_id, episode_id, user_id, body, status, published_at) VALUES ($1, $2, 'COMMENTA0001', $3, $4, 'A comment about this episode.', 'published', NOW())", commentID, first.ID, episode.ID, member.ID)
+	seed("comment report", "INSERT INTO episode_comment_reports (id, tenant_id, comment_id, reporter_user_id, reason) VALUES ($1, $2, $3, $4, 'spam')", uuid.Must(uuid.NewV7()), first.ID, commentID, member.ID)
 	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
 	announcementID := insertAnnouncement(t, env, first.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID); err != nil {
-		t.Fatalf("seed announcement read: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID); err != nil {
-		t.Fatalf("seed notification settings: %v", err)
-	}
+	seed("announcement read", "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID)
+	seed("notification settings", "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID)
 	bellID := insertTenantNotification(t, env, first.ID, member.ID, "episode_published", "episode:EPISODEA0001", `{"episode_id":"EPISODEA0001"}`)
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", bellID, member.ID, first.ID); err != nil {
-		t.Fatalf("seed notification read: %v", err)
-	}
-	if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A."); err != nil {
-		t.Fatalf("seed contact message: %v", err)
-	}
+	seed("notification read", "INSERT INTO notification_reads (notification_id, user_id, tenant_id) VALUES ($1, $2, $3)", bellID, member.ID, first.ID)
+	seed("contact message", "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A.")
+	seed("outbox event", "INSERT INTO outbox_events (id, tenant_id, event_type, payload, idempotency_key) VALUES ($1, $2, 'rls_probe', $3, 'rls:probe')", uuid.Must(uuid.NewV7()), first.ID, `{"tenant_id":"`+first.ID.String()+`"}`)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
