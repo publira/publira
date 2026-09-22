@@ -68,7 +68,6 @@ export const resolveCacheHandlerConfig = (
   if (isProductionBuildPhase()) {
     redisUrl = "";
   }
-  assertNoPlaintextPassword(redisUrl);
 
   const explicitPrefix = process.env.PUBLIRA_CACHE_KEY_PREFIX?.trim();
   const app = process.env.PUBLIRA_CACHE_APP?.trim() || "next";
@@ -83,7 +82,7 @@ export const resolveCacheHandlerConfig = (
       ? timeoutParsed
       : DEFAULT_TIMEOUT_MS;
 
-  return {
+  const config = {
     defaultTtlSeconds: DEFAULT_TTL_SECONDS,
     keyPrefix,
     maxTtlSeconds: MAX_TTL_SECONDS,
@@ -91,6 +90,8 @@ export const resolveCacheHandlerConfig = (
     timeoutMs,
     ...overrides,
   };
+  assertNoPlaintextPassword(config.redisUrl);
+  return config;
 };
 
 export const clampTtlSeconds = (

@@ -51,6 +51,13 @@ describe("resolveCacheHandlerConfig", () => {
     }
   });
 
+  it("refuses a password over redis:// passed as an override", () => {
+    process.env.PUBLIRA_REDIS_URL = "disabled";
+    expect(() =>
+      resolveCacheHandlerConfig({ redisUrl: "redis://:secret@example:6379" })
+    ).toThrow(/rediss:\/\//u);
+  });
+
   it("accepts a password over rediss://", () => {
     delete process.env.NEXT_PHASE;
     process.env.PUBLIRA_REDIS_URL = "rediss://user:secret@example:6380";
