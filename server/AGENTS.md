@@ -189,6 +189,7 @@ go test ./api/adminapi/ -count=1
 ## Testing notes
 
 - **Unit tests**: prefer `sqlmock` for DB-facing logic when a real Postgres is unnecessary.
+- **sqlmock expectations use sqlc's exported query constants**: `mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID))`, never copied SQL or a fragment of it.
 - **Integration tests**: use `internal/testutil` (Testcontainers PostgreSQL). They skip when Docker is unavailable or when `-short` is set.
 - Prefer adding focused package tests next to the code under test (`*_test.go` in the same package or `_test` package as existing files do).
 - Do not rely on a shared long-lived local DB for default unit tests; use mocks or Testcontainers helpers.

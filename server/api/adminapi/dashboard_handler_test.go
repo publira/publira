@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -15,8 +16,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-const countPublishedSeriesForTenantQuery = "-- name: CountPublishedSeriesForTenant :one\n"
-
 func TestGetDashboardDatabaseErrorIsHidden(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
@@ -26,7 +25,7 @@ func TestGetDashboardDatabaseErrorIsHidden(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(countPublishedSeriesForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPublishedSeriesForTenant)).
 		WithArgs(tenantID).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
@@ -55,7 +54,7 @@ func TestGetDashboardPreservesContextCanceled(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(countPublishedSeriesForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPublishedSeriesForTenant)).
 		WithArgs(tenantID).
 		WillReturnError(context.Canceled)
 

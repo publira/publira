@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -18,11 +19,6 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
-const (
-	listMyPurchasesAscQuery  = "-- name: ListMyPurchasesAsc :many\n"
-	listMyPurchasesDescQuery = "-- name: ListMyPurchasesDesc :many\n"
-)
-
 func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -32,7 +28,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listMyPurchasesDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
 		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
@@ -81,7 +77,7 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listMyPurchasesDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
 		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
@@ -127,7 +123,7 @@ func TestPurchaseListForwardPageReturnsNeighborTokens(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listMyPurchasesDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
 		WithArgs(
 			tenantID,
 			userID,
@@ -168,7 +164,7 @@ func TestPurchaseListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *testing
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listMyPurchasesAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesAsc)).
 		WithArgs(
 			tenantID,
 			userID,
@@ -206,20 +202,20 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 		{
 			name:              "forward page",
 			direction:         pagination.Forward,
-			query:             listMyPurchasesDescQuery,
+			query:             dbmodels.ListMyPurchasesDesc,
 			wantPreviousToken: "recovery backward",
 		},
 		{
 			name:          "backward page",
 			direction:     pagination.Backward,
-			query:         listMyPurchasesAscQuery,
+			query:         dbmodels.ListMyPurchasesAsc,
 			wantNextToken: "recovery forward",
 		},
 		{
 			name:      "inclusive recovery page",
 			direction: pagination.Forward,
 			inclusive: true,
-			query:     listMyPurchasesDescQuery,
+			query:     dbmodels.ListMyPurchasesDesc,
 		},
 	}
 

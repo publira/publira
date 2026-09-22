@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,12 +19,6 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/testutil"
-)
-
-const (
-	getTenantFcmConfigQuery    = "-- name: GetTenantFcmConfig :one\n"
-	upsertTenantFcmConfigQuery = "-- name: UpsertTenantFcmConfig :one\n"
-	deleteTenantFcmConfigQuery = "-- name: DeleteTenantFcmConfig :execrows\n"
 )
 
 func tenantFcmColumns() []string {
@@ -45,7 +40,7 @@ func TestGetTenantFcmSettingsDescribesTheKeyWithoutReturningIt(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantFcmConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantFcmConfig)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantFcmColumns()).
 			AddRow(tenantID, "tenant-a", "push@tenant-a.iam.gserviceaccount.com", "enc:v1:k1:sealed-key", now, now))
@@ -74,7 +69,7 @@ func TestGetTenantFcmSettingsIsUnconfiguredWithoutARow(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantFcmConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantFcmConfig)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -172,7 +167,7 @@ func TestSaveTenantFcmCredentialsSealsTheKeyAndAudits(t *testing.T) {
 	keyJSON := testutil.ServiceAccountJSON(t, "tenant-a", "push@tenant-a.iam.gserviceaccount.com")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantFcmConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantFcmConfig)).
 		WithArgs(tenantID, "tenant-a", "push@tenant-a.iam.gserviceaccount.com", sealedArg{}).
 		WillReturnRows(sqlmock.NewRows(tenantFcmColumns()).
 			AddRow(tenantID, "tenant-a", "push@tenant-a.iam.gserviceaccount.com", "enc:v1:k1:sealed-key", now, now))
@@ -203,7 +198,7 @@ func TestDeleteTenantFcmCredentialsAnswersUnconfigured(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectExec(regexp.QuoteMeta(deleteTenantFcmConfigQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantFcmConfig)).
 		WithArgs(tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectAdminAuditLogInsert(mock)

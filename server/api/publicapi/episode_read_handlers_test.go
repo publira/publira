@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -14,11 +15,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	markPublishedEpisodeAsReadQuery  = "-- name: MarkPublishedEpisodeAsRead :one\n"
-	projectEpisodeCompleteEventQuery = "-- name: ProjectEpisodeCompleteEvent :one\n"
 )
 
 type episodeReadFixture struct {
@@ -56,11 +52,11 @@ func (f *episodeReadFixture) mark(publicID string) (*connect.Response[publirav1.
 // it. The read id is generated in the handler, so it is matched by shape.
 func (f *episodeReadFixture) expectMark(publicID string, episodeID uuid.UUID, readAt time.Time) {
 	readID := uuid.Must(uuid.NewV7())
-	f.mock.ExpectQuery(regexp.QuoteMeta(markPublishedEpisodeAsReadQuery)).
+	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
 		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, publicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "episode_id", "read_at"}).
 			AddRow(readID, f.tenantID, f.userID, episodeID, readAt))
-	f.mock.ExpectQuery(regexp.QuoteMeta(projectEpisodeCompleteEventQuery)).
+	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ProjectEpisodeCompleteEvent)).
 		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, episodeID).
 		WillReturnError(sql.ErrNoRows)
 }
@@ -85,7 +81,7 @@ func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing
 
 func TestMarkEpisodeAsReadHidesUnavailableEpisodes(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(markPublishedEpisodeAsReadQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
 		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, "UNAVAILABLE").
 		WillReturnError(sql.ErrNoRows)
 

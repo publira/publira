@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"net/http"
 	"regexp"
 	"testing"
@@ -74,7 +75,7 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 
 	now := time.Now()
 	expectTenantLookup(mock, fixture.tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
 		WithArgs(fixture.tenantID, "EPISODE001", nil).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
@@ -146,7 +147,7 @@ func mintedAnonymousID(t *testing.T, header http.Header) uuid.UUID {
 func TestRecordContentViewMintsAnonymousActorOnFirstView(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	anonymousID := &capturedArg{}
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), fixture.tenantID, nil, anonymousID,
 			fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -166,7 +167,7 @@ func TestRecordContentViewMintsAnonymousActorOnFirstView(t *testing.T) {
 func TestRecordContentViewReusesTheAnonymousCookieItWasGiven(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	existing := uuid.Must(uuid.NewV7())
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), fixture.tenantID, nil, existing,
 			fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -188,7 +189,7 @@ func TestRecordContentViewReusesTheAnonymousCookieItWasGiven(t *testing.T) {
 func TestRecordContentViewResolvesTheSeriesFromTheEpisodeRow(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	seriesID := &capturedArg{}
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), fixture.tenantID, nil, sqlmock.AnyArg(),
 			seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -208,10 +209,10 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
 		WithArgs(tenantID, "SERIES001", nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedSeriesViewEventQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedSeriesViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), tenantID, nil, sqlmock.AnyArg(),
 			seriesID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -263,7 +264,7 @@ func TestRecordContentViewFallsBackToTheCookieForARejectedBearer(t *testing.T) {
 	fixture := newContentViewFixture(t)
 	expectTenantLookup(fixture.mock, fixture.tenantID, "TENANT", time.Now())
 	existing := uuid.Must(uuid.NewV7())
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), fixture.tenantID, nil, existing,
 			fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -283,7 +284,7 @@ func TestRecordContentViewSkipsTheViewEventForAPrefetch(t *testing.T) {
 	// The insert is registered so the matcher can observe whether it ran:
 	// leaving it out would let a recorded prefetch pass as a swallowed error.
 	recorded := &capturedArg{}
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			sqlmock.AnyArg(), fixture.tenantID, sqlmock.AnyArg(), recorded,
 			fixture.seriesID, fixture.episodeID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -309,7 +310,7 @@ func TestRecordContentViewSkipsTheViewEventForAPrefetch(t *testing.T) {
 
 func TestRecordContentViewSucceedsWhenTheViewEventCannotBeWritten(t *testing.T) {
 	fixture := newContentViewFixture(t)
-	fixture.mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WillReturnError(errors.New("content_events is unavailable"))
 
 	fixture.request(t, "")
@@ -342,12 +343,12 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 			switch testCase.target.GetType() {
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 				if testCase.want == connect.CodeNotFound {
-					mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
+					mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
 						WithArgs(tenantID, "SERIES404", nil).
 						WillReturnError(sql.ErrNoRows)
 				}
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
-				mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE404", nil).
 					WillReturnError(sql.ErrNoRows)
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_UNSPECIFIED:
@@ -379,7 +380,7 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 // can see it.
 func forbidEpisodeViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
 	recorded := &capturedArg{}
-	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedEpisodeViewEventQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedEpisodeViewEvent)).
 		WithArgs(
 			recorded, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -391,7 +392,7 @@ func forbidEpisodeViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
 // forbidSeriesViewEventInsert is the series counterpart.
 func forbidSeriesViewEventInsert(mock sqlmock.Sqlmock) *capturedArg {
 	recorded := &capturedArg{}
-	mock.ExpectQuery(regexp.QuoteMeta(insertDebouncedSeriesViewEventQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedSeriesViewEvent)).
 		WithArgs(
 			recorded, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
@@ -412,7 +413,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
@@ -424,7 +425,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 			int32(0), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, nil, int64(0), "all"))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "episode_id", "display_order", "created_at",
@@ -466,7 +467,7 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesDetail)).
 		WithArgs("web", "SERIES001", tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "label_public_id", "label_name",

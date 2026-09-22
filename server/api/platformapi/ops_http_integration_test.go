@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -25,7 +26,7 @@ func TestListOperators(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformOperatorsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(integrationOperatorColumns()).
 			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "operator1@example.com", "Operator One", "platform_operator", "active", now).
@@ -55,7 +56,7 @@ func TestListAuditLogs(t *testing.T) {
 	targetOperatorID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
 			AddRow(uuid.Must(uuid.NewV7()), actorID1, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, "203.0.113.10", now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One").
@@ -86,7 +87,7 @@ func TestListAuditLogsWithFilters(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{String: "PLATUSER001", Valid: true}, sql.NullString{String: "TENANT001", Valid: true}, sql.NullString{String: "tenant_created", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(11)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
 			AddRow(uuid.Must(uuid.NewV7()), actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, nil, now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One"))
@@ -114,7 +115,7 @@ func TestListAuditLogsOutOfRangeLimitFallsBackToDefault(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}))
 
@@ -151,7 +152,7 @@ func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
 			"Tenant One", "TENANT001", "TENANT001", "Tenant One",
 		)
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
@@ -189,7 +190,7 @@ func TestListAuditLogsFollowsNextToken(t *testing.T) {
 	resultAt := now.Add(-2 * time.Minute)
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(platformAuditLogColumns().AddRow(
 			resultID, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
@@ -250,11 +251,11 @@ func TestGetDashboardSummary(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(50)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountActiveTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(42)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountSuspendedTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(8)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountPendingEndUsersQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(3)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListRecentPlatformEventsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(50)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountActiveTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(42)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountSuspendedTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(8)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPendingEndUsers)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRecentPlatformEvents)).
 		WithArgs(int32(10)).
 		WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}).
 			AddRow("tenant_created", "Tenant Created", "TENANT001", "", now).
@@ -290,11 +291,11 @@ func TestGetDashboardSummaryClampLimit(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountActiveTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountSuspendedTenantsQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountPendingEndUsersQuery)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListRecentPlatformEventsQuery)).WithArgs(int32(50)).WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountActiveTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountSuspendedTenants)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPendingEndUsers)).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRecentPlatformEvents)).WithArgs(int32(50)).WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}))
 
 	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
 	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{RecentEventsLimit: 999}))
@@ -311,7 +312,7 @@ func TestGetDashboardSummaryDatabaseErrorIsHidden(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).
 		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
 
 	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
@@ -332,7 +333,7 @@ func TestGetDashboardSummaryPreservesContextCanceled(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountAllTenants)).
 		WillReturnError(context.Canceled)
 
 	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
@@ -350,7 +351,7 @@ func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformAuditLogsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "platform_audit_logs" does not exist`))
 

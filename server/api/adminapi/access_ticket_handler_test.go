@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -69,26 +70,26 @@ func TestIssueAccessTicketSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MEMBER001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetNonRevokedAccessTicketForUserEpisode :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
 		WithArgs(tenantID, memberID, episodeID).
 		WillReturnError(sql.ErrNoRows)
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAccessTicket :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAccessTicket)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), episodeID, memberID, sql.NullTime{}, sql.NullString{}, uuid.NullUUID{UUID: actorID, Valid: true}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
 			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, nil, nil, actorID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKET000001").
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
@@ -140,22 +141,22 @@ func TestIssueAccessTicketReturnsExistingNonRevoked(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MEMBER001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetNonRevokedAccessTicketForUserEpisode :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
 		WithArgs(tenantID, memberID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
 			AddRow(ticketID, tenantID, "TICKETEXIST01", episodeID, memberID, nil, nil, nil, actorID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKETEXIST01").
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKETEXIST01", episodeID, "EPISODE001", "Episode 1",
@@ -203,12 +204,12 @@ func TestIssueAccessTicketRejectsInvalidExpiresAt(t *testing.T) {
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-		mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 			WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MEMBER001").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 				AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
 
-		mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 			WithArgs(tenantID, "EPISODE001").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
@@ -231,12 +232,12 @@ func TestIssueAccessTicketRejectsInvalidExpiresAt(t *testing.T) {
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-		mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 			WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MEMBER001").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 				AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
 
-		mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 			WithArgs(tenantID, "EPISODE001").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 				AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
@@ -273,7 +274,7 @@ func TestRevokeAccessTicketSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKET000001").
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
@@ -281,12 +282,12 @@ func TestRevokeAccessTicketSuccess(t *testing.T) {
 			nil, nil, nil, actorID, now,
 		))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: RevokeAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.RevokeAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKET000001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
 			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, revokedAt, nil, actorID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKET000001").
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
@@ -332,7 +333,7 @@ func TestRevokeAccessTicketAlreadyRevoked(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetAccessTicketByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketByPublicIDForTenant)).
 		WithArgs(tenantID, "TICKET000001").
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
 			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
@@ -415,7 +416,7 @@ func TestListAccessTicketsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addTicketRow(
 			sqlmock.NewRows(ticketDetailColumns()),
@@ -447,7 +448,7 @@ func TestListAccessTicketsFallsBackForOversizedLimit(t *testing.T) {
 
 	// An out-of-range limit falls back to the default (20), plus the one
 	// over-fetched row that reports whether another page follows.
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()))
 
@@ -470,7 +471,7 @@ func TestListAccessTicketsUserFilterMissingUser(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MISSING").
 		WillReturnError(sql.ErrNoRows)
 
@@ -493,7 +494,7 @@ func TestListAccessTicketsEpisodeFilterMissingEpisode(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "MISSING_EP").
 		WillReturnError(sql.ErrNoRows)
 
@@ -517,7 +518,7 @@ func TestListAccessTicketsActiveOnly(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, true, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addTicketRow(
 			sqlmock.NewRows(ticketDetailColumns()),
@@ -547,7 +548,7 @@ func TestListAccessTicketsFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addTicketRow(
 			addTicketRow(
@@ -590,7 +591,7 @@ func TestListAccessTicketsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addTicketRow(
 			sqlmock.NewRows(ticketDetailColumns()),
@@ -625,7 +626,7 @@ func TestListAccessTicketsFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryAt := now.Add(-10 * time.Minute)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantAsc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addTicketRow(
 			addTicketRow(
@@ -666,15 +667,15 @@ func TestListAccessTicketsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                 "forward",
 			direction:            pagination.Forward,
-			wantQuery:            listAccessTicketsForTenantDescQuery,
-			wantRecoveryQuery:    listAccessTicketsForTenantAscQuery,
+			wantQuery:            dbmodels.ListAccessTicketsForTenantDesc,
+			wantRecoveryQuery:    dbmodels.ListAccessTicketsForTenantAsc,
 			wantRecoveredTickets: []string{"TICKET000001", "TICKET000002"},
 		},
 		{
 			name:                 "backward",
 			direction:            pagination.Backward,
-			wantQuery:            listAccessTicketsForTenantAscQuery,
-			wantRecoveryQuery:    listAccessTicketsForTenantDescQuery,
+			wantQuery:            dbmodels.ListAccessTicketsForTenantAsc,
+			wantRecoveryQuery:    dbmodels.ListAccessTicketsForTenantDesc,
 			wantRecoveredTickets: []string{"TICKET000002", "TICKET000003"},
 		},
 	}
@@ -750,12 +751,12 @@ func TestListAccessTicketsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listAccessTicketsForTenantAscQuery,
+			wantQuery: dbmodels.ListAccessTicketsForTenantAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listAccessTicketsForTenantDescQuery,
+			wantQuery: dbmodels.ListAccessTicketsForTenantDesc,
 		},
 	}
 
@@ -817,7 +818,7 @@ func TestListAccessTicketsDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAccessTicketsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "access_tickets" does not exist`))
 

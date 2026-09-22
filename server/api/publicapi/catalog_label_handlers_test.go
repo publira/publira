@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -17,11 +18,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	listLabelsByTenantDescQuery = "-- name: ListLabelsByTenantDesc :many\n"
-	listLabelsByTenantAscQuery  = "-- name: ListLabelsByTenantAsc :many\n"
 )
 
 func labelColumns() *sqlmock.Rows {
@@ -61,7 +57,7 @@ func TestCatalogListPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 	for i, id := range ids {
 		rows = addLabelRow(rows, tenantID, id, fmt.Sprintf("LABEL%03d", i), fmt.Sprintf("Label %d", i), now.Add(-time.Duration(i)*time.Minute))
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
@@ -103,7 +99,7 @@ func TestCatalogListPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
 	rows := addLabelRow(addLabelRow(labelColumns(), tenantID, olderID, "LABEL002", "Older", olderAt), tenantID, newerID, "LABEL001", "Newer", newerAt)
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantAsc)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
@@ -141,7 +137,7 @@ func TestCatalogListPublishedLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(labelColumns())
 
@@ -197,10 +193,10 @@ func TestCatalogListPublishedLabelsVariantLookupErrorIsReturned(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 		AddRow(labelID, tenantID, "LABEL001", "Label", now, imageID, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(rows)
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListLabelImageVariantsByImageIDs :many\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WillReturnError(errors.New(`pq: relation "label_image_variants" does not exist`))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -231,14 +227,14 @@ func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedLabelByPublicID)).
 		WithArgs("web", tenantID, "LABEL000001").
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
 		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -279,11 +275,11 @@ func TestCatalogGetPublishedLabelDetailReturnsLabelWithNoSeries(t *testing.T) {
 	labelID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedLabelByPublicID)).
 		WithArgs("web", tenantID, "LABELEMPTY1").
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABELEMPTY1", "Empty Label", nil, nil, int32(0)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
 		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -310,7 +306,7 @@ func TestCatalogGetPublishedLabelDetailNotFound(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedLabelByPublicID)).
 		WithArgs("web", tenantID, "MISSING00001").
 		WillReturnRows(labelDetailColumns())
 
@@ -333,14 +329,14 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(3)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedLabelByPublicID)).
 		WithArgs("web", tenantID, "LABEL000001").
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(3)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
 		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
@@ -375,7 +371,7 @@ func TestCatalogGetPublishedLabelDetailRejectsInvalidToken(t *testing.T) {
 	labelID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedLabelByPublicID)).
 		WithArgs("web", tenantID, "LABEL000001").
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))

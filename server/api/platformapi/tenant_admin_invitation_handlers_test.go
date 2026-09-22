@@ -22,11 +22,6 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-const (
-	listTenantAdminInvitationsAscQuery  = "-- name: ListTenantAdminInvitationsAsc :many\n"
-	listTenantAdminInvitationsDescQuery = "-- name: ListTenantAdminInvitationsDesc :many\n"
-)
-
 func tenantAdminInvitationColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id",
@@ -51,7 +46,7 @@ func addTenantAdminInvitationRow(
 }
 
 func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
@@ -68,7 +63,7 @@ func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 	expectTenantForInvitationList(mock, tenantID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantAdminInvitationsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantAdminInvitationsDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addTenantAdminInvitationRow(
 			addTenantAdminInvitationRow(
@@ -109,7 +104,7 @@ func TestListTenantAdminInvitationsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	expectTenantForInvitationList(mock, tenantID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantAdminInvitationsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantAdminInvitationsDesc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addTenantAdminInvitationRow(
 			tenantAdminInvitationColumns(), uuid.Must(uuid.NewV7()), tenantID, "last@example.com", now.Add(-2*time.Minute),
@@ -139,7 +134,7 @@ func TestListTenantAdminInvitationsFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryAt := now.Add(-10 * time.Minute)
 	expectTenantForInvitationList(mock, tenantID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantAdminInvitationsAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantAdminInvitationsAsc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addTenantAdminInvitationRow(
 			addTenantAdminInvitationRow(
@@ -177,8 +172,8 @@ func TestListTenantAdminInvitationsEmptyPageReturnsOneRecoveryToken(t *testing.T
 		direction pagination.Direction
 		query     string
 	}{
-		{name: "forward", direction: pagination.Forward, query: listTenantAdminInvitationsDescQuery},
-		{name: "backward", direction: pagination.Backward, query: listTenantAdminInvitationsAscQuery},
+		{name: "forward", direction: pagination.Forward, query: dbmodels.ListTenantAdminInvitationsDesc},
+		{name: "backward", direction: pagination.Backward, query: dbmodels.ListTenantAdminInvitationsAsc},
 	}
 
 	for _, test := range tests {

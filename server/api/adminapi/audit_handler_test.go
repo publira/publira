@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -89,7 +90,7 @@ func TestListAuditLogsSuccess(t *testing.T) {
 
 	firstLogID := uuid.Must(uuid.NewV7())
 	secondLogID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAuditLogsByTenantDesc)).
 		WithArgs(
 			tenantID,
 			sql.NullString{},
@@ -137,7 +138,7 @@ func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAuditLogsByTenantDesc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addAuditLogRow(
 			addAuditLogRow(
@@ -178,7 +179,7 @@ func TestListAuditLogsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAuditLogsByTenantDesc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAuditLogRow(auditLogColumns(), uuid.Must(uuid.NewV7()), tenantID, userID, "last", "success", now.Add(-2*time.Minute)))
 
@@ -208,7 +209,7 @@ func TestListAuditLogsFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAuditLogsByTenantAsc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAuditLogRow(
 			addAuditLogRow(auditLogColumns(), olderID, tenantID, userID, "older", "success", now.Add(-2*time.Minute)),
@@ -249,15 +250,15 @@ func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                 "forward",
 			direction:            pagination.Forward,
-			wantQuery:            listAuditLogsByTenantDescQuery,
-			wantRecoveryQuery:    listAuditLogsByTenantAscQuery,
+			wantQuery:            dbmodels.ListAuditLogsByTenantDesc,
+			wantRecoveryQuery:    dbmodels.ListAuditLogsByTenantAsc,
 			wantRecoveredActions: []string{"newer", "boundary"},
 		},
 		{
 			name:                 "backward",
 			direction:            pagination.Backward,
-			wantQuery:            listAuditLogsByTenantAscQuery,
-			wantRecoveryQuery:    listAuditLogsByTenantDescQuery,
+			wantQuery:            dbmodels.ListAuditLogsByTenantAsc,
+			wantRecoveryQuery:    dbmodels.ListAuditLogsByTenantDesc,
 			wantRecoveredActions: []string{"boundary", "older"},
 		},
 	}
@@ -334,12 +335,12 @@ func TestListAuditLogsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listAuditLogsByTenantAscQuery,
+			wantQuery: dbmodels.ListAuditLogsByTenantAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listAuditLogsByTenantDescQuery,
+			wantQuery: dbmodels.ListAuditLogsByTenantDesc,
 		},
 	}
 
@@ -398,7 +399,7 @@ func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAuditLogsByTenantDesc)).
 		WithArgs(
 			tenantID,
 			sql.NullString{},

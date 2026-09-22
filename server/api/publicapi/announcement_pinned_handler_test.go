@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -15,10 +16,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	getPinnedAnnouncementQuery = "-- name: GetPinnedAnnouncementForTenant :one\n"
 )
 
 func pinnedAnnouncementRow(
@@ -43,7 +40,7 @@ func TestAuthGetPinnedAnnouncementAnswersWithoutASession(t *testing.T) {
 
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPinnedAnnouncementQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPinnedAnnouncementForTenant)).
 		WithArgs(tenantID).
 		WillReturnRows(pinnedAnnouncementRow(announcementID, tenantID, now, sql.NullTime{Time: until, Valid: true}))
 
@@ -83,7 +80,7 @@ func TestAuthGetPinnedAnnouncementIsEmptyWhenNothingIsPinned(t *testing.T) {
 
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPinnedAnnouncementQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPinnedAnnouncementForTenant)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -128,7 +125,7 @@ func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
 
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserDesc)).
 		WithArgs(uuid.NullUUID{}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(guestAnnouncementRow(announcementID, tenantID, "New Episode", now))
 

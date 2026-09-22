@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -100,7 +101,7 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	ts, mock := newIntegrationTestServer(t)
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "ja", 1, now))
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -46,7 +47,7 @@ func platformSMTPColumns() []string {
 
 func TestGetPlatformEmailSettingsDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
 		WillReturnError(errors.New(`pq: relation "platform_smtp_configs" does not exist`))
 
 	_, err := server.GetPlatformEmailSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformEmailSettingsRequest{}))
@@ -69,10 +70,10 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
 			AddRow(true, "smtp.old.example", 587, "old-user", existingEncrypted, "starttls", "old@example.com", "reply-old@example.com", now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSMTPConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertPlatformSMTPConfig)).
 		WithArgs("smtp.example.com", int32(587), "mailer", existingEncrypted, "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
 			AddRow(true, "smtp.example.com", 587, "mailer", existingEncrypted, "starttls", "no-reply@example.com", "reply@example.com", now, now))
@@ -110,7 +111,7 @@ func TestSendPlatformSmtpTestEmailWithoutSecretManagerReportsUnavailable(t *test
 	now := time.Now()
 	actorID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
 			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now))
 
@@ -144,7 +145,7 @@ func TestSendPlatformSmtpTestEmailUsesRequestSettings(t *testing.T) {
 	server.tester = tester
 	actorID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
 	expectOperatorAuditLogInsert(mock)
 
 	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{

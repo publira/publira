@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(
 			sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Maintenance", "Body",
 			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true},
@@ -130,7 +131,7 @@ func TestUnpinAnnouncementClearsTheFlag(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: UnpinAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnpinAnnouncement)).
 		WithArgs(announcementID, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(announcementID))
 	expectAdminAuditLogInsert(mock)
@@ -157,7 +158,7 @@ func TestUnpinAnnouncementReportsAMissingRow(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: UnpinAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnpinAnnouncement)).
 		WithArgs(announcementID, tenantID).
 		WillReturnError(sql.ErrNoRows)
 

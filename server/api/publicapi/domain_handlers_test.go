@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -15,14 +16,12 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
-const getTenantByDomainsQuery = "-- name: GetTenantByDomains :one\n"
-
 func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", "en"))
 
@@ -61,7 +60,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now()
 
-			mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", tt.stored))
 
@@ -80,7 +79,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 func TestGetTenantByDomainDatabaseErrorIsHidden(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByDomainsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
 
 	client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)

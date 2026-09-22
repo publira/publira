@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -19,11 +20,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	listAnnouncementsForTenantAscQuery  = "-- name: ListAnnouncementsForTenantAsc :many\n"
-	listAnnouncementsForTenantDescQuery = "-- name: ListAnnouncementsForTenantDesc :many\n"
 )
 
 func announcementColumns() *sqlmock.Rows {
@@ -130,24 +126,24 @@ func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "USER001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(user1ID, "USER001", "User One", "u1@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "USER002").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(user2ID, "USER002", "User Two", "u2@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
 			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcement1ID)
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
 			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
@@ -194,7 +190,7 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
 			AddRow(announcementID, tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
@@ -226,7 +222,7 @@ func expectAnnouncementNotificationEvent(
 	mock sqlmock.Sqlmock,
 	tenantID, announcementID uuid.UUID,
 ) {
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: InsertOutboxEvent :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(
 			sqlmock.AnyArg(),
 			uuid.NullUUID{UUID: tenantID, Valid: true},
@@ -255,7 +251,7 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "Notice", "Body", "/announcements", now))
 
@@ -283,7 +279,7 @@ func TestListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addAnnouncementRow(
 			addAnnouncementRow(
@@ -326,7 +322,7 @@ func TestListAnnouncementsFollowsNextToken(t *testing.T) {
 	lastAt := now.Add(-2 * time.Minute)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantDesc)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{UUID: boundaryID, Valid: true},
@@ -369,7 +365,7 @@ func TestListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 	olderAt := now.Add(-2 * time.Minute)
 	newerAt := now.Add(-time.Minute)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantAsc)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{UUID: boundaryID, Valid: true},
@@ -423,15 +419,15 @@ func TestListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                "forward",
 			direction:           pagination.Forward,
-			wantQuery:           listAnnouncementsForTenantDescQuery,
-			wantRecoveryQuery:   listAnnouncementsForTenantAscQuery,
+			wantQuery:           dbmodels.ListAnnouncementsForTenantDesc,
+			wantRecoveryQuery:   dbmodels.ListAnnouncementsForTenantAsc,
 			wantRecoveredTitles: []string{"Newer", "Boundary"},
 		},
 		{
 			name:                "backward",
 			direction:           pagination.Backward,
-			wantQuery:           listAnnouncementsForTenantAscQuery,
-			wantRecoveryQuery:   listAnnouncementsForTenantDescQuery,
+			wantQuery:           dbmodels.ListAnnouncementsForTenantAsc,
+			wantRecoveryQuery:   dbmodels.ListAnnouncementsForTenantDesc,
 			wantRecoveredTitles: []string{"Boundary", "Older"},
 		},
 	}
@@ -526,12 +522,12 @@ func TestListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listAnnouncementsForTenantAscQuery,
+			wantQuery: dbmodels.ListAnnouncementsForTenantAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listAnnouncementsForTenantDescQuery,
+			wantQuery: dbmodels.ListAnnouncementsForTenantDesc,
 		},
 	}
 
@@ -597,7 +593,7 @@ func TestListAnnouncementsDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
 

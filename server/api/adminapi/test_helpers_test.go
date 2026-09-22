@@ -31,64 +31,7 @@ import (
 )
 
 const (
-	getTenantByIDQuery                                       = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
-	getUserByPublicIDForTenantQuery                          = "-- name: GetUserByPublicIDForTenant :one\n"
-	getLabelByPublicIDForTenantQuery                         = "-- name: GetLabelByPublicIDForTenant :one\n"
-	listAuditLogsByTenantAscQuery                            = "-- name: ListAuditLogsByTenantAsc :many\n"
-	listAuditLogsByTenantDescQuery                           = "-- name: ListAuditLogsByTenantDesc :many\n"
-	getUserByIDQuery                                         = "-- name: GetUserByID :one\n"
-	listTenantRolesByUserAndTenantQuery                      = "-- name: ListTenantUserRoles :many\n"
-	getPlatformConfigQuery                                   = "-- name: GetPlatformConfig :one\n"
-	getTenantSMTPConfigByTenantIDQuery                       = "-- name: GetTenantSMTPConfigByTenantID :one\n"
-	upsertTenantSMTPConfigQuery                              = "-- name: UpsertTenantSMTPConfig :one\n"
-	getTenantPaymentConfigByTenantIDQuery                    = "-- name: GetTenantPaymentConfigByTenantID :one\n"
-	upsertTenantPaymentConfigQuery                           = "-- name: UpsertTenantPaymentConfig :one\n"
-	getTenantThemeByTenantIDQuery                            = "-- name: GetTenantThemeByTenantID :one\n"
-	upsertTenantThemeQuery                                   = "-- name: UpsertTenantTheme :one\n"
-	updateTenantTimezoneQuery                                = "-- name: UpdateTenantTimezone :one\n"
-	updateTenantDefaultLocaleQuery                           = "-- name: UpdateTenantDefaultLocale :one\n"
-	getTenantConfigByTenantIDQuery                           = "-- name: GetTenantConfigByTenantID :one\n"
-	upsertTenantCommentSettingsQuery                         = "-- name: UpsertTenantCommentSettings :one\n"
-	upsertTenantAgeVerificationQuery                         = "-- name: UpsertTenantAgeVerification :one\n"
-	listAccessTicketsForTenantAscQuery                       = "-- name: ListAccessTicketsForTenantAsc :many\n"
-	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
-	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"
-	listSeriesByTenantDescQuery                              = "-- name: ListSeriesByTenantDesc :many\n"
-	getSeriesByPublicIDForTenantQuery                        = "-- name: GetSeriesByPublicIDForTenant :one\n"
-	lockSeriesByPublicIDForTenantQuery                       = "-- name: LockSeriesByPublicIDForTenant :one\n"
-	updateSeriesBaseQuery                                    = "-- name: UpdateSeriesBase :exec\n"
-	updateSeriesPublicationQuery                             = "-- name: UpdateSeriesPublication :exec\n"
-	listEpisodesBySeriesForTenantQuery                       = "-- name: ListEpisodesBySeriesForTenant :many\n"
-	listEpisodesBySeriesForTenantAscQuery                    = "-- name: ListEpisodesBySeriesForTenantAsc :many\n"
-	listEpisodesBySeriesForTenantDescQuery                   = "-- name: ListEpisodesBySeriesForTenantDesc :many\n"
-	updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery = "-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec\n"
-	getMaxEpisodeOrderIndexBySeriesForTenantQuery            = "-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one\n"
-	getEpisodeByPublicIDForTenantQuery                       = "-- name: GetEpisodeByPublicIDForTenant :one\n"
-	lockEpisodeByPublicIDForTenantQuery                      = "-- name: LockEpisodeByPublicIDForTenant :one\n"
-	lockEpisodesByPublicIDsForTenantAndSeriesQuery           = "-- name: LockEpisodesByPublicIDsForTenantAndSeries :many\n"
-	listEpisodeCreatorsByEpisodeIDsQuery                     = "-- name: ListEpisodeCreatorsByEpisodeIDs :many\n"
-	bulkAddEpisodeCreatorQuery                               = "-- name: BulkAddEpisodeCreator :many\n"
-	bulkReplaceEpisodeCreatorQuery                           = "-- name: BulkReplaceEpisodeCreator :many\n"
-	bulkRemoveEpisodeCreatorQuery                            = "-- name: BulkRemoveEpisodeCreator :many\n"
-	listEpisodesCreditedOnTheEpisodeItselfQuery              = "-- name: ListEpisodesCreditedOnTheEpisodeItself :many\n"
-	listEpisodesHoldingBothEpisodeCreditsQuery               = "-- name: ListEpisodesHoldingBothEpisodeCredits :many\n"
-	deleteEpisodeCreatorsByEpisodeIDQuery                    = "-- name: DeleteEpisodeCreatorsByEpisodeID :exec\n"
-	createEpisodeCreatorQuery                                = "-- name: CreateEpisodeCreator :exec\n"
-	listCreatorsByPublicIDsForTenantQuery                    = "-- name: ListCreatorsByPublicIDsForTenant :many\n"
-	listCreatorRolesByPublicIDsForTenantQuery                = "-- name: ListCreatorRolesByPublicIDsForTenant :many\n"
-	getEpisodeByPublicIDForTenantAndSeriesQuery              = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
-	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery           = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
-	listEpisodeImagesByEpisodeIDQuery                        = "-- name: ListEpisodeImagesByEpisodeID :many\nSELECT\n    ei.id,\n    ei.tenant_id,\n    ei.episode_id,\n    ei.display_order,\n    ei.created_at,\n    eiv.content_type,\n    eiv.file_size_bytes,\n    eiv.width,\n    eiv.height\nFROM episode_images ei\nJOIN LATERAL (\n    SELECT content_type, file_size_bytes, width, height\n    FROM episode_image_variants\n    WHERE episode_image_id = ei.id\n    ORDER BY width DESC\n    LIMIT 1\n) eiv ON true\nWHERE ei.episode_id = $1\nORDER BY ei.display_order ASC,\n    ei.created_at ASC\n"
-	updateEpisodeImageDisplayOrderByIDForEpisodeQuery        = "-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec\n"
-	updateEpisodePublishScheduleByPublicIDForTenantQuery     = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
-	lockTenantForUpdateQuery                                 = "-- name: LockTenantForUpdate :one\n"
-	createTenantImageQuery                                   = "-- name: CreateTenantImage :one\n"
-	createTenantImageVariantQuery                            = "-- name: CreateTenantImageVariant :one\n"
-	setTenantThemeIconImageQuery                             = "-- name: SetTenantThemeIconImage :one\n"
-	setTenantThemeLogoImageQuery                             = "-- name: SetTenantThemeLogoImage :one\n"
-	listTenantImageVariantsByImageIDsQuery                   = "-- name: ListTenantImageVariantsByImageIDs :many\n"
-	deleteTenantImageQuery                                   = "-- name: DeleteTenantImage :exec\n"
-	testUserPublicID                                         = "USER001"
+	testUserPublicID = "USER001"
 )
 
 func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -313,7 +256,7 @@ func expectTenantLookupWithDefaultLocale(mock sqlmock.Sqlmock, tenantID uuid.UUI
 }
 
 func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone, defaultLocale string) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
@@ -341,17 +284,17 @@ func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID,
 }
 
 func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time, role string) {
-	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testUserPublicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(userID, testUserPublicID, "User", "user@example.com", "active", tenantID, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}).
 			AddRow(userID, testUserPublicID, "user@example.com", "hashed", "User", now, "active", tenantID, nil, int32(1), nil))
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
 }
@@ -395,14 +338,14 @@ func assertAdminMediaToken(t *testing.T, imageURL string, tenantID, episodeID uu
 }
 
 func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
-	mock.ExpectExec("INSERT INTO audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
 // expectRevalidationRecord expects the outbox row a write records before the
 // tags it owes are sent.
 func expectRevalidationRecord(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: InsertOutboxEvent :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(
 			sqlmock.AnyArg(),
 			uuid.NullUUID{UUID: tenantID, Valid: true},
@@ -438,7 +381,7 @@ func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 
 func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, publicID string, now time.Time, labelID uuid.NullUUID) {
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery("INSERT INTO series").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
 		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title, "all", nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
 			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all", nil))
@@ -446,19 +389,19 @@ func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.
 }
 
 func expectLockSeriesByPublicID(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, seriesID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, publicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 }
 
 func expectListEpisodesBySeries(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID string, rows *sqlmock.Rows) {
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenant)).
 		WithArgs(tenantID, seriesPublicID).
 		WillReturnRows(rows)
 }
 
 func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID, episodePublicID string, orderIndex int32) {
-	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries)).
 		WithArgs(tenantID, seriesPublicID, episodePublicID, orderIndex).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
@@ -467,7 +410,7 @@ func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, ser
 // with the team its series carries. It runs in the transaction that creates
 // the episode, between the listing insert and the commit.
 func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesID, episodeID uuid.UUID) {
-	mock.ExpectExec("INSERT INTO episode_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.BakeSeriesCreatorsOntoEpisode)).
 		WithArgs(episodeID, tenantID, seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 }
@@ -475,14 +418,14 @@ func expectBakeSeriesCreatorsOntoEpisode(mock sqlmock.Sqlmock, tenantID, seriesI
 // expectResolvedEpisodePurchaseAvailability is the read of where a new episode
 // may be bought, resolved through its series and the tenant.
 func expectResolvedEpisodePurchaseAvailability(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, resolved string) {
-	mock.ExpectQuery("-- name: GetResolvedEpisodePurchaseAvailability :one").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetResolvedEpisodePurchaseAvailability)).
 		WithArgs(tenantID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"purchase_availability"}).AddRow(resolved))
 }
 
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery("INSERT INTO episodes").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeBase)).
 		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), title, orderIndex, tenantID, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability"}).
 			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID, nil, nil, nil, nil))

@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"net/http/httptest"
 	"regexp"
 	"strconv"
@@ -39,7 +40,7 @@ func relatedSeriesIDRows(rows ...scoredID) *sqlmock.Rows {
 }
 
 func expectSubjectSeriesLookup(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
 		WithArgs(tenantID, subjectSeriesPublicID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 }
@@ -76,7 +77,7 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 	// The scoring is decided in SQL, so the snapshot items and the subject id go
 	// to the query untouched. The fourth id is the over-fetched one that says
 	// another page exists.
-	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRelatedSeriesIDs)).
 		WithArgs(nil, nil, nil, false, nil, int32(4), tenantID, subjectID, rankingItemsJSON(unrelated), "web").
 		WillReturnRows(relatedSeriesIDRows(
 			scoredID{id: sameCreator, score: 3, sortRank: unrankedSortRank},
@@ -86,7 +87,7 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 		))
 	// The display query is unordered; the handler puts the rows back in the
 	// order the keyset scan decided.
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
@@ -125,7 +126,7 @@ func TestCatalogListRelatedSeriesDefaultsToTheStripSize(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
-	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRelatedSeriesIDs)).
 		WithArgs(nil, nil, nil, false, nil, defaultRelatedSeriesPageSize+1, tenantID, subjectID, rankingItemsJSON(), "web").
 		WillReturnRows(relatedSeriesIDRows())
 
@@ -165,7 +166,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
-	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRelatedSeriesIDs)).
 		WithArgs(
 			boundary,
 			int32(2),
@@ -178,7 +179,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 			rankingItemsJSON(),
 			"web").
 		WillReturnRows(relatedSeriesIDRows(scoredID{id: next, score: 2, sortRank: unrankedSortRank}))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), next, "NEXT", "Next", publishedAt))
 
@@ -238,7 +239,7 @@ func TestCatalogListRelatedSeriesIsNotFoundWithoutAPublishedSubject(t *testing.T
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedSeriesIDByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
 		WithArgs(tenantID, subjectSeriesPublicID, "web").
 		WillReturnError(sql.ErrNoRows)
 
@@ -289,7 +290,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 	expectRankingSnapshotLookup(mock, tenantID, now, rankingItemsJSON())
-	mock.ExpectQuery(regexp.QuoteMeta(listRelatedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRelatedSeriesIDs)).
 		WithArgs(boundary, int32(3), int32(1), false, now, int32(2), tenantID, subjectID, rankingItemsJSON(), "web").
 		WillReturnRows(relatedSeriesIDRows())
 
