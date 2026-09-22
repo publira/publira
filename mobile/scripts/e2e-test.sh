@@ -14,17 +14,6 @@ mkdir -p "${ART_DIR}"
 
 export PUBLIRA_LIVE_API="${PUBLIRA_LIVE_API:-true}"
 
-# `10.0.2.2` is the host as an emulator sees it; loopback there is the emulator
-# itself. image-server needs the same treatment as the API: every seeded episode
-# carries a body, so the reader fetches pages on any run that opens one.
-host_address="127.0.0.1"
-if adb devices 2> /dev/null | grep -q 'emulator'; then
-  host_address="10.0.2.2"
-fi
-export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
-export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_IMAGE_SERVER_PORT}}"
-export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
-
 device="${PUBLIRA_E2E_MOBILE_DEVICE:-}"
 if [[ -z "${device}" ]]; then
   device="$(
@@ -44,6 +33,18 @@ if [[ -z "${device}" ]]; then
   e2e_err "no Flutter device; start an Android emulator or set PUBLIRA_E2E_MOBILE_DEVICE"
   exit 1
 fi
+
+# `10.0.2.2` is the host as an emulator sees it; loopback there is the emulator
+# itself. The device the tests run on decides, not whatever else adb lists.
+# image-server needs the same treatment as the API: every seeded episode
+# carries a body, so the reader fetches pages on any run that opens one.
+case "${device}" in
+  emulator-*) host_address="10.0.2.2" ;;
+  *) host_address="127.0.0.1" ;;
+esac
+export PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
+export PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_IMAGE_SERVER_PORT}}"
+export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
 # Whether the device gets an HTTP answer from the API port on the host.
 device_reaches_api() {
@@ -89,9 +90,9 @@ collect_failure_artifacts() {
     echo "=== adb devices ==="
     adb devices -l || true
   } > "${ART_DIR}/devices.txt" 2>&1 || true
-  adb logcat -d > "${ART_DIR}/logcat.txt" 2> /dev/null || true
-  adb exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
-  adb pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
+  adb -s "${device}" logcat -d > "${ART_DIR}/logcat.txt" 2> /dev/null || true
+  adb -s "${device}" exec-out screencap -p > "${ART_DIR}/emulator.png" 2> /dev/null || true
+  adb -s "${device}" pull /sdcard/Documents/publira-integration "${ART_DIR}/screenshots" \
     > /dev/null 2>&1 || true
   # The device only sees that its reads failed. The same read from the host
   # tells a stopped server or a missing seed tenant from a device with no way
