@@ -233,13 +233,15 @@ mobile/
 │   ├── follow/                   # FollowRepository and the control a series or an author is followed with
 │   ├── forms/                    # Input shapes the forms share, such as what an email address looks like
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
+│   ├── library/                  # The library's lists: continue reading, follows, and downloads
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
+│   ├── navigation/               # The bottom navigation bar, its tabs, and navigation onto a tab's stack
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / follows / downloads / contact / announcements
+│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -255,39 +257,51 @@ mobile/
 
 ## Navigation
 
-The following routes are defined with `go_router`. The catalog reads from the public API (Connect JSON).
+Every screen but the episode viewer carries a bottom navigation bar of five tabs, each with a navigation stack of its own. Switching tabs keeps each one's screens and scroll positions, and tapping the tab on screen takes it back to its root.
 
-| Path | Screen |
+| Tab | Root | Screen |
+| --- | --- | --- |
+| Home | `/` | Catalog list |
+| Search | `/search` | Search, with the keyword field focused while it is empty |
+| Library | `/library` | Continue reading, follows, and downloads |
+| Notifications | `/notifications` | The reader's notification inbox, badged with the unread count |
+| Account | `/account` | Signed-in reader, their date of birth, the way to each account setting, and sign-out |
+
+Every tab holds the catalog's routes and the sign-in forms under its own root, so a series, an author, a label, an episode, or an announcement opened from a tab is pushed onto that tab's stack: `/series/:seriesId` on the home tab is `/search/series/:seriesId` on the search tab.
+
+| Path under a tab's root | Screen |
 | --- | --- |
-| `/` | Catalog list |
-| `/search` | Search results |
 | `/sign-in` | Sign-in form |
 | `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
-| `/verify` | Where a confirmation link is spent; the site's own path, claimed as an App Link |
 | `/resend-verification` | Asks for a fresh confirmation link |
 | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
-| `/confirm-password` | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
-| `/confirm-email` | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
-| `/account` | Signed-in reader, their date of birth, the way to each account setting, and sign-out |
-| `/account/name` | Renames the account (`AuthService/UpdateMe`) |
-| `/account/email` | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
-| `/account/password` | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
-| `/account/delete` | Deletes the account after the password and a second confirmation, then signs out (`AuthService/DeleteMe`) |
-| `/account/notifications` | The reader's notification inbox |
-| `/account/follows` | The series and authors the reader follows |
-| `/account/downloads` | What the device keeps for reading offline |
 | `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
 | `/announcements/:announcementId` | One announcement |
 | `/series/:seriesId` | Series details |
 | `/creators/:creatorId` | An author and the published series credited to them |
 | `/labels/:labelId` | A label and its published series |
-| `/series/:seriesId/episodes/:episodeId` | Episode viewer |
+| `/series/:seriesId/episodes/:episodeId` | Episode viewer, which hides the bar |
 | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
-| `/checkout/return` | A checkout the browser hands back; it opens the episode it was started for |
+
+The routes only one tab holds:
+
+| Path | Tab | Screen |
+| --- | --- | --- |
+| `/checkout/return` | Home | A checkout the browser hands back; it opens the episode it was started for |
+| `/account/name` | Account | Renames the account (`AuthService/UpdateMe`) |
+| `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
+| `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
+| `/account/delete` | Account | Deletes the account after the password and a second confirmation, then signs out (`AuthService/DeleteMe`) |
+| `/account/contact` | Account | A message to the tenant's staff |
+| `/verify` | Account | Where a confirmation link is spent; the site's own path, claimed as an App Link |
+| `/confirm-password` | Account | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
+| `/confirm-email` | Account | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
+
+An incoming App Link, a push-notification tap, and a checkout return open on the tab their path belongs to — the home tab for a site path under none of the other roots — and leave the other tabs as they were. A session the API stopped accepting offers sign-in on the account tab.
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
-The catalog's app bar carries the way to `/announcements` and the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one, and under the title a search field, which opens `/search`.
+The catalog's app bar carries the way to the announcements.
 
 ### Tenant links and sharing
 
@@ -314,9 +328,9 @@ Only the whole-catalog list is kept for reading without a network. The shelves a
 
 ### The search screen
 
-`/search` is a keyword and the three groups the site's search answers it with: the published series `SearchPublishedSeries` matches, the authors `SearchPublishedCreators` matches, and the labels `SearchPublishedLabels` matches. The field in the catalog's app bar cannot be typed into: it opens this screen, and the field here — the app bar's title — is the only place the keyword is held.
+`/search` is a keyword and the three groups the site's search answers it with: the published series `SearchPublishedSeries` matches, the authors `SearchPublishedCreators` matches, and the labels `SearchPublishedLabels` matches. The field — the app bar's title — is the only place the keyword is held.
 
-The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request per group, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing, and the catalog stands behind the screen, so a reader who cleared it leaves by going back.
+The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request per group, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing.
 
 Each group is read, fails, and retries on its own, so a name that matches no title still brings back its author, and a keyword a group has nothing for says so in that group. The overview shows the first five rows of each and offers the rest of a group only when there is more of it. The chips under the field open one group on its own: its whole list, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. A series row opens its series, an author row the author, and a label row the label.
 
@@ -327,6 +341,18 @@ Search is answered by the API alone. Matching a keyword against every published 
 `/creators/:creatorId` reads `GetPublishedCreatorDetail`: the author's portrait, name, profile, and a follow control, above the published series credited to them. `/labels/:labelId` reads `GetPublishedLabelDetail`: the label's artwork and name above its published series. Both lists are in title order, one cursor page at a time, and both screens say so when what they belong to does not exist, offer a retry when the API could not answer, and are answered by the API alone.
 
 A reader reaches an author from the search screen, from a name in the credit line and an author row on the series screen, and from an author row of what they follow; a label, from the search screen and from the label on a row of the catalog list.
+
+### The library
+
+`/library` is what the reader reads, as three tabs of one screen, each a list that pages and scrolls on its own:
+
+| Tab | Read | A guest sees |
+| --- | --- | --- |
+| Continue reading | `ListMyRecentSeries`, one cursor page at a time; a row opens the episode the API names for its series | The way to sign in |
+| Follows | `ListMyFollows`, as [Follows](#follows) describes | The way to sign in |
+| Downloads | What the device keeps, as [Offline reading](#offline-reading) describes | The same list |
+
+A build carrying no follow repository or no offline library leaves that tab out.
 
 ## Localization
 
@@ -374,22 +400,22 @@ The comments on an episode are offered at the end of it and nowhere else: what a
 
 ## Follows
 
-A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow from the account screen. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and nothing of it is written to the device.
+A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow in the library. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and nothing of it is written to the device.
 
 - The series screen carries one control for the series and one for each author credited on it, beside the row that opens the author. The author screen carries the same control
 - What a reader follows is theirs, and the API answers a request without a session `unauthenticated`, so a guest is offered the way to sign in rather than a control that cannot act
 - A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
-- `/account/follows` lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
+- The library's Follows tab lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
 - The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
 
 ## Notification inbox
 
-`/account/notifications` is the reader's record of what they were notified of, read from `NotificationService` whether or not a push ever reached the device. It is online only, and nothing of it is written to the device.
+`/notifications` is the reader's record of what they were notified of, read from `NotificationService` whether or not a push ever reached the device. It is online only, and nothing of it is written to the device.
 
 - The list is newest first, twenty to a page, the next asked for as the reader nears the end of the rows already there. A row's title and description are assembled from its `notification_type` and payload with the same catalog wording the site uses; a type this build does not know stays as a generic row
 - A row opens what it is about: a new episode opens its viewer, a comment notification the comments of its episode, and a payload naming only a series opens the series. An announcement opens `/announcements`, since its payload names no announcement, and a payload naming nothing the app can open lands on the catalog
 - Opening an unread row marks it read on the way, and each unread row carries its own mark; the app bar marks every notification read
-- The unread count badges the catalog's account entry and the account screen's row. It is read back from `CountUnreadNotifications` after every read mark, when the inbox opens, when the app returns to the foreground, and when a push arrives in front, so it is the server's count rather than one the device worked out
+- The unread count badges the Notifications tab. It is read back from `CountUnreadNotifications` after every read mark, when the inbox opens, when the app returns to the foreground, and when a push arrives in front, so it is the server's count rather than one the device worked out
 
 ## Announcements
 
@@ -405,7 +431,7 @@ Everything the reader opens is kept on the device, so the same screens open agai
 - Saved episodes are marked on the series screen and on the offer that ends an episode, so a reader can tell before they lose their connection what they will still be able to open
 - The page the reader stopped on is kept beside the episode, against the member it belongs to, so an episode read without a network opens where they left it. The API wins over it wherever it holds a position of its own, which is what carries a page saved on the website into the app
 - The device keeps up to **512 MB** of pages. Over that, the least recently confirmed episodes are dropped whole, and page files no episode claims any more go with them
-- The downloads screen, reached from the account screen, shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
+- The library's Downloads tab shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
 
 Everything is written under the app-private directory `path_provider` resolves (`getApplicationSupportDirectory()`), encrypted with a random 32-byte key this install mints on first use and keeps in the OS keychain / Keystore. The stream is the one `lib/api/image_cipher.dart` speaks, under its own domain separator and a per-file key. Like the delivery stream, it protects the files on the device rather than the reader's own access: whoever may open the episode necessarily holds the key that recovers it.
 

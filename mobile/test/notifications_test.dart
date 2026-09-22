@@ -7,6 +7,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/models/inbox_notification.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/notifications/notification_failure.dart';
 import 'package:publira/notifications/notification_inbox.dart';
 import 'package:publira/push/push_controller.dart';
@@ -90,7 +91,7 @@ void main() {
   }) async {
     await pumpApp(
       tester,
-      initialLocation: AppRoutes.accountNotifications,
+      initialLocation: AppRoutes.notifications,
       session: session ?? fakeSession,
       authRepository: authRepository,
     );
@@ -103,50 +104,71 @@ void main() {
   Finder unreadDot(String id) =>
       find.byKey(ValueKey('notification-unread-$id'));
 
-  group('the account entry', () {
-    testWidgets('badges the catalog with the unread count', (tester) async {
+  /// The badge the notifications tab carries.
+  Badge tabBadge(WidgetTester tester) => tester.widget<Badge>(
+    find.byKey(const ValueKey('tab-notifications-unread')),
+  );
+
+  group('the notifications tab', () {
+    testWidgets('is badged with the unread count', (tester) async {
       await pumpApp(tester);
 
-      final badge = tester.widget<Badge>(
-        find.byKey(const ValueKey('catalog-account-unread')),
-      );
-      expect(badge.isLabelVisible, isTrue);
+      expect(tabBadge(tester).isLabelVisible, isTrue);
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('catalog-account-unread')),
+          of: find.byKey(const ValueKey('tab-notifications-unread')),
           matching: find.text('2'),
         ),
         findsOneWidget,
       );
-      expect(find.byTooltip('Account, 2 unread notifications'), findsOneWidget);
+      expect(find.byTooltip('Notifications, 2 unread'), findsOneWidget);
     });
 
     testWidgets('carries no badge for a guest', (tester) async {
       await pumpApp(tester, session: null);
 
-      final badge = tester.widget<Badge>(
-        find.byKey(const ValueKey('catalog-account-unread')),
-      );
-      expect(badge.isLabelVisible, isFalse);
+      expect(tabBadge(tester).isLabelVisible, isFalse);
       expect(repository.countReads, 0);
     });
 
-    testWidgets('leads from the account screen to the inbox', (tester) async {
-      await pumpApp(tester, initialLocation: AppRoutes.account);
-      await pumpUntilFound(
-        tester,
-        find.byKey(const ValueKey('account-notifications-unread')),
-      );
+    testWidgets('opens the inbox', (tester) async {
+      await pumpApp(tester);
 
-      await tester.tap(
-        find.byKey(const ValueKey('account-notifications-inbox')),
-      );
+      await tester.tap(find.byKey(const ValueKey('tab-notifications')));
       await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('notifications-list')),
       );
 
-      expect(router.state.uri.path, AppRoutes.accountNotifications);
+      expect(router.state.uri.path, AppRoutes.notifications);
+    });
+
+    testWidgets('follows the count down as notifications are read', (
+      tester,
+    ) async {
+      await openInbox(tester);
+
+      await tester.tap(
+        find.byKey(const ValueKey('notification-mark-read-n-1')),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('tab-notifications-unread')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('notifications-mark-all-read')),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(tabBadge(tester).isLabelVisible, isFalse);
     });
 
     testWidgets('drops the count when the reader signs out', (tester) async {
@@ -157,10 +179,7 @@ void main() {
       await tester.pump();
 
       expect(inbox.unreadCount, 0);
-      final badge = tester.widget<Badge>(
-        find.byKey(const ValueKey('catalog-account-unread')),
-      );
-      expect(badge.isLabelVisible, isFalse);
+      expect(tabBadge(tester).isLabelVisible, isFalse);
     });
 
     testWidgets('reads the count again when a push arrives in front', (
@@ -354,7 +373,9 @@ void main() {
 
       expect(
         router.state.uri.path,
-        AppRoutes.episodeViewerPath(seriesId, episodeId),
+        AppTab.notifications.locate(
+          AppRoutes.episodeViewerPath(seriesId, episodeId),
+        ),
       );
       expect(repository.marked, ['n-1']);
       expect(inbox.unreadCount, 1);
@@ -375,7 +396,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('notification-n-bad')));
       await pumpUntilRouteSettled(
         tester,
-        find.byKey(const ValueKey('catalog-account')),
+        find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
       );
 
       expect(router.state.uri.path, AppRoutes.catalog);
@@ -384,7 +405,7 @@ void main() {
 
     testWidgets('says so when the reader has no notifications', (tester) async {
       repository.notifications = [];
-      await pumpApp(tester, initialLocation: AppRoutes.accountNotifications);
+      await pumpApp(tester, initialLocation: AppRoutes.notifications);
       await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('notifications-empty')),
@@ -397,7 +418,7 @@ void main() {
       repository.listFailure = const NotificationFailure(
         NotificationFailureKind.network,
       );
-      await pumpApp(tester, initialLocation: AppRoutes.accountNotifications);
+      await pumpApp(tester, initialLocation: AppRoutes.notifications);
       await pumpUntilRouteSettled(
         tester,
         find.byKey(const ValueKey('notifications-error')),
@@ -414,7 +435,7 @@ void main() {
     testWidgets('asks a guest to sign in', (tester) async {
       await pumpApp(
         tester,
-        initialLocation: AppRoutes.accountNotifications,
+        initialLocation: AppRoutes.notifications,
         session: null,
       );
       await pumpUntilRouteSettled(
@@ -425,7 +446,10 @@ void main() {
       expect(repository.listTokens, isEmpty);
       await tester.tap(find.byKey(const ValueKey('notifications-sign-in')));
       await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
-      expect(router.state.uri.path, AppRoutes.signIn);
+      expect(
+        router.state.uri.path,
+        AppTab.notifications.locate(AppRoutes.signIn),
+      );
     });
   });
 }

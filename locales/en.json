@@ -3067,10 +3067,6 @@
       "contact": "Contact",
       "contact_description": "Send a message to the people who run this site.",
       "delete": "Delete account",
-      "downloads": "Downloads",
-      "downloads_description": "Episodes saved on this device for reading offline.",
-      "follows": "Follows",
-      "follows_description": "The series and authors you follow.",
       "name": "Name",
       "name_unset": "Not set",
       "notifications": "New episode notifications",
@@ -3219,13 +3215,24 @@
       "series_heading": "Series in this label",
       "title": "Label"
     },
+    "library": {
+      "continue_empty": "Nothing to continue yet. Start reading an episode, and it appears here.",
+      "continue_sign_in_prompt": "Sign in to see the series you are in the middle of.",
+      "title": "Library"
+    },
+    "navigation": {
+      "account": "Account",
+      "home": "Home",
+      "library": "Library",
+      "notifications": "Notifications",
+      "notifications_unread": "Notifications, {$count} unread",
+      "search": "Search"
+    },
     "not_found": {
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
     },
     "notifications": {
-      "account_description": "Notifications addressed to you, such as new episodes.",
-      "account_unread": "Account, {$count} unread notifications",
       "announcement_posted_description": "“{$title}” was posted by the operator.",
       "announcement_posted_description_unknown": "The operator posted a new announcement.",
       "announcement_posted_title": "A new announcement",

@@ -159,6 +159,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Limits [listRecentSeries] was called with, in order.
   final List<int> recentSeriesLimits = <int>[];
 
+  /// Tokens [listRecentSeries] was called with, in order.
+  final List<String> recentSeriesTokens = <String>[];
+
   /// Limits [listNewestSeries] was called with, in order.
   final List<int> newestSeriesLimits = <int>[];
 
@@ -424,15 +427,25 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
+  Future<RecentSeriesPage> listRecentSeries({
+    required int limit,
+    String token = '',
+  }) async {
     recentSeriesLimits.add(limit);
+    recentSeriesTokens.add(token);
     final error = recentSeriesError;
     if (error != null) {
       throw error;
     }
     // The API answers a page of at most [limit], so a fixture longer than the
-    // screen asked for must not reach it here either.
-    return List<RecentSeriesItem>.from(recentSeries.take(limit));
+    // screen asked for must not reach it here either. The token stands in for
+    // the cursor as the index of the page's first row.
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = start + limit;
+    return RecentSeriesPage(
+      series: List<RecentSeriesItem>.from(recentSeries.skip(start).take(limit)),
+      nextToken: end < recentSeries.length ? '$end' : '',
+    );
   }
 }
 

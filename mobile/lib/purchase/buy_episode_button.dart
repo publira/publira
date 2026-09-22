@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
@@ -98,7 +98,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
 
   void _signIn() {
     unawaited(
-      context.push(AppRoutes.signInPath(returnTo: widget.signInReturnTo)),
+      context.pushInTab(AppRoutes.signInPath(returnTo: widget.signInReturnTo)),
     );
   }
 

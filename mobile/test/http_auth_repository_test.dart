@@ -243,6 +243,25 @@ void main() {
     expect(server.signups['new@example.com']!.verified, isTrue);
   });
 
+  test(
+    'a reader who signed up reads their own account once signed in',
+    () async {
+      await auth.signUp(
+        name: 'New Reader',
+        email: 'new@example.com',
+        password: 'newpassword',
+      );
+      await auth.verifyEmail(ConnectFixtureServer.verificationToken);
+      final session = await auth.signIn(
+        email: 'new@example.com',
+        password: 'newpassword',
+      );
+
+      expect(await auth.readEmail(session), 'new@example.com');
+      expect((await auth.readReaderAge(session)).birthDate, isEmpty);
+    },
+  );
+
   test('verifyEmail maps an unknown token to linkInvalid', () {
     expect(
       () => auth.verifyEmail('never-issued'),

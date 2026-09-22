@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// The one announcement the operator asked every reader to see, at the top of
@@ -82,7 +82,9 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                 // The detail is where the whole body and the operator's link
                 // are, so the banner opens it rather than the link itself.
                 onPressed: () => unawaited(
-                  context.push(AppRoutes.announcementPath(announcement.id)),
+                  context.pushInTab(
+                    AppRoutes.announcementPath(announcement.id),
+                  ),
                 ),
                 child: Text(messages.announcementsBannerLink),
               ),

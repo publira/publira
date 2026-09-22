@@ -631,7 +631,7 @@ void main() {
       ),
     ];
 
-    final items = await build().listRecentSeries(limit: 10);
+    final items = (await build().listRecentSeries(limit: 10)).series;
 
     expect(items.single.episode.id, _episodeId);
     expect(origin.recentSeriesLimits, [10]);

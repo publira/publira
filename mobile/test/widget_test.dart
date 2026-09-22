@@ -130,7 +130,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(
       find.descendant(
@@ -166,7 +166,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(
       find.text(
@@ -200,7 +200,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(
       find.descendant(
@@ -217,7 +217,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.last.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.byKey(const ValueKey('series-label')), findsNothing);
   });
@@ -236,7 +236,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(series.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     // The name stands as text: what would open the label screen is the id
     // this copy does not carry.
@@ -253,7 +253,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.first.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('series-status'))).data,
@@ -284,7 +284,7 @@ void main() {
     await pumpApp(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
-    expect(find.text('Episodes'), findsNothing);
+    expect(find.text('Episodes', skipOffstage: false), findsNothing);
     expect(find.text(fixtureRatedSeries.description), findsNothing);
     expect(find.text('“After Dark” is rated R15'), findsOneWidget);
   });
@@ -305,7 +305,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('age-rating-cancel')));
     await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
 
-    expect(find.text('Episodes'), findsNothing);
+    expect(find.text('Episodes', skipOffstage: false), findsNothing);
     expect(router.state.uri.path, AppRoutes.catalog);
   });
 
@@ -372,7 +372,7 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.text(fixtureRatedSeries.description), findsOneWidget);
     expect(
@@ -385,7 +385,7 @@ void main() {
     await tester.tap(
       find.byKey(ValueKey('series-tile-${fixtureRatedSeries.id}')),
     );
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
   });
@@ -406,7 +406,7 @@ void main() {
     );
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     await tester.pageBack();
     await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
@@ -416,7 +416,7 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     expect(find.text('“Midnight” is rated R18'), findsOneWidget);
-    expect(find.text('Episodes'), findsNothing);
+    expect(find.text('Episodes', skipOffstage: false), findsNothing);
   });
 
   testWidgets('an unrecognized rating is not opened as R15', (tester) async {
@@ -435,10 +435,10 @@ void main() {
     expect(find.text('“Uncharted” has an age rating'), findsOneWidget);
     expect(find.text('I am allowed to open this series'), findsOneWidget);
     expect(find.text('“Uncharted” is rated R15'), findsNothing);
-    expect(find.text('Episodes'), findsNothing);
+    expect(find.text('Episodes', skipOffstage: false), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
   });
 
   testWidgets('a failed confirmation write still opens the series', (
@@ -462,7 +462,7 @@ void main() {
     await pumpUntilFound(tester, find.byKey(const ValueKey('age-rating-gate')));
 
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.byKey(const ValueKey('age-rating-gate')), findsNothing);
   });
@@ -491,7 +491,7 @@ void main() {
     expect(find.text('“After Dark” is rated R15'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
   });
 
   testWidgets('a series credited to nobody shows no credit line', (
@@ -501,7 +501,7 @@ void main() {
       initialLocation: AppRoutes.seriesDetailPath(fixtureSeries.last.id),
     );
     await pumpApp(tester);
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.byKey(const ValueKey('series-creators')), findsNothing);
   });
@@ -511,13 +511,13 @@ void main() {
 
     final first = fixtureSeries.first;
     await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.text(first.title), findsWidgets);
     expect(find.text(first.description), findsWidgets);
     expect(find.text('${first.episodeCount} episodes'), findsOneWidget);
-    expect(find.text('Episodes'), findsOneWidget);
-    expect(find.text('${first.title} #1'), findsOneWidget);
+    expect(find.text('Episodes', skipOffstage: false), findsOneWidget);
+    expect(find.text('${first.title} #1', skipOffstage: false), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(first.id));
   });
 
@@ -526,7 +526,7 @@ void main() {
 
     final first = fixtureSeries.first;
     await tester.tap(find.byKey(ValueKey('series-tile-${first.id}')));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     await tester.pageBack();
     await pumpUntilFound(tester, find.text(fixtureTenantBrand.name));
@@ -613,7 +613,7 @@ void main() {
 
     catalog.detailError = null;
     await tester.tap(find.text('Retry'));
-    await pumpUntilFound(tester, find.text('Episodes'));
+    await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.text(fixtureSeries.first.title), findsWidgets);
   });
@@ -643,10 +643,13 @@ void main() {
     await pumpApp(tester);
     await pumpUntilFound(
       tester,
-      find.byKey(const ValueKey('episode-saved-offline')),
+      find.byKey(const ValueKey('episode-saved-offline'), skipOffstage: false),
     );
 
-    expect(find.byKey(const ValueKey('episode-saved-offline')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('episode-saved-offline'), skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the continue-reading row offers what the reader was reading', (

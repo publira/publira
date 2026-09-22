@@ -178,18 +178,6 @@ abstract class AppMessages {
   /// `mobile.account.delete`
   String get accountDelete;
 
-  /// `mobile.account.downloads`
-  String get accountDownloads;
-
-  /// `mobile.account.downloads_description`
-  String get accountDownloadsDescription;
-
-  /// `mobile.account.follows`
-  String get accountFollows;
-
-  /// `mobile.account.follows_description`
-  String get accountFollowsDescription;
-
   /// `mobile.account.name`
   String get accountName;
 
@@ -814,17 +802,38 @@ abstract class AppMessages {
   /// `mobile.label.title`
   String get labelTitle;
 
+  /// `mobile.library.continue_empty`
+  String get libraryContinueEmpty;
+
+  /// `mobile.library.continue_sign_in_prompt`
+  String get libraryContinueSignInPrompt;
+
+  /// `mobile.library.title`
+  String get libraryTitle;
+
+  /// `mobile.navigation.account`
+  String get navigationAccount;
+
+  /// `mobile.navigation.home`
+  String get navigationHome;
+
+  /// `mobile.navigation.library`
+  String get navigationLibrary;
+
+  /// `mobile.navigation.notifications`
+  String get navigationNotifications;
+
+  /// `mobile.navigation.notifications_unread`
+  String navigationNotificationsUnread({required String count});
+
+  /// `mobile.navigation.search`
+  String get navigationSearch;
+
   /// `mobile.not_found.message`
   String notFoundMessage({required String uri});
 
   /// `mobile.not_found.title`
   String get notFoundTitle;
-
-  /// `mobile.notifications.account_description`
-  String get notificationsAccountDescription;
-
-  /// `mobile.notifications.account_unread`
-  String notificationsAccountUnread({required String count});
 
   /// `mobile.notifications.announcement_posted_description`
   String notificationsAnnouncementPostedDescription({required String title});
@@ -1442,26 +1451,6 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountDelete {
     return 'アカウントを削除';
-  }
-
-  @override
-  String get accountDownloads {
-    return 'ダウンロード';
-  }
-
-  @override
-  String get accountDownloadsDescription {
-    return 'オフラインで読むためにこの端末に保存したエピソード';
-  }
-
-  @override
-  String get accountFollows {
-    return 'フォロー中';
-  }
-
-  @override
-  String get accountFollowsDescription {
-    return 'フォローしているシリーズと著者';
   }
 
   @override
@@ -2505,6 +2494,51 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get libraryContinueEmpty {
+    return '読みかけの作品はまだありません。エピソードを読み始めると、ここに表示されます。';
+  }
+
+  @override
+  String get libraryContinueSignInPrompt {
+    return 'サインインすると、読みかけの作品を確認できます。';
+  }
+
+  @override
+  String get libraryTitle {
+    return '本棚';
+  }
+
+  @override
+  String get navigationAccount {
+    return 'アカウント';
+  }
+
+  @override
+  String get navigationHome {
+    return 'ホーム';
+  }
+
+  @override
+  String get navigationLibrary {
+    return '本棚';
+  }
+
+  @override
+  String get navigationNotifications {
+    return '通知';
+  }
+
+  @override
+  String navigationNotificationsUnread({required String count}) {
+    return '通知、未読$count件';
+  }
+
+  @override
+  String get navigationSearch {
+    return '検索';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」は存在しません。';
   }
@@ -2512,16 +2546,6 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get notFoundTitle {
     return 'ページが見つかりません';
-  }
-
-  @override
-  String get notificationsAccountDescription {
-    return '新しいエピソードなど、自分宛の通知です。';
-  }
-
-  @override
-  String notificationsAccountUnread({required String count}) {
-    return 'アカウント（未読の通知 $count 件）';
   }
 
   @override
@@ -3440,26 +3464,6 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get accountDelete {
     return 'Delete account';
-  }
-
-  @override
-  String get accountDownloads {
-    return 'Downloads';
-  }
-
-  @override
-  String get accountDownloadsDescription {
-    return 'Episodes saved on this device for reading offline.';
-  }
-
-  @override
-  String get accountFollows {
-    return 'Follows';
-  }
-
-  @override
-  String get accountFollowsDescription {
-    return 'The series and authors you follow.';
   }
 
   @override
@@ -4503,6 +4507,51 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get libraryContinueEmpty {
+    return 'Nothing to continue yet. Start reading an episode, and it appears here.';
+  }
+
+  @override
+  String get libraryContinueSignInPrompt {
+    return 'Sign in to see the series you are in the middle of.';
+  }
+
+  @override
+  String get libraryTitle {
+    return 'Library';
+  }
+
+  @override
+  String get navigationAccount {
+    return 'Account';
+  }
+
+  @override
+  String get navigationHome {
+    return 'Home';
+  }
+
+  @override
+  String get navigationLibrary {
+    return 'Library';
+  }
+
+  @override
+  String get navigationNotifications {
+    return 'Notifications';
+  }
+
+  @override
+  String navigationNotificationsUnread({required String count}) {
+    return 'Notifications, $count unread';
+  }
+
+  @override
+  String get navigationSearch {
+    return 'Search';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri” does not exist.';
   }
@@ -4510,16 +4559,6 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get notFoundTitle {
     return 'Page not found';
-  }
-
-  @override
-  String get notificationsAccountDescription {
-    return 'Notifications addressed to you, such as new episodes.';
-  }
-
-  @override
-  String notificationsAccountUnread({required String count}) {
-    return 'Account, $count unread notifications';
   }
 
   @override
@@ -5438,26 +5477,6 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountDelete {
     return '계정 삭제';
-  }
-
-  @override
-  String get accountDownloads {
-    return '다운로드';
-  }
-
-  @override
-  String get accountDownloadsDescription {
-    return '오프라인으로 읽기 위해 이 기기에 저장한 에피소드';
-  }
-
-  @override
-  String get accountFollows {
-    return '팔로우 중';
-  }
-
-  @override
-  String get accountFollowsDescription {
-    return '팔로우 중인 시리즈와 작가';
   }
 
   @override
@@ -6501,6 +6520,51 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get libraryContinueEmpty {
+    return '아직 읽고 있는 작품이 없습니다. 에피소드를 읽기 시작하면 여기에 표시됩니다.';
+  }
+
+  @override
+  String get libraryContinueSignInPrompt {
+    return '로그인하면 읽고 있는 작품을 볼 수 있습니다.';
+  }
+
+  @override
+  String get libraryTitle {
+    return '보관함';
+  }
+
+  @override
+  String get navigationAccount {
+    return '계정';
+  }
+
+  @override
+  String get navigationHome {
+    return '홈';
+  }
+
+  @override
+  String get navigationLibrary {
+    return '보관함';
+  }
+
+  @override
+  String get navigationNotifications {
+    return '알림';
+  }
+
+  @override
+  String navigationNotificationsUnread({required String count}) {
+    return '알림, 읽지 않음 $count건';
+  }
+
+  @override
+  String get navigationSearch {
+    return '검색';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”은(는) 존재하지 않습니다.';
   }
@@ -6508,16 +6572,6 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get notFoundTitle {
     return '페이지를 찾을 수 없습니다';
-  }
-
-  @override
-  String get notificationsAccountDescription {
-    return '새 에피소드 등 나에게 온 알림입니다.';
-  }
-
-  @override
-  String notificationsAccountUnread({required String count}) {
-    return '계정, 읽지 않은 알림 $count개';
   }
 
   @override
@@ -7436,26 +7490,6 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get accountDelete {
     return '注销账户';
-  }
-
-  @override
-  String get accountDownloads {
-    return '下载';
-  }
-
-  @override
-  String get accountDownloadsDescription {
-    return '为离线阅读而保存到此设备的剧集';
-  }
-
-  @override
-  String get accountFollows {
-    return '我的关注';
-  }
-
-  @override
-  String get accountFollowsDescription {
-    return '您关注的系列和作者';
   }
 
   @override
@@ -8499,6 +8533,51 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get libraryContinueEmpty {
+    return '您还没有正在阅读的作品。开始阅读剧集后，会显示在这里。';
+  }
+
+  @override
+  String get libraryContinueSignInPrompt {
+    return '登录后即可查看您正在阅读的作品。';
+  }
+
+  @override
+  String get libraryTitle {
+    return '书架';
+  }
+
+  @override
+  String get navigationAccount {
+    return '账户';
+  }
+
+  @override
+  String get navigationHome {
+    return '首页';
+  }
+
+  @override
+  String get navigationLibrary {
+    return '书架';
+  }
+
+  @override
+  String get navigationNotifications {
+    return '通知';
+  }
+
+  @override
+  String navigationNotificationsUnread({required String count}) {
+    return '通知，$count 条未读';
+  }
+
+  @override
+  String get navigationSearch {
+    return '搜索';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '“$uri”不存在。';
   }
@@ -8506,16 +8585,6 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get notFoundTitle {
     return '找不到页面';
-  }
-
-  @override
-  String get notificationsAccountDescription {
-    return '新章节等发送给您的通知。';
-  }
-
-  @override
-  String notificationsAccountUnread({required String count}) {
-    return '账户，$count 条未读通知';
   }
 
   @override
@@ -9434,26 +9503,6 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountDelete {
     return '刪除帳戶';
-  }
-
-  @override
-  String get accountDownloads {
-    return '下載';
-  }
-
-  @override
-  String get accountDownloadsDescription {
-    return '為離線閱讀而儲存到此裝置的集數';
-  }
-
-  @override
-  String get accountFollows {
-    return '我的追蹤';
-  }
-
-  @override
-  String get accountFollowsDescription {
-    return '您追蹤的系列與作者';
   }
 
   @override
@@ -10497,6 +10546,51 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get libraryContinueEmpty {
+    return '您還沒有正在閱讀的作品。開始閱讀集數後，就會顯示在這裡。';
+  }
+
+  @override
+  String get libraryContinueSignInPrompt {
+    return '登入後即可查看您正在閱讀的作品。';
+  }
+
+  @override
+  String get libraryTitle {
+    return '書架';
+  }
+
+  @override
+  String get navigationAccount {
+    return '帳戶';
+  }
+
+  @override
+  String get navigationHome {
+    return '首頁';
+  }
+
+  @override
+  String get navigationLibrary {
+    return '書架';
+  }
+
+  @override
+  String get navigationNotifications {
+    return '通知';
+  }
+
+  @override
+  String navigationNotificationsUnread({required String count}) {
+    return '通知，$count 則未讀';
+  }
+
+  @override
+  String get navigationSearch {
+    return '搜尋';
+  }
+
+  @override
   String notFoundMessage({required String uri}) {
     return '「$uri」不存在。';
   }
@@ -10504,16 +10598,6 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get notFoundTitle {
     return '找不到頁面';
-  }
-
-  @override
-  String get notificationsAccountDescription {
-    return '新章節等寄給您的通知。';
-  }
-
-  @override
-  String notificationsAccountUnread({required String count}) {
-    return '帳戶，$count 則未讀通知';
   }
 
   @override

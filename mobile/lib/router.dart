@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/screens/account_screen.dart';
 import 'package:publira/screens/announcement_screen.dart';
@@ -14,12 +15,11 @@ import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
 import 'package:publira/screens/creator_screen.dart';
 import 'package:publira/screens/delete_account_screen.dart';
-import 'package:publira/screens/downloads_screen.dart';
 import 'package:publira/screens/edit_name_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
-import 'package:publira/screens/follows_screen.dart';
 import 'package:publira/screens/label_screen.dart';
+import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
@@ -34,6 +34,8 @@ import 'package:publira/screens/verify_email_screen.dart';
 abstract final class AppRoutes {
   static const catalog = '/';
   static const search = '/search';
+  static const library = '/library';
+  static const notifications = '/notifications';
   static const signIn = '/sign-in';
   static const signUp = '/sign-up';
 
@@ -59,17 +61,13 @@ abstract final class AppRoutes {
   static const accountPassword = '$account/$password';
   static const delete = 'delete';
   static const accountDelete = '$account/$delete';
-  static const notifications = 'notifications';
-  static const accountNotifications = '$account/$notifications';
-  static const follows = 'follows';
-  static const accountFollows = '$account/$follows';
-  static const downloads = 'downloads';
-  static const accountDownloads = '$account/$downloads';
   static const contact = 'contact';
   static const accountContact = '$account/$contact';
-  static const seriesDetail = '/series/:seriesId';
-  static const creatorDetail = '/creators/:creatorId';
-  static const labelDetail = '/labels/:labelId';
+
+  /// The catalog's routes, which every tab holds under its own root.
+  static const seriesDetail = 'series/:seriesId';
+  static const creatorDetail = 'creators/:creatorId';
+  static const labelDetail = 'labels/:labelId';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
@@ -131,6 +129,112 @@ abstract final class AppRoutes {
       '${episodeViewerPath(seriesId, episodeId)}/comments';
 }
 
+/// The metadata key that says whether a route shows the bottom navigation
+/// bar. A route inherits its parent's answer unless it gives its own.
+const _showsTabBar = 'showsTabBar';
+
+/// [path] as a child of a tab's root, which go_router writes without the
+/// leading slash.
+String _child(String path) => path.substring(1);
+
+/// The routes every tab holds under its own root, so a series, an author, a
+/// label, or an announcement opened from a tab is pushed onto that tab's
+/// stack, and so are the sign-in forms any screen can send a guest to.
+///
+/// Built afresh for each tab: a route belongs to one place in the tree.
+List<RouteBase> _tabRoutes() => [
+  GoRoute(
+    path: _child(AppRoutes.signIn),
+    builder: (context, state) => SignInScreen(
+      returnTo: inAppLocation(state.uri.queryParameters['return_to']),
+    ),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.signUp),
+    builder: (context, state) => const SignUpScreen(),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.resendVerification),
+    builder: (context, state) =>
+        ResendVerificationScreen(email: state.uri.queryParameters['email']),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.resetPassword),
+    builder: (context, state) =>
+        ResetPasswordScreen(email: state.uri.queryParameters['email']),
+  ),
+  GoRoute(
+    path: _child(AppRoutes.announcements),
+    builder: (context, state) => const AnnouncementsScreen(),
+    // Nested so going back from an announcement lands on the list, even
+    // when the banner or a notification opened it.
+    routes: [
+      GoRoute(
+        path: AppRoutes.announcementDetail,
+        builder: (context, state) => AnnouncementScreen(
+          announcementId: state.pathParameters['announcementId']!,
+        ),
+      ),
+    ],
+  ),
+  GoRoute(
+    path: AppRoutes.creatorDetail,
+    builder: (context, state) =>
+        CreatorScreen(creatorId: state.pathParameters['creatorId']!),
+  ),
+  GoRoute(
+    path: AppRoutes.labelDetail,
+    builder: (context, state) =>
+        LabelScreen(labelId: state.pathParameters['labelId']!),
+  ),
+  GoRoute(
+    path: AppRoutes.seriesDetail,
+    builder: (context, state) {
+      final seriesId = state.pathParameters['seriesId']!;
+      return SeriesDetailScreen(seriesId: seriesId);
+    },
+    // Nested so a deep link to a page opens on top of its series and the
+    // back gesture lands there rather than leaving the app.
+    routes: [
+      GoRoute(
+        path: AppRoutes.episodeViewer,
+        // The page takes the whole screen.
+        metadata: const {_showsTabBar: false},
+        builder: (context, state) => EpisodeViewerScreen(
+          seriesId: state.pathParameters['seriesId']!,
+          episodeId: state.pathParameters['episodeId']!,
+          checkout: CheckoutOutcome.fromWire(
+            state.uri.queryParameters['checkout'],
+          ),
+        ),
+        // Nested for the same reason the viewer is nested under its
+        // series: the comments are read once the episode has been, and
+        // going back from them lands on the episode rather than out.
+        routes: [
+          GoRoute(
+            path: AppRoutes.episodeComments,
+            metadata: const {_showsTabBar: true},
+            builder: (context, state) => EpisodeCommentsScreen(
+              seriesId: state.pathParameters['seriesId']!,
+              episodeId: state.pathParameters['episodeId']!,
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+];
+
+/// The first path segment of every route [_tabRoutes] puts under a root.
+final _tabRouteSegments = {
+  for (final route in _tabRoutes()) (route as GoRoute).path.split('/').first,
+};
+
+/// Whether every tab holds [location] under its own root, which is what lets
+/// a screen push it onto the tab it is on.
+bool isHeldByEveryTab(String location) =>
+    _tabRouteSegments.contains(Uri.parse(location).pathSegments.firstOrNull);
+
 /// Application router. Kept as a factory so widget tests can inject a fresh
 /// [GoRouter] without sharing navigation state across tests.
 ///
@@ -148,186 +252,125 @@ GoRouter createAppRouter({String? initialLocation}) {
     // matched against these routes.
     overridePlatformDefaultLocation: true,
     routes: [
-      GoRoute(
-        path: AppRoutes.catalog,
-        name: 'catalog',
-        builder: (context, state) => const CatalogScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.search,
-        name: 'search',
-        builder: (context, state) => const SearchScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.signIn,
-        name: 'signIn',
-        builder: (context, state) => SignInScreen(
-          returnTo: inAppLocation(state.uri.queryParameters['return_to']),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.signUp,
-        name: 'signUp',
-        builder: (context, state) => const SignUpScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.verifyEmail,
-        name: 'verifyEmail',
-        builder: (context, state) =>
-            VerifyEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.resendVerification,
-        name: 'resendVerification',
-        builder: (context, state) =>
-            ResendVerificationScreen(email: state.uri.queryParameters['email']),
-      ),
-      GoRoute(
-        path: AppRoutes.resetPassword,
-        name: 'resetPassword',
-        builder: (context, state) =>
-            ResetPasswordScreen(email: state.uri.queryParameters['email']),
-      ),
-      GoRoute(
-        path: AppRoutes.confirmPassword,
-        name: 'confirmPassword',
-        builder: (context, state) => ConfirmPasswordScreen(
-          token: state.uri.queryParameters['token'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.confirmEmail,
-        name: 'confirmEmail',
-        builder: (context, state) =>
-            ConfirmEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.checkoutReturn,
-        name: 'checkoutReturn',
-        // The return URL names the episode alone, so a link without one has
-        // nothing to open.
-        redirect: (_, state) =>
-            (state.uri.queryParameters['episode'] ?? '').isEmpty
-            ? AppRoutes.catalog
-            : null,
-        builder: (context, state) => CheckoutReturnScreen(
-          episodeId: state.uri.queryParameters['episode']!,
-          outcome: CheckoutOutcome.fromWire(
-            state.uri.queryParameters['status'],
-          ),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.account,
-        name: 'account',
-        builder: (context, state) => const AccountScreen(),
-        // Nested so going back from the list lands on the account screen it
-        // was opened from rather than out of the app.
-        routes: [
-          GoRoute(
-            path: AppRoutes.name,
-            name: 'accountName',
-            builder: (context, state) =>
-                const ReaderKeyed(child: EditNameScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.email,
-            name: 'accountEmail',
-            builder: (context, state) =>
-                const ReaderKeyed(child: ChangeEmailScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.password,
-            name: 'accountPassword',
-            builder: (context, state) =>
-                const ReaderKeyed(child: ChangePasswordScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.delete,
-            name: 'accountDelete',
-            builder: (context, state) =>
-                const ReaderKeyed(child: DeleteAccountScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.notifications,
-            name: 'notifications',
-            builder: (context, state) => const NotificationsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.follows,
-            name: 'follows',
-            builder: (context, state) => const FollowsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.downloads,
-            name: 'downloads',
-            builder: (context, state) => const DownloadsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.contact,
-            name: 'contact',
-            builder: (context, state) => const ContactScreen(),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: AppRoutes.announcements,
-        name: 'announcements',
-        builder: (context, state) => const AnnouncementsScreen(),
-        // Nested so going back from an announcement lands on the list, even
-        // when the banner or a notification opened it.
-        routes: [
-          GoRoute(
-            path: AppRoutes.announcementDetail,
-            name: 'announcement',
-            builder: (context, state) => AnnouncementScreen(
-              announcementId: state.pathParameters['announcementId']!,
+      StatefulShellRoute(
+        builder: (context, state, navigationShell) => navigationShell,
+        navigatorContainerBuilder: (context, navigationShell, children) =>
+            AppTabShell(
+              navigationShell: navigationShell,
+              showsBar:
+                  GoRouter.of(context).state.metadata[_showsTabBar] != false,
+              children: children,
             ),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: AppRoutes.creatorDetail,
-        name: 'creatorDetail',
-        builder: (context, state) =>
-            CreatorScreen(creatorId: state.pathParameters['creatorId']!),
-      ),
-      GoRoute(
-        path: AppRoutes.labelDetail,
-        name: 'labelDetail',
-        builder: (context, state) =>
-            LabelScreen(labelId: state.pathParameters['labelId']!),
-      ),
-      GoRoute(
-        path: AppRoutes.seriesDetail,
-        name: 'seriesDetail',
-        builder: (context, state) {
-          final seriesId = state.pathParameters['seriesId']!;
-          return SeriesDetailScreen(seriesId: seriesId);
-        },
-        // Nested so a deep link to a page opens on top of its series and the
-        // back gesture lands there rather than leaving the app.
-        routes: [
-          GoRoute(
-            path: AppRoutes.episodeViewer,
-            name: 'episodeViewer',
-            builder: (context, state) => EpisodeViewerScreen(
-              seriesId: state.pathParameters['seriesId']!,
-              episodeId: state.pathParameters['episodeId']!,
-              checkout: CheckoutOutcome.fromWire(
-                state.uri.queryParameters['checkout'],
-              ),
-            ),
-            // Nested for the same reason the viewer is nested under its
-            // series: the comments are read once the episode has been, and
-            // going back from them lands on the episode rather than out.
+        // In the order of [AppTab].
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.episodeComments,
-                name: 'episodeComments',
-                builder: (context, state) => EpisodeCommentsScreen(
-                  seriesId: state.pathParameters['seriesId']!,
-                  episodeId: state.pathParameters['episodeId']!,
+                path: AppRoutes.catalog,
+                name: 'catalog',
+                builder: (context, state) => const CatalogScreen(),
+                // The home tab's routes are the paths the tenant's site links
+                // to, which is why a link to a work lands here.
+                routes: [
+                  ..._tabRoutes(),
+                  GoRoute(
+                    path: _child(AppRoutes.checkoutReturn),
+                    // The return URL names the episode alone, so a link
+                    // without one has nothing to open.
+                    redirect: (_, state) =>
+                        (state.uri.queryParameters['episode'] ?? '').isEmpty
+                        ? AppRoutes.catalog
+                        : null,
+                    builder: (context, state) => CheckoutReturnScreen(
+                      episodeId: state.uri.queryParameters['episode']!,
+                      outcome: CheckoutOutcome.fromWire(
+                        state.uri.queryParameters['status'],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.search,
+                builder: (context, state) => const SearchScreen(),
+                routes: _tabRoutes(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.library,
+                builder: (context, state) => const LibraryScreen(),
+                routes: _tabRoutes(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.notifications,
+                builder: (context, state) => const NotificationsScreen(),
+                routes: _tabRoutes(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.account,
+                builder: (context, state) => const AccountScreen(),
+                routes: [
+                  GoRoute(
+                    path: AppRoutes.name,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: EditNameScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.email,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: ChangeEmailScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.password,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: ChangePasswordScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.delete,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: DeleteAccountScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.contact,
+                    builder: (context, state) => const ContactScreen(),
+                  ),
+                  ..._tabRoutes(),
+                ],
+              ),
+              // Where the account mails land. They are the account tab's, so
+              // leaving one for the account screen drops the spent link from
+              // the stack rather than leaving it on another tab's.
+              GoRoute(
+                path: AppRoutes.verifyEmail,
+                builder: (context, state) => VerifyEmailScreen(
+                  token: state.uri.queryParameters['token'] ?? '',
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.confirmPassword,
+                builder: (context, state) => ConfirmPasswordScreen(
+                  token: state.uri.queryParameters['token'] ?? '',
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.confirmEmail,
+                builder: (context, state) => ConfirmEmailScreen(
+                  token: state.uri.queryParameters['token'] ?? '',
                 ),
               ),
             ],

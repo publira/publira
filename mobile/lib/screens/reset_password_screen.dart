@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// A link to set a new password with, through
@@ -172,9 +173,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   /// land on a request the reader has already made.
   void _openSignIn() {
     if (context.canPop()) {
-      context.pushReplacement(AppRoutes.signIn);
+      context.pushReplacementInTab(AppRoutes.signIn);
     } else {
-      context.go(AppRoutes.signIn);
+      context.goInTab(AppRoutes.signIn);
     }
   }
 

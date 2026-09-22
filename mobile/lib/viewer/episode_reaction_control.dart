@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// The one-way reaction a reader can give after finishing an episode.
@@ -140,7 +140,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         if (!signedIn)
           OutlinedButton.icon(
             key: const ValueKey('episode-reaction-sign-in'),
-            onPressed: () => context.push(AppRoutes.signIn),
+            onPressed: () => context.pushInTab(AppRoutes.signIn),
             icon: const Icon(Icons.favorite_border),
             label: Text(messages.viewerReactionSignIn),
           )

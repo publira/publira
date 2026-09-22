@@ -3067,10 +3067,6 @@
       "contact": "联系我们",
       "contact_description": "向本站点的运营者发送消息。",
       "delete": "注销账户",
-      "downloads": "下载",
-      "downloads_description": "为离线阅读而保存到此设备的剧集",
-      "follows": "我的关注",
-      "follows_description": "您关注的系列和作者",
       "name": "昵称",
       "name_unset": "未设置",
       "notifications": "新章节通知",
@@ -3219,13 +3215,24 @@
       "series_heading": "该品牌的系列",
       "title": "品牌"
     },
+    "library": {
+      "continue_empty": "您还没有正在阅读的作品。开始阅读剧集后，会显示在这里。",
+      "continue_sign_in_prompt": "登录后即可查看您正在阅读的作品。",
+      "title": "书架"
+    },
+    "navigation": {
+      "account": "账户",
+      "home": "首页",
+      "library": "书架",
+      "notifications": "通知",
+      "notifications_unread": "通知，{$count} 条未读",
+      "search": "搜索"
+    },
     "not_found": {
       "message": "“{$uri}”不存在。",
       "title": "找不到页面"
     },
     "notifications": {
-      "account_description": "新章节等发送给您的通知。",
-      "account_unread": "账户，{$count} 条未读通知",
       "announcement_posted_description": "运营方发布了《{$title}》。",
       "announcement_posted_description_unknown": "运营方发布了新公告。",
       "announcement_posted_title": "新公告",

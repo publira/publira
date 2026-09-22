@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/follow.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// Follows one series or one author, and stops following it.
@@ -177,7 +177,7 @@ class _FollowControlState extends State<FollowControl> {
       return const SizedBox.shrink();
     }
     if (!AuthScope.of(context).isSignedIn) {
-      void openSignIn() => context.push(AppRoutes.signIn);
+      void openSignIn() => context.pushInTab(AppRoutes.signIn);
       return _Labelled(
         label: messages.followSignInAria(name: widget.targetName),
         onTap: openSignIn,

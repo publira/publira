@@ -300,12 +300,16 @@ void main() {
 
       await tester.tap(find.text('Add your date of birth'));
       await pumpUntilFound(tester, addRow);
+
+      expect(router.state.uri.path, AppRoutes.account);
+
       await recordBirthDate(tester, '02/03/2001');
       // The API opens the body once the account holds a date old enough.
       catalog.episodes = {
         episodeKey(series.id, episode.id): ratedEpisode(EpisodeAccess.free),
       };
-      router.pop();
+      // The viewer hides the bar, so the way back to it is the tab it is on.
+      await tester.tap(find.byKey(const ValueKey('tab-home')));
       await pumpUntilFound(tester, pages);
 
       expect(router.state.uri.path, episodePath);

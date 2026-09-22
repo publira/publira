@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -18,6 +20,7 @@ void main() {
   late FakeAuthRepository repository;
   late AuthController auth;
   late FakeCatalogRepository catalog;
+  late GoRouter router;
 
   setUp(() {
     repository = FakeAuthRepository();
@@ -35,7 +38,7 @@ void main() {
   }) async {
     await tester.pumpWidget(
       PubliraApp(
-        router: createAppRouter(initialLocation: initialLocation),
+        router: router = createAppRouter(initialLocation: initialLocation),
         catalog: catalog,
         auth: auth,
       ),
@@ -57,31 +60,37 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('sign-in-submit')));
   }
 
-  testWidgets('the catalog opens the sign-in screen while signed out', (
+  testWidgets('the account tab opens the sign-in screen while signed out', (
     tester,
   ) async {
     await pumpApp(tester);
 
-    await tester.tap(find.byKey(const ValueKey('catalog-account')));
+    await tester.tap(find.byKey(const ValueKey('tab-account')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('account-sign-in')));
+    await tester.tap(find.byKey(const ValueKey('account-sign-in')));
     await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-submit')));
 
     expect(find.byKey(const ValueKey('sign-in-email')), findsOneWidget);
     expect(find.byKey(const ValueKey('sign-in-password')), findsOneWidget);
+    expect(router.state.uri.path, AppTab.account.locate(AppRoutes.signIn));
   });
 
-  testWidgets('signing in returns to the catalog with an account entry', (
-    tester,
-  ) async {
+  testWidgets('signing in returns to the catalog, and the account tab shows '
+      'the account', (tester) async {
     await pumpApp(tester, initialLocation: AppRoutes.signIn);
 
     await submitCredentials(tester);
-    await pumpUntilFound(tester, find.byKey(const ValueKey('catalog-account')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+    );
 
     expect(auth.isSignedIn, isTrue);
     expect(repository.lastEmail, 'member@example.com');
     expect(repository.lastPassword, 'memberpass');
+    expect(router.state.uri.path, AppRoutes.catalog);
 
-    await tester.tap(find.byKey(const ValueKey('catalog-account')));
+    await tester.tap(find.byKey(const ValueKey('tab-account')));
     await pumpUntilFound(tester, find.byKey(const ValueKey('account-name')));
 
     expect(find.text(fakeSession.userName), findsOneWidget);

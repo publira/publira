@@ -10,6 +10,7 @@ import 'package:publira/forms/name_input.dart';
 import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// Creating a reader account through `AuthService/CreateUser`, and what
@@ -454,8 +455,8 @@ class _SignUpPendingState extends State<_SignUpPending> {
 /// the back gesture does not land on a form the reader has finished with.
 void _openSignIn(BuildContext context) {
   if (context.canPop()) {
-    context.pushReplacement(AppRoutes.signIn);
+    context.pushReplacementInTab(AppRoutes.signIn);
   } else {
-    context.go(AppRoutes.signIn);
+    context.goInTab(AppRoutes.signIn);
   }
 }

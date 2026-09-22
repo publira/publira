@@ -531,10 +531,13 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<RecentSeriesItem>> listRecentSeries({required int limit}) async {
+  Future<RecentSeriesPage> listRecentSeries({
+    required int limit,
+    String token = '',
+  }) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
-      return const [];
+      return RecentSeriesPage.empty;
     }
     try {
       final tenantId = await _tenants.resolve();
@@ -543,11 +546,15 @@ class HttpCatalogRepository implements CatalogRepository {
         {
           'limit': limit,
           'tenant': {'tenantId': tenantId},
+          if (token.isNotEmpty) 'token': token,
         },
         tenantId: tenantId,
         accessToken: accessToken,
       );
-      return _parseRecentSeries(body['series']);
+      return RecentSeriesPage(
+        series: _parseRecentSeries(body['series']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }

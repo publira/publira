@@ -92,6 +92,17 @@ void main() {
     fail('Timed out waiting for $finder to be ${present ? '' : 'not '}found');
   }
 
+  /// Opens the library's downloads from whichever tab is on screen.
+  Future<void> openDownloads(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('tab-library')));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('library-tab-downloads')),
+    );
+    await tester.tap(find.byKey(const ValueKey('library-tab-downloads')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-usage')));
+  }
+
   /// [pumpUntilFound] for what only the rendered copy reveals.
   Future<void> pumpUntilTrue(
     WidgetTester tester,
@@ -179,17 +190,12 @@ void main() {
   String usage(WidgetTester tester) =>
       tester.widget<Text>(find.byKey(const ValueKey('downloads-usage'))).data!;
 
-  testWidgets('the account screen leads to the downloads', (tester) async {
-    await pumpApp(tester, initialLocation: AppRoutes.account);
-    await pumpUntilFound(
-      tester,
-      find.byKey(const ValueKey('account-downloads')),
-    );
-
-    await tester.tap(find.byKey(const ValueKey('account-downloads')));
+  testWidgets('the library leads to the downloads', (tester) async {
+    await pumpApp(tester, initialLocation: AppRoutes.catalog);
+    await openDownloads(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-empty')));
 
-    expect(router.state.uri.path, AppRoutes.accountDownloads);
+    expect(router.state.uri.path, AppRoutes.library);
     expect(usage(tester), '0 B of 512 MB used');
     expect(find.byKey(const ValueKey('downloads-clear')), findsNothing);
   });
@@ -205,7 +211,8 @@ void main() {
       );
       await seed(tester, body(_paidEpisode.id), ownerId: 'SomeoneElse01');
 
-      await pumpApp(tester, initialLocation: AppRoutes.accountDownloads);
+      await pumpApp(tester, initialLocation: AppRoutes.library);
+      await openDownloads(tester);
       await pumpUntilFound(
         tester,
         find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
@@ -242,7 +249,8 @@ void main() {
       checkedAt: DateTime.now().subtract(const Duration(days: 8)),
     );
 
-    await pumpApp(tester, initialLocation: AppRoutes.accountDownloads);
+    await pumpApp(tester, initialLocation: AppRoutes.library);
+    await openDownloads(tester);
     await pumpUntilFound(
       tester,
       find.byKey(ValueKey('downloads-expiry-${_secondEpisode.id}')),
@@ -264,7 +272,7 @@ void main() {
         find.byKey(const ValueKey('episode-saved-offline')),
       );
 
-      unawaited(router.push(AppRoutes.accountDownloads));
+      await openDownloads(tester);
       await pumpUntilFound(
         tester,
         find.byKey(ValueKey('downloads-delete-${_freeEpisode.id}')),
@@ -285,7 +293,8 @@ void main() {
         findsOne,
       );
 
-      router.pop();
+      // The series screen is still on the home tab.
+      await tester.tap(find.byKey(const ValueKey('tab-home')));
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('episode-saved-offline')),
@@ -301,7 +310,8 @@ void main() {
   testWidgets('clearing all empties the device once confirmed', (tester) async {
     await seed(tester, body(_freeEpisode.id));
     await seed(tester, body(_paidEpisode.id), ownerId: 'SomeoneElse01');
-    await pumpApp(tester, initialLocation: AppRoutes.accountDownloads);
+    await pumpApp(tester, initialLocation: AppRoutes.library);
+    await openDownloads(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-clear')));
 
     await tester.tap(find.byKey(const ValueKey('downloads-clear')));
@@ -386,7 +396,7 @@ void main() {
       find.byKey(ValueKey('episode-saving-offline-${_freeEpisode.id}')),
     );
 
-    unawaited(router.push(AppRoutes.accountDownloads));
+    await openDownloads(tester);
     await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-usage')));
     expect(usage(tester), '0 B of 512 MB used');
 
@@ -420,7 +430,7 @@ void main() {
       );
       expect(find.byKey(const ValueKey('episode-saved-offline')), findsNothing);
 
-      unawaited(router.push(AppRoutes.accountDownloads));
+      await openDownloads(tester);
       await pumpUntilFound(
         tester,
         find.byKey(ValueKey('downloads-partial-${_freeEpisode.id}')),
@@ -434,7 +444,8 @@ void main() {
         startsWith('Partly saved: 1 of ${episode.images.length} pages.'),
       );
 
-      router.pop();
+      // The series screen is still on the home tab.
+      await tester.tap(find.byKey(const ValueKey('tab-home')));
       final saveAction = find.byKey(
         ValueKey('episode-save-offline-${_freeEpisode.id}'),
       );
@@ -461,7 +472,7 @@ void main() {
       expect(imageRequests, [
         for (final image in episode.images.skip(1)) image.url,
       ]);
-      unawaited(router.push(AppRoutes.accountDownloads));
+      await openDownloads(tester);
       await pumpUntilFound(
         tester,
         find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),

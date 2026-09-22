@@ -33,12 +33,12 @@ AuthSession memberSession() => AuthSession(
   expiresAt: DateTime.now().toUtc().add(const Duration(hours: 24)),
 );
 
-/// The catalog's account entry as only a signed-in reader sees it.
+/// The account tab as only a signed-in reader sees it.
 ///
-/// A guest gets the same button with an outlined icon, so its key alone only
-/// proves the catalog is on screen.
+/// A guest gets the same tab with an outlined icon, so its key alone only
+/// proves the bar is on screen.
 Finder signedInAccountEntry() => find.descendant(
-  of: find.byKey(const ValueKey('catalog-account')),
+  of: find.byKey(const ValueKey('tab-account')),
   matching: find.byIcon(Icons.person),
 );
 
@@ -294,9 +294,9 @@ void main() {
         await pumpApp(tester);
         await pumpUntilRouteSettled(
           tester,
-          find.byKey(const ValueKey('catalog-search')),
+          find.byKey(const ValueKey('tab-search')),
         );
-        await tester.tap(find.byKey(const ValueKey('catalog-search')));
+        await tester.tap(find.byKey(const ValueKey('tab-search')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('search-field')),
@@ -318,6 +318,56 @@ void main() {
         );
 
         expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsWidgets);
+      });
+    });
+
+    testApp('switches tabs and finds each where it was left', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-tabs', () async {
+        final seriesTile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        final tabBar = find.byKey(const ValueKey('tab-bar'));
+        await pumpApp(tester);
+        await pumpUntilRouteSettled(tester, seriesTile);
+        await tapVisible(tester, seriesTile);
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+
+        await tester.tap(find.byKey(const ValueKey('tab-search')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('search-field')),
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-library')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('library-continue-signed-out')),
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-notifications')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('notifications-signed-out')),
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-account')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-sign-in')),
+        );
+
+        // The home tab is still on the series it was left on.
+        await tester.tap(find.byKey(const ValueKey('tab-home')));
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+
+        // The page takes the whole screen, and the bar is back once the
+        // reader leaves it.
+        final episode = find.text(ConnectFixtureServer.seedEpisodeTitle);
+        await scrollSeriesTo(tester, episode);
+        await tapVisible(tester, episode);
+        await pumpUntilPagesDrawn(tester);
+        expect(tabBar, findsNothing);
+
+        await tester.pageBack();
+        await pumpUntilRouteSettled(tester, episode);
+        expect(tabBar, findsOneWidget);
       });
     });
 
@@ -621,13 +671,13 @@ void main() {
         await tester.pageBack();
         await settleOn(paidEpisode);
         await tester.pageBack();
-        await settleOn(find.byKey(const ValueKey('catalog-account')));
+        await settleOn(seriesTile);
 
-        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await tester.tap(find.byKey(const ValueKey('tab-account')));
         await settleOn(find.byKey(const ValueKey('account-sign-out')));
         await tester.tap(find.byKey(const ValueKey('account-sign-out')));
         await settleOn(find.text('You are not signed in.'));
-        await tester.pageBack();
+        await tester.tap(find.byKey(const ValueKey('tab-home')));
         await settleOn(seriesTile);
 
         await tapVisible(tester, seriesTile);
@@ -977,11 +1027,8 @@ void main() {
             find.byKey(const ValueKey('sign-in-submit')),
           );
           await signIn(tester);
-          await pumpUntilRouteSettled(
-            tester,
-            find.byKey(const ValueKey('catalog-account')),
-          );
-          await tester.tap(find.byKey(const ValueKey('catalog-account')));
+          await pumpUntilFound(tester, signedInAccountEntry());
+          await tester.tap(find.byKey(const ValueKey('tab-account')));
           await pumpUntilRouteSettled(
             tester,
             find.byKey(const ValueKey('account-name')),
@@ -1068,11 +1115,8 @@ void main() {
           find.byKey(const ValueKey('sign-in-submit')),
         );
         await signIn(tester);
-        await pumpUntilRouteSettled(
-          tester,
-          find.byKey(const ValueKey('catalog-account')),
-        );
-        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await pumpUntilFound(tester, signedInAccountEntry());
+        await tester.tap(find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('account-change-email')),
@@ -1124,11 +1168,8 @@ void main() {
           find.byKey(const ValueKey('sign-in-submit')),
         );
         await signIn(tester);
-        await pumpUntilRouteSettled(
-          tester,
-          find.byKey(const ValueKey('catalog-account')),
-        );
-        await tester.tap(find.byKey(const ValueKey('catalog-account')));
+        await pumpUntilFound(tester, signedInAccountEntry());
+        await tester.tap(find.byKey(const ValueKey('tab-account')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('account-delete')),
@@ -1335,19 +1376,9 @@ void main() {
       ];
       await withFailureScreenshot(tester, 'fixture-notifications', () async {
         await pumpApp(tester, session: memberSession());
-        await pumpUntilFound(
-          tester,
-          find.byTooltip('Account, 1 unread notifications'),
-        );
+        await pumpUntilFound(tester, find.byTooltip('Notifications, 1 unread'));
 
-        await tester.tap(find.byKey(const ValueKey('catalog-account')));
-        await pumpUntilRouteSettled(
-          tester,
-          find.byKey(const ValueKey('account-notifications-unread')),
-        );
-        await tester.tap(
-          find.byKey(const ValueKey('account-notifications-inbox')),
-        );
+        await tester.tap(find.byKey(const ValueKey('tab-notifications')));
         await pumpUntilRouteSettled(
           tester,
           find.byKey(
@@ -1869,7 +1900,7 @@ void main() {
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-notifications', () async {
-        await pumpLive(tester, initialLocation: AppRoutes.accountNotifications);
+        await pumpLive(tester, initialLocation: AppRoutes.notifications);
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('notifications-sign-in')),

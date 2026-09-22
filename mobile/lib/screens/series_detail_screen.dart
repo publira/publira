@@ -19,6 +19,7 @@ import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
@@ -409,7 +410,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             credits: series.creators,
             style: theme.textTheme.bodyMedium,
             onCreatorTap: (creator) =>
-                context.push(AppRoutes.creatorDetailPath(creator.id)),
+                context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
           ),
         ],
         const SizedBox(height: 8),
@@ -515,7 +516,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 targetName: creator.name,
               ),
               onTap: () =>
-                  context.push(AppRoutes.creatorDetailPath(creator.id)),
+                  context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
             ),
         ],
         const SizedBox(height: 24),
@@ -557,14 +558,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                           series.id,
                           episode.id,
                         ),
-                        onAlreadyPurchased: () => context.push(
+                        onAlreadyPurchased: () => context.pushInTab(
                           AppRoutes.episodeViewerPath(series.id, episode.id),
                         ),
                       )
                     : null,
               ),
               onTap: () {
-                context.push(
+                context.pushInTab(
                   AppRoutes.episodeViewerPath(series.id, episode.id),
                 );
               },
@@ -599,7 +600,8 @@ class _SeriesLabel extends StatelessWidget {
         textStyle: theme.textTheme.labelLarge,
         visualDensity: VisualDensity.compact,
       ),
-      onPressed: () => context.push(AppRoutes.labelDetailPath(series.labelId)),
+      onPressed: () =>
+          context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
       child: Text(series.labelName),
     );
   }

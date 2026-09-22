@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// Where a confirmation link lands: it spends its token against
@@ -146,9 +147,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   /// Replaces this screen, so the back gesture does not spend the link again.
   void _leaveFor(String location) {
     if (context.canPop()) {
-      context.pushReplacement(location);
+      context.pushReplacementInTab(location);
     } else {
-      context.go(location);
+      context.goInTab(location);
     }
   }
 

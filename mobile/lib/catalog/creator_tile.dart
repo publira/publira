@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/published_creator.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
 /// One row of a list of authors, which opens the author's screen.
@@ -23,7 +23,7 @@ class CreatorTile extends StatelessWidget {
           count: messages.formatInteger(creator.seriesCount),
         ),
       ),
-      onTap: () => context.push(AppRoutes.creatorDetailPath(creator.id)),
+      onTap: () => context.pushInTab(AppRoutes.creatorDetailPath(creator.id)),
     );
   }
 }

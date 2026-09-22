@@ -16,6 +16,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
@@ -111,6 +112,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// longer be looked up.
   ReadingPositionSaver? _saver;
 
+  /// Whether the reader asked to give a birth date, which the account tab
+  /// takes, and whether this tab has since gone off screen for it. The date is
+  /// read back once the tab is on screen again.
+  var _awaitingBirthDate = false;
+  var _leftForBirthDate = false;
+
   @override
   void initState() {
     super.initState();
@@ -127,7 +134,19 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
+    final active = AppTabScope.isActive(context);
+    if (_awaitingBirthDate && !active) {
+      _leftForBirthDate = true;
+    }
+    final returned = _leftForBirthDate && active;
+    if (returned) {
+      _awaitingBirthDate = false;
+      _leftForBirthDate = false;
+    }
     if (_started && accessToken == _accessToken) {
+      if (returned) {
+        _future = _load(catalog, AuthScope.of(context));
+      }
       return;
     }
     _started = true;
@@ -349,8 +368,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
               key: const ValueKey('episode-not-found'),
               message: messages.viewerNotFound(id: widget.episodeId),
               action: FilledButton(
-                onPressed: () =>
-                    context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
+                onPressed: () => context.goInTab(
+                  AppRoutes.seriesDetailPath(widget.seriesId),
+                ),
                 child: Text(messages.viewerBackToSeries),
               ),
             ),
@@ -412,7 +432,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         onOpenNext: _open,
         onOpenComments: _commentsOffered ? _openComments : null,
         onBackToSeries: () =>
-            context.go(AppRoutes.seriesDetailPath(widget.seriesId)),
+            context.goInTab(AppRoutes.seriesDetailPath(widget.seriesId)),
       ),
       onNextEpisode: next == null ? null : () => _open(next),
       onPreviousEpisode: previous == null ? null : () => _open(previous),
@@ -460,7 +480,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         key: const ValueKey('episode-locked'),
         message: message,
         action: FilledButton(
-          onPressed: () => context.push(AppRoutes.signIn),
+          onPressed: () => context.pushInTab(AppRoutes.signIn),
           child: Text(messages.commonSignIn),
         ),
       );
@@ -483,7 +503,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         key: const ValueKey('episode-age-restricted'),
         message: messages.viewerAgeRestrictedGuest,
         action: FilledButton(
-          onPressed: () => context.push(AppRoutes.signIn),
+          onPressed: () => context.pushInTab(AppRoutes.signIn),
           child: Text(messages.commonSignIn),
         ),
       );
@@ -498,25 +518,23 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       key: const ValueKey('episode-age-restricted'),
       message: messages.viewerAgeRestrictedNoBirthDate,
       action: FilledButton(
-        onPressed: () => unawaited(_addBirthDate()),
+        onPressed: _addBirthDate,
         child: Text(messages.viewerAgeRestrictedAddBirthDate),
       ),
     );
   }
 
-  /// Opens the account screen, where the date is recorded, and reads the
-  /// episode again once the reader comes back from it.
-  Future<void> _addBirthDate() async {
-    await context.push(AppRoutes.account);
-    if (mounted) {
-      _reload();
-    }
+  /// Opens the account tab, where the date is recorded, and reads the episode
+  /// again once the reader comes back to this one.
+  void _addBirthDate() {
+    _awaitingBirthDate = true;
+    context.go(AppRoutes.account);
   }
 
   /// Opens what the other readers of this episode had to say about it, which
   /// the reader reaches once they have read it themselves.
   void _openComments() {
-    context.push(
+    context.pushInTab(
       AppRoutes.episodeCommentsPath(widget.seriesId, widget.episodeId),
     );
   }
@@ -528,7 +546,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// they opened the first from, instead of walking back through every episode
   /// they read.
   void _open(EpisodeNeighbor episode) {
-    context.pushReplacement(
+    context.pushReplacementInTab(
       AppRoutes.episodeViewerPath(widget.seriesId, episode.id),
     );
   }

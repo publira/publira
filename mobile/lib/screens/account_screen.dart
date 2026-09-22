@@ -6,11 +6,9 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/contact/contact_repository.dart';
-import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
-import 'package:publira/notifications/notification_inbox.dart';
-import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -29,8 +27,6 @@ class AccountScreen extends StatelessWidget {
       appBar: AppBar(title: Text(messages.accountTitle)),
       body: SafeArea(
         child: session == null
-            // Free episodes stay saved without an account, so the way to
-            // them does too.
             ? ListView(
                 children: [
                   Padding(
@@ -41,14 +37,13 @@ class AccountScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         FilledButton(
                           key: const ValueKey('account-sign-in'),
-                          onPressed: () => context.push(AppRoutes.signIn),
+                          onPressed: () => context.pushInTab(AppRoutes.signIn),
                           child: Text(messages.commonSignIn),
                         ),
                       ],
                     ),
                   ),
                   const Divider(height: 1),
-                  const _DownloadsEntry(),
                   const _ContactEntry(),
                 ],
               )
@@ -83,9 +78,6 @@ class AccountScreen extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.accountPassword),
                   ),
                   const Divider(height: 1),
-                  const _NotificationsEntry(),
-                  const _FollowsEntry(),
-                  const _DownloadsEntry(),
                   const _NotificationSwitch(),
                   const _ContactEntry(),
                   Padding(
@@ -124,110 +116,6 @@ Future<void> _signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
-}
-
-/// The way to the reader's notification inbox, badged with what is unread.
-///
-/// A build carrying no [NotificationScope] has no inbox, so the row is left
-/// out.
-class _NotificationsEntry extends StatelessWidget {
-  const _NotificationsEntry();
-
-  @override
-  Widget build(BuildContext context) {
-    final inbox = NotificationScope.maybeOf(context);
-    if (inbox == null) {
-      return const SizedBox.shrink();
-    }
-    final messages = AppMessages.of(context);
-    final unread = inbox.unreadCount;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          key: const ValueKey('account-notifications-inbox'),
-          title: Text(messages.notificationsTitle),
-          subtitle: Text(messages.notificationsAccountDescription),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (unread > 0)
-                Semantics(
-                  label: messages.notificationsUnreadCount(
-                    count: messages.formatInteger(unread),
-                  ),
-                  excludeSemantics: true,
-                  child: Badge(
-                    key: const ValueKey('account-notifications-unread'),
-                    label: Text(unreadBadgeLabel(messages, unread)),
-                  ),
-                ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-          onTap: () => context.push(AppRoutes.accountNotifications),
-        ),
-        const Divider(height: 1),
-      ],
-    );
-  }
-}
-
-/// The way to the series and authors the reader follows.
-///
-/// A build carrying no [FollowScope] follows nothing anywhere, so the row is
-/// left out rather than opening a screen with nothing to read.
-class _FollowsEntry extends StatelessWidget {
-  const _FollowsEntry();
-
-  @override
-  Widget build(BuildContext context) {
-    if (FollowScope.maybeOf(context) == null) {
-      return const SizedBox.shrink();
-    }
-    final messages = AppMessages.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          key: const ValueKey('account-follows'),
-          title: Text(messages.accountFollows),
-          subtitle: Text(messages.accountFollowsDescription),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push(AppRoutes.accountFollows),
-        ),
-        const Divider(height: 1),
-      ],
-    );
-  }
-}
-
-/// The way to what this device keeps for reading offline.
-///
-/// A run with no offline library keeps nothing, so the row is left out.
-class _DownloadsEntry extends StatelessWidget {
-  const _DownloadsEntry();
-
-  @override
-  Widget build(BuildContext context) {
-    if (OfflineScope.maybeOf(context) == null) {
-      return const SizedBox.shrink();
-    }
-    final messages = AppMessages.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          key: const ValueKey('account-downloads'),
-          title: Text(messages.accountDownloads),
-          subtitle: Text(messages.accountDownloadsDescription),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push(AppRoutes.accountDownloads),
-        ),
-        const Divider(height: 1),
-      ],
-    );
-  }
 }
 
 /// The way to a message for the people who run the tenant, for a guest as

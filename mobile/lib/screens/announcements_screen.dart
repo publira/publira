@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/announcement_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
@@ -9,6 +8,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/announcement.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/announcement_screen.dart';
 
@@ -265,7 +265,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     if (_accessToken.isNotEmpty && !announcement.isRead) {
       unawaited(_markRead(announcement));
     }
-    unawaited(context.push(AppRoutes.announcementPath(announcement.id)));
+    unawaited(context.pushInTab(AppRoutes.announcementPath(announcement.id)));
   }
 
   @override

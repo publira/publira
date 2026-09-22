@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/pinned_announcement_banner.dart';
 import 'package:publira/auth/auth_scope.dart';
@@ -15,7 +14,7 @@ import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
-import 'package:publira/notifications/notification_inbox.dart';
+import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 
@@ -68,45 +67,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    final signedIn = AuthScope.of(context).isSignedIn;
-    final unread = signedIn
-        ? NotificationScope.maybeOf(context)?.unreadCount ?? 0
-        : 0;
     return Scaffold(
       appBar: AppBar(
         title: const _CatalogTitle(),
         actions: [
           // The announcements are the tenant's word to everyone, so the way
-          // to them sits beside the account entry rather than behind it.
+          // to them stands on the screen every reader opens on.
           if (AnnouncementScope.maybeOf(context) != null)
             IconButton(
               key: const ValueKey('catalog-announcements'),
               icon: const Icon(Icons.campaign_outlined),
               tooltip: messages.announcementsTitle,
-              onPressed: () => context.push(AppRoutes.announcements),
+              onPressed: () => context.pushInTab(AppRoutes.announcements),
             ),
-          IconButton(
-            key: const ValueKey('catalog-account'),
-            // The inbox is reached through the account screen, so the account
-            // entry is what carries its unread count.
-            icon: Badge(
-              key: const ValueKey('catalog-account-unread'),
-              isLabelVisible: unread > 0,
-              label: Text(unreadBadgeLabel(messages, unread)),
-              child: Icon(signedIn ? Icons.person : Icons.person_outline),
-            ),
-            tooltip: !signedIn
-                ? messages.commonSignIn
-                : unread > 0
-                ? messages.notificationsAccountUnread(
-                    count: messages.formatInteger(unread),
-                  )
-                : messages.accountTitle,
-            onPressed: () =>
-                context.push(signedIn ? AppRoutes.account : AppRoutes.signIn),
-          ),
         ],
-        bottom: const _CatalogSearchField(),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -162,65 +136,6 @@ class _CatalogTitle extends StatelessWidget {
   }
 }
 
-/// The way into the search screen, under the catalog's title.
-///
-/// It is a field the reader cannot type into: tapping it opens the search
-/// screen, where the keyword is read and the results are listed. Two fields
-/// over one keyword — one here and one there — would be two places to clear
-/// it, and the catalog underneath would have to answer for a keyword it never
-/// asked about.
-class _CatalogSearchField extends StatelessWidget
-    implements PreferredSizeWidget {
-  const _CatalogSearchField();
-
-  /// The field plus the space under it, which is what the app bar reserves
-  /// beneath its title.
-  static const _height = 56.0;
-
-  @override
-  Size get preferredSize => const Size.fromHeight(_height);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final label = AppMessages.of(context).searchLabel;
-    return SizedBox(
-      height: _height,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Material(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(22),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: const ValueKey('catalog-search'),
-            onTap: () => context.push(AppRoutes.search),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// How many offers the continue-reading row asks for. A phone shows two and a
 /// half of them at once, so ten is several flicks of scrolling and one page of
 /// the API's list.
@@ -266,13 +181,16 @@ class _ContinueReadingShelf extends StatelessWidget {
         if (readerId.isEmpty) {
           return const [];
         }
-        return catalog.listRecentSeries(limit: _continueReadingLimit);
+        final page = await catalog.listRecentSeries(
+          limit: _continueReadingLimit,
+        );
+        return page.series;
       },
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('continue-reading-${item.series.id}'),
         series: item.series,
         subtitle: item.episode.title.isEmpty ? null : Text(item.episode.title),
-        onTap: () => context.push(
+        onTap: () => context.pushInTab(
           AppRoutes.episodeViewerPath(item.series.id, item.episode.id),
         ),
       ),
@@ -308,7 +226,8 @@ class _RankingShelf extends StatelessWidget {
             ? null
             : CreatorCredits(credits: item.series.creators),
         rank: item.rank,
-        onTap: () => context.push(AppRoutes.seriesDetailPath(item.series.id)),
+        onTap: () =>
+            context.pushInTab(AppRoutes.seriesDetailPath(item.series.id)),
       ),
     );
   }
@@ -335,7 +254,7 @@ class _NewArrivalsShelf extends StatelessWidget {
         subtitle: item.creators.isEmpty
             ? null
             : CreatorCredits(credits: item.creators),
-        onTap: () => context.push(AppRoutes.seriesDetailPath(item.id)),
+        onTap: () => context.pushInTab(AppRoutes.seriesDetailPath(item.id)),
       ),
     );
   }

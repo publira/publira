@@ -157,9 +157,13 @@ abstract class CatalogRepository {
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.
   ///
+  /// [token] is the cursor from a previous page; empty for the first page.
   /// Empty for a reader who is signed out or in the middle of nothing.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<List<RecentSeriesItem>> listRecentSeries({required int limit});
+  Future<RecentSeriesPage> listRecentSeries({
+    required int limit,
+    String token = '',
+  });
 }
 
 /// Looks up the [CatalogRepository] installed by [CatalogScope].
