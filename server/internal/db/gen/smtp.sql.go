@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getPlatformSMTPConfig = `-- name: GetPlatformSMTPConfig :one
+const GetPlatformSMTPConfig = `-- name: GetPlatformSMTPConfig :one
 SELECT singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at
 FROM platform_smtp_config
 WHERE singleton = TRUE
@@ -20,7 +20,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformSMTPConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformSMTPConfig)
 	var i PlatformSmtpConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -37,7 +37,7 @@ func (q *Queries) GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig
 	return i, err
 }
 
-const getTenantSMTPConfigByTenantID = `-- name: GetTenantSMTPConfigByTenantID :one
+const GetTenantSMTPConfigByTenantID = `-- name: GetTenantSMTPConfigByTenantID :one
 SELECT tenant_id, smtp_override_enabled, host, port, username, password_encrypted, encryption, from_name, from_address, reply_to, created_at, updated_at
 FROM tenant_smtp_config
 WHERE tenant_id = $1
@@ -45,7 +45,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error) {
-	row := q.db.QueryRowContext(ctx, getTenantSMTPConfigByTenantID, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantSMTPConfigByTenantID, tenantID)
 	var i TenantSmtpConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -64,7 +64,7 @@ func (q *Queries) GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uu
 	return i, err
 }
 
-const upsertPlatformSMTPConfig = `-- name: UpsertPlatformSMTPConfig :one
+const UpsertPlatformSMTPConfig = `-- name: UpsertPlatformSMTPConfig :one
 INSERT INTO platform_smtp_config (
         singleton,
         host,
@@ -100,7 +100,7 @@ type UpsertPlatformSMTPConfigParams struct {
 }
 
 func (q *Queries) UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertPlatformSMTPConfig,
+	row := q.db.QueryRowContext(ctx, UpsertPlatformSMTPConfig,
 		arg.Host,
 		arg.Port,
 		arg.Username,
@@ -125,7 +125,7 @@ func (q *Queries) UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatfo
 	return i, err
 }
 
-const upsertTenantSMTPConfig = `-- name: UpsertTenantSMTPConfig :one
+const UpsertTenantSMTPConfig = `-- name: UpsertTenantSMTPConfig :one
 INSERT INTO tenant_smtp_config (
         tenant_id,
         smtp_override_enabled,
@@ -168,7 +168,7 @@ type UpsertTenantSMTPConfigParams struct {
 }
 
 func (q *Queries) UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantSMTPConfig,
+	row := q.db.QueryRowContext(ctx, UpsertTenantSMTPConfig,
 		arg.TenantID,
 		arg.SmtpOverrideEnabled,
 		arg.Host,

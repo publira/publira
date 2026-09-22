@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const cancelTenantAdminInvitation = `-- name: CancelTenantAdminInvitation :one
+const CancelTenantAdminInvitation = `-- name: CancelTenantAdminInvitation :one
 UPDATE tenant_admin_invitations
 SET canceled_at = COALESCE(canceled_at, NOW()),
     updated_at = NOW()
@@ -28,7 +28,7 @@ type CancelTenantAdminInvitationParams struct {
 }
 
 func (q *Queries) CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, cancelTenantAdminInvitation, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, CancelTenantAdminInvitation, arg.TenantID, arg.ID)
 	var i TenantAdminInvitation
 	err := row.Scan(
 		&i.ID,
@@ -44,7 +44,7 @@ func (q *Queries) CancelTenantAdminInvitation(ctx context.Context, arg CancelTen
 	return i, err
 }
 
-const createTenantAdminInvitation = `-- name: CreateTenantAdminInvitation :one
+const CreateTenantAdminInvitation = `-- name: CreateTenantAdminInvitation :one
 INSERT INTO tenant_admin_invitations (
         id,
         tenant_id,
@@ -65,7 +65,7 @@ type CreateTenantAdminInvitationParams struct {
 }
 
 func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, createTenantAdminInvitation,
+	row := q.db.QueryRowContext(ctx, CreateTenantAdminInvitation,
 		arg.ID,
 		arg.TenantID,
 		arg.Email,
@@ -87,7 +87,7 @@ func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTen
 	return i, err
 }
 
-const getTenantAdminInvitationByHashForTenant = `-- name: GetTenantAdminInvitationByHashForTenant :one
+const GetTenantAdminInvitationByHashForTenant = `-- name: GetTenantAdminInvitationByHashForTenant :one
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -101,7 +101,7 @@ type GetTenantAdminInvitationByHashForTenantParams struct {
 }
 
 func (q *Queries) GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByHashForTenant, arg.TenantID, arg.TokenHash)
+	row := q.db.QueryRowContext(ctx, GetTenantAdminInvitationByHashForTenant, arg.TenantID, arg.TokenHash)
 	var i TenantAdminInvitation
 	err := row.Scan(
 		&i.ID,
@@ -117,7 +117,7 @@ func (q *Queries) GetTenantAdminInvitationByHashForTenant(ctx context.Context, a
 	return i, err
 }
 
-const getTenantAdminInvitationByIDForTenant = `-- name: GetTenantAdminInvitationByIDForTenant :one
+const GetTenantAdminInvitationByIDForTenant = `-- name: GetTenantAdminInvitationByIDForTenant :one
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -131,7 +131,7 @@ type GetTenantAdminInvitationByIDForTenantParams struct {
 }
 
 func (q *Queries) GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByIDForTenant, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, GetTenantAdminInvitationByIDForTenant, arg.TenantID, arg.ID)
 	var i TenantAdminInvitation
 	err := row.Scan(
 		&i.ID,
@@ -147,7 +147,7 @@ func (q *Queries) GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg
 	return i, err
 }
 
-const getTenantAdminInvitationByTenantAndEmail = `-- name: GetTenantAdminInvitationByTenantAndEmail :one
+const GetTenantAdminInvitationByTenantAndEmail = `-- name: GetTenantAdminInvitationByTenantAndEmail :one
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -161,7 +161,7 @@ type GetTenantAdminInvitationByTenantAndEmailParams struct {
 }
 
 func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByTenantAndEmail, arg.TenantID, arg.Email)
+	row := q.db.QueryRowContext(ctx, GetTenantAdminInvitationByTenantAndEmail, arg.TenantID, arg.Email)
 	var i TenantAdminInvitation
 	err := row.Scan(
 		&i.ID,
@@ -177,7 +177,7 @@ func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, 
 	return i, err
 }
 
-const listTenantAdminInvitationsAsc = `-- name: ListTenantAdminInvitationsAsc :many
+const ListTenantAdminInvitationsAsc = `-- name: ListTenantAdminInvitationsAsc :many
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -209,7 +209,7 @@ type ListTenantAdminInvitationsAscParams struct {
 }
 
 func (q *Queries) ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTenantAdminInvitationsAscParams) ([]TenantAdminInvitation, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitationsAsc,
+	rows, err := q.db.QueryContext(ctx, ListTenantAdminInvitationsAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -247,7 +247,7 @@ func (q *Queries) ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTen
 	return items, nil
 }
 
-const listTenantAdminInvitationsDesc = `-- name: ListTenantAdminInvitationsDesc :many
+const ListTenantAdminInvitationsDesc = `-- name: ListTenantAdminInvitationsDesc :many
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -283,7 +283,7 @@ type ListTenantAdminInvitationsDescParams struct {
 // The handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitationsDesc,
+	rows, err := q.db.QueryContext(ctx, ListTenantAdminInvitationsDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -321,7 +321,7 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 	return items, nil
 }
 
-const markTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
+const MarkTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
 UPDATE tenant_admin_invitations
 SET accepted_at = COALESCE(accepted_at, NOW()),
     updated_at = NOW()
@@ -336,7 +336,7 @@ type MarkTenantAdminInvitationAcceptedParams struct {
 }
 
 func (q *Queries) MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, markTenantAdminInvitationAccepted, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, MarkTenantAdminInvitationAccepted, arg.TenantID, arg.ID)
 	var i TenantAdminInvitation
 	err := row.Scan(
 		&i.ID,
@@ -352,7 +352,7 @@ func (q *Queries) MarkTenantAdminInvitationAccepted(ctx context.Context, arg Mar
 	return i, err
 }
 
-const updateTenantAdminInvitationForResend = `-- name: UpdateTenantAdminInvitationForResend :one
+const UpdateTenantAdminInvitationForResend = `-- name: UpdateTenantAdminInvitationForResend :one
 UPDATE tenant_admin_invitations
 SET token_hash = $3,
     expires_at = $4,
@@ -371,7 +371,7 @@ type UpdateTenantAdminInvitationForResendParams struct {
 }
 
 func (q *Queries) UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantAdminInvitationForResend,
+	row := q.db.QueryRowContext(ctx, UpdateTenantAdminInvitationForResend,
 		arg.TenantID,
 		arg.Email,
 		arg.TokenHash,

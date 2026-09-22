@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -16,14 +17,12 @@ import (
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
-const testCountPlatformUsersQuery = "-- name: CountPlatformUsers :one\n"
-
 func TestCheckSetupStatusNotCompleted(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
 	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
 	if err != nil {
@@ -43,7 +42,7 @@ func TestCheckSetupStatusNotCompleted(t *testing.T) {
 func TestCheckSetupStatusCompleted(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 	expectPlatformConfigLookup(mock, tenanttz.Default, "en", time.Now())
 
@@ -79,7 +78,7 @@ func TestCheckSetupStatusFailsOnAnUnusableSavedLocale(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 			expectPlatformConfigLookup(mock, tenanttz.Default, tt.stored, time.Now())
 
@@ -98,9 +97,9 @@ func TestCheckSetupStatusFailsOnAnUnusableSavedLocale(t *testing.T) {
 func TestCheckSetupStatusReportsNoLocaleForAnAbsentSettingsRow(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
 	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
 	if err != nil {
@@ -117,7 +116,7 @@ func TestCheckSetupStatusReportsNoLocaleForAnAbsentSettingsRow(t *testing.T) {
 
 func TestCheckSetupStatusDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
 
 	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
@@ -132,7 +131,7 @@ func TestCheckSetupStatusDatabaseErrorIsHidden(t *testing.T) {
 
 func TestCheckSetupStatusPreservesContextCanceled(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnError(context.Canceled)
 
 	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
@@ -147,20 +146,20 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
 	mock.ExpectBegin()
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUser)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "Admin User").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", "active", now, int32(1)))
 	expectPublicIDAttemptReleased(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserRoleQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserRole)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_super_admin", now, userID))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultLocaleQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertPlatformDefaultLocale)).
 		WithArgs("en").
 		WillReturnRows(platformConfigRow("UTC", "en", 1, now))
 	mock.ExpectCommit()
@@ -180,7 +179,7 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 func TestCreateInitialUserAlreadySetup(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 
 	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{

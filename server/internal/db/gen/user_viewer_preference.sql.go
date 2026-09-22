@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getUserViewerPreferences = `-- name: GetUserViewerPreferences :one
+const GetUserViewerPreferences = `-- name: GetUserViewerPreferences :one
 SELECT tenant_id, user_id, wide_viewer_enabled, updated_at
 FROM user_viewer_preferences
 WHERE tenant_id = $1
@@ -25,7 +25,7 @@ type GetUserViewerPreferencesParams struct {
 }
 
 func (q *Queries) GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error) {
-	row := q.db.QueryRowContext(ctx, getUserViewerPreferences, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, GetUserViewerPreferences, arg.TenantID, arg.UserID)
 	var i UserViewerPreference
 	err := row.Scan(
 		&i.TenantID,
@@ -36,7 +36,7 @@ func (q *Queries) GetUserViewerPreferences(ctx context.Context, arg GetUserViewe
 	return i, err
 }
 
-const upsertUserViewerPreferences = `-- name: UpsertUserViewerPreferences :one
+const UpsertUserViewerPreferences = `-- name: UpsertUserViewerPreferences :one
 INSERT INTO user_viewer_preferences (tenant_id, user_id, wide_viewer_enabled, updated_at)
 VALUES (
     $1,
@@ -66,7 +66,7 @@ type UpsertUserViewerPreferencesParams struct {
 // to ask for it conditionally; TestDBViewerPreferenceDefaultsAgreeAcrossPaths
 // is what fails when the two drift apart.
 func (q *Queries) UpsertUserViewerPreferences(ctx context.Context, arg UpsertUserViewerPreferencesParams) (UserViewerPreference, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserViewerPreferences, arg.TenantID, arg.UserID, arg.WideViewerEnabled)
+	row := q.db.QueryRowContext(ctx, UpsertUserViewerPreferences, arg.TenantID, arg.UserID, arg.WideViewerEnabled)
 	var i UserViewerPreference
 	err := row.Scan(
 		&i.TenantID,

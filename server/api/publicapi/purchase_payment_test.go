@@ -28,10 +28,6 @@ import (
 )
 
 const (
-	getEnabledTenantPaymentConfigByTenantIDQuery  = "-- name: GetEnabledTenantPaymentConfigByTenantID :one\n"
-	getPurchasableEpisodeByPublicIDForTenantQuery = "-- name: GetPurchasableEpisodeByPublicIDForTenant :one\n"
-	userHasValidPurchaseForEpisodeQuery           = "-- name: UserHasValidPurchaseForEpisode :one\n"
-
 	testCheckoutSecretKey     = "sk_test_51TenantALeakXXXX"
 	testCheckoutWebhookSecret = "whsec_TenantALeakYYYY"
 	testOtherWebhookSecret    = "whsec_TenantBLeakZZZZ"
@@ -107,7 +103,7 @@ func expectEnabledPaymentConfig(t *testing.T, mock sqlmock.Sqlmock, tenantID uui
 	if err != nil {
 		t.Fatalf("EncryptString webhook: %v", err)
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
 			tenantID,
@@ -129,7 +125,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -153,7 +149,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 			AddRow(tenantID, "TENANT", "", "Tenant", nil, now, "active", nil, "UTC", "ja"))
@@ -176,7 +172,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 // expectPurchasableEpisode stands in for the checkout's read of a paid episode
 // the named surface may show, sold where purchaseAvailability says.
 func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
-	mock.ExpectQuery(regexp.QuoteMeta(getPurchasableEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeByPublicIDForTenant)).
 		WithArgs("EPISODE001", tenantID, surface).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
@@ -236,7 +232,7 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
-	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
@@ -267,7 +263,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
-	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
@@ -308,7 +304,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
-	env.mock.ExpectQuery(regexp.QuoteMeta(userHasValidPurchaseForEpisodeQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
@@ -336,7 +332,7 @@ func TestProcessStripeWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -408,7 +404,7 @@ func TestProcessStripeWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T) 
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
 			tenantID,

@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const countSeriesCreatorsByRoleIDForTenant = `-- name: CountSeriesCreatorsByRoleIDForTenant :one
+const CountSeriesCreatorsByRoleIDForTenant = `-- name: CountSeriesCreatorsByRoleIDForTenant :one
 SELECT COUNT(*)::int4 AS credit_count
 FROM series_creators
 WHERE tenant_id = $1
@@ -29,13 +29,13 @@ type CountSeriesCreatorsByRoleIDForTenantParams struct {
 // Whether a role may still be deleted. The refusal is the handler's, and this
 // is what it is based on.
 func (q *Queries) CountSeriesCreatorsByRoleIDForTenant(ctx context.Context, arg CountSeriesCreatorsByRoleIDForTenantParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countSeriesCreatorsByRoleIDForTenant, arg.TenantID, arg.RoleID)
+	row := q.db.QueryRowContext(ctx, CountSeriesCreatorsByRoleIDForTenant, arg.TenantID, arg.RoleID)
 	var credit_count int32
 	err := row.Scan(&credit_count)
 	return credit_count, err
 }
 
-const createCreatorRole = `-- name: CreateCreatorRole :one
+const CreateCreatorRole = `-- name: CreateCreatorRole :one
 INSERT INTO creator_roles (
         id,
         tenant_id,
@@ -56,7 +56,7 @@ type CreateCreatorRoleParams struct {
 }
 
 func (q *Queries) CreateCreatorRole(ctx context.Context, arg CreateCreatorRoleParams) (CreatorRole, error) {
-	row := q.db.QueryRowContext(ctx, createCreatorRole,
+	row := q.db.QueryRowContext(ctx, CreateCreatorRole,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -75,17 +75,17 @@ func (q *Queries) CreateCreatorRole(ctx context.Context, arg CreateCreatorRolePa
 	return i, err
 }
 
-const deleteCreatorRole = `-- name: DeleteCreatorRole :exec
+const DeleteCreatorRole = `-- name: DeleteCreatorRole :exec
 DELETE FROM creator_roles
 WHERE id = $1
 `
 
 func (q *Queries) DeleteCreatorRole(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteCreatorRole, id)
+	_, err := q.db.ExecContext(ctx, DeleteCreatorRole, id)
 	return err
 }
 
-const getCreatorRoleByPublicIDForTenant = `-- name: GetCreatorRoleByPublicIDForTenant :one
+const GetCreatorRoleByPublicIDForTenant = `-- name: GetCreatorRoleByPublicIDForTenant :one
 SELECT cr.id,
     cr.public_id,
     cr.name,
@@ -109,7 +109,7 @@ type GetCreatorRoleByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg GetCreatorRoleByPublicIDForTenantParams) (GetCreatorRoleByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getCreatorRoleByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetCreatorRoleByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetCreatorRoleByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -120,7 +120,7 @@ func (q *Queries) GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg Get
 	return i, err
 }
 
-const getMaxCreatorRoleDisplayPriorityForTenant = `-- name: GetMaxCreatorRoleDisplayPriorityForTenant :one
+const GetMaxCreatorRoleDisplayPriorityForTenant = `-- name: GetMaxCreatorRoleDisplayPriorityForTenant :one
 SELECT COALESCE(MAX(display_priority), 0)::int4 AS max_display_priority
 FROM creator_roles
 WHERE tenant_id = $1
@@ -128,13 +128,13 @@ WHERE tenant_id = $1
 
 // Where a newly created role goes: after everything that already exists.
 func (q *Queries) GetMaxCreatorRoleDisplayPriorityForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getMaxCreatorRoleDisplayPriorityForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, GetMaxCreatorRoleDisplayPriorityForTenant, tenantID)
 	var max_display_priority int32
 	err := row.Scan(&max_display_priority)
 	return max_display_priority, err
 }
 
-const listCreatorRolesByPublicIDsForTenant = `-- name: ListCreatorRolesByPublicIDsForTenant :many
+const ListCreatorRolesByPublicIDsForTenant = `-- name: ListCreatorRolesByPublicIDsForTenant :many
 SELECT cr.id,
     cr.public_id,
     cr.name,
@@ -162,7 +162,7 @@ type ListCreatorRolesByPublicIDsForTenantRow struct {
 // the row count against what it asked for, so a public_id of another tenant
 // reads as a role that does not exist.
 func (q *Queries) ListCreatorRolesByPublicIDsForTenant(ctx context.Context, arg ListCreatorRolesByPublicIDsForTenantParams) ([]ListCreatorRolesByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorRolesByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (q *Queries) ListCreatorRolesByPublicIDsForTenant(ctx context.Context, arg 
 	return items, nil
 }
 
-const listCreatorRolesByTenantAsc = `-- name: ListCreatorRolesByTenantAsc :many
+const ListCreatorRolesByTenantAsc = `-- name: ListCreatorRolesByTenantAsc :many
 SELECT cr.id,
     cr.public_id,
     cr.name,
@@ -236,7 +236,7 @@ type ListCreatorRolesByTenantAscRow struct {
 // and the handler flips those rows back into priority order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListCreatorRolesByTenantAsc(ctx context.Context, arg ListCreatorRolesByTenantAscParams) ([]ListCreatorRolesByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorRolesByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -270,7 +270,7 @@ func (q *Queries) ListCreatorRolesByTenantAsc(ctx context.Context, arg ListCreat
 	return items, nil
 }
 
-const listCreatorRolesByTenantDesc = `-- name: ListCreatorRolesByTenantDesc :many
+const ListCreatorRolesByTenantDesc = `-- name: ListCreatorRolesByTenantDesc :many
 SELECT cr.id,
     cr.public_id,
     cr.name,
@@ -311,7 +311,7 @@ type ListCreatorRolesByTenantDescRow struct {
 }
 
 func (q *Queries) ListCreatorRolesByTenantDesc(ctx context.Context, arg ListCreatorRolesByTenantDescParams) ([]ListCreatorRolesByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorRolesByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -345,7 +345,7 @@ func (q *Queries) ListCreatorRolesByTenantDesc(ctx context.Context, arg ListCrea
 	return items, nil
 }
 
-const lockCreatorRolesForTenant = `-- name: LockCreatorRolesForTenant :many
+const LockCreatorRolesForTenant = `-- name: LockCreatorRolesForTenant :many
 SELECT id,
     public_id,
     name
@@ -367,7 +367,7 @@ type LockCreatorRolesForTenantRow struct {
 // write can move underneath it. The names come along because a reorder answers
 // with the whole list, and nothing in this transaction changes them.
 func (q *Queries) LockCreatorRolesForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockCreatorRolesForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, lockCreatorRolesForTenant, tenantID)
+	rows, err := q.db.QueryContext(ctx, LockCreatorRolesForTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (q *Queries) LockCreatorRolesForTenant(ctx context.Context, tenantID uuid.U
 	return items, nil
 }
 
-const updateCreatorRole = `-- name: UpdateCreatorRole :exec
+const UpdateCreatorRole = `-- name: UpdateCreatorRole :exec
 UPDATE creator_roles
 SET name = $2
 WHERE id = $1
@@ -401,11 +401,11 @@ type UpdateCreatorRoleParams struct {
 }
 
 func (q *Queries) UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error {
-	_, err := q.db.ExecContext(ctx, updateCreatorRole, arg.ID, arg.Name)
+	_, err := q.db.ExecContext(ctx, UpdateCreatorRole, arg.ID, arg.Name)
 	return err
 }
 
-const updateCreatorRoleDisplayPriority = `-- name: UpdateCreatorRoleDisplayPriority :exec
+const UpdateCreatorRoleDisplayPriority = `-- name: UpdateCreatorRoleDisplayPriority :exec
 UPDATE creator_roles
 SET display_priority = $2
 WHERE id = $1
@@ -417,6 +417,6 @@ type UpdateCreatorRoleDisplayPriorityParams struct {
 }
 
 func (q *Queries) UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error {
-	_, err := q.db.ExecContext(ctx, updateCreatorRoleDisplayPriority, arg.ID, arg.DisplayPriority)
+	_, err := q.db.ExecContext(ctx, UpdateCreatorRoleDisplayPriority, arg.ID, arg.DisplayPriority)
 	return err
 }

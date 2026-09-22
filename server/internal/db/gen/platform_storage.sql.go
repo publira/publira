@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const getPlatformStorageConfig = `-- name: GetPlatformStorageConfig :one
+const GetPlatformStorageConfig = `-- name: GetPlatformStorageConfig :one
 SELECT singleton, bucket, region, endpoint, force_path_style, public_base_url, access_key_id, secret_access_key_encrypted, revision, created_at, updated_at
 FROM platform_storage_config
 WHERE singleton = TRUE
@@ -19,7 +19,7 @@ WHERE singleton = TRUE
 // Returns no rows when the platform has never saved an object store, which is
 // the "not configured" state the console shows.
 func (q *Queries) GetPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformStorageConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformStorageConfig)
 	var i PlatformStorageConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -37,7 +37,7 @@ func (q *Queries) GetPlatformStorageConfig(ctx context.Context) (PlatformStorage
 	return i, err
 }
 
-const insertPlatformStorageConfig = `-- name: InsertPlatformStorageConfig :one
+const InsertPlatformStorageConfig = `-- name: InsertPlatformStorageConfig :one
 INSERT INTO platform_storage_config (
         singleton,
         bucket,
@@ -77,7 +77,7 @@ type InsertPlatformStorageConfigParams struct {
 // nothing to lock, so a losing racer must fail on the primary key rather than
 // overwrite the row the winner just created.
 func (q *Queries) InsertPlatformStorageConfig(ctx context.Context, arg InsertPlatformStorageConfigParams) (PlatformStorageConfig, error) {
-	row := q.db.QueryRowContext(ctx, insertPlatformStorageConfig,
+	row := q.db.QueryRowContext(ctx, InsertPlatformStorageConfig,
 		arg.Bucket,
 		arg.Region,
 		arg.Endpoint,
@@ -103,7 +103,7 @@ func (q *Queries) InsertPlatformStorageConfig(ctx context.Context, arg InsertPla
 	return i, err
 }
 
-const lockPlatformStorageConfig = `-- name: LockPlatformStorageConfig :one
+const LockPlatformStorageConfig = `-- name: LockPlatformStorageConfig :one
 SELECT singleton, bucket, region, endpoint, force_path_style, public_base_url, access_key_id, secret_access_key_encrypted, revision, created_at, updated_at
 FROM platform_storage_config
 WHERE singleton = TRUE
@@ -113,7 +113,7 @@ FOR UPDATE
 // Reads the row for update, so the revision a save compares against cannot
 // change between the comparison and the write.
 func (q *Queries) LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error) {
-	row := q.db.QueryRowContext(ctx, lockPlatformStorageConfig)
+	row := q.db.QueryRowContext(ctx, LockPlatformStorageConfig)
 	var i PlatformStorageConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -131,7 +131,7 @@ func (q *Queries) LockPlatformStorageConfig(ctx context.Context) (PlatformStorag
 	return i, err
 }
 
-const updatePlatformStorageConfig = `-- name: UpdatePlatformStorageConfig :one
+const UpdatePlatformStorageConfig = `-- name: UpdatePlatformStorageConfig :one
 UPDATE platform_storage_config
 SET bucket = $1,
     region = $2,
@@ -159,7 +159,7 @@ type UpdatePlatformStorageConfigParams struct {
 // Writes every value over the existing row. The revision moves with every
 // write, which is what makes a save based on an earlier read detectable.
 func (q *Queries) UpdatePlatformStorageConfig(ctx context.Context, arg UpdatePlatformStorageConfigParams) (PlatformStorageConfig, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformStorageConfig,
+	row := q.db.QueryRowContext(ctx, UpdatePlatformStorageConfig,
 		arg.Bucket,
 		arg.Region,
 		arg.Endpoint,

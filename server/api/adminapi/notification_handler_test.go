@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -15,11 +16,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	listNotificationsForUserDescQuery = "-- name: ListNotificationsForUserDesc :many\n"
-	countUnreadNotificationsQuery     = "-- name: CountUnreadNotificationsForUser :one\n"
 )
 
 func notificationColumns() *sqlmock.Rows {
@@ -75,7 +71,7 @@ func TestListNotificationsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
 		WithArgs(actorID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addNotificationRow(notificationColumns(), notificationID, tenantID, actorID, "episode_published", now))
 
@@ -115,7 +111,7 @@ func TestCountUnreadNotificationsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(countUnreadNotificationsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountUnreadNotificationsForUser)).
 		WithArgs(tenantID, actorID).
 		WillReturnRows(sqlmock.NewRows([]string{"unread_count"}).AddRow(int32(2)))
 

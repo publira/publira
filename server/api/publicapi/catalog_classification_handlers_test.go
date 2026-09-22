@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"math"
 	"regexp"
 	"strconv"
@@ -26,7 +27,7 @@ import (
 // reach a query at all.
 
 func expectGenreLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, found bool) {
-	query := mock.ExpectQuery(regexp.QuoteMeta(getGenreIDByPublicIDForTenantQuery)).WithArgs(tenantID, publicID)
+	query := mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreIDByPublicIDForTenant)).WithArgs(tenantID, publicID)
 	if !found {
 		query.WillReturnError(sql.ErrNoRows)
 		return
@@ -35,7 +36,7 @@ func expectGenreLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string
 }
 
 func expectTagLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, slug string, found bool) {
-	query := mock.ExpectQuery(regexp.QuoteMeta(getTagBySlugForTenantQuery)).WithArgs(tenantID, slug)
+	query := mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTagBySlugForTenant)).WithArgs(tenantID, slug)
 	if !found {
 		query.WillReturnError(sql.ErrNoRows)
 		return
@@ -50,7 +51,7 @@ func TestCatalogListPublishedSeriesPassesEveryFilterToTheQuery(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	expectTagLookup(mock, tenantID, "swordplay", true)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
 		WithArgs(tenantID, "web", true, "GENRE0000001", "swordplay", "completed", int16(4), nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -81,10 +82,10 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
 		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, false, nil, int32(2)).
 		WillReturnRows(seriesIDRows(seriesID, uuid.Must(uuid.NewV7())))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
@@ -224,12 +225,12 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	latestEpisodeAt := now.Add(-time.Hour)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDesc)).
 		WithArgs(nil, false, nil, int32(2), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}).
 			AddRow(seriesID, latestEpisodeAt).
 			AddRow(uuid.Must(uuid.NewV7()), latestEpisodeAt.Add(-time.Hour)))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
@@ -273,7 +274,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 	)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtAsc)).
 		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 
@@ -304,7 +305,7 @@ func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	genreID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedGenresByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(publishedGenreRows([]driver.Value{genreID, "GENRE0000001", "Fantasy", "fantasy", int32(1), int32(3)}))
 
@@ -344,7 +345,7 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 	token := webToken(pagination.Backward, "5", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedGenresByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantDesc)).
 		WithArgs(tenantID, "web", boundaryID, false, int32(5), int32(21)).
 		WillReturnRows(publishedGenreRows(
 			[]driver.Value{second, "GENRE0000002", "Mystery", "mystery", int32(4), int32(1)},
@@ -379,7 +380,7 @@ func TestCatalogListPublishedTagsCarriesTheCountInItsToken(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedTagsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedTagsByTenantDesc)).
 		WithArgs(nil, nil, false, int32(2), tenantID, "web").
 		WillReturnRows(publishedTagRows(
 			[]driver.Value{"Swordplay", "swordplay", int32(4)},
@@ -419,7 +420,7 @@ func TestCatalogListPublishedTagsReadsBackwardsAscending(t *testing.T) {
 	token := webToken(pagination.Backward, "2", "rivals")
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedTagsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedTagsByTenantAsc)).
 		WithArgs("rivals", int32(2), false, int32(21), tenantID, "web").
 		WillReturnRows(publishedTagRows(
 			[]driver.Value{"Duels", "duels", int32(3)},
@@ -505,7 +506,7 @@ func TestCatalogListPublishedSeriesLatestUpdateEmptyPageKeepsAWayBack(t *testing
 	)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByLatestEpisodeAtDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByLatestEpisodeAtDesc)).
 		WithArgs(boundaryID, false, now, int32(21), "web", tenantID, false, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "latest_episode_at"}))
 

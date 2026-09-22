@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createContactMessage = `-- name: CreateContactMessage :one
+const CreateContactMessage = `-- name: CreateContactMessage :one
 
 INSERT INTO contact_messages (
     id,
@@ -68,7 +68,7 @@ type CreateContactMessageParams struct {
 // One message as the public API stores it. The sender is nullable because a
 // guest may write: the reply-to address is the only way back either way.
 func (q *Queries) CreateContactMessage(ctx context.Context, arg CreateContactMessageParams) (ContactMessage, error) {
-	row := q.db.QueryRowContext(ctx, createContactMessage,
+	row := q.db.QueryRowContext(ctx, CreateContactMessage,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -93,7 +93,7 @@ func (q *Queries) CreateContactMessage(ctx context.Context, arg CreateContactMes
 	return i, err
 }
 
-const getContactMessageByIDForTenant = `-- name: GetContactMessageByIDForTenant :one
+const GetContactMessageByIDForTenant = `-- name: GetContactMessageByIDForTenant :one
 SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
     u.public_id AS sender_public_id,
     u.name AS sender_name
@@ -128,7 +128,7 @@ type GetContactMessageByIDForTenantRow struct {
 // because the event names the row it was queued for, and it carries the
 // sender's name so the mail can say who wrote without a second round trip.
 func (q *Queries) GetContactMessageByIDForTenant(ctx context.Context, arg GetContactMessageByIDForTenantParams) (GetContactMessageByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getContactMessageByIDForTenant, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, GetContactMessageByIDForTenant, arg.TenantID, arg.ID)
 	var i GetContactMessageByIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -147,7 +147,7 @@ func (q *Queries) GetContactMessageByIDForTenant(ctx context.Context, arg GetCon
 	return i, err
 }
 
-const getContactMessageByPublicIDForTenant = `-- name: GetContactMessageByPublicIDForTenant :one
+const GetContactMessageByPublicIDForTenant = `-- name: GetContactMessageByPublicIDForTenant :one
 SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
     u.public_id AS sender_public_id,
     u.name AS sender_name
@@ -180,7 +180,7 @@ type GetContactMessageByPublicIDForTenantRow struct {
 
 // One message as the console reads it, by the identifier its screens carry.
 func (q *Queries) GetContactMessageByPublicIDForTenant(ctx context.Context, arg GetContactMessageByPublicIDForTenantParams) (GetContactMessageByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getContactMessageByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetContactMessageByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetContactMessageByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -199,7 +199,7 @@ func (q *Queries) GetContactMessageByPublicIDForTenant(ctx context.Context, arg 
 	return i, err
 }
 
-const listContactMessagesByCreatedAtAsc = `-- name: ListContactMessagesByCreatedAtAsc :many
+const ListContactMessagesByCreatedAtAsc = `-- name: ListContactMessagesByCreatedAtAsc :many
 SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
     u.public_id AS sender_public_id,
     u.name AS sender_name
@@ -261,7 +261,7 @@ type ListContactMessagesByCreatedAtAscRow struct {
 // The previous-page half of ListContactMessagesByCreatedAtDesc. The handler
 // reverses the returned rows to preserve the newest-first order.
 func (q *Queries) ListContactMessagesByCreatedAtAsc(ctx context.Context, arg ListContactMessagesByCreatedAtAscParams) ([]ListContactMessagesByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listContactMessagesByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListContactMessagesByCreatedAtAsc,
 		arg.TenantID,
 		arg.Status,
 		arg.CursorCreatedAt,
@@ -303,7 +303,7 @@ func (q *Queries) ListContactMessagesByCreatedAtAsc(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const listContactMessagesByCreatedAtDesc = `-- name: ListContactMessagesByCreatedAtDesc :many
+const ListContactMessagesByCreatedAtDesc = `-- name: ListContactMessagesByCreatedAtDesc :many
 SELECT m.id, m.tenant_id, m.public_id, m.user_id, m.reply_to_email, m.subject, m.body, m.created_at, m.handled_at, m.handled_by,
     u.public_id AS sender_public_id,
     u.name AS sender_name
@@ -369,7 +369,7 @@ type ListContactMessagesByCreatedAtDescRow struct {
 //
 // cursor rules: proto/README.md.
 func (q *Queries) ListContactMessagesByCreatedAtDesc(ctx context.Context, arg ListContactMessagesByCreatedAtDescParams) ([]ListContactMessagesByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listContactMessagesByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListContactMessagesByCreatedAtDesc,
 		arg.TenantID,
 		arg.Status,
 		arg.CursorCreatedAt,
@@ -411,7 +411,7 @@ func (q *Queries) ListContactMessagesByCreatedAtDesc(ctx context.Context, arg Li
 	return items, nil
 }
 
-const listTenantStaffContactRecipients = `-- name: ListTenantStaffContactRecipients :many
+const ListTenantStaffContactRecipients = `-- name: ListTenantStaffContactRecipients :many
 SELECT DISTINCT u.email
 FROM tenant_user_roles tur
     JOIN users u ON u.tenant_id = tur.tenant_id
@@ -429,7 +429,7 @@ ORDER BY u.email
 // rather than working around: sending to an account that cannot sign in would
 // announce a message to somebody who cannot read it.
 func (q *Queries) ListTenantStaffContactRecipients(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantStaffContactRecipients, tenantID)
+	rows, err := q.db.QueryContext(ctx, ListTenantStaffContactRecipients, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func (q *Queries) ListTenantStaffContactRecipients(ctx context.Context, tenantID
 	return items, nil
 }
 
-const setContactMessageHandledByPublicIDForTenant = `-- name: SetContactMessageHandledByPublicIDForTenant :one
+const SetContactMessageHandledByPublicIDForTenant = `-- name: SetContactMessageHandledByPublicIDForTenant :one
 UPDATE contact_messages
 SET handled_at = CASE
         WHEN NOT $1::boolean THEN NULL
@@ -483,7 +483,7 @@ type SetContactMessageHandledByPublicIDForTenantParams struct {
 // what the row records is when the message was dealt with, and a second press
 // is not a second handling.
 func (q *Queries) SetContactMessageHandledByPublicIDForTenant(ctx context.Context, arg SetContactMessageHandledByPublicIDForTenantParams) (ContactMessage, error) {
-	row := q.db.QueryRowContext(ctx, setContactMessageHandledByPublicIDForTenant,
+	row := q.db.QueryRowContext(ctx, SetContactMessageHandledByPublicIDForTenant,
 		arg.Handled,
 		arg.HandledBy,
 		arg.TenantID,

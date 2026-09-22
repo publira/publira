@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"strings"
@@ -50,10 +51,10 @@ func TestCatalogListPublishedCreatorsSuccess(t *testing.T) {
 	iconID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(creatorID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorsByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", iconID, now, int64(2048), int32(2)))
@@ -100,10 +101,10 @@ func TestCatalogListPublishedCreatorsFirstPageReportsNextToken(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(3)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorsByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListRows(ids[:2], []string{"Akira", "Mika"}))
 
@@ -136,10 +137,10 @@ func TestCatalogListPublishedCreatorsDropsCreatorsWhoseSeriesWentUnpublished(t *
 	keptID := uuid.Must(uuid.NewV7())
 	droppedID := uuid.Must(uuid.NewV7())
 	extraID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(keptID, droppedID, extraID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorsByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListColumns().
 			AddRow(keptID, "CREATORK0001", "Akira", nil, nil, nil, int64(0), int32(1)).
@@ -176,10 +177,10 @@ func TestCatalogListPublishedCreatorsFollowsNextToken(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", boundaryID, false, "Mika", int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorsByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListRows(ids, []string{"Yuki"}))
 
@@ -217,10 +218,10 @@ func TestCatalogListPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.T)
 	mikaID := uuid.Must(uuid.NewV7())
 	// A backward page scans descending names, so Yuki's predecessor Mika comes
 	// first, then Akira. pagination.Page flips that back to name ascending.
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameDesc)).
 		WithArgs(tenantID, "web", boundaryID, false, "Yuki", int32(3)).
 		WillReturnRows(seriesIDRows(mikaID, akiraID))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorsByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorsByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListColumns().
 			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
@@ -262,13 +263,13 @@ func TestCatalogListPublishedCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:      "forward",
 			direction: pagination.Forward,
-			wantQuery: listPublishedCreatorIDsByNameAscQuery,
+			wantQuery: dbmodels.ListPublishedCreatorIDsByNameAsc,
 			wantPrev:  true,
 		},
 		{
 			name:      "backward",
 			direction: pagination.Backward,
-			wantQuery: listPublishedCreatorIDsByNameDescQuery,
+			wantQuery: dbmodels.ListPublishedCreatorIDsByNameDesc,
 			wantPrev:  false,
 		},
 	} {
@@ -325,7 +326,7 @@ func TestCatalogListPublishedCreatorsEmptyRecoveryPageDropsBothTokens(t *testing
 	token := webToken(pagination.Forward, "Mika", boundaryID.String(), creatorInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", boundaryID, true, "Mika", int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -387,7 +388,7 @@ func TestCatalogListPublishedCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedCreatorIDsByNameAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedCreatorIDsByNameAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -410,14 +411,14 @@ func TestCatalogGetPublishedCreatorDetailSuccess(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
 		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -456,14 +457,14 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(3)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
 		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
@@ -505,14 +506,14 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
 		WithArgs(creatorID, tenantID, "web", boundaryID, false, "Beta", int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -553,14 +554,14 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 	betaID := uuid.Must(uuid.NewV7())
 	// A backward page scans descending titles, so Zeta's predecessor Beta
 	// comes first, then Alpha. pagination.Page flips that back to title asc.
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleDesc)).
 		WithArgs(creatorID, tenantID, "web", boundaryID, false, "Zeta", int32(3)).
 		WillReturnRows(seriesIDRows(betaID, alphaID))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
@@ -603,13 +604,13 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:      "forward",
 			direction: pagination.Forward,
-			wantQuery: listPublishedSeriesIDsByCreatorTitleAscQuery,
+			wantQuery: dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc,
 			wantPrev:  true,
 		},
 		{
 			name:      "backward",
 			direction: pagination.Backward,
-			wantQuery: listPublishedSeriesIDsByCreatorTitleDescQuery,
+			wantQuery: dbmodels.ListPublishedSeriesIDsByCreatorTitleDesc,
 			wantPrev:  false,
 		},
 	} {
@@ -623,7 +624,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 			token := webToken(test.direction, "title_asc", "Beta", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
-			mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 				WithArgs("web", tenantID, "CREATOR00001").
 				WillReturnRows(creatorListColumns().
 					AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
@@ -673,11 +674,11 @@ func TestCatalogGetPublishedCreatorDetailEmptyRecoveryPageDropsBothTokens(t *tes
 	token := webToken(pagination.Forward, "title_asc", "Beta", boundaryID.String(), seriesInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
 		WithArgs(creatorID, tenantID, "web", boundaryID, true, "Beta", int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -702,7 +703,7 @@ func TestCatalogGetPublishedCreatorDetailRejectsBrokenToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	creatorID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
@@ -729,7 +730,7 @@ func TestCatalogGetPublishedCreatorDetailRejectsTokenFromAnotherOrder(t *testing
 	creatorID := uuid.Must(uuid.NewV7())
 	token := webToken(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
@@ -753,11 +754,11 @@ func TestCatalogGetPublishedCreatorDetailLimitOutOfRangeUsesDefault(t *testing.T
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
 		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
@@ -779,7 +780,7 @@ func TestCatalogGetPublishedCreatorDetailNotFound(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "MISSING00001").
 		WillReturnError(sql.ErrNoRows)
 
@@ -803,7 +804,7 @@ func TestCatalogGetPublishedCreatorDetailDatabaseErrorIsHidden(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedCreatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorByPublicID)).
 		WithArgs("web", tenantID, "CREATOR00001").
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
@@ -823,14 +824,14 @@ func TestCatalogGetPublishedCreatorDetailDatabaseErrorIsHidden(t *testing.T) {
 
 func TestListPublishedCreatorQueriesHavePublicationGuards(t *testing.T) {
 	queries := map[string]string{
-		"listPublishedCreatorIDsByNameAsc":         listPublishedCreatorIDsByNameAscQuery,
-		"listPublishedCreatorIDsByNameDesc":        listPublishedCreatorIDsByNameDescQuery,
-		"listPublishedCreatorIDsBySearchNameAsc":   listPublishedCreatorIDsBySearchNameAscQuery,
-		"listPublishedCreatorIDsBySearchNameDesc":  listPublishedCreatorIDsBySearchNameDescQuery,
-		"listPublishedCreatorsByIDs":               listPublishedCreatorsByIDsQuery,
-		"getPublishedCreatorByPublicID":            getPublishedCreatorByPublicIDQuery,
-		"listPublishedSeriesIDsByCreatorTitleAsc":  listPublishedSeriesIDsByCreatorTitleAscQuery,
-		"listPublishedSeriesIDsByCreatorTitleDesc": listPublishedSeriesIDsByCreatorTitleDescQuery,
+		"listPublishedCreatorIDsByNameAsc":         dbmodels.ListPublishedCreatorIDsByNameAsc,
+		"listPublishedCreatorIDsByNameDesc":        dbmodels.ListPublishedCreatorIDsByNameDesc,
+		"listPublishedCreatorIDsBySearchNameAsc":   dbmodels.ListPublishedCreatorIDsBySearchNameAsc,
+		"listPublishedCreatorIDsBySearchNameDesc":  dbmodels.ListPublishedCreatorIDsBySearchNameDesc,
+		"listPublishedCreatorsByIDs":               dbmodels.ListPublishedCreatorsByIDs,
+		"getPublishedCreatorByPublicID":            dbmodels.GetPublishedCreatorByPublicID,
+		"listPublishedSeriesIDsByCreatorTitleAsc":  dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc,
+		"listPublishedSeriesIDsByCreatorTitleDesc": dbmodels.ListPublishedSeriesIDsByCreatorTitleDesc,
 	}
 	// Compacted so a drifted copy of the published predicate cannot hide
 	// behind different wrapping. This is the same three-way check as

@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedPagesForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedPagesForTenant)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at"}).
 			AddRow(pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now))
@@ -64,7 +65,7 @@ func TestPagesListPublishedPageSlugsSuccess(t *testing.T) {
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPublishedPageSlugsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedPageSlugsForTenant)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"slug"}).
 			AddRow("/legal/terms").
@@ -96,7 +97,7 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// Lookup normalizes client slug "privacy" → "/privacy" to match admin storage.
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 		WithArgs(tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
@@ -145,7 +146,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		tenantID := uuid.Must(uuid.NewV7())
 		now := time.Now().UTC()
 		expectTenantLookup(mock, tenantID, "TENANT", now)
-		mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 			WithArgs(tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
 				"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
@@ -170,7 +171,7 @@ func TestPagesGetPublishedPageDatabaseErrorIsHidden(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 		WithArgs(tenantID, "/privacy").
 		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
 
@@ -194,7 +195,7 @@ func TestPagesGetPublishedPagePreservesContextCanceled(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 		WithArgs(tenantID, "/privacy").
 		WillReturnError(context.Canceled)
 
@@ -216,20 +217,20 @@ func TestPagesPublishedQueriesHavePublicationGuards(t *testing.T) {
 		"pv.published_at <= NOW()",
 	}
 	for _, snippet := range required {
-		if !strings.Contains(listPublishedPagesForTenantQuery, snippet) {
-			t.Fatalf("listPublishedPagesForTenantQuery does not contain %q", snippet)
+		if !strings.Contains(dbmodels.ListPublishedPagesForTenant, snippet) {
+			t.Fatalf("dbmodels.ListPublishedPagesForTenant does not contain %q", snippet)
 		}
-		if !strings.Contains(listPublishedPageSlugsForTenantQuery, snippet) {
-			t.Fatalf("listPublishedPageSlugsForTenantQuery does not contain %q", snippet)
+		if !strings.Contains(dbmodels.ListPublishedPageSlugsForTenant, snippet) {
+			t.Fatalf("dbmodels.ListPublishedPageSlugsForTenant does not contain %q", snippet)
 		}
-		if !strings.Contains(getPublishedPageBySlugQuery, snippet) {
-			t.Fatalf("getPublishedPageBySlugQuery does not contain %q", snippet)
+		if !strings.Contains(dbmodels.GetPublishedPageBySlugForTenant, snippet) {
+			t.Fatalf("dbmodels.GetPublishedPageBySlugForTenant does not contain %q", snippet)
 		}
 	}
-	if !strings.Contains(listPublishedPagesForTenantQuery, "p.display_in_footer = true") {
-		t.Fatalf("listPublishedPagesForTenantQuery must filter display_in_footer")
+	if !strings.Contains(dbmodels.ListPublishedPagesForTenant, "p.display_in_footer = true") {
+		t.Fatalf("dbmodels.ListPublishedPagesForTenant must filter display_in_footer")
 	}
-	if strings.Contains(listPublishedPageSlugsForTenantQuery, "display_in_footer") {
-		t.Fatalf("listPublishedPageSlugsForTenantQuery must not filter display_in_footer")
+	if strings.Contains(dbmodels.ListPublishedPageSlugsForTenant, "display_in_footer") {
+		t.Fatalf("dbmodels.ListPublishedPageSlugsForTenant must not filter display_in_footer")
 	}
 }

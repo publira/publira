@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const deleteUserPushDeviceByToken = `-- name: DeleteUserPushDeviceByToken :execrows
+const DeleteUserPushDeviceByToken = `-- name: DeleteUserPushDeviceByToken :execrows
 DELETE FROM user_push_devices
 WHERE token = $1
 `
@@ -20,14 +20,14 @@ WHERE token = $1
 // The send path's answer to a token FCM reports as revoked. It runs in the
 // outbox worker, which knows the token and not who registered it.
 func (q *Queries) DeleteUserPushDeviceByToken(ctx context.Context, token string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUserPushDeviceByToken, token)
+	result, err := q.db.ExecContext(ctx, DeleteUserPushDeviceByToken, token)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteUserPushDeviceForUser = `-- name: DeleteUserPushDeviceForUser :execrows
+const DeleteUserPushDeviceForUser = `-- name: DeleteUserPushDeviceForUser :execrows
 DELETE FROM user_push_devices
 WHERE tenant_id = $1
     AND user_id = $2
@@ -43,14 +43,14 @@ type DeleteUserPushDeviceForUserParams struct {
 // Sign-out and the account switch both unregister, and both name the reader
 // who holds the session, so a token cannot be dropped from another account.
 func (q *Queries) DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUserPushDeviceForUser, arg.TenantID, arg.UserID, arg.Token)
+	result, err := q.db.ExecContext(ctx, DeleteUserPushDeviceForUser, arg.TenantID, arg.UserID, arg.Token)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const listPushDevicesForNotification = `-- name: ListPushDevicesForNotification :many
+const ListPushDevicesForNotification = `-- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
     d.user_id,
@@ -89,7 +89,7 @@ type ListPushDevicesForNotificationRow struct {
 // notification id travels with the token because the push mirrors that row and
 // the app routes from it.
 func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPushDevicesForNotification, arg.TenantID, arg.NotificationType, arg.SubjectKey)
+	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification, arg.TenantID, arg.NotificationType, arg.SubjectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPu
 	return items, nil
 }
 
-const upsertUserPushDevice = `-- name: UpsertUserPushDevice :one
+const UpsertUserPushDevice = `-- name: UpsertUserPushDevice :one
 INSERT INTO user_push_devices (
     tenant_id,
     user_id,
@@ -174,7 +174,7 @@ type UpsertUserPushDeviceParams struct {
 // existing row fails the policy. A hard error is the outcome to want — the
 // alternative would be one tenant's caller taking a device away from another.
 func (q *Queries) UpsertUserPushDevice(ctx context.Context, arg UpsertUserPushDeviceParams) (UserPushDevice, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserPushDevice,
+	row := q.db.QueryRowContext(ctx, UpsertUserPushDevice,
 		arg.TenantID,
 		arg.UserID,
 		arg.Token,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image/color"
 	"regexp"
 	"slices"
@@ -18,15 +19,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	listCreatorsByTenantAscQuery          = "-- name: ListCreatorsByTenantAsc :many\n"
-	listCreatorsByTenantDescQuery         = "-- name: ListCreatorsByTenantDesc :many\n"
-	getCreatorByPublicIDForTenantQuery    = "-- name: GetCreatorByPublicIDForTenant :one\n"
-	listLabelsByTenantAscQuery            = "-- name: ListLabelsByTenantAsc :many\n"
-	listLabelsByTenantDescQuery           = "-- name: ListLabelsByTenantDesc :many\n"
-	listLabelImageVariantsByImageIDsQuery = "-- name: ListLabelImageVariantsByImageIDs :many\n"
 )
 
 func creatorColumns() *sqlmock.Rows {
@@ -123,7 +115,7 @@ func TestListCreatorsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", now))
 
@@ -150,7 +142,7 @@ func TestListCreatorsFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addCreatorRow(
 			addCreatorRow(
@@ -191,7 +183,7 @@ func TestListCreatorsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantDesc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR003", "Last", now.Add(-2*time.Minute)))
 
@@ -221,7 +213,7 @@ func TestListCreatorsFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantAsc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addCreatorRow(
 			addCreatorRow(creatorColumns(), olderID, tenantID, "CREATOR002", "Older", now.Add(-2*time.Minute)),
@@ -261,13 +253,13 @@ func TestListCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:              "forward",
 			direction:         pagination.Forward,
-			wantQuery:         listCreatorsByTenantDescQuery,
+			wantQuery:         dbmodels.ListCreatorsByTenantDesc,
 			recoveryDirection: pagination.Backward,
 		},
 		{
 			name:              "backward",
 			direction:         pagination.Backward,
-			wantQuery:         listCreatorsByTenantAscQuery,
+			wantQuery:         dbmodels.ListCreatorsByTenantAsc,
 			recoveryDirection: pagination.Forward,
 		},
 	}
@@ -310,7 +302,7 @@ func TestListCreatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantAsc)).
 		WithArgs(tenantID, boundaryID, true, now, int32(21)).
 		WillReturnRows(creatorColumns())
 
@@ -365,7 +357,7 @@ func TestListCreatorsDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
@@ -385,7 +377,7 @@ func TestListCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(creatorColumns())
 
@@ -420,11 +412,11 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 				ProfileText: "profile",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
-				mock.ExpectQuery("INSERT INTO creators").
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreator)).
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{String: "profile", Valid: true}, uuid.NullUUID{}).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil))
-				mock.ExpectQuery("FROM creators").
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 					WithArgs(tenantID, "CREATOR001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil, nil, int64(0), int32(0), int32(0)))
@@ -499,14 +491,14 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
-	mock.ExpectExec("UPDATE creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
@@ -604,7 +596,7 @@ func TestGetCreatorSuccessAndNotFound(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-			mock.ExpectQuery(regexp.QuoteMeta(getCreatorByPublicIDForTenantQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 
@@ -644,7 +636,7 @@ func TestGetCreatorDatabaseErrorIsHidden(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getCreatorByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
@@ -707,7 +699,7 @@ func TestGetLabelSuccessAndNotFound(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-			mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 
@@ -749,11 +741,11 @@ func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(imageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
@@ -795,7 +787,7 @@ func TestGetLabelDatabaseErrorIsHidden(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnError(errors.New(`pq: relation "labels" does not exist`))
 
@@ -822,7 +814,7 @@ func TestListLabelsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
 
@@ -849,7 +841,7 @@ func TestListLabelsFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addLabelRow(
 			addLabelRow(
@@ -890,7 +882,7 @@ func TestListLabelsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantDesc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL003", "Last", now.Add(-2*time.Minute)))
 
@@ -920,7 +912,7 @@ func TestListLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelsByTenantAsc)).
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addLabelRow(
 			addLabelRow(labelColumns(), olderID, tenantID, "LABEL002", "Older", now.Add(-2*time.Minute)),
@@ -961,15 +953,15 @@ func TestListLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                "forward",
 			direction:           pagination.Forward,
-			wantQuery:           listLabelsByTenantDescQuery,
-			wantRecoveryQuery:   listLabelsByTenantAscQuery,
+			wantQuery:           dbmodels.ListLabelsByTenantDesc,
+			wantRecoveryQuery:   dbmodels.ListLabelsByTenantAsc,
 			wantRecoveredLabels: []string{"LABEL001", "LABEL002"},
 		},
 		{
 			name:                "backward",
 			direction:           pagination.Backward,
-			wantQuery:           listLabelsByTenantAscQuery,
-			wantRecoveryQuery:   listLabelsByTenantDescQuery,
+			wantQuery:           dbmodels.ListLabelsByTenantAsc,
+			wantRecoveryQuery:   dbmodels.ListLabelsByTenantDesc,
 			wantRecoveredLabels: []string{"LABEL002", "LABEL003"},
 		},
 	}
@@ -1047,12 +1039,12 @@ func TestListLabelsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listLabelsByTenantAscQuery,
+			wantQuery: dbmodels.ListLabelsByTenantAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listLabelsByTenantDescQuery,
+			wantQuery: dbmodels.ListLabelsByTenantDesc,
 		},
 	}
 
@@ -1128,11 +1120,11 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 				Name:   "Weekly",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
-				mock.ExpectQuery("INSERT INTO labels").
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabel)).
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
-				mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 					WithArgs(tenantID, "LABEL001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
@@ -1194,14 +1186,14 @@ func TestUpdateLabelSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
-	mock.ExpectExec("UPDATE labels").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
@@ -1288,11 +1280,11 @@ func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("INSERT INTO labels").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabel)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
@@ -1325,14 +1317,14 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
-	mock.ExpectExec("UPDATE labels").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
@@ -1383,11 +1375,11 @@ func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("INSERT INTO creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreator)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{}, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil))
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil, nil, int64(0), int32(0), int32(0)))
@@ -1420,14 +1412,14 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
-	mock.ExpectExec("UPDATE creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))

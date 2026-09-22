@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -67,13 +68,13 @@ func addSeriesRow(
 // Every series a read returns is presented with the creators, genres, and tags
 // it carries, each of them read for the whole page at once.
 func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
-	mock.ExpectQuery("FROM series_creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
-	mock.ExpectQuery("FROM series_genres").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesGenresBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "slug"}))
-	mock.ExpectQuery("FROM series_tags").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesTagsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "name", "slug"}))
 }
@@ -82,15 +83,15 @@ func expectSeriesRelationLookups(mock sqlmock.Sqlmock) {
 // before writing what it carries now, and drops the tags nothing carries any
 // more.
 func expectSeriesClassificationReplace(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
-	mock.ExpectExec("DELETE FROM series_genres").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesGenresBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec("DELETE FROM series_tags").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesTagsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	// Nothing is left unused in these cases, so the sweep locks no candidate
 	// and never reaches its delete.
-	mock.ExpectQuery("FROM tags").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockUnusedTagsForTenant)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 }
@@ -151,7 +152,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
 	expectSeriesRelationLookups(mock)
@@ -182,7 +183,7 @@ func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addSeriesRow(
 			addSeriesRow(
@@ -223,7 +224,7 @@ func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
 		WithArgs(
 			tenantID,
 			sql.NullString{String: "completed", Valid: true},
@@ -290,7 +291,7 @@ func TestListSeriesFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantDesc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
 	expectSeriesRelationLookups(mock)
@@ -322,7 +323,7 @@ func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryAt := now.Add(-10 * time.Minute)
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesByTenantAsc)).
 		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addSeriesRow(
 			addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES002", "Older", now.Add(-2*time.Minute)),
@@ -360,15 +361,15 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                "forward",
 			direction:           pagination.Forward,
-			wantQuery:           listSeriesByTenantDescQuery,
-			wantRecoveryQuery:   listSeriesByTenantAscQuery,
+			wantQuery:           dbmodels.ListSeriesByTenantDesc,
+			wantRecoveryQuery:   dbmodels.ListSeriesByTenantAsc,
 			wantRecoveredSeries: []string{"SERIES001", "SERIES002"},
 		},
 		{
 			name:                "backward",
 			direction:           pagination.Backward,
-			wantQuery:           listSeriesByTenantAscQuery,
-			wantRecoveryQuery:   listSeriesByTenantDescQuery,
+			wantQuery:           dbmodels.ListSeriesByTenantAsc,
+			wantRecoveryQuery:   dbmodels.ListSeriesByTenantDesc,
 			wantRecoveredSeries: []string{"SERIES002", "SERIES003"},
 		},
 	}
@@ -441,12 +442,12 @@ func TestListSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listSeriesByTenantAscQuery,
+			wantQuery: dbmodels.ListSeriesByTenantAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listSeriesByTenantDescQuery,
+			wantQuery: dbmodels.ListSeriesByTenantDesc,
 		},
 	}
 
@@ -536,24 +537,24 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
 	labelID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, nil, nil))
 
 	mock.ExpectBegin()
 	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{UUID: labelID, Valid: true})
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
 
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIESNEW001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIESNEW001", "New Series", "LABEL001", "Weekly", "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -597,27 +598,27 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery("INSERT INTO series").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "series_public_id_key"})
 	expectPublicIDAttemptRolledBack(mock)
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery("INSERT INTO series").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series", "all", nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability"}).
 			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil, "all", nil))
 	expectPublicIDAttemptReleased(mock)
 
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, nil, nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "4ERDqTx5YB8m").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, false, nil, nil, nil, int64(0), "all", nil))
@@ -702,31 +703,31 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
 
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("DELETE FROM series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -772,29 +773,29 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "hiatus", pq.Array([]int32{1, 4}), "r18", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "hiatus", []byte("{1,4}"), "r18", nil, nil, "rtl", int32(1)))
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("DELETE FROM series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "After", nil, nil, "Synopsis", nil, "hiatus", []byte("{1,4}"), "r18", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -869,7 +870,7 @@ func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -896,7 +897,7 @@ const testCreatorRolePublicID = "ROLEAUTHOR01"
 // expectCreatorRoleLookup answers the role resolution a save runs alongside the
 // creator lookup.
 func expectCreatorRoleLookup(mock sqlmock.Sqlmock, tenantID, roleID uuid.UUID) {
-	mock.ExpectQuery("FROM creator_roles").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, testCreatorRolePublicID, "Original Author", int32(1)))
@@ -930,7 +931,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
@@ -939,24 +940,24 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
 
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectExec("INSERT INTO series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("INSERT INTO series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIESNEW001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIESNEW001", "New Series", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -999,12 +1000,12 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
@@ -1012,33 +1013,33 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	expectCreatorRoleLookup(mock, tenantID, roleID)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesBase)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}, "all", nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id", "status", "schedule_weekdays", "age_rating", "episode_rating_mode", "comment_mode", "reading_direction", "spread_start_index"}).
 			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID, "ongoing", []byte("{}"), "all", nil, nil, "rtl", int32(1)))
 
-	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
 		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectExec("DELETE FROM series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	mock.ExpectExec("INSERT INTO series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID1, roleID, int32(0), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("INSERT INTO series_creators").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateSeriesCreator)).
 		WithArgs(tenantID, seriesID, creatorID2, roleID, int32(1), int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectSeriesClassificationReplace(mock, tenantID, seriesID)
 	mock.ExpectCommit()
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -1078,7 +1079,7 @@ func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
@@ -1140,11 +1141,11 @@ func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
-	mock.ExpectQuery("FROM creators").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
@@ -1180,7 +1181,7 @@ func TestCreateSeriesRollsBackWhenListingInsertFails(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
 	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
-	mock.ExpectQuery("INSERT INTO series_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesListing)).
 		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}, "ongoing", pq.Array([]int32{}), "all", sql.NullString{}, "rtl", int32(1)).
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
@@ -1243,7 +1244,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-			mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 			if tc.wantCode == 0 {
@@ -1288,7 +1289,7 @@ func TestAdminGetSeriesDatabaseErrorIsHidden(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
@@ -1319,7 +1320,7 @@ func TestAdminGetSeriesPreservesContextCanceled(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnError(context.Canceled)
 

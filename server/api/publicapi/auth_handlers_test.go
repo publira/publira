@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -20,16 +21,6 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
-)
-
-const (
-	getUserByIDQuery                  = "-- name: GetUserByID :one\n"
-	listTenantUserRolesQuery          = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
-	listAnnouncementsForUserDescQuery = "-- name: ListAnnouncementsForUserDesc :many\n"
-	listAnnouncementsForUserAscQuery  = "-- name: ListAnnouncementsForUserAsc :many\n"
-	getAnnouncementForUserQuery       = "-- name: GetAnnouncementForUser :one\n"
-	markAnnouncementAsReadQuery       = "-- name: MarkAnnouncementAsRead :one\nINSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)\nSELECT n.id, n.tenant_id, $3, NOW()\nFROM announcements n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (announcement_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING announcement_id, user_id, read_at, tenant_id\n"
-	markAllAnnouncementsAsReadQuery   = "-- name: MarkAllAnnouncementsAsRead :execrows\nINSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)\nSELECT n.id, n.tenant_id, $2, NOW()\nFROM announcements n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM announcement_reads nr\n        WHERE nr.announcement_id = n.id\n            AND nr.user_id = $2\n    )\nON CONFLICT (announcement_id, user_id) DO NOTHING\n"
 )
 
 const testPublicUserPublicID = "USR001"
@@ -50,17 +41,17 @@ func issueTestPublicToken(tenantID string) string {
 }
 
 func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testPublicUserPublicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(userID, testPublicUserPublicID, "Member User", "member@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}).
 			AddRow(userID, testPublicUserPublicID, "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now, int32(1), nil))
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_member"))
 }
@@ -133,7 +124,7 @@ func TestAuthListAnnouncementsSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserDesc)).
 		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
@@ -167,7 +158,7 @@ func TestAuthListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserDesc)).
 		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addAnnouncementRow(
 			addAnnouncementRow(
@@ -209,7 +200,7 @@ func TestAuthListAnnouncementsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserDesc)).
 		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), uuid.Must(uuid.NewV7()), tenantID, "last", now.Add(-2*time.Minute)))
 
@@ -238,7 +229,7 @@ func TestAuthListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryAt := now.Add(-10 * time.Minute)
 	client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForUserAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserAsc)).
 		WithArgs(uuid.NullUUID{UUID: userID, Valid: true}, tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAnnouncementRow(
 			addAnnouncementRow(announcementColumns(), uuid.Must(uuid.NewV7()), tenantID, "older", now.Add(-2*time.Minute)),
@@ -276,15 +267,15 @@ func TestAuthListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                "forward",
 			direction:           pagination.Forward,
-			wantQuery:           listAnnouncementsForUserDescQuery,
-			wantRecoveryQuery:   listAnnouncementsForUserAscQuery,
+			wantQuery:           dbmodels.ListAnnouncementsForUserDesc,
+			wantRecoveryQuery:   dbmodels.ListAnnouncementsForUserAsc,
 			wantRecoveredTitles: []string{"newer", "boundary"},
 		},
 		{
 			name:                "backward",
 			direction:           pagination.Backward,
-			wantQuery:           listAnnouncementsForUserAscQuery,
-			wantRecoveryQuery:   listAnnouncementsForUserDescQuery,
+			wantQuery:           dbmodels.ListAnnouncementsForUserAsc,
+			wantRecoveryQuery:   dbmodels.ListAnnouncementsForUserDesc,
 			wantRecoveredTitles: []string{"boundary", "older"},
 		},
 	}
@@ -357,12 +348,12 @@ func TestAuthListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listAnnouncementsForUserAscQuery,
+			wantQuery: dbmodels.ListAnnouncementsForUserAsc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listAnnouncementsForUserDescQuery,
+			wantQuery: dbmodels.ListAnnouncementsForUserDesc,
 		},
 	}
 
@@ -443,7 +434,7 @@ func TestAuthGetAnnouncement(t *testing.T) {
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAnnouncementForUser)).
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
@@ -494,7 +485,7 @@ func TestAuthGetAnnouncement(t *testing.T) {
 		now := time.Now().UTC()
 		client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAnnouncementForUser)).
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnRows(announcementColumns())
 
@@ -519,7 +510,7 @@ func TestAuthGetAnnouncement(t *testing.T) {
 		now := time.Now().UTC()
 		client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAnnouncementForUser)).
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
 
@@ -549,7 +540,7 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
-		mock.ExpectQuery(regexp.QuoteMeta(markAnnouncementAsReadQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkAnnouncementAsRead)).
 			WithArgs(announcementID, tenantID, userID).
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}).
 				AddRow(announcementID, userID, now, tenantID))
@@ -601,7 +592,7 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
-		mock.ExpectQuery(regexp.QuoteMeta(markAnnouncementAsReadQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkAnnouncementAsRead)).
 			WithArgs(announcementID, tenantID, userID).
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}))
 
@@ -627,7 +618,7 @@ func TestAuthMarkAllAnnouncementsAsRead(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	mock.ExpectExec(regexp.QuoteMeta(markAllAnnouncementsAsReadQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllAnnouncementsAsRead)).
 		WithArgs(tenantID, userID).
 		WillReturnResult(sqlmock.NewResult(0, 3))
 

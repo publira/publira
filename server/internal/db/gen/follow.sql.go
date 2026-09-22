@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createCreatorFollow = `-- name: CreateCreatorFollow :one
+const CreateCreatorFollow = `-- name: CreateCreatorFollow :one
 INSERT INTO creator_follows (tenant_id, user_id, creator_id)
 VALUES (
     $1,
@@ -32,7 +32,7 @@ type CreateCreatorFollowParams struct {
 }
 
 func (q *Queries) CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error) {
-	row := q.db.QueryRowContext(ctx, createCreatorFollow, arg.TenantID, arg.UserID, arg.CreatorID)
+	row := q.db.QueryRowContext(ctx, CreateCreatorFollow, arg.TenantID, arg.UserID, arg.CreatorID)
 	var i CreatorFollow
 	err := row.Scan(
 		&i.TenantID,
@@ -43,7 +43,7 @@ func (q *Queries) CreateCreatorFollow(ctx context.Context, arg CreateCreatorFoll
 	return i, err
 }
 
-const createEpisodeFollow = `-- name: CreateEpisodeFollow :one
+const CreateEpisodeFollow = `-- name: CreateEpisodeFollow :one
 
 INSERT INTO episode_follows (tenant_id, user_id, episode_id)
 VALUES (
@@ -64,7 +64,7 @@ type CreateEpisodeFollowParams struct {
 // Durable member follows. Episode, series, and creator follows have
 // distinct source tables; content_events must not be used to model any of them.
 func (q *Queries) CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, CreateEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i EpisodeFollow
 	err := row.Scan(
 		&i.TenantID,
@@ -75,7 +75,7 @@ func (q *Queries) CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFoll
 	return i, err
 }
 
-const createSeriesFollow = `-- name: CreateSeriesFollow :one
+const CreateSeriesFollow = `-- name: CreateSeriesFollow :one
 INSERT INTO series_follows (tenant_id, user_id, series_id)
 VALUES (
     $1,
@@ -93,7 +93,7 @@ type CreateSeriesFollowParams struct {
 }
 
 func (q *Queries) CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error) {
-	row := q.db.QueryRowContext(ctx, createSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, CreateSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
 	var i SeriesFollow
 	err := row.Scan(
 		&i.TenantID,
@@ -104,7 +104,7 @@ func (q *Queries) CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollow
 	return i, err
 }
 
-const deleteCreatorFollow = `-- name: DeleteCreatorFollow :execrows
+const DeleteCreatorFollow = `-- name: DeleteCreatorFollow :execrows
 DELETE FROM creator_follows
 WHERE tenant_id = $1
     AND user_id = $2
@@ -118,14 +118,14 @@ type DeleteCreatorFollowParams struct {
 }
 
 func (q *Queries) DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteCreatorFollow, arg.TenantID, arg.UserID, arg.CreatorID)
+	result, err := q.db.ExecContext(ctx, DeleteCreatorFollow, arg.TenantID, arg.UserID, arg.CreatorID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteEpisodeFollow = `-- name: DeleteEpisodeFollow :execrows
+const DeleteEpisodeFollow = `-- name: DeleteEpisodeFollow :execrows
 DELETE FROM episode_follows
 WHERE tenant_id = $1
     AND user_id = $2
@@ -139,14 +139,14 @@ type DeleteEpisodeFollowParams struct {
 }
 
 func (q *Queries) DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)
+	result, err := q.db.ExecContext(ctx, DeleteEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteSeriesFollow = `-- name: DeleteSeriesFollow :execrows
+const DeleteSeriesFollow = `-- name: DeleteSeriesFollow :execrows
 DELETE FROM series_follows
 WHERE tenant_id = $1
     AND user_id = $2
@@ -160,14 +160,14 @@ type DeleteSeriesFollowParams struct {
 }
 
 func (q *Queries) DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
+	result, err := q.db.ExecContext(ctx, DeleteSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const listEpisodeFollowerIDs = `-- name: ListEpisodeFollowerIDs :many
+const ListEpisodeFollowerIDs = `-- name: ListEpisodeFollowerIDs :many
 SELECT user_id
 FROM (
     SELECT sf.user_id
@@ -219,7 +219,7 @@ type ListEpisodeFollowerIDsParams struct {
 // still drives its own index. The nil UUID sorts below every UUID, so it is
 // what the first page asks for.
 func (q *Queries) ListEpisodeFollowerIDs(ctx context.Context, arg ListEpisodeFollowerIDsParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeFollowerIDs,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFollowerIDs,
 		arg.TenantID,
 		arg.EpisodeID,
 		arg.AfterUserID,
@@ -246,7 +246,7 @@ func (q *Queries) ListEpisodeFollowerIDs(ctx context.Context, arg ListEpisodeFol
 	return items, nil
 }
 
-const listMyFollowUpdatesAsc = `-- name: ListMyFollowUpdatesAsc :many
+const ListMyFollowUpdatesAsc = `-- name: ListMyFollowUpdatesAsc :many
 SELECT series_id,
     episode_id,
     episode_public_id,
@@ -340,7 +340,7 @@ type ListMyFollowUpdatesAscRow struct {
 
 // The backward direction of ListMyFollowUpdatesDesc.
 func (q *Queries) ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUpdatesAscParams) ([]ListMyFollowUpdatesAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyFollowUpdatesAsc,
+	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorPublishedAt,
@@ -376,7 +376,7 @@ func (q *Queries) ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUp
 	return items, nil
 }
 
-const listMyFollowUpdatesDesc = `-- name: ListMyFollowUpdatesDesc :many
+const ListMyFollowUpdatesDesc = `-- name: ListMyFollowUpdatesDesc :many
 SELECT series_id,
     episode_id,
     episode_public_id,
@@ -492,7 +492,7 @@ type ListMyFollowUpdatesDescRow struct {
 // Backward calls ListMyFollowUpdatesAsc, and the caller sorts the rows back.
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyFollowUpdatesDesc,
+	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorPublishedAt,
@@ -528,7 +528,7 @@ func (q *Queries) ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowU
 	return items, nil
 }
 
-const listPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
+const ListPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
 SELECT c.id,
     c.public_id
 FROM creators c
@@ -558,7 +558,7 @@ type ListPublishedCreatorFollowTargetPublicIDsByIDsRow struct {
 }
 
 func (q *Queries) ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -580,7 +580,7 @@ func (q *Queries) ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Con
 	return items, nil
 }
 
-const listPublishedEpisodeFollowTargetPublicIDsByIDs = `-- name: ListPublishedEpisodeFollowTargetPublicIDsByIDs :many
+const ListPublishedEpisodeFollowTargetPublicIDsByIDs = `-- name: ListPublishedEpisodeFollowTargetPublicIDsByIDs :many
 SELECT e.id,
     e.public_id
 FROM episodes e
@@ -611,7 +611,7 @@ type ListPublishedEpisodeFollowTargetPublicIDsByIDsRow struct {
 // These projections are used only while constructing the public Follow API
 // response. The follow relations and their cursor queries remain UUID-only.
 func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +633,7 @@ func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Con
 	return items, nil
 }
 
-const listPublishedSeriesFollowTargetPublicIDsByIDs = `-- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
+const ListPublishedSeriesFollowTargetPublicIDsByIDs = `-- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
 SELECT s.id,
     s.public_id
 FROM series s
@@ -655,7 +655,7 @@ type ListPublishedSeriesFollowTargetPublicIDsByIDsRow struct {
 }
 
 func (q *Queries) ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +677,7 @@ func (q *Queries) ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Cont
 	return items, nil
 }
 
-const listUserFollowsByCreatedAtAsc = `-- name: ListUserFollowsByCreatedAtAsc :many
+const ListUserFollowsByCreatedAtAsc = `-- name: ListUserFollowsByCreatedAtAsc :many
 SELECT target_type,
     target_id,
     created_at
@@ -775,7 +775,7 @@ type ListUserFollowsByCreatedAtAscRow struct {
 // The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 // the returned rows to preserve the public newest-first display order.
 func (q *Queries) ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserFollowsByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListUserFollowsByCreatedAtAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorCreatedAt,
@@ -805,7 +805,7 @@ func (q *Queries) ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUse
 	return items, nil
 }
 
-const listUserFollowsByCreatedAtDesc = `-- name: ListUserFollowsByCreatedAtDesc :many
+const ListUserFollowsByCreatedAtDesc = `-- name: ListUserFollowsByCreatedAtDesc :many
 SELECT target_type,
     target_id,
     created_at
@@ -904,7 +904,7 @@ type ListUserFollowsByCreatedAtDescRow struct {
 // and future aggregates independent. Public joins make a target that is no
 // longer visible disappear from this member's list without revealing why.
 func (q *Queries) ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserFollowsByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListUserFollowsByCreatedAtDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorCreatedAt,
@@ -934,7 +934,7 @@ func (q *Queries) ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUs
 	return items, nil
 }
 
-const userFollowsPublishedCreator = `-- name: UserFollowsPublishedCreator :one
+const UserFollowsPublishedCreator = `-- name: UserFollowsPublishedCreator :one
 SELECT EXISTS (
     SELECT 1
     FROM creator_follows cf
@@ -966,13 +966,13 @@ type UserFollowsPublishedCreatorParams struct {
 // Creators are public when they have at least one active series, matching
 // GetPublishedCreatorByPublicID.
 func (q *Queries) UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, userFollowsPublishedCreator, arg.TenantID, arg.UserID, arg.CreatorID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedCreator, arg.TenantID, arg.UserID, arg.CreatorID)
 	var follows_published_creator bool
 	err := row.Scan(&follows_published_creator)
 	return follows_published_creator, err
 }
 
-const userFollowsPublishedEpisode = `-- name: UserFollowsPublishedEpisode :one
+const UserFollowsPublishedEpisode = `-- name: UserFollowsPublishedEpisode :one
 SELECT EXISTS (
     SELECT 1
     FROM episode_follows ef
@@ -1003,13 +1003,13 @@ type UserFollowsPublishedEpisodeParams struct {
 // Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
 // otherwise non-public episode is indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, userFollowsPublishedEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var follows_published_episode bool
 	err := row.Scan(&follows_published_episode)
 	return follows_published_episode, err
 }
 
-const userFollowsPublishedSeries = `-- name: UserFollowsPublishedSeries :one
+const UserFollowsPublishedSeries = `-- name: UserFollowsPublishedSeries :one
 SELECT EXISTS (
     SELECT 1
     FROM series_follows sf
@@ -1033,7 +1033,7 @@ type UserFollowsPublishedSeriesParams struct {
 // Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 // indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, userFollowsPublishedSeries, arg.TenantID, arg.UserID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedSeries, arg.TenantID, arg.UserID, arg.SeriesID)
 	var follows_published_series bool
 	err := row.Scan(&follows_published_series)
 	return follows_published_series, err

@@ -14,45 +14,45 @@ import (
 	"github.com/lib/pq"
 )
 
-const countActiveTenants = `-- name: CountActiveTenants :one
+const CountActiveTenants = `-- name: CountActiveTenants :one
 SELECT COUNT(*)::int
 FROM tenants
 WHERE status = 'active'
 `
 
 func (q *Queries) CountActiveTenants(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countActiveTenants)
+	row := q.db.QueryRowContext(ctx, CountActiveTenants)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const countAllTenants = `-- name: CountAllTenants :one
+const CountAllTenants = `-- name: CountAllTenants :one
 SELECT COUNT(*)::int
 FROM tenants
 `
 
 func (q *Queries) CountAllTenants(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countAllTenants)
+	row := q.db.QueryRowContext(ctx, CountAllTenants)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const countSuspendedTenants = `-- name: CountSuspendedTenants :one
+const CountSuspendedTenants = `-- name: CountSuspendedTenants :one
 SELECT COUNT(*)::int
 FROM tenants
 WHERE status = 'suspended'
 `
 
 func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countSuspendedTenants)
+	row := q.db.QueryRowContext(ctx, CountSuspendedTenants)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const createTenant = `-- name: CreateTenant :one
+const CreateTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
 RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
@@ -73,7 +73,7 @@ type CreateTenantParams struct {
 // explicitly. timezone is not left to its column DEFAULT either: the
 // platform default is applied explicitly.
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, createTenant,
+	row := q.db.QueryRowContext(ctx, CreateTenant,
 		arg.ID,
 		arg.PublicID,
 		arg.Domain,
@@ -98,7 +98,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 	return i, err
 }
 
-const createTenantConfig = `-- name: CreateTenantConfig :one
+const CreateTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
 RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier
@@ -112,7 +112,7 @@ type CreateTenantConfigParams struct {
 }
 
 func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, createTenantConfig,
+	row := q.db.QueryRowContext(ctx, CreateTenantConfig,
 		arg.TenantID,
 		arg.CopyrightText,
 		arg.SiteDescription,
@@ -143,7 +143,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 	return i, err
 }
 
-const getAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
+const GetAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
 SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
@@ -159,7 +159,7 @@ LIMIT 1
 // Return the first tenant that matches admin_domain, or the admin.{domain}
 // fallback, keeping the order of the candidate host names.
 func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getAdminTenantByDomains, pq.Array(domains))
+	row := q.db.QueryRowContext(ctx, GetAdminTenantByDomains, pq.Array(domains))
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -176,7 +176,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 	return i, err
 }
 
-const getTenantByDomains = `-- name: GetTenantByDomains :one
+const GetTenantByDomains = `-- name: GetTenantByDomains :one
 SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
@@ -187,7 +187,7 @@ LIMIT 1
 // Return the first tenant that matches, keeping the order of the candidate
 // host names.
 func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByDomains, pq.Array(domains))
+	row := q.db.QueryRowContext(ctx, GetTenantByDomains, pq.Array(domains))
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -204,7 +204,7 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 	return i, err
 }
 
-const getTenantByID = `-- name: GetTenantByID :one
+const GetTenantByID = `-- name: GetTenantByID :one
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE id = $1
@@ -212,7 +212,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByID, id)
+	row := q.db.QueryRowContext(ctx, GetTenantByID, id)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -229,7 +229,7 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 	return i, err
 }
 
-const getTenantByPublicID = `-- name: GetTenantByPublicID :one
+const GetTenantByPublicID = `-- name: GetTenantByPublicID :one
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE public_id = $1
@@ -237,7 +237,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByPublicID, publicID)
+	row := q.db.QueryRowContext(ctx, GetTenantByPublicID, publicID)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -254,7 +254,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 	return i, err
 }
 
-const getTenantByUserID = `-- name: GetTenantByUserID :one
+const GetTenantByUserID = `-- name: GetTenantByUserID :one
 SELECT t.id,
     t.public_id,
     t.name,
@@ -273,7 +273,7 @@ type GetTenantByUserIDRow struct {
 }
 
 func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByUserID, id)
+	row := q.db.QueryRowContext(ctx, GetTenantByUserID, id)
 	var i GetTenantByUserIDRow
 	err := row.Scan(
 		&i.ID,
@@ -284,7 +284,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 	return i, err
 }
 
-const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
+const GetTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
 SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier
 FROM tenant_config
 WHERE tenant_id = $1
@@ -292,7 +292,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, getTenantConfigByTenantID, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantConfigByTenantID, tenantID)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -318,7 +318,7 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 	return i, err
 }
 
-const getTenantLegalPages = `-- name: GetTenantLegalPages :one
+const GetTenantLegalPages = `-- name: GetTenantLegalPages :one
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
     terms.title AS terms_title,
@@ -349,7 +349,7 @@ type GetTenantLegalPagesRow struct {
 // The pages a tenant names as its terms of service and its privacy policy,
 // each with whether it is published. No row where the tenant has no config.
 func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantLegalPages, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantLegalPages, tenantID)
 	var i GetTenantLegalPagesRow
 	err := row.Scan(
 		&i.TermsPageID,
@@ -364,7 +364,7 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (
 	return i, err
 }
 
-const listTenantsAsc = `-- name: ListTenantsAsc :many
+const ListTenantsAsc = `-- name: ListTenantsAsc :many
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
@@ -396,7 +396,7 @@ type ListTenantsAscParams struct {
 }
 
 func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantsAsc,
+	rows, err := q.db.QueryContext(ctx, ListTenantsAsc,
 		arg.FilterName,
 		arg.FilterPublicID,
 		arg.FilterStatus,
@@ -437,7 +437,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 	return items, nil
 }
 
-const listTenantsDesc = `-- name: ListTenantsDesc :many
+const ListTenantsDesc = `-- name: ListTenantsDesc :many
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
@@ -473,7 +473,7 @@ type ListTenantsDescParams struct {
 // flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantsDesc,
+	rows, err := q.db.QueryContext(ctx, ListTenantsDesc,
 		arg.FilterName,
 		arg.FilterPublicID,
 		arg.FilterStatus,
@@ -514,7 +514,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 	return items, nil
 }
 
-const lockTenantForUpdate = `-- name: LockTenantForUpdate :one
+const LockTenantForUpdate = `-- name: LockTenantForUpdate :one
 SELECT id
 FROM tenants
 WHERE id = $1
@@ -527,13 +527,13 @@ FOR UPDATE
 // so waiting for the lock in the same statement would still see the pre-wait
 // row.
 func (q *Queries) LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, lockTenantForUpdate, id)
+	row := q.db.QueryRowContext(ctx, LockTenantForUpdate, id)
 	var id_2 uuid.UUID
 	err := row.Scan(&id_2)
 	return id_2, err
 }
 
-const updateTenantConfig = `-- name: UpdateTenantConfig :one
+const UpdateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
@@ -548,7 +548,7 @@ type UpdateTenantConfigParams struct {
 }
 
 func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantConfig,
+	row := q.db.QueryRowContext(ctx, UpdateTenantConfig,
 		arg.TenantID,
 		arg.CopyrightText,
 		arg.SiteDescription,
@@ -579,7 +579,7 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 	return i, err
 }
 
-const updateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
+const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
 UPDATE tenants
 SET default_locale = $1
 WHERE id = $2
@@ -592,7 +592,7 @@ type UpdateTenantDefaultLocaleParams struct {
 }
 
 func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
+	row := q.db.QueryRowContext(ctx, UpdateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -609,7 +609,7 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 	return i, err
 }
 
-const updateTenantInfo = `-- name: UpdateTenantInfo :one
+const UpdateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
 WHERE public_id = $4
@@ -625,7 +625,7 @@ type UpdateTenantInfoParams struct {
 
 // Update the tenant name and its domains.
 func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantInfo,
+	row := q.db.QueryRowContext(ctx, UpdateTenantInfo,
 		arg.Name,
 		arg.Domain,
 		arg.AdminDomain,
@@ -647,7 +647,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 	return i, err
 }
 
-const updateTenantStatus = `-- name: UpdateTenantStatus :one
+const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE public_id = $1
@@ -661,7 +661,7 @@ type UpdateTenantStatusParams struct {
 
 // Update the tenant status (active / suspended).
 func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantStatus, arg.PublicID, arg.Status)
+	row := q.db.QueryRowContext(ctx, UpdateTenantStatus, arg.PublicID, arg.Status)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -678,7 +678,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 	return i, err
 }
 
-const updateTenantTimezone = `-- name: UpdateTenantTimezone :one
+const UpdateTenantTimezone = `-- name: UpdateTenantTimezone :one
 UPDATE tenants
 SET timezone = $1
 WHERE id = $2
@@ -692,7 +692,7 @@ type UpdateTenantTimezoneParams struct {
 
 // Update the tenant display time zone (an IANA name).
 func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantTimezone, arg.Timezone, arg.ID)
+	row := q.db.QueryRowContext(ctx, UpdateTenantTimezone, arg.Timezone, arg.ID)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -709,7 +709,7 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 	return i, err
 }
 
-const upsertTenantAgeVerification = `-- name: UpsertTenantAgeVerification :one
+const UpsertTenantAgeVerification = `-- name: UpsertTenantAgeVerification :one
 INSERT INTO tenant_config (tenant_id, age_verification)
 VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
@@ -727,7 +727,7 @@ type UpsertTenantAgeVerificationParams struct {
 // verify ages is not a decision a tenant should have to fill in its site copy
 // to reach.
 func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantAgeVerification, arg.TenantID, arg.AgeVerification)
+	row := q.db.QueryRowContext(ctx, UpsertTenantAgeVerification, arg.TenantID, arg.AgeVerification)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -753,7 +753,7 @@ func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTen
 	return i, err
 }
 
-const upsertTenantCommentSettings = `-- name: UpsertTenantCommentSettings :one
+const UpsertTenantCommentSettings = `-- name: UpsertTenantCommentSettings :one
 INSERT INTO tenant_config (tenant_id, comment_mode, comment_auto_hide_report_threshold)
 VALUES ($1, $2, $3)
 ON CONFLICT (tenant_id) DO UPDATE
@@ -778,7 +778,7 @@ type UpsertTenantCommentSettingsParams struct {
 // tenant who changed both with one of the two stored when the second write
 // failed.
 func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantCommentSettings, arg.TenantID, arg.CommentMode, arg.CommentAutoHideReportThreshold)
+	row := q.db.QueryRowContext(ctx, UpsertTenantCommentSettings, arg.TenantID, arg.CommentMode, arg.CommentAutoHideReportThreshold)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -804,7 +804,7 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 	return i, err
 }
 
-const upsertTenantLegalPages = `-- name: UpsertTenantLegalPages :one
+const UpsertTenantLegalPages = `-- name: UpsertTenantLegalPages :one
 INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
 VALUES (
         $1,
@@ -827,7 +827,7 @@ type UpsertTenantLegalPagesParams struct {
 // An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 // written together because the console offers them as one card.
 func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantLegalPages, arg.TenantID, arg.TermsPageID, arg.PrivacyPageID)
+	row := q.db.QueryRowContext(ctx, UpsertTenantLegalPages, arg.TenantID, arg.TermsPageID, arg.PrivacyPageID)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -853,7 +853,7 @@ func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLe
 	return i, err
 }
 
-const upsertTenantMobileAppAssociation = `-- name: UpsertTenantMobileAppAssociation :one
+const UpsertTenantMobileAppAssociation = `-- name: UpsertTenantMobileAppAssociation :one
 INSERT INTO tenant_config (
         tenant_id,
         android_application_id,
@@ -889,7 +889,7 @@ type UpsertTenantMobileAppAssociationParams struct {
 // are written together because the console offers them as one card, and an
 // unconfigured platform is written as NULL and an empty list.
 func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg UpsertTenantMobileAppAssociationParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantMobileAppAssociation,
+	row := q.db.QueryRowContext(ctx, UpsertTenantMobileAppAssociation,
 		arg.TenantID,
 		arg.AndroidApplicationID,
 		pq.Array(arg.AndroidSha256CertFingerprints),
@@ -921,7 +921,7 @@ func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg Upse
 	return i, err
 }
 
-const upsertTenantPurchaseSettings = `-- name: UpsertTenantPurchaseSettings :one
+const UpsertTenantPurchaseSettings = `-- name: UpsertTenantPurchaseSettings :one
 INSERT INTO tenant_config (tenant_id, purchase_availability, app_store_url, google_play_url)
 VALUES (
         $1,
@@ -948,7 +948,7 @@ type UpsertTenantPurchaseSettingsParams struct {
 // the store listings are written together because the console offers them as
 // one card, and the listings are where an app-only purchase sends a reader.
 func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTenantPurchaseSettingsParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantPurchaseSettings,
+	row := q.db.QueryRowContext(ctx, UpsertTenantPurchaseSettings,
 		arg.TenantID,
 		arg.PurchaseAvailability,
 		arg.AppStoreUrl,

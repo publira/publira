@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const approveEpisodeCommentByPublicIDForTenant = `-- name: ApproveEpisodeCommentByPublicIDForTenant :one
+const ApproveEpisodeCommentByPublicIDForTenant = `-- name: ApproveEpisodeCommentByPublicIDForTenant :one
 UPDATE episode_comments
 SET status = 'published',
     published_at = NOW(),
@@ -34,7 +34,7 @@ type ApproveEpisodeCommentByPublicIDForTenantParams struct {
 // Approval is what publishes a comment posted under approval_required, so it is
 // also where published_at is first written.
 func (q *Queries) ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, approveEpisodeCommentByPublicIDForTenant, arg.ApprovedBy, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, ApproveEpisodeCommentByPublicIDForTenant, arg.ApprovedBy, arg.TenantID, arg.PublicID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,
@@ -57,7 +57,7 @@ func (q *Queries) ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, 
 	return i, err
 }
 
-const countPendingEpisodeCommentsForTenant = `-- name: CountPendingEpisodeCommentsForTenant :one
+const CountPendingEpisodeCommentsForTenant = `-- name: CountPendingEpisodeCommentsForTenant :one
 SELECT COUNT(*)::int AS pending_count
 FROM episode_comments
 WHERE tenant_id = $1
@@ -69,13 +69,13 @@ WHERE tenant_id = $1
 // list page: the badge needs the whole queue, and a page bounded by a limit
 // cannot report it.
 func (q *Queries) CountPendingEpisodeCommentsForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countPendingEpisodeCommentsForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, CountPendingEpisodeCommentsForTenant, tenantID)
 	var pending_count int32
 	err := row.Scan(&pending_count)
 	return pending_count, err
 }
 
-const countWithdrawnEpisodeCommentsBefore = `-- name: CountWithdrawnEpisodeCommentsBefore :one
+const CountWithdrawnEpisodeCommentsBefore = `-- name: CountWithdrawnEpisodeCommentsBefore :one
 SELECT count(*)
 FROM episode_comments
 WHERE tenant_id = $1
@@ -91,13 +91,13 @@ type CountWithdrawnEpisodeCommentsBeforeParams struct {
 // How much of one tenant's backlog the retention purge is about to take. It
 // answers that batch's dry run, which reports the total and deletes nothing.
 func (q *Queries) CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countWithdrawnEpisodeCommentsBefore, arg.TenantID, arg.Cutoff)
+	row := q.db.QueryRowContext(ctx, CountWithdrawnEpisodeCommentsBefore, arg.TenantID, arg.Cutoff)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const createEpisodeComment = `-- name: CreateEpisodeComment :one
+const CreateEpisodeComment = `-- name: CreateEpisodeComment :one
 
 INSERT INTO episode_comments (
     id,
@@ -159,7 +159,7 @@ type CreateEpisodeCommentParams struct {
 // status and published_at come from the tenant's comment_mode: 'published' with
 // a timestamp under immediate, 'pending' with NULL under approval_required.
 func (q *Queries) CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCommentParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeComment,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeComment,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -191,7 +191,7 @@ func (q *Queries) CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCom
 	return i, err
 }
 
-const deleteEpisodeCommentByPublicIDForTenant = `-- name: DeleteEpisodeCommentByPublicIDForTenant :execrows
+const DeleteEpisodeCommentByPublicIDForTenant = `-- name: DeleteEpisodeCommentByPublicIDForTenant :execrows
 DELETE FROM episode_comments
 WHERE tenant_id = $1
     AND public_id = $2
@@ -206,14 +206,14 @@ type DeleteEpisodeCommentByPublicIDForTenantParams struct {
 // at all. It names no status: content under a legal takedown has to go whatever
 // state it is in, and the reversible removal is a different query.
 func (q *Queries) DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	result, err := q.db.ExecContext(ctx, DeleteEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const getEpisodeCommentForModerationByPublicIDForTenant = `-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
+const GetEpisodeCommentForModerationByPublicIDForTenant = `-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
@@ -272,7 +272,7 @@ type GetEpisodeCommentForModerationByPublicIDForTenantRow struct {
 // reads it before deciding and again after writing, so the caller answers from
 // the stored row rather than from what it assumed the transition would produce.
 func (q *Queries) GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeCommentForModerationByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeCommentForModerationByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetEpisodeCommentForModerationByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -302,7 +302,7 @@ func (q *Queries) GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.
 	return i, err
 }
 
-const hideEpisodeCommentByPublicIDForTenant = `-- name: HideEpisodeCommentByPublicIDForTenant :one
+const HideEpisodeCommentByPublicIDForTenant = `-- name: HideEpisodeCommentByPublicIDForTenant :one
 UPDATE episode_comments
 SET status = 'hidden',
     hidden_at = NOW(),
@@ -325,7 +325,7 @@ type HideEpisodeCommentByPublicIDForTenantParams struct {
 // hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 // has no staff actor to name.
 func (q *Queries) HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, hideEpisodeCommentByPublicIDForTenant,
+	row := q.db.QueryRowContext(ctx, HideEpisodeCommentByPublicIDForTenant,
 		arg.HiddenBy,
 		arg.HiddenReason,
 		arg.TenantID,
@@ -353,7 +353,7 @@ func (q *Queries) HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg
 	return i, err
 }
 
-const listEpisodeCommentsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentsForModerationByCreatedAtAsc :many
+const ListEpisodeCommentsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentsForModerationByCreatedAtAsc :many
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
@@ -440,7 +440,7 @@ type ListEpisodeCommentsForModerationByCreatedAtAscRow struct {
 
 // The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
 func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentsForModerationByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeCommentsForModerationByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentsForModerationByCreatedAtAsc,
 		arg.TenantID,
 		arg.Status,
 		arg.EpisodeID,
@@ -496,7 +496,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Con
 	return items, nil
 }
 
-const listEpisodeCommentsForModerationByCreatedAtDesc = `-- name: ListEpisodeCommentsForModerationByCreatedAtDesc :many
+const ListEpisodeCommentsForModerationByCreatedAtDesc = `-- name: ListEpisodeCommentsForModerationByCreatedAtDesc :many
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
@@ -591,7 +591,7 @@ type ListEpisodeCommentsForModerationByCreatedAtDescRow struct {
 // The author and the episode are joined in because a comment cannot be judged
 // from its text alone: staff need to know who wrote it and what it is about.
 func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeCommentsForModerationByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentsForModerationByCreatedAtDesc,
 		arg.TenantID,
 		arg.Status,
 		arg.EpisodeID,
@@ -647,7 +647,7 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Co
 	return items, nil
 }
 
-const listPublishedEpisodeCommentsByCreatedAtAsc = `-- name: ListPublishedEpisodeCommentsByCreatedAtAsc :many
+const ListPublishedEpisodeCommentsByCreatedAtAsc = `-- name: ListPublishedEpisodeCommentsByCreatedAtAsc :many
 SELECT c.id,
     c.public_id,
     c.body,
@@ -705,7 +705,7 @@ type ListPublishedEpisodeCommentsByCreatedAtAscRow struct {
 // The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
 // handler reverses the returned rows to preserve the newest-first display order.
 func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtAscParams) ([]ListPublishedEpisodeCommentsByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeCommentsByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeCommentsByCreatedAtAsc,
 		arg.TenantID,
 		arg.EpisodeID,
 		arg.CursorCreatedAt,
@@ -742,7 +742,7 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context
 	return items, nil
 }
 
-const listPublishedEpisodeCommentsByCreatedAtDesc = `-- name: ListPublishedEpisodeCommentsByCreatedAtDesc :many
+const ListPublishedEpisodeCommentsByCreatedAtDesc = `-- name: ListPublishedEpisodeCommentsByCreatedAtDesc :many
 SELECT c.id,
     c.public_id,
     c.body,
@@ -801,7 +801,7 @@ type ListPublishedEpisodeCommentsByCreatedAtDescRow struct {
 // pending, removed, or withdrawn comment is absent for every reader; the author
 // sees their own through ListUserPendingOrHiddenEpisodeCommentsByCreatedAt*.
 func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListPublishedEpisodeCommentsByCreatedAtDescParams) ([]ListPublishedEpisodeCommentsByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeCommentsByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
 		arg.EpisodeID,
 		arg.CursorCreatedAt,
@@ -838,7 +838,7 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 	return items, nil
 }
 
-const listUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
+const ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc :many
 SELECT id,
     public_id,
     episode_id,
@@ -896,7 +896,7 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow struct {
 // The previous-page half of
 // ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
 func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
@@ -934,7 +934,7 @@ func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtAsc(ctx conte
 	return items, nil
 }
 
-const listUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
+const ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc = `-- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
 SELECT id,
     public_id,
     episode_id,
@@ -998,7 +998,7 @@ type ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow struct {
 // comment changing shape here. Only the author's own withdrawal takes it
 // away from them.
 func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
@@ -1036,7 +1036,7 @@ func (q *Queries) ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx cont
 	return items, nil
 }
 
-const purgeWithdrawnEpisodeComments = `-- name: PurgeWithdrawnEpisodeComments :execrows
+const PurgeWithdrawnEpisodeComments = `-- name: PurgeWithdrawnEpisodeComments :execrows
 DELETE FROM episode_comments
 WHERE id IN (
     SELECT expired.id
@@ -1059,14 +1059,14 @@ type PurgeWithdrawnEpisodeCommentsParams struct {
 // select bounds one chunk, so a tenant with a long backlog is drained over
 // several statements instead of one long-running delete.
 func (q *Queries) PurgeWithdrawnEpisodeComments(ctx context.Context, arg PurgeWithdrawnEpisodeCommentsParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, purgeWithdrawnEpisodeComments, arg.TenantID, arg.Cutoff, arg.Limit)
+	result, err := q.db.ExecContext(ctx, PurgeWithdrawnEpisodeComments, arg.TenantID, arg.Cutoff, arg.Limit)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const restoreEpisodeCommentByPublicIDForTenant = `-- name: RestoreEpisodeCommentByPublicIDForTenant :one
+const RestoreEpisodeCommentByPublicIDForTenant = `-- name: RestoreEpisodeCommentByPublicIDForTenant :one
 UPDATE episode_comments
 SET status = CASE WHEN published_at IS NULL THEN 'pending' ELSE 'published' END,
     hidden_at = NULL,
@@ -1088,7 +1088,7 @@ type RestoreEpisodeCommentByPublicIDForTenantParams struct {
 // published_at records: one that was already public becomes public again, and
 // one removed while still awaiting approval goes back into that queue.
 func (q *Queries) RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, restoreEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, RestoreEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,
@@ -1111,7 +1111,7 @@ func (q *Queries) RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, 
 	return i, err
 }
 
-const withdrawEpisodeCommentByPublicIDForUser = `-- name: WithdrawEpisodeCommentByPublicIDForUser :one
+const WithdrawEpisodeCommentByPublicIDForUser = `-- name: WithdrawEpisodeCommentByPublicIDForUser :one
 UPDATE episode_comments
 SET status = 'withdrawn',
     withdrawn_at = NOW(),
@@ -1137,7 +1137,7 @@ type WithdrawEpisodeCommentByPublicIDForUserParams struct {
 // are cleared because no removal is in force on a withdrawn row any more;
 // audit_logs keeps what staff did and why.
 func (q *Queries) WithdrawEpisodeCommentByPublicIDForUser(ctx context.Context, arg WithdrawEpisodeCommentByPublicIDForUserParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, withdrawEpisodeCommentByPublicIDForUser, arg.TenantID, arg.UserID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, WithdrawEpisodeCommentByPublicIDForUser, arg.TenantID, arg.UserID, arg.PublicID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,

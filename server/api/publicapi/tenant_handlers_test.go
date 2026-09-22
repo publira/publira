@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -19,13 +20,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	getTenantConfigByTenantIDQuery         = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
-	getTenantThemeByTenantIDQuery          = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f5f5f2') AS background_color,\n    COALESCE(tt.foreground_color, '#1f1d1a') AS foreground_color,\n    COALESCE(tt.surface_color, '#fafaf8') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1f1d1a') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#ffffff') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1f1d1a') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#ffffff') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1f1d1a') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#2b4c8c') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#ffffff') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#c63d17') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#ffffff') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#e3e9f5') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#22407a') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e8e8e3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#5f5e59') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d6d6d0') AS border_color,\n    COALESCE(tt.input_color, '#cfcfc8') AS input_color,\n    COALESCE(tt.ring_color, '#2b4c8c') AS ring_color,\n    COALESCE(tt.success_color, '#2a6b3f') AS success_color,\n    COALESCE(tt.success_foreground_color, '#ffffff') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#8a5a0b') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#ffffff') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#8f1d1d') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#ffffff') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#2f5d8a') AS info_color,\n    COALESCE(tt.info_foreground_color, '#ffffff') AS info_foreground_color,\n    COALESCE(tt.serif_font_family, '') AS serif_font_family,\n    COALESCE(tt.sans_font_family, '') AS sans_font_family,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
-	getTenantLegalPagesQuery               = "-- name: GetTenantLegalPages :one\n"
-	listTenantImageVariantsByImageIDsQuery = "-- name: ListTenantImageVariantsByImageIDs :many\nSELECT tenant_image_id,\n    variant_type,\n    label,\n    content_type,\n    file_size_bytes,\n    width,\n    height\nFROM tenant_image_variants\nWHERE tenant_image_id = ANY($1::uuid [])\nORDER BY tenant_image_id,\n    variant_type\n"
 )
 
 func tenantThemeSelectColumns() []string {
@@ -129,7 +123,7 @@ func tenantThemeSelectRowWithBrandingImages(
 // expectNoTenantLegalPages stands in for the legal pages read of a tenant that
 // has a config row and has named no page.
 func expectNoTenantLegalPages(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantLegalPagesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"terms_page_id", "terms_slug", "terms_title", "terms_published",
@@ -138,7 +132,7 @@ func expectNoTenantLegalPages(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 }
 
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 }
@@ -154,7 +148,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
@@ -180,7 +174,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	expectNoTenantLegalPages(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -232,12 +226,12 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectPaymentsUnavailable(mock, tenantID)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRowWithBrandingImages(
@@ -248,7 +242,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 				uuid.NullUUID{UUID: logoImageID, Valid: true},
 			)...))
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantImageVariantsByImageIDs)).
 		WithArgs(pq.Array([]uuid.UUID{iconImageID, logoImageID})).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height",
@@ -307,12 +301,12 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 	now := time.Now()
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "America/Los_Angeles")
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectPaymentsUnavailable(mock, tenantID)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -337,12 +331,12 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	now := time.Now()
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "")
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectPaymentsUnavailable(mock, tenantID)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -367,12 +361,12 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	now := time.Now()
 	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "en")
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectPaymentsUnavailable(mock, tenantID)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -428,11 +422,11 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Second)
 	expectTenantLookup(env.mock, tenantID, "TENANT001", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -455,10 +449,10 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Second)
 	expectTenantLookup(env.mock, tenantID, "TENANT001", now)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
-	env.mock.ExpectQuery(regexp.QuoteMeta(getEnabledTenantPaymentConfigByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
 			tenantID,
@@ -471,7 +465,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 			now,
 			now,
 		))
-	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -512,7 +506,7 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 			expectTenantConfigWithCommentMode(mock, tenantID, now, tc.mode)
 			expectNoTenantLegalPages(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
-			mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -539,11 +533,11 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectPaymentsUnavailable(mock, tenantID)
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
@@ -587,7 +581,7 @@ func expectTenantConfigWithCommentMode(
 	now time.Time,
 	mode string,
 ) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
@@ -634,7 +628,7 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 			expectTenantAgeVerification(mock, tenantID, now, tc.stored)
 			expectNoTenantLegalPages(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
-			mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))

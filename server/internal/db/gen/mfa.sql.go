@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const countUnusedUserMfaRecoveryCodes = `-- name: CountUnusedUserMfaRecoveryCodes :one
+const CountUnusedUserMfaRecoveryCodes = `-- name: CountUnusedUserMfaRecoveryCodes :one
 SELECT count(*)
 FROM user_mfa_recovery_codes
 WHERE user_id = $1
@@ -21,13 +21,13 @@ WHERE user_id = $1
 `
 
 func (q *Queries) CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUnusedUserMfaRecoveryCodes, userID)
+	row := q.db.QueryRowContext(ctx, CountUnusedUserMfaRecoveryCodes, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const createUserMfaRecoveryCode = `-- name: CreateUserMfaRecoveryCode :exec
+const CreateUserMfaRecoveryCode = `-- name: CreateUserMfaRecoveryCode :exec
 INSERT INTO user_mfa_recovery_codes (id, tenant_id, user_id, code_hash)
 VALUES ($1, $2, $3, $4)
 `
@@ -40,7 +40,7 @@ type CreateUserMfaRecoveryCodeParams struct {
 }
 
 func (q *Queries) CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error {
-	_, err := q.db.ExecContext(ctx, createUserMfaRecoveryCode,
+	_, err := q.db.ExecContext(ctx, CreateUserMfaRecoveryCode,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -49,27 +49,27 @@ func (q *Queries) CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserM
 	return err
 }
 
-const deleteUserMfaRecoveryCodesByUserID = `-- name: DeleteUserMfaRecoveryCodesByUserID :exec
+const DeleteUserMfaRecoveryCodesByUserID = `-- name: DeleteUserMfaRecoveryCodesByUserID :exec
 DELETE FROM user_mfa_recovery_codes
 WHERE user_id = $1
 `
 
 func (q *Queries) DeleteUserMfaRecoveryCodesByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserMfaRecoveryCodesByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserMfaRecoveryCodesByUserID, userID)
 	return err
 }
 
-const deleteUserMfaTotpByUserID = `-- name: DeleteUserMfaTotpByUserID :exec
+const DeleteUserMfaTotpByUserID = `-- name: DeleteUserMfaTotpByUserID :exec
 DELETE FROM user_mfa_totp
 WHERE user_id = $1
 `
 
 func (q *Queries) DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserMfaTotpByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserMfaTotpByUserID, userID)
 	return err
 }
 
-const enableUserMfaTotp = `-- name: EnableUserMfaTotp :one
+const EnableUserMfaTotp = `-- name: EnableUserMfaTotp :one
 UPDATE user_mfa_totp
 SET enabled_at = now(),
     failed_attempts = 0,
@@ -82,7 +82,7 @@ RETURNING user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, 
 // last_verified_step is left alone: the code that confirmed the enrollment
 // was accepted through the same path a login code is, which stored it.
 func (q *Queries) EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, enableUserMfaTotp, userID)
+	row := q.db.QueryRowContext(ctx, EnableUserMfaTotp, userID)
 	var i UserMfaTotp
 	err := row.Scan(
 		&i.UserID,
@@ -98,7 +98,7 @@ func (q *Queries) EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (User
 	return i, err
 }
 
-const getUserMfaTotpByUserID = `-- name: GetUserMfaTotpByUserID :one
+const GetUserMfaTotpByUserID = `-- name: GetUserMfaTotpByUserID :one
 
 SELECT user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
 FROM user_mfa_totp
@@ -109,7 +109,7 @@ WHERE user_id = $1
 // security policies on both tables already confine them to the tenant the
 // connection is scoped to.
 func (q *Queries) GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, getUserMfaTotpByUserID, userID)
+	row := q.db.QueryRowContext(ctx, GetUserMfaTotpByUserID, userID)
 	var i UserMfaTotp
 	err := row.Scan(
 		&i.UserID,
@@ -125,7 +125,7 @@ func (q *Queries) GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) 
 	return i, err
 }
 
-const listUnusedUserMfaRecoveryCodes = `-- name: ListUnusedUserMfaRecoveryCodes :many
+const ListUnusedUserMfaRecoveryCodes = `-- name: ListUnusedUserMfaRecoveryCodes :many
 SELECT id, code_hash
 FROM user_mfa_recovery_codes
 WHERE user_id = $1
@@ -139,7 +139,7 @@ type ListUnusedUserMfaRecoveryCodesRow struct {
 }
 
 func (q *Queries) ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUnusedUserMfaRecoveryCodes, userID)
+	rows, err := q.db.QueryContext(ctx, ListUnusedUserMfaRecoveryCodes, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (q *Queries) ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uui
 	return items, nil
 }
 
-const markUserMfaChallengeUsed = `-- name: MarkUserMfaChallengeUsed :execrows
+const MarkUserMfaChallengeUsed = `-- name: MarkUserMfaChallengeUsed :execrows
 INSERT INTO user_mfa_used_challenges (jti, tenant_id, user_id, expires_at)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (jti) DO NOTHING
@@ -179,7 +179,7 @@ type MarkUserMfaChallengeUsedParams struct {
 // the one whose row lands may exchange it. Affecting no row is therefore a
 // challenge that has already bought a session.
 func (q *Queries) MarkUserMfaChallengeUsed(ctx context.Context, arg MarkUserMfaChallengeUsedParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markUserMfaChallengeUsed,
+	result, err := q.db.ExecContext(ctx, MarkUserMfaChallengeUsed,
 		arg.Jti,
 		arg.TenantID,
 		arg.UserID,
@@ -191,7 +191,7 @@ func (q *Queries) MarkUserMfaChallengeUsed(ctx context.Context, arg MarkUserMfaC
 	return result.RowsAffected()
 }
 
-const markUserMfaRecoveryCodeUsed = `-- name: MarkUserMfaRecoveryCodeUsed :execrows
+const MarkUserMfaRecoveryCodeUsed = `-- name: MarkUserMfaRecoveryCodeUsed :execrows
 UPDATE user_mfa_recovery_codes
 SET used_at = now()
 WHERE id = $1
@@ -199,14 +199,14 @@ WHERE id = $1
 `
 
 func (q *Queries) MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markUserMfaRecoveryCodeUsed, id)
+	result, err := q.db.ExecContext(ctx, MarkUserMfaRecoveryCodeUsed, id)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const markUserMfaTotpVerified = `-- name: MarkUserMfaTotpVerified :execrows
+const MarkUserMfaTotpVerified = `-- name: MarkUserMfaTotpVerified :execrows
 UPDATE user_mfa_totp
 SET last_verified_step = $1,
     failed_attempts = 0,
@@ -230,14 +230,14 @@ type MarkUserMfaTotpVerifiedParams struct {
 // one committed, so the second updates nothing and its caller refuses the
 // code. Affecting no row is therefore a reused code, not a missing account.
 func (q *Queries) MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markUserMfaTotpVerified, arg.LastVerifiedStep, arg.UserID)
+	result, err := q.db.ExecContext(ctx, MarkUserMfaTotpVerified, arg.LastVerifiedStep, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const recordUserMfaTotpFailure = `-- name: RecordUserMfaTotpFailure :one
+const RecordUserMfaTotpFailure = `-- name: RecordUserMfaTotpFailure :one
 UPDATE user_mfa_totp
 SET failed_attempts = CASE
         WHEN failed_attempts + 1 >= $1::int THEN 0
@@ -261,7 +261,7 @@ type RecordUserMfaTotpFailureParams struct {
 // Reaching the threshold starts the lock and puts the counter back to zero,
 // so the attempt after a lock expires is not immediately the fifth again.
 func (q *Queries) RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, recordUserMfaTotpFailure, arg.MaxFailedAttempts, arg.LockedUntil, arg.UserID)
+	row := q.db.QueryRowContext(ctx, RecordUserMfaTotpFailure, arg.MaxFailedAttempts, arg.LockedUntil, arg.UserID)
 	var i UserMfaTotp
 	err := row.Scan(
 		&i.UserID,
@@ -277,7 +277,7 @@ func (q *Queries) RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMf
 	return i, err
 }
 
-const resetUserMfaTotpFailures = `-- name: ResetUserMfaTotpFailures :exec
+const ResetUserMfaTotpFailures = `-- name: ResetUserMfaTotpFailures :exec
 UPDATE user_mfa_totp
 SET failed_attempts = 0,
     locked_until = NULL,
@@ -286,11 +286,11 @@ WHERE user_id = $1
 `
 
 func (q *Queries) ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, resetUserMfaTotpFailures, userID)
+	_, err := q.db.ExecContext(ctx, ResetUserMfaTotpFailures, userID)
 	return err
 }
 
-const upsertUserMfaTotpSecret = `-- name: UpsertUserMfaTotpSecret :one
+const UpsertUserMfaTotpSecret = `-- name: UpsertUserMfaTotpSecret :one
 INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted)
 VALUES ($1, $2, $3)
 ON CONFLICT (user_id) DO UPDATE
@@ -312,7 +312,7 @@ type UpsertUserMfaTotpSecretParams struct {
 // Starting enrollment replaces whatever unconfirmed secret was there and
 // clears the lock, so a stalled attempt never blocks the next one.
 func (q *Queries) UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserMfaTotpSecret, arg.UserID, arg.TenantID, arg.SecretEncrypted)
+	row := q.db.QueryRowContext(ctx, UpsertUserMfaTotpSecret, arg.UserID, arg.TenantID, arg.SecretEncrypted)
 	var i UserMfaTotp
 	err := row.Scan(
 		&i.UserID,

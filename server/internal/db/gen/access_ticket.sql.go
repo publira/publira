@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createAccessTicket = `-- name: CreateAccessTicket :one
+const CreateAccessTicket = `-- name: CreateAccessTicket :one
 INSERT INTO access_tickets (
         id,
         tenant_id,
@@ -49,7 +49,7 @@ type CreateAccessTicketParams struct {
 }
 
 func (q *Queries) CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error) {
-	row := q.db.QueryRowContext(ctx, createAccessTicket,
+	row := q.db.QueryRowContext(ctx, CreateAccessTicket,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -75,7 +75,7 @@ func (q *Queries) CreateAccessTicket(ctx context.Context, arg CreateAccessTicket
 	return i, err
 }
 
-const getAccessTicketByPublicIDForTenant = `-- name: GetAccessTicketByPublicIDForTenant :one
+const GetAccessTicketByPublicIDForTenant = `-- name: GetAccessTicketByPublicIDForTenant :one
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -128,7 +128,7 @@ type GetAccessTicketByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetAccessTicketByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -152,7 +152,7 @@ func (q *Queries) GetAccessTicketByPublicIDForTenant(ctx context.Context, arg Ge
 	return i, err
 }
 
-const getActiveAccessTicketForUserEpisode = `-- name: GetActiveAccessTicketForUserEpisode :one
+const GetActiveAccessTicketForUserEpisode = `-- name: GetActiveAccessTicketForUserEpisode :one
 SELECT id,
     tenant_id,
     public_id,
@@ -184,7 +184,7 @@ type GetActiveAccessTicketForUserEpisodeParams struct {
 }
 
 func (q *Queries) GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error) {
-	row := q.db.QueryRowContext(ctx, getActiveAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetActiveAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i AccessTicket
 	err := row.Scan(
 		&i.ID,
@@ -201,7 +201,7 @@ func (q *Queries) GetActiveAccessTicketForUserEpisode(ctx context.Context, arg G
 	return i, err
 }
 
-const getNonRevokedAccessTicketForUserEpisode = `-- name: GetNonRevokedAccessTicketForUserEpisode :one
+const GetNonRevokedAccessTicketForUserEpisode = `-- name: GetNonRevokedAccessTicketForUserEpisode :one
 SELECT id,
     tenant_id,
     public_id,
@@ -231,7 +231,7 @@ type GetNonRevokedAccessTicketForUserEpisodeParams struct {
 // Non-revoked ticket for a user+episode pair (may already be expired).
 // Used for idempotent issue under the unique partial index on non-revoked rows.
 func (q *Queries) GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error) {
-	row := q.db.QueryRowContext(ctx, getNonRevokedAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetNonRevokedAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i AccessTicket
 	err := row.Scan(
 		&i.ID,
@@ -248,7 +248,7 @@ func (q *Queries) GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, a
 	return i, err
 }
 
-const listAccessTicketsForTenantAsc = `-- name: ListAccessTicketsForTenantAsc :many
+const ListAccessTicketsForTenantAsc = `-- name: ListAccessTicketsForTenantAsc :many
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -337,7 +337,7 @@ type ListAccessTicketsForTenantAscRow struct {
 }
 
 func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListAccessTicketsForTenantAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
@@ -386,7 +386,7 @@ func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAcc
 	return items, nil
 }
 
-const listAccessTicketsForTenantDesc = `-- name: ListAccessTicketsForTenantDesc :many
+const ListAccessTicketsForTenantDesc = `-- name: ListAccessTicketsForTenantDesc :many
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -480,7 +480,7 @@ type ListAccessTicketsForTenantDescRow struct {
 // id is a UUIDv7, so the order stays unique even when created_at ties.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListAccessTicketsForTenantDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
@@ -529,7 +529,7 @@ func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAc
 	return items, nil
 }
 
-const revokeAccessTicketByPublicIDForTenant = `-- name: RevokeAccessTicketByPublicIDForTenant :one
+const RevokeAccessTicketByPublicIDForTenant = `-- name: RevokeAccessTicketByPublicIDForTenant :one
 UPDATE access_tickets
 SET revoked_at = NOW()
 WHERE tenant_id = $1
@@ -553,7 +553,7 @@ type RevokeAccessTicketByPublicIDForTenantParams struct {
 }
 
 func (q *Queries) RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error) {
-	row := q.db.QueryRowContext(ctx, revokeAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, RevokeAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i AccessTicket
 	err := row.Scan(
 		&i.ID,
@@ -570,7 +570,7 @@ func (q *Queries) RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg
 	return i, err
 }
 
-const userHasEpisodeContentAccess = `-- name: UserHasEpisodeContentAccess :one
+const UserHasEpisodeContentAccess = `-- name: UserHasEpisodeContentAccess :one
 SELECT (
         EXISTS (
             SELECT 1
@@ -610,7 +610,7 @@ type UserHasEpisodeContentAccessParams struct {
 // Whether the body is free to everyone — price = 0, or an open free window —
 // is evaluated by the caller; this query only covers grants.
 func (q *Queries) UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error) {
-	row := q.db.QueryRowContext(ctx, userHasEpisodeContentAccess, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, UserHasEpisodeContentAccess, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var has_access sql.NullBool
 	err := row.Scan(&has_access)
 	return has_access, err

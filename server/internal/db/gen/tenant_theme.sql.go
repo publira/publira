@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createTenantImage = `-- name: CreateTenantImage :one
+const CreateTenantImage = `-- name: CreateTenantImage :one
 INSERT INTO tenant_images (
         id,
         tenant_id,
@@ -30,7 +30,7 @@ type CreateTenantImageParams struct {
 }
 
 func (q *Queries) CreateTenantImage(ctx context.Context, arg CreateTenantImageParams) (TenantImage, error) {
-	row := q.db.QueryRowContext(ctx, createTenantImage, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, CreateTenantImage, arg.ID, arg.TenantID)
 	var i TenantImage
 	err := row.Scan(
 		&i.ID,
@@ -41,7 +41,7 @@ func (q *Queries) CreateTenantImage(ctx context.Context, arg CreateTenantImagePa
 	return i, err
 }
 
-const createTenantImageVariant = `-- name: CreateTenantImageVariant :one
+const CreateTenantImageVariant = `-- name: CreateTenantImageVariant :one
 INSERT INTO tenant_image_variants (
         id,
         tenant_id,
@@ -74,7 +74,7 @@ type CreateTenantImageVariantParams struct {
 }
 
 func (q *Queries) CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error) {
-	row := q.db.QueryRowContext(ctx, createTenantImageVariant,
+	row := q.db.QueryRowContext(ctx, CreateTenantImageVariant,
 		arg.ID,
 		arg.TenantID,
 		arg.TenantImageID,
@@ -105,7 +105,7 @@ func (q *Queries) CreateTenantImageVariant(ctx context.Context, arg CreateTenant
 	return i, err
 }
 
-const deleteTenantImage = `-- name: DeleteTenantImage :exec
+const DeleteTenantImage = `-- name: DeleteTenantImage :exec
 DELETE FROM tenant_images
 WHERE id = $1
     AND tenant_id = $2
@@ -117,11 +117,11 @@ type DeleteTenantImageParams struct {
 }
 
 func (q *Queries) DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error {
-	_, err := q.db.ExecContext(ctx, deleteTenantImage, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, DeleteTenantImage, arg.ID, arg.TenantID)
 	return err
 }
 
-const getTenantImageVariantByTypeForTenant = `-- name: GetTenantImageVariantByTypeForTenant :one
+const GetTenantImageVariantByTypeForTenant = `-- name: GetTenantImageVariantByTypeForTenant :one
 SELECT tiv.object_key,
     tiv.content_type
 FROM tenant_image_variants tiv
@@ -144,13 +144,13 @@ type GetTenantImageVariantByTypeForTenantRow struct {
 }
 
 func (q *Queries) GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantImageVariantByTypeForTenant, arg.TenantImageID, arg.TenantID, arg.VariantType)
+	row := q.db.QueryRowContext(ctx, GetTenantImageVariantByTypeForTenant, arg.TenantImageID, arg.TenantID, arg.VariantType)
 	var i GetTenantImageVariantByTypeForTenantRow
 	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
 
-const getTenantThemeByTenantID = `-- name: GetTenantThemeByTenantID :one
+const GetTenantThemeByTenantID = `-- name: GetTenantThemeByTenantID :one
 SELECT
     t.id AS tenant_id,
     COALESCE(tt.background_color, '#f5f5f2') AS background_color,
@@ -233,7 +233,7 @@ type GetTenantThemeByTenantIDRow struct {
 }
 
 func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantThemeByTenantID, id)
+	row := q.db.QueryRowContext(ctx, GetTenantThemeByTenantID, id)
 	var i GetTenantThemeByTenantIDRow
 	err := row.Scan(
 		&i.TenantID,
@@ -275,7 +275,7 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (G
 	return i, err
 }
 
-const listTenantImageVariantsByImageIDs = `-- name: ListTenantImageVariantsByImageIDs :many
+const ListTenantImageVariantsByImageIDs = `-- name: ListTenantImageVariantsByImageIDs :many
 SELECT tenant_image_id,
     variant_type,
     label,
@@ -302,7 +302,7 @@ type ListTenantImageVariantsByImageIDsRow struct {
 // The theme carries the icon and the logo together, so both images' variants
 // are read in one statement rather than one query per slot.
 func (q *Queries) ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantImageVariantsByImageIDs, pq.Array(imageIds))
+	rows, err := q.db.QueryContext(ctx, ListTenantImageVariantsByImageIDs, pq.Array(imageIds))
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func (q *Queries) ListTenantImageVariantsByImageIDs(ctx context.Context, imageId
 	return items, nil
 }
 
-const setTenantThemeIconImage = `-- name: SetTenantThemeIconImage :one
+const SetTenantThemeIconImage = `-- name: SetTenantThemeIconImage :one
 INSERT INTO tenant_themes (tenant_id, icon_image_id, updated_at)
 VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
@@ -349,7 +349,7 @@ type SetTenantThemeIconImageParams struct {
 // The theme row is created on demand: a tenant can upload a icon before it
 // has ever saved a color, and the colors then keep their column defaults.
 func (q *Queries) SetTenantThemeIconImage(ctx context.Context, arg SetTenantThemeIconImageParams) (TenantTheme, error) {
-	row := q.db.QueryRowContext(ctx, setTenantThemeIconImage, arg.TenantID, arg.IconImageID)
+	row := q.db.QueryRowContext(ctx, SetTenantThemeIconImage, arg.TenantID, arg.IconImageID)
 	var i TenantTheme
 	err := row.Scan(
 		&i.TenantID,
@@ -389,7 +389,7 @@ func (q *Queries) SetTenantThemeIconImage(ctx context.Context, arg SetTenantThem
 	return i, err
 }
 
-const setTenantThemeLogoImage = `-- name: SetTenantThemeLogoImage :one
+const SetTenantThemeLogoImage = `-- name: SetTenantThemeLogoImage :one
 INSERT INTO tenant_themes (tenant_id, logo_image_id, updated_at)
 VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
@@ -407,7 +407,7 @@ type SetTenantThemeLogoImageParams struct {
 // tenant can upload a logo before it has ever saved a color, and the colors
 // then keep their column defaults.
 func (q *Queries) SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error) {
-	row := q.db.QueryRowContext(ctx, setTenantThemeLogoImage, arg.TenantID, arg.LogoImageID)
+	row := q.db.QueryRowContext(ctx, SetTenantThemeLogoImage, arg.TenantID, arg.LogoImageID)
 	var i TenantTheme
 	err := row.Scan(
 		&i.TenantID,
@@ -447,7 +447,7 @@ func (q *Queries) SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThem
 	return i, err
 }
 
-const upsertTenantTheme = `-- name: UpsertTenantTheme :one
+const UpsertTenantTheme = `-- name: UpsertTenantTheme :one
 INSERT INTO tenant_themes (
         tenant_id,
         background_color,
@@ -582,7 +582,7 @@ type UpsertTenantThemeParams struct {
 }
 
 func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantTheme,
+	row := q.db.QueryRowContext(ctx, UpsertTenantTheme,
 		arg.TenantID,
 		arg.BackgroundColor,
 		arg.ForegroundColor,

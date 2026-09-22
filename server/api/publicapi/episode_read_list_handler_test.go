@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -16,11 +17,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	listMyEpisodeReadsAscQuery  = "-- name: ListMyEpisodeReadsAsc :many\n"
-	listMyEpisodeReadsDescQuery = "-- name: ListMyEpisodeReadsDesc :many\n"
 )
 
 func episodeReadRows() *sqlmock.Rows {
@@ -72,7 +68,7 @@ func TestEpisodeReadListReturnsTheReadersOwnHistory(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listMyEpisodeReadsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsDesc)).
 		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(addEpisodeReadRow(episodeReadRows(), readID, now))
 
@@ -117,7 +113,7 @@ func TestEpisodeReadListForwardPageReturnsNeighborTokens(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listMyEpisodeReadsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsDesc)).
 		WithArgs(
 			tenantID,
 			userID,
@@ -158,7 +154,7 @@ func TestEpisodeReadListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *test
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listMyEpisodeReadsAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsAsc)).
 		WithArgs(
 			tenantID,
 			userID,
@@ -196,20 +192,20 @@ func TestEpisodeReadListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 		{
 			name:              "forward page",
 			direction:         pagination.Forward,
-			query:             listMyEpisodeReadsDescQuery,
+			query:             dbmodels.ListMyEpisodeReadsDesc,
 			wantPreviousToken: "recovery backward",
 		},
 		{
 			name:          "backward page",
 			direction:     pagination.Backward,
-			query:         listMyEpisodeReadsAscQuery,
+			query:         dbmodels.ListMyEpisodeReadsAsc,
 			wantNextToken: "recovery forward",
 		},
 		{
 			name:      "inclusive recovery page",
 			direction: pagination.Forward,
 			inclusive: true,
-			query:     listMyEpisodeReadsDescQuery,
+			query:     dbmodels.ListMyEpisodeReadsDesc,
 		},
 	}
 

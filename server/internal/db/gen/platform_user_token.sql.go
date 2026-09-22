@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createPlatformUserEmailChangeToken = `-- name: CreatePlatformUserEmailChangeToken :one
+const CreatePlatformUserEmailChangeToken = `-- name: CreatePlatformUserEmailChangeToken :one
 INSERT INTO platform_user_email_change_tokens (
         id,
         platform_user_id,
@@ -38,7 +38,7 @@ type CreatePlatformUserEmailChangeTokenParams struct {
 }
 
 func (q *Queries) CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformUserEmailChangeToken,
+	row := q.db.QueryRowContext(ctx, CreatePlatformUserEmailChangeToken,
 		arg.ID,
 		arg.PlatformUserID,
 		arg.CurrentEmail,
@@ -64,7 +64,7 @@ func (q *Queries) CreatePlatformUserEmailChangeToken(ctx context.Context, arg Cr
 	return i, err
 }
 
-const createPlatformUserPasswordResetToken = `-- name: CreatePlatformUserPasswordResetToken :one
+const CreatePlatformUserPasswordResetToken = `-- name: CreatePlatformUserPasswordResetToken :one
 INSERT INTO platform_user_password_reset_tokens (
         id,
         platform_user_id,
@@ -83,7 +83,7 @@ type CreatePlatformUserPasswordResetTokenParams struct {
 }
 
 func (q *Queries) CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformUserPasswordResetToken,
+	row := q.db.QueryRowContext(ctx, CreatePlatformUserPasswordResetToken,
 		arg.ID,
 		arg.PlatformUserID,
 		arg.TokenHash,
@@ -101,29 +101,29 @@ func (q *Queries) CreatePlatformUserPasswordResetToken(ctx context.Context, arg 
 	return i, err
 }
 
-const deletePlatformUserEmailChangeTokensByUserID = `-- name: DeletePlatformUserEmailChangeTokensByUserID :exec
+const DeletePlatformUserEmailChangeTokensByUserID = `-- name: DeletePlatformUserEmailChangeTokensByUserID :exec
 DELETE FROM platform_user_email_change_tokens
 WHERE platform_user_id = $1
     AND completed_at IS NULL
 `
 
 func (q *Queries) DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deletePlatformUserEmailChangeTokensByUserID, platformUserID)
+	_, err := q.db.ExecContext(ctx, DeletePlatformUserEmailChangeTokensByUserID, platformUserID)
 	return err
 }
 
-const deletePlatformUserPasswordResetTokensByUserID = `-- name: DeletePlatformUserPasswordResetTokensByUserID :exec
+const DeletePlatformUserPasswordResetTokensByUserID = `-- name: DeletePlatformUserPasswordResetTokensByUserID :exec
 DELETE FROM platform_user_password_reset_tokens
 WHERE platform_user_id = $1
     AND completed_at IS NULL
 `
 
 func (q *Queries) DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deletePlatformUserPasswordResetTokensByUserID, platformUserID)
+	_, err := q.db.ExecContext(ctx, DeletePlatformUserPasswordResetTokensByUserID, platformUserID)
 	return err
 }
 
-const getPlatformUserEmailChangeTokenByHash = `-- name: GetPlatformUserEmailChangeTokenByHash :one
+const GetPlatformUserEmailChangeTokenByHash = `-- name: GetPlatformUserEmailChangeTokenByHash :one
 SELECT id, platform_user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at,
     CASE
         WHEN current_email_token_hash = $1 THEN 'current_email'::text
@@ -151,7 +151,7 @@ type GetPlatformUserEmailChangeTokenByHashRow struct {
 }
 
 func (q *Queries) GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserEmailChangeTokenByHash, currentEmailTokenHash)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserEmailChangeTokenByHash, currentEmailTokenHash)
 	var i GetPlatformUserEmailChangeTokenByHashRow
 	err := row.Scan(
 		&i.ID,
@@ -170,7 +170,7 @@ func (q *Queries) GetPlatformUserEmailChangeTokenByHash(ctx context.Context, cur
 	return i, err
 }
 
-const getPlatformUserEmailChangeTokenByID = `-- name: GetPlatformUserEmailChangeTokenByID :one
+const GetPlatformUserEmailChangeTokenByID = `-- name: GetPlatformUserEmailChangeTokenByID :one
 SELECT id, platform_user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
 FROM platform_user_email_change_tokens
 WHERE id = $1
@@ -178,7 +178,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserEmailChangeTokenByID, id)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserEmailChangeTokenByID, id)
 	var i PlatformUserEmailChangeToken
 	err := row.Scan(
 		&i.ID,
@@ -196,7 +196,7 @@ func (q *Queries) GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uu
 	return i, err
 }
 
-const getPlatformUserPasswordResetTokenByHash = `-- name: GetPlatformUserPasswordResetTokenByHash :one
+const GetPlatformUserPasswordResetTokenByHash = `-- name: GetPlatformUserPasswordResetTokenByHash :one
 SELECT id, platform_user_id, token_hash, expires_at, completed_at, created_at
 FROM platform_user_password_reset_tokens
 WHERE token_hash = $1
@@ -204,7 +204,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserPasswordResetTokenByHash, tokenHash)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserPasswordResetTokenByHash, tokenHash)
 	var i PlatformUserPasswordResetToken
 	err := row.Scan(
 		&i.ID,
@@ -217,46 +217,46 @@ func (q *Queries) GetPlatformUserPasswordResetTokenByHash(ctx context.Context, t
 	return i, err
 }
 
-const markPlatformUserEmailChangeCompleted = `-- name: MarkPlatformUserEmailChangeCompleted :exec
+const MarkPlatformUserEmailChangeCompleted = `-- name: MarkPlatformUserEmailChangeCompleted :exec
 UPDATE platform_user_email_change_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeCompleted, id)
+	_, err := q.db.ExecContext(ctx, MarkPlatformUserEmailChangeCompleted, id)
 	return err
 }
 
-const markPlatformUserEmailChangeCurrentEmailConfirmed = `-- name: MarkPlatformUserEmailChangeCurrentEmailConfirmed :exec
+const MarkPlatformUserEmailChangeCurrentEmailConfirmed = `-- name: MarkPlatformUserEmailChangeCurrentEmailConfirmed :exec
 UPDATE platform_user_email_change_tokens
 SET current_email_confirmed_at = COALESCE(current_email_confirmed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeCurrentEmailConfirmed, id)
+	_, err := q.db.ExecContext(ctx, MarkPlatformUserEmailChangeCurrentEmailConfirmed, id)
 	return err
 }
 
-const markPlatformUserEmailChangeNewEmailConfirmed = `-- name: MarkPlatformUserEmailChangeNewEmailConfirmed :exec
+const MarkPlatformUserEmailChangeNewEmailConfirmed = `-- name: MarkPlatformUserEmailChangeNewEmailConfirmed :exec
 UPDATE platform_user_email_change_tokens
 SET new_email_confirmed_at = COALESCE(new_email_confirmed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeNewEmailConfirmed, id)
+	_, err := q.db.ExecContext(ctx, MarkPlatformUserEmailChangeNewEmailConfirmed, id)
 	return err
 }
 
-const markPlatformUserPasswordResetTokenCompleted = `-- name: MarkPlatformUserPasswordResetTokenCompleted :exec
+const MarkPlatformUserPasswordResetTokenCompleted = `-- name: MarkPlatformUserPasswordResetTokenCompleted :exec
 UPDATE platform_user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markPlatformUserPasswordResetTokenCompleted, id)
+	_, err := q.db.ExecContext(ctx, MarkPlatformUserPasswordResetTokenCompleted, id)
 	return err
 }

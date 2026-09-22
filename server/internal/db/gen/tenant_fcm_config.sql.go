@@ -11,20 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
-const deleteTenantFcmConfig = `-- name: DeleteTenantFcmConfig :execrows
+const DeleteTenantFcmConfig = `-- name: DeleteTenantFcmConfig :execrows
 DELETE FROM tenant_fcm_config
 WHERE tenant_id = $1
 `
 
 func (q *Queries) DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteTenantFcmConfig, tenantID)
+	result, err := q.db.ExecContext(ctx, DeleteTenantFcmConfig, tenantID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const getTenantFcmConfig = `-- name: GetTenantFcmConfig :one
+const GetTenantFcmConfig = `-- name: GetTenantFcmConfig :one
 SELECT tenant_id, project_id, client_email, service_account_json_encrypted, created_at, updated_at
 FROM tenant_fcm_config
 WHERE tenant_id = $1
@@ -33,7 +33,7 @@ WHERE tenant_id = $1
 // Returns no rows for a tenant that has no Firebase credentials, which is the
 // whole "mobile push is disabled" state.
 func (q *Queries) GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error) {
-	row := q.db.QueryRowContext(ctx, getTenantFcmConfig, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantFcmConfig, tenantID)
 	var i TenantFcmConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -46,7 +46,7 @@ func (q *Queries) GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (T
 	return i, err
 }
 
-const upsertTenantFcmConfig = `-- name: UpsertTenantFcmConfig :one
+const UpsertTenantFcmConfig = `-- name: UpsertTenantFcmConfig :one
 INSERT INTO tenant_fcm_config (
         tenant_id,
         project_id,
@@ -75,7 +75,7 @@ type UpsertTenantFcmConfigParams struct {
 }
 
 func (q *Queries) UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantFcmConfig,
+	row := q.db.QueryRowContext(ctx, UpsertTenantFcmConfig,
 		arg.TenantID,
 		arg.ProjectID,
 		arg.ClientEmail,

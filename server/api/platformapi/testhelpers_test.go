@@ -27,62 +27,6 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-const (
-	// Platform operators and authentication.
-	testGetPlatformUserByPublicIDQuery          = "-- name: GetPlatformUserByPublicID :one\n"
-	testGetPlatformUserByIDQuery                = "-- name: GetPlatformUserByID :one\n"
-	testGetPlatformUserByEmailQuery             = "-- name: GetPlatformUserByEmail :one\n"
-	testCreatePlatformUserPasswordResetToken    = "-- name: CreatePlatformUserPasswordResetToken :one\n"
-	testDeletePlatformUserPasswordResetTokens   = "-- name: DeletePlatformUserPasswordResetTokensByUserID :exec\n"
-	testGetPlatformPasswordResetTokenByHash     = "-- name: GetPlatformUserPasswordResetTokenByHash :one\n"
-	testMarkPlatformPasswordResetTokenCompleted = "-- name: MarkPlatformUserPasswordResetTokenCompleted :exec\n"
-	testCreatePlatformEmailChangeToken          = "-- name: CreatePlatformUserEmailChangeToken :one\n"
-	testDeletePlatformEmailChangeTokens         = "-- name: DeletePlatformUserEmailChangeTokensByUserID :exec\n"
-	testGetPlatformEmailChangeTokenByHash       = "-- name: GetPlatformUserEmailChangeTokenByHash :one\n"
-	testMarkPlatformEmailChangeCurrentConfirmed = "-- name: MarkPlatformUserEmailChangeCurrentEmailConfirmed :exec\n"
-	testMarkPlatformEmailChangeNewConfirmed     = "-- name: MarkPlatformUserEmailChangeNewEmailConfirmed :exec\n"
-	testMarkPlatformEmailChangeCompleted        = "-- name: MarkPlatformUserEmailChangeCompleted :exec\n"
-	testListPlatformUserRolesQuery              = "-- name: ListPlatformUserRoles :many\n"
-	testCreatePlatformUserQuery                 = "-- name: CreatePlatformUser :one\n"
-	testCreatePlatformUserRoleQuery             = "-- name: CreatePlatformUserRole :one\n"
-	testGetPlatformOperatorByPublicIDQuery      = "-- name: GetPlatformOperatorByPublicID :one\n"
-	testDeletePlatformUserRolesByPlatformUserID = "-- name: DeletePlatformUserRolesByPlatformUserID :exec\n"
-	testUpdatePlatformUserPasswordHashByID      = "-- name: UpdatePlatformUserPasswordHashByID :one\n"
-	testUpdatePlatformUserEmailByID             = "-- name: UpdatePlatformUserEmailByID :one\n"
-	testUpdatePlatformUserStatusQuery           = "-- name: UpdatePlatformUserStatus :one\n"
-	testBumpPlatformUserCredentialsVersionQuery = "-- name: BumpPlatformUserCredentialsVersion :one\n"
-	testPlatformSessionToken                    = "platform-session-token"
-
-	// Tenant members.
-	testGetTenantByPublicIDQuery           = "-- name: GetTenantByPublicID :one\n"
-	testGetUserByEmailForTenantQuery       = "-- name: GetUserByEmailForTenant :one\n"
-	testGetUserByPublicIDForTenantQuery    = "-- name: GetUserByPublicIDForTenant :one\n"
-	testListTenantUserRolesQuery           = "-- name: ListTenantUserRoles :many\n"
-	testCreateTenantUserRoleQuery          = "-- name: CreateTenantUserRole :one\n"
-	testDeleteTenantUserRolesByUserIDQuery = "-- name: DeleteTenantUserRolesByUserID :exec\n"
-	testListTenantMembersDescQuery         = "-- name: ListTenantMembersDesc :many\n"
-	testListTenantMembersAscQuery          = "-- name: ListTenantMembersAsc :many\n"
-	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
-	testInsertOutboxEventQuery             = "-- name: InsertOutboxEvent :one\n"
-	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
-
-	// Platform-wide settings.
-	testGetPlatformConfigQuery           = "-- name: GetPlatformConfig :one\n"
-	testLockPlatformConfigQuery          = "-- name: LockPlatformConfig :one\n"
-	testInsertPlatformSettingsQuery      = "-- name: InsertPlatformSettings :one\n"
-	testUpdatePlatformSettingsQuery      = "-- name: UpdatePlatformSettings :one\n"
-	testUpsertPlatformDefaultLocaleQuery = "-- name: UpsertPlatformDefaultLocale :one\n"
-
-	// End users.
-	testListEndUsersDescQuery           = "-- name: ListEndUsersDesc :many\n"
-	testListEndUsersAscQuery            = "-- name: ListEndUsersAsc :many\n"
-	testGetUserByPublicIDQuery          = "-- name: GetUserByPublicID :one\n"
-	testGetTenantByUserIDQuery          = "-- name: GetTenantByUserID :one\n"
-	testUpdateUserStatusQuery           = "-- name: UpdateUserStatus :one\n"
-	testBumpUserCredentialsVersionQuery = "-- name: BumpUserCredentialsVersion :one\n"
-	testDeleteUserByIDQuery             = "-- name: DeleteUserByID :exec\n"
-)
-
 func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmock) {
 	t.Helper()
 
@@ -150,18 +94,18 @@ func newAuthedOperatorRequest[T any](msg *T) *connect.Request[T] {
 }
 
 func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
 }
 
 func expectOperatorAuditLogInsert(mock sqlmock.Sqlmock) {
-	mock.ExpectExec("INSERT INTO platform_audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
@@ -176,19 +120,8 @@ func assertOperatorHandlerExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 
 // Constants for HTTP integration tests (Connect RPC via NewHandler)
 const (
-	integrationListTenantsQuery              = "-- name: ListTenantsDesc :many\n"
-	integrationCreateTenantQuery             = "-- name: CreateTenant :one\n"
-	integrationUpdateTenantStatusQuery       = "-- name: UpdateTenantStatus :one\n"
-	integrationListPlatformOperatorsQuery    = "-- name: ListPlatformOperatorsDesc :many\n"
-	integrationCountAllTenantsQuery          = "-- name: CountAllTenants :one\n"
-	integrationCountActiveTenantsQuery       = "-- name: CountActiveTenants :one\n"
-	integrationCountSuspendedTenantsQuery    = "-- name: CountSuspendedTenants :one\n"
-	integrationCountPendingEndUsersQuery     = "-- name: CountPendingEndUsers :one\n"
-	integrationListRecentPlatformEventsQuery = "-- name: ListRecentPlatformEvents :many\n"
-	integrationListPlatformAuditLogsQuery    = "-- name: ListPlatformAuditLogsDesc :many\n"
-	integrationListPlatformAuditLogsAscQuery = "-- name: ListPlatformAuditLogsAsc :many\n"
-	integrationSessionToken                  = "platform-session-token"
-	integrationPlatformRole                  = "platform_operator"
+	integrationSessionToken = "platform-session-token"
+	integrationPlatformRole = "platform_operator"
 )
 
 func integrationTenantColumns() []string {
@@ -208,7 +141,7 @@ func platformConfigRow(defaultTimezone, defaultLocale string, revision int64, no
 // expectPlatformConfigLookup expects the read of the platform settings row and
 // answers it with the given default time zone and locale.
 func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow(defaultTimezone, defaultLocale, 1, now))
 }
 
@@ -255,12 +188,12 @@ func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantReque
 
 func expectIntegrationAuth(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
 	_ = tenantID
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
 }
@@ -273,7 +206,7 @@ func assertIntegrationExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 }
 
 func expectIntegrationAuditLogInsert(mock sqlmock.Sqlmock) {
-	mock.ExpectExec("INSERT INTO platform_audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
@@ -301,7 +234,7 @@ func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 func expectDefaultCreatorRoleInserts(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
 	for _, role := range creatorroles.Defaults {
 		expectPublicIDAttempt(mock)
-		mock.ExpectQuery("INSERT INTO creator_roles").
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreatorRole)).
 			WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), role.Name, role.DisplayPriority).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "display_priority", "created_at"}).
 				AddRow(uuid.Must(uuid.NewV7()), tenantID, "ROLEAUTHOR01", role.Name, role.DisplayPriority, now))

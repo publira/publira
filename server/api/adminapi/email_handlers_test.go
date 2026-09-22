@@ -77,11 +77,11 @@ func TestUpdateTenantEmailSettingsDisabledPreservesStoredValues(t *testing.T) {
 	encrypted := "enc:tenant:stored"
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantSMTPConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantSMTPConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantSMTPColumns()).
 			AddRow(tenantID, false, "smtp.saved.example", 465, "saved-user", encrypted, "tls", "Saved Sender", "saved@example.com", "reply@example.com", now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantSMTPConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantSMTPConfig)).
 		WithArgs(
 			tenantID,
 			false,

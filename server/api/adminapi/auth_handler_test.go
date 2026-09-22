@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -14,10 +15,8 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 )
 
-const getAdminTenantByDomainsQuery = "-- name: GetAdminTenantByDomains :one\n"
-
 func expectAdminTenantByDomains(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, defaultLocale string) {
-	mock.ExpectQuery(regexp.QuoteMeta(getAdminTenantByDomainsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAdminTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", "admin.tenant.example.com", "UTC", defaultLocale))
 }

@@ -12,12 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
-const getTenantCommunityLimitOverrides = `-- name: GetTenantCommunityLimitOverrides :one
+const GetTenantCommunityLimitOverrides = `-- name: GetTenantCommunityLimitOverrides :one
 SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at FROM tenant_community_limit_overrides WHERE tenant_id = $1
 `
 
 func (q *Queries) GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error) {
-	row := q.db.QueryRowContext(ctx, getTenantCommunityLimitOverrides, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantCommunityLimitOverrides, tenantID)
 	var i TenantCommunityLimitOverride
 	err := row.Scan(
 		&i.TenantID,
@@ -41,7 +41,7 @@ func (q *Queries) GetTenantCommunityLimitOverrides(ctx context.Context, tenantID
 	return i, err
 }
 
-const insertTenantCommunityLimitOverrides = `-- name: InsertTenantCommunityLimitOverrides :one
+const InsertTenantCommunityLimitOverrides = `-- name: InsertTenantCommunityLimitOverrides :one
 INSERT INTO tenant_community_limit_overrides (
  tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day,
  comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes,
@@ -77,7 +77,7 @@ type InsertTenantCommunityLimitOverridesParams struct {
 }
 
 func (q *Queries) InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error) {
-	row := q.db.QueryRowContext(ctx, insertTenantCommunityLimitOverrides,
+	row := q.db.QueryRowContext(ctx, InsertTenantCommunityLimitOverrides,
 		arg.TenantID,
 		arg.CommentPostLimitPerMinute,
 		arg.CommentPostLimitPerDay,
@@ -116,12 +116,12 @@ func (q *Queries) InsertTenantCommunityLimitOverrides(ctx context.Context, arg I
 	return i, err
 }
 
-const lockTenantCommunityLimitOverrides = `-- name: LockTenantCommunityLimitOverrides :one
+const LockTenantCommunityLimitOverrides = `-- name: LockTenantCommunityLimitOverrides :one
 SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at FROM tenant_community_limit_overrides WHERE tenant_id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error) {
-	row := q.db.QueryRowContext(ctx, lockTenantCommunityLimitOverrides, tenantID)
+	row := q.db.QueryRowContext(ctx, LockTenantCommunityLimitOverrides, tenantID)
 	var i TenantCommunityLimitOverride
 	err := row.Scan(
 		&i.TenantID,
@@ -145,7 +145,7 @@ func (q *Queries) LockTenantCommunityLimitOverrides(ctx context.Context, tenantI
 	return i, err
 }
 
-const updateTenantCommunityLimitOverrides = `-- name: UpdateTenantCommunityLimitOverrides :one
+const UpdateTenantCommunityLimitOverrides = `-- name: UpdateTenantCommunityLimitOverrides :one
 UPDATE tenant_community_limit_overrides SET
  comment_post_limit_per_minute = $1, comment_post_limit_per_day = $2,
  comment_report_limit_per_minute = $3, comment_report_limit_per_day = $4, comment_duplicate_window_minutes = $5,
@@ -175,7 +175,7 @@ type UpdateTenantCommunityLimitOverridesParams struct {
 }
 
 func (q *Queries) UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantCommunityLimitOverrides,
+	row := q.db.QueryRowContext(ctx, UpdateTenantCommunityLimitOverrides,
 		arg.CommentPostLimitPerMinute,
 		arg.CommentPostLimitPerDay,
 		arg.CommentReportLimitPerMinute,

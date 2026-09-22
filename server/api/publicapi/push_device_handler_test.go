@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,17 +19,11 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
-const (
-	upsertUserPushDeviceQuery         = "-- name: UpsertUserPushDevice :one\n"
-	deleteUserPushDeviceForUserQuery  = "-- name: DeleteUserPushDeviceForUser :execrows\n"
-	getPublishedWebPushPublicKeyQuery = "-- name: GetPublishedWebPushPublicKey :one\n"
-)
-
 // expectPublishedWebPushPublicKey answers the storefront's read of the VAPID
 // public key: the key when publicKey is set, and no row, which is what an
 // installation with no subject saved answers, when it is empty.
 func expectPublishedWebPushPublicKey(mock sqlmock.Sqlmock, publicKey string) {
-	expectation := mock.ExpectQuery(regexp.QuoteMeta(getPublishedWebPushPublicKeyQuery))
+	expectation := mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedWebPushPublicKey))
 	if publicKey == "" {
 		expectation.WillReturnError(sql.ErrNoRows)
 		return
@@ -42,7 +37,7 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(upsertUserPushDeviceQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 		WithArgs(tenantID, userID, "device-token", "android", sql.NullString{}, sql.NullString{}, sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
@@ -93,7 +88,7 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
-	mock.ExpectQuery(regexp.QuoteMeta(upsertUserPushDeviceQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth",
@@ -190,7 +185,7 @@ func TestUnregisterPushDeviceReportsWhetherARowWasRemoved(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock := newNotificationClient(t, tenantID, userID, now)
 
-			mock.ExpectExec(regexp.QuoteMeta(deleteUserPushDeviceForUserQuery)).
+			mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserPushDeviceForUser)).
 				WithArgs(tenantID, userID, "device-token").
 				WillReturnResult(sqlmock.NewResult(0, tt.removed))
 
@@ -216,7 +211,7 @@ func TestUnregisterPushDeviceUsesWebPushEndpoint(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 	endpoint := "https://push.example.test/subscription"
-	mock.ExpectExec(regexp.QuoteMeta(deleteUserPushDeviceForUserQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserPushDeviceForUser)).
 		WithArgs(tenantID, userID, endpoint).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 

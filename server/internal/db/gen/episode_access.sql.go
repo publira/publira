@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const listPublishedEpisodeAccessInSeries = `-- name: ListPublishedEpisodeAccessInSeries :many
+const ListPublishedEpisodeAccessInSeries = `-- name: ListPublishedEpisodeAccessInSeries :many
 SELECT e.public_id,
     EXISTS (
         SELECT 1
@@ -82,7 +82,7 @@ type ListPublishedEpisodeAccessInSeriesRow struct {
 // guest passes a NULL user_id, which no grant matches. The order is the one
 // GetSeriesDetail lists the episodes in.
 func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeAccessInSeries,
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeAccessInSeries,
 		arg.UserID,
 		arg.TenantID,
 		arg.SeriesID,

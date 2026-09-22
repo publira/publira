@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const applyUnappliedStripeRefundToPurchase = `-- name: ApplyUnappliedStripeRefundToPurchase :one
+const ApplyUnappliedStripeRefundToPurchase = `-- name: ApplyUnappliedStripeRefundToPurchase :one
 WITH held AS (
     SELECT r.tenant_id,
         r.stripe_payment_intent_id,
@@ -56,7 +56,7 @@ type ApplyUnappliedStripeRefundToPurchaseParams struct {
 // crash in between costs a repeat of an update that is idempotent, whereas
 // deleting here would lose the refund if the update never landed.
 func (q *Queries) ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg ApplyUnappliedStripeRefundToPurchaseParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, applyUnappliedStripeRefundToPurchase, arg.TenantID, arg.StripePaymentIntentID)
+	row := q.db.QueryRowContext(ctx, ApplyUnappliedStripeRefundToPurchase, arg.TenantID, arg.StripePaymentIntentID)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -74,7 +74,7 @@ func (q *Queries) ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg 
 	return i, err
 }
 
-const createPurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheckout :one
+const CreatePurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheckout :one
 WITH locked AS (
     SELECT pg_advisory_xact_lock(
         hashtextextended(
@@ -134,7 +134,7 @@ type CreatePurchaseFromStripeCheckoutParams struct {
 // in the ordinary case; this also keeps an exceptional concurrent pair from
 // producing two entitlements.
 func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, createPurchaseFromStripeCheckout,
+	row := q.db.QueryRowContext(ctx, CreatePurchaseFromStripeCheckout,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -161,7 +161,7 @@ func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg Crea
 	return i, err
 }
 
-const getEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
+const GetEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
 SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
 FROM tenant_payment_config
 WHERE tenant_id = $1
@@ -170,7 +170,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error) {
-	row := q.db.QueryRowContext(ctx, getEnabledTenantPaymentConfigByTenantID, tenantID)
+	row := q.db.QueryRowContext(ctx, GetEnabledTenantPaymentConfigByTenantID, tenantID)
 	var i TenantPaymentConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -186,7 +186,7 @@ func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, t
 	return i, err
 }
 
-const getPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
+const GetPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -237,7 +237,7 @@ type GetPurchasableEpisodeByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getPurchasableEpisodeByPublicIDForTenant, arg.PublicID, arg.TenantID, arg.Surface)
+	row := q.db.QueryRowContext(ctx, GetPurchasableEpisodeByPublicIDForTenant, arg.PublicID, arg.TenantID, arg.Surface)
 	var i GetPurchasableEpisodeByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -251,7 +251,7 @@ func (q *Queries) GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, 
 	return i, err
 }
 
-const getTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
+const GetTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
 SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
 FROM tenant_payment_config
 WHERE tenant_id = $1
@@ -259,7 +259,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error) {
-	row := q.db.QueryRowContext(ctx, getTenantPaymentConfigByTenantID, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantPaymentConfigByTenantID, tenantID)
 	var i TenantPaymentConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -275,7 +275,7 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 	return i, err
 }
 
-const holdUnappliedStripeRefund = `-- name: HoldUnappliedStripeRefund :exec
+const HoldUnappliedStripeRefund = `-- name: HoldUnappliedStripeRefund :exec
 INSERT INTO unapplied_stripe_refunds (
     tenant_id,
     stripe_payment_intent_id,
@@ -311,11 +311,11 @@ type HoldUnappliedStripeRefundParams struct {
 // between two numbers the larger wins, because Stripe reports the total
 // refunded so far.
 func (q *Queries) HoldUnappliedStripeRefund(ctx context.Context, arg HoldUnappliedStripeRefundParams) error {
-	_, err := q.db.ExecContext(ctx, holdUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID, arg.RefundedAmount)
+	_, err := q.db.ExecContext(ctx, HoldUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID, arg.RefundedAmount)
 	return err
 }
 
-const listMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
+const ListMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
@@ -379,7 +379,7 @@ type ListMyPurchasesAscRow struct {
 }
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyPurchasesAsc,
+	rows, err := q.db.QueryContext(ctx, ListMyPurchasesAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorPurchasedAt,
@@ -419,7 +419,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 	return items, nil
 }
 
-const listMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
+const ListMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
@@ -483,7 +483,7 @@ type ListMyPurchasesDescRow struct {
 }
 
 func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyPurchasesDesc,
+	rows, err := q.db.QueryContext(ctx, ListMyPurchasesDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorPurchasedAt,
@@ -523,7 +523,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 	return items, nil
 }
 
-const recordStripeRefundOnPurchase = `-- name: RecordStripeRefundOnPurchase :one
+const RecordStripeRefundOnPurchase = `-- name: RecordStripeRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,
         GREATEST(
@@ -563,7 +563,7 @@ type RecordStripeRefundOnPurchaseParams struct {
 // it is set once the refunded total reaches what was paid, and a repeated
 // delivery of the same refund leaves the instant already stored.
 func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordStripeRefundOnPurchaseParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, recordStripeRefundOnPurchase, arg.RefundedAmount, arg.TenantID, arg.StripePaymentIntentID)
+	row := q.db.QueryRowContext(ctx, RecordStripeRefundOnPurchase, arg.RefundedAmount, arg.TenantID, arg.StripePaymentIntentID)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -581,7 +581,7 @@ func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordSt
 	return i, err
 }
 
-const releaseUnappliedStripeRefund = `-- name: ReleaseUnappliedStripeRefund :exec
+const ReleaseUnappliedStripeRefund = `-- name: ReleaseUnappliedStripeRefund :exec
 DELETE FROM unapplied_stripe_refunds
 WHERE tenant_id = $1
     AND stripe_payment_intent_id = $2::text
@@ -593,11 +593,11 @@ type ReleaseUnappliedStripeRefundParams struct {
 }
 
 func (q *Queries) ReleaseUnappliedStripeRefund(ctx context.Context, arg ReleaseUnappliedStripeRefundParams) error {
-	_, err := q.db.ExecContext(ctx, releaseUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID)
+	_, err := q.db.ExecContext(ctx, ReleaseUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID)
 	return err
 }
 
-const upsertTenantPaymentConfig = `-- name: UpsertTenantPaymentConfig :one
+const UpsertTenantPaymentConfig = `-- name: UpsertTenantPaymentConfig :one
 INSERT INTO tenant_payment_config (
         tenant_id,
         provider,
@@ -631,7 +631,7 @@ type UpsertTenantPaymentConfigParams struct {
 }
 
 func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantPaymentConfig,
+	row := q.db.QueryRowContext(ctx, UpsertTenantPaymentConfig,
 		arg.TenantID,
 		arg.Provider,
 		arg.Enabled,
@@ -655,7 +655,7 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 	return i, err
 }
 
-const userHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
+const UserHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
 SELECT EXISTS (
     SELECT 1
     FROM purchases
@@ -675,7 +675,7 @@ type UserHasValidPurchaseForEpisodeParams struct {
 }
 
 func (q *Queries) UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, userHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, UserHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var has_purchase bool
 	err := row.Scan(&has_purchase)
 	return has_purchase, err

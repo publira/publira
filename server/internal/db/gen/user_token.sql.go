@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createUserEmailChangeToken = `-- name: CreateUserEmailChangeToken :one
+const CreateUserEmailChangeToken = `-- name: CreateUserEmailChangeToken :one
 INSERT INTO user_email_change_tokens (
         id,
         tenant_id,
@@ -40,7 +40,7 @@ type CreateUserEmailChangeTokenParams struct {
 }
 
 func (q *Queries) CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error) {
-	row := q.db.QueryRowContext(ctx, createUserEmailChangeToken,
+	row := q.db.QueryRowContext(ctx, CreateUserEmailChangeToken,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -68,7 +68,7 @@ func (q *Queries) CreateUserEmailChangeToken(ctx context.Context, arg CreateUser
 	return i, err
 }
 
-const createUserEmailVerificationToken = `-- name: CreateUserEmailVerificationToken :one
+const CreateUserEmailVerificationToken = `-- name: CreateUserEmailVerificationToken :one
 INSERT INTO user_email_verification_tokens (
         id,
         tenant_id,
@@ -89,7 +89,7 @@ type CreateUserEmailVerificationTokenParams struct {
 }
 
 func (q *Queries) CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error) {
-	row := q.db.QueryRowContext(ctx, createUserEmailVerificationToken,
+	row := q.db.QueryRowContext(ctx, CreateUserEmailVerificationToken,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -109,7 +109,7 @@ func (q *Queries) CreateUserEmailVerificationToken(ctx context.Context, arg Crea
 	return i, err
 }
 
-const createUserPasswordResetToken = `-- name: CreateUserPasswordResetToken :one
+const CreateUserPasswordResetToken = `-- name: CreateUserPasswordResetToken :one
 INSERT INTO user_password_reset_tokens (
         id,
         tenant_id,
@@ -130,7 +130,7 @@ type CreateUserPasswordResetTokenParams struct {
 }
 
 func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error) {
-	row := q.db.QueryRowContext(ctx, createUserPasswordResetToken,
+	row := q.db.QueryRowContext(ctx, CreateUserPasswordResetToken,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -150,40 +150,40 @@ func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUs
 	return i, err
 }
 
-const deleteUserEmailChangeTokensByUserID = `-- name: DeleteUserEmailChangeTokensByUserID :exec
+const DeleteUserEmailChangeTokensByUserID = `-- name: DeleteUserEmailChangeTokensByUserID :exec
 DELETE FROM user_email_change_tokens
 WHERE user_id = $1
     AND completed_at IS NULL
 `
 
 func (q *Queries) DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserEmailChangeTokensByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserEmailChangeTokensByUserID, userID)
 	return err
 }
 
-const deleteUserEmailVerificationTokensByUserID = `-- name: DeleteUserEmailVerificationTokensByUserID :exec
+const DeleteUserEmailVerificationTokensByUserID = `-- name: DeleteUserEmailVerificationTokensByUserID :exec
 DELETE FROM user_email_verification_tokens
 WHERE user_id = $1
     AND used_at IS NULL
 `
 
 func (q *Queries) DeleteUserEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserEmailVerificationTokensByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserEmailVerificationTokensByUserID, userID)
 	return err
 }
 
-const deleteUserPasswordResetTokensByUserID = `-- name: DeleteUserPasswordResetTokensByUserID :exec
+const DeleteUserPasswordResetTokensByUserID = `-- name: DeleteUserPasswordResetTokensByUserID :exec
 DELETE FROM user_password_reset_tokens
 WHERE user_id = $1
     AND completed_at IS NULL
 `
 
 func (q *Queries) DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserPasswordResetTokensByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserPasswordResetTokensByUserID, userID)
 	return err
 }
 
-const getUserEmailChangeTokenByHashForTenant = `-- name: GetUserEmailChangeTokenByHashForTenant :one
+const GetUserEmailChangeTokenByHashForTenant = `-- name: GetUserEmailChangeTokenByHashForTenant :one
 SELECT id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at,
     CASE
         WHEN current_email_token_hash = $2 THEN 'current_email'::text
@@ -220,7 +220,7 @@ type GetUserEmailChangeTokenByHashForTenantRow struct {
 }
 
 func (q *Queries) GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserEmailChangeTokenByHashForTenant, arg.TenantID, arg.CurrentEmailTokenHash)
+	row := q.db.QueryRowContext(ctx, GetUserEmailChangeTokenByHashForTenant, arg.TenantID, arg.CurrentEmailTokenHash)
 	var i GetUserEmailChangeTokenByHashForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -240,7 +240,7 @@ func (q *Queries) GetUserEmailChangeTokenByHashForTenant(ctx context.Context, ar
 	return i, err
 }
 
-const getUserEmailChangeTokenByIDForTenant = `-- name: GetUserEmailChangeTokenByIDForTenant :one
+const GetUserEmailChangeTokenByIDForTenant = `-- name: GetUserEmailChangeTokenByIDForTenant :one
 SELECT id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
 FROM user_email_change_tokens
 WHERE tenant_id = $1
@@ -254,7 +254,7 @@ type GetUserEmailChangeTokenByIDForTenantParams struct {
 }
 
 func (q *Queries) GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error) {
-	row := q.db.QueryRowContext(ctx, getUserEmailChangeTokenByIDForTenant, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, GetUserEmailChangeTokenByIDForTenant, arg.TenantID, arg.ID)
 	var i UserEmailChangeToken
 	err := row.Scan(
 		&i.ID,
@@ -273,7 +273,7 @@ func (q *Queries) GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg 
 	return i, err
 }
 
-const getUserEmailVerificationTokenByHashForTenant = `-- name: GetUserEmailVerificationTokenByHashForTenant :one
+const GetUserEmailVerificationTokenByHashForTenant = `-- name: GetUserEmailVerificationTokenByHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, used_at, created_at
 FROM user_email_verification_tokens
 WHERE tenant_id = $1
@@ -287,7 +287,7 @@ type GetUserEmailVerificationTokenByHashForTenantParams struct {
 }
 
 func (q *Queries) GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error) {
-	row := q.db.QueryRowContext(ctx, getUserEmailVerificationTokenByHashForTenant, arg.TenantID, arg.TokenHash)
+	row := q.db.QueryRowContext(ctx, GetUserEmailVerificationTokenByHashForTenant, arg.TenantID, arg.TokenHash)
 	var i UserEmailVerificationToken
 	err := row.Scan(
 		&i.ID,
@@ -301,7 +301,7 @@ func (q *Queries) GetUserEmailVerificationTokenByHashForTenant(ctx context.Conte
 	return i, err
 }
 
-const getUserPasswordResetTokenByHashForTenant = `-- name: GetUserPasswordResetTokenByHashForTenant :one
+const GetUserPasswordResetTokenByHashForTenant = `-- name: GetUserPasswordResetTokenByHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, completed_at, created_at
 FROM user_password_reset_tokens
 WHERE tenant_id = $1
@@ -315,7 +315,7 @@ type GetUserPasswordResetTokenByHashForTenantParams struct {
 }
 
 func (q *Queries) GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error) {
-	row := q.db.QueryRowContext(ctx, getUserPasswordResetTokenByHashForTenant, arg.TenantID, arg.TokenHash)
+	row := q.db.QueryRowContext(ctx, GetUserPasswordResetTokenByHashForTenant, arg.TenantID, arg.TokenHash)
 	var i UserPasswordResetToken
 	err := row.Scan(
 		&i.ID,
@@ -329,40 +329,40 @@ func (q *Queries) GetUserPasswordResetTokenByHashForTenant(ctx context.Context, 
 	return i, err
 }
 
-const markUserEmailChangeCompleted = `-- name: MarkUserEmailChangeCompleted :exec
+const MarkUserEmailChangeCompleted = `-- name: MarkUserEmailChangeCompleted :exec
 UPDATE user_email_change_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markUserEmailChangeCompleted, id)
+	_, err := q.db.ExecContext(ctx, MarkUserEmailChangeCompleted, id)
 	return err
 }
 
-const markUserEmailChangeCurrentEmailConfirmed = `-- name: MarkUserEmailChangeCurrentEmailConfirmed :exec
+const MarkUserEmailChangeCurrentEmailConfirmed = `-- name: MarkUserEmailChangeCurrentEmailConfirmed :exec
 UPDATE user_email_change_tokens
 SET current_email_confirmed_at = COALESCE(current_email_confirmed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markUserEmailChangeCurrentEmailConfirmed, id)
+	_, err := q.db.ExecContext(ctx, MarkUserEmailChangeCurrentEmailConfirmed, id)
 	return err
 }
 
-const markUserEmailChangeNewEmailConfirmed = `-- name: MarkUserEmailChangeNewEmailConfirmed :exec
+const MarkUserEmailChangeNewEmailConfirmed = `-- name: MarkUserEmailChangeNewEmailConfirmed :exec
 UPDATE user_email_change_tokens
 SET new_email_confirmed_at = COALESCE(new_email_confirmed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markUserEmailChangeNewEmailConfirmed, id)
+	_, err := q.db.ExecContext(ctx, MarkUserEmailChangeNewEmailConfirmed, id)
 	return err
 }
 
-const markUserEmailVerificationTokenUsed = `-- name: MarkUserEmailVerificationTokenUsed :exec
+const MarkUserEmailVerificationTokenUsed = `-- name: MarkUserEmailVerificationTokenUsed :exec
 UPDATE user_email_verification_tokens
 SET used_at = NOW()
 WHERE id = $1
@@ -370,17 +370,17 @@ WHERE id = $1
 `
 
 func (q *Queries) MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markUserEmailVerificationTokenUsed, id)
+	_, err := q.db.ExecContext(ctx, MarkUserEmailVerificationTokenUsed, id)
 	return err
 }
 
-const markUserPasswordResetTokenCompleted = `-- name: MarkUserPasswordResetTokenCompleted :exec
+const MarkUserPasswordResetTokenCompleted = `-- name: MarkUserPasswordResetTokenCompleted :exec
 UPDATE user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1
 `
 
 func (q *Queries) MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markUserPasswordResetTokenCompleted, id)
+	_, err := q.db.ExecContext(ctx, MarkUserPasswordResetTokenCompleted, id)
 	return err
 }

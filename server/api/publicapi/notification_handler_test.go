@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"math"
 	"regexp"
 	"testing"
@@ -18,13 +19,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-)
-
-const (
-	listNotificationsForUserDescQuery = "-- name: ListNotificationsForUserDesc :many\n"
-	countUnreadNotificationsQuery     = "-- name: CountUnreadNotificationsForUser :one\n"
-	markNotificationAsReadQuery       = "-- name: MarkNotificationAsRead :one\n"
-	markAllNotificationsAsReadQuery   = "-- name: MarkAllNotificationsAsRead :execrows\n"
 )
 
 func notificationColumns() *sqlmock.Rows {
@@ -76,7 +70,7 @@ func TestNotificationListSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
 		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addNotificationRow(notificationColumns(), notificationID, tenantID, userID, "episode_published", now, false))
 
@@ -108,7 +102,7 @@ func TestNotificationListDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
 		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "notifications" does not exist`))
 
@@ -148,7 +142,7 @@ func TestNotificationCountUnread(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(countUnreadNotificationsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountUnreadNotificationsForUser)).
 		WithArgs(tenantID, userID).
 		WillReturnRows(sqlmock.NewRows([]string{"unread_count"}).AddRow(int32(3)))
 
@@ -172,7 +166,7 @@ func TestNotificationMarkAsReadNotFound(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(markNotificationAsReadQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkNotificationAsRead)).
 		WithArgs(userID, notificationID, tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -210,7 +204,7 @@ func TestNotificationMarkAllAsRead(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectExec(regexp.QuoteMeta(markAllNotificationsAsReadQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
 		WithArgs(userID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 4))
 
@@ -233,7 +227,7 @@ func TestNotificationMarkAllAsReadRejectsOverflow(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
-	mock.ExpectExec(regexp.QuoteMeta(markAllNotificationsAsReadQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
 		WithArgs(userID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, int64(math.MaxInt32)+1))
 
@@ -261,7 +255,7 @@ func TestNotificationListFirstPageReportsNextToken(t *testing.T) {
 	for index, id := range ids {
 		addNotificationRow(rows, id, tenantID, userID, "episode_published", now.Add(-time.Duration(index)*time.Minute), false)
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForUserDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
 		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 

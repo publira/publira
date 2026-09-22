@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/png"
@@ -201,14 +202,14 @@ func expectTenantImageVariants(mock sqlmock.Sqlmock, icon, logo uuid.NullUUID) {
 	if logo.Valid {
 		rows.AddRow(logo.UUID, "logo", "original", "image/png", int64(2048), int32(320), int32(80))
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantImageVariantsByImageIDs)).
 		WillReturnRows(rows)
 }
 
 // expectTenantThemeRead queues both statements a theme response is built from:
 // the theme row, and the variants of the images it points at.
 func expectTenantThemeRead(mock sqlmock.Sqlmock, tenantID uuid.UUID, icon, logo uuid.NullUUID, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", icon, logo, now)...))
@@ -235,7 +236,7 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 
 	icon := uuid.NullUUID{UUID: uuid.MustParse("99999999-9999-4999-8999-999999999999"), Valid: true}
 	logo := uuid.NullUUID{UUID: uuid.MustParse("88888888-8888-4888-8888-888888888888"), Valid: true}
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#123456", "#abcdef", "#654321", icon, logo, now)...))
@@ -280,7 +281,7 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
@@ -321,7 +322,7 @@ func TestGetTenantThemeDatabaseErrorIsHidden(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(errors.New(`pq: relation "tenant_themes" does not exist`))
 
@@ -428,7 +429,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantThemeQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantTheme)).
 		WithArgs(
 			tenantID,
 			"#f5f5f2",
@@ -575,18 +576,18 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantForUpdate)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: previousImageID, Valid: true}, uuid.NullUUID{}, now)...))
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
 			AddRow(storedImageID, tenantID, now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageVariantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImageVariant)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "tenant_image_id", "label", "variant_type", "storage_provider",
 			"object_key", "content_type", "file_size_bytes", "width", "height", "created_at",
@@ -595,11 +596,11 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 			"original", "icon", "s3", "tenants/TENANT001/icons/icon.png", "image/png",
 			int64(1024), int32(64), int32(64), now,
 		))
-	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeIconImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeIconImage)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)...))
-	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)
@@ -657,18 +658,18 @@ func TestDeleteTenantIconClearsReferenceAndDropsImage(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantForUpdate)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: currentImageID, Valid: true}, uuid.NullUUID{}, now)...))
-	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeIconImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeIconImage)).
 		WithArgs(tenantID, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
-	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
@@ -719,18 +720,18 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantForUpdate)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: previousImageID, Valid: true}, now)...))
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
 			AddRow(storedImageID, tenantID, now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageVariantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImageVariant)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "tenant_image_id", "label", "variant_type", "storage_provider",
 			"object_key", "content_type", "file_size_bytes", "width", "height", "created_at",
@@ -739,11 +740,11 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 			"original", "logo", "s3", "tenants/TENANT001/logos/logo.png", "image/png",
 			int64(2048), int32(320), int32(80), now,
 		))
-	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeLogoImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeLogoImage)).
 		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)...))
-	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)
@@ -801,18 +802,18 @@ func TestDeleteTenantLogoClearsReferenceAndDropsImage(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantForUpdate)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: currentImageID, Valid: true}, now)...))
-	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeLogoImageQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeLogoImage)).
 		WithArgs(tenantID, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
-	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)

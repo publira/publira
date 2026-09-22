@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -76,7 +77,7 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(updateTenantTimezoneQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
@@ -243,7 +244,7 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(updateTenantDefaultLocaleQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantDefaultLocale)).
 		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "UTC", "en"))
@@ -364,7 +365,7 @@ func expectTenantConfigWithCommentSettings(
 	mode string,
 	threshold int32,
 ) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(tenantConfigRow(tenantID, now, mode, threshold))
 }
@@ -422,7 +423,7 @@ func TestGetTenantCommentSettingsReportsTheColumnDefaultsWithoutAConfigRow(t *te
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -496,7 +497,7 @@ func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-			mock.ExpectQuery(regexp.QuoteMeta(upsertTenantCommentSettingsQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantCommentSettings)).
 				WithArgs(tenantID, tt.want, int32(tt.threshold)).
 				WillReturnRows(tenantConfigRow(tenantID, now, tt.want, int32(tt.threshold)))
 
@@ -637,7 +638,7 @@ func TestGetTenantAgeVerificationReturnsTheStoredRule(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-			mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.stored))
 
@@ -666,7 +667,7 @@ func TestGetTenantAgeVerificationReportsNoneWithoutAConfigRow(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -694,7 +695,7 @@ func TestGetTenantAgeVerificationFailsOnAnUnsupportedStoredRule(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, "everything"))
 
@@ -731,7 +732,7 @@ func TestUpdateTenantAgeVerificationPersistsTheChosenRule(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-			mock.ExpectQuery(regexp.QuoteMeta(upsertTenantAgeVerificationQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantAgeVerification)).
 				WithArgs(tenantID, tt.want).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.want))
 

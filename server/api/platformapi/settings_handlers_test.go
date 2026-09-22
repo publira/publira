@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -54,7 +55,7 @@ func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 // how the screen would come to save a language nobody chose over the stored one.
 func TestGetPlatformSettingsFailsWhenRowIsMissing(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
 	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
 	if connect.CodeOf(err) != connect.CodeInternal {
@@ -68,7 +69,7 @@ func TestGetPlatformSettingsFailsWhenRowIsMissing(t *testing.T) {
 func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "fr", 1, now))
 
 	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
@@ -87,9 +88,9 @@ func expectPlatformSettingsWrite(
 	now time.Time,
 ) {
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", storedRevision, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformSettingsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs(timezone, defaultLocale).
 		WillReturnRows(platformConfigRow(timezone, defaultLocale, storedRevision+1, now))
 	mock.ExpectCommit()
@@ -150,7 +151,7 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 func TestUpdatePlatformSettingsDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnError(errors.New(`pq: relation "platform_config" does not exist`))
 	mock.ExpectRollback()
 
@@ -268,9 +269,9 @@ func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 1, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformSettingsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs("America/Los_Angeles", "en").
 		WillReturnError(errors.New(`pq: could not serialize access`))
 	mock.ExpectRollback()
@@ -295,7 +296,7 @@ func TestUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "en", 7, now))
 	mock.ExpectRollback()
 
@@ -318,8 +319,8 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
-	mock.ExpectQuery(regexp.QuoteMeta(testInsertPlatformSettingsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
 		WithArgs("America/Los_Angeles", "en").
 		WillReturnRows(platformConfigRow("America/Los_Angeles", "en", 1, now))
 	mock.ExpectCommit()
@@ -345,7 +346,7 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 func TestUpdatePlatformSettingsRejectsAMissingRowForANamedRevision(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
 	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
@@ -365,8 +366,8 @@ func TestUpdatePlatformSettingsRejectsAMissingRowForANamedRevision(t *testing.T)
 func TestUpdatePlatformSettingsReportsALostInsertRaceAsAConflict(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testLockPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
-	mock.ExpectQuery(regexp.QuoteMeta(testInsertPlatformSettingsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
 		WithArgs("America/Los_Angeles", "en").
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "platform_config_pkey"})
 	mock.ExpectRollback()

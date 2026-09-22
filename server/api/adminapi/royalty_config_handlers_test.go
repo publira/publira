@@ -18,11 +18,6 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-const (
-	getTenantRoyaltyConfigQuery    = "-- name: GetTenantRoyaltyConfigByTenantID :one\n"
-	upsertTenantRoyaltyConfigQuery = "-- name: UpsertTenantRoyaltyConfig :one\n"
-)
-
 func royaltyConfigColumns() []string {
 	return []string{"tenant_id", "close_mode", "auto_close_day", "automatic_since", "updated_at"}
 }
@@ -65,7 +60,7 @@ func TestGetRoyaltyConfigDefaultsToManualWhenMissing(t *testing.T) {
 	client, mock, token, tenantID := newRoyaltyConfigClient(t)
 	now := time.Now()
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantRoyaltyConfigQuery)).WithArgs(tenantID).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantRoyaltyConfigByTenantID)).WithArgs(tenantID).WillReturnError(sql.ErrNoRows)
 
 	response, err := client.GetRoyaltyConfig(context.Background(), royaltyConfigRequest(tenantID, token, &publiraadminv1.GetRoyaltyConfigRequest{Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()}}))
 	if err != nil {
@@ -132,7 +127,7 @@ func TestUpdateRoyaltyConfigReturnsAutomaticSince(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
 	day := int32(5)
-	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantRoyaltyConfigQuery)).WithArgs(tenantID, royaltyCloseModeAuto, sql.NullInt32{Int32: day, Valid: true}).WillReturnRows(addRoyaltyConfigRow(
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantRoyaltyConfig)).WithArgs(tenantID, royaltyCloseModeAuto, sql.NullInt32{Int32: day, Valid: true}).WillReturnRows(addRoyaltyConfigRow(
 		sqlmock.NewRows(royaltyConfigColumns()), tenantID, royaltyCloseModeAuto, sql.NullInt32{Int32: day, Valid: true}, sql.NullTime{Time: now, Valid: true}, now,
 	))
 	expectAdminAuditLogInsert(mock)

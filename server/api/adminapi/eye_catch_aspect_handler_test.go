@@ -3,6 +3,7 @@ package adminapi
 import (
 	"bytes"
 	"context"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -18,17 +19,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	lockLabelByPublicIDForTenantQuery      = "-- name: LockLabelByPublicIDForTenant :one\n"
-	createSeriesImageVariantQuery          = "-- name: CreateSeriesImageVariant :one\n"
-	deleteSeriesImageVariantsByTypeQuery   = "-- name: DeleteSeriesImageVariantsByType :execrows\n"
-	touchSeriesImageQuery                  = "-- name: TouchSeriesImage :exec\n"
-	listSeriesImageVariantsByImageIDsQuery = "-- name: ListSeriesImageVariantsByImageIDs :many\n"
-	createLabelImageVariantQuery           = "-- name: CreateLabelImageVariant :one\n"
-	deleteLabelImageVariantsByTypeQuery    = "-- name: DeleteLabelImageVariantsByType :execrows\n"
-	touchLabelImageQuery                   = "-- name: TouchLabelImage :exec\n"
 )
 
 // aspectJPEG encodes a plain JPEG of the given size. A ratio upload is checked
@@ -124,7 +114,7 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
@@ -132,36 +122,36 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectBegin()
 	// The row is locked and the eye-catch re-read behind it before anything
 	// is cleared, so two uploads racing on the same ratio serialize.
-	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 	// Only the requested ratio is cleared; the other three keep their rows.
-	mock.ExpectExec(regexp.QuoteMeta(deleteSeriesImageVariantsByTypeQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
 		WithArgs(imageID, "landscape").
 		WillReturnResult(sqlmock.NewResult(0, 3))
 	// landscape is delivered at 800 / 1200 / 1600 px wide.
 	for range 3 {
-		mock.ExpectQuery(regexp.QuoteMeta(createSeriesImageVariantQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesImageVariant)).
 			WillReturnRows(createdImageVariantRow("series_image_id", tenantID, imageID, "landscape", now))
 	}
-	mock.ExpectExec(regexp.QuoteMeta(touchSeriesImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchSeriesImage)).
 		WithArgs(imageID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
-	mock.ExpectQuery("SELECT sc.series_id").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
 			AddRow(imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)).
@@ -202,7 +192,7 @@ func TestUploadSeriesEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
@@ -264,7 +254,7 @@ func TestUploadSeriesEyeCatchAspectImageRejectsASourceBelowTheRatioMinimum(t *te
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
@@ -299,40 +289,40 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
-	mock.ExpectExec(regexp.QuoteMeta(deleteSeriesImageVariantsByTypeQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
 		WithArgs(imageID, "landscape").
 		WillReturnResult(sqlmock.NewResult(0, 3))
 	for range 3 {
-		mock.ExpectQuery(regexp.QuoteMeta(createSeriesImageVariantQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesImageVariant)).
 			WillReturnRows(createdImageVariantRow("series_image_id", tenantID, imageID, "landscape", now))
 	}
-	mock.ExpectExec(regexp.QuoteMeta(touchSeriesImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchSeriesImage)).
 		WithArgs(imageID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
-	mock.ExpectQuery("SELECT sc.series_id").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
 			AddRow(imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
@@ -393,7 +383,7 @@ func TestUploadSeriesEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
@@ -430,7 +420,7 @@ func TestUploadLabelEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
@@ -466,38 +456,38 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(labelID))
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
-	mock.ExpectExec(regexp.QuoteMeta(deleteLabelImageVariantsByTypeQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteLabelImageVariantsByType)).
 		WithArgs(imageID, "square").
 		WillReturnResult(sqlmock.NewResult(0, 3))
 	// square is delivered at 600 / 900 / 1200 px wide.
 	for range 3 {
-		mock.ExpectQuery(regexp.QuoteMeta(createLabelImageVariantQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabelImageVariant)).
 			WillReturnRows(createdImageVariantRow("label_image_id", tenantID, imageID, "square", now))
 	}
-	mock.ExpectExec(regexp.QuoteMeta(touchLabelImageQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchLabelImage)).
 		WithArgs(imageID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listLabelImageVariantsByImageIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("label_image_id")).
 			AddRow(imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))

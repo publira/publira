@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-const getPlatformPolicyConfig = `-- name: GetPlatformPolicyConfig :one
+const GetPlatformPolicyConfig = `-- name: GetPlatformPolicyConfig :one
 SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at
 FROM platform_policy_config
 WHERE singleton = TRUE
@@ -18,7 +18,7 @@ WHERE singleton = TRUE
 // Returns no rows when the platform has never saved its policy, which the
 // server answers with its built-in defaults.
 func (q *Queries) GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformPolicyConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformPolicyConfig)
 	var i PlatformPolicyConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -49,7 +49,7 @@ func (q *Queries) GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyCo
 	return i, err
 }
 
-const insertPlatformPolicyConfig = `-- name: InsertPlatformPolicyConfig :one
+const InsertPlatformPolicyConfig = `-- name: InsertPlatformPolicyConfig :one
 INSERT INTO platform_policy_config (
         singleton,
         mfa_required_for_tenant_admin,
@@ -128,7 +128,7 @@ type InsertPlatformPolicyConfigParams struct {
 // to lock, so a losing racer must fail on the primary key rather than overwrite
 // the row the winner just created.
 func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlatformPolicyConfigParams) (PlatformPolicyConfig, error) {
-	row := q.db.QueryRowContext(ctx, insertPlatformPolicyConfig,
+	row := q.db.QueryRowContext(ctx, InsertPlatformPolicyConfig,
 		arg.MfaRequiredForTenantAdmin,
 		arg.PasswordVerifyLimitPerMinute,
 		arg.PasswordVerifyLimitPerDay,
@@ -180,7 +180,7 @@ func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlat
 	return i, err
 }
 
-const lockPlatformPolicyConfig = `-- name: LockPlatformPolicyConfig :one
+const LockPlatformPolicyConfig = `-- name: LockPlatformPolicyConfig :one
 SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at
 FROM platform_policy_config
 WHERE singleton = TRUE
@@ -190,7 +190,7 @@ FOR UPDATE
 // Reads the policy row for update, so the revision a save compares against
 // cannot change between the comparison and the write.
 func (q *Queries) LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error) {
-	row := q.db.QueryRowContext(ctx, lockPlatformPolicyConfig)
+	row := q.db.QueryRowContext(ctx, LockPlatformPolicyConfig)
 	var i PlatformPolicyConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -221,7 +221,7 @@ func (q *Queries) LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyC
 	return i, err
 }
 
-const updatePlatformPolicyConfig = `-- name: UpdatePlatformPolicyConfig :one
+const UpdatePlatformPolicyConfig = `-- name: UpdatePlatformPolicyConfig :one
 UPDATE platform_policy_config
 SET mfa_required_for_tenant_admin = $1,
     password_verify_limit_per_minute = $2,
@@ -275,7 +275,7 @@ type UpdatePlatformPolicyConfigParams struct {
 // Writes every value over the existing row. The revision moves with every
 // write, which is what makes a save based on an earlier read detectable.
 func (q *Queries) UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlatformPolicyConfigParams) (PlatformPolicyConfig, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformPolicyConfig,
+	row := q.db.QueryRowContext(ctx, UpdatePlatformPolicyConfig,
 		arg.MfaRequiredForTenantAdmin,
 		arg.PasswordVerifyLimitPerMinute,
 		arg.PasswordVerifyLimitPerDay,

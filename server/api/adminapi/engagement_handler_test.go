@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -15,11 +16,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	getEpisodeReadThroughTotalsQuery = "-- name: GetEpisodeReadThroughTotals :one\n"
-	listEpisodeReadThroughDescQuery  = "-- name: ListEpisodeReadThroughDesc :many\n"
 )
 
 func episodeReadThroughColumns() *sqlmock.Rows {
@@ -117,11 +113,11 @@ func TestListEpisodeReadThroughReturnsCountsAndTotals(t *testing.T) {
 
 	firstEpisodeID := uuid.Must(uuid.NewV7())
 	secondEpisodeID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeReadThroughTotalsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeReadThroughTotals)).
 		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"complete_count", "member_view_count"}).
 			AddRow(int64(9), int64(30)))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeReadThroughDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeReadThroughDesc)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{},
@@ -178,12 +174,12 @@ func TestListEpisodeReadThroughPagesOnTheCompletionKeyset(t *testing.T) {
 	client, mock, sessionToken := newEngagementClient(t, tenantID, userID, now)
 
 	boundaryID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeReadThroughTotalsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeReadThroughTotals)).
 		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"complete_count", "member_view_count"}).
 			AddRow(int64(7), int64(20)))
 	// Over-fetching by one is what tells the handler another page exists.
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeReadThroughDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeReadThroughDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullInt64{}, int32(2), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(episodeReadThroughColumns().
 			AddRow(boundaryID, int64(5), int64(12), "EPISODE1", "First", "SERIES1", "Series One").
@@ -224,11 +220,11 @@ func TestListEpisodeReadThroughRecoversFromAnEmptyPage(t *testing.T) {
 
 	boundaryID := uuid.Must(uuid.NewV7())
 	token := pagination.EncodeCountUUID(pagination.Forward, 5, boundaryID)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeReadThroughTotalsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeReadThroughTotals)).
 		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"complete_count", "member_view_count"}).
 			AddRow(int64(0), int64(0)))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeReadThroughDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeReadThroughDesc)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{UUID: boundaryID, Valid: true},

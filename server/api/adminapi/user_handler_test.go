@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -16,11 +17,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-)
-
-const (
-	listTenantUsersAscQuery  = "-- name: ListTenantUsersAsc :many\n"
-	listTenantUsersDescQuery = "-- name: ListTenantUsersDesc :many\n"
 )
 
 func tenantUserColumns() *sqlmock.Rows {
@@ -65,7 +61,7 @@ func TestListTenantUsersAppliesRequestedLimit(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	// limit 2 must reach the query as limit+1, not the page-size maximum.
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUsersDesc)).
 		WithArgs(
 			uuid.NullUUID{UUID: tenantID, Valid: true},
 			sql.NullString{},
@@ -123,7 +119,7 @@ func TestListTenantUsersFallsBackToDefaultLimit(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newTenantUserClient(t, tenantID, actorID, now)
 
-			mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersDescQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUsersDesc)).
 				WithArgs(
 					uuid.NullUUID{UUID: tenantID, Valid: true},
 					sql.NullString{},
@@ -165,7 +161,7 @@ func TestListTenantUsersFiltersByQueryInSQL(t *testing.T) {
 
 	// The keyword goes to the database so that a match beyond the first page is
 	// still found, instead of being filtered out of an already-fetched page.
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUsersDesc)).
 		WithArgs(
 			uuid.NullUUID{UUID: tenantID, Valid: true},
 			sql.NullString{String: "Editor", Valid: true},
@@ -201,7 +197,7 @@ func TestListTenantUsersFollowsPreviousTokenBackwards(t *testing.T) {
 	newerAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newTenantUserClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUsersAsc)).
 		WithArgs(
 			uuid.NullUUID{UUID: tenantID, Valid: true},
 			sql.NullString{},
@@ -252,7 +248,7 @@ func TestListTenantUsersEmptyPageKeepsAWayBack(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	client, mock, sessionToken := newTenantUserClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listTenantUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUsersDesc)).
 		WithArgs(
 			uuid.NullUUID{UUID: tenantID, Valid: true},
 			sql.NullString{},

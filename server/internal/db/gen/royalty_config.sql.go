@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getTenantRoyaltyConfigByTenantID = `-- name: GetTenantRoyaltyConfigByTenantID :one
+const GetTenantRoyaltyConfigByTenantID = `-- name: GetTenantRoyaltyConfigByTenantID :one
 SELECT tenant_id, close_mode, auto_close_day, automatic_since, updated_at
 FROM tenant_royalty_config
 WHERE tenant_id = $1
@@ -20,7 +20,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error) {
-	row := q.db.QueryRowContext(ctx, getTenantRoyaltyConfigByTenantID, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantRoyaltyConfigByTenantID, tenantID)
 	var i TenantRoyaltyConfig
 	err := row.Scan(
 		&i.TenantID,
@@ -32,7 +32,7 @@ func (q *Queries) GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID
 	return i, err
 }
 
-const listAutomaticRoyaltyConfigs = `-- name: ListAutomaticRoyaltyConfigs :many
+const ListAutomaticRoyaltyConfigs = `-- name: ListAutomaticRoyaltyConfigs :many
 SELECT tenant_id, close_mode, auto_close_day, automatic_since, updated_at
 FROM tenant_royalty_config
 WHERE close_mode = 'automatic'
@@ -42,7 +42,7 @@ ORDER BY tenant_id
 // Every tenant that chose automatic closing, for the maintenance pass that
 // closes their months across tenants.
 func (q *Queries) ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error) {
-	rows, err := q.db.QueryContext(ctx, listAutomaticRoyaltyConfigs)
+	rows, err := q.db.QueryContext(ctx, ListAutomaticRoyaltyConfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (q *Queries) ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoya
 	return items, nil
 }
 
-const upsertTenantRoyaltyConfig = `-- name: UpsertTenantRoyaltyConfig :one
+const UpsertTenantRoyaltyConfig = `-- name: UpsertTenantRoyaltyConfig :one
 INSERT INTO tenant_royalty_config (
     tenant_id,
     close_mode,
@@ -105,7 +105,7 @@ type UpsertTenantRoyaltyConfigParams struct {
 }
 
 func (q *Queries) UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertTenantRoyaltyConfig, arg.TenantID, arg.CloseMode, arg.AutoCloseDay)
+	row := q.db.QueryRowContext(ctx, UpsertTenantRoyaltyConfig, arg.TenantID, arg.CloseMode, arg.AutoCloseDay)
 	var i TenantRoyaltyConfig
 	err := row.Scan(
 		&i.TenantID,

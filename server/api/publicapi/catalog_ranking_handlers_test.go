@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"strconv"
@@ -67,7 +68,7 @@ func expectRankingSnapshotPairLookup(
 			previous,
 		)
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(listLatestContentRankingSnapshotsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
 		WithArgs(tenantID, rankingKey, "series", nil, int32(2)).
 		WillReturnRows(rows)
 }
@@ -82,7 +83,7 @@ func expectPinnedRankingSnapshotLookup(
 	current, previous []byte,
 ) {
 	periodStart := computedAt.AddDate(0, 0, -1)
-	mock.ExpectQuery(regexp.QuoteMeta(getContentRankingSnapshotByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
 		WithArgs(tenantID, snapshotID, rankingKey, "series").
 		WillReturnRows(rankingSnapshotRow(
 			sqlmock.NewRows(contentRankingSnapshotColumns()),
@@ -98,7 +99,7 @@ func expectPinnedRankingSnapshotLookup(
 			previous,
 		)
 	}
-	mock.ExpectQuery(regexp.QuoteMeta(listLatestContentRankingSnapshotsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
 		WithArgs(tenantID, rankingKey, "series", periodStart, int32(1)).
 		WillReturnRows(rows)
 }
@@ -141,14 +142,14 @@ func TestCatalogListRankedSeriesReportsSnapshotPositionsAndMovement(t *testing.T
 		rankingItemsJSON(climbed, slipped, entered),
 		rankingItemsJSON(slipped, climbed),
 	)
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: climbed, rank: 1},
 			rankedID{id: slipped, rank: 2},
 			rankedID{id: entered, rank: 3},
 		))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
@@ -203,13 +204,13 @@ func TestCatalogListRankedSeriesKeepsSnapshotPositionsOverAGap(t *testing.T) {
 	// The scan drops the series that was unpublished since the snapshot was
 	// written. The positions around it are the snapshot's own and do not close
 	// up over the gap.
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(4), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(
 			rankedID{id: first, rank: 1},
 			rankedID{id: third, rank: 3},
 		))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(seriesDetailColumns(), third, "THIRD", "Third", now),
@@ -238,10 +239,10 @@ func TestCatalogListRankedSeriesReadsTheWeeklySnapshotForTheWeeklyPeriod(t *test
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "weekly", now, rankingItemsJSON(seriesID), nil)
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "WEEKLY", "Weekly", now))
 
@@ -268,7 +269,7 @@ func TestCatalogListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// The batch has never ranked this tenant. Nothing computed is not a
 	// failure, and there is no window to report either.
-	mock.ExpectQuery(regexp.QuoteMeta(listLatestContentRankingSnapshotsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
 		WithArgs(tenantID, "daily", "series", nil, int32(2)).
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()))
 
@@ -306,10 +307,10 @@ func TestCatalogListRankedSeriesServesTheRankingWhenTheEarlierSnapshotIsMalforme
 	// with it; the positions themselves are correct without them.
 	expectRankingSnapshotPairLookup(mock, tenantID, snapshotID, "daily", now,
 		rankingItemsJSON(seriesID), []byte(`{"broken":true}`))
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "RANKED", "Ranked", now))
 
@@ -342,7 +343,7 @@ func TestCatalogListRankedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectPinnedRankingSnapshotLookup(mock, tenantID, snapshotID, "daily", now, rankingItemsJSON(boundary), nil)
 	// Everything past the boundary was unpublished after the token was issued.
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows())
 
@@ -421,7 +422,7 @@ func TestCatalogListRankedSeriesRejectsATokenWhoseRankingIsGone(t *testing.T) {
 	// The retention purge dropped the snapshot the token was built from. Its
 	// positions cannot be continued in a newer ranking, so the token is refused
 	// and the client starts again at the first page.
-	mock.ExpectQuery(regexp.QuoteMeta(getContentRankingSnapshotByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
 		WithArgs(tenantID, snapshotID, "daily", "series").
 		WillReturnError(sql.ErrNoRows)
 
@@ -454,10 +455,10 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 	// repeat the series around the boundary.
 	expectPinnedRankingSnapshotLookup(mock, tenantID, pinned, "daily", now,
 		rankingItemsJSON(boundary, tail), rankingItemsJSON(tail, boundary))
-	mock.ExpectQuery(regexp.QuoteMeta(listRankedSeriesIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListRankedSeriesIDs)).
 		WithArgs(tenantID, "web", boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
@@ -487,7 +488,7 @@ func TestCatalogListRankedSeriesRejectsAnotherTenantsRequest(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 

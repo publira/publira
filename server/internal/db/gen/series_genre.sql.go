@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createSeriesGenre = `-- name: CreateSeriesGenre :exec
+const CreateSeriesGenre = `-- name: CreateSeriesGenre :exec
 INSERT INTO series_genres (
         tenant_id,
         series_id,
@@ -28,21 +28,21 @@ type CreateSeriesGenreParams struct {
 }
 
 func (q *Queries) CreateSeriesGenre(ctx context.Context, arg CreateSeriesGenreParams) error {
-	_, err := q.db.ExecContext(ctx, createSeriesGenre, arg.TenantID, arg.SeriesID, arg.GenreID)
+	_, err := q.db.ExecContext(ctx, CreateSeriesGenre, arg.TenantID, arg.SeriesID, arg.GenreID)
 	return err
 }
 
-const deleteSeriesGenresBySeriesID = `-- name: DeleteSeriesGenresBySeriesID :exec
+const DeleteSeriesGenresBySeriesID = `-- name: DeleteSeriesGenresBySeriesID :exec
 DELETE FROM series_genres
 WHERE series_id = $1
 `
 
 func (q *Queries) DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteSeriesGenresBySeriesID, seriesID)
+	_, err := q.db.ExecContext(ctx, DeleteSeriesGenresBySeriesID, seriesID)
 	return err
 }
 
-const listSeriesGenresBySeriesIDs = `-- name: ListSeriesGenresBySeriesIDs :many
+const ListSeriesGenresBySeriesIDs = `-- name: ListSeriesGenresBySeriesIDs :many
 SELECT sg.series_id,
     g.public_id,
     g.name,
@@ -66,7 +66,7 @@ type ListSeriesGenresBySeriesIDsRow struct {
 // were assigned in, so every series presents them the same way the genre list
 // does.
 func (q *Queries) ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesGenresBySeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesGenresBySeriesIDs, pq.Array(seriesIds))
+	rows, err := q.db.QueryContext(ctx, ListSeriesGenresBySeriesIDs, pq.Array(seriesIds))
 	if err != nil {
 		return nil, err
 	}

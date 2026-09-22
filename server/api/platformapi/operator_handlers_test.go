@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -15,11 +16,6 @@ import (
 
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-)
-
-const (
-	listPlatformOperatorsAscQuery  = "-- name: ListPlatformOperatorsAsc :many\n"
-	listPlatformOperatorsDescQuery = "-- name: ListPlatformOperatorsDesc :many\n"
 )
 
 func addOperatorRow(
@@ -45,7 +41,7 @@ func TestListOperatorsFirstPageReportsNextToken(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addOperatorRow(
 			addOperatorRow(
@@ -85,7 +81,7 @@ func TestListOperatorsFollowsNextToken(t *testing.T) {
 	resultID := uuid.Must(uuid.NewV7())
 	resultAt := now.Add(-2 * time.Minute)
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addOperatorRow(
 			sqlmock.NewRows(operatorTestColumns()), resultID, "PLATUSER003", resultAt,
@@ -125,7 +121,7 @@ func TestListOperatorsFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryAt := now.Add(-10 * time.Minute)
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsAsc)).
 		WithArgs(boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addOperatorRow(
 			addOperatorRow(sqlmock.NewRows(operatorTestColumns()), uuid.Must(uuid.NewV7()), "PLATUSER002", now.Add(-2*time.Minute)),
@@ -158,8 +154,8 @@ func TestListOperatorsEmptyPageReturnsOneRecoveryToken(t *testing.T) {
 		direction pagination.Direction
 		query     string
 	}{
-		{name: "forward", direction: pagination.Forward, query: listPlatformOperatorsDescQuery},
-		{name: "backward", direction: pagination.Backward, query: listPlatformOperatorsAscQuery},
+		{name: "forward", direction: pagination.Forward, query: dbmodels.ListPlatformOperatorsDesc},
+		{name: "backward", direction: pagination.Backward, query: dbmodels.ListPlatformOperatorsAsc},
 	}
 
 	for _, test := range tests {
@@ -201,7 +197,7 @@ func TestListOperatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(boundaryID, true, now, int32(21)).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()))
 
@@ -243,7 +239,7 @@ func TestListOperatorsHidesDatabaseError(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New("relation platform_users does not exist"))
 
@@ -261,7 +257,7 @@ func TestListOperatorsPreservesContextCanceled(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformOperatorsDesc)).
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(context.Canceled)
 
@@ -278,7 +274,7 @@ func TestGetOperator(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	targetID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER002").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", rolePlatformOperator, "active", now))
@@ -300,7 +296,7 @@ func TestGetOperatorNotFound(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("MISSINGUSER1").
 		WillReturnError(sql.ErrNoRows)
 
@@ -331,23 +327,23 @@ func TestCreateOperatorSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("new-operator@example.com").
 		WillReturnError(sql.ErrNoRows)
 	expectPublicIDAttempt(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUser)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "new-operator@example.com", sqlmock.AnyArg(), "New Operator").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", "active", now, int32(1)))
 	expectPublicIDAttemptReleased(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(newOperatorID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserRoleQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserRole)).
 		WithArgs(sqlmock.AnyArg(), newOperatorID, "platform_operator").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_operator", now, newOperatorID))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATNEW001").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "New Operator", "platform_operator", "active", now))
@@ -393,18 +389,18 @@ func TestUpdateOperatorRoleSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER002").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_operator", "active", now))
-	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformUserRolesByPlatformUserID)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserRolesByPlatformUserID)).
 		WithArgs(targetID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserRoleQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserRole)).
 		WithArgs(sqlmock.AnyArg(), targetID, "platform_auditor").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_auditor", now, targetID))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER002").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "active", now))
@@ -432,19 +428,19 @@ func TestSuspendOperatorSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER003").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "active", now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserStatusQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatus)).
 		WithArgs("PLATUSER003", "suspended").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "hash", "Operator Three", "suspended", now, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpPlatformUserCredentialsVersion)).
 		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER003").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "suspended", now))
@@ -469,7 +465,7 @@ func TestUnsuspendOperatorRejectsInvalidState(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER004").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER004", "operator4@example.com", "Operator Four", "platform_operator", "active", now))
@@ -490,19 +486,19 @@ func TestDeactivateOperatorSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER005").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "active", now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserStatusQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatus)).
 		WithArgs("PLATUSER005", "inactive").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "hash", "Operator Five", "inactive", now, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpPlatformUserCredentialsVersion)).
 		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER005").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "inactive", now))
@@ -539,7 +535,7 @@ func TestDeactivateOperatorSelfDeactivationForbidden(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(adminID, "PLATUSER001", "platform@example.com", "Platform User", "platform_super_admin", "active", now))
@@ -560,7 +556,7 @@ func TestDeactivateOperatorAlreadyInactiveRejected(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
 		WithArgs("PLATUSER006").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER006", "operator6@example.com", "Operator Six", "platform_operator", "inactive", now))

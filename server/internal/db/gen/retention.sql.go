@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getPlatformRetentionConfig = `-- name: GetPlatformRetentionConfig :one
+const GetPlatformRetentionConfig = `-- name: GetPlatformRetentionConfig :one
 SELECT singleton, withdrawn_comment_days, content_event_days, daily_ranking_snapshot_days, weekly_ranking_snapshot_days, revision, created_at, updated_at
 FROM platform_retention_config
 WHERE singleton = TRUE
@@ -21,7 +21,7 @@ WHERE singleton = TRUE
 // Returns no rows when the platform has never saved its retention defaults,
 // which the server answers with its built-in defaults.
 func (q *Queries) GetPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformRetentionConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformRetentionConfig)
 	var i PlatformRetentionConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -36,7 +36,7 @@ func (q *Queries) GetPlatformRetentionConfig(ctx context.Context) (PlatformReten
 	return i, err
 }
 
-const getTenantRetentionSettings = `-- name: GetTenantRetentionSettings :one
+const GetTenantRetentionSettings = `-- name: GetTenantRetentionSettings :one
 SELECT tenant_id, withdrawn_comment_days, content_event_days, daily_ranking_snapshot_days, weekly_ranking_snapshot_days, revision, created_at, updated_at
 FROM tenant_retention_settings
 WHERE tenant_id = $1
@@ -44,7 +44,7 @@ WHERE tenant_id = $1
 
 // Returns no rows when the tenant has never saved an override.
 func (q *Queries) GetTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error) {
-	row := q.db.QueryRowContext(ctx, getTenantRetentionSettings, tenantID)
+	row := q.db.QueryRowContext(ctx, GetTenantRetentionSettings, tenantID)
 	var i TenantRetentionSetting
 	err := row.Scan(
 		&i.TenantID,
@@ -59,7 +59,7 @@ func (q *Queries) GetTenantRetentionSettings(ctx context.Context, tenantID uuid.
 	return i, err
 }
 
-const insertPlatformRetentionConfig = `-- name: InsertPlatformRetentionConfig :one
+const InsertPlatformRetentionConfig = `-- name: InsertPlatformRetentionConfig :one
 INSERT INTO platform_retention_config (
         singleton,
         withdrawn_comment_days,
@@ -90,7 +90,7 @@ type InsertPlatformRetentionConfigParams struct {
 // nothing to lock, so a losing racer must fail on the primary key rather than
 // overwrite the row the winner just created.
 func (q *Queries) InsertPlatformRetentionConfig(ctx context.Context, arg InsertPlatformRetentionConfigParams) (PlatformRetentionConfig, error) {
-	row := q.db.QueryRowContext(ctx, insertPlatformRetentionConfig,
+	row := q.db.QueryRowContext(ctx, InsertPlatformRetentionConfig,
 		arg.WithdrawnCommentDays,
 		arg.ContentEventDays,
 		arg.DailyRankingSnapshotDays,
@@ -110,7 +110,7 @@ func (q *Queries) InsertPlatformRetentionConfig(ctx context.Context, arg InsertP
 	return i, err
 }
 
-const insertTenantRetentionSettings = `-- name: InsertTenantRetentionSettings :one
+const InsertTenantRetentionSettings = `-- name: InsertTenantRetentionSettings :one
 INSERT INTO tenant_retention_settings (
         tenant_id,
         withdrawn_comment_days,
@@ -140,7 +140,7 @@ type InsertTenantRetentionSettingsParams struct {
 
 // No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 func (q *Queries) InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error) {
-	row := q.db.QueryRowContext(ctx, insertTenantRetentionSettings,
+	row := q.db.QueryRowContext(ctx, InsertTenantRetentionSettings,
 		arg.TenantID,
 		arg.WithdrawnCommentDays,
 		arg.ContentEventDays,
@@ -161,7 +161,7 @@ func (q *Queries) InsertTenantRetentionSettings(ctx context.Context, arg InsertT
 	return i, err
 }
 
-const listTenantRetentionSettings = `-- name: ListTenantRetentionSettings :many
+const ListTenantRetentionSettings = `-- name: ListTenantRetentionSettings :many
 SELECT tenant_id, withdrawn_comment_days, content_event_days, daily_ranking_snapshot_days, weekly_ranking_snapshot_days, revision, created_at, updated_at
 FROM tenant_retention_settings
 ORDER BY tenant_id
@@ -170,7 +170,7 @@ ORDER BY tenant_id
 // Every tenant's overrides, for a batch that spans all tenants. A tenant with
 // no row follows the platform defaults.
 func (q *Queries) ListTenantRetentionSettings(ctx context.Context) ([]TenantRetentionSetting, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantRetentionSettings)
+	rows, err := q.db.QueryContext(ctx, ListTenantRetentionSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (q *Queries) ListTenantRetentionSettings(ctx context.Context) ([]TenantRete
 	return items, nil
 }
 
-const lockPlatformRetentionConfig = `-- name: LockPlatformRetentionConfig :one
+const LockPlatformRetentionConfig = `-- name: LockPlatformRetentionConfig :one
 SELECT singleton, withdrawn_comment_days, content_event_days, daily_ranking_snapshot_days, weekly_ranking_snapshot_days, revision, created_at, updated_at
 FROM platform_retention_config
 WHERE singleton = TRUE
@@ -211,7 +211,7 @@ FOR UPDATE
 // Reads the defaults row for update, so the revision a save compares against
 // cannot change between the comparison and the write.
 func (q *Queries) LockPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error) {
-	row := q.db.QueryRowContext(ctx, lockPlatformRetentionConfig)
+	row := q.db.QueryRowContext(ctx, LockPlatformRetentionConfig)
 	var i PlatformRetentionConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -226,7 +226,7 @@ func (q *Queries) LockPlatformRetentionConfig(ctx context.Context) (PlatformRete
 	return i, err
 }
 
-const lockTenantRetentionSettings = `-- name: LockTenantRetentionSettings :one
+const LockTenantRetentionSettings = `-- name: LockTenantRetentionSettings :one
 SELECT tenant_id, withdrawn_comment_days, content_event_days, daily_ranking_snapshot_days, weekly_ranking_snapshot_days, revision, created_at, updated_at
 FROM tenant_retention_settings
 WHERE tenant_id = $1
@@ -234,7 +234,7 @@ FOR UPDATE
 `
 
 func (q *Queries) LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error) {
-	row := q.db.QueryRowContext(ctx, lockTenantRetentionSettings, tenantID)
+	row := q.db.QueryRowContext(ctx, LockTenantRetentionSettings, tenantID)
 	var i TenantRetentionSetting
 	err := row.Scan(
 		&i.TenantID,
@@ -249,7 +249,7 @@ func (q *Queries) LockTenantRetentionSettings(ctx context.Context, tenantID uuid
 	return i, err
 }
 
-const updatePlatformRetentionConfig = `-- name: UpdatePlatformRetentionConfig :one
+const UpdatePlatformRetentionConfig = `-- name: UpdatePlatformRetentionConfig :one
 UPDATE platform_retention_config
 SET withdrawn_comment_days = $1,
     content_event_days = $2,
@@ -269,7 +269,7 @@ type UpdatePlatformRetentionConfigParams struct {
 }
 
 func (q *Queries) UpdatePlatformRetentionConfig(ctx context.Context, arg UpdatePlatformRetentionConfigParams) (PlatformRetentionConfig, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformRetentionConfig,
+	row := q.db.QueryRowContext(ctx, UpdatePlatformRetentionConfig,
 		arg.WithdrawnCommentDays,
 		arg.ContentEventDays,
 		arg.DailyRankingSnapshotDays,
@@ -289,7 +289,7 @@ func (q *Queries) UpdatePlatformRetentionConfig(ctx context.Context, arg UpdateP
 	return i, err
 }
 
-const updateTenantRetentionSettings = `-- name: UpdateTenantRetentionSettings :one
+const UpdateTenantRetentionSettings = `-- name: UpdateTenantRetentionSettings :one
 UPDATE tenant_retention_settings
 SET withdrawn_comment_days = $1,
     content_event_days = $2,
@@ -310,7 +310,7 @@ type UpdateTenantRetentionSettingsParams struct {
 }
 
 func (q *Queries) UpdateTenantRetentionSettings(ctx context.Context, arg UpdateTenantRetentionSettingsParams) (TenantRetentionSetting, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantRetentionSettings,
+	row := q.db.QueryRowContext(ctx, UpdateTenantRetentionSettings,
 		arg.WithdrawnCommentDays,
 		arg.ContentEventDays,
 		arg.DailyRankingSnapshotDays,

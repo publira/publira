@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-const getPlatformConfig = `-- name: GetPlatformConfig :one
+const GetPlatformConfig = `-- name: GetPlatformConfig :one
 SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
 FROM platform_config
 WHERE singleton = TRUE
@@ -17,7 +17,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformConfig)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -30,7 +30,7 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	return i, err
 }
 
-const insertPlatformSettings = `-- name: InsertPlatformSettings :one
+const InsertPlatformSettings = `-- name: InsertPlatformSettings :one
 INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
 VALUES (
         TRUE,
@@ -51,7 +51,7 @@ type InsertPlatformSettingsParams struct {
 // absent, so a losing racer must fail on the primary key rather than overwrite
 // the row the winner just created.
 func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatformSettingsParams) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, insertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	row := q.db.QueryRowContext(ctx, InsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -64,7 +64,7 @@ func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatform
 	return i, err
 }
 
-const lockPlatformConfig = `-- name: LockPlatformConfig :one
+const LockPlatformConfig = `-- name: LockPlatformConfig :one
 SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
 FROM platform_config
 WHERE singleton = TRUE
@@ -75,7 +75,7 @@ FOR UPDATE
 // revision it compares against cannot change between the comparison and the
 // write. Returns no rows when the platform has never saved any settings.
 func (q *Queries) LockPlatformConfig(ctx context.Context) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, lockPlatformConfig)
+	row := q.db.QueryRowContext(ctx, LockPlatformConfig)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -88,7 +88,7 @@ func (q *Queries) LockPlatformConfig(ctx context.Context) (PlatformConfig, error
 	return i, err
 }
 
-const updatePlatformSettings = `-- name: UpdatePlatformSettings :one
+const UpdatePlatformSettings = `-- name: UpdatePlatformSettings :one
 UPDATE platform_config
 SET default_timezone = $1,
     default_locale = $2,
@@ -107,7 +107,7 @@ type UpdatePlatformSettingsParams struct {
 // revision moves with every write, which is what makes a save based on an
 // earlier read detectable.
 func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -120,7 +120,7 @@ func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatform
 	return i, err
 }
 
-const upsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
+const UpsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
 INSERT INTO platform_config (singleton, default_locale, updated_at)
 VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
 UPDATE
@@ -134,7 +134,7 @@ RETURNING singleton, default_timezone, default_locale, created_at, updated_at, r
 // been chosen at that point, so a new row leaves it to the column DEFAULT and
 // an existing row keeps the value it already has.
 func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultLocale, defaultLocale)
+	row := q.db.QueryRowContext(ctx, UpsertPlatformDefaultLocale, defaultLocale)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,

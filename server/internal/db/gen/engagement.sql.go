@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getContentDailyStatsByEntity = `-- name: GetContentDailyStatsByEntity :one
+const GetContentDailyStatsByEntity = `-- name: GetContentDailyStatsByEntity :one
 SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at, comment_count
 FROM content_daily_stats
 WHERE tenant_id = $1
@@ -31,7 +31,7 @@ type GetContentDailyStatsByEntityParams struct {
 }
 
 func (q *Queries) GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error) {
-	row := q.db.QueryRowContext(ctx, getContentDailyStatsByEntity,
+	row := q.db.QueryRowContext(ctx, GetContentDailyStatsByEntity,
 		arg.TenantID,
 		arg.StatDate,
 		arg.EntityType,
@@ -58,14 +58,14 @@ func (q *Queries) GetContentDailyStatsByEntity(ctx context.Context, arg GetConte
 	return i, err
 }
 
-const getContentEventByID = `-- name: GetContentEventByID :one
+const GetContentEventByID = `-- name: GetContentEventByID :one
 SELECT id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
 FROM content_events
 WHERE id = $1
 `
 
 func (q *Queries) GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, getContentEventByID, id)
+	row := q.db.QueryRowContext(ctx, GetContentEventByID, id)
 	var i ContentEvent
 	err := row.Scan(
 		&i.ID,
@@ -87,7 +87,7 @@ func (q *Queries) GetContentEventByID(ctx context.Context, id uuid.UUID) (Conten
 	return i, err
 }
 
-const getContentRankingSnapshot = `-- name: GetContentRankingSnapshot :one
+const GetContentRankingSnapshot = `-- name: GetContentRankingSnapshot :one
 SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
@@ -108,7 +108,7 @@ type GetContentRankingSnapshotParams struct {
 }
 
 func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
-	row := q.db.QueryRowContext(ctx, getContentRankingSnapshot,
+	row := q.db.QueryRowContext(ctx, GetContentRankingSnapshot,
 		arg.TenantID,
 		arg.RankingKey,
 		arg.PeriodStart,
@@ -131,7 +131,7 @@ func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentR
 	return i, err
 }
 
-const getContentRankingSnapshotByID = `-- name: GetContentRankingSnapshotByID :one
+const GetContentRankingSnapshotByID = `-- name: GetContentRankingSnapshotByID :one
 SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
@@ -161,7 +161,7 @@ type GetContentRankingSnapshotByIDParams struct {
 // dropped is the same no answer, and the caller rejects the token instead of
 // silently continuing in a newer ranking.
 func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error) {
-	row := q.db.QueryRowContext(ctx, getContentRankingSnapshotByID,
+	row := q.db.QueryRowContext(ctx, GetContentRankingSnapshotByID,
 		arg.TenantID,
 		arg.ID,
 		arg.RankingKey,
@@ -182,7 +182,7 @@ func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetCont
 	return i, err
 }
 
-const getEpisodeReadThroughTotals = `-- name: GetEpisodeReadThroughTotals :one
+const GetEpisodeReadThroughTotals = `-- name: GetEpisodeReadThroughTotals :one
 SELECT COALESCE(sum(complete_count), 0)::bigint AS complete_count,
     COALESCE(sum(member_view_count), 0)::bigint AS member_view_count
 FROM content_daily_stats
@@ -209,13 +209,13 @@ type GetEpisodeReadThroughTotalsRow struct {
 // rate assembled from one page's rows would describe that page instead of the
 // period.
 func (q *Queries) GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeReadThroughTotals, arg.TenantID, arg.PeriodStart, arg.PeriodEnd)
+	row := q.db.QueryRowContext(ctx, GetEpisodeReadThroughTotals, arg.TenantID, arg.PeriodStart, arg.PeriodEnd)
 	var i GetEpisodeReadThroughTotalsRow
 	err := row.Scan(&i.CompleteCount, &i.MemberViewCount)
 	return i, err
 }
 
-const getItemRecommendFeatures = `-- name: GetItemRecommendFeatures :one
+const GetItemRecommendFeatures = `-- name: GetItemRecommendFeatures :one
 SELECT tenant_id, entity_type, entity_id, features, feature_version, computed_at
 FROM item_recommend_features
 WHERE tenant_id = $1
@@ -230,7 +230,7 @@ type GetItemRecommendFeaturesParams struct {
 }
 
 func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error) {
-	row := q.db.QueryRowContext(ctx, getItemRecommendFeatures, arg.TenantID, arg.EntityType, arg.EntityID)
+	row := q.db.QueryRowContext(ctx, GetItemRecommendFeatures, arg.TenantID, arg.EntityType, arg.EntityID)
 	var i ItemRecommendFeature
 	err := row.Scan(
 		&i.TenantID,
@@ -243,7 +243,7 @@ func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecom
 	return i, err
 }
 
-const getLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
+const GetLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
 SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
@@ -266,7 +266,7 @@ type GetLatestContentRankingSnapshotParams struct {
 // files its snapshots beside the old ones rather than replacing them, and wins
 // here because it was computed later.
 func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
-	row := q.db.QueryRowContext(ctx, getLatestContentRankingSnapshot, arg.TenantID, arg.RankingKey, arg.EntityType)
+	row := q.db.QueryRowContext(ctx, GetLatestContentRankingSnapshot, arg.TenantID, arg.RankingKey, arg.EntityType)
 	var i ContentRankingSnapshot
 	err := row.Scan(
 		&i.ID,
@@ -282,7 +282,7 @@ func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLa
 	return i, err
 }
 
-const getUserRecommendFeatures = `-- name: GetUserRecommendFeatures :one
+const GetUserRecommendFeatures = `-- name: GetUserRecommendFeatures :one
 SELECT tenant_id, user_id, features, feature_version, computed_at
 FROM user_recommend_features
 WHERE tenant_id = $1
@@ -295,7 +295,7 @@ type GetUserRecommendFeaturesParams struct {
 }
 
 func (q *Queries) GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error) {
-	row := q.db.QueryRowContext(ctx, getUserRecommendFeatures, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, GetUserRecommendFeatures, arg.TenantID, arg.UserID)
 	var i UserRecommendFeature
 	err := row.Scan(
 		&i.TenantID,
@@ -307,7 +307,7 @@ func (q *Queries) GetUserRecommendFeatures(ctx context.Context, arg GetUserRecom
 	return i, err
 }
 
-const insertContentEvent = `-- name: InsertContentEvent :one
+const InsertContentEvent = `-- name: InsertContentEvent :one
 
 INSERT INTO content_events (
     id,
@@ -393,7 +393,7 @@ type InsertContentEventParams struct {
 //	  -> idx_content_daily_stats_tenant_date for the window, then a sort on the
 //	     aggregate it groups (see the note there)
 func (q *Queries) InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertContentEvent,
+	row := q.db.QueryRowContext(ctx, InsertContentEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.EventType,
@@ -429,7 +429,7 @@ func (q *Queries) InsertContentEvent(ctx context.Context, arg InsertContentEvent
 	return i, err
 }
 
-const insertDebouncedEpisodeViewEvent = `-- name: InsertDebouncedEpisodeViewEvent :one
+const InsertDebouncedEpisodeViewEvent = `-- name: InsertDebouncedEpisodeViewEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -474,7 +474,7 @@ type InsertDebouncedEpisodeViewEventParams struct {
 // Fixed 30-minute epoch bucket. Same actor + episode + bucket is a no-op.
 // :one returns no rows on conflict (same as CreateNotification).
 func (q *Queries) InsertDebouncedEpisodeViewEvent(ctx context.Context, arg InsertDebouncedEpisodeViewEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertDebouncedEpisodeViewEvent,
+	row := q.db.QueryRowContext(ctx, InsertDebouncedEpisodeViewEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -506,7 +506,7 @@ func (q *Queries) InsertDebouncedEpisodeViewEvent(ctx context.Context, arg Inser
 	return i, err
 }
 
-const insertDebouncedSeriesViewEvent = `-- name: InsertDebouncedSeriesViewEvent :one
+const InsertDebouncedSeriesViewEvent = `-- name: InsertDebouncedSeriesViewEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -546,7 +546,7 @@ type InsertDebouncedSeriesViewEventParams struct {
 }
 
 func (q *Queries) InsertDebouncedSeriesViewEvent(ctx context.Context, arg InsertDebouncedSeriesViewEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertDebouncedSeriesViewEvent,
+	row := q.db.QueryRowContext(ctx, InsertDebouncedSeriesViewEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -577,7 +577,7 @@ func (q *Queries) InsertDebouncedSeriesViewEvent(ctx context.Context, arg Insert
 	return i, err
 }
 
-const insertProjectedSourceEvent = `-- name: InsertProjectedSourceEvent :one
+const InsertProjectedSourceEvent = `-- name: InsertProjectedSourceEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -622,7 +622,7 @@ type InsertProjectedSourceEventParams struct {
 
 // Idempotent projection from a SoT row (purchases.id, access_tickets.id).
 func (q *Queries) InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertProjectedSourceEvent,
+	row := q.db.QueryRowContext(ctx, InsertProjectedSourceEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.EventType,
@@ -655,7 +655,7 @@ func (q *Queries) InsertProjectedSourceEvent(ctx context.Context, arg InsertProj
 	return i, err
 }
 
-const insertRatingEvent = `-- name: InsertRatingEvent :one
+const InsertRatingEvent = `-- name: InsertRatingEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -707,7 +707,7 @@ type InsertRatingEventParams struct {
 // reading the latest event per actor: the current score is a row, not a
 // reduction over the log.
 func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertRatingEvent,
+	row := q.db.QueryRowContext(ctx, InsertRatingEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -737,7 +737,7 @@ func (q *Queries) InsertRatingEvent(ctx context.Context, arg InsertRatingEventPa
 	return i, err
 }
 
-const listContentDailyStatsByTenantDate = `-- name: ListContentDailyStatsByTenantDate :many
+const ListContentDailyStatsByTenantDate = `-- name: ListContentDailyStatsByTenantDate :many
 SELECT id, tenant_id, stat_date, entity_type, entity_id, view_count, unique_viewer_count, member_view_count, purchase_count, complete_count, rating_count, rating_sum, favorite_count, updated_at, comment_count
 FROM content_daily_stats
 WHERE tenant_id = $1
@@ -751,7 +751,7 @@ type ListContentDailyStatsByTenantDateParams struct {
 }
 
 func (q *Queries) ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error) {
-	rows, err := q.db.QueryContext(ctx, listContentDailyStatsByTenantDate, arg.TenantID, arg.StatDate)
+	rows, err := q.db.QueryContext(ctx, ListContentDailyStatsByTenantDate, arg.TenantID, arg.StatDate)
 	if err != nil {
 		return nil, err
 	}
@@ -789,7 +789,7 @@ func (q *Queries) ListContentDailyStatsByTenantDate(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const listContentEventsByTenantOccurredAt = `-- name: ListContentEventsByTenantOccurredAt :many
+const ListContentEventsByTenantOccurredAt = `-- name: ListContentEventsByTenantOccurredAt :many
 SELECT id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
 FROM content_events
 WHERE tenant_id = $1
@@ -804,7 +804,7 @@ type ListContentEventsByTenantOccurredAtParams struct {
 
 // Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
 func (q *Queries) ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error) {
-	rows, err := q.db.QueryContext(ctx, listContentEventsByTenantOccurredAt, arg.TenantID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, ListContentEventsByTenantOccurredAt, arg.TenantID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -842,7 +842,7 @@ func (q *Queries) ListContentEventsByTenantOccurredAt(ctx context.Context, arg L
 	return items, nil
 }
 
-const listContentEventsByTenantTypeOccurredAt = `-- name: ListContentEventsByTenantTypeOccurredAt :many
+const ListContentEventsByTenantTypeOccurredAt = `-- name: ListContentEventsByTenantTypeOccurredAt :many
 SELECT id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
 FROM content_events
 WHERE tenant_id = $1
@@ -859,7 +859,7 @@ type ListContentEventsByTenantTypeOccurredAtParams struct {
 
 // Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
 func (q *Queries) ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error) {
-	rows, err := q.db.QueryContext(ctx, listContentEventsByTenantTypeOccurredAt, arg.TenantID, arg.EventType, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, ListContentEventsByTenantTypeOccurredAt, arg.TenantID, arg.EventType, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -897,7 +897,7 @@ func (q *Queries) ListContentEventsByTenantTypeOccurredAt(ctx context.Context, a
 	return items, nil
 }
 
-const listEpisodeReadThroughAsc = `-- name: ListEpisodeReadThroughAsc :many
+const ListEpisodeReadThroughAsc = `-- name: ListEpisodeReadThroughAsc :many
 WITH totals AS (
     SELECT s.entity_id,
         sum(s.complete_count)::bigint AS complete_count,
@@ -964,7 +964,7 @@ type ListEpisodeReadThroughAscRow struct {
 // ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 // The order it describes is the same one.
 func (q *Queries) ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeReadThroughAsc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeReadThroughAsc,
 		arg.TenantID,
 		arg.CursorEntityID,
 		arg.CursorInclusive,
@@ -1002,7 +1002,7 @@ func (q *Queries) ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisode
 	return items, nil
 }
 
-const listEpisodeReadThroughDesc = `-- name: ListEpisodeReadThroughDesc :many
+const ListEpisodeReadThroughDesc = `-- name: ListEpisodeReadThroughDesc :many
 WITH totals AS (
     SELECT s.entity_id,
         sum(s.complete_count)::bigint AS complete_count,
@@ -1081,7 +1081,7 @@ type ListEpisodeReadThroughDescRow struct {
 // (complete_count, entity_id) is unique because entity_id alone is, so the
 // keyset scan can neither skip nor repeat episodes that tie on completions.
 func (q *Queries) ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeReadThroughDesc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeReadThroughDesc,
 		arg.TenantID,
 		arg.CursorEntityID,
 		arg.CursorInclusive,
@@ -1119,7 +1119,7 @@ func (q *Queries) ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisod
 	return items, nil
 }
 
-const listLatestContentRankingSnapshots = `-- name: ListLatestContentRankingSnapshots :many
+const ListLatestContentRankingSnapshots = `-- name: ListLatestContentRankingSnapshots :many
 SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
@@ -1166,7 +1166,7 @@ type ListLatestContentRankingSnapshotsParams struct {
 // narrows the scan to one tenant's ranking key, and what is left is the periods
 // purge-content-rankings has not yet dropped — a sort over days, not over rows.
 func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error) {
-	rows, err := q.db.QueryContext(ctx, listLatestContentRankingSnapshots,
+	rows, err := q.db.QueryContext(ctx, ListLatestContentRankingSnapshots,
 		arg.TenantID,
 		arg.RankingKey,
 		arg.EntityType,
@@ -1204,7 +1204,7 @@ func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const listRankedSeriesIDs = `-- name: ListRankedSeriesIDs :many
+const ListRankedSeriesIDs = `-- name: ListRankedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
@@ -1282,7 +1282,7 @@ type ListRankedSeriesIDsRow struct {
 // is bounded by one snapshot's items (50 by default), each joined to one series
 // row by primary key.
 func (q *Queries) ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesIDsParams) ([]ListRankedSeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRankedSeriesIDs,
+	rows, err := q.db.QueryContext(ctx, ListRankedSeriesIDs,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -1312,7 +1312,7 @@ func (q *Queries) ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesI
 	return items, nil
 }
 
-const listRankedSeriesIDsReversed = `-- name: ListRankedSeriesIDsReversed :many
+const ListRankedSeriesIDsReversed = `-- name: ListRankedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
@@ -1371,7 +1371,7 @@ type ListRankedSeriesIDsReversedRow struct {
 // ListRankedSeriesIDs walked the other way, to build a previous page. The
 // order it describes is the same one.
 func (q *Queries) ListRankedSeriesIDsReversed(ctx context.Context, arg ListRankedSeriesIDsReversedParams) ([]ListRankedSeriesIDsReversedRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRankedSeriesIDsReversed,
+	rows, err := q.db.QueryContext(ctx, ListRankedSeriesIDsReversed,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -1401,7 +1401,7 @@ func (q *Queries) ListRankedSeriesIDsReversed(ctx context.Context, arg ListRanke
 	return items, nil
 }
 
-const listRecommendedSeriesIDs = `-- name: ListRecommendedSeriesIDs :many
+const ListRecommendedSeriesIDs = `-- name: ListRecommendedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
@@ -1492,7 +1492,7 @@ type ListRecommendedSeriesIDsRow struct {
 // one tenant's catalogue, and ranking_items is one snapshot (50 items by
 // default), folded per entity_id so the LEFT JOIN cannot multiply rows.
 func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommendedSeriesIDsParams) ([]ListRecommendedSeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDs,
+	rows, err := q.db.QueryContext(ctx, ListRecommendedSeriesIDs,
 		arg.CursorID,
 		arg.CursorRank,
 		arg.CursorInclusive,
@@ -1523,7 +1523,7 @@ func (q *Queries) ListRecommendedSeriesIDs(ctx context.Context, arg ListRecommen
 	return items, nil
 }
 
-const listRecommendedSeriesIDsReversed = `-- name: ListRecommendedSeriesIDsReversed :many
+const ListRecommendedSeriesIDsReversed = `-- name: ListRecommendedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
@@ -1597,7 +1597,7 @@ type ListRecommendedSeriesIDsReversedRow struct {
 // ListRecommendedSeriesIDs walked the other way. It exists only to build a
 // previous page; the order it describes is the same one.
 func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg ListRecommendedSeriesIDsReversedParams) ([]ListRecommendedSeriesIDsReversedRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecommendedSeriesIDsReversed,
+	rows, err := q.db.QueryContext(ctx, ListRecommendedSeriesIDsReversed,
 		arg.CursorID,
 		arg.CursorRank,
 		arg.CursorInclusive,
@@ -1628,7 +1628,7 @@ func (q *Queries) ListRecommendedSeriesIDsReversed(ctx context.Context, arg List
 	return items, nil
 }
 
-const listRelatedSeriesIDs = `-- name: ListRelatedSeriesIDs :many
+const ListRelatedSeriesIDs = `-- name: ListRelatedSeriesIDs :many
 WITH subject AS (
     SELECT s.id,
         s.label_id
@@ -1789,7 +1789,7 @@ type ListRelatedSeriesIDsRow struct {
 // scan is bounded by one tenant's published series, each scored by three
 // lookups on primary-key-ordered join tables.
 func (q *Queries) ListRelatedSeriesIDs(ctx context.Context, arg ListRelatedSeriesIDsParams) ([]ListRelatedSeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRelatedSeriesIDs,
+	rows, err := q.db.QueryContext(ctx, ListRelatedSeriesIDs,
 		arg.CursorID,
 		arg.CursorScore,
 		arg.CursorRank,
@@ -1822,7 +1822,7 @@ func (q *Queries) ListRelatedSeriesIDs(ctx context.Context, arg ListRelatedSerie
 	return items, nil
 }
 
-const listRelatedSeriesIDsReversed = `-- name: ListRelatedSeriesIDsReversed :many
+const ListRelatedSeriesIDsReversed = `-- name: ListRelatedSeriesIDsReversed :many
 WITH subject AS (
     SELECT s.id,
         s.label_id
@@ -1963,7 +1963,7 @@ type ListRelatedSeriesIDsReversedRow struct {
 // ListRelatedSeriesIDs walked the other way. It exists only to build a
 // previous page; the order it describes is the same one.
 func (q *Queries) ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRelatedSeriesIDsReversed,
+	rows, err := q.db.QueryContext(ctx, ListRelatedSeriesIDsReversed,
 		arg.CursorID,
 		arg.CursorScore,
 		arg.CursorRank,
@@ -1996,7 +1996,7 @@ func (q *Queries) ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRela
 	return items, nil
 }
 
-const projectCommentContentEvent = `-- name: ProjectCommentContentEvent :one
+const ProjectCommentContentEvent = `-- name: ProjectCommentContentEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -2055,7 +2055,7 @@ type ProjectCommentContentEventParams struct {
 // and the immediate-mode insert both land on the comment's own id, so a second
 // attempt is turned into a no-op by the unique index.
 func (q *Queries) ProjectCommentContentEvent(ctx context.Context, arg ProjectCommentContentEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, projectCommentContentEvent, arg.ID, arg.TenantID, arg.CommentID)
+	row := q.db.QueryRowContext(ctx, ProjectCommentContentEvent, arg.ID, arg.TenantID, arg.CommentID)
 	var i ContentEvent
 	err := row.Scan(
 		&i.ID,
@@ -2077,7 +2077,7 @@ func (q *Queries) ProjectCommentContentEvent(ctx context.Context, arg ProjectCom
 	return i, err
 }
 
-const projectEpisodeCompleteEvent = `-- name: ProjectEpisodeCompleteEvent :one
+const ProjectEpisodeCompleteEvent = `-- name: ProjectEpisodeCompleteEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -2131,7 +2131,7 @@ type ProjectEpisodeCompleteEventParams struct {
 // the same source key and the unique index turns the second attempt into a
 // no-op. Nothing here depends on knowing whether the read row was new.
 func (q *Queries) ProjectEpisodeCompleteEvent(ctx context.Context, arg ProjectEpisodeCompleteEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, projectEpisodeCompleteEvent,
+	row := q.db.QueryRowContext(ctx, ProjectEpisodeCompleteEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -2158,7 +2158,7 @@ func (q *Queries) ProjectEpisodeCompleteEvent(ctx context.Context, arg ProjectEp
 	return i, err
 }
 
-const projectPendingEpisodeCompleteEvents = `-- name: ProjectPendingEpisodeCompleteEvents :one
+const ProjectPendingEpisodeCompleteEvents = `-- name: ProjectPendingEpisodeCompleteEvents :one
 WITH candidates AS (
     SELECT r.id,
         r.tenant_id,
@@ -2241,13 +2241,13 @@ type ProjectPendingEpisodeCompleteEventsRow struct {
 // whole batch; content_events ids are UUIDv7 so that events sharing an
 // occurred_at still order by when they were recorded.
 func (q *Queries) ProjectPendingEpisodeCompleteEvents(ctx context.Context, limit int32) (ProjectPendingEpisodeCompleteEventsRow, error) {
-	row := q.db.QueryRowContext(ctx, projectPendingEpisodeCompleteEvents, limit)
+	row := q.db.QueryRowContext(ctx, ProjectPendingEpisodeCompleteEvents, limit)
 	var i ProjectPendingEpisodeCompleteEventsRow
 	err := row.Scan(&i.CandidateCount, &i.InsertedCount)
 	return i, err
 }
 
-const projectPurchaseContentEvent = `-- name: ProjectPurchaseContentEvent :one
+const ProjectPurchaseContentEvent = `-- name: ProjectPurchaseContentEvent :one
 INSERT INTO content_events (
     id,
     tenant_id,
@@ -2298,7 +2298,7 @@ type ProjectPurchaseContentEventParams struct {
 // this projection into that aggregate until its source contract moves to
 // content_events, or purchases will be counted twice.
 func (q *Queries) ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, projectPurchaseContentEvent, arg.ID, arg.TenantID, arg.StripeCheckoutSessionID)
+	row := q.db.QueryRowContext(ctx, ProjectPurchaseContentEvent, arg.ID, arg.TenantID, arg.StripeCheckoutSessionID)
 	var i ContentEvent
 	err := row.Scan(
 		&i.ID,
@@ -2320,7 +2320,7 @@ func (q *Queries) ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPu
 	return i, err
 }
 
-const upsertContentDailyStats = `-- name: UpsertContentDailyStats :one
+const UpsertContentDailyStats = `-- name: UpsertContentDailyStats :one
 INSERT INTO content_daily_stats (
     id,
     tenant_id,
@@ -2391,7 +2391,7 @@ type UpsertContentDailyStatsParams struct {
 // across a date range therefore averages ratings *given* in that range, not
 // the ratings an item currently holds (ListLatestContentRatingsByEntity).
 func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContentDailyStatsParams) (ContentDailyStat, error) {
-	row := q.db.QueryRowContext(ctx, upsertContentDailyStats,
+	row := q.db.QueryRowContext(ctx, UpsertContentDailyStats,
 		arg.ID,
 		arg.TenantID,
 		arg.StatDate,
@@ -2428,7 +2428,7 @@ func (q *Queries) UpsertContentDailyStats(ctx context.Context, arg UpsertContent
 	return i, err
 }
 
-const upsertContentRankingSnapshot = `-- name: UpsertContentRankingSnapshot :one
+const UpsertContentRankingSnapshot = `-- name: UpsertContentRankingSnapshot :one
 INSERT INTO content_ranking_snapshots (
     id,
     tenant_id,
@@ -2469,7 +2469,7 @@ type UpsertContentRankingSnapshotParams struct {
 }
 
 func (q *Queries) UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
-	row := q.db.QueryRowContext(ctx, upsertContentRankingSnapshot,
+	row := q.db.QueryRowContext(ctx, UpsertContentRankingSnapshot,
 		arg.ID,
 		arg.TenantID,
 		arg.RankingKey,
@@ -2495,7 +2495,7 @@ func (q *Queries) UpsertContentRankingSnapshot(ctx context.Context, arg UpsertCo
 	return i, err
 }
 
-const upsertItemRecommendFeatures = `-- name: UpsertItemRecommendFeatures :one
+const UpsertItemRecommendFeatures = `-- name: UpsertItemRecommendFeatures :one
 INSERT INTO item_recommend_features (
     tenant_id,
     entity_type,
@@ -2528,7 +2528,7 @@ type UpsertItemRecommendFeaturesParams struct {
 }
 
 func (q *Queries) UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error) {
-	row := q.db.QueryRowContext(ctx, upsertItemRecommendFeatures,
+	row := q.db.QueryRowContext(ctx, UpsertItemRecommendFeatures,
 		arg.TenantID,
 		arg.EntityType,
 		arg.EntityID,
@@ -2548,7 +2548,7 @@ func (q *Queries) UpsertItemRecommendFeatures(ctx context.Context, arg UpsertIte
 	return i, err
 }
 
-const upsertUserRecommendFeatures = `-- name: UpsertUserRecommendFeatures :one
+const UpsertUserRecommendFeatures = `-- name: UpsertUserRecommendFeatures :one
 INSERT INTO user_recommend_features (
     tenant_id,
     user_id,
@@ -2578,7 +2578,7 @@ type UpsertUserRecommendFeaturesParams struct {
 }
 
 func (q *Queries) UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserRecommendFeatures,
+	row := q.db.QueryRowContext(ctx, UpsertUserRecommendFeatures,
 		arg.TenantID,
 		arg.UserID,
 		arg.Features,

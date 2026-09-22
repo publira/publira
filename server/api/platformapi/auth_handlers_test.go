@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -45,12 +46,12 @@ func TestPlatformAuthLoginSuccess(t *testing.T) {
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("platform@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now, int32(1)))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
 
@@ -72,7 +73,7 @@ func TestPlatformAuthLoginSuccess(t *testing.T) {
 
 func TestPlatformAuthLoginDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("platform@example.com").
 		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
 
@@ -94,21 +95,21 @@ func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("platform@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	// The token and the mail that carries it are written together, so a request
 	// that cannot be announced leaves no usable token behind.
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformUserPasswordResetTokens)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserPasswordResetTokensByUserID)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserPasswordResetToken)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserPasswordResetToken)).
 		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
 			AddRow(uuid.Must(uuid.NewV7()), userID, "token-hash", now.Add(time.Hour), nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetEmail))
 	mock.ExpectCommit()
@@ -128,7 +129,7 @@ func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 func TestPlatformAuthRequestPasswordResetUnknownUserReturnsRequested(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("missing@example.com").
 		WillReturnError(sql.ErrNoRows)
 
@@ -149,7 +150,7 @@ func TestPlatformAuthVerifyPasswordResetTokenValid(t *testing.T) {
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformPasswordResetTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserPasswordResetTokenByHash)).
 		WithArgs(auth.HashToken("valid-token")).
 		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
 			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken("valid-token"), now.Add(time.Hour), nil, now))
@@ -172,23 +173,23 @@ func TestPlatformAuthConfirmPasswordResetSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	tokenID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformPasswordResetTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserPasswordResetTokenByHash)).
 		WithArgs(auth.HashToken("valid-token")).
 		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
 			AddRow(tokenID, userID, auth.HashToken("valid-token"), now.Add(time.Hour), nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByID)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserPasswordHashByID)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserPasswordHashByID)).
 		WithArgs(userID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "updated-hash", "Platform User", "active", now, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpPlatformUserCredentialsVersion)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "updated-hash", "Platform User", "active", now, int32(2)))
-	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformPasswordResetTokenCompleted)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkPlatformUserPasswordResetTokenCompleted)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -208,7 +209,7 @@ func TestPlatformAuthConfirmPasswordResetSuccess(t *testing.T) {
 func TestPlatformAuthConfirmPasswordResetInvalidToken(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformPasswordResetTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserPasswordResetTokenByHash)).
 		WithArgs(auth.HashToken("invalid-token")).
 		WillReturnError(sql.ErrNoRows)
 
@@ -231,28 +232,28 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now, int32(1)))
-	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("next@example.com").
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformEmailChangeTokens)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserEmailChangeTokensByUserID)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformEmailChangeToken)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserEmailChangeToken)).
 		WithArgs(sqlmock.AnyArg(), userID, "platform@example.com", "next@example.com", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "current_email", "new_email", "current_email_token_hash", "new_email_token_hash", "current_email_confirmed_at", "new_email_confirmed_at", "expires_at", "completed_at", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), userID, "platform@example.com", "next@example.com", "h1", "h2", nil, nil, now.Add(time.Hour), nil, now))
 	// One event per address to confirm, so a delivery failure to one side is
 	// retried without resending the other.
 	for range 2 {
-		mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 			WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformEmailChangeConfirmationEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 			WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformEmailChangeConfirmationEmail))
 	}
@@ -278,7 +279,7 @@ func TestPlatformAuthVerifyEmailChangeTokenValid(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	tokenID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformEmailChangeTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserEmailChangeTokenByHash)).
 		WithArgs(auth.HashToken("valid-email-token")).
 		WillReturnRows(sqlmock.NewRows(platformEmailChangeTokenColumns()).
 			AddRow(tokenID, userID, "platform@example.com", "next@example.com", "h1", auth.HashToken("valid-email-token"), nil, nil, now.Add(time.Hour), nil, now, "new_email"))
@@ -299,28 +300,28 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	tokenID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformEmailChangeTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserEmailChangeTokenByHash)).
 		WithArgs(auth.HashToken("confirm-token")).
 		WillReturnRows(sqlmock.NewRows(platformEmailChangeTokenColumns()).
 			AddRow(tokenID, userID, "platform@example.com", "next@example.com", "h1", auth.HashToken("confirm-token"), now.Add(-10*time.Minute), nil, now.Add(time.Hour), nil, now, "new_email"))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByID)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
-	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeNewConfirmed)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkPlatformUserEmailChangeNewEmailConfirmed)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	// The stored address, the completion, and the notice announcing both go in
 	// together: the previous address is never told about a change that failed.
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserEmailByID)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserEmailByID)).
 		WithArgs(userID, "next@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "next@example.com", "hashed", "Platform User", "active", now, int32(1)))
-	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeCompleted)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkPlatformUserEmailChangeCompleted)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(testInsertOutboxEventQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformEmailChangedNoticeEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformEmailChangedNoticeEmail))
 	mock.ExpectCommit()
@@ -341,15 +342,15 @@ func TestPlatformAuthConfirmEmailChangePendingAfterFirstConfirmation(t *testing.
 	userID := uuid.Must(uuid.NewV7())
 	tokenID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformEmailChangeTokenByHash)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserEmailChangeTokenByHash)).
 		WithArgs(auth.HashToken("first-token")).
 		WillReturnRows(sqlmock.NewRows(platformEmailChangeTokenColumns()).
 			AddRow(tokenID, userID, "platform@example.com", "next@example.com", auth.HashToken("first-token"), "h2", nil, nil, now.Add(time.Hour), nil, now, "current_email"))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByID)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
-	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeCurrentConfirmed)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkPlatformUserEmailChangeCurrentEmailConfirmed)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -415,7 +416,7 @@ func TestPlatformAuthGetMeUnauthenticated(t *testing.T) {
 func TestPlatformAuthLoginInvalidCredentials(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
 		WithArgs("platform@example.com").
 		WillReturnError(sql.ErrNoRows)
 

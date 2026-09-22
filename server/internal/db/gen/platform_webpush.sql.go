@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-const getPlatformWebPushConfig = `-- name: GetPlatformWebPushConfig :one
+const GetPlatformWebPushConfig = `-- name: GetPlatformWebPushConfig :one
 SELECT singleton, vapid_public_key, vapid_private_key_encrypted, subject, revision, created_at, updated_at
 FROM platform_webpush_config
 WHERE singleton = TRUE
@@ -17,7 +17,7 @@ WHERE singleton = TRUE
 
 // Returns no rows until the server has generated a key pair.
 func (q *Queries) GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformWebPushConfig)
+	row := q.db.QueryRowContext(ctx, GetPlatformWebPushConfig)
 	var i PlatformWebpushConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -31,7 +31,7 @@ func (q *Queries) GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpush
 	return i, err
 }
 
-const getPublishedWebPushPublicKey = `-- name: GetPublishedWebPushPublicKey :one
+const GetPublishedWebPushPublicKey = `-- name: GetPublishedWebPushPublicKey :one
 SELECT vapid_public_key
 FROM platform_webpush_config
 WHERE singleton = TRUE
@@ -42,13 +42,13 @@ WHERE singleton = TRUE
 // granted only the columns named here. No rows while Web Push is not
 // configured, so the key is never offered before a push could be signed.
 func (q *Queries) GetPublishedWebPushPublicKey(ctx context.Context) (string, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedWebPushPublicKey)
+	row := q.db.QueryRowContext(ctx, GetPublishedWebPushPublicKey)
 	var vapid_public_key string
 	err := row.Scan(&vapid_public_key)
 	return vapid_public_key, err
 }
 
-const insertPlatformWebPushKeyPair = `-- name: InsertPlatformWebPushKeyPair :execrows
+const InsertPlatformWebPushKeyPair = `-- name: InsertPlatformWebPushKeyPair :execrows
 INSERT INTO platform_webpush_config (
         singleton,
         vapid_public_key,
@@ -72,14 +72,14 @@ type InsertPlatformWebPushKeyPairParams struct {
 // first one stored: replacing it would orphan the subscriptions already made
 // against it.
 func (q *Queries) InsertPlatformWebPushKeyPair(ctx context.Context, arg InsertPlatformWebPushKeyPairParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertPlatformWebPushKeyPair, arg.VapidPublicKey, arg.VapidPrivateKeyEncrypted)
+	result, err := q.db.ExecContext(ctx, InsertPlatformWebPushKeyPair, arg.VapidPublicKey, arg.VapidPrivateKeyEncrypted)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const lockPlatformWebPushConfig = `-- name: LockPlatformWebPushConfig :one
+const LockPlatformWebPushConfig = `-- name: LockPlatformWebPushConfig :one
 SELECT singleton, vapid_public_key, vapid_private_key_encrypted, subject, revision, created_at, updated_at
 FROM platform_webpush_config
 WHERE singleton = TRUE
@@ -89,7 +89,7 @@ FOR UPDATE
 // Reads the row for update, so the revision a save compares against cannot
 // change between the comparison and the write.
 func (q *Queries) LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error) {
-	row := q.db.QueryRowContext(ctx, lockPlatformWebPushConfig)
+	row := q.db.QueryRowContext(ctx, LockPlatformWebPushConfig)
 	var i PlatformWebpushConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -103,7 +103,7 @@ func (q *Queries) LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpus
 	return i, err
 }
 
-const updatePlatformWebPushSubject = `-- name: UpdatePlatformWebPushSubject :one
+const UpdatePlatformWebPushSubject = `-- name: UpdatePlatformWebPushSubject :one
 UPDATE platform_webpush_config
 SET subject = $1::text,
     revision = revision + 1,
@@ -113,7 +113,7 @@ RETURNING singleton, vapid_public_key, vapid_private_key_encrypted, subject, rev
 `
 
 func (q *Queries) UpdatePlatformWebPushSubject(ctx context.Context, subject string) (PlatformWebpushConfig, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformWebPushSubject, subject)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformWebPushSubject, subject)
 	var i PlatformWebpushConfig
 	err := row.Scan(
 		&i.Singleton,

@@ -112,7 +112,7 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -146,7 +146,7 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 	webhookHint := paymentsettings.MaskSecret(testPaymentWebhookSecret)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(addPaymentConfigRow(
 			sqlmock.NewRows(tenantPaymentColumns()),
@@ -211,7 +211,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
@@ -267,10 +267,10 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	webhookHint := paymentsettings.MaskSecret(testPaymentWebhookSecret)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantPaymentConfigByTenantIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
-	mock.ExpectQuery(regexp.QuoteMeta(upsertTenantPaymentConfigQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantPaymentConfig)).
 		WithArgs(
 			tenantID,
 			paymentsettings.ProviderStripe,

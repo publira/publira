@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
@@ -47,7 +48,7 @@ func TestListEndUsers(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now, "TENANT000001", "Readers"))
 
@@ -75,7 +76,7 @@ func TestListEndUsersDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, userID, "platform_operator", now)
-	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
 		WillReturnError(errors.New(`pq: relation "users" does not exist`))
 
 	_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
@@ -109,12 +110,12 @@ func TestGetEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByUserID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
@@ -136,7 +137,7 @@ func TestGetEndUserNotFound(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("NOTEXIST01").
 		WillReturnError(sql.ErrNoRows)
 
@@ -158,30 +159,30 @@ func TestSuspendEndUser(t *testing.T) {
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
 	// ensureManageableEndUser: read the user.
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
 
 	// ensureManageableEndUser: check tenant membership, of which there is none.
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
 	// Update the status to suspended.
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatus)).
 		WithArgs("EUSER00001", "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil))
 
 	// Invalidate the sessions.
-	mock.ExpectQuery(regexp.QuoteMeta(testBumpUserCredentialsVersionQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpUserCredentialsVersion)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2), nil))
 
 	// Read the tenant, of which there is none.
-	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByUserID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
@@ -207,13 +208,13 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("PLATUSER002").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", nil, now))
 
 	// Refused because the user holds a tenant role.
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
@@ -233,21 +234,21 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "suspended", nil, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatus)).
 		WithArgs("EUSER00001", "active").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByUserID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
@@ -273,12 +274,12 @@ func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("TENANTUSER01").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "TENANTUSER01", "Tenant User", "tenantuser@example.com", "suspended", nil, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_editor"))
 
@@ -298,16 +299,16 @@ func TestDeleteEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
-	mock.ExpectExec(regexp.QuoteMeta(testDeleteUserByIDQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserByID)).
 		WithArgs(endUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -333,12 +334,12 @@ func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
 		WithArgs("PLATUSER002").
 		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
 			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", nil, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
@@ -378,7 +379,7 @@ func TestListEndUsersFirstPageReportsNextToken(t *testing.T) {
 			addEndUserRow(sqlmock.NewRows(listEndUsersResultColumns()), newerID, "EUSER00001", "Newer", now.Add(-time.Minute)),
 			olderID, "EUSER00002", "Older", olderAt),
 		extraID, "EUSER00003", "Extra", now.Add(-3*time.Minute))
-	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
@@ -417,7 +418,7 @@ func TestListEndUsersFollowsPreviousTokenBackwards(t *testing.T) {
 	rows := addEndUserRow(
 		addEndUserRow(sqlmock.NewRows(listEndUsersResultColumns()), olderID, "EUSER00002", "Older", olderAt),
 		newerID, "EUSER00001", "Newer", now.Add(-time.Minute))
-	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersAsc)).
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
@@ -453,7 +454,7 @@ func TestListEndUsersEmptyPageKeepsAWayBack(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()))
 

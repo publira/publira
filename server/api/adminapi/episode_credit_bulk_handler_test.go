@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"fmt"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -47,27 +48,27 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(predecessorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now).
 			AddRow(successorID, tenantID, "CREATOR002", "Hana Kubo", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorRolesByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Artist", int32(2)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES000001").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(lockEpisodesByPublicIDsForTenantAndSeriesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByPublicIDsForTenantAndSeries)).
 		WillReturnRows(lockedEpisodes)
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesHoldingBothEpisodeCreditsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesHoldingBothEpisodeCredits)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}))
-	mock.ExpectQuery(regexp.QuoteMeta(bulkReplaceEpisodeCreatorQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BulkReplaceEpisodeCreator)).
 		WillReturnRows(replacedEpisodes)
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesCreditedOnTheEpisodeItselfQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesCreditedOnTheEpisodeItself)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}))
 	mock.ExpectCommit()
-	mock.ExpectExec("INSERT INTO audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -140,19 +141,19 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorRolesByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Artist", int32(2)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 		WithArgs(tenantID, "SERIES000001").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(lockEpisodesByPublicIDsForTenantAndSeriesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByPublicIDsForTenantAndSeries)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP000000001"))
-	mock.ExpectQuery("ListEpisodesExceedingShareAfterBulkSet").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesExceedingShareAfterBulkSet)).
 		WithArgs(tenantID, sqlmock.AnyArg(), creatorID, roleID, int32(6000)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}).AddRow(episodeID))
 	mock.ExpectRollback()

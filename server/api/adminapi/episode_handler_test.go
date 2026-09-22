@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -45,14 +46,14 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
-	mock.ExpectQuery("INSERT INTO episode_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "app")
 	mock.ExpectCommit()
-	mock.ExpectExec("INSERT INTO audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -105,18 +106,18 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
 	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeOrderIndexBySeriesForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenant)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(30)))
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 31", int32(31), now, "EP031")
-	mock.ExpectQuery("INSERT INTO episode_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
 	mock.ExpectCommit()
-	mock.ExpectExec("INSERT INTO audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -152,7 +153,7 @@ func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
 	mock.ExpectBegin()
 	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
-	mock.ExpectQuery("INSERT INTO episode_listings").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
 		WillReturnError(errors.New("listing insert failed"))
 	mock.ExpectRollback()
@@ -246,7 +247,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 					WithArgs(tenantID, "SERIES_OTHER_TENANT").
 					WillReturnRows(sqlmock.NewRows([]string{"id"}))
 				mock.ExpectRollback()
@@ -263,7 +264,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectBegin()
 				expectLockSeriesByPublicID(mock, tenantID, "SERIES001", uuid.Must(uuid.NewV7()))
-				mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeOrderIndexBySeriesForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenant)).
 					WithArgs(tenantID, "SERIES001").
 					WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(math.MaxInt32)))
 				mock.ExpectRollback()
@@ -401,7 +402,7 @@ func TestReorderEpisodesRollsBackWhenUpdateFails(t *testing.T) {
 		addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
 		ids[1], "EP002", 2,
 	))
-	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries)).
 		WithArgs(tenantID, "SERIES001", "EP002", int32(1)).
 		WillReturnError(errors.New("order update failed"))
 	mock.ExpectRollback()
@@ -467,7 +468,7 @@ func TestReorderEpisodesValidationAndBoundary(t *testing.T) {
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
 					WithArgs(tenantID, "SERIES_MISSING").
 					WillReturnRows(sqlmock.NewRows([]string{"id"}))
 				mock.ExpectRollback()
@@ -511,22 +512,22 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
 	// First image (1x1 PNG)
 	image1ID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(image1ID, tenantID, episodeID, int32(1), now))
-	mock.ExpectQuery("INSERT INTO episode_image_variants").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 		WithArgs(sqlmock.AnyArg(), tenantID, image1ID, "w1", "s3", sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), image1ID, "w1", "s3", "obj-1", "image/png", int64(67), int32(1), int32(1), now, tenantID))
@@ -535,11 +536,11 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	// Second image (1x1 JPEG)
 	image2ID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(2)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(image2ID, tenantID, episodeID, int32(2), now))
-	mock.ExpectQuery("INSERT INTO episode_image_variants").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 		WithArgs(sqlmock.AnyArg(), tenantID, image2ID, "w1", "s3", sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), image2ID, "w1", "s3", "obj-2", "image/jpeg", int64(163), int32(1), int32(1), now, tenantID))
@@ -586,11 +587,11 @@ func TestListEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(imageID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
@@ -627,22 +628,22 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 	imageColumns := []string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows(imageColumns).
 			AddRow(image1ID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)).
 			AddRow(image2ID, tenantID, episodeID, int32(2), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
-	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeImageDisplayOrderByIDForEpisodeQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisode)).
 		WithArgs(image2ID, episodeID, int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeImageDisplayOrderByIDForEpisodeQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisode)).
 		WithArgs(image1ID, episodeID, int32(2)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows(imageColumns).
 			AddRow(image2ID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)).
@@ -694,7 +695,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE_NOT_FOUND").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}))
 			},
@@ -708,11 +709,11 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-				mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 					WithArgs(sqlmock.AnyArg()).
 					WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 			},
@@ -763,11 +764,11 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
@@ -783,13 +784,13 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	}
 
 	createdImageID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(createdImageID, tenantID, episodeID, int32(1), now))
 
 	for _, variant := range variantSizes {
-		mock.ExpectQuery("INSERT INTO episode_image_variants").
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 			WithArgs(sqlmock.AnyArg(), tenantID, createdImageID, variant.label, "s3", sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), variant.width, variant.height).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 				AddRow(uuid.Must(uuid.NewV7()), createdImageID, variant.label, "s3", "obj", "image/jpeg", int64(2048), variant.width, variant.height, now, tenantID))
@@ -831,31 +832,31 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 		WithArgs(tenantID, "SERIES001", "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
 	image1ID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(image1ID, tenantID, episodeID, int32(1), now))
-	mock.ExpectQuery("INSERT INTO episode_image_variants").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 		WithArgs(sqlmock.AnyArg(), tenantID, image1ID, "w1", "s3", sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), image1ID, "w1", "s3", "obj-1", "image/png", int64(67), int32(1), int32(1), now, tenantID))
 	expectAdminAuditLogInsert(mock)
 
 	image2ID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(2)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(image2ID, tenantID, episodeID, int32(2), now))
-	mock.ExpectQuery("INSERT INTO episode_image_variants").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 		WithArgs(sqlmock.AnyArg(), tenantID, image2ID, "w1", "s3", sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), image2ID, "w1", "s3", "obj-2", "image/jpeg", int64(163), int32(1), int32(1), now, tenantID))
@@ -925,7 +926,7 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 				),
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 					WithArgs(tenantID, "SERIES_OTHER", "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}))
 			},
@@ -1033,14 +1034,14 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				scheduledAt, _ := time.Parse(time.RFC3339, "2030-01-01T10:00:00+09:00")
 				normalized := scheduledAt.UTC()
-				mock.ExpectExec(regexp.QuoteMeta(updateEpisodePublishScheduleByPublicIDForTenantQuery)).
+				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE001", sql.NullTime{Time: normalized, Valid: true}).
 					WillReturnResult(sqlmock.NewResult(0, 1))
-				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil, nil, nil, nil, nil, nil, nil, "all"))
-				mock.ExpectExec("INSERT INTO audit_logs").
+				mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantSuccess: true,
@@ -1177,7 +1178,7 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
 		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(3)).
 		WillReturnRows(addEpisodeRow(
 			addEpisodeRow(
@@ -1218,7 +1219,7 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
 		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP001", 1))
 
@@ -1243,7 +1244,7 @@ func TestListEpisodesFollowsNextToken(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
 		WithArgs(tenantID, "SERIES001", boundaryID, false, int32(2), int32(3)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP003", 3))
 
@@ -1273,7 +1274,7 @@ func TestListEpisodesFollowsPreviousTokenBackwards(t *testing.T) {
 	boundaryID := uuid.Must(uuid.NewV7())
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantDesc)).
 		WithArgs(tenantID, "SERIES001", boundaryID, false, int32(3), int32(3)).
 		WillReturnRows(addEpisodeRow(
 			addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP002", 2),
@@ -1310,15 +1311,15 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                  "forward",
 			direction:             pagination.Forward,
-			wantQuery:             listEpisodesBySeriesForTenantAscQuery,
-			wantRecoveryQuery:     listEpisodesBySeriesForTenantDescQuery,
+			wantQuery:             dbmodels.ListEpisodesBySeriesForTenantAsc,
+			wantRecoveryQuery:     dbmodels.ListEpisodesBySeriesForTenantDesc,
 			wantRecoveredEpisodes: []string{"EP001", "EP002"},
 		},
 		{
 			name:                  "backward",
 			direction:             pagination.Backward,
-			wantQuery:             listEpisodesBySeriesForTenantDescQuery,
-			wantRecoveryQuery:     listEpisodesBySeriesForTenantAscQuery,
+			wantQuery:             dbmodels.ListEpisodesBySeriesForTenantDesc,
+			wantRecoveryQuery:     dbmodels.ListEpisodesBySeriesForTenantAsc,
 			wantRecoveredEpisodes: []string{"EP002", "EP003"},
 		},
 	}
@@ -1390,12 +1391,12 @@ func TestListEpisodesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listEpisodesBySeriesForTenantDescQuery,
+			wantQuery: dbmodels.ListEpisodesBySeriesForTenantDesc,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listEpisodesBySeriesForTenantAscQuery,
+			wantQuery: dbmodels.ListEpisodesBySeriesForTenantAsc,
 		},
 	}
 
@@ -1474,7 +1475,7 @@ func TestListEpisodesDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
 		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
 
@@ -1574,7 +1575,7 @@ func TestAdminGetEpisode(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-			mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 				WithArgs(tenantID, tc.seriesPublicID, tc.publicID).
 				WillReturnRows(tc.rows)
 
@@ -1659,7 +1660,7 @@ func TestAdminGetEpisodeDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 		WithArgs(tenantID, "SERIES001", "EPISODE001").
 		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
 
@@ -1686,7 +1687,7 @@ func TestAdminGetEpisodePreservesContextCanceled(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 		WithArgs(tenantID, "SERIES001", "EPISODE001").
 		WillReturnError(context.Canceled)
 
@@ -1727,14 +1728,14 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now))
@@ -1788,16 +1789,16 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
-	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
 	createdImageID := uuid.Must(uuid.NewV7())
-	mock.ExpectQuery("INSERT INTO episode_images").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImage)).
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(createdImageID, tenantID, episodeID, int32(1), now))
@@ -1805,7 +1806,7 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 		label         string
 		width, height int32
 	}{{"w480", 480, 270}, {"w960", 960, 540}, {"w1440", 1440, 810}, {"w1600", 1600, 900}} {
-		mock.ExpectQuery("INSERT INTO episode_image_variants").
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeImageVariant)).
 			WithArgs(sqlmock.AnyArg(), tenantID, createdImageID, variant.label, "s3", sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), variant.width, variant.height).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at", "tenant_id"}).
 				AddRow(uuid.Must(uuid.NewV7()), createdImageID, variant.label, "s3", "obj", "image/jpeg", int64(2048), variant.width, variant.height, now, tenantID))

@@ -209,7 +209,7 @@ func TestSendMarksTheInvalidationDoneOnceEveryAppAnswered(t *testing.T) {
 	eventID := uuid.Must(uuid.NewV7())
 	mock.ExpectExec("app.current_tenant_id").WithArgs(tenantID.String()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: MarkPendingOutboxEventDone :one")).WithArgs(eventID).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPendingOutboxEventDone)).WithArgs(eventID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "event_type", "payload", "idempotency_key",
 			"status", "attempts", "available_at", "last_error", "created_at", "updated_at",

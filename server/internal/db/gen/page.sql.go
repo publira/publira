@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createPage = `-- name: CreatePage :one
+const CreatePage = `-- name: CreatePage :one
 INSERT INTO pages (id, tenant_id, slug, title, display_in_footer)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at
@@ -28,7 +28,7 @@ type CreatePageParams struct {
 }
 
 func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, error) {
-	row := q.db.QueryRowContext(ctx, createPage,
+	row := q.db.QueryRowContext(ctx, CreatePage,
 		arg.ID,
 		arg.TenantID,
 		arg.Slug,
@@ -49,7 +49,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 	return i, err
 }
 
-const createPageVersion = `-- name: CreatePageVersion :one
+const CreatePageVersion = `-- name: CreatePageVersion :one
 INSERT INTO page_versions (id, page_id, tenant_id, version_number, content_markdown, author_user_id)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id
@@ -65,7 +65,7 @@ type CreatePageVersionParams struct {
 }
 
 func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error) {
-	row := q.db.QueryRowContext(ctx, createPageVersion,
+	row := q.db.QueryRowContext(ctx, CreatePageVersion,
 		arg.ID,
 		arg.PageID,
 		arg.TenantID,
@@ -89,7 +89,7 @@ func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionPa
 	return i, err
 }
 
-const getMaxPageVersionNumberByPageID = `-- name: GetMaxPageVersionNumberByPageID :one
+const GetMaxPageVersionNumberByPageID = `-- name: GetMaxPageVersionNumberByPageID :one
 SELECT COALESCE(MAX(version_number), 0)::int AS max_version
 FROM page_versions
 WHERE page_id = $1
@@ -98,13 +98,13 @@ WHERE page_id = $1
 // The caller adds one to this to number the version it is about to create;
 // COALESCE makes the first version of a page number 1.
 func (q *Queries) GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getMaxPageVersionNumberByPageID, pageID)
+	row := q.db.QueryRowContext(ctx, GetMaxPageVersionNumberByPageID, pageID)
 	var max_version int32
 	err := row.Scan(&max_version)
 	return max_version, err
 }
 
-const getPageByIDForTenant = `-- name: GetPageByIDForTenant :one
+const GetPageByIDForTenant = `-- name: GetPageByIDForTenant :one
 SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE id = $1 AND tenant_id = $2
 `
@@ -115,7 +115,7 @@ type GetPageByIDForTenantParams struct {
 }
 
 func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error) {
-	row := q.db.QueryRowContext(ctx, getPageByIDForTenant, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetPageByIDForTenant, arg.ID, arg.TenantID)
 	var i Page
 	err := row.Scan(
 		&i.ID,
@@ -130,7 +130,7 @@ func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTe
 	return i, err
 }
 
-const getPageVersionByIDForPage = `-- name: GetPageVersionByIDForPage :one
+const GetPageVersionByIDForPage = `-- name: GetPageVersionByIDForPage :one
 SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id FROM page_versions
 WHERE id = $1 AND page_id = $2
 `
@@ -141,7 +141,7 @@ type GetPageVersionByIDForPageParams struct {
 }
 
 func (q *Queries) GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error) {
-	row := q.db.QueryRowContext(ctx, getPageVersionByIDForPage, arg.ID, arg.PageID)
+	row := q.db.QueryRowContext(ctx, GetPageVersionByIDForPage, arg.ID, arg.PageID)
 	var i PageVersion
 	err := row.Scan(
 		&i.ID,
@@ -158,7 +158,7 @@ func (q *Queries) GetPageVersionByIDForPage(ctx context.Context, arg GetPageVers
 	return i, err
 }
 
-const getPublishedPageBySlugForTenant = `-- name: GetPublishedPageBySlugForTenant :one
+const GetPublishedPageBySlugForTenant = `-- name: GetPublishedPageBySlugForTenant :one
 SELECT p.id,
 	p.tenant_id,
 	p.slug,
@@ -212,7 +212,7 @@ type GetPublishedPageBySlugForTenantRow struct {
 }
 
 func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedPageBySlugForTenant, arg.TenantID, arg.Slug)
+	row := q.db.QueryRowContext(ctx, GetPublishedPageBySlugForTenant, arg.TenantID, arg.Slug)
 	var i GetPublishedPageBySlugForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -236,14 +236,14 @@ func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPu
 	return i, err
 }
 
-const listPageVersionsByPageID = `-- name: ListPageVersionsByPageID :many
+const ListPageVersionsByPageID = `-- name: ListPageVersionsByPageID :many
 SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id FROM page_versions
 WHERE page_id = $1
 ORDER BY version_number DESC
 `
 
 func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error) {
-	rows, err := q.db.QueryContext(ctx, listPageVersionsByPageID, pageID)
+	rows, err := q.db.QueryContext(ctx, ListPageVersionsByPageID, pageID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID
 	return items, nil
 }
 
-const listPagesForTenantAsc = `-- name: ListPagesForTenantAsc :many
+const ListPagesForTenantAsc = `-- name: ListPagesForTenantAsc :many
 SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE tenant_id = $1
 	AND (
@@ -307,7 +307,7 @@ type ListPagesForTenantAscParams struct {
 // flips DESC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error) {
-	rows, err := q.db.QueryContext(ctx, listPagesForTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListPagesForTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -344,7 +344,7 @@ func (q *Queries) ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTen
 	return items, nil
 }
 
-const listPagesForTenantDesc = `-- name: ListPagesForTenantDesc :many
+const ListPagesForTenantDesc = `-- name: ListPagesForTenantDesc :many
 SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE tenant_id = $1
 	AND (
@@ -371,7 +371,7 @@ type ListPagesForTenantDescParams struct {
 }
 
 func (q *Queries) ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error) {
-	rows, err := q.db.QueryContext(ctx, listPagesForTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListPagesForTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -408,7 +408,7 @@ func (q *Queries) ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTe
 	return items, nil
 }
 
-const listPublishedPageSlugsForTenant = `-- name: ListPublishedPageSlugsForTenant :many
+const ListPublishedPageSlugsForTenant = `-- name: ListPublishedPageSlugsForTenant :many
 SELECT p.slug
 FROM pages p
 	JOIN page_versions pv ON pv.id = p.published_version_id
@@ -422,7 +422,7 @@ ORDER BY p.slug ASC
 // Every published page, footer or not: the public site routes a path to a page
 // by this set, so a page left out of the footer is still reachable at its slug.
 func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedPageSlugsForTenant, tenantID)
+	rows, err := q.db.QueryContext(ctx, ListPublishedPageSlugsForTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +444,7 @@ func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID 
 	return items, nil
 }
 
-const listPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
+const ListPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
 SELECT p.id, p.tenant_id, p.slug, p.title, p.published_version_id, p.display_in_footer, p.created_at, p.updated_at
 FROM pages p
 	JOIN page_versions pv ON pv.id = p.published_version_id
@@ -459,7 +459,7 @@ ORDER BY p.created_at ASC
 // Restricted to the pages flagged for the footer, which is the only place a
 // reader navigates to them from.
 func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedPagesForTenant, tenantID)
+	rows, err := q.db.QueryContext(ctx, ListPublishedPagesForTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +490,7 @@ func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid
 	return items, nil
 }
 
-const publishPageVersion = `-- name: PublishPageVersion :one
+const PublishPageVersion = `-- name: PublishPageVersion :one
 UPDATE page_versions
 SET status = 'published', published_at = NOW()
 WHERE id = $1 AND page_id = $2
@@ -503,7 +503,7 @@ type PublishPageVersionParams struct {
 }
 
 func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error) {
-	row := q.db.QueryRowContext(ctx, publishPageVersion, arg.ID, arg.PageID)
+	row := q.db.QueryRowContext(ctx, PublishPageVersion, arg.ID, arg.PageID)
 	var i PageVersion
 	err := row.Scan(
 		&i.ID,
@@ -520,7 +520,7 @@ func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersion
 	return i, err
 }
 
-const setPagePublishedVersion = `-- name: SetPagePublishedVersion :one
+const SetPagePublishedVersion = `-- name: SetPagePublishedVersion :one
 UPDATE pages
 SET published_version_id = $1, updated_at = NOW()
 WHERE id = $2 AND tenant_id = $3
@@ -534,7 +534,7 @@ type SetPagePublishedVersionParams struct {
 }
 
 func (q *Queries) SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error) {
-	row := q.db.QueryRowContext(ctx, setPagePublishedVersion, arg.PublishedVersionID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, SetPagePublishedVersion, arg.PublishedVersionID, arg.ID, arg.TenantID)
 	var i Page
 	err := row.Scan(
 		&i.ID,
@@ -549,7 +549,7 @@ func (q *Queries) SetPagePublishedVersion(ctx context.Context, arg SetPagePublis
 	return i, err
 }
 
-const updatePage = `-- name: UpdatePage :one
+const UpdatePage = `-- name: UpdatePage :one
 UPDATE pages
 SET title = $1,
 	display_in_footer = COALESCE($2, display_in_footer),
@@ -568,7 +568,7 @@ type UpdatePageParams struct {
 // display_in_footer keeps the stored value when the argument is omitted (NULL),
 // so a title-only edit does not have to restate the footer flag.
 func (q *Queries) UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error) {
-	row := q.db.QueryRowContext(ctx, updatePage,
+	row := q.db.QueryRowContext(ctx, UpdatePage,
 		arg.Title,
 		arg.DisplayInFooter,
 		arg.ID,

@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const activateInactiveUserByID = `-- name: ActivateInactiveUserByID :exec
+const ActivateInactiveUserByID = `-- name: ActivateInactiveUserByID :exec
 UPDATE users
 SET status = 'active'
 WHERE id = $1
@@ -24,11 +24,11 @@ WHERE id = $1
 // Only an account waiting for its address to be confirmed becomes active, so
 // confirming the address never lifts a suspension.
 func (q *Queries) ActivateInactiveUserByID(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, activateInactiveUserByID, id)
+	_, err := q.db.ExecContext(ctx, ActivateInactiveUserByID, id)
 	return err
 }
 
-const bumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
+const BumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
 UPDATE users
 SET credentials_version = credentials_version + 1
 WHERE id = $1
@@ -36,7 +36,7 @@ RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_
 `
 
 func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, bumpUserCredentialsVersion, id)
+	row := q.db.QueryRowContext(ctx, BumpUserCredentialsVersion, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -54,7 +54,7 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 	return i, err
 }
 
-const countOtherActiveTenantAdmins = `-- name: CountOtherActiveTenantAdmins :one
+const CountOtherActiveTenantAdmins = `-- name: CountOtherActiveTenantAdmins :one
 SELECT COUNT(*)::int
 FROM users u
 WHERE u.tenant_id = $1::uuid
@@ -77,13 +77,13 @@ type CountOtherActiveTenantAdminsParams struct {
 // tenant other than one user: who is left to sign in to the console once that
 // user is removed or demoted.
 func (q *Queries) CountOtherActiveTenantAdmins(ctx context.Context, arg CountOtherActiveTenantAdminsParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countOtherActiveTenantAdmins, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, CountOtherActiveTenantAdmins, arg.TenantID, arg.UserID)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const countPendingEndUsers = `-- name: CountPendingEndUsers :one
+const CountPendingEndUsers = `-- name: CountPendingEndUsers :one
 SELECT COUNT(*)::int
 FROM users u
 WHERE u.status = 'inactive'
@@ -95,13 +95,13 @@ WHERE u.status = 'inactive'
 `
 
 func (q *Queries) CountPendingEndUsers(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countPendingEndUsers)
+	row := q.db.QueryRowContext(ctx, CountPendingEndUsers)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const createTenantUserRole = `-- name: CreateTenantUserRole :one
+const CreateTenantUserRole = `-- name: CreateTenantUserRole :one
 INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
 VALUES ($1, $2, $3, $4)
 RETURNING id, user_id, role, created_at, tenant_id
@@ -115,7 +115,7 @@ type CreateTenantUserRoleParams struct {
 }
 
 func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error) {
-	row := q.db.QueryRowContext(ctx, createTenantUserRole,
+	row := q.db.QueryRowContext(ctx, CreateTenantUserRole,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -132,7 +132,7 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 	return i, err
 }
 
-const createUser = `-- name: CreateUser :one
+const CreateUser = `-- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
@@ -149,7 +149,7 @@ type CreateUserParams struct {
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRowContext(ctx, CreateUser,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -175,7 +175,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const deleteTenantReader = `-- name: DeleteTenantReader :one
+const DeleteTenantReader = `-- name: DeleteTenantReader :one
 DELETE FROM users
 WHERE users.tenant_id = $1
     AND users.public_id = $2
@@ -195,34 +195,34 @@ type DeleteTenantReaderParams struct {
 // Hard delete, as DeleteUserByID. A staff account and another tenant's are no
 // rows.
 func (q *Queries) DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, deleteTenantReader, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, DeleteTenantReader, arg.TenantID, arg.PublicID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const deleteTenantUserRolesByUserID = `-- name: DeleteTenantUserRolesByUserID :exec
+const DeleteTenantUserRolesByUserID = `-- name: DeleteTenantUserRolesByUserID :exec
 DELETE FROM tenant_user_roles
 WHERE user_id = $1
 `
 
 func (q *Queries) DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteTenantUserRolesByUserID, userID)
+	_, err := q.db.ExecContext(ctx, DeleteTenantUserRolesByUserID, userID)
 	return err
 }
 
-const deleteUserByID = `-- name: DeleteUserByID :exec
+const DeleteUserByID = `-- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE id = $1
 `
 
 // Hard delete. Related rows go with the user wherever the foreign key cascades.
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
+	_, err := q.db.ExecContext(ctx, DeleteUserByID, id)
 	return err
 }
 
-const getTenantReaderByPublicID = `-- name: GetTenantReaderByPublicID :one
+const GetTenantReaderByPublicID = `-- name: GetTenantReaderByPublicID :one
 SELECT u.id,
     u.public_id,
     u.name,
@@ -260,7 +260,7 @@ type GetTenantReaderByPublicIDRow struct {
 // One reader in the shape ListTenantReaders* returns. A staff account and an
 // account of another tenant are both no rows.
 func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantReaderByPublicID, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetTenantReaderByPublicID, arg.TenantID, arg.PublicID)
 	var i GetTenantReaderByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -275,7 +275,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 	return i, err
 }
 
-const getTenantUserID = `-- name: GetTenantUserID :one
+const GetTenantUserID = `-- name: GetTenantUserID :one
 SELECT u.id
 FROM users u
 WHERE u.tenant_id = $1
@@ -294,13 +294,13 @@ type GetTenantUserIDParams struct {
 // takes the recipient from a payload asks here before it inserts. No rows means
 // the user is not this tenant's.
 func (q *Queries) GetTenantUserID(ctx context.Context, arg GetTenantUserIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getTenantUserID, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, GetTenantUserID, arg.TenantID, arg.UserID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
+const GetUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE tenant_id = $1
@@ -314,7 +314,7 @@ type GetUserByEmailForTenantParams struct {
 }
 
 func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmailForTenant, arg.TenantID, arg.Email)
+	row := q.db.QueryRowContext(ctx, GetUserByEmailForTenant, arg.TenantID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -332,14 +332,14 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 	return i, err
 }
 
-const getUserByID = `-- name: GetUserByID :one
+const GetUserByID = `-- name: GetUserByID :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	row := q.db.QueryRowContext(ctx, GetUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -357,7 +357,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
-const getUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
+const GetUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users
 WHERE id = $1
@@ -365,7 +365,7 @@ FOR UPDATE
 `
 
 func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByIDForUpdate, id)
+	row := q.db.QueryRowContext(ctx, GetUserByIDForUpdate, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -383,7 +383,7 @@ func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User,
 	return i, err
 }
 
-const getUserByPublicID = `-- name: GetUserByPublicID :one
+const GetUserByPublicID = `-- name: GetUserByPublicID :one
 SELECT u.id,
     u.public_id,
     u.name,
@@ -407,7 +407,7 @@ type GetUserByPublicIDRow struct {
 }
 
 func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
+	row := q.db.QueryRowContext(ctx, GetUserByPublicID, publicID)
 	var i GetUserByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -421,7 +421,7 @@ func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUs
 	return i, err
 }
 
-const getUserByPublicIDForTenant = `-- name: GetUserByPublicIDForTenant :one
+const GetUserByPublicIDForTenant = `-- name: GetUserByPublicIDForTenant :one
 SELECT u.id,
     u.public_id,
     u.name,
@@ -451,7 +451,7 @@ type GetUserByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetUserByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetUserByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -465,7 +465,7 @@ func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByP
 	return i, err
 }
 
-const getUserNotificationSettings = `-- name: GetUserNotificationSettings :one
+const GetUserNotificationSettings = `-- name: GetUserNotificationSettings :one
 SELECT user_id, email_notifications_enabled, updated_at, tenant_id
 FROM user_notification_settings
 WHERE tenant_id = $1
@@ -479,7 +479,7 @@ type GetUserNotificationSettingsParams struct {
 }
 
 func (q *Queries) GetUserNotificationSettings(ctx context.Context, arg GetUserNotificationSettingsParams) (UserNotificationSetting, error) {
-	row := q.db.QueryRowContext(ctx, getUserNotificationSettings, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, GetUserNotificationSettings, arg.TenantID, arg.UserID)
 	var i UserNotificationSetting
 	err := row.Scan(
 		&i.UserID,
@@ -490,7 +490,7 @@ func (q *Queries) GetUserNotificationSettings(ctx context.Context, arg GetUserNo
 	return i, err
 }
 
-const listEndUsersAsc = `-- name: ListEndUsersAsc :many
+const ListEndUsersAsc = `-- name: ListEndUsersAsc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -558,7 +558,7 @@ type ListEndUsersAscRow struct {
 }
 
 func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEndUsersAsc,
+	rows, err := q.db.QueryContext(ctx, ListEndUsersAsc,
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
@@ -599,7 +599,7 @@ func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams
 	return items, nil
 }
 
-const listEndUsersDesc = `-- name: ListEndUsersDesc :many
+const ListEndUsersDesc = `-- name: ListEndUsersDesc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -674,7 +674,7 @@ type ListEndUsersDescRow struct {
 // in reverse. The handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEndUsersDesc,
+	rows, err := q.db.QueryContext(ctx, ListEndUsersDesc,
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
@@ -715,7 +715,7 @@ func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescPara
 	return items, nil
 }
 
-const listTenantAdminIDs = `-- name: ListTenantAdminIDs :many
+const ListTenantAdminIDs = `-- name: ListTenantAdminIDs :many
 SELECT DISTINCT tur.user_id
 FROM tenant_user_roles tur
 WHERE tur.tenant_id = $1::uuid
@@ -726,7 +726,7 @@ ORDER BY tur.user_id
 // tenant admin for that tenant. DISTINCT so one person with two roles
 // is still one notification.
 func (q *Queries) ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantAdminIDs, tenantID)
+	rows, err := q.db.QueryContext(ctx, ListTenantAdminIDs, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +748,7 @@ func (q *Queries) ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([
 	return items, nil
 }
 
-const listTenantMembersAsc = `-- name: ListTenantMembersAsc :many
+const ListTenantMembersAsc = `-- name: ListTenantMembersAsc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -812,7 +812,7 @@ type ListTenantMembersAscRow struct {
 }
 
 func (q *Queries) ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantMembersAsc,
+	rows, err := q.db.QueryContext(ctx, ListTenantMembersAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -848,7 +848,7 @@ func (q *Queries) ListTenantMembersAsc(ctx context.Context, arg ListTenantMember
 	return items, nil
 }
 
-const listTenantMembersDesc = `-- name: ListTenantMembersDesc :many
+const ListTenantMembersDesc = `-- name: ListTenantMembersDesc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -919,7 +919,7 @@ type ListTenantMembersDescRow struct {
 // in reverse. The handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantMembersDesc,
+	rows, err := q.db.QueryContext(ctx, ListTenantMembersDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -955,7 +955,7 @@ func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembe
 	return items, nil
 }
 
-const listTenantReadersAsc = `-- name: ListTenantReadersAsc :many
+const ListTenantReadersAsc = `-- name: ListTenantReadersAsc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -1014,7 +1014,7 @@ type ListTenantReadersAscRow struct {
 }
 
 func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantReadersAsc,
+	rows, err := q.db.QueryContext(ctx, ListTenantReadersAsc,
 		arg.TenantID,
 		arg.Query,
 		arg.Status,
@@ -1053,7 +1053,7 @@ func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReader
 	return items, nil
 }
 
-const listTenantReadersDesc = `-- name: ListTenantReadersDesc :many
+const ListTenantReadersDesc = `-- name: ListTenantReadersDesc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -1119,7 +1119,7 @@ type ListTenantReadersDescRow struct {
 // The birth date is a NULL placeholder: a list has no use for it, so only the
 // single read hands it out.
 func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReadersDescParams) ([]ListTenantReadersDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantReadersDesc,
+	rows, err := q.db.QueryContext(ctx, ListTenantReadersDesc,
 		arg.TenantID,
 		arg.Query,
 		arg.Status,
@@ -1158,7 +1158,7 @@ func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReade
 	return items, nil
 }
 
-const listTenantUserIDs = `-- name: ListTenantUserIDs :many
+const ListTenantUserIDs = `-- name: ListTenantUserIDs :many
 SELECT u.id
 FROM users u
 WHERE u.tenant_id = $1
@@ -1183,7 +1183,7 @@ type ListTenantUserIDsParams struct {
 // `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
 // below every UUID, so it is what the first page asks for.
 func (q *Queries) ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUserIDs, arg.TenantID, arg.AfterUserID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, ListTenantUserIDs, arg.TenantID, arg.AfterUserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1205,7 +1205,7 @@ func (q *Queries) ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsPa
 	return items, nil
 }
 
-const listTenantUserRoles = `-- name: ListTenantUserRoles :many
+const ListTenantUserRoles = `-- name: ListTenantUserRoles :many
 SELECT role
 FROM tenant_user_roles
 WHERE user_id = $1
@@ -1213,7 +1213,7 @@ ORDER BY role
 `
 
 func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUserRoles, userID)
+	rows, err := q.db.QueryContext(ctx, ListTenantUserRoles, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1235,7 +1235,7 @@ func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]
 	return items, nil
 }
 
-const listTenantUsersAsc = `-- name: ListTenantUsersAsc :many
+const ListTenantUsersAsc = `-- name: ListTenantUsersAsc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -1302,7 +1302,7 @@ type ListTenantUsersAscRow struct {
 }
 
 func (q *Queries) ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUsersAsc,
+	rows, err := q.db.QueryContext(ctx, ListTenantUsersAsc,
 		arg.TenantID,
 		arg.Query,
 		arg.CursorID,
@@ -1337,7 +1337,7 @@ func (q *Queries) ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAsc
 	return items, nil
 }
 
-const listTenantUsersDesc = `-- name: ListTenantUsersDesc :many
+const ListTenantUsersDesc = `-- name: ListTenantUsersDesc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -1411,7 +1411,7 @@ type ListTenantUsersDescRow struct {
 // handler has already fetched would drop every matching user that sits on a
 // later page.
 func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDescParams) ([]ListTenantUsersDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUsersDesc,
+	rows, err := q.db.QueryContext(ctx, ListTenantUsersDesc,
 		arg.TenantID,
 		arg.Query,
 		arg.CursorID,
@@ -1446,7 +1446,7 @@ func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDe
 	return items, nil
 }
 
-const setTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one
+const SetTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one
 UPDATE users
 SET birth_date = $1::date
 WHERE users.tenant_id = $2
@@ -1488,7 +1488,7 @@ type SetTenantReaderBirthDateRow struct {
 // SetUserBirthDateByID. Writing the date already stored is no rows, like a
 // staff account and another tenant's.
 func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error) {
-	row := q.db.QueryRowContext(ctx, setTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, SetTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.PublicID)
 	var i SetTenantReaderBirthDateRow
 	err := row.Scan(
 		&i.ID,
@@ -1503,7 +1503,7 @@ func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantRea
 	return i, err
 }
 
-const setUserBirthDateByID = `-- name: SetUserBirthDateByID :one
+const SetUserBirthDateByID = `-- name: SetUserBirthDateByID :one
 UPDATE users
 SET birth_date = $2
 WHERE id = $1
@@ -1521,7 +1521,7 @@ type SetUserBirthDateByIDParams struct {
 // comes back as no rows, which the caller reports as a refusal rather than as
 // a missing account.
 func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setUserBirthDateByID, arg.ID, arg.BirthDate)
+	row := q.db.QueryRowContext(ctx, SetUserBirthDateByID, arg.ID, arg.BirthDate)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1539,7 +1539,7 @@ func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDate
 	return i, err
 }
 
-const suspendTenantReader = `-- name: SuspendTenantReader :one
+const SuspendTenantReader = `-- name: SuspendTenantReader :one
 UPDATE users
 SET status = 'suspended',
     credentials_version = credentials_version + 1
@@ -1580,7 +1580,7 @@ type SuspendTenantReaderRow struct {
 // Suspends a reader and invalidates the sessions they hold. A reader who is
 // already suspended is no rows, like a staff account and another tenant's.
 func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error) {
-	row := q.db.QueryRowContext(ctx, suspendTenantReader, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, SuspendTenantReader, arg.TenantID, arg.PublicID)
 	var i SuspendTenantReaderRow
 	err := row.Scan(
 		&i.ID,
@@ -1595,7 +1595,7 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 	return i, err
 }
 
-const unsuspendTenantReader = `-- name: UnsuspendTenantReader :one
+const UnsuspendTenantReader = `-- name: UnsuspendTenantReader :one
 UPDATE users
 SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
 WHERE users.tenant_id = $1
@@ -1635,7 +1635,7 @@ type UnsuspendTenantReaderRow struct {
 // A reader who never confirmed their address goes back to inactive, the state
 // VerifyUserEmail activates. A reader who is not suspended is no rows.
 func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenantReaderParams) (UnsuspendTenantReaderRow, error) {
-	row := q.db.QueryRowContext(ctx, unsuspendTenantReader, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, UnsuspendTenantReader, arg.TenantID, arg.PublicID)
 	var i UnsuspendTenantReaderRow
 	err := row.Scan(
 		&i.ID,
@@ -1650,7 +1650,7 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 	return i, err
 }
 
-const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
+const UpdateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2
 WHERE id = $1
@@ -1663,7 +1663,7 @@ type UpdateUserEmailByIDParams struct {
 }
 
 func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserEmailByID, arg.ID, arg.Email)
+	row := q.db.QueryRowContext(ctx, UpdateUserEmailByID, arg.ID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1681,7 +1681,7 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 	return i, err
 }
 
-const updateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :one
+const UpdateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :one
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
@@ -1694,7 +1694,7 @@ type UpdateUserEmailVerifiedAtByIDParams struct {
 }
 
 func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserEmailVerifiedAtByID, arg.ID, arg.EmailVerifiedAt)
+	row := q.db.QueryRowContext(ctx, UpdateUserEmailVerifiedAtByID, arg.ID, arg.EmailVerifiedAt)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1712,7 +1712,7 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 	return i, err
 }
 
-const updateUserNameByID = `-- name: UpdateUserNameByID :one
+const UpdateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users
 SET name = $2
 WHERE id = $1
@@ -1725,7 +1725,7 @@ type UpdateUserNameByIDParams struct {
 }
 
 func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserNameByID, arg.ID, arg.Name)
+	row := q.db.QueryRowContext(ctx, UpdateUserNameByID, arg.ID, arg.Name)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1743,7 +1743,7 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 	return i, err
 }
 
-const updateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
+const UpdateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
@@ -1756,7 +1756,7 @@ type UpdateUserPasswordHashByIDParams struct {
 }
 
 func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserPasswordHashByID, arg.ID, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, UpdateUserPasswordHashByID, arg.ID, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1774,7 +1774,7 @@ func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUser
 	return i, err
 }
 
-const updateUserStatus = `-- name: UpdateUserStatus :one
+const UpdateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE users
 SET status = $2
 WHERE public_id = $1
@@ -1787,7 +1787,7 @@ type UpdateUserStatusParams struct {
 }
 
 func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserStatus, arg.PublicID, arg.Status)
+	row := q.db.QueryRowContext(ctx, UpdateUserStatus, arg.PublicID, arg.Status)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1805,7 +1805,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 	return i, err
 }
 
-const updateUserStatusByID = `-- name: UpdateUserStatusByID :one
+const UpdateUserStatusByID = `-- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2
 WHERE id = $1
@@ -1818,7 +1818,7 @@ type UpdateUserStatusByIDParams struct {
 }
 
 func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserStatusByID, arg.ID, arg.Status)
+	row := q.db.QueryRowContext(ctx, UpdateUserStatusByID, arg.ID, arg.Status)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1836,7 +1836,7 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 	return i, err
 }
 
-const upsertUserNotificationSettings = `-- name: UpsertUserNotificationSettings :one
+const UpsertUserNotificationSettings = `-- name: UpsertUserNotificationSettings :one
 INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled, updated_at)
 VALUES ($1, $2, $3, NOW())
 ON CONFLICT (user_id) DO UPDATE
@@ -1852,7 +1852,7 @@ type UpsertUserNotificationSettingsParams struct {
 }
 
 func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error) {
-	row := q.db.QueryRowContext(ctx, upsertUserNotificationSettings, arg.TenantID, arg.UserID, arg.EmailNotificationsEnabled)
+	row := q.db.QueryRowContext(ctx, UpsertUserNotificationSettings, arg.TenantID, arg.UserID, arg.EmailNotificationsEnabled)
 	var i UserNotificationSetting
 	err := row.Scan(
 		&i.UserID,

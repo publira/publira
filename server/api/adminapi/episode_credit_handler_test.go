@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"errors"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
@@ -34,25 +35,25 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Aoi Sakura", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorRolesByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Original Author", int32(1)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EP001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP001"))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeCreatorsByEpisodeIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows())
-	mock.ExpectExec(regexp.QuoteMeta(deleteEpisodeCreatorsByEpisodeIDQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteEpisodeCreatorsByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec(regexp.QuoteMeta(createEpisodeCreatorQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateEpisodeCreator)).
 		WithArgs(tenantID, episodeID, creatorID, roleID, int32(0), "episode", int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeCreatorsByEpisodeIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows(episodeCreditRow{
 			episodeID:    episodeID,
 			publicID:     "CREATOR001",
@@ -62,7 +63,7 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 			source:       "episode",
 		}))
 	mock.ExpectCommit()
-	mock.ExpectExec("INSERT INTO audit_logs").
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -102,25 +103,25 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Aoi Sakura", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(listCreatorRolesByPublicIDsForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Original Author", int32(1)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(lockEpisodeByPublicIDForTenantQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByPublicIDForTenant)).
 		WithArgs(tenantID, "EP001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP001"))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeCreatorsByEpisodeIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows())
-	mock.ExpectExec(regexp.QuoteMeta(deleteEpisodeCreatorsByEpisodeIDQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteEpisodeCreatorsByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec(regexp.QuoteMeta(createEpisodeCreatorQuery)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.CreateEpisodeCreator)).
 		WithArgs(tenantID, episodeID, creatorID, roleID, int32(0), "episode", int32(0)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeCreatorsByEpisodeIDsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows(episodeCreditRow{
 			episodeID:    episodeID,
 			publicID:     "CREATOR001",
@@ -129,7 +130,7 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 			roleName:     "Original Author",
 			source:       "episode",
 		}))
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: InsertOutboxEvent :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(errors.New("outbox is unavailable"))
 	mock.ExpectRollback()
 

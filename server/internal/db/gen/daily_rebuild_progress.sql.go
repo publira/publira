@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const advanceContentStatsThrough = `-- name: AdvanceContentStatsThrough :exec
+const AdvanceContentStatsThrough = `-- name: AdvanceContentStatsThrough :exec
 
 UPDATE daily_rebuild_progress
 SET content_stats_through = $1, updated_at = now()
@@ -27,11 +27,11 @@ type AdvanceContentStatsThroughParams struct {
 // The three advances below never move a link back, so a pass that finished
 // behind another cannot undo what the other recorded.
 func (q *Queries) AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error {
-	_, err := q.db.ExecContext(ctx, advanceContentStatsThrough, arg.Through, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, AdvanceContentStatsThrough, arg.Through, arg.TenantID)
 	return err
 }
 
-const advanceRankingsThrough = `-- name: AdvanceRankingsThrough :exec
+const AdvanceRankingsThrough = `-- name: AdvanceRankingsThrough :exec
 UPDATE daily_rebuild_progress
 SET rankings_through = $1, updated_at = now()
 WHERE tenant_id = $2 AND rankings_through < $1
@@ -43,11 +43,11 @@ type AdvanceRankingsThroughParams struct {
 }
 
 func (q *Queries) AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error {
-	_, err := q.db.ExecContext(ctx, advanceRankingsThrough, arg.Through, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, AdvanceRankingsThrough, arg.Through, arg.TenantID)
 	return err
 }
 
-const advanceRecommendFeaturesThrough = `-- name: AdvanceRecommendFeaturesThrough :exec
+const AdvanceRecommendFeaturesThrough = `-- name: AdvanceRecommendFeaturesThrough :exec
 UPDATE daily_rebuild_progress
 SET recommend_features_through = $1, updated_at = now()
 WHERE tenant_id = $2 AND recommend_features_through < $1
@@ -59,11 +59,11 @@ type AdvanceRecommendFeaturesThroughParams struct {
 }
 
 func (q *Queries) AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error {
-	_, err := q.db.ExecContext(ctx, advanceRecommendFeaturesThrough, arg.Through, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, AdvanceRecommendFeaturesThrough, arg.Through, arg.TenantID)
 	return err
 }
 
-const listDailyRebuildProgress = `-- name: ListDailyRebuildProgress :many
+const ListDailyRebuildProgress = `-- name: ListDailyRebuildProgress :many
 SELECT tenant_id, episode_reads_projected_at, content_stats_through, rankings_through, recommend_features_through
 FROM daily_rebuild_progress
 ORDER BY tenant_id
@@ -78,7 +78,7 @@ type ListDailyRebuildProgressRow struct {
 }
 
 func (q *Queries) ListDailyRebuildProgress(ctx context.Context) ([]ListDailyRebuildProgressRow, error) {
-	rows, err := q.db.QueryContext(ctx, listDailyRebuildProgress)
+	rows, err := q.db.QueryContext(ctx, ListDailyRebuildProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (q *Queries) ListDailyRebuildProgress(ctx context.Context) ([]ListDailyRebu
 	return items, nil
 }
 
-const recordEpisodeReadProjection = `-- name: RecordEpisodeReadProjection :exec
+const RecordEpisodeReadProjection = `-- name: RecordEpisodeReadProjection :exec
 INSERT INTO daily_rebuild_progress (
     tenant_id, episode_reads_projected_at, content_stats_through, rankings_through, recommend_features_through
 ) VALUES (
@@ -127,6 +127,6 @@ type RecordEpisodeReadProjectionParams struct {
 // starts the chain for a tenant it has not seen yet: every link is placed on
 // start_through, so the first day each one rebuilds is the day after it.
 func (q *Queries) RecordEpisodeReadProjection(ctx context.Context, arg RecordEpisodeReadProjectionParams) error {
-	_, err := q.db.ExecContext(ctx, recordEpisodeReadProjection, arg.TenantID, arg.ProjectedAt, arg.StartThrough)
+	_, err := q.db.ExecContext(ctx, RecordEpisodeReadProjection, arg.TenantID, arg.ProjectedAt, arg.StartThrough)
 	return err
 }

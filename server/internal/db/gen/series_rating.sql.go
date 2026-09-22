@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getMySeriesRating = `-- name: GetMySeriesRating :one
+const GetMySeriesRating = `-- name: GetMySeriesRating :one
 SELECT
     COALESCE(round(avg(er.score), 1), 0)::double precision AS rating_average,
     count(*)::int4 AS rated_episode_count
@@ -42,13 +42,13 @@ type GetMySeriesRatingRow struct {
 // It runs on the reader's own connection: episode_ratings is member-isolated,
 // so the rows this reads are theirs by the policy rather than by the predicate.
 func (q *Queries) GetMySeriesRating(ctx context.Context, arg GetMySeriesRatingParams) (GetMySeriesRatingRow, error) {
-	row := q.db.QueryRowContext(ctx, getMySeriesRating, arg.TenantID, arg.UserID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, GetMySeriesRating, arg.TenantID, arg.UserID, arg.SeriesID)
 	var i GetMySeriesRatingRow
 	err := row.Scan(&i.RatingAverage, &i.RatedEpisodeCount)
 	return i, err
 }
 
-const getSeriesRating = `-- name: GetSeriesRating :one
+const GetSeriesRating = `-- name: GetSeriesRating :one
 
 WITH prior AS (
     SELECT 20::numeric AS completed_reads
@@ -156,7 +156,7 @@ type GetSeriesRatingRow struct {
 // reactions — a reaction given today reaches the aggregates with the next run,
 // and a series shows nothing at all until it does.
 func (q *Queries) GetSeriesRating(ctx context.Context, arg GetSeriesRatingParams) (GetSeriesRatingRow, error) {
-	row := q.db.QueryRowContext(ctx, getSeriesRating, arg.TenantID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, GetSeriesRating, arg.TenantID, arg.SeriesID)
 	var i GetSeriesRatingRow
 	err := row.Scan(&i.RatingCount, &i.RatingAverage)
 	return i, err

@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const countUnreadNotificationsForUser = `-- name: CountUnreadNotificationsForUser :one
+const CountUnreadNotificationsForUser = `-- name: CountUnreadNotificationsForUser :one
 SELECT COUNT(*)::int AS unread_count
 FROM notifications n
 WHERE n.tenant_id = $1
@@ -33,13 +33,13 @@ type CountUnreadNotificationsForUserParams struct {
 }
 
 func (q *Queries) CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countUnreadNotificationsForUser, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, CountUnreadNotificationsForUser, arg.TenantID, arg.UserID)
 	var unread_count int32
 	err := row.Scan(&unread_count)
 	return unread_count, err
 }
 
-const countUnreadPlatformNotificationsForUser = `-- name: CountUnreadPlatformNotificationsForUser :one
+const CountUnreadPlatformNotificationsForUser = `-- name: CountUnreadPlatformNotificationsForUser :one
 SELECT COUNT(*)::int AS unread_count
 FROM platform_notifications n
 WHERE n.platform_user_id = $1
@@ -52,13 +52,13 @@ WHERE n.platform_user_id = $1
 `
 
 func (q *Queries) CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countUnreadPlatformNotificationsForUser, platformUserID)
+	row := q.db.QueryRowContext(ctx, CountUnreadPlatformNotificationsForUser, platformUserID)
 	var unread_count int32
 	err := row.Scan(&unread_count)
 	return unread_count, err
 }
 
-const createNotification = `-- name: CreateNotification :exec
+const CreateNotification = `-- name: CreateNotification :exec
 INSERT INTO notifications (
     id,
     tenant_id,
@@ -93,7 +93,7 @@ type CreateNotificationParams struct {
 // refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
 // recipient / type / subject key is the only one an insert can conflict on.
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
-	_, err := q.db.ExecContext(ctx, createNotification,
+	_, err := q.db.ExecContext(ctx, CreateNotification,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -104,7 +104,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 	return err
 }
 
-const createPlatformNotification = `-- name: CreatePlatformNotification :one
+const CreatePlatformNotification = `-- name: CreatePlatformNotification :one
 INSERT INTO platform_notifications (
     id,
     platform_user_id,
@@ -132,7 +132,7 @@ type CreatePlatformNotificationParams struct {
 }
 
 func (q *Queries) CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformNotification,
+	row := q.db.QueryRowContext(ctx, CreatePlatformNotification,
 		arg.ID,
 		arg.PlatformUserID,
 		arg.NotificationType,
@@ -151,7 +151,7 @@ func (q *Queries) CreatePlatformNotification(ctx context.Context, arg CreatePlat
 	return i, err
 }
 
-const listNotificationsForUserAsc = `-- name: ListNotificationsForUserAsc :many
+const ListNotificationsForUserAsc = `-- name: ListNotificationsForUserAsc :many
 SELECT
     n.id,
     n.tenant_id,
@@ -204,7 +204,7 @@ type ListNotificationsForUserAscRow struct {
 }
 
 func (q *Queries) ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNotificationsForUserAsc,
+	rows, err := q.db.QueryContext(ctx, ListNotificationsForUserAsc,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -243,7 +243,7 @@ func (q *Queries) ListNotificationsForUserAsc(ctx context.Context, arg ListNotif
 	return items, nil
 }
 
-const listNotificationsForUserDesc = `-- name: ListNotificationsForUserDesc :many
+const ListNotificationsForUserDesc = `-- name: ListNotificationsForUserDesc :many
 SELECT
     n.id,
     n.tenant_id,
@@ -300,7 +300,7 @@ type ListNotificationsForUserDescRow struct {
 // flips ASC rows back into display order. Do not parameterize ORDER BY.
 // cursor rules: proto/README.md.
 func (q *Queries) ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNotificationsForUserDesc,
+	rows, err := q.db.QueryContext(ctx, ListNotificationsForUserDesc,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -339,7 +339,7 @@ func (q *Queries) ListNotificationsForUserDesc(ctx context.Context, arg ListNoti
 	return items, nil
 }
 
-const listPlatformNotificationsForUserAsc = `-- name: ListPlatformNotificationsForUserAsc :many
+const ListPlatformNotificationsForUserAsc = `-- name: ListPlatformNotificationsForUserAsc :many
 SELECT
     n.id,
     n.platform_user_id,
@@ -388,7 +388,7 @@ type ListPlatformNotificationsForUserAscRow struct {
 }
 
 func (q *Queries) ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformNotificationsForUserAsc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformNotificationsForUserAsc,
 		arg.PlatformUserID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -425,7 +425,7 @@ func (q *Queries) ListPlatformNotificationsForUserAsc(ctx context.Context, arg L
 	return items, nil
 }
 
-const listPlatformNotificationsForUserDesc = `-- name: ListPlatformNotificationsForUserDesc :many
+const ListPlatformNotificationsForUserDesc = `-- name: ListPlatformNotificationsForUserDesc :many
 SELECT
     n.id,
     n.platform_user_id,
@@ -474,7 +474,7 @@ type ListPlatformNotificationsForUserDescRow struct {
 }
 
 func (q *Queries) ListPlatformNotificationsForUserDesc(ctx context.Context, arg ListPlatformNotificationsForUserDescParams) ([]ListPlatformNotificationsForUserDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformNotificationsForUserDesc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformNotificationsForUserDesc,
 		arg.PlatformUserID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -511,7 +511,7 @@ func (q *Queries) ListPlatformNotificationsForUserDesc(ctx context.Context, arg 
 	return items, nil
 }
 
-const markAllNotificationsAsRead = `-- name: MarkAllNotificationsAsRead :execrows
+const MarkAllNotificationsAsRead = `-- name: MarkAllNotificationsAsRead :execrows
 INSERT INTO notification_reads (notification_id, user_id, tenant_id, read_at)
 SELECT n.id, $1, n.tenant_id, NOW()
 FROM notifications n
@@ -532,14 +532,14 @@ type MarkAllNotificationsAsReadParams struct {
 }
 
 func (q *Queries) MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markAllNotificationsAsRead, arg.UserID, arg.TenantID)
+	result, err := q.db.ExecContext(ctx, MarkAllNotificationsAsRead, arg.UserID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const markAllPlatformNotificationsAsRead = `-- name: MarkAllPlatformNotificationsAsRead :execrows
+const MarkAllPlatformNotificationsAsRead = `-- name: MarkAllPlatformNotificationsAsRead :execrows
 INSERT INTO platform_notification_reads (platform_notification_id, platform_user_id, read_at)
 SELECT n.id, $1, NOW()
 FROM platform_notifications n
@@ -554,14 +554,14 @@ ON CONFLICT (platform_notification_id, platform_user_id) DO NOTHING
 `
 
 func (q *Queries) MarkAllPlatformNotificationsAsRead(ctx context.Context, platformUserID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markAllPlatformNotificationsAsRead, platformUserID)
+	result, err := q.db.ExecContext(ctx, MarkAllPlatformNotificationsAsRead, platformUserID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const markNotificationAsRead = `-- name: MarkNotificationAsRead :one
+const MarkNotificationAsRead = `-- name: MarkNotificationAsRead :one
 INSERT INTO notification_reads (notification_id, user_id, tenant_id, read_at)
 SELECT n.id, $1, n.tenant_id, NOW()
 FROM notifications n
@@ -580,7 +580,7 @@ type MarkNotificationAsReadParams struct {
 }
 
 func (q *Queries) MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error) {
-	row := q.db.QueryRowContext(ctx, markNotificationAsRead, arg.UserID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, MarkNotificationAsRead, arg.UserID, arg.ID, arg.TenantID)
 	var i NotificationRead
 	err := row.Scan(
 		&i.NotificationID,
@@ -591,7 +591,7 @@ func (q *Queries) MarkNotificationAsRead(ctx context.Context, arg MarkNotificati
 	return i, err
 }
 
-const markPlatformNotificationAsRead = `-- name: MarkPlatformNotificationAsRead :one
+const MarkPlatformNotificationAsRead = `-- name: MarkPlatformNotificationAsRead :one
 INSERT INTO platform_notification_reads (platform_notification_id, platform_user_id, read_at)
 SELECT n.id, $1, NOW()
 FROM platform_notifications n
@@ -608,7 +608,7 @@ type MarkPlatformNotificationAsReadParams struct {
 }
 
 func (q *Queries) MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error) {
-	row := q.db.QueryRowContext(ctx, markPlatformNotificationAsRead, arg.PlatformUserID, arg.ID)
+	row := q.db.QueryRowContext(ctx, MarkPlatformNotificationAsRead, arg.PlatformUserID, arg.ID)
 	var i PlatformNotificationRead
 	err := row.Scan(&i.PlatformNotificationID, &i.PlatformUserID, &i.ReadAt)
 	return i, err
