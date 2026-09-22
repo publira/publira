@@ -2,7 +2,6 @@ package publicapi
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"slices"
 	"testing"
@@ -33,9 +32,7 @@ func rankingPeriodDate(daysBack int) time.Time {
 
 // seedPeriodRankingSnapshot files one snapshot under a ranking key, over the
 // single day given, in the order the ids are given. computed_at follows the
-// period, so snapshots of older periods are also the older computations. It
-// writes through a tenant-scoped connection, so a snapshot RLS would refuse
-// never reaches the table in the first place.
+// period, so snapshots of older periods are also the older computations.
 func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
@@ -54,20 +51,17 @@ func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	}
 	items += "]"
 
-	e.withTenantConn(t, tenantID, func(ctx context.Context, conn *sql.Conn) {
-		_, err := conn.ExecContext(ctx, `
-			INSERT INTO content_ranking_snapshots (
-				id, tenant_id, ranking_key, period_start, period_end,
-				entity_type, items, algorithm_version, computed_at
-			) VALUES (
-				gen_random_uuid(), $1, $2, $3::date, $3::date,
-				'series', $4::jsonb, $5, $3::date + interval '1 day'
-			)
-		`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion)
-		if err != nil {
-			t.Fatalf("insert content_ranking_snapshots: %v", err)
-		}
-	})
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO content_ranking_snapshots (
+			id, tenant_id, ranking_key, period_start, period_end,
+			entity_type, items, algorithm_version, computed_at
+		) VALUES (
+			uuidv7(), $1, $2, $3::date, $3::date,
+			'series', $4::jsonb, $5, $3::date + interval '1 day'
+		)
+	`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion); err != nil {
+		t.Fatalf("insert content_ranking_snapshots: %v", err)
+	}
 }
 
 func (e *publicDBEnv) listRankedSeries(

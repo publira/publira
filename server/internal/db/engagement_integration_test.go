@@ -803,6 +803,127 @@ func TestEngagementSnapshotQueriesRoundTrip(t *testing.T) {
 	}
 }
 
+// The batch-built tables are read by the API roles and written only by the
+// maintenance batches. Their policies are tenant isolation, which would let a
+// tenant-scoped connection rewrite its own tenant's rankings and the inputs
+// behind them, so the baseline seed takes the DML grant back.
+func TestBatchDerivedTablesRefuseWritesFromTheAPIRoles(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	seed := seedEngagementCatalog(t, ctx, pg.DB, "DRV00001")
+	tenant, series, episode, user := seed.tenantID, seed.seriesID, seed.episodeID, seed.userID
+
+	type statement struct {
+		sql  string
+		args []any
+	}
+	tables := []struct {
+		name                         string
+		seed, insert, update, delete statement
+	}{
+		{
+			name: "content_daily_stats",
+			seed: statement{`INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+				VALUES ($1, $2, '2026-08-15', 'series', $3, 1)`, []any{uuid.Must(uuid.NewV7()), tenant, series}},
+			insert: statement{`INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+				VALUES ($1, $2, '2026-08-16', 'series', $3, 9999)`, []any{uuid.Must(uuid.NewV7()), tenant, series}},
+			update: statement{"UPDATE content_daily_stats SET view_count = 9999 WHERE tenant_id = $1", []any{tenant}},
+			delete: statement{"DELETE FROM content_daily_stats WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "tenant_rating_totals",
+			seed: statement{"INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 5, 1)", []any{tenant}},
+			insert: statement{`INSERT INTO tenant_rating_totals (tenant_id, points, completed_reads) VALUES ($1, 9999, 1)
+				ON CONFLICT (tenant_id) DO NOTHING`, []any{tenant}},
+			update: statement{"UPDATE tenant_rating_totals SET points = 9999 WHERE tenant_id = $1", []any{tenant}},
+			delete: statement{"DELETE FROM tenant_rating_totals WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "content_ranking_snapshots",
+			seed: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type)
+				VALUES ($1, $2, 'daily', '2026-08-15', '2026-08-15', 'series')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			insert: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type)
+				VALUES ($1, $2, 'daily', '2026-08-16', '2026-08-16', 'series')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			update: statement{`UPDATE content_ranking_snapshots SET items = '[{"entity_id":"` + series.String() + `","score":9999,"rank":1}]'
+				WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM content_ranking_snapshots WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "item_recommend_features",
+			seed: statement{"INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'series', $2)",
+				[]any{tenant, series}},
+			insert: statement{"INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'episode', $2)",
+				[]any{tenant, episode}},
+			update: statement{`UPDATE item_recommend_features SET features = '{"view_7d":9999}' WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM item_recommend_features WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
+			name: "user_recommend_features",
+			seed: statement{"INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)", []any{tenant, user}},
+			insert: statement{`INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)
+				ON CONFLICT (tenant_id, user_id) DO NOTHING`, []any{tenant, user}},
+			update: statement{`UPDATE user_recommend_features SET features = '{"recent_series":[]}' WHERE tenant_id = $1`, []any{tenant}},
+			delete: statement{"DELETE FROM user_recommend_features WHERE tenant_id = $1", []any{tenant}},
+		},
+	}
+	for _, table := range tables {
+		if _, err := pg.DB.ExecContext(ctx, table.seed.sql, table.seed.args...); err != nil {
+			t.Fatalf("seed %s: %v", table.name, err)
+		}
+	}
+
+	for role, db := range map[string]*sql.DB{
+		"publira_admin":  pg.OpenAdminDB(t),
+		"publira_public": pg.OpenPublicDB(t),
+	} {
+		t.Run(role, func(t *testing.T) {
+			conn, err := db.Conn(ctx)
+			if err != nil {
+				t.Fatalf("open a connection: %v", err)
+			}
+			defer func() { _ = conn.Close() }()
+			if _, err := conn.ExecContext(ctx,
+				"SELECT set_config('app.current_tenant_id', $1, false)", tenant.String()); err != nil {
+				t.Fatalf("set app.current_tenant_id: %v", err)
+			}
+
+			for _, table := range tables {
+				// The row is visible to this connection, so the refusal below is
+				// the grant's and not the tenant isolation policy's.
+				var rows int
+				if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM "+table.name).Scan(&rows); err != nil {
+					t.Fatalf("read %s: %v", table.name, err)
+				}
+				if rows != 1 {
+					t.Fatalf("%s rows visible = %d, want the 1 seeded for this tenant", table.name, rows)
+				}
+
+				for name, write := range map[string]statement{
+					"insert": table.insert,
+					"update": table.update,
+					"delete": table.delete,
+				} {
+					if _, err := conn.ExecContext(ctx, write.sql, write.args...); !isInsufficientPrivilege(err) {
+						t.Fatalf("%s on %s: err = %v, want permission denied", name, table.name, err)
+					}
+				}
+			}
+		})
+	}
+}
+
+// insufficient_privilege (42501) is a missing grant. A row-level security
+// refusal of an INSERT raises the same code, but an UPDATE or DELETE the
+// policy filters out succeeds on zero rows instead.
+func isInsufficientPrivilege(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "42501"
+}
+
 func insertEpisodeView(ctx context.Context, db *sql.DB, seed engagementSeed, userID, seriesID, episodeID uuid.UUID, bucket int64) (uuid.UUID, error) {
 	id, err := uuid.NewV7()
 	if err != nil {

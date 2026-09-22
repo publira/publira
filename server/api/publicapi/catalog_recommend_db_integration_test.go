@@ -2,7 +2,6 @@ package publicapi
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"slices"
 	"testing"
@@ -45,20 +44,17 @@ func (e *publicDBEnv) seedRankingSnapshot(t *testing.T, tenantID uuid.UUID, seri
 func (e *publicDBEnv) seedRawRankingSnapshot(t *testing.T, tenantID uuid.UUID, items string) {
 	t.Helper()
 
-	e.withTenantConn(t, tenantID, func(ctx context.Context, conn *sql.Conn) {
-		_, err := conn.ExecContext(ctx, `
-			INSERT INTO content_ranking_snapshots (
-				id, tenant_id, ranking_key, period_start, period_end,
-				entity_type, items, algorithm_version, computed_at
-			) VALUES (
-				gen_random_uuid(), $1, $2, CURRENT_DATE - 6, CURRENT_DATE,
-				'series', $3::jsonb, $4, now()
-			)
-		`, tenantID, contentranking.WeeklyRankingKey, items, contentranking.AlgorithmVersion)
-		if err != nil {
-			t.Fatalf("insert content_ranking_snapshots: %v", err)
-		}
-	})
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO content_ranking_snapshots (
+			id, tenant_id, ranking_key, period_start, period_end,
+			entity_type, items, algorithm_version, computed_at
+		) VALUES (
+			uuidv7(), $1, $2, CURRENT_DATE - 6, CURRENT_DATE,
+			'series', $3::jsonb, $4, now()
+		)
+	`, tenantID, contentranking.WeeklyRankingKey, items, contentranking.AlgorithmVersion); err != nil {
+		t.Fatalf("insert content_ranking_snapshots: %v", err)
+	}
 }
 
 func (e *publicDBEnv) listRecommendedSeries(
