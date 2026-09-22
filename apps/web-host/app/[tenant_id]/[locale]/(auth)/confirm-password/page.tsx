@@ -67,7 +67,7 @@ const ConfirmPasswordInvalidLink = () => (
     <AuthScreenBody>
       <AuthScreenText>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-          <Message message="host.auth.fields.invalid_token" />
+          <Message message="host.auth.confirm_password.invalid" />
         </Suspense>
       </AuthScreenText>
     </AuthScreenBody>
