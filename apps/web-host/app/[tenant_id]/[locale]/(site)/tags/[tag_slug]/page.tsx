@@ -304,7 +304,7 @@ const TagDetailContent = async ({
   }
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
       <div className="grid gap-2">
         <h1 className="font-serif text-3xl leading-tight">{tag.name}</h1>
         <p className="text-sm text-muted-foreground tabular-nums">
@@ -344,7 +344,7 @@ const TagDetailContent = async ({
           </Suspense>
         </LocaleLink>
       </p>
-    </main>
+    </div>
   );
 };
 

@@ -6,7 +6,7 @@ import { Message } from "#components/message";
 import type { PublishedPage } from "#lib/pages";
 
 export const PublishedPageContent = ({ page }: { page: PublishedPage }) => (
-  <main className="mx-auto max-w-(--measure-prose) px-6 py-12">
+  <div className="mx-auto max-w-(--measure-prose) px-6 py-12">
     <article>
       <header className="mb-10">
         <h1 className="font-serif text-3xl leading-tight">{page.title}</h1>
@@ -22,5 +22,5 @@ export const PublishedPageContent = ({ page }: { page: PublishedPage }) => (
         }
       />
     </article>
-  </main>
+  </div>
 );

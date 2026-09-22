@@ -1024,7 +1024,7 @@ const FeaturedCreatorsSection = async () => {
 const Page = () => (
   /* Four times the largest space a section keeps inside itself, so a boundary
      reads before its heading does. */
-  <main className="mx-auto grid max-w-6xl gap-24 px-6 py-10">
+  <div className="mx-auto grid max-w-6xl gap-24 px-6 py-10">
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -1242,7 +1242,7 @@ const Page = () => (
         </div>
       </section>
     </div>
-  </main>
+  </div>
 );
 
 export default Page;

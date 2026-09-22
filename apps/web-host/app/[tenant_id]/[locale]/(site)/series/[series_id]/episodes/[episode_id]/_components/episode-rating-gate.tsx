@@ -52,14 +52,14 @@ export const EpisodeRatingGate = async ({
       : undefined;
   if (ageRestriction) {
     return (
-      <main className="mx-auto grid max-w-6xl px-6 py-10">
+      <div className="mx-auto grid max-w-6xl px-6 py-10">
         <EpisodeAgeGate
           episodePublicId={episodePublicId}
           hasBirthDate={ageRestriction.hasBirthDate}
           seriesPublicId={seriesPublicId}
           signedIn={ageRestriction.signedIn}
         />
-      </main>
+      </div>
     );
   }
 

@@ -243,7 +243,7 @@ const CreatorsListData = async ({
 const CreatorsPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/creators">) => (
-  <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+  <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
     <div className="grid gap-2">
       <h1 className="font-serif text-3xl leading-tight">
         <Suspense fallback={<SkeletonLine className="h-8 w-32" />}>
@@ -268,7 +268,7 @@ const CreatorsPage = ({
         <CreatorsListData searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
-  </main>
+  </div>
 );
 
 export default CreatorsPage;

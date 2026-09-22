@@ -262,7 +262,7 @@ const LabelDetailContent = async ({
   }
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
       <div className="grid gap-4">
         {label.eyeCatchImageVariants &&
           label.eyeCatchImageVariants.length > 0 && (
@@ -317,7 +317,7 @@ const LabelDetailContent = async ({
           </Suspense>
         </LocaleLink>
       </p>
-    </main>
+    </div>
   );
 };
 

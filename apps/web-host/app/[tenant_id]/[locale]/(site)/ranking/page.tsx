@@ -403,7 +403,7 @@ const RankingList = async ({
 };
 
 const RankingPage = ({ searchParams }: RankingPageProps) => (
-  <main className="mx-auto max-w-4xl px-6 py-12">
+  <div className="mx-auto max-w-4xl px-6 py-12">
     <h1 className="mb-2 font-serif text-4xl font-bold">
       <Suspense fallback={<SkeletonLine className="h-9 w-40" />}>
         <Message message="host.ranking.list_title" />
@@ -432,7 +432,7 @@ const RankingPage = ({ searchParams }: RankingPageProps) => (
         <RankingList searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
-  </main>
+  </div>
 );
 
 export default RankingPage;

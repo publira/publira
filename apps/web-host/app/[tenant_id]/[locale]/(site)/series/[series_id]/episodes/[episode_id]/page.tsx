@@ -250,7 +250,7 @@ const EpisodeContent = async (
       seriesTitle={series.title}
       tenantId={tenantId}
     >
-      <main>
+      <div>
         <ContentViewTracker kind="episode" publicId={episode.publicId} />
         {/* The reader opens the page: everything else is what the reader may
           want after finishing, so it sits below the pages rather than above
@@ -380,7 +380,7 @@ const EpisodeContent = async (
             tenantId={tenantId}
           />
         </EpisodeColumn>
-      </main>
+      </div>
     </EpisodeRatingGate>
   );
 };

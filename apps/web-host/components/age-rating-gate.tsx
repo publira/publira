@@ -55,7 +55,7 @@ const AgeRatingConfirmation = ({
   };
 
   return (
-    <main className="mx-auto grid max-w-6xl px-6 py-10">
+    <div className="mx-auto grid max-w-6xl px-6 py-10">
       <EmptyState>
         <EmptyStateHeading>
           <EmptyStateTitle>
@@ -87,7 +87,7 @@ const AgeRatingConfirmation = ({
           </div>
         </EmptyStateActions>
       </EmptyState>
-    </main>
+    </div>
   );
 };
 
