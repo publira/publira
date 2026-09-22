@@ -14,10 +14,9 @@ const xcodeBuildTargets = {'ios', 'ipa'};
 const defaultBuildFlavor = 'production';
 
 /// The defines the command sets itself. The tenant host is the manifest's,
-/// and the two addresses come from the environment variables of the same name.
+/// and the address comes from the environment variable of the same name.
 const tenantHostDefine = 'PUBLIRA_TENANT_HOST';
-const apiBaseUrlDefine = 'PUBLIRA_API_BASE_URL';
-const imageBaseUrlDefine = 'PUBLIRA_IMAGE_BASE_URL';
+const baseUrlDefine = 'PUBLIRA_BASE_URL';
 
 /// What `scripts/build.dart` was asked to build.
 class BuildRequest {
@@ -65,11 +64,11 @@ class BuildException implements Exception {
 }
 
 /// The arguments after `flutter` that build [request] for [manifest], with
-/// the addresses the app connects to read from [environment].
+/// the address the app connects to read from [environment].
 ///
-/// A production build is refused without both addresses, since the app's
-/// defaults are a loopback stack no reader's device has. Every problem is
-/// reported at once.
+/// A production build is refused without the address, since the app's default
+/// is a loopback stack no reader's device has. Every problem is reported at
+/// once.
 List<String> flutterBuildArguments(
   BuildRequest request,
   AppManifest manifest,
@@ -80,7 +79,7 @@ List<String> flutterBuildArguments(
     request.flutterArguments,
     'dart-define',
   ).map((define) => define.split('=').first).toSet();
-  for (final name in [tenantHostDefine, apiBaseUrlDefine, imageBaseUrlDefine]) {
+  for (final name in [tenantHostDefine, baseUrlDefine]) {
     if (given.contains(name)) {
       problems.add(
         name == tenantHostDefine
@@ -93,32 +92,27 @@ List<String> flutterBuildArguments(
   }
 
   final production = request.flavor == defaultBuildFlavor;
-  final addresses = <String, String>{};
-  for (final name in [apiBaseUrlDefine, imageBaseUrlDefine]) {
-    final value = environment[name] ?? '';
-    if (value.isEmpty) {
-      if (production) {
-        problems.add(
-          '$name is required for a production build; export the address '
-          'the deployment serves it on',
-        );
-      }
-      continue;
+  final baseUrl = environment[baseUrlDefine] ?? '';
+  if (baseUrl.isEmpty) {
+    if (production) {
+      problems.add(
+        '$baseUrlDefine is required for a production build; export the '
+        'origin the deployment serves the tenant site on',
+      );
     }
+  } else {
     // A release Android build refuses cleartext traffic, so a store build
     // reaching its API over http:// would fail only on the reader's device.
-    final uri = Uri.tryParse(value);
+    final uri = Uri.tryParse(baseUrl);
     final schemes = production ? const ['https'] : const ['http', 'https'];
     if (uri == null || uri.host.isEmpty || !schemes.contains(uri.scheme)) {
       problems.add(
         production
-            ? '$name must be an https:// URL for a production build, '
-                  'not $value'
-            : '$name must be an http:// or https:// URL, not $value',
+            ? '$baseUrlDefine must be an https:// URL for a production build, '
+                  'not $baseUrl'
+            : '$baseUrlDefine must be an http:// or https:// URL, not $baseUrl',
       );
-      continue;
     }
-    addresses[name] = value;
   }
   if (problems.isNotEmpty) {
     throw BuildException(problems);
@@ -132,8 +126,7 @@ List<String> flutterBuildArguments(
       defaultBuildFlavor,
     ],
     '--dart-define=$tenantHostDefine=${manifest.tenantHost}',
-    for (final MapEntry(:key, :value) in addresses.entries)
-      '--dart-define=$key=$value',
+    if (baseUrl.isNotEmpty) '--dart-define=$baseUrlDefine=$baseUrl',
     ...request.flutterArguments,
   ];
 }

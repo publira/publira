@@ -6,7 +6,7 @@ Playwright E2E ([`../README.md`](../README.md)) connects directly to application
 
 ## Why it is needed
 
-The files under `infra/proxy/` are the source of truth for the edge. A one-line change can break precedence, host matching, `/api` prefix removal, the `/api/v1` exception, or the `/images` route, and one proxy can drift from the other two while every stack still starts. `pnpm preflight`, Playwright, and bootstrap detect none of it.
+The files under `infra/proxy/` are the source of truth for the edge. A one-line change can break precedence, host matching, the `/api` route, the `/api/v1` exception, or the `/images` route, and one proxy can drift from the other two while every stack still starts. `pnpm preflight`, Playwright, and bootstrap detect none of it.
 
 The `strip-trace-context` middleware and its nginx and Caddy counterparts are covered for the same reason: they remove incoming `traceparent`, `tracestate`, and `baggage`, and requests still succeed when the removal is gone, so that regression is silent without this check. See [`../../server/README.md`](../../server/README.md#trace-context-arriving-from-outside).
 
@@ -55,7 +55,7 @@ Readiness differs by proxy. Traefik is asked through its insecure API for the fi
 
 The echo server responds with `{"backend","port","path","host","method"}`, the received `traceparent`, `tracestate`, and `baggage` values, and the received `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`, so every probe can assert **which backend received a request**, **the path it saw** after prefix removal, and **the headers it was given**.
 
-`scripts/test.sh` is the list of probes, one per row of the contract: host routing including a numbered admin host and a `Host` carrying a port, `/api` prefix removal, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, and the host-agnostic `/images` route. Two probe sets then run against every one of the five backends: forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives, and forged `X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto` values that the edge must have replaced with its own — the client IP a backend records is the first address in `X-Forwarded-For`, and the CSRF origin check reads the other two.
+`scripts/test.sh` is the list of probes, one per row of the contract: host routing including a numbered admin host and a `Host` carrying a port, the `/api` route, the `/api/v1` exception that keeps the Next.js Route Handlers on their own app, and the host-agnostic `/images` route, which reaches the same backend as `/api`; no route rewrites the path. Two probe sets then run against every one of the four backends: forged `traceparent`, `tracestate`, and `baggage` values that must be gone by the time the request arrives, and forged `X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto` values that the edge must have replaced with its own — the client IP a backend records is the first address in `X-Forwarded-For`, and the CSRF origin check reads the other two.
 
 ## Layout
 
@@ -65,7 +65,7 @@ e2e/routing/
 ├── compose.echo.yaml       # The echo backends, for the proxies with no environment of their own
 ├── compose.nginx.yaml      # nginx in front of them
 ├── compose.caddy.yaml      # Caddy in front of them
-├── echo.py                 # Returns JSON on 3000 / 4000 / 4100 / 8000 / 8200
+├── echo.py                 # Returns JSON on 3000 / 4000 / 4100 / 8000
 ├── Taskfile.yaml
 └── scripts/
     ├── lib.sh

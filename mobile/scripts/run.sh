@@ -26,12 +26,12 @@ mobile_load_app_config "$(mobile_device_address "${device}")"
 mobile_generate_build_config
 mobile_bind_device_ports "${device}"
 mapfile -t defines < <(
-  mobile_dart_defines "${PUBLIRA_API_BASE_URL}" "${PUBLIRA_IMAGE_BASE_URL}"
+  mobile_dart_defines "${PUBLIRA_BASE_URL}"
 )
 
-printf 'profile %s on %s: api %s, images %s, tenant %s\n' \
+printf 'profile %s on %s: server %s, tenant %s\n' \
   "${MOBILE_PROFILE_NAME}" "${device:-the default device}" \
-  "${PUBLIRA_API_BASE_URL}" "${PUBLIRA_IMAGE_BASE_URL}" "${PUBLIRA_TENANT_HOST}"
+  "${PUBLIRA_BASE_URL}" "${PUBLIRA_TENANT_HOST}"
 
 cd "${MOBILE_DIR}"
 exec flutter run "${defines[@]}" "$@"

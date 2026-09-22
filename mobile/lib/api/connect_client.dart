@@ -23,6 +23,7 @@ class ConnectClient {
     this.timeout = const Duration(seconds: 10),
   }) : _http = httpClient ?? http.Client();
 
+  /// The origin the public API is served from, under `/api`.
   final String baseUrl;
   final Duration timeout;
 
@@ -46,11 +47,7 @@ class ConnectClient {
     String? tenantId,
     String? accessToken,
   }) async {
-    // Appended rather than resolved: every procedure is an absolute path, and
-    // resolving one would drop a base path such as the edge's `/api` prefix.
-    final base = Uri.parse(baseUrl);
-    final prefix = base.path.replaceFirst(RegExp(r'/+$'), '');
-    final uri = base.replace(path: '$prefix$procedure');
+    final uri = Uri.parse(baseUrl).replace(path: '/api$procedure');
     final headers = <String, String>{
       'content-type': 'application/json',
       'connect-protocol-version': '1',

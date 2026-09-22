@@ -14,9 +14,9 @@ const isCi = Boolean(process.env.CI);
 const desktopChrome = devices["Desktop Chrome"];
 
 /**
- * Specs that stop the API (`stopApiServer`). One process serves all three
- * Connect namespaces, so they cannot overlap with each other or with the three
- * main projects (those still need the API up). Filename is the contract: a new
+ * Specs that stop the backend (`stopServer`). One process serves all three
+ * Connect namespaces and the images, so they cannot overlap with each other or
+ * with the three main projects (those still need the API up). Filename is the contract: a new
  * process-killing spec must match this pattern so it is kept out of the
  * parallel projects. See the isolated projects below.
  */
@@ -230,7 +230,7 @@ export default defineConfig({
         baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
-    // API outage. Every file below calls stopApiServer, which takes all three
+    // Backend outage. Every file below calls stopServer, which takes all three
     // namespaces down with the one process, so they form a single chain
     // through `dependencies` — one project per filename, because Playwright
     // has no per-project workers and a shared project would still fan its

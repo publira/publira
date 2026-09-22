@@ -15,7 +15,7 @@ DEV_ENV_SLOT_MAX=15
 # profile is local state nothing in the repository reads and recreating one
 # costs less than keeping every superseded shape loadable. Raise it in the same
 # commit as a change to what a profile holds.
-DEV_ENV_PROFILE_VERSION=1
+DEV_ENV_PROFILE_VERSION=2
 
 dev_env_error() {
   printf 'dev-env: %s\n' "$*" >&2
@@ -330,8 +330,6 @@ dev_env_write_profile() {
     printf 'PUBLIRA_WORKER_DB_URL=postgres://publira_outbox:outboxpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_CONTENT_STATS_DB_URL=postgres://publira_content_stats:contentstatspass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_TICKER_DB_URL=postgres://publira_ticker:tickerpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
-    printf 'PUBLIRA_IMAGE_DB_URL=postgres://publira_public:publicpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
-    printf 'PUBLIRA_ADMIN_IMAGE_DB_URL=postgres://publira_admin:adminpass@%s/publira_%s?sslmode=disable\n' "${postgres}" "${name//-/_}"
     printf 'PUBLIRA_REDIS_URL=redis://%s/%s\n' "${redis}" "${slot}"
     printf 'PUBLIRA_S3_BUCKET=publira-%s\n' "${name}"
     printf 'PUBLIRA_S3_ENDPOINT=%s\n' "$(dev_env_s3_endpoint)"
@@ -345,12 +343,12 @@ dev_env_write_profile() {
     printf 'PUBLIRA_WEB_PLATFORM_PORT=%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PUBLIC_API_PORT=%s\n' "$((port_base + 10))"
     printf 'PUBLIRA_PUBLIC_API_GRPC_PORT=%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_IMAGE_SERVER_PORT=%s\n' "$((port_base + 20))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_WORKER_PORT=%s\n' "$((port_base + 40))"
-    # The profile's front door: a browser asks for `/images…` on the origin the
-    # page it is reading came from, and only the edge knows that path is the
-    # image server's. The platform console URL below is therefore the edge's.
+    # The profile's front door: a browser asks for `/images…` and `/api…` on
+    # the origin the page it is reading came from, and only the edge knows
+    # both paths are the server's. The platform console URL below is therefore
+    # the edge's.
     printf 'PUBLIRA_EDGE_PORT=%s\n' "$((port_base + 50))"
     printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
@@ -405,11 +403,10 @@ dev_env_load_profile() {
   for key in \
     PUBLIRA_PUBLIC_DB_URL PUBLIRA_ADMIN_DB_URL PUBLIRA_PLATFORM_DB_URL \
     PUBLIRA_WORKER_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_TICKER_DB_URL \
-    PUBLIRA_IMAGE_DB_URL PUBLIRA_ADMIN_IMAGE_DB_URL \
     PUBLIRA_S3_FORCE_PATH_STYLE PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_HOST_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
-    PUBLIRA_PUBLIC_API_GRPC_PORT PUBLIRA_IMAGE_SERVER_PORT \
+    PUBLIRA_PUBLIC_API_GRPC_PORT \
     PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT PUBLIRA_EDGE_PORT \
     PUBLIRA_GRPC_URL \
     PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
@@ -446,9 +443,9 @@ dev_env_profile_has_running_processes() {
 }
 
 # The reverse proxy in front of one profile's processes. A profile without one
-# serves no image: `/images…` is the image server's, and a browser asks for it
-# on the origin the page it is reading came from, so something has to stand in
-# front of both. It is a container rather than an eighth process because the
+# serves no image: `/images…` is the server's, and a browser asks for it on the
+# origin the page it is reading came from, so something has to stand in front
+# of both. It is a container rather than a seventh process because the
 # routing every environment runs is Traefik configuration, and answering the
 # same contract in a second implementation is how the two drift apart.
 DEV_ENV_EDGE_COMPOSE_FILE="${DEV_ENV_DIR}/compose.yaml"
@@ -492,10 +489,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}"
-    image-server:
-      loadBalancer:
-        servers:
-          - url: "http://127.0.0.1:${PUBLIRA_IMAGE_SERVER_PORT}"
 EOF
   COMPOSE_PROJECT_NAME="$(dev_env_edge_project "${name}")" \
   PUBLIRA_DEV_ENV_EDGE_SERVICES_FILE="${services_file}" \

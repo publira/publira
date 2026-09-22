@@ -22,12 +22,8 @@ http:
         servers:
           - url: "http://app:4100"
 
+    # The server's edge listener, which /api and /images reach as they are.
     api:
       loadBalancer:
         servers:
           - url: "http://app:8000"
-
-    image-server:
-      loadBalancer:
-        servers:
-          - url: "http://app:8200"

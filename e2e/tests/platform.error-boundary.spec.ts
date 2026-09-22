@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { startApiServer, stopApiServer } from "../src/api-server";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import { startServer, stopServer } from "../src/server";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const dashboardHeading = "Cross-tenant operations hub";
@@ -43,7 +43,7 @@ test.describe("web-platform console error boundary", () => {
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {
-    startApiServer();
+    startServer();
   });
 
   test.use({ locale: "en-US" });
@@ -63,7 +63,7 @@ test.describe("web-platform console error boundary", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/`);
 
@@ -79,7 +79,7 @@ test.describe("web-platform console error boundary", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      startApiServer();
+      startServer();
     }
 
     // "can retry" means the retry recovers, not that a button exists.
@@ -97,7 +97,7 @@ test.describe("web-platform console error boundary", () => {
     page,
   }) => {
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/login`);
 
@@ -106,7 +106,7 @@ test.describe("web-platform console error boundary", () => {
       expect(response?.status(), await page.content()).toBe(200);
       await expect(page.getByLabel(/Email address/u)).toBeVisible();
     } finally {
-      startApiServer();
+      startServer();
     }
   });
 
@@ -114,7 +114,7 @@ test.describe("web-platform console error boundary", () => {
     page,
   }) => {
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(`${WEB_PLATFORM_BASE_URL}/setup`);
 
@@ -124,7 +124,7 @@ test.describe("web-platform console error boundary", () => {
         page.getByRole("button", { name: "Create administrator" })
       ).toHaveCount(0);
     } finally {
-      startApiServer();
+      startServer();
     }
   });
 });

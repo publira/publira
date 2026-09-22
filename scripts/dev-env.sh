@@ -86,7 +86,6 @@ start_profile() {
   for port in \
     "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
     "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
-    "${PUBLIRA_IMAGE_SERVER_PORT}" \
     "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_WORKER_PORT}" \
     "${PUBLIRA_EDGE_PORT}"; do
     if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
@@ -100,26 +99,24 @@ start_profile() {
   init_profile "${name}"
   task -d "${REPO_ROOT}" server:build
 
-  dev_env_start_background "${run_dir}" api-server env \
+  # One process serves the API and the images: the edge forwards `/api` and
+  # `/images` to its edge listener, and the Next.js apps dial its internal one.
+  # The Redis URL is the image conversion cache's; the rate limit counters use
+  # it too once it is there.
+  dev_env_start_background "${run_dir}" server env \
     PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_PUBLIC_API_PORT}" \
     PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
     PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
     PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
     PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
-    "${REPO_ROOT}/server/bin/api-server"
-  dev_env_start_background "${run_dir}" image-server env \
-    PUBLIRA_IMAGE_SERVER_ADDR=":${PUBLIRA_IMAGE_SERVER_PORT}" \
-    PUBLIRA_IMAGE_DB_URL="${PUBLIRA_IMAGE_DB_URL}" \
-    PUBLIRA_ADMIN_IMAGE_DB_URL="${PUBLIRA_ADMIN_IMAGE_DB_URL}" \
-    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
-    PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
-    "${REPO_ROOT}/server/bin/image-server"
+    "${REPO_ROOT}/server/bin/publira" server
   # The worker also runs the three periodic jobs that promote due episodes,
   # apply free window boundaries, and turn over each tenant's calendar day, so
   # it carries the ticker role's connection and the revalidate targets too.
@@ -135,7 +132,7 @@ start_profile() {
     PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
-    "${REPO_ROOT}/server/bin/worker"
+    "${REPO_ROOT}/server/bin/publira" worker
   # The Node.js services run through the repository root's own scripts, which
   # are `turbo run`: the task graph is the only thing that builds the `dist/` of
   # the workspace packages they import, and a worktree that has never built them

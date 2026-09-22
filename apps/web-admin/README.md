@@ -70,4 +70,4 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 ### Image delivery (`next/image`)
 
-`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of image-server, which the edge serves on this console's own host under `/images`. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through image-server — a temporary `blob:` preview, for instance — is `unoptimized`.
+`images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of the server's image routes, which the edge serves on this console's own host under `/images`. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through `/images` — a temporary `blob:` preview, for instance — is `unoptimized`.

@@ -21,7 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/webpushsettings"
 )
 
-// newWebPushClient serves the platform API over pg the way api-server does. A
+// newWebPushClient serves the platform API over pg the way `publira server` does. A
 // second call over the same database is the same installation after a
 // restart: nothing but the database carries over.
 func newWebPushClient(t *testing.T, pg *testutil.PostgresEnv, encryptor emailsettings.SecretManager) publirasplatformv1connect.PlatformWebPushSettingsServiceClient {

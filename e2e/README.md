@@ -17,13 +17,13 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (the API server's edge-facing and internal listeners), `8003` (worker), `8200` (image-server), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
+The default required host ports are `3000` (web-host), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` / `8100` (the server's edge-facing and internal listeners; the images are on the first), `8003` (worker), `8300` (email-renderer), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to).
 
 PIDs and logs default to `e2e/.run/`. When `PUBLIRA_E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `PUBLIRA_E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
 A lease lives only as long as its holder process, while a stack outlives one, so `up`, `db`, and `start-apps` read ownership off the containers as well: `compose.yaml` labels every service with the run directory that created it (`com.publira.e2e.run-dir`). A stack whose lease holder is gone therefore still refuses a run from another directory, as does a data port already published by a different compose project. `task e2e:down` stays the way to remove a stack nothing owns any more.
 
-Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_IMAGE_SERVER_PORT`, `PUBLIRA_E2E_EMAIL_RENDERER_PORT`, and `PUBLIRA_E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches api-server, the worker's periodic jobs, and all three apps, so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-host serves the browser notification switch the member settings suite drives.
+Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_EMAIL_RENDERER_PORT` and `PUBLIRA_E2E_EDGE_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches the server, the worker's periodic jobs, and all three apps, so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-host serves the browser notification switch the member settings suite drives.
 
 ## One-command run
 
@@ -41,9 +41,8 @@ This always tears down app processes and compose volumes, including on failure o
 | `task e2e:prepare` | Build server binaries, the web apps, and email-renderer; install Playwright Chromium. |
 | `task e2e:up` | Start Postgres, Redis, RustFS, Mailpit, the Traefik edge, and the screenshot browser only. |
 | `task e2e:db` | Migrate, apply development seed, point the seeded SMTP settings at the E2E Mailpit, create the S3 bucket and upload the seed's images (`task storage:seed`), and pin the timestamps the screenshot baseline records. |
-| `task e2e:start-apps` | Start APIs, email-renderer, the worker, image-server, and the three web apps in the background. |
-| `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | Operate the API server for outage scenarios. One process carries all three namespaces, so this takes every console down with the tenant site. |
-| `bash e2e/scripts/image-server.sh <start\|start-wait\|stop>` | Operate image-server on its own. |
+| `task e2e:start-apps` | Start the server, email-renderer, the worker, and the three web apps in the background. |
+| `bash e2e/scripts/server.sh <start\|start-wait\|stop>` | Operate the server for outage scenarios. One process carries all three namespaces and the images, so this takes every console down with the tenant site. |
 | `bash e2e/scripts/email-renderer.sh <start\|start-wait\|stop>` | Operate email-renderer on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
@@ -79,7 +78,7 @@ e2e/
 ```
 
 - **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), Traefik, and the browser the screenshot projects connect to.
-- **Host processes:** the API server (its edge-facing and internal listeners carry all three Connect namespaces), email-renderer, the worker (which also runs the periodic jobs that promote due episodes, apply free window boundaries, and roll tenant days, on the intervals `PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC`, `PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC`, and `PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC` shorten to seconds), image-server, and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
+- **Host processes:** the server (`publira server`: its edge-facing listener carries `publira.v1` and the images, its internal one all three Connect namespaces), email-renderer, the worker (`publira worker`, which also runs the periodic jobs that promote due episodes, apply free window boundaries, and roll tenant days, on the intervals `PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC`, `PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC`, and `PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC` shorten to seconds), and standalone `web-host`, `web-admin`, and `web-platform` (`node server.js`).
 - **Seed:** development `task db:setup`: public domain `localhost`, admin domain `admin.localhost`, tenant `Seed Tenant`, and platform user `platform@example.com`. The seed tenant and `platform_config` both store `en` as their default locale, so every console and public site opens in English with no `publira_locale` cookie — which is the copy the specs locate elements by. `task e2e:db` then runs `task storage:seed`, which uploads the images `db/seeds/dev/060_images.sql` names: an eye-catch for every series and label, an icon for every creator, and eight body pages for every episode, so the canvas viewer has something to draw whichever episode a spec opens. The two commenting suites seed episodes of their own, so they call `scripts/upload-episode-pages.sh` for those after applying their scenario: the comment section is the page after the last page of an episode, so those episodes need pages to turn as well, and seeding their tenants for the whole stack would put them in the tenant list the platform screenshot baseline photographs.
 
 ### Mail
@@ -92,7 +91,7 @@ The `email-renderer` service turns a template into the HTML part of the mail the
 
 ### The edge
 
-Almost every suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only image-server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `PUBLIRA_E2E_EDGE_PORT` (default `3080`), sends `/images` to image-server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. A suite that reads a body without being timed — `host.episode-reading.spec.ts` — stays in the ordinary `web-host` project and navigates to the edge by absolute URL, so it never shares the runner with the timing suite. It runs with `network_mode: host` because its backends are host processes on loopback. Its routing is the repository's own `infra/proxy/traefik/dynamic`, mounted straight in, with only its `services.yaml` replaced by one `up.sh` writes to `$PUBLIRA_E2E_RUN_DIR/traefik/` for this run, because a file provider substitutes no variables and the ports are overridable.
+Almost every suite talks to `web-host` directly on `:3000`. An episode body image, however, is `/images/episodes/{id}` on the reader's own origin, and only the server can answer it, so one origin has to serve both. That is what the `traefik` service is for: it listens on `PUBLIRA_E2E_EDGE_PORT` (default `3080`), sends `/images` to the server and everything else to web-host, and is the `baseURL` of the `viewer-performance` project alone. A suite that reads a body without being timed — `host.episode-reading.spec.ts` — stays in the ordinary `web-host` project and navigates to the edge by absolute URL, so it never shares the runner with the timing suite. It runs with `network_mode: host` because its backends are host processes on loopback. Its routing is the repository's own `infra/proxy/traefik/dynamic`, mounted straight in, with only its `services.yaml` replaced by one `up.sh` writes to `$PUBLIRA_E2E_RUN_DIR/traefik/` for this run, because a file provider substitutes no variables and the ports are overridable.
 
 An eye-catch is delivered the same way, as `/images/series/{id}/{ratio}/{width}` on the reader's origin. `admin.eye-catch-upload.spec.ts` therefore drives the console on the web-admin origin, where `/images` resolves to nothing, and reads the uploaded bytes back from the edge by absolute URL.
 
@@ -124,7 +123,7 @@ A spec that changes state the whole console reads gets an isolated project for t
 | Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` verifies RustFS on `:9003/health`, API readiness on `:8100` (one probe, and its body names a check per database role), email-renderer on `:8300/readyz`, the worker on `:8003/readyz`, image-server on `:8200/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
+`wait-ready` verifies RustFS on `:9003/health`, the server's readiness on `:8100` (one probe, and its body names a check per database role), email-renderer on `:8300/readyz`, the worker on `:8003/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-host's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
 
 ## Fixture images
 
@@ -161,7 +160,7 @@ Run it against a stack that has just been seeded — a stack the whole suite has
 
 It runs as its own Playwright project, `viewer-performance`, after every other project has finished, so nothing else on the machine is being measured with it.
 
-`Seed Episode 001-02` is free and the suite reads it signed out, and image-server encrypts a free body as readily as a paid one, so every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn.
+`Seed Episode 001-02` is free and the suite reads it signed out, and the server encrypts a free body as readily as a paid one, so every number above includes reversing `xor-hmac-sha256-v1` in the browser for each page drawn.
 
 ### Taking the numbers again
 

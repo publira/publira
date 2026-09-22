@@ -95,7 +95,7 @@ func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 	}
 }
 
-// startWorkerWithTickerJobs boots the worker the way cmd/worker does: River
+// startWorkerWithTickerJobs boots the worker the way `publira worker` does: River
 // on the superuser pool that owns its schema, and the jobs on the ticker role's
 // own connection.
 func startWorkerWithTickerJobs(t *testing.T, pg *testutil.PostgresEnv) {

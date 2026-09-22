@@ -1,27 +1,24 @@
 // A one-origin stand-in for a device, so that a browser can run this app.
 //
-// On a phone the app holds the address of api-server and of image-server and
-// calls both itself, with no origin policy between them. A browser holds a
-// page to the origin it came from, so this serves what `flutter build web`
-// produced and hands on the two prefixes the app asks its backends for --
-// `/publira.v1.<Service>/<Method>` and `/images/...` -- to the development
-// profile's own servers.
+// On a phone the app holds the address of `publira server` and calls it
+// itself. A browser holds a page to the origin it came from, so this serves
+// what `flutter build web` produced and hands on the two prefixes the app asks
+// the server for -- `/api/...` and `/images/...` -- to the development
+// profile's own server.
 //
 // Every header the app set travels as it was written. That is the whole point
-// of going to each server directly rather than through the profile's edge,
+// of going to the server directly rather than through the profile's edge,
 // which overwrites `X-Forwarded-Host` -- the app's way of naming the tenant --
 // with its own host name.
 //
 //   dart run scripts/web_app_server.dart --port 14460 \
-//     --api http://127.0.0.1:14410 --images http://127.0.0.1:14420 \
-//     --root build/web
+//     --server http://127.0.0.1:14410 --root build/web
 
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-const _apiPrefix = '/publira.v1.';
-const _imagesPrefix = '/images/';
+const _serverPrefixes = ['/api/', '/images/'];
 
 /// Headers that describe one hop and are not passed on to the next.
 const _hopByHopHeaders = <String>{
@@ -81,7 +78,7 @@ Future<void> main(List<String> arguments) async {
   );
   stdout.writeln(
     'mobile web app on http://127.0.0.1:${server.port} '
-    '(api ${options.api}, images ${options.images})',
+    '(server ${options.server})',
   );
   await for (final request in server) {
     unawaited(_handle(request, client, options));
@@ -95,10 +92,8 @@ Future<void> _handle(
 ) async {
   try {
     final path = request.uri.path;
-    if (path.startsWith(_apiPrefix)) {
-      await _forward(request, client, options.api);
-    } else if (path.startsWith(_imagesPrefix)) {
-      await _forward(request, client, options.images);
+    if (_serverPrefixes.any(path.startsWith)) {
+      await _forward(request, client, options.server);
     } else {
       await _serve(request, options.root);
     }
@@ -197,8 +192,7 @@ Future<void> _close(HttpRequest request, int status, String message) async {
 class _Options {
   const _Options({
     required this.port,
-    required this.api,
-    required this.images,
+    required this.server,
     required this.root,
   });
 
@@ -208,26 +202,23 @@ class _Options {
       values[arguments[index]] = arguments[index + 1];
     }
     final port = int.tryParse(values['--port'] ?? '');
-    final api = values['--api'];
-    final images = values['--images'];
+    final server = values['--server'];
     final root = values['--root'];
-    if (port == null || api == null || images == null || root == null) {
+    if (port == null || server == null || root == null) {
       stderr.writeln(
         'usage: dart run scripts/web_app_server.dart '
-        '--port <port> --api <url> --images <url> --root <directory>',
+        '--port <port> --server <url> --root <directory>',
       );
       exit(2);
     }
     return _Options(
       port: port,
-      api: Uri.parse(api),
-      images: Uri.parse(images),
+      server: Uri.parse(server),
       root: Directory(root),
     );
   }
 
   final int port;
-  final Uri api;
-  final Uri images;
+  final Uri server;
   final Directory root;
 }

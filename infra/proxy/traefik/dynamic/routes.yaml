@@ -23,11 +23,6 @@ http:
           tracestate: ""
           baggage: ""
 
-    api-strip:
-      stripPrefix:
-        prefixes:
-          - /api
-
   routers:
     # The catch-all. Priority 1 keeps it under every other router.
     web-host:
@@ -50,19 +45,19 @@ http:
 
     # The public API is host-agnostic, so priority 105 puts it above the
     # admin and platform hosts. `/api/v1` is excluded: that space belongs to
-    # the Next.js Route Handlers of whichever app the host rules picked.
+    # the Next.js Route Handlers of whichever app the host rules picked. No
+    # prefix removal, because the server's own routes carry /api.
     api:
       rule: "PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1(/.*)?$`)"
       priority: 105
       entryPoints: [web]
-      middlewares: [api-strip]
       service: api
 
-    # Host-agnostic, like the API: one image server answers for the tenant
-    # site and the tenant console alike, and picks the rules it applies from
-    # the host name it was given.
-    image-server:
+    # Host-agnostic, like the API, and answered by the same process: the
+    # server picks the rules it applies to an image from the host name it was
+    # given. No prefix removal, like the API.
+    images:
       rule: "PathPrefix(`/images`)"
       priority: 110
       entryPoints: [web]
-      service: image-server
+      service: api

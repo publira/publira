@@ -108,7 +108,7 @@ PUBLIRA_ROUTING_ROUTERS=(
   web-admin
   web-platform
   api
-  image-server
+  images
 )
 
 # Middleware names from the same file. `strip-trace-context` is attached to
@@ -117,7 +117,6 @@ PUBLIRA_ROUTING_ROUTERS=(
 # waiting for it turns that into one readable message instead of a wall of
 # failing probes.
 PUBLIRA_ROUTING_MIDDLEWARES=(
-  api-strip
   strip-trace-context
 )
 
@@ -262,7 +261,7 @@ assert_route() {
 
 # The same route with a forged W3C Trace Context on the request: the edge must
 # drop all three headers before the backend sees them, and leave the routing
-# and the prefix removal alone.
+# and the path alone.
 assert_trace_context_stripped() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5" want_path="$6"
   local out code body actual_backend actual_path header field value

@@ -1,7 +1,7 @@
 /**
- * `next/image` loader for the image-server (`/images/...`).
+ * `next/image` loader for the server's image routes (`/images/...`).
  *
- * The image-server proxies through Manael, which reads `w` / `h` / `fit` / `q`
+ * The image routes proxy through Manael, which reads `w` / `h` / `fit` / `q`
  * off the query string and picks WebP or AVIF from the request's `Accept`.
  * Handing it the width `next/image` already computed is what keeps the browser
  * from downloading a full-size original, and what keeps `/_next/image` — which
@@ -30,7 +30,7 @@ export const imageServerLoader = ({
   width,
 }: ImageServerLoaderParams): string => {
   // Object URLs for a not-yet-uploaded file, and anything served by something
-  // other than the image-server, have no transform to ask for.
+  // other than the image routes, have no transform to ask for.
   if (!src.startsWith(IMAGE_SERVER_PATH_PREFIX)) {
     return src;
   }

@@ -38,10 +38,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://localhost:${PUBLIRA_E2E_PUBLIC_API_PORT}"
-    image-server:
-      loadBalancer:
-        servers:
-          - url: "http://localhost:${PUBLIRA_E2E_IMAGE_SERVER_PORT}"
 EOF
 
 e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}"

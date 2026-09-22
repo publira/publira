@@ -6,7 +6,7 @@
 #   EVENT_NAME, DOCKER_MODE_INPUT
 #   FILTER_FORMAT, FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_E2E,
 #   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_BUILD
-#   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_IMAGE, FILTER_DOCKER_PUBLIRACTL, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
+#   FILTER_DOCKER_WEB, FILTER_DOCKER_SERVER, FILTER_DOCKER_PUBLIRACTL, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
 
@@ -28,18 +28,15 @@ flag() {
 
 # Fixed matrix rows (JSON objects, no spaces needed for GITHUB_OUTPUT single-line).
 rep_web='{"role":"web","target":"web-host","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-host","extra":"PORT=3000"}'
-rep_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
-rep_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
+rep_server='{"role":"server","target":"publira","port":"","task":"docker:build:server","arg":"","extra":""}'
 rep_publiractl='{"role":"publiractl","target":"publiractl","port":"","task":"docker:build:publiractl","arg":"","extra":""}'
 rep_node='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
 
 full_web_host='{"role":"web","target":"web-host","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-host","extra":"PORT=3000"}'
 full_web_admin='{"role":"web","target":"web-admin","port":"4000","task":"docker:build:web","arg":"APP_NAME=web-admin","extra":"PORT=4000"}'
 full_web_platform='{"role":"web","target":"web-platform","port":"4100","task":"docker:build:web","arg":"APP_NAME=web-platform","extra":"PORT=4100"}'
-full_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
-full_worker='{"role":"api","target":"worker","port":"8003","task":"docker:build:api","arg":"CMD_NAME=worker","extra":"PORT=8003"}'
+full_server='{"role":"server","target":"publira","port":"","task":"docker:build:server","arg":"","extra":""}'
 full_publiractl='{"role":"publiractl","target":"publiractl","port":"","task":"docker:build:publiractl","arg":"","extra":""}'
-full_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
 full_node_email_renderer='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
 skip_row='{"role":"none","target":"skip","port":"","task":"skip","arg":"","extra":""}'
 
@@ -83,10 +80,8 @@ case "${event}" in
       "${full_web_host}"
       "${full_web_admin}"
       "${full_web_platform}"
-      "${full_api}"
-      "${full_worker}"
+      "${full_server}"
       "${full_publiractl}"
-      "${full_image}"
       "${full_node_email_renderer}"
     )
     ;;
@@ -110,14 +105,12 @@ case "${event}" in
         "${full_web_host}"
         "${full_web_admin}"
         "${full_web_platform}"
-        "${full_api}"
-        "${full_worker}"
+        "${full_server}"
         "${full_publiractl}"
-        "${full_image}"
         "${full_node_email_renderer}"
       )
     else
-      matrix_items=("${rep_web}" "${rep_api}" "${rep_publiractl}" "${rep_node}" "${rep_image}")
+      matrix_items=("${rep_web}" "${rep_server}" "${rep_publiractl}" "${rep_node}")
     fi
     ;;
   *)
@@ -140,16 +133,13 @@ case "${event}" in
         "${full_web_host}"
         "${full_web_admin}"
         "${full_web_platform}"
-        "${full_api}"
-        "${full_worker}"
+        "${full_server}"
         "${full_publiractl}"
-        "${full_image}"
         "${full_node_email_renderer}"
       )
     else
       if flag FILTER_DOCKER_WEB; then matrix_items+=("${rep_web}"); fi
-      if flag FILTER_DOCKER_API; then matrix_items+=("${rep_api}"); fi
-      if flag FILTER_DOCKER_IMAGE; then matrix_items+=("${rep_image}"); fi
+      if flag FILTER_DOCKER_SERVER; then matrix_items+=("${rep_server}"); fi
       if flag FILTER_DOCKER_PUBLIRACTL; then matrix_items+=("${rep_publiractl}"); fi
       if flag FILTER_DOCKER_NODE; then matrix_items+=("${rep_node}"); fi
     fi

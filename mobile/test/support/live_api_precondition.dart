@@ -11,12 +11,12 @@ import 'package:publira/api/connect_exception.dart';
 /// that test happened to wait for. The message carries the transport error as
 /// the device saw it, which the app itself turns into a retry prompt.
 Future<void> expectLiveSeed({
-  required String apiBaseUrl,
+  required String baseUrl,
   required String tenantHost,
   required String seriesPublicId,
 }) async {
   final httpClient = http.Client();
-  final client = ConnectClient(baseUrl: apiBaseUrl, httpClient: httpClient);
+  final client = ConnectClient(baseUrl: baseUrl, httpClient: httpClient);
   try {
     final String tenantId;
     try {
@@ -31,15 +31,15 @@ Future<void> expectLiveSeed({
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         fail(
-          'The live API at $apiBaseUrl answered, but has no tenant for the '
+          'The live API at $baseUrl answered, but has no tenant for the '
           'host "$tenantHost": the seed tenant is missing ($error)',
         );
       }
-      fail('The live API at $apiBaseUrl did not serve the device: $error');
+      fail('The live API at $baseUrl did not serve the device: $error');
     }
     if (tenantId.isEmpty) {
       fail(
-        'The live API at $apiBaseUrl answered GetTenantByDomain for '
+        'The live API at $baseUrl answered GetTenantByDomain for '
         '"$tenantHost" without a tenant id: the seed tenant is missing',
       );
     }
@@ -52,11 +52,11 @@ Future<void> expectLiveSeed({
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         fail(
-          'The live API at $apiBaseUrl answered, but the seed tenant has no '
+          'The live API at $baseUrl answered, but the seed tenant has no '
           'series $seriesPublicId: the seed rows are missing ($error)',
         );
       }
-      fail('The live API at $apiBaseUrl did not serve the device: $error');
+      fail('The live API at $baseUrl did not serve the device: $error');
     }
   } finally {
     httpClient.close();

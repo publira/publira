@@ -344,12 +344,18 @@ func RPCSpanName(procedure string) string {
 // by h, except the health probes: those would produce a span per scrape
 // without ever explaining a user-visible latency.
 //
+// The spans are recorded under serviceName, through the provider Setup
+// built for it, so plain HTTP routes that share a listener with a Connect
+// namespace keep a service.name of their own rather than the process
+// default's.
+//
 // The span is named after the ServeMux pattern that matched, not the
 // request path, so an image URL carrying a media ID does not turn every
 // request into its own span name. otelhttp renames the span once the
 // inner mux has filled in Request.Pattern.
-func HTTPMiddleware(h http.Handler) http.Handler {
+func HTTPMiddleware(serviceName string, h http.Handler) http.Handler {
 	return otelhttp.NewHandler(h, "",
+		otelhttp.WithTracerProvider(TracerProvider(serviceName)),
 		otelhttp.WithFilter(func(r *http.Request) bool {
 			switch r.URL.Path {
 			case "/livez", "/readyz":

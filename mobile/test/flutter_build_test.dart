@@ -10,10 +10,7 @@ const _manifest = AppManifest(
   iosBundleIdentifier: 'com.example.reader',
 );
 
-const _addresses = {
-  'PUBLIRA_API_BASE_URL': 'https://reader.example.com/api',
-  'PUBLIRA_IMAGE_BASE_URL': 'https://reader.example.com',
-};
+const _addresses = {'PUBLIRA_BASE_URL': 'https://reader.example.com'};
 
 List<String> _build(
   List<String> arguments, [
@@ -83,8 +80,7 @@ void main() {
         '--flavor',
         'production',
         '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
-        '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.com/api',
-        '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.com',
+        '--dart-define=PUBLIRA_BASE_URL=https://reader.example.com',
       ]);
     });
 
@@ -99,34 +95,29 @@ void main() {
           'build',
           'ipa',
           '--dart-define=PUBLIRA_TENANT_HOST=reader.example.com',
-          '--dart-define=PUBLIRA_API_BASE_URL=https://reader.example.com/api',
-          '--dart-define=PUBLIRA_IMAGE_BASE_URL=https://reader.example.com',
+          '--dart-define=PUBLIRA_BASE_URL=https://reader.example.com',
           '--flavor=production',
           '--dart-define=PUBLIRA_FIREBASE_PROJECT_ID=reader',
         ],
       );
     });
 
-    test('requires both addresses, reporting each', () {
+    test('requires the address', () {
       expect(_problemsOf(['apk'], const {}), [
-        startsWith('PUBLIRA_API_BASE_URL is required for a production build'),
-        startsWith('PUBLIRA_IMAGE_BASE_URL is required for a production build'),
+        startsWith('PUBLIRA_BASE_URL is required for a production build'),
       ]);
     });
 
     for (final url in [
-      'http://reader.example.com/api',
+      'http://reader.example.com',
       'reader.example.com',
       'https://',
     ]) {
       test('refuses the address $url', () {
-        expect(
-          _problemsOf(['apk'], {..._addresses, 'PUBLIRA_API_BASE_URL': url}),
-          [
-            'PUBLIRA_API_BASE_URL must be an https:// URL for a production '
-                'build, not $url',
-          ],
-        );
+        expect(_problemsOf(['apk'], {..._addresses, 'PUBLIRA_BASE_URL': url}), [
+          'PUBLIRA_BASE_URL must be an https:// URL for a production '
+              'build, not $url',
+        ]);
       });
     }
   });
@@ -147,9 +138,9 @@ void main() {
       expect(
         _build(
           ['apk', '--flavor=dev'],
-          const {'PUBLIRA_API_BASE_URL': 'http://10.0.2.2:8000'},
+          const {'PUBLIRA_BASE_URL': 'http://10.0.2.2:8000'},
         ),
-        contains('--dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000'),
+        contains('--dart-define=PUBLIRA_BASE_URL=http://10.0.2.2:8000'),
       );
     });
   });
@@ -161,13 +152,13 @@ void main() {
           'apk',
           '--dart-define=PUBLIRA_TENANT_HOST=other.example',
           '--dart-define',
-          'PUBLIRA_API_BASE_URL=https://other.example/api',
+          'PUBLIRA_BASE_URL=https://other.example',
         ]),
         [
           "--dart-define=PUBLIRA_TENANT_HOST is the manifest's tenant.host; "
               'leave it out',
-          '--dart-define=PUBLIRA_API_BASE_URL is read from the environment; '
-              'export PUBLIRA_API_BASE_URL instead',
+          '--dart-define=PUBLIRA_BASE_URL is read from the environment; '
+              'export PUBLIRA_BASE_URL instead',
         ],
       );
     });

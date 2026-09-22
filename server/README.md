@@ -7,10 +7,8 @@ The Go backend. It is operated as a single module, `github.com/publira/publira/s
 ```text
 server/
 ├── cmd/
-│   ├── api-server/        # ConnectRPC API server (public / admin / platform namespaces)
-│   ├── image-server/      # Image delivery for both host names (Manael conversion)
-│   ├── publiractl/        # The command that operates an install (`job <kind>` runs a maintenance job by hand)
-│   └── worker/            # Long-lived background worker (Outbox drain + River periodic jobs)
+│   ├── publira/           # `publira server` (ConnectRPC API + image delivery) and `publira worker` (Outbox drain + River jobs)
+│   └── publiractl/        # The command that operates an install (`job <kind>` runs a maintenance job by hand)
 ├── bin/                   # Binaries produced by task build
 └── internal/
     ├── db/                # PostgreSQL integration tests for db/migrations and db/query
@@ -33,7 +31,7 @@ server/
 
 1. Schema-first development: change `proto/` or the golang-migrate files under `db/migrations/` (`.up.sql` / `.down.sql`) first, then run `task gen`
 2. Keep `cmd/` thin and put the implementation in `internal/`
-3. The background worker (`cmd/worker`) is a long-lived process separated from the APIs, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. `cmd/publiractl` runs one of those maintenance jobs by hand as `publiractl job <kind>`
+3. The background worker (`publira worker`, in `cmd/publira`) is a long-lived process separated from the API, where River executes every recurring job — the Outbox drain, the periodic jobs that promote due episodes, apply free window boundaries, turn over each tenant's calendar day, and expire pinned announcements, and the maintenance jobs that rebuild and purge stored data. Running it is all the scheduling a deployment needs. `cmd/publiractl` runs one of those maintenance jobs by hand as `publiractl job <kind>`
 
 ## Development commands
 
@@ -41,7 +39,7 @@ server/
 task db:setup
 task db:seed
 task db:create NAME=add_example_column
-task server:dev-api
+task server:dev-server
 task server:dev-worker
 task server:tidy
 task server:build
@@ -68,14 +66,12 @@ task server:test
 
 ## Entrypoint details
 
-- API server: [cmd/api-server/README.md](cmd/api-server/README.md)
-- Image server: [cmd/image-server/README.md](cmd/image-server/README.md)
+- `publira server` (the API and image delivery) and `publira worker` (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/publira/README.md](cmd/publira/README.md)
 - publiractl (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/publiractl/README.md](cmd/publiractl/README.md)
-- Worker (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/worker/README.md](cmd/worker/README.md)
 
 ## Graceful shutdown
 
-On SIGINT / SIGTERM the long-lived processes (`api-server` / `image-server` / `worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
+On SIGINT / SIGTERM the long-lived processes (`publira server` / `publira worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
 
 Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
 
@@ -99,9 +95,9 @@ Save the `whsec_...` it prints as that tenant's webhook signing secret through `
 
 ## Image storage configuration
 
-The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `api-server` (uploads), `image-server` (reads), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (uploads on the platform pool, image reads on the admin pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
 
-Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, the image server answers `503`, and the orphan sweep fails (the worker cancels the job).
+Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, an image answers `503`, and the orphan sweep fails (the worker cancels the job).
 
 - An access key saved with the configuration is stored encrypted, so each of those processes needs `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` to use it.
 - Without one, each process signs with the credential the AWS SDK finds for itself: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`, a web identity token, or an instance role.
@@ -124,9 +120,9 @@ The Go integration tests against RustFS use the Testcontainers helper `StartRust
 
 ## Image delivery (Manael)
 
-After checking permissions, `image-server` converts JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
+After checking permissions, the image routes of `publira server` convert JPEG/PNG/GIF to WebP or AVIF with [Manael](https://github.com/manaelproxy/manael) and resize them with `w` / `h` / `fit` / `q`. The converted result is kept in an intermediate cache, so the same `Accept` and query does not hit S3 or run the conversion again.
 
-For episode body images on a tenant site, the cached converted plaintext is never returned as-is: `image-server` encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
+For episode body images on a tenant site, the cached converted plaintext is never returned as-is: the server encrypts it just before the response, bound to a JWT and its `sub`. An encrypted response has `Content-Type: application/octet-stream`, and the following headers are the decryption contract. Non-body public images — the tenant icon and logo, eye catches, creator images — and every response on a console host remain ordinary image responses, because the console renders bodies with an `<img>` that cannot decrypt.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -146,7 +142,7 @@ Which JWT a body is bound to depends on which rule let the request through:
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
 
-Building requires libvips. For the details, see [cmd/image-server/README.md](cmd/image-server/README.md).
+Building requires libvips. For the details, see [cmd/publira/README.md](cmd/publira/README.md).
 
 ## Platform Console URL
 
@@ -157,7 +153,7 @@ Building requires libvips. For the details, see [cmd/image-server/README.md](cmd
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `api-server` as soon as the write commits, and by `worker` for whatever that attempt did not finish. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `publira server` as soon as the write commits, and by `publira worker` for whatever that attempt did not finish. All three URLs are required together.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
@@ -197,7 +193,7 @@ Every process under `cmd/*` emits OpenTelemetry traces. **It is disabled by defa
 | Layer | Instrumentation | Span |
 | --- | --- | --- |
 | Inbound Connect / gRPC | `connectrpc.com/otelconnect` | One per RPC, named `AdminSeriesService/ListSeries` (the proto package is dropped from the name because the `rpc.service` attribute carries it) |
-| Inbound plain HTTP (image-server) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
+| Inbound plain HTTP (the image routes) | `otelhttp` | One per route pattern (`GET /images/creators/{media_id}`). `/livez` and `/readyz` are excluded |
 | DB queries | `XSAM/otelsql` (wrapping the pgx driver in `internal/sqldb`) | One `db.query` per statement |
 | The scheduled publication batch | `internal/publishepisodes` | One parent span per `RunOnce` cycle |
 | A maintenance job's run on the worker | `internal/maintenancejobs` | One parent span per pass, named by its River kind (`maintenance.aggregate_content_stats`) and carrying `river.job.id` and `river.job.attempt`. A failed pass sets the span's status to error |
@@ -241,11 +237,11 @@ Persistence retries, final drops, queue overflows, and shutdown drain deadlines 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | A default per process (`publira-image-server` / `publira-worker`). `api-server` resolves it per Connect namespace instead, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls. `worker` adds one per periodic job on top of its own default — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `publiractl job` reports for that job, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `publiractl job` resolves it per job, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features` / `publira-close-royalty-statements`. Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | `publira server` resolves it per Connect namespace, because it serves all three from one process: `publira-api-server` for `publira.v1`, `publira-admin-api-server` for `publira.admin.v1`, and `publira-platform-api-server` for `publira.platform.v1`, with the first of them also carrying what is not an RPC — the database spans and the outbound calls — and `publira-image-server` for the image routes. `publira worker` defaults to `publira-worker` and adds one per periodic job on top — `publira-publish-episodes` / `publira-apply-free-windows` / `publira-roll-tenant-day` / `publira-expire-pinned-announcements` — and one per maintenance job, the same name `publiractl job` reports for that job, carried by the span each run hangs off, so they stay apart in a trace UI now that they share a process. `publiractl job` resolves it per job, so it becomes `publira-project-episode-reads` / `publira-aggregate-content-stats` / `publira-aggregate-rankings` / `publira-purge-content-events` / `publira-purge-ranking-snapshots` / `publira-purge-mfa-challenges` / `publira-purge-withdrawn-comments` / `publira-purge-orphan-images` / `publira-build-recommend-features` / `publira-close-royalty-statements`. Overridable with `OTEL_SERVICE_NAME` |
 | `service.version` | The version embedded at build time; otherwise the VCS revision of the checkout, and otherwise `dev` (`internal/buildinfo`) |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 
-A container build carries no `.git`, so pass `VERSION` (`task docker:build:api VERSION=v1.2.3`) to stamp the version into the binary. Without it the value is `dev`.
+A container build carries no `.git`, so pass `VERSION` (`task docker:build:server VERSION=v1.2.3`) to stamp the version into the binary. Without it the value is `dev`.
 
 ### Span attributes
 
@@ -253,7 +249,7 @@ On top of the standard attributes that `otelconnect` / `otelhttp` / `otelsql` ad
 
 | Key | When |
 | --- | --- |
-| `tenant.public_id` | After the tenant is resolved (the tenant-scope interceptor in Connect, and host resolution in image-server) |
+| `tenant.public_id` | After the tenant is resolved (the tenant-scope interceptor in Connect, and host resolution on the image routes) |
 | `enduser.id` | After authentication succeeds. The value is the public ID |
 | `db.operation.name` | The SQL keyword (`SELECT` / `INSERT` / …) |
 | `db.query.summary` | The query name taken from sqlc's `-- name: GetTenantByID :one` |
@@ -294,7 +290,7 @@ Only two variables are our own — the enable flag and the deployment environmen
 To watch the behavior without a collection backend, `OTEL_TRACES_EXPORTER=console` prints spans to standard output.
 
 ```bash
-PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-api
+PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-server
 ```
 
 The Dev Container bundles Jaeger (its UI is at `http://localhost:16686`). For the details, see [../README.md](../README.md#distributed-tracing-jaeger).
@@ -329,7 +325,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 
 | Item | Value |
 | --- | --- |
-| Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, the API servers and the image servers fail to start) |
+| Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start) |
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
@@ -346,7 +342,7 @@ A browser cannot attach an `Authorization` header to an `<img>` request. So for 
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | The same `users.credentials_version` as the access token |
 
-The token only states who the reader is; whether the image may be viewed is decided by `image-server`, which consults purchases and access_tickets on every request, under the same rules as the API.
+The token only states who the reader is; whether the image may be viewed is decided by the image routes, which consult purchases and access_tickets on every request, under the same rules as the API.
 
 Bodies that are free to everyone — `price = 0`, or a priced episode inside an open `episode_free_windows` period — get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
 
@@ -370,7 +366,7 @@ Episode image previews in the admin UI also go through the browser's `<img>` / `
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | The same `users.credentials_version` as the access token |
 
-The token only states who the administrator is; on a console host `image-server` consults the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
+The token only states who the administrator is; on a console host the image routes consult the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
 
 ## Admin MFA (TOTP)
 
@@ -523,11 +519,11 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## API namespace separation
 
-`server/cmd/api-server` serves all three Connect namespaces and keeps them apart by what it registers on each of its two listeners:
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces and keeps them apart by what it registers on each of its two listeners:
 
 - Edge-facing listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`)
-  - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API — plus `/livez` and `/readyz`
-  - This is what the reverse proxy forwards `/api` to, on every host
+  - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API — under `/api`, plus `GET /images/…`, `/livez`, and `/readyz`
+  - This is what the reverse proxy forwards `/api` and `/images` to, prefixes kept, on every host
 - Internal listener, `:8100` (changeable with `PUBLIRA_PUBLIC_API_GRPC_ADDR`)
   - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
   - web-host, web-admin, and web-platform dial it directly over the private network
@@ -536,7 +532,7 @@ The proto packages produce non-colliding procedure paths, so one mux carries all
 
 ## Database users
 
-Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `api-server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection.
+Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host and on the `publira_admin` pool on a console host.
 
 | Namespace or process | DB user | Environment variable | Local default |
 | --- | --- | --- | --- |
@@ -590,11 +586,11 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
 
 - Using AuthService requires at least some data in `tenants` and `users`.
 - Use a `bcrypt` hash for `users.password_hash`.
-- Health checks (shared by the API, image-server, and the web apps):
+- Health checks (shared by the server, the worker, and the web apps):
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
-  - API / image-server: at minimum a DB `Ping`
-  - `api-server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
+  - Server / worker: at minimum a DB `Ping`
+  - `publira server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
   - Web (`web-admin` / `web-host` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PUBLIRA_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

@@ -143,11 +143,10 @@ void main() {
           config:
               config ??
               AppConfig(
-                apiBaseUrl: server.baseUrl,
+                baseUrl: server.baseUrl,
                 tenantHost: 'localhost',
                 // The fixture server answers the image routes too, so the
                 // reader fetches real bytes over a real socket.
-                imageBaseUrl: server.baseUrl,
               ),
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
@@ -1354,7 +1353,7 @@ void main() {
         await server.close();
         await pumpApp(
           tester,
-          config: AppConfig(apiBaseUrl: closedBaseUrl, tenantHost: 'localhost'),
+          config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
         );
         await pumpUntilFound(
           tester,
@@ -1579,28 +1578,21 @@ void main() {
       await removeDirectory(offlineRoot);
     });
 
+    // Loopback inside an emulator is the emulator, so the live stack is
+    // addressed as the host it runs on.
     const liveBaseUrl = String.fromEnvironment(
-      'PUBLIRA_API_BASE_URL',
-      defaultValue: AppConfig.androidEmulatorApiBaseUrl,
+      'PUBLIRA_BASE_URL',
+      defaultValue: AppConfig.androidEmulatorBaseUrl,
     );
     const liveTenantHost = String.fromEnvironment(
       'PUBLIRA_TENANT_HOST',
       defaultValue: AppConfig.defaultTenantHost,
     );
-    // Every seeded episode carries a body, so the reader fetches pages from
-    // image-server as soon as it opens one, and it has to be told where that
-    // is for the same reason as the API: loopback inside an emulator is the
-    // emulator.
-    const liveImageBaseUrl = String.fromEnvironment(
-      'PUBLIRA_IMAGE_BASE_URL',
-      defaultValue: AppConfig.androidEmulatorImageBaseUrl,
-    );
-
     // A failing setUpAll skips the rest of the group, so a run with nothing
     // to read fails once, here, instead of once per test.
     setUpAll(
       () => expectLiveSeed(
-        apiBaseUrl: liveBaseUrl,
+        baseUrl: liveBaseUrl,
         tenantHost: liveTenantHost,
         seriesPublicId: ConnectFixtureServer.seedSeriesId,
       ),
@@ -1613,8 +1605,7 @@ void main() {
       await tester.pumpWidget(
         PubliraApp.fromConfig(
           config: const AppConfig(
-            apiBaseUrl: liveBaseUrl,
-            imageBaseUrl: liveImageBaseUrl,
+            baseUrl: liveBaseUrl,
             tenantHost: liveTenantHost,
           ),
           router: createAppRouter(
@@ -2167,7 +2158,7 @@ void main() {
     /// between launches, which is only what reached the device.
     Future<void> pumpLaunch(
       WidgetTester tester, {
-      required String apiBaseUrl,
+      required String baseUrl,
       String? initialLocation,
       AuthSession? session,
     }) async {
@@ -2175,11 +2166,7 @@ void main() {
       await tester.pumpWidget(
         PubliraApp.fromConfig(
           key: ValueKey('launch-$launch'),
-          config: AppConfig(
-            apiBaseUrl: apiBaseUrl,
-            tenantHost: 'localhost',
-            imageBaseUrl: apiBaseUrl,
-          ),
+          config: AppConfig(baseUrl: baseUrl, tenantHost: 'localhost'),
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
@@ -2210,7 +2197,7 @@ void main() {
       await withFailureScreenshot(tester, 'offline-free-episode', () async {
         await pumpLaunch(
           tester,
-          apiBaseUrl: server.baseUrl,
+          baseUrl: server.baseUrl,
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
             ConnectFixtureServer.seedEpisodeId,
@@ -2230,7 +2217,7 @@ void main() {
 
         await pumpLaunch(
           tester,
-          apiBaseUrl: closedBaseUrl,
+          baseUrl: closedBaseUrl,
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
             ConnectFixtureServer.seedEpisodeId,
@@ -2262,13 +2249,13 @@ void main() {
         final tile = find.byKey(
           const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
         );
-        await pumpLaunch(tester, apiBaseUrl: server.baseUrl);
+        await pumpLaunch(tester, baseUrl: server.baseUrl);
         await pumpUntilFound(tester, tile);
 
         final closedBaseUrl = server.baseUrl;
         await server.close();
 
-        await pumpLaunch(tester, apiBaseUrl: closedBaseUrl);
+        await pumpLaunch(tester, baseUrl: closedBaseUrl);
         await pumpUntilFound(tester, tile);
 
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
@@ -2284,7 +2271,7 @@ void main() {
 
         await pumpLaunch(
           tester,
-          apiBaseUrl: closedBaseUrl,
+          baseUrl: closedBaseUrl,
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
             ConnectFixtureServer.seedEpisodeId,
@@ -2312,7 +2299,7 @@ void main() {
       await withFailureScreenshot(tester, 'offline-signed-out', () async {
         await pumpLaunch(
           tester,
-          apiBaseUrl: server.baseUrl,
+          baseUrl: server.baseUrl,
           session: memberSession(),
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
@@ -2333,7 +2320,7 @@ void main() {
 
         await pumpLaunch(
           tester,
-          apiBaseUrl: closedBaseUrl,
+          baseUrl: closedBaseUrl,
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
             ConnectFixtureServer.paidEpisodeId,
@@ -2359,7 +2346,7 @@ void main() {
       await withFailureScreenshot(tester, 'offline-revoked', () async {
         await pumpLaunch(
           tester,
-          apiBaseUrl: server.baseUrl,
+          baseUrl: server.baseUrl,
           session: memberSession(),
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
@@ -2381,7 +2368,7 @@ void main() {
 
         await pumpLaunch(
           tester,
-          apiBaseUrl: server.baseUrl,
+          baseUrl: server.baseUrl,
           session: memberSession(),
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
@@ -2409,7 +2396,7 @@ void main() {
       await withFailureScreenshot(tester, 'offline-resume', () async {
         await pumpLaunch(
           tester,
-          apiBaseUrl: server.baseUrl,
+          baseUrl: server.baseUrl,
           session: memberSession(),
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,
@@ -2441,7 +2428,7 @@ void main() {
 
         await pumpLaunch(
           tester,
-          apiBaseUrl: closedBaseUrl,
+          baseUrl: closedBaseUrl,
           session: memberSession(),
           initialLocation: AppRoutes.episodeViewerPath(
             ConnectFixtureServer.seedSeriesId,

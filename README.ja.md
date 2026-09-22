@@ -69,7 +69,7 @@ export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 
 Dev Container 専用のままになるものが 2 つあります。
 
-- **Traefik**。渡してあるバックエンドのアドレスが `app` コンテナを指すので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API が `8000`、image-server が `8200`）へ直接アクセスするか、`infra/proxy/traefik/dynamic/services.yaml` をループバックへ向けてください。
+- **Traefik**。渡してあるバックエンドのアドレスが `app` コンテナを指すので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API と画像が `8000`）へ直接アクセスするか、`infra/proxy/traefik/dynamic/services.yaml` をループバックへ向けてください。
 - **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
 
 [CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルも同じ理由で、まだホストでは動きません。PostgreSQL と Valkey を `db` / `redis` として指しています（[#1599](https://github.com/publira/publira/issues/1599)）。
@@ -119,7 +119,7 @@ Mailpit コンテナは依存サービス（`compose.yaml`）の一員です。
 
 ## API アクセストークンの署名鍵 (`PUBLIRA_AUTH_JWT_SECRET`)
 
-Go の API サーバー（api-server）と画像サーバー（image-server）は、ログイン時に **HS256 の JWT アクセストークン**を発行し、以降のリクエストで検証します。その署名鍵が `PUBLIRA_AUTH_JWT_SECRET` です。
+Go のサーバー（`publira server`）は、ログイン時に **HS256 の JWT アクセストークン**を発行し、画像ルートを含む以降のリクエストで検証します。その署名鍵が `PUBLIRA_AUTH_JWT_SECRET` です。
 
 - **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら 2 つのサーバーはいずれも起動時に終了します（`auth.NewTokenManagerFromEnv()`）
 - 鍵が漏れると任意の `sub` / `aud` を持つトークンを偽造でき、公開 API・管理 API・プラットフォーム API・画像サーバーを呼べます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
@@ -146,7 +146,7 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 
 ## 開発用オブジェクトストレージ (RustFS)
 
-S3 互換の **RustFS** コンテナは依存サービス（`compose.yaml`）の一員で、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと image-server の配信）。
+S3 互換の **RustFS** コンテナは依存サービス（`compose.yaml`）の一員で、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと `publira server` による配信）。
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
 - S3 エンドポイント: コンテナ内からは `http://rustfs:9000`、ホストからは `http://127.0.0.1:9000`（path-style）

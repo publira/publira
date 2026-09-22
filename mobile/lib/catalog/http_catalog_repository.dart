@@ -16,7 +16,7 @@ class HttpCatalogRepository implements CatalogRepository {
     ConnectClient? client,
     TenantResolver? tenants,
   }) {
-    final resolved = client ?? ConnectClient(baseUrl: config.apiBaseUrl);
+    final resolved = client ?? ConnectClient(baseUrl: config.baseUrl);
     return HttpCatalogRepository._(
       config: config,
       client: resolved,

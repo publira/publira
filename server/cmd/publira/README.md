@@ -1,6 +1,107 @@
-# worker
+# publira
 
-The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the ten [maintenance jobs](#maintenance-jobs) that rebuild, purge, and close stored data. It runs as a separate process from the API processes, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
+The binary behind both of a deployment's long-lived Go processes. The first argument names which one, and every setting comes from the environment:
+
+| Command          | Process                                                |
+| ---------------- | ------------------------------------------------------ |
+| `publira server` | The API and image delivery, on the two listeners below |
+| `publira worker` | The Outbox drain and every scheduled job               |
+
+Without a command, with a command other than these two, or with any further argument, the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
+
+## publira server
+
+One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — and image delivery, over two listeners that differ in what is registered on each.
+
+| Listener | Default address | Serves | Reached by |
+| --- | --- | --- | --- |
+| Edge-facing | `:8000` (`PUBLIRA_PUBLIC_API_ADDR`) | `publira.v1` under `/api`, `GET /images/…`, `/livez`, `/readyz` | The browser and the mobile app, through the reverse proxy, which forwards `/api` and `/images` with their prefixes kept |
+| Internal | `:8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | all three namespaces, `/livez`, `/readyz` | web-host, web-admin, and web-platform, over the private network, each through its own `PUBLIRA_GRPC_URL` |
+
+A Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, and the edge forwards `/api` and `/images` host-agnostically, so neither the port nor the protocol separates the namespaces: registering a console service on the edge-facing mux would publish it at `/api/publira.admin.v1.…` on every tenant site. What each listener carries is decided in `server.go` and nowhere else, and `TestEdgeListenerServesThePublicNamespaceAndImagesAlone` is that boundary.
+
+The process holds one pool per PostgreSQL login — `publira_public` and `publira_admin` under row-level security, `publira_platform` with `BYPASSRLS` — and picks the pool by the namespace a procedure path names. An image is answered on the pool of the login the host name selects: a `domain` match is the storefront, answered as `publira_public`, and an `admin_domain` match is the console, answered as `publira_admin`. The host also decides whether an `admin-media` token is evaluated as a staff preview and whether an episode body leaves encrypted. Each namespace reports its spans under its own `service.name`, and the image routes under `publira-image-server`, so the four stay apart in a trace UI.
+
+`/readyz` on the internal listener names one check per pool — `db.public`, `db.admin`, `db.platform` — because a single `db` could not say which of the three logins stopped answering. The edge-facing listener checks the public pool alone, under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
+
+### Running
+
+From the repository root:
+
+```bash
+task server:dev-server
+```
+
+From the `server` directory:
+
+```bash
+go run ./cmd/publira server
+```
+
+Using a pre-built binary:
+
+```bash
+task server:build
+./server/bin/publira server
+```
+
+Manael uses libvips, so building and running require `libvips-dev` (`libvips42` at runtime). The Dev Container includes them. The production image is [`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile).
+
+### Main environment variables
+
+- `PUBLIRA_PUBLIC_API_ADDR` (optional, `:8000` when unset. The edge-facing listener)
+- `PUBLIRA_PUBLIC_API_GRPC_ADDR` (optional, `:8100` when unset. The internal listener)
+- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery uses the first two)
+- `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens, which the image routes verify as well. The process fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, and FCM secrets)
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional. The ambient credential for an object store saved without an access key. The store itself comes from the platform's settings; see [Image storage configuration](../../README.md#image-storage-configuration))
+- `PUBLIRA_REDIS_URL` (optional. Where the image conversion cache and the counters behind the reader write limits, the step-up password limit, and the mail limits are kept. Unset / `disabled` / `off` / `false` keeps the cache in memory and limits each instance on its own, which is looser than a shared limit by the number of instances. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`)
+- `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
+- `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
+- `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (all required when `PUBLIRA_REVALIDATE_TOKEN` is set. The private network URL of each Next.js app)
+- `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
+- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
+
+The tenant-admin MFA requirement, the reader write limits, the step-up password limit, and the mail limits are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
+
+The object store is read from the platform's settings: uploads resolve it on the platform pool, and image delivery on the admin pool, whose login is granted `platform_storage_config` and nothing else of the platform's; see [Image storage configuration](../../README.md#image-storage-configuration). Both read the row again every 30 seconds, so a saved change reaches a running process without a restart, and the process starts before an operator has saved one: an upload until then is refused and an image answers `503`.
+
+The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
+
+A write that leaves a cache entry stale records a `next_cache_revalidation` outbox event, in its own transaction where it holds one, and then attempts the drop itself without making the response wait for it. Whatever that attempt does not finish, `publira worker` retries. Both halves need `PUBLIRA_REVALIDATE_TOKEN` and all three `PUBLIRA_WEB_*_INTERNAL_URL` variables; without them nothing is recorded and nothing is sent. The fixed path at each destination is `/api/v1/revalidate`.
+
+`PUBLIRA_WEB_HOST_URL` is the public URL that Stripe Checkout returns the browser to, and is separate from this set of internal URLs.
+
+### Image delivery
+
+After checking permissions, the image routes convert images to WebP / AVIF with Manael, resize them, cache the converted result, and return it. Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `fit` / `q` query parameters. The key of the intermediate cache is derived from the same inputs, so one converted rendition is shared by both host names; encryption is applied to the response afterwards and never to what is cached. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
+
+#### Authorization for episode body images
+
+`GET /images/episodes/{media_id}` identifies the reader from `Authorization: Bearer <JWT>` (audience `public`) or from the `t=<JWT>` query (audience `media`), and treats a request carrying neither — or a credential that does not verify — as anonymous. Whichever it is, the grant itself is read from the database under the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. For the details, see the authentication sections of [server/README.md](../../README.md).
+
+On a console host, a `t=<JWT>` of audience `admin-media` is evaluated as a preview for tenant staff on top of that reader-facing decision.
+
+1. The user holds `tenant_admin` / `tenant_editor` / `tenant_auditor` in that tenant
+2. The image belongs to an episode of that tenant
+3. The token's `eid` matches that episode
+
+The publication state and the price are not considered, so a draft, a scheduled, or a paid episode can still be checked from the admin UI's `<img>` / `next/image`. The tokens are appended to the URLs by `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages`. On a storefront host the same audience unlocks nothing, so a console URL carried to a tenant site is an ordinary anonymous request.
+
+### Platform console role permissions
+
+| Operation | `platform_auditor` | `platform_operator` | `platform_super_admin` |
+| --- | --- | --- | --- |
+| Viewing the dashboard, tenants, users, audit logs, settings, and notifications | Yes | Yes | Yes |
+| Changing tenants, tenant members, tenant administrator invitations, end users, SMTP, and platform settings | No | Yes | Yes |
+| Creating, changing the role of, suspending, activating, and deactivating platform operators | No | No | Yes |
+| Marking one's own notifications as read, signing out, and changing one's password and email address | Yes | Yes | Yes |
+
+The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.
+
+## publira worker
+
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the ten [maintenance jobs](#maintenance-jobs) that rebuild, purge, and close stored data. It runs as a separate process from `publira server`, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
@@ -34,7 +135,7 @@ Both comment events are keyed by the episode and the hour they arrived in, so an
 
 The platform console rows carry no `tenant_id`: their handlers resolve the platform SMTP settings and the platform default locale and time zone rather than a tenant's. The reader and admin console rows name a tenant: the reader links point at that tenant's own domain, and the admin console links at its admin domain.
 
-## What a mail is made of
+### What a mail is made of
 
 Every mail's subject line and plain-text body are composed here, out of `locales/*.json`. `PUBLIRA_EMAIL_RENDERER_URL` decides the rest, and a deployment gets one of exactly two mails:
 
@@ -45,7 +146,7 @@ Every mail's subject line and plain-text body are composed here, out of `locales
 
 There is no default URL. A deployment that does not run the renderer sends readable mail rather than retrying every mail event until the row goes `dead`, and a renderer that is configured but down or answering with no HTML is a failed attempt the worker repeats — never a mail silently downgraded to text.
 
-## Periodic jobs
+### Periodic jobs
 
 Some jobs have to act the moment a stored instant passes rather than on a schedule someone invokes, so River enqueues them on an interval and this process runs them:
 
@@ -68,7 +169,7 @@ A pinned announcement needs no job to stop being answered either: the banner rea
 
 They connect as `publira_ticker` rather than on the pool above. The worker's own login owns River's schema and therefore holds `CREATE` on the `public` schema, which is the one privilege these jobs must not have.
 
-## Maintenance jobs
+### Maintenance jobs
 
 The rebuild, purge, and royalty close work runs here as well, on the same River client:
 
@@ -120,7 +221,7 @@ They connect as `publira_content_stats`, the role the batch subcommands have alw
 
 `maintenance.purge_orphan_images` is the one that reaches past the database. It sweeps the bucket saved in the platform's settings, resolved when a run starts, so the worker starts before one is saved; a run on a platform with none is cancelled with that reason rather than retried.
 
-## Running
+### Running
 
 From the repository root:
 
@@ -131,23 +232,24 @@ task server:dev-worker
 From the `server` directory:
 
 ```bash
-go run ./cmd/worker
+go run ./cmd/publira worker
 ```
 
 Using a pre-built binary:
 
 ```bash
 task server:build
-./server/bin/worker
+./server/bin/publira worker
 ```
 
-The production image uses the API role (a long-lived HTTP process).
+The production image is the same one `publira server` runs on, with `worker` as the container argument:
 
 ```bash
-task docker:build:api CMD_NAME=worker PORT=8003
+task docker:build:server
+docker run --rm publira/publira:local worker
 ```
 
-## Main environment variables
+### Main environment variables
 
 The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed creates for this process, in every environment. `PUBLIRA_DB_URL` is not a fallback: it is the superuser connection locally and the migration tooling's connection in production, so an unset variable fails to authenticate rather than quietly granting the worker more privilege.
 
@@ -175,9 +277,9 @@ The trace attributes, span naming, sampling, and the list of `OTEL_*` variables 
 
 River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup, which is why `publira_outbox` holds `CREATE` on the `public` schema. `/readyz` names one check per pool — `db.outbox`, `db.ticker`, and `db.content_stats` — so a failure says which login stopped answering.
 
-## Logs and metrics
+### Logs and metrics
 
-OpenTelemetry reports `service.name` as `publira-worker` for the process, and a name of its own for the span each job's run hangs off: `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for a periodic run, and `publira-<subcommand>` for a maintenance run — `publira-aggregate-content-stats` and the rest. They are the names those jobs report where they still have a process of their own, so a trace UI filtering on one keeps finding the same work.
+OpenTelemetry reports `service.name` as `publira-worker` for the process, and a name of its own for the span each job's run hangs off: `publira-publish-episodes`, `publira-apply-free-windows`, `publira-roll-tenant-day`, or `publira-expire-pinned-announcements` for a periodic run, and `publira-<subcommand>` for a maintenance run — `publira-aggregate-content-stats` and the rest. They are the names those jobs report when `publiractl job` runs them by hand, so a trace UI filtering on one keeps finding the same work.
 
 The structured logs (slog) of the Outbox drain carry `event_id` / `event_type` / `idempotency_key` / `attempts`. Those of a maintenance run carry `job_kind` / `job_id` / `attempt`, and its span carries `river.job.id` / `river.job.attempt` and an error status when the pass fails, so a failure found in either leads to its `river_job` row: the `errors` column there holds every failed attempt's error, naming the tenant and the day it stopped on. The OpenTelemetry counters are:
 
@@ -189,7 +291,7 @@ The structured logs (slog) of the Outbox drain carry `event_id` / `event_type` /
 
 They are no-ops when there is no MeterProvider.
 
-## Processing flow
+### Processing flow
 
 1. Claim due `pending` rows with `FOR UPDATE SKIP LOCKED` and enqueue the River jobs in the same transaction
 2. The job runs the handler: `done` on success, or back to `pending` with exponential backoff on failure

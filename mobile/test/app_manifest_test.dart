@@ -814,7 +814,7 @@ android:
         (['PUBLIRA_TENANT_HOST=reader.example.com'], true),
         (
           [
-            'PUBLIRA_API_BASE_URL=https://api.example.com',
+            'PUBLIRA_BASE_URL=https://reader.example.com',
             'PUBLIRA_TENANT_HOST=reader.example.com',
           ],
           true,

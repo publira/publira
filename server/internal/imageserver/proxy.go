@@ -15,6 +15,7 @@ import (
 	"manael.org/x/manael/v3"
 
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -33,7 +34,12 @@ const (
 
 var errConvertedTooLarge = errors.New("converted image exceeds size limit")
 
-// Server is the image-server HTTP handler. Close shuts down the loopback
+// ServiceName is the service.name the image routes report their spans under.
+// They share a listener with the public API, whose spans carry that API's own
+// name, so a trace UI still tells an image delivery from an RPC.
+const ServiceName = "publira-image-server"
+
+// Server is the image delivery HTTP handler. Close shuts down the loopback
 // origin that Manael fetches original objects from.
 type Server struct {
 	mux    http.Handler
@@ -42,6 +48,14 @@ type Server struct {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
+}
+
+// Register mounts the image routes on mux. Everything under /images is
+// answered here, so the one entry is the prefix; the handler's own mux then
+// matches the exact route, and the span each request opens is named after
+// that route once it has been matched.
+func (s *Server) Register(mux *http.ServeMux) {
+	mux.Handle("GET /images/", tracing.HTTPMiddleware(ServiceName, s))
 }
 
 // Close stops the loopback origin used as Manael's upstream.

@@ -25,11 +25,7 @@ void main() {
   HttpTenantBrandRepository repository() {
     final client = ConnectClient(baseUrl: server.baseUrl);
     return HttpTenantBrandRepository(
-      config: AppConfig(
-        apiBaseUrl: server.baseUrl,
-        tenantHost: 'localhost',
-        imageBaseUrl: 'http://images.test',
-      ),
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
       client: client,
       tenants: TenantResolver(client: client, tenantHost: 'localhost'),
     );
@@ -55,7 +51,7 @@ void main() {
     expect(brand?.palette[TenantColor.primary], const Color(0xFF0B6E4F));
     expect(
       brand?.logo?.url,
-      Uri.parse('http://images.test/images/tenants/LOGO/logo'),
+      Uri.parse('${server.baseUrl}/images/tenants/LOGO/logo'),
     );
     expect(brand?.logo?.width, 320);
     final request = server.requestsTo('GetTenant').single;

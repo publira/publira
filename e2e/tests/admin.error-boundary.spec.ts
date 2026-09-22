@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedAdmin } from "../src/admin";
-import { startApiServer, stopApiServer } from "../src/api-server";
+import { startServer, stopServer } from "../src/server";
 import { WEB_ADMIN_BASE_URL } from "../src/urls";
 
 /**
@@ -37,7 +37,7 @@ test.describe("web-admin console error boundary", () => {
   test.use({ locale: "en-US" });
 
   test.afterAll(() => {
-    startApiServer();
+    startServer();
   });
 
   test("a direct visit while the admin API is down shows the error screen, and retry recovers", async ({
@@ -55,7 +55,7 @@ test.describe("web-admin console error boundary", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     try {
-      stopApiServer();
+      stopServer();
 
       const response = await page.goto(`${WEB_ADMIN_BASE_URL}/`);
 
@@ -72,7 +72,7 @@ test.describe("web-admin console error boundary", () => {
     } finally {
       // Restore the API even if an assertion above threw, so the rest of the
       // suite does not inherit the outage.
-      startApiServer();
+      startServer();
     }
 
     // "can retry" means the retry recovers, not that a button exists.

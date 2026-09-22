@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Where the app connects, taken from the worktree's selected development
-# profile rather than typed out as the shared default stack's 8000 / 8200.
+# profile rather than typed out as the shared default stack's 8000.
 #
-# The app addresses each server directly, the way it does on a device, and not
+# The app addresses the server directly, the way it does on a device, and not
 # the profile's edge: the edge sets `X-Forwarded-Host` from the host name it
 # was reached on, and that header is how the app -- which reaches a loopback
 # address or an emulator's `10.0.2.2`, never a tenant's domain -- says which
@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "${MOBILE_DIR}/.." && pwd)"
 # shellcheck source=../../scripts/dev-env/lib.sh
 source "${REPO_ROOT}/scripts/dev-env/lib.sh"
 
-# Loads the selected profile and sets the three `--dart-define` values from it,
+# Loads the selected profile and sets the two `--dart-define` values from it,
 # leaving a value already exported alone so that a stack of another kind can be
 # named on the command line.
 #
@@ -29,12 +29,11 @@ mobile_load_app_config() {
   dev_env_load_profile "${selected}"
 
   MOBILE_PROFILE_NAME="${selected}"
-  PUBLIRA_API_BASE_URL="${PUBLIRA_API_BASE_URL:-http://${host}:${PUBLIRA_PUBLIC_API_PORT}}"
-  PUBLIRA_IMAGE_BASE_URL="${PUBLIRA_IMAGE_BASE_URL:-http://${host}:${PUBLIRA_IMAGE_SERVER_PORT}}"
+  PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL:-http://${host}:${PUBLIRA_PUBLIC_API_PORT}}"
   # Every profile is seeded from `db/seeds/dev`, whose tenant answers to this
   # one domain whichever ports the profile listens on.
   PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
-  export MOBILE_PROFILE_NAME PUBLIRA_API_BASE_URL PUBLIRA_IMAGE_BASE_URL PUBLIRA_TENANT_HOST
+  export MOBILE_PROFILE_NAME PUBLIRA_BASE_URL PUBLIRA_TENANT_HOST
 }
 
 # Generates the build configuration from Publira's own manifest,
@@ -54,14 +53,13 @@ mobile_dev_application_id() {
   printf '%s.dev\n' "${id}"
 }
 
-# The three defines, given the pair of addresses this build is to use: the
-# profile's own ports for a build on a device, and the one-origin server below
-# for a build in a browser.
+# The two defines, given the address this build is to use: the profile's own
+# server for a build on a device, and the one-origin server below for a build
+# in a browser.
 mobile_dart_defines() {
-  local api="$1" images="$2"
+  local base="$1"
   printf '%s\n' \
-    "--dart-define=PUBLIRA_API_BASE_URL=${api}" \
-    "--dart-define=PUBLIRA_IMAGE_BASE_URL=${images}" \
+    "--dart-define=PUBLIRA_BASE_URL=${base}" \
     "--dart-define=PUBLIRA_TENANT_HOST=${PUBLIRA_TENANT_HOST}"
 }
 
@@ -90,7 +88,6 @@ mobile_bind_device_ports() {
   # `linux`, an iOS simulator -- and each of those already runs here.
   adb -s "${device}" get-state > /dev/null 2>&1 || return 0
   adb -s "${device}" reverse "tcp:${PUBLIRA_PUBLIC_API_PORT}" "tcp:${PUBLIRA_PUBLIC_API_PORT}" > /dev/null
-  adb -s "${device}" reverse "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" "tcp:${PUBLIRA_IMAGE_SERVER_PORT}" > /dev/null
 }
 
 # The serial of the device to use: the one PUBLIRA_MOBILE_DEVICE names, else the
