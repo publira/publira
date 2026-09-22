@@ -84,7 +84,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * arrives, and then the catalog it loads disagrees with the one the server
  * rendered.
  */
-const TenantRootLayout = ({ children }: { children: ReactNode }) => (
+const RootLayout = ({ children }: { children: ReactNode }) => (
   <html suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
@@ -103,4 +103,4 @@ const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   </html>
 );
 
-export default TenantRootLayout;
+export default RootLayout;
