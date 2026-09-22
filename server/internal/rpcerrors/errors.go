@@ -21,15 +21,18 @@ const (
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
 	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
-	ReasonMfaInvalidCode          = "MFA_INVALID_CODE"
-	ReasonMfaLocked               = "MFA_LOCKED"
-	ReasonSMTPTestAuthentication  = "SMTP_TEST_AUTHENTICATION"
-	ReasonSMTPTestConnection      = "SMTP_TEST_CONNECTION"
-	ReasonSMTPTestRecipient       = "SMTP_TEST_RECIPIENT"
-	ReasonSMTPTestStartTLS        = "SMTP_TEST_STARTTLS"
-	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
-	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
-	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
+	// ReasonLastTenantAdmin refuses removing or demoting the tenant's last
+	// active tenant_admin.
+	ReasonLastTenantAdmin        = "LAST_TENANT_ADMIN"
+	ReasonMfaInvalidCode         = "MFA_INVALID_CODE"
+	ReasonMfaLocked              = "MFA_LOCKED"
+	ReasonSMTPTestAuthentication = "SMTP_TEST_AUTHENTICATION"
+	ReasonSMTPTestConnection     = "SMTP_TEST_CONNECTION"
+	ReasonSMTPTestRecipient      = "SMTP_TEST_RECIPIENT"
+	ReasonSMTPTestStartTLS       = "SMTP_TEST_STARTTLS"
+	ReasonSMTPTestTLS            = "SMTP_TEST_TLS"
+	ReasonSMTPTestTimeout        = "SMTP_TEST_TIMEOUT"
+	ReasonSMTPTestUnknown        = "SMTP_TEST_UNKNOWN"
 	// ReasonStorageNotConfigured refuses an upload on a platform whose
 	// operator has saved no object store yet.
 	ReasonStorageNotConfigured = "STORAGE_NOT_CONFIGURED"

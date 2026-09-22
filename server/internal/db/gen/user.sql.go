@@ -54,6 +54,35 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 	return i, err
 }
 
+const countOtherActiveTenantAdmins = `-- name: CountOtherActiveTenantAdmins :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.tenant_id = $1::uuid
+    AND u.id <> $2::uuid
+    AND u.status = 'active'
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+            AND tur.role = 'tenant_admin'
+    )
+`
+
+type CountOtherActiveTenantAdminsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
+// tenant other than one user: who is left to sign in to the console once that
+// user is removed or demoted.
+func (q *Queries) CountOtherActiveTenantAdmins(ctx context.Context, arg CountOtherActiveTenantAdminsParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countOtherActiveTenantAdmins, arg.TenantID, arg.UserID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countPendingEndUsers = `-- name: CountPendingEndUsers :one
 SELECT COUNT(*)::int
 FROM users u

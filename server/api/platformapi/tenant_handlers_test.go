@@ -551,6 +551,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
 		WillReturnRows(sqlmock.NewRows(tenantScopedUserColumns()).
@@ -560,7 +561,6 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WithArgs(targetUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
-	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(testDeleteTenantUserRolesByUserIDQuery)).
 		WithArgs(targetUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
@@ -595,6 +595,7 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
 		WillReturnRows(sqlmock.NewRows(tenantScopedUserColumns()).
@@ -603,6 +604,7 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
 		WithArgs(targetUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+	mock.ExpectRollback()
 
 	_, err := server.UpdateTenantMemberRole(context.Background(), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
 		TenantPublicId: "TENANT001",
@@ -626,14 +628,19 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
 		WillReturnRows(sqlmock.NewRows(tenantScopedUserColumns()).
 			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", tenantID, now))
 
+	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+		WithArgs(targetUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 	mock.ExpectExec(regexp.QuoteMeta(testDeleteTenantUserRolesByUserIDQuery)).
 		WithArgs(targetUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
 	resp, err := server.RemoveTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
 		TenantPublicId: "TENANT001",
@@ -658,9 +665,11 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
 
 	_, err := server.RemoveTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
 		TenantPublicId: "TENANT001",

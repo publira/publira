@@ -105,6 +105,10 @@ type Querier interface {
 	CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error)
 	// How many pages the body has, which bounds where its spreads may start.
 	CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
+	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
+	// tenant other than one user: who is left to sign in to the console once that
+	// user is removed or demoted.
+	CountOtherActiveTenantAdmins(ctx context.Context, arg CountOtherActiveTenantAdminsParams) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// The size of the approval queue, for the console navigation that carries it on
 	// every screen. Counting is a query of its own rather than the length of a
