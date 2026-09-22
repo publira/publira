@@ -7,6 +7,7 @@ import { Message } from "#components/message";
 
 interface SettingsTabNavProps {
   current:
+    | "app-links"
     | "basic"
     | "creator-roles"
     | "email"
@@ -73,6 +74,14 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
         <Message message="admin.settings.tabs.mobile_push" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/app-links" />}
+      variant={current === "app-links" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-20" />}>
+        <Message message="admin.settings.tabs.app_links" />
       </Suspense>
     </LinkButton>
     <LinkButton

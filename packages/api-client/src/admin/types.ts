@@ -22,7 +22,10 @@ export type {
   RoyaltyStatementTotals,
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
+  TenantAndroidAppAssociation,
   TenantCommunityLimitOverrides,
+  TenantIosAppAssociation,
+  TenantMobileAppAssociation,
   TenantPurchaseSettings,
   TenantRetentionOverrides,
 } from "../gen/publira/admin/v1/tenant_pb.js";

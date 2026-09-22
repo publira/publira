@@ -1482,6 +1482,7 @@
       "email_error": "メール設定を表示できませんでした",
       "payment_error": "決済設定を表示できませんでした",
       "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
+      "app_links_error": "アプリリンクの設定を表示できませんでした",
       "royalties_error": "印税の設定を表示できませんでした",
       "section_error": "設定を表示できませんでした",
       "theme_error": "テーマを表示できませんでした",
@@ -1677,6 +1678,8 @@
       "payment_description": "テナントごとの Stripe 決済設定を管理します。",
       "mobile_push_title": "設定 - モバイルプッシュ",
       "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",
+      "app_links_title": "設定 - アプリリンク",
+      "app_links_description": "このテナントのリンクを開く Android / iOS アプリを管理します。",
       "royalties_title": "設定 - 印税",
       "royalties_description": "このテナントで印税の月をどのように締めて明細にするかを選びます。",
       "account_title": "アカウント設定",
@@ -1695,6 +1698,7 @@
         "payment": "決済",
         "royalties": "印税",
         "mobile_push": "モバイルプッシュ",
+        "app_links": "アプリリンク",
         "policy": "制限と保持"
       },
       "image": {
@@ -1997,6 +2001,35 @@
           "not_service_account": "サービスアカウントキーではありません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］からダウンロードしてください。",
           "project_mismatch": "このキーは Firebase プロジェクト「{$key}」のもので、「{$entered}」のものではありません。モバイルアプリがビルドされたプロジェクトのキーをアップロードするか、プロジェクト ID を修正してください。",
           "key_invalid": "このサービスアカウントキーは使用できません。Firebase コンソールの［プロジェクトの設定］→［サービス アカウント］で新しい秘密鍵を生成し、アップロードしてください。"
+        }
+      },
+      "app_links": {
+        "title": "アプリリンク",
+        "description": "ここでアプリを指定すると、このサイトへのリンクはテナント自身のアプリで開きます。各ストアで実際に公開しているアプリの識別子を入力してください。公開中のアプリと 1 文字でも異なると、リンクはブラウザで開きます。",
+        "android_legend": "Android",
+        "android_enabled": "リンクをテナントの Android アプリで開く",
+        "application_id": "アプリケーション ID",
+        "application_id_description": "公開しているアプリのパッケージ名です。ビルドに使ったアプリマニフェストの android.applicationId で、Google Play の URL の id= にも表示されます。",
+        "fingerprints": "SHA-256 署名証明書フィンガープリント",
+        "fingerprints_description": "1 行に 1 件、最大 {$max} 件まで、コロン区切りの 16 進数（AA:BB:…）で入力します。Play アプリ署名を使っている場合は Play Console でアプリ署名鍵の証明書のフィンガープリントを、使っていない場合はリリース用キーストアに keytool -list -v を実行した結果をコピーしてください。",
+        "ios_legend": "iOS",
+        "ios_enabled": "リンクをテナントの iOS アプリで開く",
+        "team_id": "Apple Team ID",
+        "team_id_description": "アプリを公開している Apple Developer チームの 10 文字の ID です。Apple Developer アカウントのメンバーシップの詳細に表示されます。",
+        "bundle_identifier": "バンドル ID",
+        "bundle_identifier_description": "公開しているアプリのバンドル ID です。ビルドに使ったアプリマニフェストの ios.bundleIdentifier で、App Store Connect のアプリ情報にも表示されます。",
+        "submit": "アプリリンクを保存",
+        "saved": "アプリリンクを保存しました。",
+        "load_failed": "アプリリンクの設定の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "アプリリンクの保存に失敗しました。時間をおいて再試行してください。",
+        "validation": {
+          "application_id_invalid": "アプリケーション ID は com.example.reader のように、ドットで区切った 2 つ以上の部分で入力してください。各部分は英字で始まり、英数字とアンダースコアだけを含みます。",
+          "fingerprints_count": "SHA-256 証明書フィンガープリントを 1 行に 1 件、1〜{$max} 件入力してください。",
+          "fingerprint_invalid": "SHA-256 証明書フィンガープリントではありません: {$fingerprint}。コロン区切りの 16 進数 32 バイト（AA:BB:…）で入力してください。",
+          "fingerprint_duplicate": "同じ証明書フィンガープリントが 2 回入力されています: {$fingerprint}",
+          "fingerprint_refused": "証明書フィンガープリントが受け付けられませんでした: {$fingerprint}。各フィンガープリントを 1 回ずつ、コロン区切りの 16 進数 32 バイトで入力してください。",
+          "team_id_invalid": "Team ID は ABCDE12345 のように、英数字 10 文字で入力してください。",
+          "bundle_identifier_invalid": "バンドル ID は com.example.reader のように、英数字とハイフンからなる部分をドットで区切って 2 つ以上入力してください。"
         }
       },
       "royalties": {
