@@ -9,6 +9,8 @@
 package redisurl
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -17,13 +19,18 @@ import (
 const Env = "PUBLIRA_REDIS_URL"
 
 // FromEnv returns the configured URL, or an empty string when this deployment
-// has no Redis for the caller to use.
-func FromEnv() string {
+// has no Redis for the caller to use. A URL [Check] refuses is an error rather
+// than a URL, so no caller can connect with it.
+func FromEnv() (string, error) {
 	raw := os.Getenv(Env)
 	if !Enabled(raw) {
-		return ""
+		return "", nil
 	}
-	return strings.TrimSpace(raw)
+	raw = strings.TrimSpace(raw)
+	if err := Check(raw); err != nil {
+		return "", err
+	}
+	return raw, nil
 }
 
 // Enabled reports whether raw names a Redis to connect to.
@@ -34,4 +41,18 @@ func Enabled(raw string) bool {
 	default:
 		return true
 	}
+}
+
+// Check refuses a redis:// URL that carries a password: that scheme connects
+// without TLS, so the client would send the password in cleartext on every
+// connect. A URL that fails to parse is left to the Redis client to report.
+func Check(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !strings.EqualFold(u.Scheme, "redis") || u.User == nil {
+		return nil
+	}
+	if password, ok := u.User.Password(); ok && password != "" {
+		return fmt.Errorf("%s carries a password over redis://, which is sent in cleartext; use rediss:// instead", Env)
+	}
+	return nil
 }

@@ -170,7 +170,13 @@ func parseCacheTTL() time.Duration {
 func newImageCacheFromEnv(logger *slog.Logger) ImageCache {
 	ttl := parseCacheTTL()
 	mem := newMemoryCache(ttl, defaultMemoryMaxBytes)
-	url := redisurl.FromEnv()
+	url, err := redisurl.FromEnv()
+	if err != nil {
+		if logger != nil {
+			logger.Error("image cache: redis refused, using memory only", "error", err)
+		}
+		return mem
+	}
 	if url == "" {
 		return mem
 	}

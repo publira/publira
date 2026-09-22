@@ -15,7 +15,7 @@ Wire both: with only `cacheHandlers`, the ISR family stays local in a multi-inst
 
 | Variable | Description |
 | --- | --- |
-| `PUBLIRA_REDIS_URL` | The Redis connection URL (default `redis://localhost:6379`). `disabled` / `off` / `false` / an empty string turns it off (always a miss) |
+| `PUBLIRA_REDIS_URL` | The Redis connection URL (default `redis://localhost:6379`). `disabled` / `off` / `false` / an empty string turns it off (always a miss). A `redis://` URL carrying a password stops the server at startup, because that scheme has no TLS: use `rediss://` |
 | `PUBLIRA_CACHE_APP` | The app name in the key prefix (default `next` → `publira:{app}:`) |
 | `PUBLIRA_CACHE_KEY_PREFIX` | Overrides the whole prefix |
 | `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` | The command timeout in ms (default `1000`) |

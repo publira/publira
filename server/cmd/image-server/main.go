@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/sqldb"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
@@ -46,6 +47,13 @@ func main() {
 
 	cfg, err := config.New()
 	if err != nil {
+		logger.Error("failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	// Refused here rather than where Redis is dialled, which falls back to
+	// in-process state and would leave the misconfiguration running.
+	if _, err := redisurl.FromEnv(); err != nil {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}

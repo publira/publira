@@ -28,10 +28,28 @@ const isRedisDisabled = (value: string): boolean =>
   value === "" || value === "disabled" || value === "off" || value === "false";
 
 /**
+ * A `redis://` URL connects without TLS, so a password in it would be sent in
+ * cleartext on every connect. A URL that does not parse is left to the Redis
+ * client to report.
+ */
+const assertNoPlaintextPassword = (value: string): void => {
+  if (!URL.canParse(value)) {
+    return;
+  }
+  const url = new URL(value);
+  if (url.protocol === "redis:" && url.password !== "") {
+    throw new Error(
+      "PUBLIRA_REDIS_URL carries a password over redis://, which is sent in cleartext; use rediss:// instead"
+    );
+  }
+};
+
+/**
  * Resolve runtime config from environment variables.
  *
  * - `PUBLIRA_REDIS_URL` — Redis connection string (default `redis://localhost:6379`).
  *   Set to empty / `disabled` / `off` / `false` to skip Redis (cache always misses).
+ *   A `redis://` URL carrying a password throws: use `rediss://`.
  * - `PUBLIRA_CACHE_KEY_PREFIX` — full key prefix override
  * - `PUBLIRA_CACHE_APP` — app segment in the default prefix (`publira:{app}:`)
  * - `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` — command timeout (default 1000)
@@ -64,7 +82,7 @@ export const resolveCacheHandlerConfig = (
       ? timeoutParsed
       : DEFAULT_TIMEOUT_MS;
 
-  return {
+  const config = {
     defaultTtlSeconds: DEFAULT_TTL_SECONDS,
     keyPrefix,
     maxTtlSeconds: MAX_TTL_SECONDS,
@@ -72,6 +90,8 @@ export const resolveCacheHandlerConfig = (
     timeoutMs,
     ...overrides,
   };
+  assertNoPlaintextPassword(config.redisUrl);
+  return config;
 };
 
 export const clampTtlSeconds = (

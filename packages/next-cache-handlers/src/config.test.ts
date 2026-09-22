@@ -37,6 +37,47 @@ describe("resolveCacheHandlerConfig", () => {
     expect(resolveCacheHandlerConfig().redisUrl).toBe("");
   });
 
+  it("refuses a password over redis://", () => {
+    delete process.env.NEXT_PHASE;
+    for (const url of [
+      "redis://user:secret@example:6379",
+      "redis://:secret@example:6379",
+      "REDIS://:secret@example:6379",
+    ]) {
+      process.env.PUBLIRA_REDIS_URL = url;
+      expect(() => resolveCacheHandlerConfig()).toThrow(
+        /PUBLIRA_REDIS_URL.*rediss:\/\//u
+      );
+    }
+  });
+
+  it("refuses a password over redis:// passed as an override", () => {
+    process.env.PUBLIRA_REDIS_URL = "disabled";
+    expect(() =>
+      resolveCacheHandlerConfig({ redisUrl: "redis://:secret@example:6379" })
+    ).toThrow(/rediss:\/\//u);
+  });
+
+  it("accepts a password over rediss://", () => {
+    delete process.env.NEXT_PHASE;
+    process.env.PUBLIRA_REDIS_URL = "rediss://user:secret@example:6380";
+    expect(resolveCacheHandlerConfig().redisUrl).toBe(
+      "rediss://user:secret@example:6380"
+    );
+  });
+
+  it("accepts redis:// without a password", () => {
+    delete process.env.NEXT_PHASE;
+    for (const url of [
+      "redis://example:6379",
+      "redis://user@example:6379",
+      "redis://user:@example:6379",
+    ]) {
+      process.env.PUBLIRA_REDIS_URL = url;
+      expect(resolveCacheHandlerConfig().redisUrl).toBe(url);
+    }
+  });
+
   it("uses PUBLIRA_CACHE_APP and PUBLIRA_CACHE_KEY_PREFIX", () => {
     delete process.env.NEXT_PHASE;
     process.env.PUBLIRA_CACHE_APP = "web-host";

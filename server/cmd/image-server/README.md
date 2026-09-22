@@ -28,7 +28,7 @@ Manael uses libvips, so building and running require `libvips-dev` (`libvips42` 
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Decrypt the access key of an object store saved with one)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional. The ambient credential for an object store saved without an access key)
-- `PUBLIRA_REDIS_URL` (optional. Unset / `disabled` / `off` / `false` means the memory cache only)
+- `PUBLIRA_REDIS_URL` (optional. Unset / `disabled` / `off` / `false` means the memory cache only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`)
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted result. A Go duration or a number of seconds. Default `1h`)
 
 The object store is read from the platform's settings on the console's pool, whose login is granted `platform_storage_config` and nothing else of the platform's; see [Image storage configuration](../../README.md#image-storage-configuration).
