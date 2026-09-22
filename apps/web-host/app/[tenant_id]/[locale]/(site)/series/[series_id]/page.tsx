@@ -278,7 +278,7 @@ const SeriesDetailContent = async (
       rating={series.ageRating}
       seriesTitle={series.title}
     >
-      <main className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
+      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
         <ContentViewTracker kind="series" publicId={series.publicId} />
 
         <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
@@ -591,7 +591,7 @@ const SeriesDetailContent = async (
             </Suspense>
           </LocaleLink>
         </p>
-      </main>
+      </div>
     </AgeRatingGate>
   );
 };

@@ -302,7 +302,7 @@ const CreatorDetailContent = async ({
   }
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
+    <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
       <div className="grid gap-4">
         <div className="flex items-start gap-5">
           {creator.iconImageUrl && (
@@ -389,7 +389,7 @@ const CreatorDetailContent = async ({
           </Suspense>
         </LocaleLink>
       </p>
-    </main>
+    </div>
   );
 };
 
