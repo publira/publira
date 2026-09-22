@@ -22,19 +22,19 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
-import { TenantEmailSettingsForm } from "../_components/tenant-email-settings-form";
+import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
+import { TenantEmailSettingsForm } from "./_components/tenant-email-settings-form";
 import {
   sendTenantSmtpTestEmailAction,
   updateTenantEmailSettingsAction,
-} from "../_lib/actions";
+} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.email_title") };
+  return { title: t("admin.integrations.email_title") };
 };
 
 export const generateStaticParams = () =>
@@ -99,29 +99,29 @@ const SettingsEmailForm = async () => {
   );
 };
 
-const SettingsEmailPage = () => (
+const IntegrationsEmailPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+            <Message message="admin.integrations.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.email_description" />
+            <Message message="admin.integrations.email_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <SettingsTabNav current="email" />
+        <IntegrationsTabNav current="email" />
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.email_error" />
+              <Message message="admin.integrations.email_error" />
             </Suspense>
           }
         >
@@ -134,4 +134,4 @@ const SettingsEmailPage = () => (
   </AdminPage>
 );
 
-export default SettingsEmailPage;
+export default IntegrationsEmailPage;

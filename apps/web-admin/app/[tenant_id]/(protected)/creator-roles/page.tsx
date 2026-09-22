@@ -19,7 +19,6 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { CreatorRoleManager } from "./_components/creator-role-manager";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -66,7 +65,7 @@ const CreatorRoleManagerData = async () => {
   );
 };
 
-const SettingsCreatorRolesPage = () => (
+const CreatorRolesPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -83,22 +82,19 @@ const SettingsCreatorRolesPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <SettingsTabNav current="creator-roles" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.creator_roles.list_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<CreatorRoleManagerSkeleton />}>
-            <CreatorRoleManagerData />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.creator_roles.list_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<CreatorRoleManagerSkeleton />}>
+          <CreatorRoleManagerData />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );
 
-export default SettingsCreatorRolesPage;
+export default CreatorRolesPage;

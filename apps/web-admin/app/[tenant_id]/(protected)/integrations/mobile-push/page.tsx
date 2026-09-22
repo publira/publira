@@ -23,7 +23,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
+import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { FcmCredentialsForm } from "./_components/fcm-credentials-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -31,7 +31,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.mobile_push_title") };
+  return { title: t("admin.integrations.mobile_push_title") };
 };
 
 export const generateStaticParams = () =>
@@ -68,29 +68,29 @@ const FcmCredentialsSection = async () => {
   );
 };
 
-const SettingsMobilePushPage = () => (
+const IntegrationsMobilePushPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+            <Message message="admin.integrations.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.mobile_push_description" />
+            <Message message="admin.integrations.mobile_push_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <SettingsTabNav current="mobile-push" />
+        <IntegrationsTabNav current="mobile-push" />
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.mobile_push_error" />
+              <Message message="admin.integrations.mobile_push_error" />
             </Suspense>
           }
         >
@@ -103,4 +103,4 @@ const SettingsMobilePushPage = () => (
   </AdminPage>
 );
 
-export default SettingsMobilePushPage;
+export default IntegrationsMobilePushPage;

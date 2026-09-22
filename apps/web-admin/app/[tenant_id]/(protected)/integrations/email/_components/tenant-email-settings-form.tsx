@@ -53,7 +53,7 @@ import { useTenantId } from "#lib/use-tenant-id";
 import type {
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
-} from "../settings-types";
+} from "../email-types";
 
 interface TenantEmailSettingsFormProps {
   initialSettings: TenantSmtpSettings;

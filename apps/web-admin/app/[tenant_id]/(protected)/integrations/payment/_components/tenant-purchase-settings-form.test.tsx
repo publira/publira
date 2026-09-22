@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { TenantPurchaseSettingsFormState } from "../settings-types";
+import type { TenantPurchaseSettingsFormState } from "../payment-types";
 import { TenantPurchaseSettingsForm } from "./tenant-purchase-settings-form";
 
 vi.mock("next/navigation", () => ({

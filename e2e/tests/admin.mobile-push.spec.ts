@@ -17,7 +17,7 @@ import { WEB_ADMIN_MOBILE_PUSH_BASE_URL } from "../src/urls";
  * built with, replacing its key, and disconnecting it again.
  */
 
-const MOBILE_PUSH_PATH = "/settings/mobile-push";
+const MOBILE_PUSH_PATH = "/integrations/mobile-push";
 const PROJECT_ID = "publira-e2e";
 
 const UNCONFIGURED = "Mobile push is off.";

@@ -25,20 +25,20 @@ import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
-import { TenantPaymentSettingsForm } from "../_components/tenant-payment-settings-form";
-import { TenantPurchaseSettingsForm } from "../_components/tenant-purchase-settings-form";
+import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
+import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
+import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
 import {
   updateTenantPaymentSettingsAction,
   updateTenantPurchaseSettingsAction,
-} from "../_lib/actions";
+} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.payment_title") };
+  return { title: t("admin.integrations.payment_title") };
 };
 
 export const generateStaticParams = () =>
@@ -146,29 +146,29 @@ const SettingsPurchaseForm = async () => {
   );
 };
 
-const SettingsPaymentPage = () => (
+const IntegrationsPaymentPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+            <Message message="admin.integrations.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.payment_description" />
+            <Message message="admin.integrations.payment_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <SettingsTabNav current="payment" />
+        <IntegrationsTabNav current="payment" />
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.payment_error" />
+              <Message message="admin.integrations.payment_error" />
             </Suspense>
           }
         >
@@ -192,4 +192,4 @@ const SettingsPaymentPage = () => (
   </AdminPage>
 );
 
-export default SettingsPaymentPage;
+export default IntegrationsPaymentPage;

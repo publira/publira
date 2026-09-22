@@ -962,13 +962,16 @@
       "administration": "管理",
       "announcements_label": "公告",
       "audit_label": "审计日志",
+      "branding_label": "品牌",
       "comments_label": "评论",
       "comments_pending": "{$count} 条评论等待审核",
       "contact_messages_label": "咨询",
+      "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "仪表盘",
       "engagement_label": "读完率",
       "genres_label": "题材",
+      "integrations_label": "集成",
       "labels_label": "品牌",
       "members_label": "成员",
       "operations": "运营",
@@ -1568,13 +1571,7 @@
       }
     },
     "settings": {
-      "email_error": "无法显示邮件设置",
-      "payment_error": "无法显示支付设置",
-      "mobile_push_error": "无法显示移动推送设置",
-      "app_links_error": "无法显示应用链接设置",
-      "royalties_error": "无法显示版税设置",
       "section_error": "无法显示设置",
-      "theme_error": "无法显示主题",
       "theme": {
         "color_picker": "取色器",
         "tabs": {
@@ -1759,18 +1756,6 @@
       "title": "设置",
       "basic_title": "设置 — 常规",
       "basic_description": "管理该租户在公开站点上展示的内容。",
-      "theme_title": "设置 — 主题",
-      "theme_description": "管理该租户的主题颜色、标志和图标。",
-      "email_title": "设置 — 邮件",
-      "email_description": "管理该租户发送邮件的方式。",
-      "payment_title": "设置 — 支付",
-      "payment_description": "管理该租户的 Stripe 支付设置。",
-      "mobile_push_title": "设置 — 移动推送",
-      "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",
-      "app_links_title": "设置 — 应用链接",
-      "app_links_description": "管理该租户的链接所打开的 Android 和 iOS 应用。",
-      "royalties_title": "设置 — 版税",
-      "royalties_description": "选择该租户如何将版税月份结算为明细。",
       "account_title": "账户设置",
       "account_description": "管理您当前登录的管理员账户。",
       "tenant_missing": "缺少租户 ID。",
@@ -1781,13 +1766,6 @@
       "delete_action": "删除",
       "tabs": {
         "basic": "常规",
-        "creator_roles": "作者角色",
-        "theme": "主题",
-        "email": "邮件",
-        "payment": "支付",
-        "royalties": "版税",
-        "mobile_push": "移动推送",
-        "app_links": "应用链接",
         "policy": "限制与保留"
       },
       "image": {
@@ -2215,6 +2193,32 @@
         }
       }
     },
+    "branding": {
+      "title": "品牌",
+      "page_description": "管理该租户的主题颜色、标志和图标。",
+      "section_error": "无法显示品牌设置"
+    },
+    "integrations": {
+      "title": "集成",
+      "tabs": {
+        "email": "邮件",
+        "payment": "支付",
+        "mobile_push": "移动推送",
+        "app_links": "应用链接"
+      },
+      "email_title": "集成 — 邮件",
+      "email_description": "管理该租户发送邮件的方式。",
+      "email_error": "无法显示邮件设置",
+      "payment_title": "集成 — 支付",
+      "payment_description": "管理该租户的 Stripe 支付设置。",
+      "payment_error": "无法显示支付设置",
+      "mobile_push_title": "集成 — 移动推送",
+      "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",
+      "mobile_push_error": "无法显示移动推送设置",
+      "app_links_title": "集成 — 应用链接",
+      "app_links_description": "管理该租户的链接所打开的 Android 和 iOS 应用。",
+      "app_links_error": "无法显示应用链接设置"
+    },
     "notifications": {
       "page_description": "查看发送给您的运营事件并标记为已读。公告的投放在另一个页面管理。",
       "list_error": "无法显示通知",
@@ -2397,6 +2401,12 @@
       "not_over": "该月尚未结束，无法结算。",
       "statements_link": "已结算明细",
       "open_month_link": "未结算月份",
+      "close_settings_link": "结算设置",
+      "close_settings": {
+        "title": "结算设置",
+        "page_description": "选择该租户如何将版税月份结算为明细。",
+        "section_error": "无法显示版税设置"
+      },
       "totals": {
         "gross": "销售额",
         "refunded": "退款",

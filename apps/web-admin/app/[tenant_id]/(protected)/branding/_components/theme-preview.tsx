@@ -38,7 +38,7 @@ const SiteNavLabels = () => (
  * row's min-content width the whole title, and nothing between here and the
  * console's page grid clamps that: the grid's one automatic column takes the
  * widest item's min-content as its minimum, so a long sample title carries
- * every card on the settings screen past the edge of a phone.
+ * every card on the branding screen past the edge of a phone.
  */
 const WorkRow = ({
   author,

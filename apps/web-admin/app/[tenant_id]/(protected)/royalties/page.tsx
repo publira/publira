@@ -220,6 +220,14 @@ const RoyaltiesPage = ({ searchParams }: RoyaltiesPageProps) => (
             <Message message="admin.royalties.statements_link" />
           </Suspense>
         </LinkButton>
+        <LinkButton
+          render={<Link href="/royalties/settings" />}
+          variant="outline"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.royalties.close_settings_link" />
+          </Suspense>
+        </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>

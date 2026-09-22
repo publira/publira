@@ -5,9 +5,12 @@ import {
   CommentIcon,
   DashboardIcon,
   FileTextIcon,
+  IdCardIcon,
   MailIcon,
   MegaphoneIcon,
+  PaletteIcon,
   PenLineIcon,
+  PlugIcon,
   ScrollTextIcon,
   SettingsIcon,
   ShapesIcon,
@@ -46,6 +49,7 @@ const hrefs = [
   "/labels",
   "/creators",
   "/genres",
+  "/creator-roles",
   "/series",
   "/pages",
   "/announcements",
@@ -56,6 +60,8 @@ const hrefs = [
   "/engagement",
   "/royalties",
   "/members",
+  "/branding",
+  "/integrations",
   "/audit-logs",
   "/settings",
 ];
@@ -113,6 +119,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
                 <Message message="admin.nav.genres_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/creator-roles">
+          <ConsoleSidebarNavigationItemIcon>
+            <IdCardIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.nav.creator_roles_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
@@ -244,6 +262,30 @@ export const AdminNavigation = () => (
         <Suspense fallback={null}>
           <MembersNavigationItem />
         </Suspense>
+        <ConsoleSidebarNavigationItem href="/branding">
+          <ConsoleSidebarNavigationItemIcon>
+            <PaletteIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.nav.branding_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/integrations">
+          <ConsoleSidebarNavigationItemIcon>
+            <PlugIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.nav.integrations_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/audit-logs">
           <ConsoleSidebarNavigationItemIcon>
             <ScrollTextIcon className="size-4" />

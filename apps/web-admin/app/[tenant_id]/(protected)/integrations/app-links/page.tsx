@@ -20,7 +20,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
+import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { AppLinksForm } from "./_components/app-links-form";
 import { updateAppLinksAction } from "./_lib/actions";
 
@@ -29,7 +29,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.app_links_title") };
+  return { title: t("admin.integrations.app_links_title") };
 };
 
 export const generateStaticParams = () =>
@@ -67,29 +67,29 @@ const AppLinksSection = async () => {
   );
 };
 
-const SettingsAppLinksPage = () => (
+const IntegrationsAppLinksPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+            <Message message="admin.integrations.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.app_links_description" />
+            <Message message="admin.integrations.app_links_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <SettingsTabNav current="app-links" />
+        <IntegrationsTabNav current="app-links" />
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.app_links_error" />
+              <Message message="admin.integrations.app_links_error" />
             </Suspense>
           }
         >
@@ -102,4 +102,4 @@ const SettingsAppLinksPage = () => (
   </AdminPage>
 );
 
-export default SettingsAppLinksPage;
+export default IntegrationsAppLinksPage;

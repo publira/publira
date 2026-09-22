@@ -1,90 +1,12 @@
 import type { Locale } from "@publira/i18n";
-import type { TenantTheme } from "@publira/utils/theme-css-variables";
 
-import type { TenantSmtpSettings } from "#lib/email-settings";
-import type { TenantPaymentSettings } from "#lib/payment-settings";
-import type { RoyaltyClosePolicy } from "#lib/royalty-period";
 import type { TenantAgeVerification } from "#lib/tenant-age-verification-shared";
-import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
-import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 export type SiteSettingsActionState =
   | {
       ok: true;
       message: string;
-    }
-  | {
-      ok: false;
-      message: string;
-    }
-  | null;
-
-export type ThemeSettingsFieldErrors = Partial<
-  Record<
-    | "primaryColor"
-    | "secondaryColor"
-    | "accentColor"
-    | "backgroundColor"
-    | "foregroundColor"
-    | "surfaceColor"
-    | "surfaceForegroundColor"
-    | "serifFontFamily"
-    | "cardColor"
-    | "cardForegroundColor"
-    | "popoverColor"
-    | "popoverForegroundColor"
-    | "primaryForegroundColor"
-    | "secondaryForegroundColor"
-    | "accentForegroundColor"
-    | "mutedColor"
-    | "mutedForegroundColor"
-    | "borderColor"
-    | "inputColor"
-    | "ringColor"
-    | "sansFontFamily"
-    | "successColor"
-    | "successForegroundColor"
-    | "warningColor"
-    | "warningForegroundColor"
-    | "destructiveColor"
-    | "destructiveForegroundColor"
-    | "infoColor"
-    | "infoForegroundColor",
-    string
-  >
->;
-
-export type ThemeSettingsActionState =
-  | {
-      ok: true;
-      message: string;
-      theme: TenantTheme;
-    }
-  | {
-      ok: false;
-      message: string;
-      fieldErrors?: ThemeSettingsFieldErrors;
-    }
-  | null;
-
-export type TenantIconActionState =
-  | {
-      ok: true;
-      message: string;
-      icon: TenantBrandingImage | null;
-    }
-  | {
-      ok: false;
-      message: string;
-    }
-  | null;
-
-export type TenantLogoActionState =
-  | {
-      ok: true;
-      message: string;
-      logo: TenantBrandingImage | null;
     }
   | {
       ok: false;
@@ -134,81 +56,6 @@ export type TenantAgeVerificationActionState =
       ok: true;
       message: string;
       ageVerification: TenantAgeVerification;
-    }
-  | {
-      ok: false;
-      message: string;
-    }
-  | null;
-
-export type TenantPaymentSettingsFieldErrors = Partial<
-  Record<"secretKey" | "webhookSecret", string>
->;
-
-export type TenantPaymentSettingsFormState =
-  | {
-      ok: true;
-      message: string;
-      settings: TenantPaymentSettings;
-    }
-  | {
-      ok: false;
-      message: string;
-      fieldErrors?: TenantPaymentSettingsFieldErrors;
-    }
-  | null;
-
-export type TenantPurchaseSettingsFieldErrors = Partial<
-  Record<"appStoreUrl" | "googlePlayUrl" | "purchaseAvailability", string>
->;
-
-export type TenantPurchaseSettingsFormState =
-  | {
-      ok: true;
-      message: string;
-      settings: TenantPurchaseSettings;
-    }
-  | {
-      ok: false;
-      message: string;
-      fieldErrors?: TenantPurchaseSettingsFieldErrors;
-    }
-  | null;
-
-export type RoyaltyCloseSettingsFieldErrors = Partial<
-  Record<"autoCloseDay" | "closeMode", string>
->;
-
-export type RoyaltyCloseSettingsFormState =
-  | {
-      ok: true;
-      message: string;
-      policy: RoyaltyClosePolicy;
-    }
-  | {
-      ok: false;
-      message: string;
-      fieldErrors?: RoyaltyCloseSettingsFieldErrors;
-    }
-  | null;
-
-export type TenantEmailSettingsFormState =
-  | {
-      ok: true;
-      message: string;
-      settings: TenantSmtpSettings;
-    }
-  | {
-      ok: false;
-      message: string;
-    }
-  | null;
-
-export type TenantSmtpTestFormState =
-  | {
-      ok: true;
-      message: string;
-      recipientEmail: string;
     }
   | {
       ok: false;

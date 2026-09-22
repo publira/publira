@@ -66,7 +66,7 @@ export interface UploadTenantLogoInput {
 }
 
 /**
- * Tag the settings screen's cached read carries, so `updateTag` in a Server
+ * Tag the branding screen's cached read carries, so `updateTag` in a Server
  * Action makes a saved theme or a replaced icon visible in the same session
  * instead of leaving the previous value in the private cache.
  */

@@ -27,7 +27,7 @@ import {
 import type { RoyaltyClosePolicy } from "#lib/royalty-period";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { RoyaltyCloseSettingsFormState } from "../../settings-types";
+import type { RoyaltyCloseSettingsFormState } from "../../royalty-types";
 
 interface RoyaltyCloseSettingsFormProps {
   action: (

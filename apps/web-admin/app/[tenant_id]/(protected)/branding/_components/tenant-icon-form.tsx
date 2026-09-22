@@ -35,7 +35,7 @@ import { tenantBrandingVariant } from "#lib/tenant-branding-image";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { TenantIconActionState } from "../settings-types";
+import type { TenantIconActionState } from "../branding-types";
 
 interface TenantIconFormProps {
   action: (

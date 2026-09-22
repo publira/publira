@@ -19,7 +19,7 @@ import {
   ROYALTY_CLOSE_MODES,
 } from "#lib/royalty-period";
 
-import type { RoyaltyCloseSettingsFormState } from "../../settings-types";
+import type { RoyaltyCloseSettingsFormState } from "../../royalty-types";
 
 const royaltyCloseSettingsFormFields = {
   autoCloseDay: { kind: "value", name: "auto_close_day" },

@@ -50,7 +50,7 @@ export type TenantPaymentSettingsResult =
     };
 
 /**
- * Tag the settings screen's cached read carries, so `updateTag` in the Server
+ * Tag the payments screen's cached read carries, so `updateTag` in the Server
  * Action makes the saved flags and hints visible in the same session instead of
  * leaving the previous public view in the private cache.
  */

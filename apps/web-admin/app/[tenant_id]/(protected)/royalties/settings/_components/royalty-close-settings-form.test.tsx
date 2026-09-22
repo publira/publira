@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { RoyaltyCloseSettingsFormState } from "../../settings-types";
+import type { RoyaltyCloseSettingsFormState } from "../../royalty-types";
 import { RoyaltyCloseSettingsForm } from "./royalty-close-settings-form";
 
 vi.mock("next/navigation", () => ({

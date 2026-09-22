@@ -37,7 +37,7 @@ import {
 import type { TenantPaymentSettings } from "#lib/payment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { TenantPaymentSettingsFormState } from "../settings-types";
+import type { TenantPaymentSettingsFormState } from "../payment-types";
 
 const statusTone: Record<
   ReturnType<typeof paymentSettingsStatus>,

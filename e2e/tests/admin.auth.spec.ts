@@ -178,11 +178,11 @@ test.describe("web-admin auth", () => {
   test("a member can enter the console but settings stay read-only", async ({
     page,
   }) => {
-    await signInAsAdmin(page, SEED_MEMBER, "/settings/email");
+    await signInAsAdmin(page, SEED_MEMBER, "/integrations/email");
 
-    await expect(page).toHaveURL(/\/settings\/email/u);
+    await expect(page).toHaveURL(/\/integrations\/email/u);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Settings" })
+      page.getByRole("heading", { exact: true, name: "Integrations" })
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -200,11 +200,11 @@ test.describe("web-admin auth", () => {
   test("a member sees payment settings read-only with a permission error", async ({
     page,
   }) => {
-    await signInAsAdmin(page, SEED_MEMBER, "/settings/payment");
+    await signInAsAdmin(page, SEED_MEMBER, "/integrations/payment");
 
-    await expect(page).toHaveURL(/\/settings\/payment/u);
+    await expect(page).toHaveURL(/\/integrations\/payment/u);
     await expect(
-      page.getByRole("heading", { exact: true, name: "Settings" })
+      page.getByRole("heading", { exact: true, name: "Integrations" })
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Payments" })).toBeVisible();
     // The Stripe settings and where episodes are sold are two sections, and

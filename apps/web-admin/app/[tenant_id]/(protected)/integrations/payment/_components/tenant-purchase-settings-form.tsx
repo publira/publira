@@ -28,7 +28,7 @@ import { useTenantId } from "#lib/use-tenant-id";
 import type {
   TenantPurchaseSettingsFieldErrors,
   TenantPurchaseSettingsFormState,
-} from "../settings-types";
+} from "../payment-types";
 
 const PURCHASE_AVAILABILITY_ITEMS = [
   {

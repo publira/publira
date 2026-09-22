@@ -15,7 +15,7 @@ import { WEB_ADMIN_APP_LINKS_BASE_URL } from "../src/urls";
  * open in, and taking one of them away again.
  */
 
-const APP_LINKS_PATH = "/settings/app-links";
+const APP_LINKS_PATH = "/integrations/app-links";
 
 const SAVED = "The app links were saved.";
 const SUBMIT = "Save the app links";

@@ -1,10 +1,13 @@
+import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import {
   AdminPage,
+  AdminPageActions,
   AdminPageContent,
   AdminPageDescription,
   AdminPageHeader,
@@ -20,7 +23,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getRoyaltyClosePolicy } from "#lib/royalties";
 import { getTenantId } from "#lib/tenant-id";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { RoyaltyCloseSettingsForm } from "./_components/royalty-close-settings-form";
 import { updateRoyaltyCloseSettingsAction } from "./_lib/actions";
 
@@ -29,7 +31,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.royalties_title") };
+  return { title: t("admin.royalties.close_settings.title") };
 };
 
 export const generateStaticParams = () =>
@@ -66,39 +68,43 @@ const RoyaltyCloseSettingsSection = async () => {
   );
 };
 
-const SettingsRoyaltiesPage = () => (
+const RoyaltyCloseSettingsPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
+            <Message message="admin.royalties.close_settings.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.royalties_description" />
+            <Message message="admin.royalties.close_settings.page_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/royalties" />} variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.royalties.open_month_link" />
+          </Suspense>
+        </LinkButton>
+      </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <SettingsTabNav current="royalties" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.royalties_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<RoyaltyCloseSettingsSkeleton />}>
-            <RoyaltyCloseSettingsSection />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.royalties.close_settings.section_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<RoyaltyCloseSettingsSkeleton />}>
+          <RoyaltyCloseSettingsSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );
 
-export default SettingsRoyaltiesPage;
+export default RoyaltyCloseSettingsPage;

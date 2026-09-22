@@ -87,21 +87,21 @@ test.describe("web-admin screenshots", () => {
         await expectScreenshot(page, viewport, "series-edit");
       });
 
-      test("the theme settings", async ({ page }) => {
-        await page.goto("/settings/theme");
+      test("the branding screen", async ({ page }) => {
+        await page.goto("/branding");
 
         await expect(
           page.getByRole("tab", { name: "Edit", selected: true })
         ).toBeVisible();
         await expect(page.getByLabel(/Primary color/u).first()).toBeVisible();
 
-        await expectScreenshot(page, viewport, "settings-theme");
+        await expectScreenshot(page, viewport, "branding");
       });
 
-      test("the public site preview behind the theme settings tab", async ({
+      test("the public site preview behind the branding screen's theme tab", async ({
         page,
       }) => {
-        await page.goto("/settings/theme");
+        await page.goto("/branding");
 
         await page.getByRole("tab", { name: "Preview" }).click();
 
@@ -114,7 +114,7 @@ test.describe("web-admin screenshots", () => {
           window.scrollTo(0, 0);
         });
 
-        await expectScreenshot(page, viewport, "settings-theme-preview");
+        await expectScreenshot(page, viewport, "branding-preview");
       });
     });
   }

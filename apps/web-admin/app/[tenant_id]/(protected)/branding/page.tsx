@@ -25,29 +25,28 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
-import { SettingsTabNav } from "../_components/settings-tab-nav";
-import { TenantIconForm } from "../_components/tenant-icon-form";
-import { TenantLogoForm } from "../_components/tenant-logo-form";
-import { ThemePreview } from "../_components/theme-preview";
-import { ThemeSettingsForm } from "../_components/theme-settings-form";
+import { TenantIconForm } from "./_components/tenant-icon-form";
+import { TenantLogoForm } from "./_components/tenant-logo-form";
+import { ThemePreview } from "./_components/theme-preview";
+import { ThemeSettingsForm } from "./_components/theme-settings-form";
 import {
   updateTenantIconAction,
   updateTenantLogoAction,
   updateTenantThemeSettingsAction,
-} from "../_lib/actions";
+} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.settings.theme_title") };
+  return { title: t("admin.branding.title") };
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-const SettingsThemeFormsSkeleton = () => (
+const BrandingFormsSkeleton = () => (
   <div className="grid gap-6">
     <div className="grid gap-4">
       <SkeletonLine className="h-5 w-32" />
@@ -64,7 +63,7 @@ const SettingsThemeFormsSkeleton = () => (
   </div>
 );
 
-const SettingsThemeForms = async () => {
+const BrandingForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
@@ -78,7 +77,7 @@ const SettingsThemeForms = async () => {
         <SectionErrorHeading>
           <SectionErrorTitle>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.theme_error" />
+              <Message message="admin.branding.section_error" />
             </Suspense>
           </SectionErrorTitle>
           <SectionErrorDescription>
@@ -108,39 +107,36 @@ const SettingsThemeForms = async () => {
   );
 };
 
-const SettingsThemePage = () => (
+const BrandingPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
-            <Message message="admin.settings.title" />
+            <Message message="admin.branding.title" />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.settings.theme_description" />
+            <Message message="admin.branding.page_description" />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <div className="grid gap-6">
-        <SettingsTabNav current="theme" />
-        <SectionErrorBoundary
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.settings.theme_error" />
-            </Suspense>
-          }
-        >
-          <Suspense fallback={<SettingsThemeFormsSkeleton />}>
-            <SettingsThemeForms />
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.branding.section_error" />
           </Suspense>
-        </SectionErrorBoundary>
-      </div>
+        }
+      >
+        <Suspense fallback={<BrandingFormsSkeleton />}>
+          <BrandingForms />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );
 
-export default SettingsThemePage;
+export default BrandingPage;

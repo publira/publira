@@ -8,7 +8,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SettingsTabNav } from "./settings-tab-nav";
+import { IntegrationsTabNav } from "./integrations-tab-nav";
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
@@ -27,23 +27,19 @@ afterEach(() => {
   cleanup();
 });
 
-describe("SettingsTabNav", () => {
-  it("lists only the tenant settings tabs", () => {
-    render(<SettingsTabNav current="basic" />);
+describe("IntegrationsTabNav", () => {
+  it("lists the outside services a tenant connects to, each at its own path", () => {
+    render(<IntegrationsTabNav current="email" />);
 
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      ["General", "Limits and retention"]
-    );
-  });
-
-  it("keeps the personal account settings out of the tabs", () => {
-    render(<SettingsTabNav current="basic" />);
-
-    expect(screen.queryByRole("link", { name: "Account settings" })).toBeNull();
     expect(
       screen
         .getAllByRole("link")
-        .some((link) => link.getAttribute("href") === "/settings/account")
-    ).toBe(false);
+        .map((link) => [link.textContent, link.getAttribute("href")])
+    ).toEqual([
+      ["Email", "/integrations/email"],
+      ["Payments", "/integrations/payment"],
+      ["Mobile push", "/integrations/mobile-push"],
+      ["App links", "/integrations/app-links"],
+    ]);
   });
 });

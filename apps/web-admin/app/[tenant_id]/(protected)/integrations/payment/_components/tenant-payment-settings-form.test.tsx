@@ -15,7 +15,7 @@ import { AdminLocaleProvider } from "#components/admin-locale-context";
 import { emptyTenantPaymentSettings } from "#lib/payment-settings-shared";
 import type { TenantPaymentSettings } from "#lib/payment-settings-shared";
 
-import type { TenantPaymentSettingsFormState } from "../settings-types";
+import type { TenantPaymentSettingsFormState } from "../payment-types";
 import { TenantPaymentSettingsForm } from "./tenant-payment-settings-form";
 
 vi.mock("next/navigation", () => ({

@@ -962,13 +962,16 @@
       "administration": "管理",
       "announcements_label": "お知らせ",
       "audit_label": "監査ログ",
+      "branding_label": "ブランディング",
       "comments_label": "コメント",
       "comments_pending": "承認待ちのコメント{$count}件",
       "contact_messages_label": "お問い合わせ",
+      "creator_roles_label": "著者の役割",
       "creators_label": "著者",
       "dashboard_label": "ダッシュボード",
       "engagement_label": "読了率",
       "genres_label": "ジャンル",
+      "integrations_label": "外部連携",
       "labels_label": "レーベル",
       "members_label": "メンバー",
       "operations": "運用",
@@ -1568,13 +1571,7 @@
       }
     },
     "settings": {
-      "email_error": "メール設定を表示できませんでした",
-      "payment_error": "決済設定を表示できませんでした",
-      "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
-      "app_links_error": "アプリリンクの設定を表示できませんでした",
-      "royalties_error": "印税の設定を表示できませんでした",
       "section_error": "設定を表示できませんでした",
-      "theme_error": "テーマを表示できませんでした",
       "theme": {
         "color_picker": "カラーピッカー",
         "tabs": {
@@ -1759,18 +1756,6 @@
       "title": "設定",
       "basic_title": "設定 - 基本情報",
       "basic_description": "テナントごとの公開表示設定を管理します。",
-      "theme_title": "設定 - テーマ",
-      "theme_description": "テナントごとのテーマカラー、ロゴ、アイコンを管理します。",
-      "email_title": "設定 - メール情報",
-      "email_description": "テナントごとのメール送信設定を管理します。",
-      "payment_title": "設定 - 決済",
-      "payment_description": "テナントごとの Stripe 決済設定を管理します。",
-      "mobile_push_title": "設定 - モバイルプッシュ",
-      "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",
-      "app_links_title": "設定 - アプリリンク",
-      "app_links_description": "このテナントのリンクを開く Android / iOS アプリを管理します。",
-      "royalties_title": "設定 - 印税",
-      "royalties_description": "このテナントで印税の月をどのように締めて明細にするかを選びます。",
       "account_title": "アカウント設定",
       "account_description": "ログイン中の管理者アカウントの情報を管理します。",
       "tenant_missing": "テナント ID が見つかりません。",
@@ -1781,13 +1766,6 @@
       "delete_action": "削除する",
       "tabs": {
         "basic": "基本情報",
-        "creator_roles": "著者の役割",
-        "theme": "テーマ",
-        "email": "メール情報",
-        "payment": "決済",
-        "royalties": "印税",
-        "mobile_push": "モバイルプッシュ",
-        "app_links": "アプリリンク",
         "policy": "制限と保持"
       },
       "image": {
@@ -2215,6 +2193,32 @@
         }
       }
     },
+    "branding": {
+      "title": "ブランディング",
+      "page_description": "テナントごとのテーマカラー、ロゴ、アイコンを管理します。",
+      "section_error": "ブランディングの設定を表示できませんでした"
+    },
+    "integrations": {
+      "title": "外部連携",
+      "tabs": {
+        "email": "メール情報",
+        "payment": "決済",
+        "mobile_push": "モバイルプッシュ",
+        "app_links": "アプリリンク"
+      },
+      "email_title": "外部連携 - メール情報",
+      "email_description": "テナントごとのメール送信設定を管理します。",
+      "email_error": "メール設定を表示できませんでした",
+      "payment_title": "外部連携 - 決済",
+      "payment_description": "テナントごとの Stripe 決済設定を管理します。",
+      "payment_error": "決済設定を表示できませんでした",
+      "mobile_push_title": "外部連携 - モバイルプッシュ",
+      "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",
+      "mobile_push_error": "モバイルプッシュの設定を表示できませんでした",
+      "app_links_title": "外部連携 - アプリリンク",
+      "app_links_description": "このテナントのリンクを開く Android / iOS アプリを管理します。",
+      "app_links_error": "アプリリンクの設定を表示できませんでした"
+    },
     "notifications": {
       "page_description": "自分宛の業務イベントを確認し、既読にできます。お知らせの配信管理は別画面です。",
       "list_error": "通知一覧を表示できませんでした",
@@ -2397,6 +2401,12 @@
       "not_over": "この月はまだ終わっていないため、締められません。",
       "statements_link": "締めた明細",
       "open_month_link": "未締めの月",
+      "close_settings_link": "締めの設定",
+      "close_settings": {
+        "title": "締めの設定",
+        "page_description": "このテナントで印税の月をどのように締めて明細にするかを選びます。",
+        "section_error": "印税の設定を表示できませんでした"
+      },
       "totals": {
         "gross": "売上",
         "refunded": "返金",

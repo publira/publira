@@ -39,7 +39,7 @@ import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { AdminClientMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { ThemeSettingsActionState } from "../settings-types";
+import type { ThemeSettingsActionState } from "../branding-types";
 import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
 interface ThemeSettingsFormProps {
