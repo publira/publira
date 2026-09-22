@@ -116,15 +116,13 @@ GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, pub
 -- table have to give them back. publira_take_back_default_grants decides both
 -- for one relation, so the seed and the event trigger below apply one rule.
 --
--- episode_rating_counts and series_rating_counts are derived, not written: they
--- are the tallies of episode_ratings and only the triggers on that table may
--- move them, or a storefront connection could set the numbers its own tenant's
--- readers see without a single rating behind them. The triggers keep working
--- because they are SECURITY DEFINER.
---
--- The other derived tables — content_daily_stats, content_ranking_snapshots,
--- item_recommend_features — still carry the blanket grant. Taking it off them
--- is publira/publira#2010.
+-- The derived tables are read by the API roles but never written by them, or a
+-- storefront connection could set the numbers its own tenant's readers see:
+-- their policies are tenant isolation, which does not stop that. The rating
+-- tallies are moved only by the SECURITY DEFINER triggers on episode_ratings;
+-- the daily stats, the tenant rating totals, the ranking snapshots, and the
+-- recommendation features are rebuilt by the maintenance batches as
+-- publira_content_stats, which keeps its grant.
 --
 -- The platform console's tables carry no policy, and correctly so: the console
 -- spans tenants, publira_platform holds BYPASSRLS, and a tenant isolation
@@ -154,7 +152,15 @@ BEGIN
             'REVOKE ALL ON %s FROM publira_public, publira_admin, publira_content_stats, publira_outbox',
             relation
         );
-    ELSIF relation_name IN ('episode_rating_counts', 'series_rating_counts') THEN
+    ELSIF relation_name IN (
+        'episode_rating_counts',
+        'series_rating_counts',
+        'content_daily_stats',
+        'tenant_rating_totals',
+        'content_ranking_snapshots',
+        'item_recommend_features',
+        'user_recommend_features'
+    ) THEN
         EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON %s FROM publira_admin, publira_public', relation);
     END IF;
 END
