@@ -66,8 +66,8 @@ mobile_dart_defines() {
 # The address this machine answers on as seen from $1, the device the build
 # will run on. Loopback inside an emulator is the emulator itself, which is
 # what 10.0.2.2 exists for. A device on a cable has no route here at all, so it
-# is given its own loopback and mobile_bind_device_ports puts this machine's
-# ports behind it. An empty serial is a build that runs here (`-d chrome`,
+# is given its own loopback and mobile_bind_device_port puts this machine's
+# port behind it. An empty serial is a build that runs here (`-d chrome`,
 # `-d linux`), where loopback is already this machine.
 mobile_device_address() {
   case "$1" in
@@ -76,18 +76,17 @@ mobile_device_address() {
   esac
 }
 
-# Binds the profile's two ports onto $1's own loopback, which is the address
-# mobile_device_address answers with for anything but an emulator. Call it
-# after mobile_load_app_config, which is what resolves the ports.
-mobile_bind_device_ports() {
-  local device="$1"
+# Binds this machine's port $2 onto $1's own loopback, which is the address
+# mobile_device_address answers with for anything but an emulator.
+mobile_bind_device_port() {
+  local device="$1" port="$2"
   case "${device}" in
     '' | emulator-*) return 0 ;;
   esac
   # A name adb does not answer for is a target of another kind -- `chrome`,
   # `linux`, an iOS simulator -- and each of those already runs here.
   adb -s "${device}" get-state > /dev/null 2>&1 || return 0
-  adb -s "${device}" reverse "tcp:${PUBLIRA_PUBLIC_API_PORT}" "tcp:${PUBLIRA_PUBLIC_API_PORT}" > /dev/null
+  adb -s "${device}" reverse "tcp:${port}" "tcp:${port}" > /dev/null
 }
 
 # The serial of the device to use: the one PUBLIRA_MOBILE_DEVICE names, else the
