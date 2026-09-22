@@ -225,6 +225,7 @@ mobile/
 │   ├── config.dart               # --dart-define API / image / tenant configuration
 │   ├── api/                      # Connect JSON client, tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
+│   ├── announcements/            # AnnouncementBoard: the tenant's announcements, the pinned banner, and where a link leads
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
@@ -234,11 +235,11 @@ mobile/
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
-│   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification
+│   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / follows / downloads / contact
+│   ├── screens/                  # Catalog / search / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / follows / downloads / contact / announcements
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -275,6 +276,8 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 | `/account/notifications` | The reader's notification inbox |
 | `/account/follows` | The series and authors the reader follows |
 | `/account/downloads` | What the device keeps for reading offline |
+| `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
+| `/announcements/:announcementId` | One announcement |
 | `/series/:seriesId` | Series details |
 | `/creators/:creatorId` | An author and the published series credited to them |
 | `/labels/:labelId` | A label and its published series |
@@ -284,11 +287,11 @@ The following routes are defined with `go_router`. The catalog reads from the pu
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 
-The catalog's app bar carries the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one, and under the title a search field, which opens `/search`.
+The catalog's app bar carries the way to `/announcements` and the account entry point, which opens `/sign-in` for a signed-out reader and `/account` for a signed-in one, and under the title a search field, which opens `/search`.
 
 ### Tenant links and sharing
 
-A link to a series, an episode, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
@@ -384,9 +387,13 @@ A reader follows a series, and each author credited on it, from the series scree
 `/account/notifications` is the reader's record of what they were notified of, read from `NotificationService` whether or not a push ever reached the device. It is online only, and nothing of it is written to the device.
 
 - The list is newest first, twenty to a page, the next asked for as the reader nears the end of the rows already there. A row's title and description are assembled from its `notification_type` and payload with the same catalog wording the site uses; a type this build does not know stays as a generic row
-- A row opens what it is about: a new episode opens its viewer, a comment notification the comments of its episode, and a payload naming only a series opens the series. An announcement, and a payload naming nothing the app can open, lands on the catalog
+- A row opens what it is about: a new episode opens its viewer, a comment notification the comments of its episode, and a payload naming only a series opens the series. An announcement opens `/announcements`, since its payload names no announcement, and a payload naming nothing the app can open lands on the catalog
 - Opening an unread row marks it read on the way, and each unread row carries its own mark; the app bar marks every notification read
 - The unread count badges the catalog's account entry and the account screen's row. It is read back from `CountUnreadNotifications` after every read mark, when the inbox opens, when the app returns to the foreground, and when a push arrives in front, so it is the server's count rather than one the device worked out
+
+## Announcements
+
+`/announcements` lists the tenant's announcements from the announcement RPCs of `AuthService`, the same list the site shows at its own `/announcements`, and `/announcements/:announcementId` shows one. Both are read without a session; a signed-in reader's session adds read state and the marks that set it. The pinned announcement (`GetPinnedAnnouncement`) is a banner at the top of the catalog. The announcements are online only, and the one thing written to the device is the id of the banner the reader closed, which `DismissedAnnouncementStore` keeps as the site's cookie does.
 
 ## Offline reading
 

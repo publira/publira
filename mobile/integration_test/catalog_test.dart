@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:publira/api/episode_page_store.dart';
+import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/session_store.dart';
@@ -144,6 +145,7 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(session: session),
+          dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           offline: FileOfflineLibrary(
             tenantHost: 'localhost',
             root: () async => offlineRoot,
@@ -1364,6 +1366,91 @@ void main() {
         );
       });
     });
+
+    testApp('a pinned announcement is read, closed, and marked read', (
+      tester,
+    ) async {
+      server
+        ..announcements = [
+          {
+            'id': 'fixture-announcement-1',
+            'announcementType': 'system',
+            'title': 'Scheduled maintenance',
+            'body': 'The site pauses for an hour tonight.',
+            'createdAt': '2026-09-20T09:00:00Z',
+            'pinned': true,
+          },
+          {
+            'id': 'fixture-announcement-2',
+            'announcementType': 'system',
+            'title': 'A new series has started',
+            'body': 'Read the first episode today.',
+            'linkUrl': '/series/${ConnectFixtureServer.seedSeriesId}',
+            'createdAt': '2026-09-19T09:00:00Z',
+          },
+        ]
+        ..pinnedAnnouncementId = 'fixture-announcement-1';
+      await withFailureScreenshot(tester, 'fixture-announcements', () async {
+        await pumpApp(tester, session: memberSession());
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('pinned-announcement-fixture-announcement-1'),
+          ),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('pinned-announcement-open')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('announcement-fixture-announcement-1')),
+        );
+        await pumpUntilTrue(
+          tester,
+          () => server.announcements.first['isRead'] == true,
+          description: 'the opened announcement to be marked read',
+        );
+        await tester.pageBack();
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('pinned-announcement-dismiss')),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('pinned-announcement-dismiss')),
+        );
+        await tester.pump();
+        expect(
+          find.byKey(
+            const ValueKey('pinned-announcement-fixture-announcement-1'),
+          ),
+          findsNothing,
+        );
+
+        await tester.tap(find.byKey(const ValueKey('catalog-announcements')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('announcement-unread-fixture-announcement-2'),
+          ),
+        );
+        // Closing the banner took nothing out of the list.
+        expect(
+          find.byKey(const ValueKey('announcement-row-fixture-announcement-1')),
+          findsOneWidget,
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('announcements-mark-all-read')),
+        );
+        await pumpUntilTrue(
+          tester,
+          () => server.announcements.every((item) => item['isRead'] == true),
+          description: 'mark all read to reach the API',
+        );
+      });
+    });
   });
 
   group('live public API', skip: !_liveApi, () {
@@ -1409,6 +1496,7 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(),
+          dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           offline: FileOfflineLibrary(
             tenantHost: liveTenantHost,
             root: () async => offlineRoot,
@@ -1818,6 +1906,26 @@ void main() {
       });
     });
 
+    testApp('a visitor reads the live announcements', (tester) async {
+      await withFailureScreenshot(tester, 'live-announcements', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.announcements);
+        // The development seed posts no announcement for this tenant, so what
+        // this proves is that the list is answered without a session and with
+        // one, not what it holds.
+        final answered = find.byWidgetPredicate(
+          (widget) =>
+              widget.key == const ValueKey('announcements-empty') ||
+              widget.key == const ValueKey('announcements-list'),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          answered,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('announcements-error')), findsNothing);
+      });
+    });
+
     testApp('wrong credentials are rejected by the live API', (tester) async {
       await withFailureScreenshot(tester, 'live-sign-in-error', () async {
         await pumpLive(tester, initialLocation: AppRoutes.signIn);
@@ -1924,6 +2032,7 @@ void main() {
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
           store: InMemorySessionStore(session: session),
+          dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           offline: offline,
         ),
       );

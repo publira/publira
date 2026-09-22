@@ -217,6 +217,51 @@ abstract class AppMessages {
   /// `mobile.account.title`
   String get accountTitle;
 
+  /// `mobile.announcements.banner_dismiss`
+  String get announcementsBannerDismiss;
+
+  /// `mobile.announcements.banner_link`
+  String get announcementsBannerLink;
+
+  /// `mobile.announcements.detail_failed`
+  String get announcementsDetailFailed;
+
+  /// `mobile.announcements.empty`
+  String get announcementsEmpty;
+
+  /// `mobile.announcements.failed`
+  String get announcementsFailed;
+
+  /// `mobile.announcements.mark_all_read`
+  String get announcementsMarkAllRead;
+
+  /// `mobile.announcements.mark_all_read_failed`
+  String get announcementsMarkAllReadFailed;
+
+  /// `mobile.announcements.mark_read`
+  String get announcementsMarkRead;
+
+  /// `mobile.announcements.mark_read_failed`
+  String get announcementsMarkReadFailed;
+
+  /// `mobile.announcements.not_found`
+  String get announcementsNotFound;
+
+  /// `mobile.announcements.open_link`
+  String get announcementsOpenLink;
+
+  /// `mobile.announcements.open_link_failed`
+  String get announcementsOpenLinkFailed;
+
+  /// `mobile.announcements.title`
+  String get announcementsTitle;
+
+  /// `mobile.announcements.unread`
+  String get announcementsUnread;
+
+  /// `mobile.announcements.unread_shown`
+  String announcementsUnreadShown({required String count});
+
   /// `mobile.auth.check_spam`
   String get authCheckSpam;
 
@@ -1462,6 +1507,81 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get accountTitle {
     return 'アカウント';
+  }
+
+  @override
+  String get announcementsBannerDismiss {
+    return 'このお知らせを閉じる';
+  }
+
+  @override
+  String get announcementsBannerLink {
+    return 'お知らせを読む';
+  }
+
+  @override
+  String get announcementsDetailFailed {
+    return 'このお知らせを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get announcementsEmpty {
+    return '現在表示できるお知らせはありません。';
+  }
+
+  @override
+  String get announcementsFailed {
+    return 'お知らせを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get announcementsMarkAllRead {
+    return 'すべて既読にする';
+  }
+
+  @override
+  String get announcementsMarkAllReadFailed {
+    return '一括既読に失敗しました。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get announcementsMarkRead {
+    return '既読にする';
+  }
+
+  @override
+  String get announcementsMarkReadFailed {
+    return '既読への更新に失敗しました。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get announcementsNotFound {
+    return 'このお知らせは表示できなくなりました。';
+  }
+
+  @override
+  String get announcementsOpenLink {
+    return '遷移先を開く';
+  }
+
+  @override
+  String get announcementsOpenLinkFailed {
+    return '遷移先を開けませんでした。';
+  }
+
+  @override
+  String get announcementsTitle {
+    return 'お知らせ';
+  }
+
+  @override
+  String get announcementsUnread {
+    return '未読';
+  }
+
+  @override
+  String announcementsUnreadShown({required String count}) {
+    return '表示中のうち未読 $count 件';
   }
 
   @override
@@ -3388,6 +3508,81 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get announcementsBannerDismiss {
+    return 'Close this announcement';
+  }
+
+  @override
+  String get announcementsBannerLink {
+    return 'Read the announcement';
+  }
+
+  @override
+  String get announcementsDetailFailed {
+    return 'Could not show this announcement. Try again.';
+  }
+
+  @override
+  String get announcementsEmpty {
+    return 'There are no announcements to show.';
+  }
+
+  @override
+  String get announcementsFailed {
+    return 'Could not show the announcements. Try again.';
+  }
+
+  @override
+  String get announcementsMarkAllRead {
+    return 'Mark all as read';
+  }
+
+  @override
+  String get announcementsMarkAllReadFailed {
+    return 'Could not mark everything as read. Please try again later.';
+  }
+
+  @override
+  String get announcementsMarkRead {
+    return 'Mark as read';
+  }
+
+  @override
+  String get announcementsMarkReadFailed {
+    return 'Could not mark it as read. Please try again later.';
+  }
+
+  @override
+  String get announcementsNotFound {
+    return 'This announcement is no longer available.';
+  }
+
+  @override
+  String get announcementsOpenLink {
+    return 'Open link';
+  }
+
+  @override
+  String get announcementsOpenLinkFailed {
+    return 'Could not open the link.';
+  }
+
+  @override
+  String get announcementsTitle {
+    return 'Announcements';
+  }
+
+  @override
+  String get announcementsUnread {
+    return 'Unread';
+  }
+
+  @override
+  String announcementsUnreadShown({required String count}) {
+    return '$count unread among those shown';
+  }
+
+  @override
   String get authCheckSpam {
     return 'If the email does not arrive, check your spam folder.';
   }
@@ -5308,6 +5503,81 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get accountTitle {
     return '계정';
+  }
+
+  @override
+  String get announcementsBannerDismiss {
+    return '이 공지사항 닫기';
+  }
+
+  @override
+  String get announcementsBannerLink {
+    return '공지사항 읽기';
+  }
+
+  @override
+  String get announcementsDetailFailed {
+    return '이 공지사항을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get announcementsEmpty {
+    return '표시할 공지사항이 없습니다.';
+  }
+
+  @override
+  String get announcementsFailed {
+    return '공지사항을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get announcementsMarkAllRead {
+    return '모두 읽음으로 표시';
+  }
+
+  @override
+  String get announcementsMarkAllReadFailed {
+    return '모두 읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get announcementsMarkRead {
+    return '읽음으로 표시';
+  }
+
+  @override
+  String get announcementsMarkReadFailed {
+    return '읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get announcementsNotFound {
+    return '이 공지사항은 더 이상 볼 수 없습니다.';
+  }
+
+  @override
+  String get announcementsOpenLink {
+    return '링크 열기';
+  }
+
+  @override
+  String get announcementsOpenLinkFailed {
+    return '링크를 열 수 없습니다.';
+  }
+
+  @override
+  String get announcementsTitle {
+    return '공지사항';
+  }
+
+  @override
+  String get announcementsUnread {
+    return '읽지 않음';
+  }
+
+  @override
+  String announcementsUnreadShown({required String count}) {
+    return '표시된 항목 중 읽지 않음 $count개';
   }
 
   @override
@@ -7234,6 +7504,81 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get announcementsBannerDismiss {
+    return '关闭该公告';
+  }
+
+  @override
+  String get announcementsBannerLink {
+    return '阅读公告';
+  }
+
+  @override
+  String get announcementsDetailFailed {
+    return '无法显示该公告。请重试。';
+  }
+
+  @override
+  String get announcementsEmpty {
+    return '暂无可显示的公告。';
+  }
+
+  @override
+  String get announcementsFailed {
+    return '无法显示公告。请重试。';
+  }
+
+  @override
+  String get announcementsMarkAllRead {
+    return '全部标记为已读';
+  }
+
+  @override
+  String get announcementsMarkAllReadFailed {
+    return '无法将全部标记为已读。请稍后再试。';
+  }
+
+  @override
+  String get announcementsMarkRead {
+    return '标记为已读';
+  }
+
+  @override
+  String get announcementsMarkReadFailed {
+    return '无法标记为已读。请稍后再试。';
+  }
+
+  @override
+  String get announcementsNotFound {
+    return '该公告已无法查看。';
+  }
+
+  @override
+  String get announcementsOpenLink {
+    return '打开链接';
+  }
+
+  @override
+  String get announcementsOpenLinkFailed {
+    return '无法打开链接。';
+  }
+
+  @override
+  String get announcementsTitle {
+    return '公告';
+  }
+
+  @override
+  String get announcementsUnread {
+    return '未读';
+  }
+
+  @override
+  String announcementsUnreadShown({required String count}) {
+    return '已显示的公告中有 $count 条未读';
+  }
+
+  @override
   String get authCheckSpam {
     return '如果没有收到邮件，请查看垃圾邮件文件夹。';
   }
@@ -9154,6 +9499,81 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get accountTitle {
     return '帳戶';
+  }
+
+  @override
+  String get announcementsBannerDismiss {
+    return '關閉該公告';
+  }
+
+  @override
+  String get announcementsBannerLink {
+    return '閱讀公告';
+  }
+
+  @override
+  String get announcementsDetailFailed {
+    return '無法顯示該公告。請重試。';
+  }
+
+  @override
+  String get announcementsEmpty {
+    return '目前沒有可顯示的公告。';
+  }
+
+  @override
+  String get announcementsFailed {
+    return '無法顯示公告。請重試。';
+  }
+
+  @override
+  String get announcementsMarkAllRead {
+    return '全部標示為已讀';
+  }
+
+  @override
+  String get announcementsMarkAllReadFailed {
+    return '無法將全部標示為已讀。請稍後再試。';
+  }
+
+  @override
+  String get announcementsMarkRead {
+    return '標示為已讀';
+  }
+
+  @override
+  String get announcementsMarkReadFailed {
+    return '無法標示為已讀。請稍後再試。';
+  }
+
+  @override
+  String get announcementsNotFound {
+    return '該公告已無法查看。';
+  }
+
+  @override
+  String get announcementsOpenLink {
+    return '開啟連結';
+  }
+
+  @override
+  String get announcementsOpenLinkFailed {
+    return '無法開啟連結。';
+  }
+
+  @override
+  String get announcementsTitle {
+    return '公告';
+  }
+
+  @override
+  String get announcementsUnread {
+    return '未讀';
+  }
+
+  @override
+  String announcementsUnreadShown({required String count}) {
+    return '已顯示的公告中有 $count 則未讀';
   }
 
   @override

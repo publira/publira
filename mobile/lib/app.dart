@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/announcements/announcement_board.dart';
+import 'package:publira/announcements/dismissed_announcement_store.dart';
+import 'package:publira/announcements/http_announcement_repository.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_controller.dart';
@@ -46,6 +49,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -59,6 +63,7 @@ class PubliraApp extends StatefulWidget {
     this.comments,
     this.follows,
     this.notifications,
+    this.announcements,
     this.contact,
     this.purchases,
     this.checkoutLauncher,
@@ -88,6 +93,10 @@ class PubliraApp extends StatefulWidget {
   /// [checkoutLauncher] opens a checkout page, which an on-device test
   /// replaces so a purchase does not leave the app for a real browser.
   ///
+  /// [dismissedAnnouncements] remembers the banner the reader closed, which an
+  /// on-device test replaces so a closed banner does not carry from one test
+  /// to the next.
+  ///
   /// [messaging] is the device's notification service, which `main` resolves
   /// before the first frame because initializing Firebase is asynchronous. It
   /// is `null` for a build carrying no Firebase project, and push is off then.
@@ -104,6 +113,8 @@ class PubliraApp extends StatefulWidget {
     IncomingLinks? incomingLinks,
     ShareSheet? share,
     CheckoutLauncher? checkoutLauncher,
+    DismissedAnnouncementStore dismissedAnnouncements =
+        const FileDismissedAnnouncementStore(),
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library =
@@ -147,6 +158,16 @@ class PubliraApp extends StatefulWidget {
           client: client,
           tenants: tenants,
         ),
+      ),
+      announcements: AnnouncementBoard(
+        repository: HttpAnnouncementRepository(
+          client: client,
+          tenants: tenants,
+        ),
+        dismissed: dismissedAnnouncements,
+        // The system browser, as a checkout page is opened: a page the app
+        // has no screen for is the tenant's site or somewhere else entirely.
+        launch: (url) => launchUrl(url, mode: LaunchMode.externalApplication),
       ),
       contact: HttpContactRepository(client: client, tenants: tenants),
       purchases: HttpPurchaseRepository(client: client, tenants: tenants),
@@ -202,6 +223,14 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// inbox at all, and no screen then leads to one.
   final NotificationInbox? notifications;
+
+  /// The tenant's announcements and the pinned one the catalog shows as a
+  /// banner.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// announcements at all, and no screen then shows a banner or leads to them.
+  final AnnouncementBoard? announcements;
 
   /// The messages a reader sends the tenant's staff.
   ///
@@ -324,6 +353,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
     unawaited(_restore());
     unawaited(widget.tenantBrand?.start());
+    unawaited(_readAnnouncements());
   }
 
   /// Brings the device's notification registration back before the session.
@@ -338,6 +368,17 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     await widget.push?.start();
     await _listenForLinks();
     await Future.wait([widget.auth.restore(), _ageRating.restore()]);
+  }
+
+  /// Brings back the banner the reader closed before reading what is pinned,
+  /// so a closed banner is never drawn for a frame on launch.
+  Future<void> _readAnnouncements() async {
+    final board = widget.announcements;
+    if (board == null) {
+      return;
+    }
+    await board.restore();
+    await board.refreshPinned();
   }
 
   /// Opens the tenant URL that launched the app, then listens for ones that
@@ -409,12 +450,16 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     setState(() {});
   }
 
-  /// Reads the unread count again when the reader comes back to the app, which
-  /// is when a notification they were sent in the meantime would otherwise go
-  /// unbadged.
+  /// Reads the unread count and the pinned announcement again when the reader
+  /// comes back to the app, which is when a notification they were sent or a
+  /// banner pinned in the meantime would otherwise go unseen.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && widget.auth.isSignedIn) {
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+    unawaited(widget.announcements?.refreshPinned());
+    if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
     }
   }
@@ -560,14 +605,17 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                   repository: widget.follows,
                   child: NotificationScope(
                     inbox: widget.notifications,
-                    child: ContactScope(
-                      repository: widget.contact,
-                      child: PurchaseScope(
-                        repository: widget.purchases,
-                        launcher: widget.checkoutLauncher,
-                        child: AgeRatingConfirmationScope(
-                          controller: _ageRating,
-                          child: app,
+                    child: AnnouncementScope(
+                      board: widget.announcements,
+                      child: ContactScope(
+                        repository: widget.contact,
+                        child: PurchaseScope(
+                          repository: widget.purchases,
+                          launcher: widget.checkoutLauncher,
+                          child: AgeRatingConfirmationScope(
+                            controller: _ageRating,
+                            child: app,
+                          ),
                         ),
                       ),
                     ),

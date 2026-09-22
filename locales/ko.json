@@ -3255,6 +3255,23 @@
       "unread": "읽지 않음",
       "unread_count": "읽지 않음 {$count}개"
     },
+    "announcements": {
+      "title": "공지사항",
+      "empty": "표시할 공지사항이 없습니다.",
+      "failed": "공지사항을 표시할 수 없습니다. 다시 시도해 주세요.",
+      "detail_failed": "이 공지사항을 표시할 수 없습니다. 다시 시도해 주세요.",
+      "not_found": "이 공지사항은 더 이상 볼 수 없습니다.",
+      "unread": "읽지 않음",
+      "unread_shown": "표시된 항목 중 읽지 않음 {$count}개",
+      "mark_read": "읽음으로 표시",
+      "mark_read_failed": "읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "mark_all_read": "모두 읽음으로 표시",
+      "mark_all_read_failed": "모두 읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "open_link": "링크 열기",
+      "open_link_failed": "링크를 열 수 없습니다.",
+      "banner_link": "공지사항 읽기",
+      "banner_dismiss": "이 공지사항 닫기"
+    },
     "purchase": {
       "buy": "{$price}에 구매",
       "cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",

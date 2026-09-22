@@ -3255,6 +3255,23 @@
       "unread": "未読",
       "unread_count": "未読 {$count} 件"
     },
+    "announcements": {
+      "title": "お知らせ",
+      "empty": "現在表示できるお知らせはありません。",
+      "failed": "お知らせを表示できませんでした。もう一度お試しください。",
+      "detail_failed": "このお知らせを表示できませんでした。もう一度お試しください。",
+      "not_found": "このお知らせは表示できなくなりました。",
+      "unread": "未読",
+      "unread_shown": "表示中のうち未読 {$count} 件",
+      "mark_read": "既読にする",
+      "mark_read_failed": "既読への更新に失敗しました。時間をおいて再試行してください。",
+      "mark_all_read": "すべて既読にする",
+      "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
+      "open_link": "遷移先を開く",
+      "open_link_failed": "遷移先を開けませんでした。",
+      "banner_link": "お知らせを読む",
+      "banner_dismiss": "このお知らせを閉じる"
+    },
     "purchase": {
       "buy": "{$price}で購入",
       "cancelled": "購入手続きをキャンセルしました。料金は発生していません。",

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/announcements/announcement_board.dart';
+import 'package:publira/announcements/pinned_announcement_banner.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -49,6 +51,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> _refresh() {
+    unawaited(AnnouncementScope.maybeOf(context)?.refreshPinned());
     final pending = Completer<void>();
     setState(() {
       _refreshes++;
@@ -73,6 +76,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
       appBar: AppBar(
         title: const _CatalogTitle(),
         actions: [
+          // The announcements are the tenant's word to everyone, so the way
+          // to them sits beside the account entry rather than behind it.
+          if (AnnouncementScope.maybeOf(context) != null)
+            IconButton(
+              key: const ValueKey('catalog-announcements'),
+              icon: const Icon(Icons.campaign_outlined),
+              tooltip: messages.announcementsTitle,
+              onPressed: () => context.push(AppRoutes.announcements),
+            ),
           IconButton(
             key: const ValueKey('catalog-account'),
             // The inbox is reached through the account screen, so the account
@@ -103,6 +115,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           // or the one gesture that reloads it would not start.
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            const SliverToBoxAdapter(child: PinnedAnnouncementBanner()),
             SliverToBoxAdapter(
               child: _ContinueReadingShelf(refreshes: _refreshes),
             ),

@@ -101,11 +101,14 @@ void main() {
         ),
         isNull,
       );
+    });
+
+    test('opens the announcements for an announcement', () {
       expect(
         notificationLocation(
           notification(InboxNotificationKind.announcementPosted, both),
         ),
-        isNull,
+        AppRoutes.announcements,
       );
     });
   });

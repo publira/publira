@@ -30,6 +30,10 @@ class ConnectFixtureServer {
     this.followsPageSize = 0,
     this.notifications = const [],
     this.notificationsPageSize = 0,
+    this.announcements = const [],
+    this.announcementsPageSize = 0,
+    this.pinnedAnnouncementId,
+    this.announcementStatus = HttpStatus.ok,
     this.listStatus = HttpStatus.ok,
     this.searchStatus = HttpStatus.ok,
     this.rankedStatus = HttpStatus.ok,
@@ -469,6 +473,24 @@ class ConnectFixtureServer {
   /// token written the way [followsPageSize] writes one. `0` answers the whole
   /// of it at once.
   int notificationsPageSize;
+
+  /// `AnnouncementItem` rows of the tenant, newest first, carrying the
+  /// signed-in member's read state. A caller with no session the fixture
+  /// accepts is answered the rows without it, as the API answers a visitor.
+  List<Map<String, Object?>> announcements;
+
+  /// How many of [announcements] one `ListAnnouncements` page holds, with the
+  /// token written the way [followsPageSize] writes one. `0` answers the whole
+  /// of it at once.
+  int announcementsPageSize;
+
+  /// The id among [announcements] that `GetPinnedAnnouncement` answers, and
+  /// `null` for a tenant with nothing pinned.
+  String? pinnedAnnouncementId;
+
+  /// What every announcement RPC answers with, so a test can act out an API
+  /// that cannot be reached.
+  int announcementStatus;
   int listStatus;
   int searchStatus;
   int rankedStatus;
@@ -951,6 +973,15 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/ListAnnouncements') ||
+        path.endsWith('/GetAnnouncement') ||
+        path.endsWith('/GetPinnedAnnouncement') ||
+        path.endsWith('/MarkAnnouncementAsRead') ||
+        path.endsWith('/MarkAllAnnouncementsAsRead')) {
+      await _writeAnnouncement(request, path, body);
+      return;
+    }
+
     if (path.endsWith('/RegisterPushDevice') ||
         path.endsWith('/UnregisterPushDevice')) {
       final registering = path.endsWith('/RegisterPushDevice');
@@ -1398,6 +1429,105 @@ class ConnectFixtureServer {
       if (page.isNotEmpty) 'notifications': page,
       if (end < notifications.length) 'nextToken': '$end',
     };
+  }
+
+  /// Answers the announcement RPCs. The reads take any caller and answer read
+  /// state only to the member's session; the marks need that session.
+  Future<void> _writeAnnouncement(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (announcementStatus != HttpStatus.ok) {
+      await _write(request, announcementStatus, const {
+        'code': 'unavailable',
+        'message': 'unavailable',
+      });
+      return;
+    }
+    final member = _isAuthorized(request);
+    // A token the API rejects is answered as a visitor, the way the API does.
+    Map<String, Object?> shown(Map<String, Object?> item) => member
+        ? item
+        : {
+            for (final entry in item.entries)
+              if (entry.key != 'isRead' && entry.key != 'readAt')
+                entry.key: entry.value,
+          };
+    if (path.endsWith('/ListAnnouncements')) {
+      final all = [for (final item in announcements) shown(item)];
+      if (announcementsPageSize <= 0) {
+        await _write(request, HttpStatus.ok, {
+          if (all.isNotEmpty) 'announcements': all,
+        });
+        return;
+      }
+      final token = body['token'];
+      final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+      final end = min(start + announcementsPageSize, all.length);
+      final page = all.sublist(min(start, all.length), end);
+      await _write(request, HttpStatus.ok, {
+        if (page.isNotEmpty) 'announcements': page,
+        if (end < all.length) 'nextToken': '$end',
+      });
+      return;
+    }
+    if (path.endsWith('/GetPinnedAnnouncement')) {
+      final pinned = announcements.where(
+        (item) => item['id'] == pinnedAnnouncementId,
+      );
+      await _write(request, HttpStatus.ok, {
+        if (pinned.isNotEmpty) 'announcement': shown(pinned.first),
+      });
+      return;
+    }
+    final notFound = {'code': 'not_found', 'message': 'announcement not found'};
+    if (path.endsWith('/GetAnnouncement')) {
+      final found = announcements.where(
+        (item) => item['id'] == body['announcementId'],
+      );
+      if (found.isEmpty) {
+        await _write(request, HttpStatus.notFound, notFound);
+        return;
+      }
+      await _write(request, HttpStatus.ok, {
+        'announcement': shown(found.first),
+      });
+      return;
+    }
+    if (!member) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    Map<String, Object?> read(Map<String, Object?> item) =>
+        item['isRead'] == true
+        ? item
+        : {
+            ...item,
+            'isRead': true,
+            'readAt': DateTime.now().toUtc().toIso8601String(),
+          };
+    if (path.endsWith('/MarkAllAnnouncementsAsRead')) {
+      final marked = announcements.where((item) => item['isRead'] != true);
+      final count = marked.length;
+      announcements = [for (final item in announcements) read(item)];
+      await _write(request, HttpStatus.ok, {
+        if (count > 0) 'markedCount': count,
+      });
+      return;
+    }
+    final id = body['announcementId'];
+    if (!announcements.any((item) => item['id'] == id)) {
+      await _write(request, HttpStatus.notFound, notFound);
+      return;
+    }
+    announcements = [
+      for (final item in announcements) item['id'] == id ? read(item) : item,
+    ];
+    await _write(request, HttpStatus.ok, const {'marked': true});
   }
 
   /// Answers the reading-position and continue-reading RPCs of one member.

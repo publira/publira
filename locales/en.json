@@ -3255,6 +3255,23 @@
       "unread": "Unread",
       "unread_count": "{$count} unread"
     },
+    "announcements": {
+      "title": "Announcements",
+      "empty": "There are no announcements to show.",
+      "failed": "Could not show the announcements. Try again.",
+      "detail_failed": "Could not show this announcement. Try again.",
+      "not_found": "This announcement is no longer available.",
+      "unread": "Unread",
+      "unread_shown": "{$count} unread among those shown",
+      "mark_read": "Mark as read",
+      "mark_read_failed": "Could not mark it as read. Please try again later.",
+      "mark_all_read": "Mark all as read",
+      "mark_all_read_failed": "Could not mark everything as read. Please try again later.",
+      "open_link": "Open link",
+      "open_link_failed": "Could not open the link.",
+      "banner_link": "Read the announcement",
+      "banner_dismiss": "Close this announcement"
+    },
     "purchase": {
       "buy": "Buy for {$price}",
       "cancelled": "The purchase was cancelled. You have not been charged.",

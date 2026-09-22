@@ -130,6 +130,9 @@ bool _isOpenablePath(String path) {
       }.contains(segments[0])) {
     return true;
   }
+  if (segments.length == 1 && segments[0] == 'announcements') {
+    return true;
+  }
   if (segments.length >= 2 &&
       segments[0] == 'series' &&
       segments[1].isNotEmpty) {

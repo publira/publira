@@ -79,15 +79,15 @@ extension InboxNotificationCopy on AppMessages {
 /// the app can open, which the inbox answers with the catalog.
 ///
 /// A comment notification opens the comments of its episode, which the app
-/// has a route for where the site does not. An announcement opens nothing yet:
-/// the app has no announcement screen until #2574.
+/// has a route for where the site does not. An announcement's payload names no
+/// announcement, so it opens the list the announcement is in.
 String? notificationLocation(InboxNotification notification) {
   final payload = notification.payload;
   final seriesId = payload.seriesId;
   final episodeId = payload.episodeId;
   switch (notification.kind) {
     case InboxNotificationKind.announcementPosted:
-      return null;
+      return AppRoutes.announcements;
     case InboxNotificationKind.commentApproved ||
             InboxNotificationKind.commentHidden
         when seriesId != null && episodeId != null:
