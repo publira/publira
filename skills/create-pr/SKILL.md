@@ -83,7 +83,7 @@ Run the checks for what you actually changed, from the repository root, and fix 
 
 | Changed area | Command |
 | --- | --- |
-| `apps/`, `packages/`, other TypeScript | `pnpm preflight` (typegen / typecheck / check / test) |
+| `apps/`, `packages/`, other TypeScript | `pnpm preflight` (typecheck / check / test) |
 | `server/` | `task server:test-short`, then `task server:test` before finishing |
 | `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` (must be clean), then re-run the server tests |
 | `mobile/` | `task mobile:check` (integration tests require `task mobile:e2e`, Docker, and an Android emulator) |

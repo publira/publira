@@ -61,6 +61,7 @@
       "dependsOn": ["^lint"],
     },
     "test": {
+      "dependsOn": ["^build"],
       // Do not pass PUBLIRA_* here. The Dev Container exports a full
       // development environment, and most suites are hermetic; leaking those
       // values would couple them to ambient Redis, secrets, and API origins.
@@ -69,10 +70,11 @@
       "inputs": ["**/*.test.{ts,tsx}"],
     },
     "typegen": {
+      "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"],
+      "dependsOn": ["^build", "typegen"],
     },
   },
 }

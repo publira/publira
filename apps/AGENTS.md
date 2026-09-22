@@ -658,4 +658,4 @@ Until the flag stabilises, do not build alternative "fake root layout" 404 schem
 
 ## After changes
 
-- Frontend / packages: `pnpm preflight` (typegen / typecheck / check / test) from the repo root.
+- Frontend / packages: `pnpm preflight` (typecheck / check / test) from the repo root.

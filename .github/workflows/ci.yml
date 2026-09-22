@@ -447,12 +447,6 @@ jobs:
             exit 1
           fi
 
-      - name: Build / Packages
-        run: pnpm build --filter "./packages/*"
-
-      - name: Build / Typegen
-        run: pnpm typegen
-
       # packages/icons is where a raw <svg> normally lives. `qr-code.tsx` is the
       # documented exception: it draws a generated image rather than an icon —
       # the geometry is computed per enrollment URI, and the fixed
@@ -626,9 +620,6 @@ jobs:
 
       - name: Setup / pnpm
         uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
-
-      - name: Build / Packages
-        run: pnpm build --filter "./packages/*"
 
       - name: Validate / TypeScript Tests
         run: pnpm test

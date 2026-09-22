@@ -115,7 +115,7 @@ Nothing fails on a wrong name. `turbo.jsonc` passes `PUBLIRA_*` through and turb
 
 ## Package scripts: always through Turborepo
 
-A package script `turbo.jsonc` defines a task for — `build`, `dev`, `lint`, `test`, `typecheck`, `typegen` — is run through the repository root's script of the same name, as `pnpm <script> --filter <package>`. `pnpm --dir <path> <script>` and `pnpm --filter <package> <script>` start that package's script directly, with the task graph switched off, so nothing the task depends on runs first. `build` and `dev` both declare `dependsOn: ["^build"]`, and that dependency is the only thing that builds the `dist/` of the workspace packages an app imports: `pnpm install` does not, and `dist/` is gitignored. Bypassing turbo in a worktree that has never built them therefore starts an app that exits on `Cannot find module '@publira/…/dist/…'`.
+A package script `turbo.jsonc` defines a task for — `build`, `dev`, `lint`, `test`, `typecheck`, `typegen` — is run through the repository root's script of the same name, as `pnpm <script> --filter <package>`. `pnpm --dir <path> <script>` and `pnpm --filter <package> <script>` start that package's script directly, with the task graph switched off, so nothing the task depends on runs first. `build`, `dev`, `test`, `typecheck`, and `typegen` all declare `dependsOn: ["^build"]`, and that dependency is the only thing that builds the `dist/` of the workspace packages an app imports: `pnpm install` does not, and `dist/` is gitignored. Bypassing turbo in a worktree that has never built them therefore starts an app that exits on `Cannot find module '@publira/…/dist/…'`.
 
 Bypassing turbo is for the case where turbo itself is the problem, a local cache that has gone inconsistent, and even then `--force` or discarding `.turbo/cache` comes first and the direct invocation is the last resort. A script turbo defines no task for is outside the rule altogether: `@publira/email-renderer`'s `start`, and `pnpm --dir e2e exec …`, which runs a binary rather than a package script.
 
@@ -180,5 +180,5 @@ Docker image builds (`infra/docker/README.md`) cover only the `Docker / <target>
 ## Other
 
 - Before Next.js work: read `apps/AGENTS.md`, the **target** app's `AGENTS.md`, and that app's `node_modules/next/dist/docs/` (do not load every app's guide)
-- After frontend / shared package changes: `pnpm preflight` (typegen / typecheck / check / test)
+- After frontend / shared package changes: `pnpm preflight` (typecheck / check / test)
 - After `server/` changes: follow the verification checklist in `server/AGENTS.md` (`task server:test-short` / `task server:test`, plus `task gen` when proto/SQL change)
