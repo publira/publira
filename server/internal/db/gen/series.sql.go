@@ -15,7 +15,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const countPublishedSeriesForTenant = `-- name: CountPublishedSeriesForTenant :one
+const CountPublishedSeriesForTenant = `-- name: CountPublishedSeriesForTenant :one
 SELECT COUNT(*)::int AS published_series_count
 FROM series
 WHERE tenant_id = $1
@@ -24,13 +24,13 @@ WHERE tenant_id = $1
 
 // For the tenant dashboard.
 func (q *Queries) CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countPublishedSeriesForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, CountPublishedSeriesForTenant, tenantID)
 	var published_series_count int32
 	err := row.Scan(&published_series_count)
 	return published_series_count, err
 }
 
-const createSeriesBase = `-- name: CreateSeriesBase :one
+const CreateSeriesBase = `-- name: CreateSeriesBase :one
 INSERT INTO series (
         id,
         tenant_id,
@@ -55,7 +55,7 @@ type CreateSeriesBaseParams struct {
 }
 
 func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error) {
-	row := q.db.QueryRowContext(ctx, createSeriesBase,
+	row := q.db.QueryRowContext(ctx, CreateSeriesBase,
 		arg.ID,
 		arg.TenantID,
 		arg.LabelID,
@@ -82,7 +82,7 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 	return i, err
 }
 
-const getPublishedSeriesAgeRatingByPublicID = `-- name: GetPublishedSeriesAgeRatingByPublicID :one
+const GetPublishedSeriesAgeRatingByPublicID = `-- name: GetPublishedSeriesAgeRatingByPublicID :one
 SELECT s.id,
     sl.age_rating
 FROM series s
@@ -115,13 +115,13 @@ type GetPublishedSeriesAgeRatingByPublicIDRow struct {
 // A currently public series and the rating the tenant's age rule is applied
 // to, for a read that decides access to its episodes.
 func (q *Queries) GetPublishedSeriesAgeRatingByPublicID(ctx context.Context, arg GetPublishedSeriesAgeRatingByPublicIDParams) (GetPublishedSeriesAgeRatingByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedSeriesAgeRatingByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
+	row := q.db.QueryRowContext(ctx, GetPublishedSeriesAgeRatingByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
 	var i GetPublishedSeriesAgeRatingByPublicIDRow
 	err := row.Scan(&i.ID, &i.AgeRating)
 	return i, err
 }
 
-const getPublishedSeriesIDByPublicID = `-- name: GetPublishedSeriesIDByPublicID :one
+const GetPublishedSeriesIDByPublicID = `-- name: GetPublishedSeriesIDByPublicID :one
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
@@ -151,13 +151,13 @@ type GetPublishedSeriesIDByPublicIDParams struct {
 // Shared by every member-facing RPC that acts on a series (follow, rating), so
 // they all treat a foreign, unpublished, or missing series the same way.
 func (q *Queries) GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedSeriesIDByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
+	row := q.db.QueryRowContext(ctx, GetPublishedSeriesIDByPublicID, arg.TenantID, arg.PublicID, arg.Surface)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const getSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
+const GetSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
     s.title,
@@ -224,7 +224,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetSeriesByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -251,7 +251,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 	return i, err
 }
 
-const getSeriesDetail = `-- name: GetSeriesDetail :one
+const GetSeriesDetail = `-- name: GetSeriesDetail :one
 SELECT s.id,
     s.public_id,
     s.title,
@@ -454,7 +454,7 @@ type GetSeriesDetailRow struct {
 }
 
 func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error) {
-	row := q.db.QueryRowContext(ctx, getSeriesDetail, arg.Surface, arg.PublicID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetSeriesDetail, arg.Surface, arg.PublicID, arg.TenantID)
 	var i GetSeriesDetailRow
 	err := row.Scan(
 		&i.ID,
@@ -480,7 +480,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 	return i, err
 }
 
-const listSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
+const ListSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -564,7 +564,7 @@ type ListSeriesByTenantAscRow struct {
 }
 
 func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListSeriesByTenantAsc,
 		arg.TenantID,
 		arg.Status,
 		arg.AgeRating,
@@ -612,7 +612,7 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 	return items, nil
 }
 
-const listSeriesByTenantDesc = `-- name: ListSeriesByTenantDesc :many
+const ListSeriesByTenantDesc = `-- name: ListSeriesByTenantDesc :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -701,7 +701,7 @@ type ListSeriesByTenantDescRow struct {
 // UUIDv7, so the order stays unique even when created_at ties.
 // cursor rules: proto/README.md.
 func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListSeriesByTenantDesc,
 		arg.TenantID,
 		arg.Status,
 		arg.AgeRating,
@@ -749,7 +749,7 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 	return items, nil
 }
 
-const lockSeriesByPublicIDForTenant = `-- name: LockSeriesByPublicIDForTenant :one
+const LockSeriesByPublicIDForTenant = `-- name: LockSeriesByPublicIDForTenant :one
 
 SELECT id
 FROM series
@@ -771,13 +771,13 @@ type LockSeriesByPublicIDForTenantParams struct {
 // freezes its snapshot at statement start, so waiting for the lock in
 // the same statement would still see the pre-wait rows.
 func (q *Queries) LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, lockSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, LockSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const updateSeriesBase = `-- name: UpdateSeriesBase :exec
+const UpdateSeriesBase = `-- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
     label_id = $3,
@@ -796,7 +796,7 @@ type UpdateSeriesBaseParams struct {
 }
 
 func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error {
-	_, err := q.db.ExecContext(ctx, updateSeriesBase,
+	_, err := q.db.ExecContext(ctx, UpdateSeriesBase,
 		arg.ID,
 		arg.Title,
 		arg.LabelID,
@@ -806,7 +806,7 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 	return err
 }
 
-const updateSeriesPublication = `-- name: UpdateSeriesPublication :exec
+const UpdateSeriesPublication = `-- name: UpdateSeriesPublication :exec
 UPDATE series
 SET published_at = $2::timestamptz,
     is_published = CASE
@@ -823,11 +823,11 @@ type UpdateSeriesPublicationParams struct {
 }
 
 func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
-	_, err := q.db.ExecContext(ctx, updateSeriesPublication, arg.ID, arg.PublishedAt)
+	_, err := q.db.ExecContext(ctx, UpdateSeriesPublication, arg.ID, arg.PublishedAt)
 	return err
 }
 
-const upsertSeriesListing = `-- name: UpsertSeriesListing :one
+const UpsertSeriesListing = `-- name: UpsertSeriesListing :one
 INSERT INTO series_listings (
         tenant_id,
         series_id,
@@ -881,7 +881,7 @@ type UpsertSeriesListingParams struct {
 // request leaves empty is stored as empty rather than kept from the row that
 // was there.
 func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error) {
-	row := q.db.QueryRowContext(ctx, upsertSeriesListing,
+	row := q.db.QueryRowContext(ctx, UpsertSeriesListing,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.Synopsis,

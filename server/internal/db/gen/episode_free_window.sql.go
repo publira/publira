@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createEpisodeFreeWindow = `-- name: CreateEpisodeFreeWindow :one
+const CreateEpisodeFreeWindow = `-- name: CreateEpisodeFreeWindow :one
 INSERT INTO episode_free_windows (
         id,
         tenant_id,
@@ -56,7 +56,7 @@ type CreateEpisodeFreeWindowRow struct {
 }
 
 func (q *Queries) CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisodeFreeWindowParams) (CreateEpisodeFreeWindowRow, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeFreeWindow,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeFreeWindow,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -79,7 +79,7 @@ func (q *Queries) CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisode
 	return i, err
 }
 
-const deleteEpisodeFreeWindowByPublicIDForTenant = `-- name: DeleteEpisodeFreeWindowByPublicIDForTenant :one
+const DeleteEpisodeFreeWindowByPublicIDForTenant = `-- name: DeleteEpisodeFreeWindowByPublicIDForTenant :one
 DELETE FROM episode_free_windows
 WHERE tenant_id = $1
     AND public_id = $2
@@ -105,7 +105,7 @@ type DeleteEpisodeFreeWindowByPublicIDForTenantRow struct {
 // public_id that never existed. What the caller audits and revalidates comes
 // from the read it did first.
 func (q *Queries) DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, deleteEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i DeleteEpisodeFreeWindowByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -116,7 +116,7 @@ func (q *Queries) DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context
 	return i, err
 }
 
-const getEpisodeFreeWindowByPublicIDForTenant = `-- name: GetEpisodeFreeWindowByPublicIDForTenant :one
+const GetEpisodeFreeWindowByPublicIDForTenant = `-- name: GetEpisodeFreeWindowByPublicIDForTenant :one
 SELECT w.id,
     w.public_id,
     w.starts_at,
@@ -152,7 +152,7 @@ type GetEpisodeFreeWindowByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetEpisodeFreeWindowByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -168,7 +168,7 @@ func (q *Queries) GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, a
 	return i, err
 }
 
-const listEpisodeFreeWindowBoundariesDue = `-- name: ListEpisodeFreeWindowBoundariesDue :many
+const ListEpisodeFreeWindowBoundariesDue = `-- name: ListEpisodeFreeWindowBoundariesDue :many
 SELECT w.id,
     w.tenant_id,
     w.starts_at,
@@ -218,7 +218,7 @@ type ListEpisodeFreeWindowBoundariesDueRow struct {
 //
 // This spans every tenant, so the connection must bypass RLS.
 func (q *Queries) ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]ListEpisodeFreeWindowBoundariesDueRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeFreeWindowBoundariesDue)
+	rows, err := q.db.QueryContext(ctx, ListEpisodeFreeWindowBoundariesDue)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (q *Queries) ListEpisodeFreeWindowBoundariesDue(ctx context.Context) ([]Lis
 	return items, nil
 }
 
-const markEpisodeFreeWindowEndRevalidated = `-- name: MarkEpisodeFreeWindowEndRevalidated :exec
+const MarkEpisodeFreeWindowEndRevalidated = `-- name: MarkEpisodeFreeWindowEndRevalidated :exec
 UPDATE episode_free_windows
 SET end_revalidated_at = NOW()
 WHERE id = $1
@@ -258,11 +258,11 @@ WHERE id = $1
 `
 
 func (q *Queries) MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markEpisodeFreeWindowEndRevalidated, id)
+	_, err := q.db.ExecContext(ctx, MarkEpisodeFreeWindowEndRevalidated, id)
 	return err
 }
 
-const markEpisodeFreeWindowStartRevalidated = `-- name: MarkEpisodeFreeWindowStartRevalidated :exec
+const MarkEpisodeFreeWindowStartRevalidated = `-- name: MarkEpisodeFreeWindowStartRevalidated :exec
 UPDATE episode_free_windows
 SET start_revalidated_at = NOW()
 WHERE id = $1
@@ -270,6 +270,6 @@ WHERE id = $1
 `
 
 func (q *Queries) MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markEpisodeFreeWindowStartRevalidated, id)
+	_, err := q.db.ExecContext(ctx, MarkEpisodeFreeWindowStartRevalidated, id)
 	return err
 }

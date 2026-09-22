@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createLabel = `-- name: CreateLabel :one
+const CreateLabel = `-- name: CreateLabel :one
 INSERT INTO labels (
         id,
         tenant_id,
@@ -35,7 +35,7 @@ type CreateLabelParams struct {
 }
 
 func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
-	row := q.db.QueryRowContext(ctx, createLabel,
+	row := q.db.QueryRowContext(ctx, CreateLabel,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -54,7 +54,7 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 	return i, err
 }
 
-const createLabelImage = `-- name: CreateLabelImage :one
+const CreateLabelImage = `-- name: CreateLabelImage :one
 INSERT INTO label_images (
         id,
         tenant_id,
@@ -72,7 +72,7 @@ type CreateLabelImageParams struct {
 }
 
 func (q *Queries) CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error) {
-	row := q.db.QueryRowContext(ctx, createLabelImage, arg.ID, arg.TenantID, arg.LabelID)
+	row := q.db.QueryRowContext(ctx, CreateLabelImage, arg.ID, arg.TenantID, arg.LabelID)
 	var i LabelImage
 	err := row.Scan(
 		&i.ID,
@@ -84,7 +84,7 @@ func (q *Queries) CreateLabelImage(ctx context.Context, arg CreateLabelImagePara
 	return i, err
 }
 
-const createLabelImageVariant = `-- name: CreateLabelImageVariant :one
+const CreateLabelImageVariant = `-- name: CreateLabelImageVariant :one
 INSERT INTO label_image_variants (
         id,
         tenant_id,
@@ -117,7 +117,7 @@ type CreateLabelImageVariantParams struct {
 }
 
 func (q *Queries) CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error) {
-	row := q.db.QueryRowContext(ctx, createLabelImageVariant,
+	row := q.db.QueryRowContext(ctx, CreateLabelImageVariant,
 		arg.ID,
 		arg.TenantID,
 		arg.LabelImageID,
@@ -148,7 +148,7 @@ func (q *Queries) CreateLabelImageVariant(ctx context.Context, arg CreateLabelIm
 	return i, err
 }
 
-const deleteLabelImageVariantsByType = `-- name: DeleteLabelImageVariantsByType :execrows
+const DeleteLabelImageVariantsByType = `-- name: DeleteLabelImageVariantsByType :execrows
 DELETE FROM label_image_variants
 WHERE label_image_id = $1
     AND variant_type = $2
@@ -161,14 +161,14 @@ type DeleteLabelImageVariantsByTypeParams struct {
 
 // Clears one aspect ratio of an eye-catch, like the series query above.
 func (q *Queries) DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteLabelImageVariantsByType, arg.LabelImageID, arg.VariantType)
+	result, err := q.db.ExecContext(ctx, DeleteLabelImageVariantsByType, arg.LabelImageID, arg.VariantType)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const getLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
+const GetLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
 SELECT l.id,
     l.tenant_id,
     l.public_id,
@@ -199,7 +199,7 @@ type GetLabelByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetLabelByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -213,7 +213,7 @@ func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelB
 	return i, err
 }
 
-const getLabelImageVariantByTypeAndWidthForTenant = `-- name: GetLabelImageVariantByTypeAndWidthForTenant :one
+const GetLabelImageVariantByTypeAndWidthForTenant = `-- name: GetLabelImageVariantByTypeAndWidthForTenant :one
 SELECT liv.object_key,
     liv.content_type
 FROM label_image_variants liv
@@ -238,7 +238,7 @@ type GetLabelImageVariantByTypeAndWidthForTenantRow struct {
 }
 
 func (q *Queries) GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getLabelImageVariantByTypeAndWidthForTenant,
+	row := q.db.QueryRowContext(ctx, GetLabelImageVariantByTypeAndWidthForTenant,
 		arg.LabelImageID,
 		arg.TenantID,
 		arg.VariantType,
@@ -249,7 +249,7 @@ func (q *Queries) GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Contex
 	return i, err
 }
 
-const getPublishedLabelByPublicID = `-- name: GetPublishedLabelByPublicID :one
+const GetPublishedLabelByPublicID = `-- name: GetPublishedLabelByPublicID :one
 SELECT l.id,
     l.public_id,
     l.name,
@@ -296,7 +296,7 @@ type GetPublishedLabelByPublicIDRow struct {
 // no published series, because a label has no unpublished state of its own. A
 // label that does not exist, or one of another tenant, returns no row.
 func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedLabelByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetPublishedLabelByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
 	var i GetPublishedLabelByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -309,7 +309,7 @@ func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublis
 	return i, err
 }
 
-const listLabelImageVariantsByImageIDs = `-- name: ListLabelImageVariantsByImageIDs :many
+const ListLabelImageVariantsByImageIDs = `-- name: ListLabelImageVariantsByImageIDs :many
 SELECT label_image_id,
     variant_type,
     label,
@@ -335,7 +335,7 @@ type ListLabelImageVariantsByImageIDsRow struct {
 }
 
 func (q *Queries) ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLabelImageVariantsByImageIDs, pq.Array(imageIds))
+	rows, err := q.db.QueryContext(ctx, ListLabelImageVariantsByImageIDs, pq.Array(imageIds))
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (q *Queries) ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds
 	return items, nil
 }
 
-const listLabelsByTenantAsc = `-- name: ListLabelsByTenantAsc :many
+const ListLabelsByTenantAsc = `-- name: ListLabelsByTenantAsc :many
 SELECT labels.id,
     labels.tenant_id,
     labels.public_id,
@@ -410,7 +410,7 @@ type ListLabelsByTenantAscRow struct {
 }
 
 func (q *Queries) ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLabelsByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListLabelsByTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -446,7 +446,7 @@ func (q *Queries) ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTen
 	return items, nil
 }
 
-const listLabelsByTenantDesc = `-- name: ListLabelsByTenantDesc :many
+const ListLabelsByTenantDesc = `-- name: ListLabelsByTenantDesc :many
 SELECT labels.id,
     labels.tenant_id,
     labels.public_id,
@@ -497,7 +497,7 @@ type ListLabelsByTenantDescRow struct {
 // display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLabelsByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListLabelsByTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -533,7 +533,7 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 	return items, nil
 }
 
-const listPublishedLabelsBySearchNameAsc = `-- name: ListPublishedLabelsBySearchNameAsc :many
+const ListPublishedLabelsBySearchNameAsc = `-- name: ListPublishedLabelsBySearchNameAsc :many
 SELECT l.id,
     l.public_id,
     l.name,
@@ -611,7 +611,7 @@ type ListPublishedLabelsBySearchNameAscRow struct {
 // makes.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsBySearchNameAsc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.Surface,
@@ -647,7 +647,7 @@ func (q *Queries) ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg Li
 	return items, nil
 }
 
-const listPublishedLabelsBySearchNameDesc = `-- name: ListPublishedLabelsBySearchNameDesc :many
+const ListPublishedLabelsBySearchNameDesc = `-- name: ListPublishedLabelsBySearchNameDesc :many
 SELECT l.id,
     l.public_id,
     l.name,
@@ -714,7 +714,7 @@ type ListPublishedLabelsBySearchNameDescRow struct {
 
 // The backward direction of ListPublishedLabelsBySearchNameAsc.
 func (q *Queries) ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedLabelsBySearchNameDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsBySearchNameDesc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.Surface,
@@ -750,7 +750,7 @@ func (q *Queries) ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg L
 	return items, nil
 }
 
-const lockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one
+const LockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one
 SELECT id
 FROM labels
 WHERE tenant_id = $1
@@ -768,13 +768,13 @@ type LockLabelByPublicIDForTenantParams struct {
 // current eye_catch_image_id has to be a separate statement: READ COMMITTED
 // freezes this statement's snapshot before it waits for the lock.
 func (q *Queries) LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, lockLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, LockLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const touchLabelImage = `-- name: TouchLabelImage :exec
+const TouchLabelImage = `-- name: TouchLabelImage :exec
 UPDATE label_images
 SET updated_at = NOW()
 WHERE id = $1
@@ -782,11 +782,11 @@ WHERE id = $1
 
 // Records that the eye-catch changed after one of its ratios was replaced.
 func (q *Queries) TouchLabelImage(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, touchLabelImage, id)
+	_, err := q.db.ExecContext(ctx, TouchLabelImage, id)
 	return err
 }
 
-const updateLabel = `-- name: UpdateLabel :exec
+const UpdateLabel = `-- name: UpdateLabel :exec
 UPDATE labels
 SET name = $2,
     eye_catch_image_id = $3
@@ -800,6 +800,6 @@ type UpdateLabelParams struct {
 }
 
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
-	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name, arg.EyeCatchImageID)
+	_, err := q.db.ExecContext(ctx, UpdateLabel, arg.ID, arg.Name, arg.EyeCatchImageID)
 	return err
 }

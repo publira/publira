@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createSeriesTag = `-- name: CreateSeriesTag :exec
+const CreateSeriesTag = `-- name: CreateSeriesTag :exec
 INSERT INTO series_tags (
         tenant_id,
         series_id,
@@ -28,21 +28,21 @@ type CreateSeriesTagParams struct {
 }
 
 func (q *Queries) CreateSeriesTag(ctx context.Context, arg CreateSeriesTagParams) error {
-	_, err := q.db.ExecContext(ctx, createSeriesTag, arg.TenantID, arg.SeriesID, arg.TagID)
+	_, err := q.db.ExecContext(ctx, CreateSeriesTag, arg.TenantID, arg.SeriesID, arg.TagID)
 	return err
 }
 
-const deleteSeriesTagsBySeriesID = `-- name: DeleteSeriesTagsBySeriesID :exec
+const DeleteSeriesTagsBySeriesID = `-- name: DeleteSeriesTagsBySeriesID :exec
 DELETE FROM series_tags
 WHERE series_id = $1
 `
 
 func (q *Queries) DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteSeriesTagsBySeriesID, seriesID)
+	_, err := q.db.ExecContext(ctx, DeleteSeriesTagsBySeriesID, seriesID)
 	return err
 }
 
-const listSeriesTagsBySeriesIDs = `-- name: ListSeriesTagsBySeriesIDs :many
+const ListSeriesTagsBySeriesIDs = `-- name: ListSeriesTagsBySeriesIDs :many
 SELECT st.series_id,
     t.name,
     t.slug
@@ -64,7 +64,7 @@ type ListSeriesTagsBySeriesIDsRow struct {
 // shows the same list every time, and two series sharing tags show them in the
 // same places.
 func (q *Queries) ListSeriesTagsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesTagsBySeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesTagsBySeriesIDs, pq.Array(seriesIds))
+	rows, err := q.db.QueryContext(ctx, ListSeriesTagsBySeriesIDs, pq.Array(seriesIds))
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const bumpPlatformUserCredentialsVersion = `-- name: BumpPlatformUserCredentialsVersion :one
+const BumpPlatformUserCredentialsVersion = `-- name: BumpPlatformUserCredentialsVersion :one
 UPDATE platform_users
 SET credentials_version = credentials_version + 1
 WHERE id = $1
@@ -21,7 +21,7 @@ RETURNING id, public_id, email, password_hash, name, status, created_at, credent
 `
 
 func (q *Queries) BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, bumpPlatformUserCredentialsVersion, id)
+	row := q.db.QueryRowContext(ctx, BumpPlatformUserCredentialsVersion, id)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -36,7 +36,7 @@ func (q *Queries) BumpPlatformUserCredentialsVersion(ctx context.Context, id uui
 	return i, err
 }
 
-const countPlatformUsers = `-- name: CountPlatformUsers :one
+const CountPlatformUsers = `-- name: CountPlatformUsers :one
 SELECT COUNT(*)::int
 FROM platform_users
 `
@@ -44,13 +44,13 @@ FROM platform_users
 // Count the platform administrators. Zero means the platform has not been
 // set up yet.
 func (q *Queries) CountPlatformUsers(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countPlatformUsers)
+	row := q.db.QueryRowContext(ctx, CountPlatformUsers)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const createPlatformUser = `-- name: CreatePlatformUser :one
+const CreatePlatformUser = `-- name: CreatePlatformUser :one
 INSERT INTO platform_users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
@@ -65,7 +65,7 @@ type CreatePlatformUserParams struct {
 }
 
 func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformUser,
+	row := q.db.QueryRowContext(ctx, CreatePlatformUser,
 		arg.ID,
 		arg.PublicID,
 		arg.Email,
@@ -86,7 +86,7 @@ func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUser
 	return i, err
 }
 
-const createPlatformUserRole = `-- name: CreatePlatformUserRole :one
+const CreatePlatformUserRole = `-- name: CreatePlatformUserRole :one
 INSERT INTO platform_user_roles (id, platform_user_id, role)
 VALUES ($1, $2, $3)
 RETURNING id, role, created_at, platform_user_id
@@ -99,7 +99,7 @@ type CreatePlatformUserRoleParams struct {
 }
 
 func (q *Queries) CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformUserRole, arg.ID, arg.PlatformUserID, arg.Role)
+	row := q.db.QueryRowContext(ctx, CreatePlatformUserRole, arg.ID, arg.PlatformUserID, arg.Role)
 	var i PlatformUserRole
 	err := row.Scan(
 		&i.ID,
@@ -110,17 +110,17 @@ func (q *Queries) CreatePlatformUserRole(ctx context.Context, arg CreatePlatform
 	return i, err
 }
 
-const deletePlatformUserRolesByPlatformUserID = `-- name: DeletePlatformUserRolesByPlatformUserID :exec
+const DeletePlatformUserRolesByPlatformUserID = `-- name: DeletePlatformUserRolesByPlatformUserID :exec
 DELETE FROM platform_user_roles
 WHERE platform_user_id = $1
 `
 
 func (q *Queries) DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deletePlatformUserRolesByPlatformUserID, platformUserID)
+	_, err := q.db.ExecContext(ctx, DeletePlatformUserRolesByPlatformUserID, platformUserID)
 	return err
 }
 
-const getPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
+const GetPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
 SELECT pu.id,
     pu.public_id,
     pu.email,
@@ -159,7 +159,7 @@ type GetPlatformOperatorByPublicIDRow struct {
 }
 
 func (q *Queries) GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformOperatorByPublicID, publicID)
+	row := q.db.QueryRowContext(ctx, GetPlatformOperatorByPublicID, publicID)
 	var i GetPlatformOperatorByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -173,7 +173,7 @@ func (q *Queries) GetPlatformOperatorByPublicID(ctx context.Context, publicID st
 	return i, err
 }
 
-const getPlatformUserByEmail = `-- name: GetPlatformUserByEmail :one
+const GetPlatformUserByEmail = `-- name: GetPlatformUserByEmail :one
 SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users
 WHERE email = $1
@@ -181,7 +181,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserByEmail, email)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserByEmail, email)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -196,7 +196,7 @@ func (q *Queries) GetPlatformUserByEmail(ctx context.Context, email string) (Pla
 	return i, err
 }
 
-const getPlatformUserByID = `-- name: GetPlatformUserByID :one
+const GetPlatformUserByID = `-- name: GetPlatformUserByID :one
 SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users
 WHERE id = $1
@@ -204,7 +204,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserByID, id)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserByID, id)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -219,7 +219,7 @@ func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (Platfo
 	return i, err
 }
 
-const getPlatformUserByPublicID = `-- name: GetPlatformUserByPublicID :one
+const GetPlatformUserByPublicID = `-- name: GetPlatformUserByPublicID :one
 SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users
 WHERE public_id = $1
@@ -227,7 +227,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformUserByPublicID, publicID)
+	row := q.db.QueryRowContext(ctx, GetPlatformUserByPublicID, publicID)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -242,7 +242,7 @@ func (q *Queries) GetPlatformUserByPublicID(ctx context.Context, publicID string
 	return i, err
 }
 
-const listPlatformOperatorIDs = `-- name: ListPlatformOperatorIDs :many
+const ListPlatformOperatorIDs = `-- name: ListPlatformOperatorIDs :many
 SELECT DISTINCT pu.id
 FROM platform_users pu
     INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
@@ -251,7 +251,7 @@ ORDER BY pu.id
 
 // Worker fan-out: every platform user that holds a role is an operator.
 func (q *Queries) ListPlatformOperatorIDs(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformOperatorIDs)
+	rows, err := q.db.QueryContext(ctx, ListPlatformOperatorIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func (q *Queries) ListPlatformOperatorIDs(ctx context.Context) ([]uuid.UUID, err
 	return items, nil
 }
 
-const listPlatformOperatorsAsc = `-- name: ListPlatformOperatorsAsc :many
+const ListPlatformOperatorsAsc = `-- name: ListPlatformOperatorsAsc :many
 SELECT pu.id,
     pu.public_id,
     pu.email,
@@ -330,7 +330,7 @@ type ListPlatformOperatorsAscRow struct {
 }
 
 func (q *Queries) ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformOperatorsAsc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformOperatorsAsc,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -365,7 +365,7 @@ func (q *Queries) ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatform
 	return items, nil
 }
 
-const listPlatformOperatorsDesc = `-- name: ListPlatformOperatorsDesc :many
+const ListPlatformOperatorsDesc = `-- name: ListPlatformOperatorsDesc :many
 SELECT pu.id,
     pu.public_id,
     pu.email,
@@ -426,7 +426,7 @@ type ListPlatformOperatorsDescRow struct {
 // handler flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformOperatorsDesc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformOperatorsDesc,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -461,7 +461,7 @@ func (q *Queries) ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatfor
 	return items, nil
 }
 
-const listPlatformUserRoles = `-- name: ListPlatformUserRoles :many
+const ListPlatformUserRoles = `-- name: ListPlatformUserRoles :many
 SELECT role
 FROM platform_user_roles
 WHERE platform_user_id = $1
@@ -469,7 +469,7 @@ ORDER BY role
 `
 
 func (q *Queries) ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformUserRoles, platformUserID)
+	rows, err := q.db.QueryContext(ctx, ListPlatformUserRoles, platformUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +491,7 @@ func (q *Queries) ListPlatformUserRoles(ctx context.Context, platformUserID uuid
 	return items, nil
 }
 
-const listRecentPlatformEvents = `-- name: ListRecentPlatformEvents :many
+const ListRecentPlatformEvents = `-- name: ListRecentPlatformEvents :many
 SELECT event_type,
     action,
     target,
@@ -538,7 +538,7 @@ type ListRecentPlatformEventsRow struct {
 }
 
 func (q *Queries) ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecentPlatformEvents, limit)
+	rows, err := q.db.QueryContext(ctx, ListRecentPlatformEvents, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +566,7 @@ func (q *Queries) ListRecentPlatformEvents(ctx context.Context, limit int32) ([]
 	return items, nil
 }
 
-const updatePlatformUserEmailByID = `-- name: UpdatePlatformUserEmailByID :one
+const UpdatePlatformUserEmailByID = `-- name: UpdatePlatformUserEmailByID :one
 UPDATE platform_users
 SET email = $2
 WHERE id = $1
@@ -579,7 +579,7 @@ type UpdatePlatformUserEmailByIDParams struct {
 }
 
 func (q *Queries) UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformUserEmailByID, arg.ID, arg.Email)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformUserEmailByID, arg.ID, arg.Email)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -594,7 +594,7 @@ func (q *Queries) UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePla
 	return i, err
 }
 
-const updatePlatformUserPasswordHashByID = `-- name: UpdatePlatformUserPasswordHashByID :one
+const UpdatePlatformUserPasswordHashByID = `-- name: UpdatePlatformUserPasswordHashByID :one
 UPDATE platform_users
 SET password_hash = $2
 WHERE id = $1
@@ -607,7 +607,7 @@ type UpdatePlatformUserPasswordHashByIDParams struct {
 }
 
 func (q *Queries) UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformUserPasswordHashByID, arg.ID, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformUserPasswordHashByID, arg.ID, arg.PasswordHash)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,
@@ -622,7 +622,7 @@ func (q *Queries) UpdatePlatformUserPasswordHashByID(ctx context.Context, arg Up
 	return i, err
 }
 
-const updatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
+const UpdatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
 UPDATE platform_users
 SET status = $2
 WHERE public_id = $1
@@ -635,7 +635,7 @@ type UpdatePlatformUserStatusParams struct {
 }
 
 func (q *Queries) UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, updatePlatformUserStatus, arg.PublicID, arg.Status)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformUserStatus, arg.PublicID, arg.Status)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,

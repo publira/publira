@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createSeriesImage = `-- name: CreateSeriesImage :one
+const CreateSeriesImage = `-- name: CreateSeriesImage :one
 INSERT INTO series_images (
         id,
         tenant_id,
@@ -30,7 +30,7 @@ type CreateSeriesImageParams struct {
 }
 
 func (q *Queries) CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error) {
-	row := q.db.QueryRowContext(ctx, createSeriesImage, arg.ID, arg.TenantID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, CreateSeriesImage, arg.ID, arg.TenantID, arg.SeriesID)
 	var i SeriesImage
 	err := row.Scan(
 		&i.ID,
@@ -42,7 +42,7 @@ func (q *Queries) CreateSeriesImage(ctx context.Context, arg CreateSeriesImagePa
 	return i, err
 }
 
-const createSeriesImageVariant = `-- name: CreateSeriesImageVariant :one
+const CreateSeriesImageVariant = `-- name: CreateSeriesImageVariant :one
 INSERT INTO series_image_variants (
         id,
         tenant_id,
@@ -75,7 +75,7 @@ type CreateSeriesImageVariantParams struct {
 }
 
 func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error) {
-	row := q.db.QueryRowContext(ctx, createSeriesImageVariant,
+	row := q.db.QueryRowContext(ctx, CreateSeriesImageVariant,
 		arg.ID,
 		arg.TenantID,
 		arg.SeriesImageID,
@@ -106,7 +106,7 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 	return i, err
 }
 
-const deleteSeriesImageVariantsByType = `-- name: DeleteSeriesImageVariantsByType :execrows
+const DeleteSeriesImageVariantsByType = `-- name: DeleteSeriesImageVariantsByType :execrows
 DELETE FROM series_image_variants
 WHERE series_image_id = $1
     AND variant_type = $2
@@ -121,14 +121,14 @@ type DeleteSeriesImageVariantsByTypeParams struct {
 // ratio can take its place. The objects the deleted rows named are left to
 // `publiractl job purge-orphan-images`.
 func (q *Queries) DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteSeriesImageVariantsByType, arg.SeriesImageID, arg.VariantType)
+	result, err := q.db.ExecContext(ctx, DeleteSeriesImageVariantsByType, arg.SeriesImageID, arg.VariantType)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const getSeriesImageVariantByTypeAndWidthForTenant = `-- name: GetSeriesImageVariantByTypeAndWidthForTenant :one
+const GetSeriesImageVariantByTypeAndWidthForTenant = `-- name: GetSeriesImageVariantByTypeAndWidthForTenant :one
 SELECT siv.object_key,
     siv.content_type
 FROM series_image_variants siv
@@ -153,7 +153,7 @@ type GetSeriesImageVariantByTypeAndWidthForTenantRow struct {
 }
 
 func (q *Queries) GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getSeriesImageVariantByTypeAndWidthForTenant,
+	row := q.db.QueryRowContext(ctx, GetSeriesImageVariantByTypeAndWidthForTenant,
 		arg.SeriesImageID,
 		arg.TenantID,
 		arg.VariantType,
@@ -164,7 +164,7 @@ func (q *Queries) GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Conte
 	return i, err
 }
 
-const listSeriesImageVariantsByImageIDs = `-- name: ListSeriesImageVariantsByImageIDs :many
+const ListSeriesImageVariantsByImageIDs = `-- name: ListSeriesImageVariantsByImageIDs :many
 SELECT series_image_id,
     variant_type,
     label,
@@ -190,7 +190,7 @@ type ListSeriesImageVariantsByImageIDsRow struct {
 }
 
 func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesImageVariantsByImageIDs, pq.Array(imageIds))
+	rows, err := q.db.QueryContext(ctx, ListSeriesImageVariantsByImageIDs, pq.Array(imageIds))
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageId
 	return items, nil
 }
 
-const touchSeriesImage = `-- name: TouchSeriesImage :exec
+const TouchSeriesImage = `-- name: TouchSeriesImage :exec
 UPDATE series_images
 SET updated_at = NOW()
 WHERE id = $1
@@ -229,11 +229,11 @@ WHERE id = $1
 // Records that the eye-catch changed after one of its ratios was replaced.
 // `updated_at` is what the console reads back and what busts the cached URL.
 func (q *Queries) TouchSeriesImage(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, touchSeriesImage, id)
+	_, err := q.db.ExecContext(ctx, TouchSeriesImage, id)
 	return err
 }
 
-const updateSeriesEyeCatchImageID = `-- name: UpdateSeriesEyeCatchImageID :exec
+const UpdateSeriesEyeCatchImageID = `-- name: UpdateSeriesEyeCatchImageID :exec
 UPDATE series
 SET eye_catch_image_id = $2,
     updated_at = NOW()
@@ -246,6 +246,6 @@ type UpdateSeriesEyeCatchImageIDParams struct {
 }
 
 func (q *Queries) UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateSeriesEyeCatchImageID, arg.ID, arg.EyeCatchImageID)
+	_, err := q.db.ExecContext(ctx, UpdateSeriesEyeCatchImageID, arg.ID, arg.EyeCatchImageID)
 	return err
 }

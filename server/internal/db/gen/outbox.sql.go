@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const claimPendingOutboxEvents = `-- name: ClaimPendingOutboxEvents :many
+const ClaimPendingOutboxEvents = `-- name: ClaimPendingOutboxEvents :many
 WITH claim AS (
     SELECT id
     FROM outbox_events
@@ -37,7 +37,7 @@ RETURNING o.id, o.tenant_id, o.event_type, o.payload, o.idempotency_key, o.statu
 // drain without waiting on each other's locks. The CTE is required:
 // FOR UPDATE is not allowed in an IN subquery.
 func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
-	rows, err := q.db.QueryContext(ctx, claimPendingOutboxEvents, limit)
+	rows, err := q.db.QueryContext(ctx, ClaimPendingOutboxEvents, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +71,14 @@ func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]
 	return items, nil
 }
 
-const getOutboxEvent = `-- name: GetOutboxEvent :one
+const GetOutboxEvent = `-- name: GetOutboxEvent :one
 SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
 FROM outbox_events
 WHERE id = $1
 `
 
 func (q *Queries) GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, getOutboxEvent, id)
+	row := q.db.QueryRowContext(ctx, GetOutboxEvent, id)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -96,14 +96,14 @@ func (q *Queries) GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent
 	return i, err
 }
 
-const getOutboxEventByIdempotencyKey = `-- name: GetOutboxEventByIdempotencyKey :one
+const GetOutboxEventByIdempotencyKey = `-- name: GetOutboxEventByIdempotencyKey :one
 SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
 FROM outbox_events
 WHERE idempotency_key = $1
 `
 
 func (q *Queries) GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, getOutboxEventByIdempotencyKey, idempotencyKey)
+	row := q.db.QueryRowContext(ctx, GetOutboxEventByIdempotencyKey, idempotencyKey)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -121,7 +121,7 @@ func (q *Queries) GetOutboxEventByIdempotencyKey(ctx context.Context, idempotenc
 	return i, err
 }
 
-const insertOutboxEvent = `-- name: InsertOutboxEvent :one
+const InsertOutboxEvent = `-- name: InsertOutboxEvent :one
 
 INSERT INTO outbox_events (
     id,
@@ -186,7 +186,7 @@ type InsertOutboxEventParams struct {
 // producing transaction do not create a second row. :one returns no
 // rows on conflict.
 func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, insertOutboxEvent,
+	row := q.db.QueryRowContext(ctx, InsertOutboxEvent,
 		arg.ID,
 		arg.TenantID,
 		arg.EventType,
@@ -211,7 +211,7 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 	return i, err
 }
 
-const markOutboxEventDead = `-- name: MarkOutboxEventDead :one
+const MarkOutboxEventDead = `-- name: MarkOutboxEventDead :one
 UPDATE outbox_events
 SET
     status = 'dead',
@@ -245,7 +245,7 @@ type MarkOutboxEventDeadParams struct {
 // as terminal as a successful one, and the secret is no longer
 // needed to send the mail.
 func (q *Queries) MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDeadParams) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, markOutboxEventDead, arg.LastError, arg.ID)
+	row := q.db.QueryRowContext(ctx, MarkOutboxEventDead, arg.LastError, arg.ID)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -263,7 +263,7 @@ func (q *Queries) MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDe
 	return i, err
 }
 
-const markOutboxEventDone = `-- name: MarkOutboxEventDone :one
+const MarkOutboxEventDone = `-- name: MarkOutboxEventDone :one
 UPDATE outbox_events
 SET
     status = 'done',
@@ -300,7 +300,7 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 // the same budget and every window ends here.
 func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, markOutboxEventDone, id)
+	row := q.db.QueryRowContext(ctx, MarkOutboxEventDone, id)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -318,7 +318,7 @@ func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (Outbox
 	return i, err
 }
 
-const markOutboxEventRetry = `-- name: MarkOutboxEventRetry :one
+const MarkOutboxEventRetry = `-- name: MarkOutboxEventRetry :one
 UPDATE outbox_events
 SET
     status = 'pending',
@@ -338,7 +338,7 @@ type MarkOutboxEventRetryParams struct {
 }
 
 func (q *Queries) MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, markOutboxEventRetry, arg.AvailableAt, arg.LastError, arg.ID)
+	row := q.db.QueryRowContext(ctx, MarkOutboxEventRetry, arg.AvailableAt, arg.LastError, arg.ID)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -356,7 +356,7 @@ func (q *Queries) MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventR
 	return i, err
 }
 
-const markPendingOutboxEventDone = `-- name: MarkPendingOutboxEventDone :one
+const MarkPendingOutboxEventDone = `-- name: MarkPendingOutboxEventDone :one
 UPDATE outbox_events
 SET
     status = 'done',
@@ -378,7 +378,7 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // event whose payload holds no secret. An auth-mail event reaches its
 // terminal update through MarkOutboxEventDone, which strips it.
 func (q *Queries) MarkPendingOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, markPendingOutboxEventDone, id)
+	row := q.db.QueryRowContext(ctx, MarkPendingOutboxEventDone, id)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
@@ -396,7 +396,7 @@ func (q *Queries) MarkPendingOutboxEventDone(ctx context.Context, id uuid.UUID) 
 	return i, err
 }
 
-const recoverStaleProcessingAuthMailOutboxEvents = `-- name: RecoverStaleProcessingAuthMailOutboxEvents :many
+const RecoverStaleProcessingAuthMailOutboxEvents = `-- name: RecoverStaleProcessingAuthMailOutboxEvents :many
 UPDATE outbox_events
 SET
     status = CASE
@@ -440,7 +440,7 @@ type RecoverStaleProcessingAuthMailOutboxEventsParams struct {
 // MarkOutboxEventDead does. The plaintext window is bounded by max_attempts
 // reclaims of the stale-processing grace period.
 func (q *Queries) RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context, arg RecoverStaleProcessingAuthMailOutboxEventsParams) ([]OutboxEvent, error) {
-	rows, err := q.db.QueryContext(ctx, recoverStaleProcessingAuthMailOutboxEvents, arg.MaxAttempts, arg.LastError, arg.StaleBefore)
+	rows, err := q.db.QueryContext(ctx, RecoverStaleProcessingAuthMailOutboxEvents, arg.MaxAttempts, arg.LastError, arg.StaleBefore)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +474,7 @@ func (q *Queries) RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context
 	return items, nil
 }
 
-const recoverStaleProcessingOutboxEvents = `-- name: RecoverStaleProcessingOutboxEvents :many
+const RecoverStaleProcessingOutboxEvents = `-- name: RecoverStaleProcessingOutboxEvents :many
 UPDATE outbox_events
 SET
     status = 'pending',
@@ -502,7 +502,7 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // holding a secret, and only they pay for the reclaim. A crash loop costs
 // these rows no retry budget.
 func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error) {
-	rows, err := q.db.QueryContext(ctx, recoverStaleProcessingOutboxEvents, staleBefore)
+	rows, err := q.db.QueryContext(ctx, RecoverStaleProcessingOutboxEvents, staleBefore)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleB
 	return items, nil
 }
 
-const unclaimOutboxEvent = `-- name: UnclaimOutboxEvent :one
+const UnclaimOutboxEvent = `-- name: UnclaimOutboxEvent :one
 UPDATE outbox_events
 SET
     status = 'pending',
@@ -549,7 +549,7 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // Release a claim when River already has an in-flight process job for
 // this event (unique skip). attempts and available_at stay as they were.
 func (q *Queries) UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
-	row := q.db.QueryRowContext(ctx, unclaimOutboxEvent, id)
+	row := q.db.QueryRowContext(ctx, UnclaimOutboxEvent, id)
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,

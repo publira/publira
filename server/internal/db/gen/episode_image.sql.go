@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const countEpisodeImagesByEpisodeID = `-- name: CountEpisodeImagesByEpisodeID :one
+const CountEpisodeImagesByEpisodeID = `-- name: CountEpisodeImagesByEpisodeID :one
 SELECT COUNT(*)::int4 AS page_count
 FROM episode_images
 WHERE episode_id = $1
@@ -21,13 +21,13 @@ WHERE episode_id = $1
 
 // How many pages the body has, which bounds where its spreads may start.
 func (q *Queries) CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countEpisodeImagesByEpisodeID, episodeID)
+	row := q.db.QueryRowContext(ctx, CountEpisodeImagesByEpisodeID, episodeID)
 	var page_count int32
 	err := row.Scan(&page_count)
 	return page_count, err
 }
 
-const createEpisodeImage = `-- name: CreateEpisodeImage :one
+const CreateEpisodeImage = `-- name: CreateEpisodeImage :one
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
 VALUES ($1, $2, $3, $4)
 RETURNING id, tenant_id, episode_id, display_order, created_at
@@ -41,7 +41,7 @@ type CreateEpisodeImageParams struct {
 }
 
 func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeImage,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeImage,
 		arg.ID,
 		arg.TenantID,
 		arg.EpisodeID,
@@ -58,7 +58,7 @@ func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImage
 	return i, err
 }
 
-const createEpisodeImageVariant = `-- name: CreateEpisodeImageVariant :one
+const CreateEpisodeImageVariant = `-- name: CreateEpisodeImageVariant :one
 INSERT INTO episode_image_variants (
     id,
     tenant_id,
@@ -89,7 +89,7 @@ type CreateEpisodeImageVariantParams struct {
 }
 
 func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeImageVariant,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeImageVariant,
 		arg.ID,
 		arg.TenantID,
 		arg.EpisodeImageID,
@@ -118,7 +118,7 @@ func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpiso
 	return i, err
 }
 
-const getEpisodeImageAccessByIDForUser = `-- name: GetEpisodeImageAccessByIDForUser :one
+const GetEpisodeImageAccessByIDForUser = `-- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
@@ -209,7 +209,7 @@ type GetEpisodeImageAccessByIDForUserRow struct {
 }
 
 func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForUser, arg.UserID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeImageAccessByIDForUser, arg.UserID, arg.ID, arg.TenantID)
 	var i GetEpisodeImageAccessByIDForUserRow
 	err := row.Scan(
 		&i.ID,
@@ -224,7 +224,7 @@ func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetE
 	return i, err
 }
 
-const getEpisodeImageByIDForTenant = `-- name: GetEpisodeImageByIDForTenant :one
+const GetEpisodeImageByIDForTenant = `-- name: GetEpisodeImageByIDForTenant :one
 SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
@@ -260,7 +260,7 @@ type GetEpisodeImageByIDForTenantRow struct {
 // This query only answers whether the image belongs to the tenant, with no
 // publish or price gate.
 func (q *Queries) GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeImageByIDForTenant, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeImageByIDForTenant, arg.ID, arg.TenantID)
 	var i GetEpisodeImageByIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -271,7 +271,7 @@ func (q *Queries) GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpiso
 	return i, err
 }
 
-const getEpisodeImagePublicAccessByIDForTenant = `-- name: GetEpisodeImagePublicAccessByIDForTenant :one
+const GetEpisodeImagePublicAccessByIDForTenant = `-- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
@@ -338,7 +338,7 @@ type GetEpisodeImagePublicAccessByIDForTenantRow struct {
 }
 
 func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeImagePublicAccessByIDForTenant, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeImagePublicAccessByIDForTenant, arg.ID, arg.TenantID)
 	var i GetEpisodeImagePublicAccessByIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -354,20 +354,20 @@ func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, 
 	return i, err
 }
 
-const getMaxEpisodeImageDisplayOrderByEpisodeID = `-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
+const GetMaxEpisodeImageDisplayOrderByEpisodeID = `-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
 SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM episode_images
 WHERE episode_id = $1
 `
 
 func (q *Queries) GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getMaxEpisodeImageDisplayOrderByEpisodeID, episodeID)
+	row := q.db.QueryRowContext(ctx, GetMaxEpisodeImageDisplayOrderByEpisodeID, episodeID)
 	var max_display_order int32
 	err := row.Scan(&max_display_order)
 	return max_display_order, err
 }
 
-const listEpisodeImagesByEpisodeID = `-- name: ListEpisodeImagesByEpisodeID :many
+const ListEpisodeImagesByEpisodeID = `-- name: ListEpisodeImagesByEpisodeID :many
 SELECT
     ei.id,
     ei.tenant_id,
@@ -404,7 +404,7 @@ type ListEpisodeImagesByEpisodeIDRow struct {
 }
 
 func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodeID, episodeID)
+	rows, err := q.db.QueryContext(ctx, ListEpisodeImagesByEpisodeID, episodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +436,7 @@ func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uu
 	return items, nil
 }
 
-const listEpisodeImagesByEpisodePublicIDForTenant = `-- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
+const ListEpisodeImagesByEpisodePublicIDForTenant = `-- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
 SELECT
     ei.id,
     ei.tenant_id,
@@ -481,7 +481,7 @@ type ListEpisodeImagesByEpisodePublicIDForTenantRow struct {
 }
 
 func (q *Queries) ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodePublicIDForTenant, arg.TenantID, arg.PublicID)
+	rows, err := q.db.QueryContext(ctx, ListEpisodeImagesByEpisodePublicIDForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +513,7 @@ func (q *Queries) ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Contex
 	return items, nil
 }
 
-const updateEpisodeImageDisplayOrderByIDForEpisode = `-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec
+const UpdateEpisodeImageDisplayOrderByIDForEpisode = `-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec
 UPDATE episode_images
 SET display_order = $3
 WHERE id = $1
@@ -527,6 +527,6 @@ type UpdateEpisodeImageDisplayOrderByIDForEpisodeParams struct {
 }
 
 func (q *Queries) UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodeImageDisplayOrderByIDForEpisode, arg.ID, arg.EpisodeID, arg.DisplayOrder)
+	_, err := q.db.ExecContext(ctx, UpdateEpisodeImageDisplayOrderByIDForEpisode, arg.ID, arg.EpisodeID, arg.DisplayOrder)
 	return err
 }

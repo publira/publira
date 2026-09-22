@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const countDraftEpisodesForTenant = `-- name: CountDraftEpisodesForTenant :one
+const CountDraftEpisodesForTenant = `-- name: CountDraftEpisodesForTenant :one
 SELECT COUNT(*)::int AS draft_episode_count
 FROM episodes e
     JOIN series s ON s.id = e.series_id
@@ -25,13 +25,13 @@ WHERE s.tenant_id = $1
 
 // For the tenant dashboard.
 func (q *Queries) CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countDraftEpisodesForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, CountDraftEpisodesForTenant, tenantID)
 	var draft_episode_count int32
 	err := row.Scan(&draft_episode_count)
 	return draft_episode_count, err
 }
 
-const countScheduledEpisodesForTenant = `-- name: CountScheduledEpisodesForTenant :one
+const CountScheduledEpisodesForTenant = `-- name: CountScheduledEpisodesForTenant :one
 SELECT COUNT(*)::int AS scheduled_episode_count
 FROM episodes e
     JOIN series s ON s.id = e.series_id
@@ -42,13 +42,13 @@ WHERE s.tenant_id = $1
 
 // For the tenant dashboard.
 func (q *Queries) CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countScheduledEpisodesForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, CountScheduledEpisodesForTenant, tenantID)
 	var scheduled_episode_count int32
 	err := row.Scan(&scheduled_episode_count)
 	return scheduled_episode_count, err
 }
 
-const createEpisodeBase = `-- name: CreateEpisodeBase :one
+const CreateEpisodeBase = `-- name: CreateEpisodeBase :one
 INSERT INTO episodes (
         id,
         series_id,
@@ -75,7 +75,7 @@ type CreateEpisodeBaseParams struct {
 }
 
 func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeBase,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeBase,
 		arg.ID,
 		arg.SeriesID,
 		arg.PublicID,
@@ -102,7 +102,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 	return i, err
 }
 
-const getEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
+const GetEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -160,7 +160,7 @@ type GetEpisodeByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetEpisodeByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -183,7 +183,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 	return i, err
 }
 
-const getEpisodeByPublicIDForTenantAndSeries = `-- name: GetEpisodeByPublicIDForTenantAndSeries :one
+const GetEpisodeByPublicIDForTenantAndSeries = `-- name: GetEpisodeByPublicIDForTenantAndSeries :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -238,7 +238,7 @@ type GetEpisodeByPublicIDForTenantAndSeriesRow struct {
 }
 
 func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeByPublicIDForTenantAndSeries, arg.TenantID, arg.PublicID, arg.PublicID_2)
+	row := q.db.QueryRowContext(ctx, GetEpisodeByPublicIDForTenantAndSeries, arg.TenantID, arg.PublicID, arg.PublicID_2)
 	var i GetEpisodeByPublicIDForTenantAndSeriesRow
 	err := row.Scan(
 		&i.ID,
@@ -261,7 +261,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 	return i, err
 }
 
-const getMaxEpisodeOrderIndexBySeriesForTenant = `-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
+const GetMaxEpisodeOrderIndexBySeriesForTenant = `-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
 SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
@@ -275,13 +275,13 @@ type GetMaxEpisodeOrderIndexBySeriesForTenantParams struct {
 }
 
 func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getMaxEpisodeOrderIndexBySeriesForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetMaxEpisodeOrderIndexBySeriesForTenant, arg.TenantID, arg.PublicID)
 	var max_order_index int32
 	err := row.Scan(&max_order_index)
 	return max_order_index, err
 }
 
-const getPublishedEpisodeByPublicIDForTenant = `-- name: GetPublishedEpisodeByPublicIDForTenant :one
+const GetPublishedEpisodeByPublicIDForTenant = `-- name: GetPublishedEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -389,7 +389,7 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
+	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
 	var i GetPublishedEpisodeByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -419,7 +419,7 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 	return i, err
 }
 
-const getResolvedEpisodePurchaseAvailability = `-- name: GetResolvedEpisodePurchaseAvailability :one
+const GetResolvedEpisodePurchaseAvailability = `-- name: GetResolvedEpisodePurchaseAvailability :one
 SELECT purchase_availability
 FROM episode_purchase_availability
 WHERE tenant_id = $1
@@ -433,13 +433,13 @@ type GetResolvedEpisodePurchaseAvailabilityParams struct {
 
 // Where one episode may be bought, resolved through its series and the tenant.
 func (q *Queries) GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getResolvedEpisodePurchaseAvailability, arg.TenantID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetResolvedEpisodePurchaseAvailability, arg.TenantID, arg.EpisodeID)
 	var purchase_availability string
 	err := row.Scan(&purchase_availability)
 	return purchase_availability, err
 }
 
-const listEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many
+const ListEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
     e.title,
@@ -483,7 +483,7 @@ type ListEpisodesBySeriesForTenantRow struct {
 // compares it against what the client read back, and a different tiebreaker
 // would reject a request that never conflicted.
 func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
+	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +516,7 @@ func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpi
 	return items, nil
 }
 
-const listEpisodesBySeriesForTenantAsc = `-- name: ListEpisodesBySeriesForTenantAsc :many
+const ListEpisodesBySeriesForTenantAsc = `-- name: ListEpisodesBySeriesForTenantAsc :many
 SELECT e.id,
     e.public_id,
     e.title,
@@ -577,7 +577,7 @@ type ListEpisodesBySeriesForTenantAscRow struct {
 // can tie, so the UUIDv7 id is the tiebreaker that keeps the order unique.
 // cursor rules: proto/README.md.
 func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantAsc,
 		arg.TenantID,
 		arg.PublicID,
 		arg.CursorID,
@@ -617,7 +617,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg List
 	return items, nil
 }
 
-const listEpisodesBySeriesForTenantDesc = `-- name: ListEpisodesBySeriesForTenantDesc :many
+const ListEpisodesBySeriesForTenantDesc = `-- name: ListEpisodesBySeriesForTenantDesc :many
 SELECT e.id,
     e.public_id,
     e.title,
@@ -673,7 +673,7 @@ type ListEpisodesBySeriesForTenantDescRow struct {
 }
 
 func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantDesc,
 		arg.TenantID,
 		arg.PublicID,
 		arg.CursorID,
@@ -713,7 +713,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const listEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
+const ListEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
 SELECT el.episode_id
 FROM episode_listings el
 WHERE el.status = 'scheduled'
@@ -722,7 +722,7 @@ WHERE el.status = 'scheduled'
 `
 
 func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesReadyToPublish)
+	rows, err := q.db.QueryContext(ctx, ListEpisodesReadyToPublish)
 	if err != nil {
 		return nil, err
 	}
@@ -744,7 +744,7 @@ func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, 
 	return items, nil
 }
 
-const listEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
+const ListEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -776,7 +776,7 @@ type ListEpisodesReadyToPublishWithTenantInfoRow struct {
 }
 
 func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesReadyToPublishWithTenantInfo)
+	rows, err := q.db.QueryContext(ctx, ListEpisodesReadyToPublishWithTenantInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +808,7 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
-const listMyEpisodeReadsAsc = `-- name: ListMyEpisodeReadsAsc :many
+const ListMyEpisodeReadsAsc = `-- name: ListMyEpisodeReadsAsc :many
 SELECT r.id,
     r.read_at,
     e.public_id AS episode_public_id,
@@ -871,7 +871,7 @@ type ListMyEpisodeReadsAscRow struct {
 
 // The backward direction of ListMyEpisodeReadsDesc.
 func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyEpisodeReadsAsc,
+	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorReadAt,
@@ -908,7 +908,7 @@ func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeRe
 	return items, nil
 }
 
-const listMyEpisodeReadsDesc = `-- name: ListMyEpisodeReadsDesc :many
+const ListMyEpisodeReadsDesc = `-- name: ListMyEpisodeReadsDesc :many
 SELECT r.id,
     r.read_at,
     e.public_id AS episode_public_id,
@@ -984,7 +984,7 @@ type ListMyEpisodeReadsDescRow struct {
 // Backward calls ListMyEpisodeReadsAsc, and the caller sorts the rows back.
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeReadsDescParams) ([]ListMyEpisodeReadsDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyEpisodeReadsDesc,
+	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorReadAt,
@@ -1021,7 +1021,7 @@ func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeR
 	return items, nil
 }
 
-const listMyFinishedEpisodePublicIDsInSeries = `-- name: ListMyFinishedEpisodePublicIDsInSeries :many
+const ListMyFinishedEpisodePublicIDsInSeries = `-- name: ListMyFinishedEpisodePublicIDsInSeries :many
 SELECT e.public_id
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
@@ -1047,7 +1047,7 @@ type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
 // in it marks nothing. What the query is scoped to is the reader, through the
 // member RLS policy episode_reads carries and the columns repeated here.
 func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesPublicID)
+	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1069,7 +1069,7 @@ func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
+const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNeighborsForTenant :many
 (
     SELECT -1::int4 AS direction,
         e.id,
@@ -1184,7 +1184,7 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 // window, so a link cannot say "paid" about an episode that is free at the
 // moment the reader would follow it.
 func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodeNeighborsForTenant,
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeNeighborsForTenant,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.OrderIndex,
@@ -1220,7 +1220,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedEpisodesBySeries = `-- name: ListPublishedEpisodesBySeries :many
+const ListPublishedEpisodesBySeries = `-- name: ListPublishedEpisodesBySeries :many
 SELECT e.id,
     e.series_id,
     e.public_id,
@@ -1261,7 +1261,7 @@ type ListPublishedEpisodesBySeriesRow struct {
 }
 
 func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodesBySeries, arg.TenantID, arg.SeriesID)
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodesBySeries, arg.TenantID, arg.SeriesID)
 	if err != nil {
 		return nil, err
 	}
@@ -1295,7 +1295,7 @@ func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPub
 	return items, nil
 }
 
-const listRecentEpisodesForDashboard = `-- name: ListRecentEpisodesForDashboard :many
+const ListRecentEpisodesForDashboard = `-- name: ListRecentEpisodesForDashboard :many
 SELECT
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -1332,7 +1332,7 @@ type ListRecentEpisodesForDashboardRow struct {
 // The most recent draft and scheduled episodes, for the publish queue on the
 // dashboard.
 func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecentEpisodesForDashboard, arg.TenantID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, ListRecentEpisodesForDashboard, arg.TenantID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1361,7 +1361,7 @@ func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRe
 	return items, nil
 }
 
-const lockEpisodeByPublicIDForTenant = `-- name: LockEpisodeByPublicIDForTenant :one
+const LockEpisodeByPublicIDForTenant = `-- name: LockEpisodeByPublicIDForTenant :one
 SELECT id,
     public_id
 FROM episodes
@@ -1390,13 +1390,13 @@ type LockEpisodeByPublicIDForTenantRow struct {
 // start, so a read that waited for the lock inside the same statement would
 // still answer from before the wait.
 func (q *Queries) LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, lockEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, LockEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i LockEpisodeByPublicIDForTenantRow
 	err := row.Scan(&i.ID, &i.PublicID)
 	return i, err
 }
 
-const lockEpisodesByPublicIDsForTenantAndSeries = `-- name: LockEpisodesByPublicIDsForTenantAndSeries :many
+const LockEpisodesByPublicIDsForTenantAndSeries = `-- name: LockEpisodesByPublicIDsForTenantAndSeries :many
 SELECT e.id,
     e.public_id
 FROM episodes e
@@ -1432,7 +1432,7 @@ type LockEpisodesByPublicIDsForTenantAndSeriesRow struct {
 // ORDER BY e.id is what keeps two range edits over overlapping ranges from
 // deadlocking: both take the row locks in the same order.
 func (q *Queries) LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, lockEpisodesByPublicIDsForTenantAndSeries, arg.TenantID, arg.SeriesID, pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, LockEpisodesByPublicIDsForTenantAndSeries, arg.TenantID, arg.SeriesID, pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
@@ -1454,7 +1454,7 @@ func (q *Queries) LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context,
 	return items, nil
 }
 
-const markEpisodePublished = `-- name: MarkEpisodePublished :exec
+const MarkEpisodePublished = `-- name: MarkEpisodePublished :exec
 UPDATE episode_listings
 SET status = 'published',
     published_at = NOW()
@@ -1462,11 +1462,11 @@ WHERE episode_id = $1
 `
 
 func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, markEpisodePublished, episodeID)
+	_, err := q.db.ExecContext(ctx, MarkEpisodePublished, episodeID)
 	return err
 }
 
-const markPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
+const MarkPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
 INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
 SELECT $1, $2, $3, e.id
 FROM episodes e
@@ -1527,7 +1527,7 @@ type MarkPublishedEpisodeAsReadParams struct {
 // notification projects onto the same content_events row rather than a second
 // completion for the same member and episode.
 func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublishedEpisodeAsReadParams) (EpisodeRead, error) {
-	row := q.db.QueryRowContext(ctx, markPublishedEpisodeAsRead,
+	row := q.db.QueryRowContext(ctx, MarkPublishedEpisodeAsRead,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
@@ -1544,7 +1544,7 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 	return i, err
 }
 
-const updateEpisodeAvailabilityByIDForTenant = `-- name: UpdateEpisodeAvailabilityByIDForTenant :exec
+const UpdateEpisodeAvailabilityByIDForTenant = `-- name: UpdateEpisodeAvailabilityByIDForTenant :exec
 UPDATE episodes
 SET availability = $1
 WHERE tenant_id = $2
@@ -1559,11 +1559,11 @@ type UpdateEpisodeAvailabilityByIDForTenantParams struct {
 
 // NULL returns the episode to following its series.
 func (q *Queries) UpdateEpisodeAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodeAvailabilityByIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodeAvailabilityByIDForTenant, arg.Availability, arg.TenantID, arg.ID)
+	_, err := q.db.ExecContext(ctx, UpdateEpisodeAvailabilityByIDForTenant, arg.Availability, arg.TenantID, arg.ID)
 	return err
 }
 
-const updateEpisodeLayoutByIDForTenant = `-- name: UpdateEpisodeLayoutByIDForTenant :exec
+const UpdateEpisodeLayoutByIDForTenant = `-- name: UpdateEpisodeLayoutByIDForTenant :exec
 UPDATE episodes
 SET reading_direction = $1,
     spread_start_index = $2
@@ -1581,7 +1581,7 @@ type UpdateEpisodeLayoutByIDForTenantParams struct {
 // Both overrides are written together, and NULL returns a value to following
 // the series.
 func (q *Queries) UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodeLayoutByIDForTenant,
+	_, err := q.db.ExecContext(ctx, UpdateEpisodeLayoutByIDForTenant,
 		arg.ReadingDirection,
 		arg.SpreadStartIndex,
 		arg.TenantID,
@@ -1590,7 +1590,7 @@ func (q *Queries) UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg Upda
 	return err
 }
 
-const updateEpisodeOrderIndexByPublicIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
+const UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
 UPDATE episodes e
 SET order_index = $4
 FROM series s
@@ -1608,7 +1608,7 @@ type UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams struct {
 }
 
 func (q *Queries) UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodeOrderIndexByPublicIDForTenantAndSeries,
+	_, err := q.db.ExecContext(ctx, UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries,
 		arg.TenantID,
 		arg.PublicID,
 		arg.PublicID_2,
@@ -1617,7 +1617,7 @@ func (q *Queries) UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx contex
 	return err
 }
 
-const updateEpisodePublishScheduleByPublicIDForTenant = `-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
+const UpdateEpisodePublishScheduleByPublicIDForTenant = `-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
         WHEN $3 IS NULL THEN 'draft'
@@ -1642,11 +1642,11 @@ type UpdateEpisodePublishScheduleByPublicIDForTenantParams struct {
 }
 
 func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodePublishScheduleByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.ScheduledAt)
+	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.ScheduledAt)
 	return err
 }
 
-const updateEpisodePurchaseAvailabilityByIDForTenant = `-- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
+const UpdateEpisodePurchaseAvailabilityByIDForTenant = `-- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
 UPDATE episodes
 SET purchase_availability = $1
 WHERE tenant_id = $2
@@ -1661,11 +1661,11 @@ type UpdateEpisodePurchaseAvailabilityByIDForTenantParams struct {
 
 // NULL returns the episode to following its series.
 func (q *Queries) UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, updateEpisodePurchaseAvailabilityByIDForTenant, arg.PurchaseAvailability, arg.TenantID, arg.ID)
+	_, err := q.db.ExecContext(ctx, UpdateEpisodePurchaseAvailabilityByIDForTenant, arg.PurchaseAvailability, arg.TenantID, arg.ID)
 	return err
 }
 
-const upsertEpisodeListing = `-- name: UpsertEpisodeListing :one
+const UpsertEpisodeListing = `-- name: UpsertEpisodeListing :one
 INSERT INTO episode_listings (
         episode_id,
         price,
@@ -1696,7 +1696,7 @@ type UpsertEpisodeListingParams struct {
 }
 
 func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error) {
-	row := q.db.QueryRowContext(ctx, upsertEpisodeListing,
+	row := q.db.QueryRowContext(ctx, UpsertEpisodeListing,
 		arg.EpisodeID,
 		arg.Price,
 		arg.ReadingPeriodHours,

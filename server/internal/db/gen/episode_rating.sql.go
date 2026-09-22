@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getEpisodeRatingCount = `-- name: GetEpisodeRatingCount :one
+const GetEpisodeRatingCount = `-- name: GetEpisodeRatingCount :one
 SELECT COALESCE((
     SELECT erc.count
     FROM episode_rating_counts erc
@@ -29,13 +29,13 @@ type GetEpisodeRatingCountParams struct {
 // which is every episode until the first rating arrives. Read after the rating
 // in the same transaction, so it carries whatever the trigger just made of it.
 func (q *Queries) GetEpisodeRatingCount(ctx context.Context, arg GetEpisodeRatingCountParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeRatingCount, arg.TenantID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeRatingCount, arg.TenantID, arg.EpisodeID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const getEpisodeRatingMode = `-- name: GetEpisodeRatingMode :one
+const GetEpisodeRatingMode = `-- name: GetEpisodeRatingMode :one
 SELECT COALESCE(
     sl.episode_rating_mode,
     tc.episode_rating_mode,
@@ -61,13 +61,13 @@ type GetEpisodeRatingModeParams struct {
 // neither absence is a statement, so both fall through to the same default the
 // column carries.
 func (q *Queries) GetEpisodeRatingMode(ctx context.Context, arg GetEpisodeRatingModeParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeRatingMode, arg.TenantID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeRatingMode, arg.TenantID, arg.EpisodeID)
 	var episode_rating_mode string
 	err := row.Scan(&episode_rating_mode)
 	return episode_rating_mode, err
 }
 
-const getMyEpisodeRating = `-- name: GetMyEpisodeRating :one
+const GetMyEpisodeRating = `-- name: GetMyEpisodeRating :one
 SELECT er.score
 FROM episode_ratings er
 WHERE er.tenant_id = $1
@@ -84,13 +84,13 @@ type GetMyEpisodeRatingParams struct {
 // The score this reader has given the episode, or no row when they have not
 // rated it.
 func (q *Queries) GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRatingParams) (int16, error) {
-	row := q.db.QueryRowContext(ctx, getMyEpisodeRating, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, GetMyEpisodeRating, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var score int16
 	err := row.Scan(&score)
 	return score, err
 }
 
-const lockEpisodeRating = `-- name: LockEpisodeRating :exec
+const LockEpisodeRating = `-- name: LockEpisodeRating :exec
 
 SELECT pg_advisory_xact_lock(
     hashtextextended(
@@ -129,11 +129,11 @@ type LockEpisodeRatingParams struct {
 // path having seen no row at all. The advisory lock is taken on the identity of
 // the rating rather than on a row, so it holds whether one exists yet or not.
 func (q *Queries) LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error {
-	_, err := q.db.ExecContext(ctx, lockEpisodeRating, arg.TenantID, arg.UserID, arg.EpisodeID)
+	_, err := q.db.ExecContext(ctx, LockEpisodeRating, arg.TenantID, arg.UserID, arg.EpisodeID)
 	return err
 }
 
-const rateEpisode = `-- name: RateEpisode :one
+const RateEpisode = `-- name: RateEpisode :one
 INSERT INTO episode_ratings (tenant_id, user_id, episode_id, score)
 VALUES (
     $1,
@@ -165,7 +165,7 @@ type RateEpisodeParams struct {
 // The caller resolves the episode through the published catalog query first, so
 // publication and body access are settled before this runs.
 func (q *Queries) RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error) {
-	row := q.db.QueryRowContext(ctx, rateEpisode,
+	row := q.db.QueryRowContext(ctx, RateEpisode,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,

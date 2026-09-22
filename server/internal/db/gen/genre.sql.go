@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const countSeriesByGenreIDForTenant = `-- name: CountSeriesByGenreIDForTenant :one
+const CountSeriesByGenreIDForTenant = `-- name: CountSeriesByGenreIDForTenant :one
 SELECT COUNT(*)::int4 AS series_count
 FROM series_genres
 WHERE tenant_id = $1
@@ -29,13 +29,13 @@ type CountSeriesByGenreIDForTenantParams struct {
 // Whether a genre may still be deleted. The refusal is the handler's, and this
 // is what it is based on.
 func (q *Queries) CountSeriesByGenreIDForTenant(ctx context.Context, arg CountSeriesByGenreIDForTenantParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countSeriesByGenreIDForTenant, arg.TenantID, arg.GenreID)
+	row := q.db.QueryRowContext(ctx, CountSeriesByGenreIDForTenant, arg.TenantID, arg.GenreID)
 	var series_count int32
 	err := row.Scan(&series_count)
 	return series_count, err
 }
 
-const createGenre = `-- name: CreateGenre :one
+const CreateGenre = `-- name: CreateGenre :one
 INSERT INTO genres (
         id,
         tenant_id,
@@ -58,7 +58,7 @@ type CreateGenreParams struct {
 }
 
 func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre, error) {
-	row := q.db.QueryRowContext(ctx, createGenre,
+	row := q.db.QueryRowContext(ctx, CreateGenre,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -79,17 +79,17 @@ func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre
 	return i, err
 }
 
-const deleteGenre = `-- name: DeleteGenre :exec
+const DeleteGenre = `-- name: DeleteGenre :exec
 DELETE FROM genres
 WHERE id = $1
 `
 
 func (q *Queries) DeleteGenre(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteGenre, id)
+	_, err := q.db.ExecContext(ctx, DeleteGenre, id)
 	return err
 }
 
-const getGenreByPublicIDForTenant = `-- name: GetGenreByPublicIDForTenant :one
+const GetGenreByPublicIDForTenant = `-- name: GetGenreByPublicIDForTenant :one
 SELECT g.id,
     g.public_id,
     g.name,
@@ -117,7 +117,7 @@ type GetGenreByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getGenreByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetGenreByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetGenreByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -130,7 +130,7 @@ func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreB
 	return i, err
 }
 
-const getGenreIDByPublicIDForTenant = `-- name: GetGenreIDByPublicIDForTenant :one
+const GetGenreIDByPublicIDForTenant = `-- name: GetGenreIDByPublicIDForTenant :one
 SELECT g.id
 FROM genres g
 WHERE g.tenant_id = $1
@@ -148,13 +148,13 @@ type GetGenreIDByPublicIDForTenantParams struct {
 // empty list, so a storefront cannot show an empty page for a genre that was
 // deleted or belongs to somebody else.
 func (q *Queries) GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getGenreIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetGenreIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const getMaxGenreDisplayOrderForTenant = `-- name: GetMaxGenreDisplayOrderForTenant :one
+const GetMaxGenreDisplayOrderForTenant = `-- name: GetMaxGenreDisplayOrderForTenant :one
 SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM genres
 WHERE tenant_id = $1
@@ -162,13 +162,13 @@ WHERE tenant_id = $1
 
 // Where a newly created genre goes: after everything that already exists.
 func (q *Queries) GetMaxGenreDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getMaxGenreDisplayOrderForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, GetMaxGenreDisplayOrderForTenant, tenantID)
 	var max_display_order int32
 	err := row.Scan(&max_display_order)
 	return max_display_order, err
 }
 
-const listGenresByPublicIDsForTenant = `-- name: ListGenresByPublicIDsForTenant :many
+const ListGenresByPublicIDsForTenant = `-- name: ListGenresByPublicIDsForTenant :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -198,7 +198,7 @@ type ListGenresByPublicIDsForTenantRow struct {
 // count against what it asked for, so a public_id of another tenant reads as
 // a genre that does not exist.
 func (q *Queries) ListGenresByPublicIDsForTenant(ctx context.Context, arg ListGenresByPublicIDsForTenantParams) ([]ListGenresByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGenresByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListGenresByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (q *Queries) ListGenresByPublicIDsForTenant(ctx context.Context, arg ListGe
 	return items, nil
 }
 
-const listGenresByTenantAsc = `-- name: ListGenresByTenantAsc :many
+const ListGenresByTenantAsc = `-- name: ListGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -275,7 +275,7 @@ type ListGenresByTenantAscRow struct {
 // display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTenantAscParams) ([]ListGenresByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGenresByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListGenresByTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -310,7 +310,7 @@ func (q *Queries) ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTen
 	return items, nil
 }
 
-const listGenresByTenantDesc = `-- name: ListGenresByTenantDesc :many
+const ListGenresByTenantDesc = `-- name: ListGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -353,7 +353,7 @@ type ListGenresByTenantDescRow struct {
 }
 
 func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTenantDescParams) ([]ListGenresByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGenresByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListGenresByTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -388,7 +388,7 @@ func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTe
 	return items, nil
 }
 
-const listPublishedGenresByTenantAsc = `-- name: ListPublishedGenresByTenantAsc :many
+const ListPublishedGenresByTenantAsc = `-- name: ListPublishedGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -461,7 +461,7 @@ type ListPublishedGenresByTenantAscRow struct {
 // handler flips those rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedGenresByTenantAsc,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -497,7 +497,7 @@ func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPu
 	return items, nil
 }
 
-const listPublishedGenresByTenantDesc = `-- name: ListPublishedGenresByTenantDesc :many
+const ListPublishedGenresByTenantDesc = `-- name: ListPublishedGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -556,7 +556,7 @@ type ListPublishedGenresByTenantDescRow struct {
 }
 
 func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedGenresByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedGenresByTenantDesc,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -592,7 +592,7 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 	return items, nil
 }
 
-const lockGenresForTenant = `-- name: LockGenresForTenant :many
+const LockGenresForTenant = `-- name: LockGenresForTenant :many
 SELECT id,
     public_id,
     name,
@@ -616,7 +616,7 @@ type LockGenresForTenantRow struct {
 // write can move underneath it. The names come along because a reorder answers
 // with the whole list, and nothing in this transaction changes them.
 func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, lockGenresForTenant, tenantID)
+	rows, err := q.db.QueryContext(ctx, LockGenresForTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -643,7 +643,7 @@ func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) (
 	return items, nil
 }
 
-const updateGenre = `-- name: UpdateGenre :exec
+const UpdateGenre = `-- name: UpdateGenre :exec
 UPDATE genres
 SET name = $2,
     slug = $3
@@ -657,11 +657,11 @@ type UpdateGenreParams struct {
 }
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) error {
-	_, err := q.db.ExecContext(ctx, updateGenre, arg.ID, arg.Name, arg.Slug)
+	_, err := q.db.ExecContext(ctx, UpdateGenre, arg.ID, arg.Name, arg.Slug)
 	return err
 }
 
-const updateGenreDisplayOrder = `-- name: UpdateGenreDisplayOrder :exec
+const UpdateGenreDisplayOrder = `-- name: UpdateGenreDisplayOrder :exec
 UPDATE genres
 SET display_order = $2
 WHERE id = $1
@@ -673,6 +673,6 @@ type UpdateGenreDisplayOrderParams struct {
 }
 
 func (q *Queries) UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error {
-	_, err := q.db.ExecContext(ctx, updateGenreDisplayOrder, arg.ID, arg.DisplayOrder)
+	_, err := q.db.ExecContext(ctx, UpdateGenreDisplayOrder, arg.ID, arg.DisplayOrder)
 	return err
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const deleteUnusedTagsByIDsForTenant = `-- name: DeleteUnusedTagsByIDsForTenant :exec
+const DeleteUnusedTagsByIDsForTenant = `-- name: DeleteUnusedTagsByIDsForTenant :exec
 DELETE FROM tags t
 WHERE t.tenant_id = $1
     AND t.id = ANY($2::uuid[])
@@ -33,11 +33,11 @@ type DeleteUnusedTagsByIDsForTenantParams struct {
 // and nothing else to say for itself, so one no series carries is not a tag the
 // tenant kept — it is one nobody would ever see again.
 func (q *Queries) DeleteUnusedTagsByIDsForTenant(ctx context.Context, arg DeleteUnusedTagsByIDsForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, deleteUnusedTagsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
+	_, err := q.db.ExecContext(ctx, DeleteUnusedTagsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	return err
 }
 
-const getTagBySlugForTenant = `-- name: GetTagBySlugForTenant :one
+const GetTagBySlugForTenant = `-- name: GetTagBySlugForTenant :one
 SELECT t.id
 FROM tags t
 WHERE t.tenant_id = $1
@@ -54,13 +54,13 @@ type GetTagBySlugForTenantParams struct {
 // A filter naming nothing is refused rather than answered with an empty list,
 // for the reason GetGenreIDByPublicIDForTenant gives.
 func (q *Queries) GetTagBySlugForTenant(ctx context.Context, arg GetTagBySlugForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getTagBySlugForTenant, arg.TenantID, arg.Slug)
+	row := q.db.QueryRowContext(ctx, GetTagBySlugForTenant, arg.TenantID, arg.Slug)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
-const listPublishedTagsByTenantAsc = `-- name: ListPublishedTagsByTenantAsc :many
+const ListPublishedTagsByTenantAsc = `-- name: ListPublishedTagsByTenantAsc :many
 WITH counted AS (
     SELECT t.name,
         t.slug,
@@ -127,7 +127,7 @@ type ListPublishedTagsByTenantAscRow struct {
 // ListPublishedTagsByTenantDesc walked the other way. It exists only to build
 // a previous page; the order it describes is the same one.
 func (q *Queries) ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPublishedTagsByTenantAscParams) ([]ListPublishedTagsByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedTagsByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedTagsByTenantAsc,
 		arg.CursorSlug,
 		arg.CursorPublishedSeriesCount,
 		arg.CursorInclusive,
@@ -156,7 +156,7 @@ func (q *Queries) ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPubl
 	return items, nil
 }
 
-const listPublishedTagsByTenantDesc = `-- name: ListPublishedTagsByTenantDesc :many
+const ListPublishedTagsByTenantDesc = `-- name: ListPublishedTagsByTenantDesc :many
 WITH counted AS (
     SELECT t.name,
         t.slug,
@@ -236,7 +236,7 @@ type ListPublishedTagsByTenantDescRow struct {
 // spelled out rather than written as a row value.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedTagsByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedTagsByTenantDesc,
 		arg.CursorSlug,
 		arg.CursorPublishedSeriesCount,
 		arg.CursorInclusive,
@@ -265,7 +265,7 @@ func (q *Queries) ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPub
 	return items, nil
 }
 
-const lockUnusedTagsForTenant = `-- name: LockUnusedTagsForTenant :many
+const LockUnusedTagsForTenant = `-- name: LockUnusedTagsForTenant :many
 
 SELECT t.id
 FROM tags t
@@ -297,7 +297,7 @@ FOR UPDATE
 // Candidates for the sweep: the tags of this tenant no series carries. Locked
 // in id order so two saves sweeping at once queue up rather than deadlock.
 func (q *Queries) LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, lockUnusedTagsForTenant, tenantID)
+	rows, err := q.db.QueryContext(ctx, LockUnusedTagsForTenant, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (q *Queries) LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUI
 	return items, nil
 }
 
-const upsertTagForTenant = `-- name: UpsertTagForTenant :one
+const UpsertTagForTenant = `-- name: UpsertTagForTenant :one
 INSERT INTO tags (
         id,
         tenant_id,
@@ -348,7 +348,7 @@ type UpsertTagForTenantParams struct {
 // tag saved as "Fantasy" — the slug says they are the same tag, and the name
 // the tenant first wrote is the one every other series keeps showing.
 func (q *Queries) UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error) {
-	row := q.db.QueryRowContext(ctx, upsertTagForTenant,
+	row := q.db.QueryRowContext(ctx, UpsertTagForTenant,
 		arg.ID,
 		arg.TenantID,
 		arg.Name,

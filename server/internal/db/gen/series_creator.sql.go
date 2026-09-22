@@ -13,7 +13,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createSeriesCreator = `-- name: CreateSeriesCreator :exec
+const CreateSeriesCreator = `-- name: CreateSeriesCreator :exec
 INSERT INTO series_creators (
         tenant_id,
         series_id,
@@ -45,7 +45,7 @@ type CreateSeriesCreatorParams struct {
 // the column admits NULL for the credits that predate roles, and a credit
 // written through here always names one.
 func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error {
-	_, err := q.db.ExecContext(ctx, createSeriesCreator,
+	_, err := q.db.ExecContext(ctx, CreateSeriesCreator,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.CreatorID,
@@ -56,17 +56,17 @@ func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreat
 	return err
 }
 
-const deleteSeriesCreatorsBySeriesID = `-- name: DeleteSeriesCreatorsBySeriesID :exec
+const DeleteSeriesCreatorsBySeriesID = `-- name: DeleteSeriesCreatorsBySeriesID :exec
 DELETE FROM series_creators
 WHERE series_id = $1
 `
 
 func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteSeriesCreatorsBySeriesID, seriesID)
+	_, err := q.db.ExecContext(ctx, DeleteSeriesCreatorsBySeriesID, seriesID)
 	return err
 }
 
-const listSeriesCreatorsBySeriesIDs = `-- name: ListSeriesCreatorsBySeriesIDs :many
+const ListSeriesCreatorsBySeriesIDs = `-- name: ListSeriesCreatorsBySeriesIDs :many
 SELECT sc.series_id,
     c.public_id,
     c.name,
@@ -103,7 +103,7 @@ type ListSeriesCreatorsBySeriesIDsRow struct {
 // none, and it is still a credit. Those come last, which is where a name with
 // nothing said about it belongs.
 func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesCreatorsBySeriesIDs, pq.Array(seriesIds))
+	rows, err := q.db.QueryContext(ctx, ListSeriesCreatorsBySeriesIDs, pq.Array(seriesIds))
 	if err != nil {
 		return nil, err
 	}

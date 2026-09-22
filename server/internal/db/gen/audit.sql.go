@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const insertAuditLog = `-- name: InsertAuditLog :exec
+const InsertAuditLog = `-- name: InsertAuditLog :exec
 INSERT INTO audit_logs (
     id,
     tenant_id,
@@ -42,7 +42,7 @@ type InsertAuditLogParams struct {
 }
 
 func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
-	_, err := q.db.ExecContext(ctx, insertAuditLog,
+	_, err := q.db.ExecContext(ctx, InsertAuditLog,
 		arg.ID,
 		arg.TenantID,
 		arg.ActorUserID,
@@ -57,7 +57,7 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 	return err
 }
 
-const insertPlatformAuditLog = `-- name: InsertPlatformAuditLog :exec
+const InsertPlatformAuditLog = `-- name: InsertPlatformAuditLog :exec
 INSERT INTO platform_audit_logs (
     id,
     actor_platform_user_id,
@@ -84,7 +84,7 @@ type InsertPlatformAuditLogParams struct {
 }
 
 func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error {
-	_, err := q.db.ExecContext(ctx, insertPlatformAuditLog,
+	_, err := q.db.ExecContext(ctx, InsertPlatformAuditLog,
 		arg.ID,
 		arg.ActorPlatformUserID,
 		arg.ActorRole,
@@ -98,7 +98,7 @@ func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatform
 	return err
 }
 
-const listAuditLogsByTenantAsc = `-- name: ListAuditLogsByTenantAsc :many
+const ListAuditLogsByTenantAsc = `-- name: ListAuditLogsByTenantAsc :many
 SELECT a.id,
     a.tenant_id,
     a.actor_user_id,
@@ -163,7 +163,7 @@ type ListAuditLogsByTenantAscRow struct {
 }
 
 func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListAuditLogsByTenantAsc,
 		arg.TenantID,
 		arg.FilterActorUserPublicID,
 		arg.FilterAction,
@@ -209,7 +209,7 @@ func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLog
 	return items, nil
 }
 
-const listAuditLogsByTenantDesc = `-- name: ListAuditLogsByTenantDesc :many
+const ListAuditLogsByTenantDesc = `-- name: ListAuditLogsByTenantDesc :many
 SELECT a.id,
     a.tenant_id,
     a.actor_user_id,
@@ -279,7 +279,7 @@ type ListAuditLogsByTenantDescRow struct {
 // index order, so each scan direction gets its own query.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListAuditLogsByTenantDesc,
 		arg.TenantID,
 		arg.FilterActorUserPublicID,
 		arg.FilterAction,
@@ -325,7 +325,7 @@ func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLo
 	return items, nil
 }
 
-const listPlatformAuditLogsAsc = `-- name: ListPlatformAuditLogsAsc :many
+const ListPlatformAuditLogsAsc = `-- name: ListPlatformAuditLogsAsc :many
 SELECT a.id,
     a.actor_platform_user_id,
     a.actor_role,
@@ -408,7 +408,7 @@ type ListPlatformAuditLogsAscRow struct {
 }
 
 func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatformAuditLogsAscParams) ([]ListPlatformAuditLogsAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogsAsc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformAuditLogsAsc,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
 		arg.FilterAction,
@@ -455,7 +455,7 @@ func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatform
 	return items, nil
 }
 
-const listPlatformAuditLogsDesc = `-- name: ListPlatformAuditLogsDesc :many
+const ListPlatformAuditLogsDesc = `-- name: ListPlatformAuditLogsDesc :many
 SELECT a.id,
     a.actor_platform_user_id,
     a.actor_role,
@@ -543,7 +543,7 @@ type ListPlatformAuditLogsDescRow struct {
 // read in index order, so each scan direction gets its own query.
 // cursor rules: proto/README.md.
 func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogsDesc,
+	rows, err := q.db.QueryContext(ctx, ListPlatformAuditLogsDesc,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
 		arg.FilterAction,

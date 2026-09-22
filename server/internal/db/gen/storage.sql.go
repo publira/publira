@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const deleteUnreferencedCreatorImages = `-- name: DeleteUnreferencedCreatorImages :execrows
+const DeleteUnreferencedCreatorImages = `-- name: DeleteUnreferencedCreatorImages :execrows
 DELETE FROM creator_images ci
 WHERE ci.created_at < $1
     AND NOT EXISTS (SELECT 1 FROM creators c WHERE c.icon_image_id = ci.id)
@@ -22,42 +22,42 @@ WHERE ci.created_at < $1
 // creator_images row behind, referenced by nothing. created_at guards the
 // upload still in flight, whose row exists before the creator names it.
 func (q *Queries) DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUnreferencedCreatorImages, createdBefore)
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedCreatorImages, createdBefore)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteUnreferencedLabelImages = `-- name: DeleteUnreferencedLabelImages :execrows
+const DeleteUnreferencedLabelImages = `-- name: DeleteUnreferencedLabelImages :execrows
 DELETE FROM label_images li
 WHERE li.created_at < $1
     AND NOT EXISTS (SELECT 1 FROM labels l WHERE l.eye_catch_image_id = li.id)
 `
 
 func (q *Queries) DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUnreferencedLabelImages, createdBefore)
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedLabelImages, createdBefore)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteUnreferencedSeriesImages = `-- name: DeleteUnreferencedSeriesImages :execrows
+const DeleteUnreferencedSeriesImages = `-- name: DeleteUnreferencedSeriesImages :execrows
 DELETE FROM series_images si
 WHERE si.created_at < $1
     AND NOT EXISTS (SELECT 1 FROM series s WHERE s.eye_catch_image_id = si.id)
 `
 
 func (q *Queries) DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUnreferencedSeriesImages, createdBefore)
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedSeriesImages, createdBefore)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteUnreferencedTenantImages = `-- name: DeleteUnreferencedTenantImages :execrows
+const DeleteUnreferencedTenantImages = `-- name: DeleteUnreferencedTenantImages :execrows
 DELETE FROM tenant_images ti
 WHERE ti.created_at < $1
     AND NOT EXISTS (
@@ -69,14 +69,14 @@ WHERE ti.created_at < $1
 // A tenant image is reachable from either branding slot, and the theme holds
 // both, so one row can be the icon of one theme and nothing else anywhere.
 func (q *Queries) DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUnreferencedTenantImages, createdBefore)
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedTenantImages, createdBefore)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const listReferencedObjectKeys = `-- name: ListReferencedObjectKeys :many
+const ListReferencedObjectKeys = `-- name: ListReferencedObjectKeys :many
 
 WITH candidates AS (
     SELECT unnest($1::text[]) AS object_key
@@ -118,7 +118,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 // this misses is a deleted live object: every table that holds an object_key
 // has to be listed here.
 func (q *Queries) ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listReferencedObjectKeys, pq.Array(objectKeys))
+	rows, err := q.db.QueryContext(ctx, ListReferencedObjectKeys, pq.Array(objectKeys))
 	if err != nil {
 		return nil, err
 	}

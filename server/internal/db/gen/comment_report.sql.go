@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const autoHideEpisodeCommentAtReportThreshold = `-- name: AutoHideEpisodeCommentAtReportThreshold :one
+const AutoHideEpisodeCommentAtReportThreshold = `-- name: AutoHideEpisodeCommentAtReportThreshold :one
 UPDATE episode_comments c
 SET status = 'hidden',
     hidden_at = NOW(),
@@ -69,13 +69,13 @@ type AutoHideEpisodeCommentAtReportThresholdParams struct {
 // carries, so a tenant that has saved nothing is protected by the same number
 // as one that saved the default; change the two together.
 func (q *Queries) AutoHideEpisodeCommentAtReportThreshold(ctx context.Context, arg AutoHideEpisodeCommentAtReportThresholdParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, autoHideEpisodeCommentAtReportThreshold, arg.TenantID, arg.CommentID)
+	row := q.db.QueryRowContext(ctx, AutoHideEpisodeCommentAtReportThreshold, arg.TenantID, arg.CommentID)
 	var public_id string
 	err := row.Scan(&public_id)
 	return public_id, err
 }
 
-const createEpisodeCommentReport = `-- name: CreateEpisodeCommentReport :one
+const CreateEpisodeCommentReport = `-- name: CreateEpisodeCommentReport :one
 INSERT INTO episode_comment_reports (
     id,
     tenant_id,
@@ -112,7 +112,7 @@ type CreateEpisodeCommentReportParams struct {
 // A repeat is deliberately not an update. The reason and the note are what the
 // reader said the first time, and the report queue is worked from them.
 func (q *Queries) CreateEpisodeCommentReport(ctx context.Context, arg CreateEpisodeCommentReportParams) (EpisodeCommentReport, error) {
-	row := q.db.QueryRowContext(ctx, createEpisodeCommentReport,
+	row := q.db.QueryRowContext(ctx, CreateEpisodeCommentReport,
 		arg.ID,
 		arg.TenantID,
 		arg.CommentID,
@@ -136,7 +136,7 @@ func (q *Queries) CreateEpisodeCommentReport(ctx context.Context, arg CreateEpis
 	return i, err
 }
 
-const getEpisodeCommentReportForModerationByIDForTenant = `-- name: GetEpisodeCommentReportForModerationByIDForTenant :one
+const GetEpisodeCommentReportForModerationByIDForTenant = `-- name: GetEpisodeCommentReportForModerationByIDForTenant :one
 SELECT r.id AS report_id,
     r.reason,
     r.note,
@@ -218,7 +218,7 @@ type GetEpisodeCommentReportForModerationByIDForTenantRow struct {
 // and again after writing, so the answer describes the stored rows rather than
 // what the transition was assumed to produce.
 func (q *Queries) GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeCommentReportForModerationByIDForTenant, arg.TenantID, arg.ID)
+	row := q.db.QueryRowContext(ctx, GetEpisodeCommentReportForModerationByIDForTenant, arg.TenantID, arg.ID)
 	var i GetEpisodeCommentReportForModerationByIDForTenantRow
 	err := row.Scan(
 		&i.ReportID,
@@ -250,7 +250,7 @@ func (q *Queries) GetEpisodeCommentReportForModerationByIDForTenant(ctx context.
 	return i, err
 }
 
-const getReportableEpisodeCommentByPublicIDForTenant = `-- name: GetReportableEpisodeCommentByPublicIDForTenant :one
+const GetReportableEpisodeCommentByPublicIDForTenant = `-- name: GetReportableEpisodeCommentByPublicIDForTenant :one
 
 SELECT c.id,
     c.user_id,
@@ -335,7 +335,7 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 // staff notification the report raises names what the queue is about, and
 // reading it here keeps the report one round trip.
 func (q *Queries) GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetReportableEpisodeCommentByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -349,7 +349,7 @@ func (q *Queries) GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Con
 	return i, err
 }
 
-const listEpisodeCommentReportsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentReportsForModerationByCreatedAtAsc :many
+const ListEpisodeCommentReportsForModerationByCreatedAtAsc = `-- name: ListEpisodeCommentReportsForModerationByCreatedAtAsc :many
 SELECT r.id AS report_id,
     r.reason,
     r.note,
@@ -454,7 +454,7 @@ type ListEpisodeCommentReportsForModerationByCreatedAtAscRow struct {
 // The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
 // The handler reverses the returned rows to preserve the newest-first order.
 func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeCommentReportsForModerationByCreatedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentReportsForModerationByCreatedAtAsc,
 		arg.TenantID,
 		arg.Status,
 		arg.CursorCreatedAt,
@@ -509,7 +509,7 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx conte
 	return items, nil
 }
 
-const listEpisodeCommentReportsForModerationByCreatedAtDesc = `-- name: ListEpisodeCommentReportsForModerationByCreatedAtDesc :many
+const ListEpisodeCommentReportsForModerationByCreatedAtDesc = `-- name: ListEpisodeCommentReportsForModerationByCreatedAtDesc :many
 SELECT r.id AS report_id,
     r.reason,
     r.note,
@@ -621,7 +621,7 @@ type ListEpisodeCommentReportsForModerationByCreatedAtDescRow struct {
 // judged without the text it is about, and the queue offers the removal
 // actions from the same row.
 func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeCommentReportsForModerationByCreatedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCommentReportsForModerationByCreatedAtDesc,
 		arg.TenantID,
 		arg.Status,
 		arg.CursorCreatedAt,
@@ -676,7 +676,7 @@ func (q *Queries) ListEpisodeCommentReportsForModerationByCreatedAtDesc(ctx cont
 	return items, nil
 }
 
-const refreshEpisodeCommentOpenReportCount = `-- name: RefreshEpisodeCommentOpenReportCount :one
+const RefreshEpisodeCommentOpenReportCount = `-- name: RefreshEpisodeCommentOpenReportCount :one
 UPDATE episode_comments c
 SET open_report_count = (
         SELECT COUNT(*)
@@ -704,13 +704,13 @@ type RefreshEpisodeCommentOpenReportCountParams struct {
 // drifted for any reason is corrected by the next write instead of staying
 // wrong until someone notices.
 func (q *Queries) RefreshEpisodeCommentOpenReportCount(ctx context.Context, arg RefreshEpisodeCommentOpenReportCountParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, refreshEpisodeCommentOpenReportCount, arg.TenantID, arg.CommentID)
+	row := q.db.QueryRowContext(ctx, RefreshEpisodeCommentOpenReportCount, arg.TenantID, arg.CommentID)
 	var open_report_count int32
 	err := row.Scan(&open_report_count)
 	return open_report_count, err
 }
 
-const rejectOpenEpisodeCommentReportsForComment = `-- name: RejectOpenEpisodeCommentReportsForComment :execrows
+const RejectOpenEpisodeCommentReportsForComment = `-- name: RejectOpenEpisodeCommentReportsForComment :execrows
 UPDATE episode_comment_reports
 SET status = 'rejected',
     resolved_at = NOW(),
@@ -732,14 +732,14 @@ type RejectOpenEpisodeCommentReportsForCommentParams struct {
 // reports against it do not; leaving them open would let the same reports carry
 // the comment past the removal threshold again the moment it came back.
 func (q *Queries) RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, rejectOpenEpisodeCommentReportsForComment, arg.ResolvedBy, arg.TenantID, arg.CommentID)
+	result, err := q.db.ExecContext(ctx, RejectOpenEpisodeCommentReportsForComment, arg.ResolvedBy, arg.TenantID, arg.CommentID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const resolveEpisodeCommentReportByIDForTenant = `-- name: ResolveEpisodeCommentReportByIDForTenant :one
+const ResolveEpisodeCommentReportByIDForTenant = `-- name: ResolveEpisodeCommentReportByIDForTenant :one
 UPDATE episode_comment_reports
 SET status = $1::text,
     resolved_at = NOW(),
@@ -766,7 +766,7 @@ type ResolveEpisodeCommentReportByIDForTenantParams struct {
 // removing what it is about. Only the counter follows, through
 // RefreshEpisodeCommentOpenReportCount in the same transaction.
 func (q *Queries) ResolveEpisodeCommentReportByIDForTenant(ctx context.Context, arg ResolveEpisodeCommentReportByIDForTenantParams) (EpisodeCommentReport, error) {
-	row := q.db.QueryRowContext(ctx, resolveEpisodeCommentReportByIDForTenant,
+	row := q.db.QueryRowContext(ctx, ResolveEpisodeCommentReportByIDForTenant,
 		arg.Status,
 		arg.ResolvedBy,
 		arg.TenantID,

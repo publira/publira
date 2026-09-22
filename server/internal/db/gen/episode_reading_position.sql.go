@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getMyEpisodeReadingPosition = `-- name: GetMyEpisodeReadingPosition :one
+const GetMyEpisodeReadingPosition = `-- name: GetMyEpisodeReadingPosition :one
 SELECT rp.page_index,
     rp.page_count,
     rp.updated_at
@@ -78,13 +78,13 @@ type GetMyEpisodeReadingPositionRow struct {
 // access the save is: an episode they may no longer open has no position to
 // resume, and answering with one would tell them the row is still there.
 func (q *Queries) GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error) {
-	row := q.db.QueryRowContext(ctx, getMyEpisodeReadingPosition, arg.TenantID, arg.UserID, arg.EpisodePublicID)
+	row := q.db.QueryRowContext(ctx, GetMyEpisodeReadingPosition, arg.TenantID, arg.UserID, arg.EpisodePublicID)
 	var i GetMyEpisodeReadingPositionRow
 	err := row.Scan(&i.PageIndex, &i.PageCount, &i.UpdatedAt)
 	return i, err
 }
 
-const getMySeriesReadingProgress = `-- name: GetMySeriesReadingProgress :one
+const GetMySeriesReadingProgress = `-- name: GetMySeriesReadingProgress :one
 SELECT e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index,
@@ -180,7 +180,7 @@ type GetMySeriesReadingProgressRow struct {
 // an expired rental hands the reader the episode before it instead of a
 // position they cannot act on.
 func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error) {
-	row := q.db.QueryRowContext(ctx, getMySeriesReadingProgress, arg.TenantID, arg.UserID, arg.SeriesPublicID)
+	row := q.db.QueryRowContext(ctx, GetMySeriesReadingProgress, arg.TenantID, arg.UserID, arg.SeriesPublicID)
 	var i GetMySeriesReadingProgressRow
 	err := row.Scan(
 		&i.EpisodePublicID,
@@ -199,7 +199,7 @@ func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySerie
 	return i, err
 }
 
-const listMyRecentSeriesAsc = `-- name: ListMyRecentSeriesAsc :many
+const ListMyRecentSeriesAsc = `-- name: ListMyRecentSeriesAsc :many
 WITH touched AS (
     SELECT rp.episode_id,
         rp.updated_at AS activity_at
@@ -376,7 +376,7 @@ type ListMyRecentSeriesAscRow struct {
 
 // The backward direction of ListMyRecentSeriesDesc.
 func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyRecentSeriesAsc,
+	rows, err := q.db.QueryContext(ctx, ListMyRecentSeriesAsc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorLastActivityAt,
@@ -419,7 +419,7 @@ func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSer
 	return items, nil
 }
 
-const listMyRecentSeriesDesc = `-- name: ListMyRecentSeriesDesc :many
+const ListMyRecentSeriesDesc = `-- name: ListMyRecentSeriesDesc :many
 WITH touched AS (
     SELECT rp.episode_id,
         rp.updated_at AS activity_at
@@ -625,7 +625,7 @@ type ListMyRecentSeriesDescRow struct {
 // Backward calls ListMyRecentSeriesAsc, and the caller sorts the rows back.
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSeriesDescParams) ([]ListMyRecentSeriesDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMyRecentSeriesDesc,
+	rows, err := q.db.QueryContext(ctx, ListMyRecentSeriesDesc,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorLastActivityAt,
@@ -668,7 +668,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 	return items, nil
 }
 
-const saveEpisodeReadingPosition = `-- name: SaveEpisodeReadingPosition :one
+const SaveEpisodeReadingPosition = `-- name: SaveEpisodeReadingPosition :one
 WITH readable AS (
     SELECT e.id,
         (
@@ -774,7 +774,7 @@ type SaveEpisodeReadingPositionRow struct {
 // writes the current page on a timer would otherwise reorder the reader's
 // recent activity without the reader having moved.
 func (q *Queries) SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error) {
-	row := q.db.QueryRowContext(ctx, saveEpisodeReadingPosition,
+	row := q.db.QueryRowContext(ctx, SaveEpisodeReadingPosition,
 		arg.TenantID,
 		arg.EpisodePublicID,
 		arg.UserID,

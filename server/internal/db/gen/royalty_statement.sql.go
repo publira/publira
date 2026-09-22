@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const getRoyaltySalesTotalsForPeriod = `-- name: GetRoyaltySalesTotalsForPeriod :one
+const GetRoyaltySalesTotalsForPeriod = `-- name: GetRoyaltySalesTotalsForPeriod :one
 SELECT
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
     COALESCE(sum(COALESCE(p.refunded_amount, 0)), 0)::bigint AS total_refunded
@@ -40,13 +40,13 @@ type GetRoyaltySalesTotalsForPeriodRow struct {
 // credited to. The month and the refund rule are those of
 // ListRoyaltyLinesForPeriod.
 func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error) {
-	row := q.db.QueryRowContext(ctx, getRoyaltySalesTotalsForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
+	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
 	var i GetRoyaltySalesTotalsForPeriodRow
 	err := row.Scan(&i.TotalGross, &i.TotalRefunded)
 	return i, err
 }
 
-const getRoyaltyStatementByPeriod = `-- name: GetRoyaltyStatementByPeriod :one
+const GetRoyaltyStatementByPeriod = `-- name: GetRoyaltyStatementByPeriod :one
 SELECT
     rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
     u.public_id AS closed_by_user_public_id,
@@ -77,7 +77,7 @@ type GetRoyaltyStatementByPeriodRow struct {
 }
 
 func (q *Queries) GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error) {
-	row := q.db.QueryRowContext(ctx, getRoyaltyStatementByPeriod, arg.TenantID, arg.Period)
+	row := q.db.QueryRowContext(ctx, GetRoyaltyStatementByPeriod, arg.TenantID, arg.Period)
 	var i GetRoyaltyStatementByPeriodRow
 	err := row.Scan(
 		&i.ID,
@@ -95,7 +95,7 @@ func (q *Queries) GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyalt
 	return i, err
 }
 
-const insertRoyaltyStatement = `-- name: InsertRoyaltyStatement :one
+const InsertRoyaltyStatement = `-- name: InsertRoyaltyStatement :one
 INSERT INTO royalty_statements (
     id,
     tenant_id,
@@ -131,7 +131,7 @@ type InsertRoyaltyStatementParams struct {
 
 // A second close of the same month fails on royalty_statements_tenant_id_period_key.
 func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyStatementParams) (RoyaltyStatement, error) {
-	row := q.db.QueryRowContext(ctx, insertRoyaltyStatement,
+	row := q.db.QueryRowContext(ctx, InsertRoyaltyStatement,
 		arg.ID,
 		arg.TenantID,
 		arg.Period,
@@ -156,7 +156,7 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 	return i, err
 }
 
-const insertRoyaltyStatementLines = `-- name: InsertRoyaltyStatementLines :exec
+const InsertRoyaltyStatementLines = `-- name: InsertRoyaltyStatementLines :exec
 INSERT INTO royalty_statement_lines (
     tenant_id,
     statement_id,
@@ -220,11 +220,11 @@ type InsertRoyaltyStatementLinesParams struct {
 // JSON array because several of their columns are nullable, which a typed
 // array parameter per column cannot carry.
 func (q *Queries) InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error {
-	_, err := q.db.ExecContext(ctx, insertRoyaltyStatementLines, arg.TenantID, arg.StatementID, arg.Lines)
+	_, err := q.db.ExecContext(ctx, InsertRoyaltyStatementLines, arg.TenantID, arg.StatementID, arg.Lines)
 	return err
 }
 
-const listRoyaltyLinesForPeriod = `-- name: ListRoyaltyLinesForPeriod :many
+const ListRoyaltyLinesForPeriod = `-- name: ListRoyaltyLinesForPeriod :many
 SELECT
     ec.creator_id,
     c.public_id AS creator_public_id,
@@ -297,7 +297,7 @@ type ListRoyaltyLinesForPeriodRow struct {
 // sale and is carried as refunded_amount. The payout is floored per line over
 // the month's sum, which keeps the rounding loss to one yen per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyLinesForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyalty
 	return items, nil
 }
 
-const listRoyaltyStatementLinesAsc = `-- name: ListRoyaltyStatementLinesAsc :many
+const ListRoyaltyStatementLinesAsc = `-- name: ListRoyaltyStatementLinesAsc :many
 SELECT
     l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount,
     c.public_id AS creator_public_id,
@@ -389,7 +389,7 @@ type ListRoyaltyStatementLinesAscRow struct {
 // The lines of a statement in the order they were closed in, with the public
 // IDs of the catalog rows that still exist.
 func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoyaltyStatementLinesAscParams) ([]ListRoyaltyStatementLinesAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementLinesAsc,
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementLinesAsc,
 		arg.TenantID,
 		arg.StatementID,
 		arg.AfterLineNumber,
@@ -437,7 +437,7 @@ func (q *Queries) ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoya
 	return items, nil
 }
 
-const listRoyaltyStatementLinesDesc = `-- name: ListRoyaltyStatementLinesDesc :many
+const ListRoyaltyStatementLinesDesc = `-- name: ListRoyaltyStatementLinesDesc :many
 SELECT
     l.tenant_id, l.statement_id, l.line_number, l.creator_id, l.creator_name, l.series_id, l.series_title, l.episode_id, l.episode_title, l.role_id, l.role_name, l.sale_count, l.gross_amount, l.refunded_amount, l.share_bps, l.payout_amount,
     c.public_id AS creator_public_id,
@@ -488,7 +488,7 @@ type ListRoyaltyStatementLinesDescRow struct {
 
 // ListRoyaltyStatementLinesAsc walked backwards, for a previous-page token.
 func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoyaltyStatementLinesDescParams) ([]ListRoyaltyStatementLinesDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementLinesDesc,
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementLinesDesc,
 		arg.TenantID,
 		arg.StatementID,
 		arg.BeforeLineNumber,
@@ -536,7 +536,7 @@ func (q *Queries) ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoy
 	return items, nil
 }
 
-const listRoyaltyStatementLinesForExport = `-- name: ListRoyaltyStatementLinesForExport :many
+const ListRoyaltyStatementLinesForExport = `-- name: ListRoyaltyStatementLinesForExport :many
 SELECT tenant_id, statement_id, line_number, creator_id, creator_name, series_id, series_title, episode_id, episode_title, role_id, role_name, sale_count, gross_amount, refunded_amount, share_bps, payout_amount
 FROM royalty_statement_lines
 WHERE tenant_id = $1
@@ -552,7 +552,7 @@ type ListRoyaltyStatementLinesForExportParams struct {
 // Every line of a statement as it was closed, for the CSV export. It reads the
 // stored columns only, so the export of a closed month never changes.
 func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]RoyaltyStatementLine, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementLinesForExport, arg.TenantID, arg.StatementID)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementLinesForExport, arg.TenantID, arg.StatementID)
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +591,7 @@ func (q *Queries) ListRoyaltyStatementLinesForExport(ctx context.Context, arg Li
 	return items, nil
 }
 
-const listRoyaltyStatementPeriodsFrom = `-- name: ListRoyaltyStatementPeriodsFrom :many
+const ListRoyaltyStatementPeriodsFrom = `-- name: ListRoyaltyStatementPeriodsFrom :many
 SELECT period
 FROM royalty_statements
 WHERE tenant_id = $1
@@ -607,7 +607,7 @@ type ListRoyaltyStatementPeriodsFromParams struct {
 // The months of a tenant already closed, from a month on, for the automatic
 // close to tell which of the months it owes are still open.
 func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListRoyaltyStatementPeriodsFromParams) ([]time.Time, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementPeriodsFrom, arg.TenantID, arg.FromPeriod)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementPeriodsFrom, arg.TenantID, arg.FromPeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -629,7 +629,7 @@ func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListR
 	return items, nil
 }
 
-const listRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
+const ListRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
     rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
     u.public_id AS closed_by_user_public_id,
@@ -664,7 +664,7 @@ type ListRoyaltyStatementsAscRow struct {
 
 // ListRoyaltyStatementsDesc walked backwards, for a previous-page token.
 func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyStatementsAscParams) ([]ListRoyaltyStatementsAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementsAsc, arg.TenantID, arg.CursorPeriod, arg.RowLimit)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementsAsc, arg.TenantID, arg.CursorPeriod, arg.RowLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -698,7 +698,7 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 	return items, nil
 }
 
-const listRoyaltyStatementsDesc = `-- name: ListRoyaltyStatementsDesc :many
+const ListRoyaltyStatementsDesc = `-- name: ListRoyaltyStatementsDesc :many
 SELECT
     rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
     u.public_id AS closed_by_user_public_id,
@@ -738,7 +738,7 @@ type ListRoyaltyStatementsDescRow struct {
 // Newest month first. The period is unique per tenant, so it alone is the
 // keyset.
 func (q *Queries) ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyaltyStatementsDescParams) ([]ListRoyaltyStatementsDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRoyaltyStatementsDesc,
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyStatementsDesc,
 		arg.TenantID,
 		arg.HasCursor,
 		arg.CursorPeriod,

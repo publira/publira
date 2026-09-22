@@ -15,7 +15,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const listActiveSeriesByIDs = `-- name: ListActiveSeriesByIDs :many
+const ListActiveSeriesByIDs = `-- name: ListActiveSeriesByIDs :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -193,7 +193,7 @@ type ListActiveSeriesByIDsRow struct {
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSerie
 	return items, nil
 }
 
-const listActiveSeriesIDsByLatestEpisodeAtAsc = `-- name: ListActiveSeriesIDsByLatestEpisodeAtAsc :many
+const ListActiveSeriesIDsByLatestEpisodeAtAsc = `-- name: ListActiveSeriesIDsByLatestEpisodeAtAsc :many
 WITH candidate AS (
     SELECT s.id,
         COALESCE(
@@ -361,7 +361,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtAscRow struct {
 }
 
 func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, arg ListActiveSeriesIDsByLatestEpisodeAtAscParams) ([]ListActiveSeriesIDsByLatestEpisodeAtAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByLatestEpisodeAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByLatestEpisodeAtAsc,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorLatestEpisodeAt,
@@ -395,7 +395,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, a
 	return items, nil
 }
 
-const listActiveSeriesIDsByLatestEpisodeAtDesc = `-- name: ListActiveSeriesIDsByLatestEpisodeAtDesc :many
+const ListActiveSeriesIDsByLatestEpisodeAtDesc = `-- name: ListActiveSeriesIDsByLatestEpisodeAtDesc :many
 WITH candidate AS (
     SELECT s.id,
         COALESCE(
@@ -541,7 +541,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtDescRow struct {
 // caller that recomputed it would be reading a second NOW(), and a token built
 // on a value this query never sorted by points at the wrong page.
 func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, arg ListActiveSeriesIDsByLatestEpisodeAtDescParams) ([]ListActiveSeriesIDsByLatestEpisodeAtDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByLatestEpisodeAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByLatestEpisodeAtDesc,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorLatestEpisodeAt,
@@ -575,7 +575,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, 
 	return items, nil
 }
 
-const listActiveSeriesIDsByPublishedAtAsc = `-- name: ListActiveSeriesIDsByPublishedAtAsc :many
+const ListActiveSeriesIDsByPublishedAtAsc = `-- name: ListActiveSeriesIDsByPublishedAtAsc :many
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
@@ -681,7 +681,7 @@ type ListActiveSeriesIDsByPublishedAtAscParams struct {
 }
 
 func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtAsc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByPublishedAtAsc,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -715,7 +715,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 	return items, nil
 }
 
-const listActiveSeriesIDsByPublishedAtDesc = `-- name: ListActiveSeriesIDsByPublishedAtDesc :many
+const ListActiveSeriesIDsByPublishedAtDesc = `-- name: ListActiveSeriesIDsByPublishedAtDesc :many
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
@@ -862,7 +862,7 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 //
 // cursor rules: proto/README.md.
 func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -896,7 +896,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 	return items, nil
 }
 
-const listActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :many
+const ListActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :many
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
@@ -1002,7 +1002,7 @@ type ListActiveSeriesIDsByTitleAscParams struct {
 }
 
 func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleAsc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleAsc,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -1036,7 +1036,7 @@ func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListAct
 	return items, nil
 }
 
-const listActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
+const ListActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
@@ -1142,7 +1142,7 @@ type ListActiveSeriesIDsByTitleDescParams struct {
 }
 
 func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleDesc,
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleDesc,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -1176,7 +1176,7 @@ func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListAc
 	return items, nil
 }
 
-const listPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
+const ListPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
 SELECT s.id
 FROM series s
     JOIN series_creators sc ON sc.series_id = s.id
@@ -1229,7 +1229,7 @@ type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
 // Backward calls ListPublishedSeriesIDsByCreatorTitleDesc, and the caller
 // sorts the rows back.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByCreatorTitleAsc,
 		arg.CreatorID,
 		arg.TenantID,
 		arg.Surface,
@@ -1259,7 +1259,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, a
 	return items, nil
 }
 
-const listPublishedSeriesIDsByCreatorTitleDesc = `-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
+const ListPublishedSeriesIDsByCreatorTitleDesc = `-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
 SELECT s.id
 FROM series s
     JOIN series_creators sc ON sc.series_id = s.id
@@ -1308,7 +1308,7 @@ type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
 
 // The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByCreatorTitleDesc,
 		arg.CreatorID,
 		arg.TenantID,
 		arg.Surface,
@@ -1338,7 +1338,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, 
 	return items, nil
 }
 
-const listPublishedSeriesIDsByLabelTitleAsc = `-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
+const ListPublishedSeriesIDsByLabelTitleAsc = `-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
 SELECT s.id
 FROM series s
 WHERE s.label_id = $1::uuid
@@ -1391,7 +1391,7 @@ type ListPublishedSeriesIDsByLabelTitleAscParams struct {
 // sorts the rows back.
 // Index: idx_series_tenant_label_title
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByLabelTitleAsc,
 		arg.LabelID,
 		arg.TenantID,
 		arg.Surface,
@@ -1421,7 +1421,7 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg
 	return items, nil
 }
 
-const listPublishedSeriesIDsByLabelTitleDesc = `-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
+const ListPublishedSeriesIDsByLabelTitleDesc = `-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
 SELECT s.id
 FROM series s
 WHERE s.label_id = $1::uuid
@@ -1469,7 +1469,7 @@ type ListPublishedSeriesIDsByLabelTitleDescParams struct {
 
 // The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByLabelTitleDesc,
 		arg.LabelID,
 		arg.TenantID,
 		arg.Surface,
@@ -1499,7 +1499,7 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedSeriesIDsBySearchTitleAsc = `-- name: ListPublishedSeriesIDsBySearchTitleAsc :many
+const ListPublishedSeriesIDsBySearchTitleAsc = `-- name: ListPublishedSeriesIDsBySearchTitleAsc :many
 SELECT s.id
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -1559,7 +1559,7 @@ type ListPublishedSeriesIDsBySearchTitleAscParams struct {
 // the latency visible, add a pg_trgm GIN index on title and
 // series_listings.synopsis.
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsBySearchTitleAsc,
 		arg.TenantID,
 		arg.Surface,
 		arg.QueryPattern,
@@ -1589,7 +1589,7 @@ func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedSeriesIDsBySearchTitleDesc = `-- name: ListPublishedSeriesIDsBySearchTitleDesc :many
+const ListPublishedSeriesIDsBySearchTitleDesc = `-- name: ListPublishedSeriesIDsBySearchTitleDesc :many
 SELECT s.id
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -1641,7 +1641,7 @@ type ListPublishedSeriesIDsBySearchTitleDescParams struct {
 
 // The backward direction of ListPublishedSeriesIDsBySearchTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsBySearchTitleDesc,
 		arg.TenantID,
 		arg.Surface,
 		arg.QueryPattern,

@@ -14,7 +14,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const createCreator = `-- name: CreateCreator :one
+const CreateCreator = `-- name: CreateCreator :one
 INSERT INTO creators (
         id,
         tenant_id,
@@ -37,7 +37,7 @@ type CreateCreatorParams struct {
 }
 
 func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error) {
-	row := q.db.QueryRowContext(ctx, createCreator,
+	row := q.db.QueryRowContext(ctx, CreateCreator,
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
@@ -58,7 +58,7 @@ func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (C
 	return i, err
 }
 
-const createCreatorImage = `-- name: CreateCreatorImage :one
+const CreateCreatorImage = `-- name: CreateCreatorImage :one
 INSERT INTO creator_images (
         id,
         tenant_id,
@@ -76,7 +76,7 @@ type CreateCreatorImageParams struct {
 }
 
 func (q *Queries) CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error) {
-	row := q.db.QueryRowContext(ctx, createCreatorImage, arg.ID, arg.TenantID, arg.CreatorID)
+	row := q.db.QueryRowContext(ctx, CreateCreatorImage, arg.ID, arg.TenantID, arg.CreatorID)
 	var i CreatorImage
 	err := row.Scan(
 		&i.ID,
@@ -88,7 +88,7 @@ func (q *Queries) CreateCreatorImage(ctx context.Context, arg CreateCreatorImage
 	return i, err
 }
 
-const createCreatorImageVariant = `-- name: CreateCreatorImageVariant :one
+const CreateCreatorImageVariant = `-- name: CreateCreatorImageVariant :one
 INSERT INTO creator_image_variants (
         id,
         tenant_id,
@@ -119,7 +119,7 @@ type CreateCreatorImageVariantParams struct {
 }
 
 func (q *Queries) CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error) {
-	row := q.db.QueryRowContext(ctx, createCreatorImageVariant,
+	row := q.db.QueryRowContext(ctx, CreateCreatorImageVariant,
 		arg.ID,
 		arg.TenantID,
 		arg.CreatorImageID,
@@ -148,7 +148,7 @@ func (q *Queries) CreateCreatorImageVariant(ctx context.Context, arg CreateCreat
 	return i, err
 }
 
-const getCreatorByPublicIDForTenant = `-- name: GetCreatorByPublicIDForTenant :one
+const GetCreatorByPublicIDForTenant = `-- name: GetCreatorByPublicIDForTenant :one
 SELECT c.id,
     c.tenant_id,
     c.public_id,
@@ -194,7 +194,7 @@ type GetCreatorByPublicIDForTenantRow struct {
 }
 
 func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getCreatorByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetCreatorByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetCreatorByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -212,7 +212,7 @@ func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCrea
 	return i, err
 }
 
-const getCreatorImageByIDForTenant = `-- name: GetCreatorImageByIDForTenant :one
+const GetCreatorImageByIDForTenant = `-- name: GetCreatorImageByIDForTenant :one
 SELECT civ.object_key,
     civ.content_type
 FROM creator_images ci
@@ -239,13 +239,13 @@ type GetCreatorImageByIDForTenantRow struct {
 }
 
 func (q *Queries) GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getCreatorImageByIDForTenant, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetCreatorImageByIDForTenant, arg.ID, arg.TenantID)
 	var i GetCreatorImageByIDForTenantRow
 	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
 
-const getPublishedCreatorByPublicID = `-- name: GetPublishedCreatorByPublicID :one
+const GetPublishedCreatorByPublicID = `-- name: GetPublishedCreatorByPublicID :one
 SELECT c.id,
     c.public_id,
     c.name,
@@ -326,7 +326,7 @@ type GetPublishedCreatorByPublicIDRow struct {
 // caller turns an empty result into not_found exactly as it does a missing
 // row, so the existence of an unpublished creator does not leak.
 func (q *Queries) GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPublishedCreatorByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetPublishedCreatorByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
 	var i GetPublishedCreatorByPublicIDRow
 	err := row.Scan(
 		&i.ID,
@@ -341,7 +341,7 @@ func (q *Queries) GetPublishedCreatorByPublicID(ctx context.Context, arg GetPubl
 	return i, err
 }
 
-const listCreatorsByPublicIDsForTenant = `-- name: ListCreatorsByPublicIDsForTenant :many
+const ListCreatorsByPublicIDsForTenant = `-- name: ListCreatorsByPublicIDsForTenant :many
 SELECT id,
     tenant_id,
     public_id,
@@ -368,7 +368,7 @@ type ListCreatorsByPublicIDsForTenantRow struct {
 }
 
 func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorsByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListCreatorsByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg List
 	return items, nil
 }
 
-const listCreatorsByTenantAsc = `-- name: ListCreatorsByTenantAsc :many
+const ListCreatorsByTenantAsc = `-- name: ListCreatorsByTenantAsc :many
 SELECT c.id,
     c.tenant_id,
     c.public_id,
@@ -457,7 +457,7 @@ type ListCreatorsByTenantAscRow struct {
 }
 
 func (q *Queries) ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorsByTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListCreatorsByTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -497,7 +497,7 @@ func (q *Queries) ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsB
 	return items, nil
 }
 
-const listCreatorsByTenantDesc = `-- name: ListCreatorsByTenantDesc :many
+const ListCreatorsByTenantDesc = `-- name: ListCreatorsByTenantDesc :many
 SELECT c.id,
     c.tenant_id,
     c.public_id,
@@ -561,7 +561,7 @@ type ListCreatorsByTenantDescRow struct {
 // flips ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorsByTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListCreatorsByTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -601,7 +601,7 @@ func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreators
 	return items, nil
 }
 
-const listPublishedCreatorIDsByNameAsc = `-- name: ListPublishedCreatorIDsByNameAsc :many
+const ListPublishedCreatorIDsByNameAsc = `-- name: ListPublishedCreatorIDsByNameAsc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -676,7 +676,7 @@ type ListPublishedCreatorIDsByNameAscParams struct {
 // Stage two is ListPublishedCreatorsByIDs, which builds the display data and
 // the published series count for the ids stage one settled on.
 func (q *Queries) ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg ListPublishedCreatorIDsByNameAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorIDsByNameAsc,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -705,7 +705,7 @@ func (q *Queries) ListPublishedCreatorIDsByNameAsc(ctx context.Context, arg List
 	return items, nil
 }
 
-const listPublishedCreatorIDsByNameDesc = `-- name: ListPublishedCreatorIDsByNameDesc :many
+const ListPublishedCreatorIDsByNameDesc = `-- name: ListPublishedCreatorIDsByNameDesc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -757,7 +757,7 @@ type ListPublishedCreatorIDsByNameDescParams struct {
 }
 
 func (q *Queries) ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg ListPublishedCreatorIDsByNameDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsByNameDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorIDsByNameDesc,
 		arg.TenantID,
 		arg.Surface,
 		arg.CursorID,
@@ -786,7 +786,7 @@ func (q *Queries) ListPublishedCreatorIDsByNameDesc(ctx context.Context, arg Lis
 	return items, nil
 }
 
-const listPublishedCreatorIDsBySearchNameAsc = `-- name: ListPublishedCreatorIDsBySearchNameAsc :many
+const ListPublishedCreatorIDsBySearchNameAsc = `-- name: ListPublishedCreatorIDsBySearchNameAsc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -851,7 +851,7 @@ type ListPublishedCreatorIDsBySearchNameAscParams struct {
 // cannot ride a btree, so a sequential scan is enough while the LIMIT still
 // bites after narrowing by tenant, the same trade SearchPublishedSeries makes.
 func (q *Queries) ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameAsc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorIDsBySearchNameAsc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.Surface,
@@ -881,7 +881,7 @@ func (q *Queries) ListPublishedCreatorIDsBySearchNameAsc(ctx context.Context, ar
 	return items, nil
 }
 
-const listPublishedCreatorIDsBySearchNameDesc = `-- name: ListPublishedCreatorIDsBySearchNameDesc :many
+const ListPublishedCreatorIDsBySearchNameDesc = `-- name: ListPublishedCreatorIDsBySearchNameDesc :many
 SELECT c.id
 FROM creators c
 WHERE c.tenant_id = $1
@@ -936,7 +936,7 @@ type ListPublishedCreatorIDsBySearchNameDescParams struct {
 
 // The backward direction of ListPublishedCreatorIDsBySearchNameAsc.
 func (q *Queries) ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorIDsBySearchNameDescParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorIDsBySearchNameDesc,
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorIDsBySearchNameDesc,
 		arg.TenantID,
 		arg.QueryPattern,
 		arg.Surface,
@@ -966,7 +966,7 @@ func (q *Queries) ListPublishedCreatorIDsBySearchNameDesc(ctx context.Context, a
 	return items, nil
 }
 
-const listPublishedCreatorsByIDs = `-- name: ListPublishedCreatorsByIDs :many
+const ListPublishedCreatorsByIDs = `-- name: ListPublishedCreatorsByIDs :many
 SELECT c.id,
     c.public_id,
     c.name,
@@ -1023,7 +1023,7 @@ type ListPublishedCreatorsByIDsRow struct {
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedCreatorsByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorsByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
@@ -1054,7 +1054,7 @@ func (q *Queries) ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublis
 	return items, nil
 }
 
-const updateCreator = `-- name: UpdateCreator :exec
+const UpdateCreator = `-- name: UpdateCreator :exec
 UPDATE creators
 SET name = $2,
     profile_text = $3,
@@ -1070,7 +1070,7 @@ type UpdateCreatorParams struct {
 }
 
 func (q *Queries) UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error {
-	_, err := q.db.ExecContext(ctx, updateCreator,
+	_, err := q.db.ExecContext(ctx, UpdateCreator,
 		arg.ID,
 		arg.Name,
 		arg.ProfileText,

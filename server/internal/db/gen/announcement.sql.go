@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const clearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
+const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
 UPDATE announcements
 SET pinned = false
 WHERE id = $1
@@ -23,11 +23,11 @@ WHERE id = $1
 // The ticker job's write. It is what makes a boundary stop being due, so a run
 // that was down over one still catches up instead of collecting it.
 func (q *Queries) ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, clearAnnouncementPin, id)
+	_, err := q.db.ExecContext(ctx, ClearAnnouncementPin, id)
 	return err
 }
 
-const createAnnouncement = `-- name: CreateAnnouncement :one
+const CreateAnnouncement = `-- name: CreateAnnouncement :one
 INSERT INTO announcements (
     id,
     tenant_id,
@@ -58,7 +58,7 @@ type CreateAnnouncementParams struct {
 }
 
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
-	row := q.db.QueryRowContext(ctx, createAnnouncement,
+	row := q.db.QueryRowContext(ctx, CreateAnnouncement,
 		arg.ID,
 		arg.TenantID,
 		arg.TargetUserID,
@@ -87,7 +87,7 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 	return i, err
 }
 
-const getAnnouncementForUser = `-- name: GetAnnouncementForUser :one
+const GetAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
     n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
@@ -126,7 +126,7 @@ type GetAnnouncementForUserRow struct {
 // belongs to that caller's inbox. A row addressed to another user or owned by
 // another tenant comes back as no rows, so its existence is not disclosed.
 func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getAnnouncementForUser, arg.UserID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetAnnouncementForUser, arg.UserID, arg.ID, arg.TenantID)
 	var i GetAnnouncementForUserRow
 	err := row.Scan(
 		&i.ID,
@@ -146,7 +146,7 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 	return i, err
 }
 
-const getPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
+const GetPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
 SELECT id, tenant_id, target_user_id, announcement_type, title, body, link_url, metadata, created_at, pinned, pinned_until
 FROM announcements
 WHERE tenant_id = $1
@@ -161,7 +161,7 @@ LIMIT 1
 // inside its pinned window. It names no user, so a visitor with no session gets
 // the same answer as a signed-in reader and the site caches it once per tenant.
 func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error) {
-	row := q.db.QueryRowContext(ctx, getPinnedAnnouncementForTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, GetPinnedAnnouncementForTenant, tenantID)
 	var i Announcement
 	err := row.Scan(
 		&i.ID,
@@ -179,7 +179,7 @@ func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, tenantID u
 	return i, err
 }
 
-const listAnnouncementsForTenantAsc = `-- name: ListAnnouncementsForTenantAsc :many
+const ListAnnouncementsForTenantAsc = `-- name: ListAnnouncementsForTenantAsc :many
 SELECT
     n.id,
     n.tenant_id,
@@ -237,7 +237,7 @@ type ListAnnouncementsForTenantAscRow struct {
 }
 
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAnnouncementsForTenantAsc,
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -279,7 +279,7 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 	return items, nil
 }
 
-const listAnnouncementsForTenantDesc = `-- name: ListAnnouncementsForTenantDesc :many
+const ListAnnouncementsForTenantDesc = `-- name: ListAnnouncementsForTenantDesc :many
 SELECT
     n.id,
     n.tenant_id,
@@ -343,7 +343,7 @@ type ListAnnouncementsForTenantDescRow struct {
 // direction gets its own query.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAnnouncementsForTenantDesc,
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -385,7 +385,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 	return items, nil
 }
 
-const listAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
+const ListAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
     n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
@@ -436,7 +436,7 @@ type ListAnnouncementsForUserAscRow struct {
 }
 
 func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAnnouncementsForUserAsc,
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForUserAsc,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -479,7 +479,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 	return items, nil
 }
 
-const listAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
+const ListAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
     n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
     (nr.announcement_id IS NOT NULL) AS is_read,
@@ -536,7 +536,7 @@ type ListAnnouncementsForUserDescRow struct {
 // query. Every row carries the calling user's read state.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAnnouncementsForUserDesc,
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForUserDesc,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -579,7 +579,7 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 	return items, nil
 }
 
-const listPinnedAnnouncementsDue = `-- name: ListPinnedAnnouncementsDue :many
+const ListPinnedAnnouncementsDue = `-- name: ListPinnedAnnouncementsDue :many
 SELECT id, tenant_id
 FROM announcements
 WHERE pinned
@@ -596,7 +596,7 @@ type ListPinnedAnnouncementsDueRow struct {
 // Every announcement whose pinned window has passed, across all tenants, for
 // the ticker job that clears the flag and drops what the sites cached.
 func (q *Queries) ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedAnnouncementsDueRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPinnedAnnouncementsDue)
+	rows, err := q.db.QueryContext(ctx, ListPinnedAnnouncementsDue)
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +618,7 @@ func (q *Queries) ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedA
 	return items, nil
 }
 
-const markAllAnnouncementsAsRead = `-- name: MarkAllAnnouncementsAsRead :execrows
+const MarkAllAnnouncementsAsRead = `-- name: MarkAllAnnouncementsAsRead :execrows
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
@@ -641,14 +641,14 @@ type MarkAllAnnouncementsAsReadParams struct {
 // Inserts a read row for every announcement in the caller's inbox that lacks
 // one: the tenant-wide announcements plus the ones addressed to that user.
 func (q *Queries) MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markAllAnnouncementsAsRead, arg.TenantID, arg.UserID)
+	result, err := q.db.ExecContext(ctx, MarkAllAnnouncementsAsRead, arg.TenantID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const markAnnouncementAsRead = `-- name: MarkAnnouncementAsRead :one
+const MarkAnnouncementAsRead = `-- name: MarkAnnouncementAsRead :one
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
@@ -669,7 +669,7 @@ type MarkAnnouncementAsReadParams struct {
 // Upserts, so marking an already-read announcement refreshes read_at instead
 // of failing. The SELECT confines the insert to the caller's own inbox.
 func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error) {
-	row := q.db.QueryRowContext(ctx, markAnnouncementAsRead, arg.ID, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, MarkAnnouncementAsRead, arg.ID, arg.TenantID, arg.UserID)
 	var i AnnouncementRead
 	err := row.Scan(
 		&i.AnnouncementID,
@@ -680,7 +680,7 @@ func (q *Queries) MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnounceme
 	return i, err
 }
 
-const unpinAnnouncement = `-- name: UnpinAnnouncement :one
+const UnpinAnnouncement = `-- name: UnpinAnnouncement :one
 UPDATE announcements
 SET pinned = false
 WHERE id = $1
@@ -697,7 +697,7 @@ type UnpinAnnouncementParams struct {
 // still in the list it was posted to. pinned_until keeps whatever it held, as
 // the instant the operator had planned to stop at.
 func (q *Queries) UnpinAnnouncement(ctx context.Context, arg UnpinAnnouncementParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, unpinAnnouncement, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, UnpinAnnouncement, arg.ID, arg.TenantID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

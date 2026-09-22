@@ -13,7 +13,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const bakeSeriesCreatorsOntoEpisode = `-- name: BakeSeriesCreatorsOntoEpisode :exec
+const BakeSeriesCreatorsOntoEpisode = `-- name: BakeSeriesCreatorsOntoEpisode :exec
 INSERT INTO episode_creators (
         tenant_id,
         episode_id,
@@ -50,11 +50,11 @@ type BakeSeriesCreatorsOntoEpisodeParams struct {
 // selected with a star, so a column added to both tables — a share of the
 // revenue, say — is one line here.
 func (q *Queries) BakeSeriesCreatorsOntoEpisode(ctx context.Context, arg BakeSeriesCreatorsOntoEpisodeParams) error {
-	_, err := q.db.ExecContext(ctx, bakeSeriesCreatorsOntoEpisode, arg.EpisodeID, arg.TenantID, arg.SeriesID)
+	_, err := q.db.ExecContext(ctx, BakeSeriesCreatorsOntoEpisode, arg.EpisodeID, arg.TenantID, arg.SeriesID)
 	return err
 }
 
-const bulkAddEpisodeCreator = `-- name: BulkAddEpisodeCreator :many
+const BulkAddEpisodeCreator = `-- name: BulkAddEpisodeCreator :many
 INSERT INTO episode_creators (
         tenant_id,
         episode_id,
@@ -103,7 +103,7 @@ type BulkAddEpisodeCreatorParams struct {
 // the RETURNING does not name, which is how the handler tells the two apart in
 // one statement.
 func (q *Queries) BulkAddEpisodeCreator(ctx context.Context, arg BulkAddEpisodeCreatorParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, bulkAddEpisodeCreator,
+	rows, err := q.db.QueryContext(ctx, BulkAddEpisodeCreator,
 		arg.TenantID,
 		arg.CreatorID,
 		arg.RoleID,
@@ -130,7 +130,7 @@ func (q *Queries) BulkAddEpisodeCreator(ctx context.Context, arg BulkAddEpisodeC
 	return items, nil
 }
 
-const bulkRemoveEpisodeCreator = `-- name: BulkRemoveEpisodeCreator :many
+const BulkRemoveEpisodeCreator = `-- name: BulkRemoveEpisodeCreator :many
 DELETE FROM episode_creators
 WHERE tenant_id = $1
     AND episode_id = ANY($2::uuid[])
@@ -148,7 +148,7 @@ type BulkRemoveEpisodeCreatorParams struct {
 }
 
 func (q *Queries) BulkRemoveEpisodeCreator(ctx context.Context, arg BulkRemoveEpisodeCreatorParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, bulkRemoveEpisodeCreator,
+	rows, err := q.db.QueryContext(ctx, BulkRemoveEpisodeCreator,
 		arg.TenantID,
 		pq.Array(arg.EpisodeIds),
 		arg.CreatorID,
@@ -175,7 +175,7 @@ func (q *Queries) BulkRemoveEpisodeCreator(ctx context.Context, arg BulkRemoveEp
 	return items, nil
 }
 
-const bulkReplaceEpisodeCreator = `-- name: BulkReplaceEpisodeCreator :many
+const BulkReplaceEpisodeCreator = `-- name: BulkReplaceEpisodeCreator :many
 UPDATE episode_creators
 SET creator_id = $1::uuid,
     role_id = $2::uuid
@@ -200,7 +200,7 @@ type BulkReplaceEpisodeCreatorParams struct {
 // what keeps a guest credited on one episode of the range where they were: the
 // range edit moves the standing team and nothing else.
 func (q *Queries) BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplaceEpisodeCreatorParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, bulkReplaceEpisodeCreator,
+	rows, err := q.db.QueryContext(ctx, BulkReplaceEpisodeCreator,
 		arg.NewCreatorID,
 		arg.NewRoleID,
 		arg.TenantID,
@@ -229,7 +229,7 @@ func (q *Queries) BulkReplaceEpisodeCreator(ctx context.Context, arg BulkReplace
 	return items, nil
 }
 
-const bulkSetEpisodeCreatorShare = `-- name: BulkSetEpisodeCreatorShare :many
+const BulkSetEpisodeCreatorShare = `-- name: BulkSetEpisodeCreatorShare :many
 UPDATE episode_creators
 SET share_bps = $1
 WHERE tenant_id = $2
@@ -249,7 +249,7 @@ type BulkSetEpisodeCreatorShareParams struct {
 }
 
 func (q *Queries) BulkSetEpisodeCreatorShare(ctx context.Context, arg BulkSetEpisodeCreatorShareParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, bulkSetEpisodeCreatorShare,
+	rows, err := q.db.QueryContext(ctx, BulkSetEpisodeCreatorShare,
 		arg.ShareBps,
 		arg.TenantID,
 		pq.Array(arg.EpisodeIds),
@@ -277,7 +277,7 @@ func (q *Queries) BulkSetEpisodeCreatorShare(ctx context.Context, arg BulkSetEpi
 	return items, nil
 }
 
-const countEpisodeCreatorsByRoleIDForTenant = `-- name: CountEpisodeCreatorsByRoleIDForTenant :one
+const CountEpisodeCreatorsByRoleIDForTenant = `-- name: CountEpisodeCreatorsByRoleIDForTenant :one
 SELECT COUNT(*)::int4 AS credit_count
 FROM episode_creators
 WHERE tenant_id = $1
@@ -292,13 +292,13 @@ type CountEpisodeCreatorsByRoleIDForTenantParams struct {
 // Whether a role may still be deleted, counted over the episodes. The refusal
 // is the handler's, and this is one half of what it is based on.
 func (q *Queries) CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countEpisodeCreatorsByRoleIDForTenant, arg.TenantID, arg.RoleID)
+	row := q.db.QueryRowContext(ctx, CountEpisodeCreatorsByRoleIDForTenant, arg.TenantID, arg.RoleID)
 	var credit_count int32
 	err := row.Scan(&credit_count)
 	return credit_count, err
 }
 
-const createEpisodeCreator = `-- name: CreateEpisodeCreator :exec
+const CreateEpisodeCreator = `-- name: CreateEpisodeCreator :exec
 INSERT INTO episode_creators (
         tenant_id,
         episode_id,
@@ -333,7 +333,7 @@ type CreateEpisodeCreatorParams struct {
 // the column admits NULL for the credits baked from ones that predate roles,
 // and a credit written through here always names one.
 func (q *Queries) CreateEpisodeCreator(ctx context.Context, arg CreateEpisodeCreatorParams) error {
-	_, err := q.db.ExecContext(ctx, createEpisodeCreator,
+	_, err := q.db.ExecContext(ctx, CreateEpisodeCreator,
 		arg.TenantID,
 		arg.EpisodeID,
 		arg.CreatorID,
@@ -345,17 +345,17 @@ func (q *Queries) CreateEpisodeCreator(ctx context.Context, arg CreateEpisodeCre
 	return err
 }
 
-const deleteEpisodeCreatorsByEpisodeID = `-- name: DeleteEpisodeCreatorsByEpisodeID :exec
+const DeleteEpisodeCreatorsByEpisodeID = `-- name: DeleteEpisodeCreatorsByEpisodeID :exec
 DELETE FROM episode_creators
 WHERE episode_id = $1
 `
 
 func (q *Queries) DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteEpisodeCreatorsByEpisodeID, episodeID)
+	_, err := q.db.ExecContext(ctx, DeleteEpisodeCreatorsByEpisodeID, episodeID)
 	return err
 }
 
-const listEpisodeCreatorsByEpisodeIDs = `-- name: ListEpisodeCreatorsByEpisodeIDs :many
+const ListEpisodeCreatorsByEpisodeIDs = `-- name: ListEpisodeCreatorsByEpisodeIDs :many
 SELECT ec.episode_id,
     c.public_id,
     c.name,
@@ -401,7 +401,7 @@ type ListEpisodeCreatorsByEpisodeIDsRow struct {
 // existed states none, and it is still a credit. Those come last, which is
 // where a name with nothing said about it belongs.
 func (q *Queries) ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeIds []uuid.UUID) ([]ListEpisodeCreatorsByEpisodeIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodeCreatorsByEpisodeIDs, pq.Array(episodeIds))
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCreatorsByEpisodeIDs, pq.Array(episodeIds))
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (q *Queries) ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeId
 	return items, nil
 }
 
-const listEpisodesCreditedOnTheEpisodeItself = `-- name: ListEpisodesCreditedOnTheEpisodeItself :many
+const ListEpisodesCreditedOnTheEpisodeItself = `-- name: ListEpisodesCreditedOnTheEpisodeItself :many
 SELECT DISTINCT episode_id
 FROM episode_creators
 WHERE tenant_id = $1
@@ -457,7 +457,7 @@ type ListEpisodesCreditedOnTheEpisodeItselfParams struct {
 // and this is what lets the response say so instead of reporting them beside
 // the episodes that never held the credit at all.
 func (q *Queries) ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, arg ListEpisodesCreditedOnTheEpisodeItselfParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesCreditedOnTheEpisodeItself,
+	rows, err := q.db.QueryContext(ctx, ListEpisodesCreditedOnTheEpisodeItself,
 		arg.TenantID,
 		pq.Array(arg.EpisodeIds),
 		arg.CreatorID,
@@ -484,7 +484,7 @@ func (q *Queries) ListEpisodesCreditedOnTheEpisodeItself(ctx context.Context, ar
 	return items, nil
 }
 
-const listEpisodesExceedingShareAfterBulkSet = `-- name: ListEpisodesExceedingShareAfterBulkSet :many
+const ListEpisodesExceedingShareAfterBulkSet = `-- name: ListEpisodesExceedingShareAfterBulkSet :many
 SELECT ec.episode_id
 FROM episode_creators ec
 WHERE ec.tenant_id = $1
@@ -509,7 +509,7 @@ type ListEpisodesExceedingShareAfterBulkSetParams struct {
 }
 
 func (q *Queries) ListEpisodesExceedingShareAfterBulkSet(ctx context.Context, arg ListEpisodesExceedingShareAfterBulkSetParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesExceedingShareAfterBulkSet,
+	rows, err := q.db.QueryContext(ctx, ListEpisodesExceedingShareAfterBulkSet,
 		arg.TenantID,
 		pq.Array(arg.EpisodeIds),
 		arg.CreatorID,
@@ -537,7 +537,7 @@ func (q *Queries) ListEpisodesExceedingShareAfterBulkSet(ctx context.Context, ar
 	return items, nil
 }
 
-const listEpisodesHoldingBothEpisodeCredits = `-- name: ListEpisodesHoldingBothEpisodeCredits :many
+const ListEpisodesHoldingBothEpisodeCredits = `-- name: ListEpisodesHoldingBothEpisodeCredits :many
 SELECT DISTINCT replaced.episode_id
 FROM episode_creators replaced
 WHERE replaced.tenant_id = $1
@@ -568,7 +568,7 @@ type ListEpisodesHoldingBothEpisodeCreditsParams struct {
 // carry the one it would become. The unique constraint would refuse the whole
 // statement, so the handler refuses first and names them.
 func (q *Queries) ListEpisodesHoldingBothEpisodeCredits(ctx context.Context, arg ListEpisodesHoldingBothEpisodeCreditsParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listEpisodesHoldingBothEpisodeCredits,
+	rows, err := q.db.QueryContext(ctx, ListEpisodesHoldingBothEpisodeCredits,
 		arg.TenantID,
 		pq.Array(arg.EpisodeIds),
 		arg.CreatorID,
