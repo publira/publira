@@ -49,7 +49,7 @@ PUBLIRA_ROUTING_PROXY=caddy task e2e:routing
 | `task e2e:routing:test` | Probe Host, `/api`, and `/images` routes (requires a running stack). |
 | `task e2e:routing:down` | Tear down that proxy's stack. |
 
-Readiness differs by proxy. Traefik is asked through its insecure API for the five routers and two middlewares the file provider loaded, because a partially loaded configuration is otherwise a wall of failing probes. nginx and Caddy have the whole configuration before they accept a connection, so readiness for them is the first request the catch-all answers.
+Readiness differs by proxy. Traefik is asked through its insecure API for the five routers and the one middleware the file provider loaded, because a partially loaded configuration is otherwise a wall of failing probes. nginx and Caddy have the whole configuration before they accept a connection, so readiness for them is the first request the catch-all answers.
 
 ## What it verifies
 

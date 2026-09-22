@@ -174,7 +174,7 @@ The command checks the manifest and the arguments, reports every problem before 
 | `<target>` | One of `apk`, `appbundle`, `ios`, and `ipa` |
 | `--flavor` | `production` when no flavor is named; `--flavor dev` builds the development app under the same manifest |
 | `tenant.host` | Passed as `--dart-define=PUBLIRA_TENANT_HOST`, so the app asks the API about the tenant whose links it claims. Giving the define as well is refused |
-| `PUBLIRA_BASE_URL` | Passed as the define of the same name. A production build requires it, as an `https://` URL; a development build without it keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
+| `PUBLIRA_BASE_URL` | Passed as the define of the same name. A production build requires it, as an `https://` origin with no path, query, or fragment; a development build without it keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
 | Any other argument | Passed on to `flutter build` after the command's own, such as the [Firebase configuration](#firebase-configuration) defines, `--build-name`, and `--build-number` |
 
 The build fails when it leaves a change behind in a file Git tracks or does not ignore: a tenant's identity lives only in the generated files, so every tenant builds from the same unmodified checkout.

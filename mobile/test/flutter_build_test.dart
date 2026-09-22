@@ -112,10 +112,14 @@ void main() {
       'http://reader.example.com',
       'reader.example.com',
       'https://',
+      'https://reader.example.com/api',
+      'https://user@reader.example.com',
+      'https://reader.example.com?tenant=1',
+      'https://reader.example.com#top',
     ]) {
       test('refuses the address $url', () {
         expect(_problemsOf(['apk'], {..._addresses, 'PUBLIRA_BASE_URL': url}), [
-          'PUBLIRA_BASE_URL must be an https:// URL for a production '
+          'PUBLIRA_BASE_URL must be an https:// origin for a production '
               'build, not $url',
         ]);
       });

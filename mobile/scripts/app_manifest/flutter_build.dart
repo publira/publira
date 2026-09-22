@@ -103,14 +103,23 @@ List<String> flutterBuildArguments(
   } else {
     // A release Android build refuses cleartext traffic, so a store build
     // reaching its API over http:// would fail only on the reader's device.
+    // The app puts `/api` and `/images` on the origin alone, so anything
+    // after it would be dropped without a word.
     final uri = Uri.tryParse(baseUrl);
     final schemes = production ? const ['https'] : const ['http', 'https'];
-    if (uri == null || uri.host.isEmpty || !schemes.contains(uri.scheme)) {
+    if (uri == null ||
+        uri.host.isEmpty ||
+        !schemes.contains(uri.scheme) ||
+        uri.userInfo.isNotEmpty ||
+        (uri.path.isNotEmpty && uri.path != '/') ||
+        uri.hasQuery ||
+        uri.hasFragment) {
       problems.add(
         production
-            ? '$baseUrlDefine must be an https:// URL for a production build, '
-                  'not $baseUrl'
-            : '$baseUrlDefine must be an http:// or https:// URL, not $baseUrl',
+            ? '$baseUrlDefine must be an https:// origin for a production '
+                  'build, not $baseUrl'
+            : '$baseUrlDefine must be an http:// or https:// origin, '
+                  'not $baseUrl',
       );
     }
   }
