@@ -2073,6 +2073,10 @@ type Querier interface {
 	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 	// written together because the console offers them as one card.
 	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives. Both platforms
+	// are written together because the console offers them as one card, and an
+	// unconfigured platform is written as NULL and an empty list.
+	UpsertTenantMobileAppAssociation(ctx context.Context, arg UpsertTenantMobileAppAssociationParams) (TenantConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. The default and
 	// the store listings are written together because the console offers them as

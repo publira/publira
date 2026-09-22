@@ -167,6 +167,55 @@ message UpdateTenantLegalPagesResponse {
   TenantLegalPages pages = 1;
 }
 
+// The Android app the tenant publishes, as assetlinks.json names it.
+message TenantAndroidAppAssociation {
+  // The production application ID, the android.applicationId of the app
+  // manifest.
+  string application_id = 1;
+  // The SHA-256 fingerprint of every certificate the published app is signed
+  // with, as colon-separated hex (AA:BB:...). At least one is required, and a
+  // read answers them in capital letters.
+  repeated string sha256_cert_fingerprints = 2;
+}
+
+// The iOS app the tenant publishes, which apple-app-site-association names as
+// <team_id>.<bundle_identifier>.
+message TenantIosAppAssociation {
+  // The ten-character Apple Developer Team ID. A read answers it in capital
+  // letters.
+  string team_id = 1;
+  // The production bundle identifier, the ios.bundleIdentifier of the app
+  // manifest.
+  string bundle_identifier = 2;
+}
+
+// The apps the tenant's links open in. A platform is absent where the tenant
+// has no app on it.
+message TenantMobileAppAssociation {
+  TenantAndroidAppAssociation android = 1;
+  TenantIosAppAssociation ios = 2;
+}
+
+message GetTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantMobileAppAssociationResponse {
+  TenantMobileAppAssociation association = 1;
+}
+
+message UpdateTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both platforms are written, and an absent one is cleared. A present one
+  // needs every field, in the formats the app manifest accepts; anything else
+  // is invalid_argument.
+  TenantMobileAppAssociation association = 2;
+}
+
+message UpdateTenantMobileAppAssociationResponse {
+  TenantMobileAppAssociation association = 1;
+}
+
 // A tenant's own retention periods, in whole days. An absent field follows the
 // platform default; a present one is from 1 to 36500, and may be longer or
 // shorter than that default.
@@ -257,6 +306,8 @@ service TenantSettingsService {
   rpc UpdateTenantPurchaseSettings(UpdateTenantPurchaseSettingsRequest) returns (UpdateTenantPurchaseSettingsResponse) {}
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   rpc UpdateTenantLegalPages(UpdateTenantLegalPagesRequest) returns (UpdateTenantLegalPagesResponse) {}
+  rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
+  rpc UpdateTenantMobileAppAssociation(UpdateTenantMobileAppAssociationRequest) returns (UpdateTenantMobileAppAssociationResponse) {}
   rpc GetTenantRetentionSettings(GetTenantRetentionSettingsRequest) returns (GetTenantRetentionSettingsResponse) {}
   rpc UpdateTenantRetentionSettings(UpdateTenantRetentionSettingsRequest) returns (UpdateTenantRetentionSettingsResponse) {}
   rpc GetTenantCommunityLimitSettings(GetTenantCommunityLimitSettingsRequest) returns (GetTenantCommunityLimitSettingsResponse) {}

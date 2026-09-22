@@ -69,6 +69,12 @@ const (
 	// TenantSettingsServiceUpdateTenantLegalPagesProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantLegalPages RPC.
 	TenantSettingsServiceUpdateTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantLegalPages"
+	// TenantSettingsServiceGetTenantMobileAppAssociationProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantMobileAppAssociation RPC.
+	TenantSettingsServiceGetTenantMobileAppAssociationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantMobileAppAssociation"
+	// TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantMobileAppAssociation RPC.
+	TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantMobileAppAssociation"
 	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the fully-qualified name of the
 	// TenantSettingsService's GetTenantRetentionSettings RPC.
 	TenantSettingsServiceGetTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantRetentionSettings"
@@ -97,6 +103,8 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
 	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -186,6 +194,18 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantMobileAppAssociation: connect.NewClient[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantMobileAppAssociationProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantMobileAppAssociation")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantMobileAppAssociation: connect.NewClient[v1.UpdateTenantMobileAppAssociationRequest, v1.UpdateTenantMobileAppAssociationResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantRetentionSettings: connect.NewClient[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse](
 			httpClient,
 			baseURL+TenantSettingsServiceGetTenantRetentionSettingsProcedure,
@@ -227,6 +247,8 @@ type tenantSettingsServiceClient struct {
 	updateTenantPurchaseSettings       *connect.Client[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse]
 	getTenantLegalPages                *connect.Client[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse]
 	updateTenantLegalPages             *connect.Client[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse]
+	getTenantMobileAppAssociation      *connect.Client[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse]
+	updateTenantMobileAppAssociation   *connect.Client[v1.UpdateTenantMobileAppAssociationRequest, v1.UpdateTenantMobileAppAssociationResponse]
 	getTenantRetentionSettings         *connect.Client[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse]
 	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
 	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
@@ -296,6 +318,18 @@ func (c *tenantSettingsServiceClient) UpdateTenantLegalPages(ctx context.Context
 	return c.updateTenantLegalPages.CallUnary(ctx, req)
 }
 
+// GetTenantMobileAppAssociation calls
+// publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation.
+func (c *tenantSettingsServiceClient) GetTenantMobileAppAssociation(ctx context.Context, req *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error) {
+	return c.getTenantMobileAppAssociation.CallUnary(ctx, req)
+}
+
+// UpdateTenantMobileAppAssociation calls
+// publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation.
+func (c *tenantSettingsServiceClient) UpdateTenantMobileAppAssociation(ctx context.Context, req *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error) {
+	return c.updateTenantMobileAppAssociation.CallUnary(ctx, req)
+}
+
 // GetTenantRetentionSettings calls
 // publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings.
 func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
@@ -335,6 +369,8 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
 	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
 	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
 	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
 	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
 	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
@@ -420,6 +456,18 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantMobileAppAssociationHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantMobileAppAssociationProcedure,
+		svc.GetTenantMobileAppAssociation,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantMobileAppAssociation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantMobileAppAssociationHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure,
+		svc.UpdateTenantMobileAppAssociation,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantSettingsServiceGetTenantRetentionSettingsHandler := connect.NewUnaryHandler(
 		TenantSettingsServiceGetTenantRetentionSettingsProcedure,
 		svc.GetTenantRetentionSettings,
@@ -470,6 +518,10 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 			tenantSettingsServiceGetTenantLegalPagesHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantLegalPagesProcedure:
 			tenantSettingsServiceUpdateTenantLegalPagesHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantMobileAppAssociationProcedure:
+			tenantSettingsServiceGetTenantMobileAppAssociationHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure:
+			tenantSettingsServiceUpdateTenantMobileAppAssociationHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceGetTenantRetentionSettingsProcedure:
 			tenantSettingsServiceGetTenantRetentionSettingsHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantRetentionSettingsProcedure:
@@ -533,6 +585,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantLegalPages(context.Con
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation is not implemented"))
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
