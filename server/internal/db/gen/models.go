@@ -807,6 +807,10 @@ type TenantConfig struct {
 	GooglePlayUrl                  sql.NullString `json:"google_play_url"`
 	TermsPageID                    uuid.NullUUID  `json:"terms_page_id"`
 	PrivacyPageID                  uuid.NullUUID  `json:"privacy_page_id"`
+	AndroidApplicationID           sql.NullString `json:"android_application_id"`
+	AndroidSha256CertFingerprints  []string       `json:"android_sha256_cert_fingerprints"`
+	IosTeamID                      sql.NullString `json:"ios_team_id"`
+	IosBundleIdentifier            sql.NullString `json:"ios_bundle_identifier"`
 }
 
 type TenantFcmConfig struct {

@@ -243,3 +243,29 @@ SET terms_page_id = EXCLUDED.terms_page_id,
     privacy_page_id = EXCLUDED.privacy_page_id,
     updated_at = NOW()
 RETURNING *;
+
+-- name: UpsertTenantMobileAppAssociation :one
+-- An upsert for the reason UpsertTenantCommentSettings gives. Both platforms
+-- are written together because the console offers them as one card, and an
+-- unconfigured platform is written as NULL and an empty list.
+INSERT INTO tenant_config (
+        tenant_id,
+        android_application_id,
+        android_sha256_cert_fingerprints,
+        ios_team_id,
+        ios_bundle_identifier
+    )
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.narg('android_application_id'),
+        sqlc.arg('android_sha256_cert_fingerprints')::text [],
+        sqlc.narg('ios_team_id'),
+        sqlc.narg('ios_bundle_identifier')
+    )
+ON CONFLICT (tenant_id) DO UPDATE
+SET android_application_id = EXCLUDED.android_application_id,
+    android_sha256_cert_fingerprints = EXCLUDED.android_sha256_cert_fingerprints,
+    ios_team_id = EXCLUDED.ios_team_id,
+    ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
+    updated_at = NOW()
+RETURNING *;
