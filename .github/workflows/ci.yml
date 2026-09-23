@@ -127,6 +127,7 @@ jobs:
               - 'oxlint.config.ts'
               - 'oxfmt.config.ts'
               - '.github/workflows/ci.yml'
+              - '.gitattributes'
               - 'scripts/check-design-tokens.ts'
               - 'scripts/ci-plan-jobs.sh'
             # Narrower than test_go on purpose: golangci-lint only reads Go
