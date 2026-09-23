@@ -2144,6 +2144,88 @@
           "google_play_url_invalid": "请以 https:// URL 输入 Google Play 地址，或将其留空。"
         }
       },
+      "store_payment": {
+        "title": "应用内购买",
+        "description": "通过 App Store 和 Google Play 自己的付款界面在应用中销售章节。密钥只能写入：再次打开时只显示状态和掩码，不会显示值本身。",
+        "section_error": "无法显示应用内购买设置",
+        "route": "应用的销售方式",
+        "route_description": "能否在应用中购买由“销售位置”决定。这里只决定应用提供哪种购买方式。",
+        "routes": {
+          "external_checkout": "网页结账",
+          "external_checkout_description": "应用在浏览器中打开网页结账页面，读者付款后返回应用。由 Stripe 向读者收费。",
+          "store": "应用内购买",
+          "store_description": "应用使用商店的付款界面销售，不会打开网页结账页面。由商店向读者收费并扣除其佣金。",
+          "store_unavailable": "下方的 App Store 或 Google Play 可用后即可选择。"
+        },
+        "status": {
+          "ready": "可用",
+          "ready_description": "应用中的购买将通过此商店验证。",
+          "incomplete": "未完成",
+          "incomplete_description": "已启用，但缺少密钥或销售所在的应用，因此无法验证购买。",
+          "disabled": "已停用",
+          "disabled_description": "密钥已保存，但此商店已停用。",
+          "unset": "未设置",
+          "unset_description": "此商店尚未登记任何内容。"
+        },
+        "app_store": {
+          "title": "App Store",
+          "enabled": "使用 App Store",
+          "issuer_id": "Issuer ID",
+          "issuer_id_description": "在 App Store Connect 的“用户和访问”→“集成”中，与团队密钥列表一起显示。",
+          "key_id": "密钥 ID",
+          "private_key": "私钥（.p8）",
+          "private_key_description": "选择 App Store Connect 签发的 .p8 文件，或粘贴其内容。",
+          "bundle_identifier": "Bundle ID",
+          "bundle_identifier_description": "在“应用链接”中设置的 iOS 应用。请在那里修改。"
+        },
+        "google_play": {
+          "title": "Google Play",
+          "enabled": "使用 Google Play",
+          "service_account_key": "服务账号密钥（JSON）",
+          "service_account_key_description": "选择服务账号的 JSON 密钥文件，或粘贴其内容。",
+          "service_account_email": "服务账号",
+          "service_account_email_description": "请在 Play Console 的“用户和权限”中邀请此账号访问你的应用。",
+          "package_name": "软件包名称",
+          "package_name_description": "在“应用链接”中设置的 Android 应用 ID。请在那里修改。"
+        },
+        "app_identity_unset": "未设置",
+        "key_file": "密钥文件",
+        "key_text": "或粘贴内容",
+        "key_change": "替换",
+        "key_change_cancel": "取消更改",
+        "key_clear": "删除",
+        "key_clear_cancel": "保留密钥",
+        "key_cleared": "保存后将删除已保存的密钥。",
+        "submit": "保存应用内购买设置",
+        "saved": "已保存应用内购买设置。",
+        "load_failed": "无法加载应用内购买设置。请稍后重试。",
+        "save_failed": "无法保存应用内购买设置。请稍后重试。",
+        "validation": {
+          "route_invalid": "请选择应用的销售方式。",
+          "route_requires_ready_store": "只有当 App Store 或 Google Play 可用（已启用、有密钥，并已在“应用链接”中设置应用）后，应用才能通过商店销售。",
+          "issuer_id_required": "请输入 Issuer ID。",
+          "issuer_id_invalid": "请输入 App Store Connect 显示的 Issuer ID（UUID）。",
+          "key_id_required": "请输入密钥 ID。",
+          "key_id_invalid": "请输入 App Store Connect 显示的密钥 ID（10 位大写字母和数字）。",
+          "private_key_required": "请选择或粘贴私钥。",
+          "private_key_invalid": "该私钥不是 App Store Connect 签发的 .p8 文件。",
+          "service_account_key_required": "请选择或粘贴服务账号密钥。",
+          "service_account_key_invalid": "这不是服务账号的 JSON 密钥文件。",
+          "key_file_too_large": "该文件过大，不可能是密钥文件。"
+        }
+      },
+      "store_products": {
+        "title": "商店商品",
+        "description": "请在 App Store Connect 和 Play Console 中按各自的价格创建这些 ID 的消耗型商品。章节将作为其价格对应的商品购买，因此应用中销售的付费章节的每个价格都需要一个商品。",
+        "section_error": "无法显示商店商品",
+        "load_failed": "无法加载商店商品。请稍后重试。",
+        "product_id": "商品 ID",
+        "copy_product_id": "复制商品 ID",
+        "price": "价格",
+        "episodes": "章节数",
+        "empty_title": "暂时不需要商品",
+        "empty": "应用中还没有销售的付费章节。"
+      },
       "mobile_push": {
         "title": "Firebase Cloud Messaging",
         "description": "推送通知通过构建该租户移动应用所用的 Firebase 项目送达，因此凭据必须是同一项目的服务账号密钥。密钥文件只能写入，保存后不会再次显示。",
@@ -2318,7 +2400,7 @@
       "email_description": "管理该租户发送邮件的方式。",
       "email_error": "无法显示邮件设置",
       "payment_title": "集成 — 支付",
-      "payment_description": "管理该租户的 Stripe 支付设置。",
+      "payment_description": "管理此租户向读者收费的方式：网页结账使用 Stripe，应用内购买使用 App Store 和 Google Play。",
       "payment_error": "无法显示支付设置",
       "mobile_push_title": "集成 — 移动推送",
       "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",

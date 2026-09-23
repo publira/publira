@@ -6,12 +6,14 @@ const {
   mockUpdateTag,
   mockUpdateTenantPaymentSettings,
   mockUpdateTenantPurchaseSettings,
+  mockUpdateTenantStorePaymentSettings,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
   mockUpdateTenantPurchaseSettings: vi.fn(),
+  mockUpdateTenantStorePaymentSettings: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -45,6 +47,12 @@ vi.mock("#lib/tenant-purchase-settings", () => ({
   tenantPurchaseSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:purchase-settings`,
   updateTenantPurchaseSettings: mockUpdateTenantPurchaseSettings,
+}));
+
+vi.mock("#lib/store-payment-settings", () => ({
+  tenantStorePaymentSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:store-payment-settings`,
+  updateTenantStorePaymentSettings: mockUpdateTenantStorePaymentSettings,
 }));
 
 const textFormData = (values: Record<string, string>): FormData => {
@@ -331,6 +339,244 @@ describe("updateTenantPurchaseSettingsAction", () => {
     expect(result).toEqual({
       message:
         "Could not save where episodes are sold. Please try again later.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const APP_STORE_KEY = `-----BEGIN PRIVATE KEY-----
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg
+-----END PRIVATE KEY-----`;
+
+const storedStoreSettings = {
+  appPurchaseRoute: "store",
+  appStore: {
+    bundleIdentifier: "com.example.reader",
+    enabled: true,
+    issuerId: "57246542-96fe-1a63-e053-0824d011072a",
+    keyId: "2X9R4HXF34",
+    privateKeyConfigured: true,
+    privateKeyHint: "••••••••wIBAQQg",
+    ready: true,
+  },
+  googlePlay: {
+    enabled: false,
+    packageName: "com.example.reader",
+    ready: false,
+    serviceAccountEmail: "",
+    serviceAccountKeyConfigured: false,
+    serviceAccountKeyHint: "",
+  },
+} as const;
+
+const storeFormData = (
+  values: Record<string, string>,
+  files: Record<string, File> = {}
+): FormData => {
+  const formData = textFormData({
+    app_purchase_route: "external_checkout",
+    private_key_configured: "0",
+    private_key_mode: "replace",
+    service_account_key_configured: "0",
+    service_account_key_mode: "replace",
+    tenant_id: "TENANT001",
+    ...values,
+  });
+  for (const [name, file] of Object.entries(files)) {
+    formData.set(name, file);
+  }
+  return formData;
+};
+
+describe("updateTenantStorePaymentSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the key read from the chosen file, then clears the cache tag", async () => {
+    mockUpdateTenantStorePaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedStoreSettings,
+    });
+
+    const { updateTenantStorePaymentSettingsAction } =
+      await import("./actions");
+    const result = await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData(
+        {
+          app_purchase_route: "store",
+          app_store_enabled: "on",
+          issuer_id: " 57246542-96fe-1a63-e053-0824d011072a ",
+          key_id: "2X9R4HXF34",
+          private_key: "ignored when a file is chosen",
+        },
+        { private_key_file: new File([`${APP_STORE_KEY}\n`], "AuthKey.p8") }
+      )
+    );
+
+    expect(result).toEqual({
+      message: "The in-app purchase settings were saved.",
+      ok: true,
+      settings: storedStoreSettings,
+    });
+    expect(mockUpdateTenantStorePaymentSettings).toHaveBeenCalledWith(
+      {
+        appPurchaseRoute: "store",
+        appStore: {
+          enabled: true,
+          issuerId: "57246542-96fe-1a63-e053-0824d011072a",
+          keyId: "2X9R4HXF34",
+          privateKey: { mode: 2, value: APP_STORE_KEY },
+        },
+        googlePlay: {
+          enabled: false,
+          serviceAccountKey: { mode: 1, value: "" },
+        },
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:store-payment-settings"
+    );
+  });
+
+  it("sends pasted text, keeps a stored key, and clears a removed one", async () => {
+    mockUpdateTenantStorePaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedStoreSettings,
+    });
+
+    const { updateTenantStorePaymentSettingsAction } =
+      await import("./actions");
+    await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData({
+        google_play_enabled: "on",
+        private_key_configured: "1",
+        private_key_mode: "clear",
+        service_account_key: '{"type":"service_account"}',
+      })
+    );
+
+    expect(mockUpdateTenantStorePaymentSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appStore: expect.objectContaining({
+          enabled: false,
+          privateKey: { mode: 3, value: "" },
+        }),
+        googlePlay: {
+          enabled: true,
+          serviceAccountKey: { mode: 2, value: '{"type":"service_account"}' },
+        },
+      }),
+      "en"
+    );
+
+    mockUpdateTenantStorePaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedStoreSettings,
+    });
+    await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData({
+        app_store_enabled: "on",
+        issuer_id: "57246542-96fe-1a63-e053-0824d011072a",
+        key_id: "2X9R4HXF34",
+        private_key_configured: "1",
+        private_key_mode: "keep",
+      })
+    );
+
+    expect(mockUpdateTenantStorePaymentSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        appStore: expect.objectContaining({
+          privateKey: { mode: 1, value: "" },
+        }),
+      }),
+      "en"
+    );
+  });
+
+  it("asks for every App Store credential and a Google Play key before saving an enabled store", async () => {
+    const { updateTenantStorePaymentSettingsAction } =
+      await import("./actions");
+    const result = await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData({
+        app_store_enabled: "on",
+        google_play_enabled: "on",
+        private_key_configured: "1",
+        private_key_mode: "clear",
+      })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        issuerId: "Enter the issuer ID.",
+        keyId: "Enter the key ID.",
+        privateKey: "Choose or paste the private key.",
+        serviceAccountKey: "Choose or paste the service account key.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantStorePaymentSettings).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file too large to be a key", async () => {
+    const { updateTenantStorePaymentSettingsAction } =
+      await import("./actions");
+    const result = await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData(
+        {},
+        {
+          service_account_key_file: new File(
+            ["x".repeat(64 * 1024 + 1)],
+            "key.json"
+          ),
+        }
+      )
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        serviceAccountKey: "This file is too large to be a key file.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantStorePaymentSettings).not.toHaveBeenCalled();
+  });
+
+  it("passes on the fields the API refused and leaves the cache tag alone", async () => {
+    mockUpdateTenantStorePaymentSettings.mockResolvedValueOnce({
+      fieldErrors: {
+        appPurchaseRoute:
+          "The app can sell through the store only once the App Store or Google Play is ready: turned on, with its key, and with its app named under App links.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+
+    const { updateTenantStorePaymentSettingsAction } =
+      await import("./actions");
+    const result = await updateTenantStorePaymentSettingsAction(
+      null,
+      storeFormData({ app_purchase_route: "store" })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        appPurchaseRoute:
+          "The app can sell through the store only once the App Store or Google Play is ready: turned on, with its key, and with its app named under App links.",
+      },
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

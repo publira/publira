@@ -18,7 +18,13 @@ export type {
   TenantMember,
 } from "../gen/publira/admin/v1/member_pb.js";
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
-export type { TenantPaymentSettings } from "../gen/publira/admin/v1/payment_pb.js";
+export type {
+  TenantAppStorePaymentSettings,
+  TenantGooglePlayPaymentSettings,
+  TenantPaymentSettings,
+  TenantStorePaymentSettings,
+  TenantStoreProduct,
+} from "../gen/publira/admin/v1/payment_pb.js";
 export type {
   RoyaltyConfig,
   RoyaltyStatement,

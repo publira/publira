@@ -16,6 +16,11 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import {
+  Identifier,
+  IdentifierCopy,
+  IdentifierValue,
+} from "#components/identifier";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 
@@ -26,7 +31,6 @@ import {
 import type { ReaderDetail } from "../../reader-types";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 import { DeleteReaderButton } from "./delete-reader-button";
-import { Identifier, IdentifierCopy, IdentifierValue } from "./identifier";
 import { SuspendReaderButton } from "./suspend-reader-button";
 import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 

@@ -2144,6 +2144,88 @@
           "google_play_url_invalid": "Google Play の掲載先は https:// から始まる URL で入力するか、空欄にしてください。"
         }
       },
+      "store_payment": {
+        "title": "アプリ内課金",
+        "description": "App Store と Google Play の決済画面で、アプリからエピソードを販売します。キーは書き込み専用です。再度開いたときは状態とマスクだけが表示され、値そのものは表示されません。",
+        "section_error": "アプリ内課金の設定を表示できませんでした",
+        "route": "アプリでの販売方法",
+        "route_description": "そもそもアプリで購入できるかは「販売先」で設定します。ここではアプリがどの購入手段を提示するかだけを決めます。",
+        "routes": {
+          "external_checkout": "Web の決済",
+          "external_checkout_description": "アプリはブラウザで Web の決済画面を開き、支払いを終えた読者はアプリに戻ります。請求は Stripe が行います。",
+          "store": "アプリ内課金",
+          "store_description": "アプリはストアの決済画面で販売し、Web の決済画面は開きません。請求はストアが行い、手数料もストアが差し引きます。",
+          "store_unavailable": "下の App Store か Google Play のいずれかが利用可能になると選べます。"
+        },
+        "status": {
+          "ready": "利用可能",
+          "ready_description": "アプリでの購入をこのストアで検証します。",
+          "incomplete": "未完了",
+          "incomplete_description": "有効ですが、キーか販売するアプリが未設定のため、購入を検証できません。",
+          "disabled": "無効",
+          "disabled_description": "キーは保存されていますが、このストアは無効です。",
+          "unset": "未設定",
+          "unset_description": "このストアには何も登録されていません。"
+        },
+        "app_store": {
+          "title": "App Store",
+          "enabled": "App Store を使う",
+          "issuer_id": "Issuer ID",
+          "issuer_id_description": "App Store Connect の「ユーザとアクセス」→「統合」で、チームキーの一覧とともに表示されます。",
+          "key_id": "キー ID",
+          "private_key": "秘密鍵（.p8）",
+          "private_key_description": "App Store Connect が発行した .p8 ファイルを選ぶか、その内容を貼り付けてください。",
+          "bundle_identifier": "Bundle ID",
+          "bundle_identifier_description": "「アプリリンク」で設定した iOS アプリです。変更はそちらで行います。"
+        },
+        "google_play": {
+          "title": "Google Play",
+          "enabled": "Google Play を使う",
+          "service_account_key": "サービスアカウントキー（JSON）",
+          "service_account_key_description": "サービスアカウントの JSON キーファイルを選ぶか、その内容を貼り付けてください。",
+          "service_account_email": "サービスアカウント",
+          "service_account_email_description": "Play Console の「ユーザーと権限」で、このアカウントをアプリに招待してください。",
+          "package_name": "パッケージ名",
+          "package_name_description": "「アプリリンク」で設定した Android のアプリケーション ID です。変更はそちらで行います。"
+        },
+        "app_identity_unset": "未設定",
+        "key_file": "キーファイル",
+        "key_text": "または内容を貼り付け",
+        "key_change": "差し替える",
+        "key_change_cancel": "変更を取り消す",
+        "key_clear": "削除する",
+        "key_clear_cancel": "キーを残す",
+        "key_cleared": "保存すると、保存済みのキーは削除されます。",
+        "submit": "アプリ内課金の設定を保存",
+        "saved": "アプリ内課金の設定を保存しました。",
+        "load_failed": "アプリ内課金の設定を読み込めませんでした。時間をおいて再度お試しください。",
+        "save_failed": "アプリ内課金の設定を保存できませんでした。時間をおいて再度お試しください。",
+        "validation": {
+          "route_invalid": "アプリでの販売方法を選んでください。",
+          "route_requires_ready_store": "ストアで販売できるのは、App Store か Google Play が利用可能（有効で、キーがあり、「アプリリンク」でアプリが設定済み）になってからです。",
+          "issuer_id_required": "Issuer ID を入力してください。",
+          "issuer_id_invalid": "Issuer ID は App Store Connect に表示される UUID を入力してください。",
+          "key_id_required": "キー ID を入力してください。",
+          "key_id_invalid": "キー ID は App Store Connect に表示される、英大文字と数字の 10 文字を入力してください。",
+          "private_key_required": "秘密鍵を選ぶか貼り付けてください。",
+          "private_key_invalid": "秘密鍵が App Store Connect の発行する .p8 ファイルではありません。",
+          "service_account_key_required": "サービスアカウントキーを選ぶか貼り付けてください。",
+          "service_account_key_invalid": "サービスアカウントの JSON キーファイルではありません。",
+          "key_file_too_large": "キーファイルとしては大きすぎるファイルです。"
+        }
+      },
+      "store_products": {
+        "title": "ストアの商品",
+        "description": "App Store Connect と Play Console に、これらの ID の消耗型商品をそれぞれの価格で作成してください。エピソードは価格に対応する商品として購入されるため、アプリで販売する有料エピソードの価格ごとに 1 つ必要です。",
+        "section_error": "ストアの商品を表示できませんでした",
+        "load_failed": "ストアの商品を読み込めませんでした。時間をおいて再度お試しください。",
+        "product_id": "商品 ID",
+        "copy_product_id": "商品 ID をコピー",
+        "price": "価格",
+        "episodes": "エピソード数",
+        "empty_title": "必要な商品はまだありません",
+        "empty": "アプリで販売する有料エピソードはまだありません。"
+      },
       "mobile_push": {
         "title": "Firebase Cloud Messaging",
         "description": "プッシュ通知は、このテナントのモバイルアプリがビルドされた Firebase プロジェクトを通じて届きます。認証情報には同じプロジェクトのサービスアカウントキーを使ってください。キーファイルは書き込み専用で、保存後は表示しません。",
@@ -2318,7 +2400,7 @@
       "email_description": "テナントごとのメール送信設定を管理します。",
       "email_error": "メール設定を表示できませんでした",
       "payment_title": "外部連携 - 決済",
-      "payment_description": "テナントごとの Stripe 決済設定を管理します。",
+      "payment_description": "このテナントが読者に請求する方法を管理します。Web の決済は Stripe、アプリ内課金は App Store と Google Play です。",
       "payment_error": "決済設定を表示できませんでした",
       "mobile_push_title": "外部連携 - モバイルプッシュ",
       "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",

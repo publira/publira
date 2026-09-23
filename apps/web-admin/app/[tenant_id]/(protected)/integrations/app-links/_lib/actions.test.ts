@@ -28,6 +28,11 @@ vi.mock("#lib/tenant-mobile-app-association", () => ({
   updateTenantMobileAppAssociation: mockUpdateAssociation,
 }));
 
+vi.mock("#lib/store-payment-settings", () => ({
+  tenantStorePaymentSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:store-payment-settings`,
+}));
+
 const FINGERPRINT_A = Array.from({ length: 32 }, () => "AA").join(":");
 const FINGERPRINT_B = Array.from({ length: 32 }, () => "0b").join(":");
 
@@ -86,6 +91,9 @@ describe("updateAppLinksAction", () => {
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
       "tenant:TENANT001:mobile-app-association"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:store-payment-settings"
     );
   });
 

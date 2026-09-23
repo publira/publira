@@ -2144,6 +2144,88 @@
           "google_play_url_invalid": "Enter the Google Play address as an https:// URL, or leave it empty."
         }
       },
+      "store_payment": {
+        "title": "In-app purchase",
+        "description": "Sell episodes in your app with the App Store's and Google Play's own payment sheet. A key is write-only: coming back, you see its state and a mask, never the value.",
+        "section_error": "Could not display the in-app purchase settings",
+        "route": "How the app sells episodes",
+        "route_description": "Whether an episode may be bought in the app at all is set under Where episodes are sold. This decides only which purchase the app offers.",
+        "routes": {
+          "external_checkout": "Web checkout",
+          "external_checkout_description": "The app opens the web checkout in the browser and the reader comes back once paid. Stripe charges the reader.",
+          "store": "In-app purchase",
+          "store_description": "The app sells with the store's payment sheet and never opens the web checkout. The store charges the reader and keeps its commission.",
+          "store_unavailable": "Available once the App Store or Google Play below is ready."
+        },
+        "status": {
+          "ready": "Ready",
+          "ready_description": "Purchases in the app are verified with this store.",
+          "incomplete": "Incomplete",
+          "incomplete_description": "On, but the key or the app it sells in is missing, so no purchase can be verified.",
+          "disabled": "Disabled",
+          "disabled_description": "The key is stored, but this store is off.",
+          "unset": "Not set",
+          "unset_description": "Nothing is registered for this store."
+        },
+        "app_store": {
+          "title": "App Store",
+          "enabled": "Use the App Store",
+          "issuer_id": "Issuer ID",
+          "issuer_id_description": "Shown with the team keys under Users and Access, then Integrations, in App Store Connect.",
+          "key_id": "Key ID",
+          "private_key": "Private key (.p8)",
+          "private_key_description": "Choose the .p8 file App Store Connect issued, or paste its contents.",
+          "bundle_identifier": "Bundle ID",
+          "bundle_identifier_description": "The iOS app named under App links. Change it there."
+        },
+        "google_play": {
+          "title": "Google Play",
+          "enabled": "Use Google Play",
+          "service_account_key": "Service account key (JSON)",
+          "service_account_key_description": "Choose the JSON key file of a service account, or paste its contents.",
+          "service_account_email": "Service account",
+          "service_account_email_description": "Invite this account to your app under Users and permissions in the Play Console.",
+          "package_name": "Package name",
+          "package_name_description": "The Android application ID named under App links. Change it there."
+        },
+        "app_identity_unset": "Not set",
+        "key_file": "Key file",
+        "key_text": "Or paste the contents",
+        "key_change": "Replace",
+        "key_change_cancel": "Cancel the change",
+        "key_clear": "Remove",
+        "key_clear_cancel": "Keep the key",
+        "key_cleared": "The stored key is removed when you save.",
+        "submit": "Save the in-app purchase settings",
+        "saved": "The in-app purchase settings were saved.",
+        "load_failed": "Could not load the in-app purchase settings. Please try again later.",
+        "save_failed": "Could not save the in-app purchase settings. Please try again later.",
+        "validation": {
+          "route_invalid": "Choose how the app sells episodes.",
+          "route_requires_ready_store": "The app can sell through the store only once the App Store or Google Play is ready: turned on, with its key, and with its app named under App links.",
+          "issuer_id_required": "Enter the issuer ID.",
+          "issuer_id_invalid": "Enter the issuer ID as App Store Connect shows it, a UUID.",
+          "key_id_required": "Enter the key ID.",
+          "key_id_invalid": "Enter the key ID as App Store Connect shows it, ten capital letters and digits.",
+          "private_key_required": "Choose or paste the private key.",
+          "private_key_invalid": "The private key is not the .p8 file App Store Connect issues.",
+          "service_account_key_required": "Choose or paste the service account key.",
+          "service_account_key_invalid": "The key is not the JSON key file of a service account.",
+          "key_file_too_large": "This file is too large to be a key file."
+        }
+      },
+      "store_products": {
+        "title": "Store products",
+        "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, so each price your paid episodes sell at in the app needs one.",
+        "section_error": "Could not display the store products",
+        "load_failed": "Could not load the store products. Please try again later.",
+        "product_id": "Product ID",
+        "copy_product_id": "Copy the product ID",
+        "price": "Price",
+        "episodes": "Episodes",
+        "empty_title": "No products needed yet",
+        "empty": "No paid episode is sold in the app yet."
+      },
       "mobile_push": {
         "title": "Firebase Cloud Messaging",
         "description": "Push notifications reach this tenant's mobile app through the Firebase project the app is built with, so the credentials must be a service account key from that same project. The key file is write-only: once saved, it is never shown again.",
@@ -2318,7 +2400,7 @@
       "email_description": "Manage how this tenant sends email.",
       "email_error": "Could not display the email settings",
       "payment_title": "Integrations — Payments",
-      "payment_description": "Manage this tenant's Stripe payment settings.",
+      "payment_description": "Manage how this tenant charges readers: Stripe for the web checkout, and the App Store and Google Play for in-app purchase.",
       "payment_error": "Could not display the payment settings",
       "mobile_push_title": "Integrations — Mobile push",
       "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
