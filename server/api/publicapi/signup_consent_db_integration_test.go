@@ -95,8 +95,11 @@ func TestDBCreateUserRecordsConsentToTheNamedPages(t *testing.T) {
 	assertConsentRefused(t, env,
 		signUpAgreeing(env, tenant, "terms-only@tenant-a.example.com", terms.VersionID), "terms-only@tenant-a.example.com")
 	assertConsentRefused(t, env,
-		signUpAgreeing(env, tenant, "twice@tenant-a.example.com", terms.VersionID, terms.VersionID, privacy.VersionID),
+		signUpAgreeing(env, tenant, "twice@tenant-a.example.com", terms.VersionID, terms.VersionID),
 		"twice@tenant-a.example.com")
+	assertConsentRefused(t, env,
+		signUpAgreeing(env, tenant, "surplus@tenant-a.example.com", terms.VersionID, privacy.VersionID, terms.VersionID),
+		"surplus@tenant-a.example.com")
 
 	if err := signUpAgreeing(env, tenant, "both@tenant-a.example.com", terms.VersionID, privacy.VersionID); err != nil {
 		t.Fatalf("CreateUser agreeing to both pages: %v", err)

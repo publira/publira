@@ -572,6 +572,11 @@ func (s *apiServer) signupConsents(ctx context.Context, tenantID uuid.UUID, rawI
 	invalid := func(message string) error {
 		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New(message), "agreed_page_version_ids")
 	}
+	// Refused before any parsing or query, so an unauthenticated caller cannot
+	// make the server read an unbounded list.
+	if len(rawIDs) != len(required) {
+		return nil, invalid("agree to exactly one version of each page the tenant asks consent to")
+	}
 	versionIDs := make([]uuid.UUID, 0, len(rawIDs))
 	for _, raw := range rawIDs {
 		id, err := uuid.Parse(raw)
