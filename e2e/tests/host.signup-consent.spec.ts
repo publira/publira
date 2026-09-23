@@ -195,8 +195,13 @@ test.describe("web-host sign-up consent", () => {
     await expect(page.getByText(CONSENT_CHANGED_MESSAGE)).toBeVisible();
     await expect(consentCheckbox(page)).not.toBeChecked();
     expect(accountCount()).toBe("0");
+    await expect(page.getByLabel("Name")).toHaveValue(
+      SIGNUP_CONSENT_READER.name
+    );
+    await expect(page.getByLabel("Email address")).toHaveValue(
+      SIGNUP_CONSENT_READER.email
+    );
 
-    await fillSignupForm(page);
     await consentCheckbox(page).check();
     await page.getByRole("button", { name: "Sign up" }).click();
 

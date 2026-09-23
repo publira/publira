@@ -113,4 +113,76 @@ describe("ActionForm", () => {
       expect(screen.getByText("Could not save.")).toBeTruthy();
     });
   });
+
+  it("keeps the typed values when the Action refuses the submission", async () => {
+    render(
+      <ActionForm action={fail}>
+        <input aria-label="Name" name="name" />
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Ada Lovelace" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not save.")).toBeTruthy();
+    });
+    expect(screen.getByLabelText("Name")).toHaveProperty(
+      "value",
+      "Ada Lovelace"
+    );
+  });
+
+  it("resets the fields when the Action succeeds", async () => {
+    render(
+      <ActionForm action={succeed}>
+        <input aria-label="Name" name="name" />
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Ada Lovelace" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Role updated.")).toBeTruthy();
+    });
+    expect(screen.getByLabelText("Name")).toHaveProperty("value", "");
+  });
+
+  it("sends the Action the fields and the submitter's name and value", async () => {
+    let received: FormData | undefined;
+    const record = (
+      _prevState: FormActionState,
+      formData: FormData
+    ): Promise<FormActionState> => {
+      received = formData;
+      return fail();
+    };
+
+    render(
+      <ActionForm action={record}>
+        <input aria-label="Name" name="name" />
+        <button name="intent" type="submit" value="publish">
+          Publish
+        </button>
+      </ActionForm>
+    );
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Ada Lovelace" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not save.")).toBeTruthy();
+    });
+    expect(received?.get("name")).toBe("Ada Lovelace");
+    expect(received?.get("intent")).toBe("publish");
+  });
 });
