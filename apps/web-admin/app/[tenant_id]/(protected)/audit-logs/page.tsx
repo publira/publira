@@ -47,12 +47,9 @@ import {
   AuditLogActorCell,
   AuditLogDateCell,
   AuditLogOutcomeCell,
-  auditActionOptions,
 } from "./_components/audit-log-cells";
-import {
-  parseAuditLogFilters,
-  toAllowedActionValues,
-} from "./_lib/search-params";
+import { auditActions } from "./_lib/audit-actions";
+import { parseAuditLogFilters } from "./_lib/search-params";
 
 const pageSize = 20;
 
@@ -69,7 +66,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-const allowedActionValues = toAllowedActionValues(auditActionOptions);
+const allowedActionValues: ReadonlySet<string> = new Set(auditActions);
 
 const AuditLogsSkeleton = () => (
   <AdminSections>
@@ -198,13 +195,7 @@ const AuditLogsContent = async ({
             </FieldContent>
           </Field>
 
-          <AuditActionSelect
-            defaultValue={filters.action}
-            options={auditActionOptions.map((option) => ({
-              label: t(option.messageKey),
-              value: option.value,
-            }))}
-          />
+          <AuditActionSelect defaultValue={filters.action} />
 
           <Field>
             <FieldLabel>

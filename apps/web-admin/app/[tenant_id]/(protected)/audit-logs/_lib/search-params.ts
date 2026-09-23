@@ -22,20 +22,6 @@ export interface AuditLogFilters {
   to: string;
 }
 
-export const toAllowedActionValues = (
-  options: readonly { value: string }[]
-): ReadonlySet<string> => {
-  const allowedActionValues = new Set<string>();
-
-  for (const option of options) {
-    if (option.value) {
-      allowedActionValues.add(option.value);
-    }
-  }
-
-  return allowedActionValues;
-};
-
 /**
  * Every filter falls back to `""`, the "no filter" value this screen already
  * uses: an unusable query string still renders the default view instead of
