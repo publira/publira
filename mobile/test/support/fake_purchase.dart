@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -12,6 +13,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     this.access = const {},
     this.seriesByEpisode = const {},
     this.checkoutFailure,
+    this.pages = const [],
   });
 
   /// What [acceptsPayments] answers.
@@ -34,6 +36,13 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   /// Episodes [startEpisodeCheckout] was asked for, in order.
   final List<String> checkouts = <String>[];
+
+  /// The pages [listMyPurchases] answers, in order. The token of a page is
+  /// its own index written out, the way the fixture server writes a cursor.
+  List<List<MyPurchase>> pages;
+
+  /// Thrown by [listMyPurchases].
+  PurchaseFailure? listFailure;
 
   @override
   Future<bool> acceptsPayments() async => payments;
@@ -61,6 +70,22 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     return checkoutUrlFor(episodePublicId);
+  }
+
+  @override
+  Future<MyPurchasePage> listMyPurchases({String token = ''}) async {
+    final failure = listFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    final index = token.isEmpty ? 0 : int.parse(token);
+    if (index >= pages.length) {
+      return MyPurchasePage.empty;
+    }
+    return MyPurchasePage(
+      purchases: pages[index],
+      nextToken: index + 1 < pages.length ? '${index + 1}' : '',
+    );
   }
 
   static Uri checkoutUrlFor(String episodePublicId) =>

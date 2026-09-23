@@ -3435,6 +3435,20 @@
       "confirming": "我們正在確認您的付款。購買生效後即可開啟該章節。",
       "start_failed": "無法開始購買。請稍後再試。"
     },
+    "purchases": {
+      "account_description": "查看您購買的章節，包括未儲存在此裝置上的章節。",
+      "empty": "您還沒有購買任何章節。您購買的章節會顯示在這裡，在您登入的每台裝置上都能看到。",
+      "ended_at": "{$date} 閱讀期限已結束",
+      "expired": "已過期",
+      "failed": "無法顯示您購買的內容。請重試。",
+      "no_expiry": "無期限",
+      "price": "支付金額 {$price}",
+      "purchased_at": "{$date} 購買",
+      "readable": "可閱讀",
+      "readable_until": "可閱讀至 {$date}",
+      "sign_in_prompt": "登入後即可查看您購買的章節。",
+      "title": "已購買"
+    },
     "push": {
       "open": "開啟"
     },

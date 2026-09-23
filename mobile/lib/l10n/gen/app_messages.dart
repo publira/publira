@@ -948,6 +948,42 @@ abstract class AppMessages {
   /// `mobile.purchase.start_failed`
   String get purchaseStartFailed;
 
+  /// `mobile.purchases.account_description`
+  String get purchasesAccountDescription;
+
+  /// `mobile.purchases.empty`
+  String get purchasesEmpty;
+
+  /// `mobile.purchases.ended_at`
+  String purchasesEndedAt({required String date});
+
+  /// `mobile.purchases.expired`
+  String get purchasesExpired;
+
+  /// `mobile.purchases.failed`
+  String get purchasesFailed;
+
+  /// `mobile.purchases.no_expiry`
+  String get purchasesNoExpiry;
+
+  /// `mobile.purchases.price`
+  String purchasesPrice({required String price});
+
+  /// `mobile.purchases.purchased_at`
+  String purchasesPurchasedAt({required String date});
+
+  /// `mobile.purchases.readable`
+  String get purchasesReadable;
+
+  /// `mobile.purchases.readable_until`
+  String purchasesReadableUntil({required String date});
+
+  /// `mobile.purchases.sign_in_prompt`
+  String get purchasesSignInPrompt;
+
+  /// `mobile.purchases.title`
+  String get purchasesTitle;
+
   /// `mobile.push.open`
   String get pushOpen;
 
@@ -2740,6 +2776,66 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '購入手続きを開始できませんでした。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get purchasesAccountDescription {
+    return 'この端末に保存していないものも含め、購入したエピソードを確認できます。';
+  }
+
+  @override
+  String get purchasesEmpty {
+    return 'まだエピソードを購入していません。購入したエピソードは、サインインしたどの端末でもここに表示されます。';
+  }
+
+  @override
+  String purchasesEndedAt({required String date}) {
+    return '$date に閲覧期限終了';
+  }
+
+  @override
+  String get purchasesExpired {
+    return '期限切れ';
+  }
+
+  @override
+  String get purchasesFailed {
+    return '購入済み一覧を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get purchasesNoExpiry {
+    return '期限なし';
+  }
+
+  @override
+  String purchasesPrice({required String price}) {
+    return '購入価格 $price';
+  }
+
+  @override
+  String purchasesPurchasedAt({required String date}) {
+    return '$date に購入';
+  }
+
+  @override
+  String get purchasesReadable {
+    return '閲覧可能';
+  }
+
+  @override
+  String purchasesReadableUntil({required String date}) {
+    return '$date まで閲覧可能';
+  }
+
+  @override
+  String get purchasesSignInPrompt {
+    return 'サインインすると、購入したエピソードを確認できます。';
+  }
+
+  @override
+  String get purchasesTitle {
+    return '購入済み一覧';
   }
 
   @override
@@ -4771,6 +4867,66 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get purchasesAccountDescription {
+    return 'Episodes you bought, including those not saved on this device.';
+  }
+
+  @override
+  String get purchasesEmpty {
+    return 'You have not bought any episodes yet. Episodes you buy appear here on every device you sign in on.';
+  }
+
+  @override
+  String purchasesEndedAt({required String date}) {
+    return 'Ended $date';
+  }
+
+  @override
+  String get purchasesExpired {
+    return 'Expired';
+  }
+
+  @override
+  String get purchasesFailed {
+    return 'Could not show your purchases. Try again.';
+  }
+
+  @override
+  String get purchasesNoExpiry {
+    return 'No expiry';
+  }
+
+  @override
+  String purchasesPrice({required String price}) {
+    return 'Paid $price';
+  }
+
+  @override
+  String purchasesPurchasedAt({required String date}) {
+    return 'Purchased $date';
+  }
+
+  @override
+  String get purchasesReadable {
+    return 'Readable';
+  }
+
+  @override
+  String purchasesReadableUntil({required String date}) {
+    return 'Readable until $date';
+  }
+
+  @override
+  String get purchasesSignInPrompt {
+    return 'Sign in to see the episodes you bought.';
+  }
+
+  @override
+  String get purchasesTitle {
+    return 'Purchases';
+  }
+
+  @override
   String get pushOpen {
     return 'Open';
   }
@@ -6796,6 +6952,66 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get purchasesAccountDescription {
+    return '이 기기에 저장하지 않은 것까지 포함해 구매한 에피소드를 확인할 수 있습니다.';
+  }
+
+  @override
+  String get purchasesEmpty {
+    return '아직 구매한 에피소드가 없습니다. 구매한 에피소드는 로그인한 모든 기기에서 여기에 표시됩니다.';
+  }
+
+  @override
+  String purchasesEndedAt({required String date}) {
+    return '$date에 열람 기간 종료';
+  }
+
+  @override
+  String get purchasesExpired {
+    return '기한 만료';
+  }
+
+  @override
+  String get purchasesFailed {
+    return '구매 목록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get purchasesNoExpiry {
+    return '기한 없음';
+  }
+
+  @override
+  String purchasesPrice({required String price}) {
+    return '구매 가격 $price';
+  }
+
+  @override
+  String purchasesPurchasedAt({required String date}) {
+    return '$date에 구매';
+  }
+
+  @override
+  String get purchasesReadable {
+    return '열람 가능';
+  }
+
+  @override
+  String purchasesReadableUntil({required String date}) {
+    return '$date까지 열람 가능';
+  }
+
+  @override
+  String get purchasesSignInPrompt {
+    return '로그인하면 구매한 에피소드를 볼 수 있습니다.';
+  }
+
+  @override
+  String get purchasesTitle {
+    return '구매 목록';
   }
 
   @override
@@ -8827,6 +9043,66 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get purchasesAccountDescription {
+    return '查看您购买的章节，包括未保存在此设备上的章节。';
+  }
+
+  @override
+  String get purchasesEmpty {
+    return '您还没有购买任何章节。您购买的章节会显示在这里，在您登录的每台设备上都能看到。';
+  }
+
+  @override
+  String purchasesEndedAt({required String date}) {
+    return '$date 阅读期限已结束';
+  }
+
+  @override
+  String get purchasesExpired {
+    return '已过期';
+  }
+
+  @override
+  String get purchasesFailed {
+    return '无法显示您的购买内容。请重试。';
+  }
+
+  @override
+  String get purchasesNoExpiry {
+    return '无期限';
+  }
+
+  @override
+  String purchasesPrice({required String price}) {
+    return '支付金额 $price';
+  }
+
+  @override
+  String purchasesPurchasedAt({required String date}) {
+    return '$date 购买';
+  }
+
+  @override
+  String get purchasesReadable {
+    return '可阅读';
+  }
+
+  @override
+  String purchasesReadableUntil({required String date}) {
+    return '可阅读至 $date';
+  }
+
+  @override
+  String get purchasesSignInPrompt {
+    return '登录后即可查看您购买的章节。';
+  }
+
+  @override
+  String get purchasesTitle {
+    return '已购买';
+  }
+
+  @override
   String get pushOpen {
     return '打开';
   }
@@ -10852,6 +11128,66 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '無法開始購買。請稍後再試。';
+  }
+
+  @override
+  String get purchasesAccountDescription {
+    return '查看您購買的章節，包括未儲存在此裝置上的章節。';
+  }
+
+  @override
+  String get purchasesEmpty {
+    return '您還沒有購買任何章節。您購買的章節會顯示在這裡，在您登入的每台裝置上都能看到。';
+  }
+
+  @override
+  String purchasesEndedAt({required String date}) {
+    return '$date 閱讀期限已結束';
+  }
+
+  @override
+  String get purchasesExpired {
+    return '已過期';
+  }
+
+  @override
+  String get purchasesFailed {
+    return '無法顯示您購買的內容。請重試。';
+  }
+
+  @override
+  String get purchasesNoExpiry {
+    return '無期限';
+  }
+
+  @override
+  String purchasesPrice({required String price}) {
+    return '支付金額 $price';
+  }
+
+  @override
+  String purchasesPurchasedAt({required String date}) {
+    return '$date 購買';
+  }
+
+  @override
+  String get purchasesReadable {
+    return '可閱讀';
+  }
+
+  @override
+  String purchasesReadableUntil({required String date}) {
+    return '可閱讀至 $date';
+  }
+
+  @override
+  String get purchasesSignInPrompt {
+    return '登入後即可查看您購買的章節。';
+  }
+
+  @override
+  String get purchasesTitle {
+    return '已購買';
   }
 
   @override

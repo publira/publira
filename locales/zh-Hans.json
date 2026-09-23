@@ -3435,6 +3435,20 @@
       "confirming": "我们正在确认您的付款。购买生效后即可打开该章节。",
       "start_failed": "无法开始购买。请稍后再试。"
     },
+    "purchases": {
+      "account_description": "查看您购买的章节，包括未保存在此设备上的章节。",
+      "empty": "您还没有购买任何章节。您购买的章节会显示在这里，在您登录的每台设备上都能看到。",
+      "ended_at": "{$date} 阅读期限已结束",
+      "expired": "已过期",
+      "failed": "无法显示您的购买内容。请重试。",
+      "no_expiry": "无期限",
+      "price": "支付金额 {$price}",
+      "purchased_at": "{$date} 购买",
+      "readable": "可阅读",
+      "readable_until": "可阅读至 {$date}",
+      "sign_in_prompt": "登录后即可查看您购买的章节。",
+      "title": "已购买"
+    },
     "push": {
       "open": "打开"
     },

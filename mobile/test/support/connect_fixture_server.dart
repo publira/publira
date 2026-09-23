@@ -29,6 +29,8 @@ class ConnectFixtureServer {
     this.myEpisodeComments = const {},
     this.myFollows = const [],
     this.followsPageSize = 0,
+    this.myPurchases = const [],
+    this.purchasesPageSize = 0,
     this.notifications = const [],
     this.notificationsPageSize = 0,
     this.announcements = const [],
@@ -96,6 +98,13 @@ class ConnectFixtureServer {
   static const memberPassword = 'memberpass';
   static const memberName = 'Sample Member';
   static const memberPublicId = 'SeedMMBRAAA1';
+
+  /// The member's purchases of [paidEpisodeId] in the development seed
+  /// (`db/seeds/dev/080_purchases.sql`): one that does not expire, and a
+  /// rental that has run out.
+  static const memberReadablePurchaseId =
+      '018f0e8f-1000-7000-8000-000000000001';
+  static const memberExpiredPurchaseId = '018f0e8f-1000-7000-8000-000000000002';
 
   /// Unsigned JWT whose `sub` is [memberPublicId]. It is shaped like the real
   /// public-audience token because image-server derives a page's content key
@@ -476,6 +485,14 @@ class ConnectFixtureServer {
   /// The token stands in for the server's opaque cursor and is the index of
   /// the page's first row, written out.
   int followsPageSize;
+
+  /// `MyPurchase` rows of the signed-in member, newest purchase first.
+  List<Map<String, Object?>> myPurchases;
+
+  /// How many of [myPurchases] one `ListMyPurchases` page holds, with the
+  /// token written the way [followsPageSize] writes one. `0` answers the whole
+  /// of it at once.
+  int purchasesPageSize;
 
   /// `NotificationItem` rows of the signed-in member, newest first. The read
   /// RPCs write `isRead` here, so the next list and count agree with what the
@@ -998,6 +1015,18 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/ListMyPurchases')) {
+      if (!_isAuthorized(request)) {
+        await _write(request, HttpStatus.unauthorized, {
+          'code': 'unauthenticated',
+          'message': 'invalid token',
+        });
+        return;
+      }
+      await _write(request, HttpStatus.ok, _purchasesPage(body['token']));
+      return;
+    }
+
     if (path.contains('/publira.v1.CommentService/')) {
       await _writeComment(request, path, body);
       return;
@@ -1488,6 +1517,21 @@ class ConnectFixtureServer {
     return {
       if (page.isNotEmpty) 'follows': page,
       if (end < myFollows.length) 'nextToken': '$end',
+    };
+  }
+
+  /// The page of [myPurchases] the request's token asks for, with the token of
+  /// the page under it when there is one.
+  Map<String, Object?> _purchasesPage(Object? token) {
+    if (purchasesPageSize <= 0) {
+      return {if (myPurchases.isNotEmpty) 'purchases': myPurchases};
+    }
+    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
+    final end = min(start + purchasesPageSize, myPurchases.length);
+    final page = myPurchases.sublist(min(start, myPurchases.length), end);
+    return {
+      if (page.isNotEmpty) 'purchases': page,
+      if (end < myPurchases.length) 'nextToken': '$end',
     };
   }
 

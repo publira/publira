@@ -9,6 +9,7 @@ import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -62,6 +63,7 @@ class AccountScreen extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.accountName),
                   ),
                   const Divider(height: 1),
+                  const _PurchasesEntry(),
                   // Keyed by the reader, so another account signing in reads
                   // its own date rather than showing the last one's.
                   _BirthDateRow(key: ValueKey(session.userPublicId)),
@@ -117,6 +119,35 @@ Future<void> _signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
+}
+
+/// The way to every episode the reader has bought, which the API keeps for
+/// the account, apart from the downloads the library keeps for this device.
+///
+/// A build carrying no [PurchaseScope] sells nothing, so the row is left out.
+class _PurchasesEntry extends StatelessWidget {
+  const _PurchasesEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    if (PurchaseScope.repositoryOf(context) == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-purchases'),
+          title: Text(messages.purchasesTitle),
+          subtitle: Text(messages.purchasesAccountDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(AppRoutes.accountPurchases),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
 }
 
 /// The way to a message for the people who run the tenant, for a guest as
