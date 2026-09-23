@@ -194,6 +194,7 @@ void main() {
       expect(expired.expiresAt?.toUtc(), DateTime.utc(2026, 1, 13, 12));
       final request = server.requestsTo('ListMyPurchases').single;
       expect(request.headers['authorization'], 'Bearer $accessToken');
+      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
     });
 
     test('walks the pages the API names', () async {

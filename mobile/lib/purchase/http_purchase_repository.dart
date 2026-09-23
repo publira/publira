@@ -152,6 +152,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         _listProcedure,
         {
           'limit': pageSize,
+          'surface': appClientSurface,
           'tenant': {'tenantId': tenantId},
           if (token.isNotEmpty) 'token': token,
         },
