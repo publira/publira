@@ -13,6 +13,10 @@ export default defineConfig({
     "src/dialog/index.ts",
     "src/empty-state/index.ts",
     "src/field/index.ts",
+    // Its own entry, so the bundle keeps the `"use client"` directive: a
+    // module tsdown merges into a shared chunk loses it, and `Field`'s
+    // `useState` then lands in the server graph.
+    "src/field/field.tsx",
     "src/figure-line/index.ts",
     "src/form-actions/index.ts",
     "src/form-message/index.ts",

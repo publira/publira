@@ -2,7 +2,7 @@
 
 The components that make up a form field: a label, a description, an error message, and the content.
 
-`FieldLabel` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. `field-control-association.test.tsx` asserts it for every control this package ships.
+`FieldLabel` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. A `Select` is the exception: its trigger is a button that opens a popup, so over a `Select` the label is a non-label element that names the trigger through `aria-labelledby`, and clicking it focuses the trigger without opening the popup. `field-control-association.test.tsx` asserts both for every control this package ships.
 
 ## Usage
 
