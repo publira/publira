@@ -48,7 +48,7 @@ No rule rewrites the path.
 
 `/api` and `/images` are host-agnostic: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/api/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 
-`/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, and on the public site the view beacon, the read beacon, and the Stripe webhook — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/api/publira.v1.<Service>/<Method>`.
+`/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, on the public site the view beacon, the read beacon, and the Stripe webhook, and on the tenant console the royalty statement CSV — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/api/publira.v1.<Service>/<Method>`.
 
 ### Precedence
 

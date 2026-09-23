@@ -137,4 +137,4 @@ export const royaltyCloseState = (
 
 /** Where a closed month's statement downloads as CSV. */
 export const royaltyStatementCsvPath = (period: string): string =>
-  `/api/royalties/statements/${period}/csv`;
+  `/api/v1/royalties/statements/${period}/csv`;

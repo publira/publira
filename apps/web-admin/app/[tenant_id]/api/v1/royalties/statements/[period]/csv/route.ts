@@ -22,7 +22,9 @@ const notFound = () => new NextResponse("Not Found", { status: 404 });
  */
 export const GET = async (
   _request: Request,
-  { params }: RouteContext<"/[tenant_id]/api/royalties/statements/[period]/csv">
+  {
+    params,
+  }: RouteContext<"/[tenant_id]/api/v1/royalties/statements/[period]/csv">
 ) => {
   const { period, tenant_id } = await params;
   const path = exportPathSchema.safeParse({ period, tenantId: tenant_id });
