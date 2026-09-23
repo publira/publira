@@ -43,6 +43,9 @@ describe("findAgentCoAuthors", () => {
       findAgentCoAuthors(
         commit(
           "Co-authored-by: Claude Monet <claude@example.com>",
+          "Co-authored-by: Jane Doe <jane@anthropic.com>",
+          "Co-authored-by: John Doe <john@openai.com>",
+          "Co-authored-by: Ada Lovelace <ada@cursor.com>",
           "Co-authored-by: renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>",
           "Assisted-by: Claude Code:claude-opus-5"
         )

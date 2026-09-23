@@ -17,20 +17,20 @@ const CO_AUTHOR = /^co-authored-by\s*:(?<value>.*)$/iu;
 
 /**
  * Matched against the trailer's name and address together. A bare `claude`,
- * `cursor`, or `gemini` is not enough: those words are also people's names.
+ * `cursor`, or `gemini` is not enough, and neither is a company's domain: those
+ * are also people's names and their employers' addresses.
  */
 const AGENTS: readonly RegExp[] = [
-  /@anthropic\.com\b/iu,
+  /\bnoreply@anthropic\.com\b/iu,
   /\bclaude (?:code|fable|haiku|opus|sonnet)\b/iu,
-  /@openai\.com\b/iu,
   /\bchatgpt\b/iu,
   /\bcodex\b/iu,
   /\bcopilot\b/iu,
-  /@cursor\.com\b/iu,
+  /\bcursoragent@cursor\.com\b/iu,
   /\bcursor agent\b/iu,
   /\bgemini-code-assist\b/iu,
   /\bdevin-ai-integration\b/iu,
-  /@aider\.chat\b/iu,
+  /\bnoreply@aider\.chat\b/iu,
 ];
 
 /** `git commit --verbose` appends the diff below this line. */
