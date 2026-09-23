@@ -2,6 +2,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 
 /// Sign-up, sign-in, password reset, session checks, and the signed-in
 /// reader's own account settings against the public API.
@@ -19,7 +20,8 @@ abstract class AuthRepository {
   /// apart. The account cannot sign in until the link has been opened.
   ///
   /// [birthDate] is `YYYY-MM-DD`, and empty from a form the tenant's rule did
-  /// not make ask.
+  /// not make ask. [agreedPageVersionIds] are the versions of the pages the
+  /// reader agreed to, empty where the tenant names none.
   ///
   /// Throws [AuthFailure].
   Future<void> signUp({
@@ -27,6 +29,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
   });
 
   /// Confirms the address behind [token], which a confirmation link carries,
@@ -65,11 +68,12 @@ abstract class AuthRepository {
     required String newPassword,
   });
 
-  /// Whether the tenant checks ages, read without a session so the sign-up
-  /// form knows whether to ask for a birth date.
+  /// Whether the tenant checks ages and which pages it asks consent to, read
+  /// without a session and in one tenant read, so the sign-up form knows
+  /// whether to ask for a birth date and for consent.
   ///
   /// Throws [AuthFailure].
-  Future<AgeVerification> readAgeVerification();
+  Future<SignUpRequirements> readSignUpRequirements();
 
   /// Re-reads the reader behind [session], so a token restored from storage is
   /// confirmed before the app presents it as signed in.

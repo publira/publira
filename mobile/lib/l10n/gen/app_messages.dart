@@ -1164,6 +1164,15 @@ abstract class AppMessages {
   /// `mobile.sign_up.birth_date_label`
   String get signUpBirthDateLabel;
 
+  /// `mobile.sign_up.consent_changed`
+  String get signUpConsentChanged;
+
+  /// `mobile.sign_up.consent_label`
+  String get signUpConsentLabel;
+
+  /// `mobile.sign_up.consent_required`
+  String get signUpConsentRequired;
+
   /// `mobile.sign_up.failed`
   String get signUpFailed;
 
@@ -3100,6 +3109,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get signUpBirthDateLabel {
     return '生年月日';
+  }
+
+  @override
+  String get signUpConsentChanged {
+    return '同意するページが更新されました。内容を読み、あらためて同意してください。';
+  }
+
+  @override
+  String get signUpConsentLabel {
+    return '以下の内容を読み、同意します。';
+  }
+
+  @override
+  String get signUpConsentRequired {
+    return 'アカウントを作成するには、記載のページに同意してください。';
   }
 
   @override
@@ -5131,6 +5155,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get signUpConsentChanged {
+    return 'The pages to agree to have been updated. Read them and agree again.';
+  }
+
+  @override
+  String get signUpConsentLabel {
+    return 'I have read and agree to the following.';
+  }
+
+  @override
+  String get signUpConsentRequired {
+    return 'Agree to the listed pages to create an account.';
+  }
+
+  @override
   String get signUpFailed {
     return 'Could not create your account. Please check what you entered.';
   }
@@ -7156,6 +7195,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get signUpBirthDateLabel {
     return '생년월일';
+  }
+
+  @override
+  String get signUpConsentChanged {
+    return '동의할 페이지가 업데이트되었습니다. 내용을 읽고 다시 동의해 주세요.';
+  }
+
+  @override
+  String get signUpConsentLabel {
+    return '아래 내용을 읽고 동의합니다.';
+  }
+
+  @override
+  String get signUpConsentRequired {
+    return '계정을 만들려면 안내된 페이지에 동의해 주세요.';
   }
 
   @override
@@ -9187,6 +9241,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get signUpConsentChanged {
+    return '需要同意的页面已更新。请阅读后重新同意。';
+  }
+
+  @override
+  String get signUpConsentLabel {
+    return '我已阅读并同意以下内容。';
+  }
+
+  @override
+  String get signUpConsentRequired {
+    return '要创建账户，请同意所列页面。';
+  }
+
+  @override
   String get signUpFailed {
     return '无法创建您的账户。请检查您输入的内容。';
   }
@@ -11212,6 +11281,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signUpBirthDateLabel {
     return '出生日期';
+  }
+
+  @override
+  String get signUpConsentChanged {
+    return '需要同意的頁面已更新。請閱讀後重新同意。';
+  }
+
+  @override
+  String get signUpConsentLabel {
+    return '我已閱讀並同意以下內容。';
+  }
+
+  @override
+  String get signUpConsentRequired {
+    return '要建立帳戶，請同意所列頁面。';
   }
 
   @override

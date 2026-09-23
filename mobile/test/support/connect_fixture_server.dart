@@ -591,6 +591,12 @@ class ConnectFixtureServer {
   String ageVerification;
   String tenantTimeZone;
 
+  /// The pages `GetTenant` names as the tenant's terms of service and privacy
+  /// policy, as `TenantLegalPage` JSON. `null` is a role named for no page,
+  /// which the API omits.
+  Map<String, Object?>? termsPage;
+  Map<String, Object?>? privacyPage;
+
   /// The tenant's name and `TenantTheme`, as `GetTenant` answers them. A
   /// `null` theme is a tenant that has stored none, which the API omits.
   String tenantName;
@@ -979,6 +985,10 @@ class ConnectFixtureServer {
         if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
         if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,
         if (tenantStatus == HttpStatus.ok) 'timezone': tenantTimeZone,
+        if (tenantStatus == HttpStatus.ok && termsPage != null)
+          'termsPage': termsPage,
+        if (tenantStatus == HttpStatus.ok && privacyPage != null)
+          'privacyPage': privacyPage,
         // protojson omits a false.
         if (tenantStatus == HttpStatus.ok && acceptsPayments)
           'acceptsPayments': true,
@@ -1811,6 +1821,10 @@ class ConnectFixtureServer {
         name: _trimmed(body['name']),
         password: _trimmed(body['password']),
         birthDate: _trimmed(body['birthDate']),
+        agreedPageVersionIds: [
+          for (final id in body['agreedPageVersionIds'] as List? ?? const [])
+            '$id',
+        ],
       ),
     );
     await _write(request, HttpStatus.ok, {'accepted': true});
@@ -2163,6 +2177,7 @@ class FixtureSignup {
     required this.name,
     required this.password,
     required this.birthDate,
+    this.agreedPageVersionIds = const [],
   });
 
   final String name;
@@ -2170,6 +2185,9 @@ class FixtureSignup {
 
   /// `YYYY-MM-DD`, empty from a form that did not ask for one.
   final String birthDate;
+
+  /// The page versions the sign-up agreed to.
+  final List<String> agreedPageVersionIds;
 
   /// Whether a confirmation link has been opened for this address, which is
   /// what `Login` stops refusing it for.

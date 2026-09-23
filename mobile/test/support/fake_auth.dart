@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 
 /// [SessionStore] that keeps the session in memory.
 ///
@@ -69,6 +70,10 @@ class FakeAuthRepository implements AuthRepository {
   String birthDate;
 
   AgeVerification verification;
+
+  /// The pages the tenant asks a sign-up to agree to, none by default.
+  LegalPage? termsPage;
+  LegalPage? privacyPage;
 
   /// Thrown by [readReaderAge], standing in for an account that cannot be
   /// read.
@@ -195,12 +200,14 @@ class FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
   }) async {
     lastSignUp = SignUpCall(
       name: name,
       email: email,
       password: password,
       birthDate: birthDate,
+      agreedPageVersionIds: agreedPageVersionIds,
     );
     final failure = signUpFailure;
     if (failure != null) {
@@ -254,12 +261,16 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AgeVerification> readAgeVerification() async {
+  Future<SignUpRequirements> readSignUpRequirements() async {
     final failure = birthDateFailure;
     if (failure != null) {
       throw failure;
     }
-    return verification;
+    return SignUpRequirements(
+      ageVerification: verification,
+      termsPage: termsPage,
+      privacyPage: privacyPage,
+    );
   }
 
   @override
@@ -421,6 +432,7 @@ class SignUpCall {
     required this.email,
     required this.password,
     required this.birthDate,
+    required this.agreedPageVersionIds,
   });
 
   final String name;
@@ -429,6 +441,10 @@ class SignUpCall {
 
   /// `YYYY-MM-DD`, empty from a form that did not ask.
   final String birthDate;
+
+  /// The page versions the reader agreed to, empty from a form that did not
+  /// ask.
+  final List<String> agreedPageVersionIds;
 }
 
 const fakeSession = AuthSession(

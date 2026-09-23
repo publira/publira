@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/session_store.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 
 /// Holds the signed-in reader for the whole app and keeps [SessionStore] in
 /// step with it.
@@ -106,12 +107,14 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String password,
     String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
   }) {
     return _repository.signUp(
       name: name,
       email: email,
       password: password,
       birthDate: birthDate,
+      agreedPageVersionIds: agreedPageVersionIds,
     );
   }
 
@@ -166,12 +169,12 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Whether the tenant checks ages, which the sign-up form asks before it
-  /// decides whether to offer a birth date.
+  /// Whether the tenant checks ages and which pages it asks consent to, which
+  /// the sign-up form reads before it decides what to offer.
   ///
   /// Throws [AuthFailure].
-  Future<AgeVerification> readAgeVerification() =>
-      _repository.readAgeVerification();
+  Future<SignUpRequirements> readSignUpRequirements() =>
+      _repository.readSignUpRequirements();
 
   /// The signed-in reader's birth date and the tenant rule it is read
   /// against, or `null` when nobody is signed in.
