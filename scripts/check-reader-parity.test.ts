@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Capability, Inventory } from "./check-reader-parity.ts";
-import { findProblems, methodsIn, webRouteOf } from "./check-reader-parity.ts";
+import {
+  findProblems,
+  methodsIn,
+  webCallsIn,
+  webRouteOf,
+} from "./check-reader-parity.ts";
 
 const inventory = (overrides: Partial<Inventory> = {}): Inventory => ({
   mobileRpcs: new Set(["GetSeriesDetail"]),
@@ -63,6 +68,29 @@ describe("methodsIn", () => {
         /Service\/(?<method>[A-Z]\w*)'/gu
       ),
       ["GetSeriesDetail"]
+    );
+  });
+});
+
+describe("webCallsIn", () => {
+  const services = ["catalog", "domain", "pages"];
+  const rpcs = new Set(["GetSeriesDetail", "GetTenantByDomain"]);
+
+  it("finds a call whatever the variable holding the client is named", () => {
+    assert.deepEqual(
+      webCallsIn(
+        "await publicApiClient.domain.getTenantByDomain({});\nawait apiClient.catalog.getSeriesDetail({});",
+        services,
+        rpcs
+      ),
+      ["GetTenantByDomain", "GetSeriesDetail"]
+    );
+  });
+
+  it("ignores a member that is not a public RPC", () => {
+    assert.deepEqual(
+      webCallsIn("result.pages.map((page) => page)", services, rpcs),
+      []
     );
   });
 });

@@ -301,7 +301,7 @@
       "name": "A page the tenant published",
       "web": {
         "routes": ["[locale]/(site)/page/[...slug]"],
-        "rpcs": ["GetPublishedPage"]
+        "rpcs": ["GetPublishedPage", "ListPublishedPageSlugs"]
       },
       "mobile": {
         "routes": ["/page/:pageSlug"],
@@ -459,6 +459,11 @@
         "routes": ["/account/contact"],
         "rpcs": ["SubmitContactMessage"]
       }
+    },
+    {
+      "name": "Resolving the tenant from the host it is reached on",
+      "web": { "rpcs": ["GetTenantByDomain"] },
+      "mobile": { "rpcs": ["GetTenantByDomain"] }
     },
     {
       "name": "The tenant's own settings: comments, payments, sign-up requirements",

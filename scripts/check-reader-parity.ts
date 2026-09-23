@@ -8,8 +8,8 @@
  * the storefront, each with the app's way to do the same thing or an explicit
  * exception saying why the app has none. A capability is what web-host serves
  * to a reader: every page under `[tenant_id]/[locale]`, every route handler
- * under `[tenant_id]/api`, and every public API call it makes through
- * `apiClient`. Each of those has to be claimed by an entry, so a new page or a
+ * under `[tenant_id]/api`, and every public API call it makes, through
+ * whichever variable holds the client. Each of those has to be claimed by an entry, so a new page or a
  * new call fails here until whoever adds it says where the app stands.
  *
  * The matrix is also held to what it claims: a web route or call it names must
@@ -26,6 +26,8 @@ import path from "node:path";
 
 const WEB_APP_ROOT = "apps/web-host/app/[tenant_id]";
 const WEB_SOURCE_ROOT = "apps/web-host";
+const PUBLIC_CLIENT_PATH = "packages/api-client/src/public/client.ts";
+const PUBLIC_PROTO_ROOT = "proto/publira/v1";
 const MOBILE_SOURCE_ROOT = "mobile/lib";
 const MOBILE_TEST_ROOT = "mobile/integration_test";
 const MATRIX_PATH = "mobile/integration_test/reader_parity.json";
@@ -55,8 +57,10 @@ export interface Inventory {
   webRpcs: Set<string>;
 }
 
-/** `apiClient.catalog.getSeriesDetail` → `GetSeriesDetail`. */
-const WEB_RPC = /\bapiClient\.\w+\.(?<method>\w+)\b/gu;
+/** `  catalog: Client<typeof CatalogService>;` → `catalog`. */
+const CLIENT_SERVICE = /^\s*(?<service>\w+): Client<typeof \w+>;/gmu;
+/** `  rpc GetSeriesDetail(GetSeriesDetailRequest)` → `GetSeriesDetail`. */
+const PROTO_RPC = /^\s*rpc (?<method>\w+)\(/gmu;
 /** `'/publira.v1.CatalogService/GetSeriesDetail'` → `GetSeriesDetail`. */
 const MOBILE_RPC = /Service\/(?<method>[A-Z]\w*)'/gu;
 
@@ -101,6 +105,25 @@ export const methodsIn = (source: string, pattern: RegExp): string[] =>
   Array.from(source.matchAll(pattern), (match) =>
     capitalize(match.groups?.method ?? "")
   );
+
+/**
+ * The public API calls in a web source, found by the client's service names
+ * rather than by the variable that holds the client: a helper handed the client
+ * as `publicApiClient` calls `publicApiClient.domain.getTenantByDomain`. Only a
+ * method the public protos define counts, so `result.pages.map` is not one.
+ */
+export const webCallsIn = (
+  source: string,
+  services: string[],
+  rpcs: Set<string>
+): string[] => {
+  const call = new RegExp(
+    String.raw`\.(?:${services.join("|")})\.(?<method>\w+)\b`,
+    "gu"
+  );
+
+  return methodsIn(source, call).filter((method) => rpcs.has(method));
+};
 
 /** What an entry says web-host serves, held to what web-host still serves. */
 const webProblems = (
@@ -218,6 +241,17 @@ const readSources = async (
 };
 
 const takeInventory = async (): Promise<Inventory> => {
+  const client = await readFile(PUBLIC_CLIENT_PATH, "utf-8");
+  const services = Array.from(
+    client.matchAll(CLIENT_SERVICE),
+    (match) => match.groups?.service ?? ""
+  );
+  const protos = await readSources(PUBLIC_PROTO_ROOT, (file) =>
+    file.endsWith(".proto")
+  );
+  const rpcs = new Set(
+    protos.flatMap((source) => methodsIn(source, PROTO_RPC))
+  );
   const webFiles = await walk(WEB_APP_ROOT);
   const webRoutes = new Set(
     webFiles.map(webRouteOf).filter((route) => route !== null)
@@ -240,7 +274,7 @@ const takeInventory = async (): Promise<Inventory> => {
     mobileTests: testSources.join("\n"),
     webRoutes,
     webRpcs: new Set(
-      webSources.flatMap((source) => methodsIn(source, WEB_RPC))
+      webSources.flatMap((source) => webCallsIn(source, services, rpcs))
     ),
   };
 };
