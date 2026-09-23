@@ -100,6 +100,30 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	}
 }
 
+func TestRunMintsUUIDv7Keys(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "STATSUUID001", "uuid-stats.example.com", "UUID Stats Tenant")
+	seedViewedEpisode(t, pg, tenant.ID, "UUID", statDate)
+
+	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	var rows, v7 int
+	if err := pg.DB.QueryRow(`
+		SELECT count(*), count(*) FILTER (WHERE uuid_extract_version(id) = 7)
+		FROM content_daily_stats
+	`).Scan(&rows, &v7); err != nil {
+		t.Fatalf("count daily stats ids: %v", err)
+	}
+	if rows == 0 || v7 != rows {
+		t.Fatalf("UUIDv7 ids = %d of %d daily stats rows, want all of at least one", v7, rows)
+	}
+}
+
 func TestRunCountsTheDayInEachTenantsTimeZone(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

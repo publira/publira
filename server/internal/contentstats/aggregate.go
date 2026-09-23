@@ -377,7 +377,7 @@ INSERT INTO content_daily_stats (
 	rating_count, rating_sum, favorite_count, comment_count
 )
 SELECT
-	gen_random_uuid(), $1, $2::date, entity_type, entity_id,
+	uuidv7(), $1, $2::date, entity_type, entity_id,
 	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
 	rating_count, rating_sum, favorite_count, comment_count
 FROM rebuilt_stats

@@ -229,6 +229,27 @@ func TestRunWritesEmptySnapshotsForATenantWithoutSignal(t *testing.T) {
 	})
 }
 
+func TestRunMintsUUIDv7Keys(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	pg.SeedTenant(t, "RANKUUID0001", "uuid-rankings.example.com", "UUID Ranking Tenant")
+
+	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), runOptions()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	var rows, v7 int
+	if err := pg.DB.QueryRow(`
+		SELECT count(*), count(*) FILTER (WHERE uuid_extract_version(id) = 7)
+		FROM content_ranking_snapshots
+	`).Scan(&rows, &v7); err != nil {
+		t.Fatalf("count ranking snapshot ids: %v", err)
+	}
+	if rows == 0 || v7 != rows {
+		t.Fatalf("UUIDv7 ids = %d of %d ranking snapshot rows, want all of at least one", v7, rows)
+	}
+}
+
 func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

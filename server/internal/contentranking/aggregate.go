@@ -393,7 +393,7 @@ INSERT INTO content_ranking_snapshots (
 	items, algorithm_version, computed_at
 )
 SELECT
-	gen_random_uuid(), $1, $5, b.window_start, b.window_end, $4,
+	uuidv7(), $1, $5, b.window_start, b.window_end, $4,
 	COALESCE((
 		SELECT jsonb_agg(
 			jsonb_build_object(
