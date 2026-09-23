@@ -2,6 +2,8 @@
 
 A form component that encapsulates `useActionState`. It gives Server Action error handling, the pending state, and success message display a single consistent shape.
 
+The fields are reset when the Action returns `{ ok: true }` and keep what was typed when it returns `{ ok: false }`, so a refused submission is corrected rather than filled in again.
+
 ## Usage
 
 ### Node mode

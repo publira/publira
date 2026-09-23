@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import type { ReactNode, SubmitEvent } from "react";
+import { startTransition, useActionState, useRef } from "react";
+import { requestFormReset, useFormStatus } from "react-dom";
 
 import { Button } from "../button/button";
 import type { ButtonProps } from "../button/button";
@@ -143,18 +143,57 @@ export const ActionForm = ({
   id,
   showSuccess = true,
 }: ActionFormProps) => {
-  const [state, formAction, isPending] = useActionState(action, null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, isPending] = useActionState(
+    async (prevState: FormActionState, formData: FormData) => {
+      const nextState = await action(prevState, formData);
+      const form = formRef.current;
+      if (nextState?.ok && form) {
+        startTransition(() => {
+          requestFormReset(form);
+        });
+      }
+      return nextState;
+    },
+    null
+  );
+
+  // React resets a form whose `action` is a function as soon as it is
+  // submitted, so the Action runs from here and the fields are reset above only
+  // when it succeeds; a refused submission keeps what was typed.
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(
+      event.currentTarget,
+      event.nativeEvent.submitter
+    );
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
 
   if (typeof children === "function") {
     return (
-      <form action={formAction} className={className} id={id}>
+      <form
+        action={formAction}
+        className={className}
+        id={id}
+        onSubmit={handleSubmit}
+        ref={formRef}
+      >
         {children({ isPending, state })}
       </form>
     );
   }
 
   return (
-    <form action={formAction} className={className} id={id}>
+    <form
+      action={formAction}
+      className={className}
+      id={id}
+      onSubmit={handleSubmit}
+      ref={formRef}
+    >
       {children}
 
       {state && (showSuccess || !state.ok) ? (
