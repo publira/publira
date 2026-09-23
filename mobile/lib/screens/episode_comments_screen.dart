@@ -137,6 +137,11 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
       throw pageFailure!;
     }
     final (own, ownFailure) = await ownRead;
+    // The public page is read without a session, so the reader's own comments
+    // are where a refused session shows, and it takes the whole screen.
+    if (ownFailure?.kind == CommentFailureKind.sessionExpired) {
+      throw ownFailure!;
+    }
 
     return _Section(
       mode: mode,
@@ -183,16 +188,29 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
               child: CircularProgressIndicator(),
             );
           }
-          if (snapshot.hasError) {
+          if (snapshot.error case final error?) {
+            // Retrying would send the token the API just refused.
+            final signIn =
+                error is CommentFailure &&
+                error.kind == CommentFailureKind.sessionExpired;
             return _CommentsMessage(
               key: const ValueKey('episode-comments-error'),
               message: _failureCopy(
                 messages,
-                snapshot.error,
+                error,
                 messages.commentsListFailed,
               ),
-              actionLabel: messages.commonRetry,
-              onAction: _reload,
+              actionKey: ValueKey(
+                signIn
+                    ? 'episode-comments-error-sign-in'
+                    : 'episode-comments-error-retry',
+              ),
+              actionLabel: signIn
+                  ? messages.commonSignIn
+                  : messages.commonRetry,
+              onAction: signIn
+                  ? () => context.pushInTab(AppRoutes.signIn)
+                  : _reload,
             );
           }
           return _body(messages, snapshot.data!);
@@ -846,11 +864,13 @@ class _CommentsMessage extends StatelessWidget {
   const _CommentsMessage({
     super.key,
     required this.message,
+    this.actionKey,
     this.actionLabel,
     this.onAction,
   });
 
   final String message;
+  final Key? actionKey;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -867,7 +887,11 @@ class _CommentsMessage extends StatelessWidget {
             Text(message, textAlign: TextAlign.center),
             if (label != null && onAction != null) ...[
               const SizedBox(height: 16),
-              FilledButton(onPressed: onAction, child: Text(label)),
+              FilledButton(
+                key: actionKey,
+                onPressed: onAction,
+                child: Text(label),
+              ),
             ],
           ],
         ),

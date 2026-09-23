@@ -450,6 +450,52 @@ void main() {
       );
     });
 
+    testWidgets('sends a reader whose session was refused to sign in', (
+      tester,
+    ) async {
+      repository.listFailure = const AnnouncementFailure(
+        AnnouncementFailureKind.sessionExpired,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.announcements);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('announcements-error')),
+      );
+
+      expect(find.byKey(const ValueKey('announcements-retry')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('announcements-sign-in')));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+      expect(router.state.uri.path, AppRoutes.signIn);
+    });
+
+    testWidgets('gives the whole screen to a session refused on a later page', (
+      tester,
+    ) async {
+      repository
+        ..announcements = [
+          for (var i = 0; i < 30; i++) announcement('p-$i', isRead: true),
+        ]
+        ..pageSize = 20
+        ..moreFailure = const AnnouncementFailure(
+          AnnouncementFailureKind.sessionExpired,
+        );
+      await openList(tester);
+
+      await tester.fling(
+        find.byKey(const ValueKey('announcements-list')),
+        const Offset(0, -4000),
+        1000,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('announcements-error')),
+      );
+
+      expect(repository.listTokens, ['', '20']);
+      expect(find.byKey(const ValueKey('announcements-list')), findsNothing);
+      expect(find.byKey(const ValueKey('announcements-sign-in')), findsOne);
+    });
+
     testWidgets('says so when there is nothing to show', (tester) async {
       repository.announcements = [];
       await pumpApp(tester, initialLocation: AppRoutes.announcements);
@@ -557,6 +603,24 @@ void main() {
         find.byKey(const ValueKey('announcement-open-link')),
         findsNothing,
       );
+    });
+
+    testWidgets('sends a reader whose session was refused to sign in', (
+      tester,
+    ) async {
+      repository.getFailure = const AnnouncementFailure(
+        AnnouncementFailureKind.sessionExpired,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.announcementPath('a-1'));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('announcement-error')),
+      );
+
+      expect(find.byKey(const ValueKey('announcement-retry')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('announcement-sign-in')));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+      expect(router.state.uri.path, AppRoutes.signIn);
     });
 
     testWidgets('says so when it no longer exists', (tester) async {

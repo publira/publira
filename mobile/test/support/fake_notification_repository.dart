@@ -24,6 +24,10 @@ class FakeNotificationRepository implements NotificationRepository {
   int pageSize;
 
   NotificationFailure? listFailure;
+
+  /// Thrown by [list] for every page but the first.
+  NotificationFailure? moreFailure;
+
   NotificationFailure? countFailure;
   NotificationFailure? markFailure;
 
@@ -45,6 +49,10 @@ class FakeNotificationRepository implements NotificationRepository {
     final failure = listFailure;
     if (failure != null) {
       throw failure;
+    }
+    final more = moreFailure;
+    if (more != null && token.isNotEmpty) {
+      throw more;
     }
     if (pageSize <= 0) {
       return InboxNotificationPage(notifications: List.of(notifications));

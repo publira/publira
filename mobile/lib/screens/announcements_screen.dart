@@ -143,7 +143,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     setState(() {
       _reading = false;
       if (page == null) {
-        if (isFirstPage) {
+        // A session the API refuses is refused for every page, so it takes the
+        // whole screen, where the way out is to sign in again.
+        if (isFirstPage ||
+            failure?.kind == AnnouncementFailureKind.sessionExpired) {
           _failure = failure;
         } else {
           _moreFailure = failure;
@@ -304,6 +307,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     }
     final failure = _failure;
     if (failure != null) {
+      // Retrying would send the token the API just refused.
+      final signIn = failure.kind == AnnouncementFailureKind.sessionExpired;
       return CatalogMessage(
         key: const ValueKey('announcements-error'),
         message: announcementFailureCopy(
@@ -311,9 +316,13 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           failure,
           messages.announcementsFailed,
         ),
-        actionKey: const ValueKey('announcements-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: _readFirstPage,
+        actionKey: ValueKey(
+          signIn ? 'announcements-sign-in' : 'announcements-retry',
+        ),
+        actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+        onAction: signIn
+            ? () => context.pushInTab(AppRoutes.signIn)
+            : _readFirstPage,
       );
     }
     final announcements = _announcements;
