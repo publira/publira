@@ -17,6 +17,7 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   final Map<String, SeriesDetail> details = {};
   final Map<String, SavedEpisode> episodes = {};
   final Map<String, SavedReadingPosition> positions = {};
+  final Map<String, UnsentProgress> unsent = {};
   final Map<String, Uint8List> pages = {};
 
   final _changes = StreamController<void>.broadcast();
@@ -118,6 +119,44 @@ class InMemoryOfflineLibrary implements OfflineLibrary {
   }) async {
     positions[savedEpisodeKey(seriesPublicId, episodePublicId)] =
         SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
+  }
+
+  @override
+  Future<List<UnsentProgress>> readUnsentProgress({
+    required String readerId,
+  }) async => [
+    for (final progress in unsent.values)
+      if (progress.readerId == readerId) progress,
+  ];
+
+  @override
+  Future<void> queueUnsentProgress(UnsentProgress progress) async {
+    final queued = unsent[progress.key];
+    unsent[progress.key] = queued == null
+        ? progress
+        : queued.mergedWith(progress);
+  }
+
+  @override
+  Future<void> settleUnsentProgress(
+    UnsentProgress sent, {
+    bool newest = false,
+  }) async {
+    final queued = unsent[sent.key];
+    if (queued == null) {
+      return;
+    }
+    final left = queued.settledBy(sent, newest: newest);
+    if (left.isEmpty) {
+      unsent.remove(sent.key);
+    } else {
+      unsent[sent.key] = left;
+    }
+  }
+
+  @override
+  Future<void> forgetUnsentProgress({required String readerId}) async {
+    unsent.removeWhere((key, progress) => progress.readerId == readerId);
   }
 
   @override

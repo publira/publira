@@ -24,9 +24,11 @@ class OfflineIndex {
     Map<String, SeriesDetail>? details,
     Map<String, SavedEpisode>? episodes,
     Map<String, SavedReadingPosition>? positions,
+    Map<String, UnsentProgress>? unsent,
   }) : details = details ?? <String, SeriesDetail>{},
        episodes = episodes ?? <String, SavedEpisode>{},
-       positions = positions ?? <String, SavedReadingPosition>{};
+       positions = positions ?? <String, SavedReadingPosition>{},
+       unsent = unsent ?? <String, UnsentProgress>{};
 
   /// The tenant host everything here was saved for.
   String tenantHost;
@@ -52,6 +54,10 @@ class OfflineIndex {
   /// the positions point into.
   final Map<String, SavedReadingPosition> positions;
 
+  /// Progress the API has not accepted yet, keyed by [UnsentProgress.key] in
+  /// the order it was first queued.
+  final Map<String, UnsentProgress> unsent;
+
   Map<String, Object?> toJson() => {
     'version': offlineIndexVersion,
     'tenantHost': tenantHost,
@@ -71,6 +77,7 @@ class OfflineIndex {
       for (final entry in positions.entries)
         entry.key: _positionToJson(entry.value),
     },
+    'unsent': [for (final progress in unsent.values) _unsentToJson(progress)],
   };
 
   /// Reads an index written by [toJson], or `null` for anything this build
@@ -83,6 +90,7 @@ class OfflineIndex {
     final rawDetails = decoded['details'];
     final rawEpisodes = decoded['episodes'];
     final rawPositions = decoded['positions'];
+    final rawUnsent = decoded['unsent'];
     return OfflineIndex(
       tenantHost: _string(decoded['tenantHost']),
       tenant: _tenantFromJson(decoded['tenant']),
@@ -91,6 +99,14 @@ class OfflineIndex {
           : {
               for (final entry in rawPositions.entries)
                 entry.key.toString(): ?_positionFromJson(entry.value),
+            },
+      unsent: rawUnsent is! List
+          ? null
+          : {
+              for (final progress in [
+                for (final item in rawUnsent) ?_unsentFromJson(item),
+              ])
+                progress.key: progress,
             },
       series: rawSeries is List
           ? [for (final item in rawSeries) ?_seriesFromJson(item)]
@@ -493,6 +509,36 @@ SavedReadingPosition? _positionFromJson(Object? decoded) {
     return null;
   }
   return SavedReadingPosition(readerId: readerId, pageIndex: pageIndex);
+}
+
+Map<String, Object?> _unsentToJson(UnsentProgress progress) => {
+  'readerId': progress.readerId,
+  'episodeId': progress.episodeId,
+  if (progress.seriesId.isNotEmpty) 'seriesId': progress.seriesId,
+  if (progress.pageIndex != null) 'pageIndex': progress.pageIndex,
+  if (progress.finished) 'finished': true,
+};
+
+UnsentProgress? _unsentFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final pageIndex = decoded['pageIndex'];
+  final progress = UnsentProgress(
+    readerId: _string(decoded['readerId']),
+    episodeId: _string(decoded['episodeId']),
+    seriesId: _string(decoded['seriesId']),
+    pageIndex: pageIndex is int && pageIndex >= 0 ? pageIndex : null,
+    finished: decoded['finished'] == true,
+  );
+  // A page is sent under its series, so one without it could never be.
+  if (progress.readerId.isEmpty ||
+      progress.episodeId.isEmpty ||
+      (progress.pageIndex != null && progress.seriesId.isEmpty) ||
+      progress.isEmpty) {
+    return null;
+  }
+  return progress;
 }
 
 ReadingDirection _readingDirectionFromJson(Object? decoded) {

@@ -125,6 +125,73 @@ class SavedReadingPosition {
   final int pageIndex;
 }
 
+/// What one reader did in one episode that the API has not accepted yet.
+///
+/// It is kept apart from [SavedReadingPosition] because it outlives the saved
+/// body: a reader who deletes a download, or whose download is evicted, still
+/// finished the episode and still stopped on that page.
+class UnsentProgress {
+  const UnsentProgress({
+    required this.readerId,
+    required this.episodeId,
+    this.seriesId = '',
+    this.pageIndex,
+    this.finished = false,
+  });
+
+  /// Public id of the reader whose session alone may send it.
+  final String readerId;
+
+  final String episodeId;
+
+  /// The series [episodeId] is under, which sending a page needs. Empty for
+  /// an entry that only carries a finish.
+  final String seriesId;
+
+  /// The page the reader last rested on, or `null` when the API holds it.
+  final int? pageIndex;
+
+  /// Whether the reader finished the episode without the API recording it.
+  final bool finished;
+
+  String get key => unsentProgressKey(readerId, episodeId);
+
+  /// Whether there is nothing left to send.
+  bool get isEmpty => pageIndex == null && !finished;
+
+  /// This entry with [later] queued on top of it: the later page replaces the
+  /// earlier one, and a finish stays once made.
+  UnsentProgress mergedWith(UnsentProgress later) => UnsentProgress(
+    readerId: readerId,
+    episodeId: episodeId,
+    seriesId: later.pageIndex == null ? seriesId : later.seriesId,
+    pageIndex: later.pageIndex ?? pageIndex,
+    finished: finished || later.finished,
+  );
+
+  /// What is left of this entry once the API has accepted [sent].
+  ///
+  /// The page is dropped only while it is still the one [sent] carried, so a
+  /// page queued while [sent] was on its way is sent next. [newest] says no
+  /// queued page can be newer than the one sent, as for a page the viewer sent
+  /// straight to the API, and drops whichever page is queued.
+  UnsentProgress settledBy(UnsentProgress sent, {bool newest = false}) {
+    final pageSent =
+        sent.pageIndex != null && (newest || sent.pageIndex == pageIndex);
+    return UnsentProgress(
+      readerId: readerId,
+      episodeId: episodeId,
+      seriesId: seriesId,
+      pageIndex: pageSent ? null : pageIndex,
+      finished: finished && !sent.finished,
+    );
+  }
+}
+
+/// Key of [readerId]'s unsent progress in [episodePublicId].
+String unsentProgressKey(String readerId, String episodePublicId) =>
+    '$readerId/$episodePublicId';
+
 /// Index key of the episode [episodePublicId] under [seriesPublicId].
 String savedEpisodeKey(String seriesPublicId, String episodePublicId) =>
     '$seriesPublicId/$episodePublicId';
@@ -231,6 +298,21 @@ abstract class OfflineLibrary implements EpisodePageStore {
     required int pageIndex,
   });
 
+  /// What [readerId] did that the API has not accepted yet, oldest first.
+  Future<List<UnsentProgress>> readUnsentProgress({required String readerId});
+
+  /// Keeps [progress] until the API accepts it, on top of whatever is already
+  /// queued for the same reader and episode.
+  Future<void> queueUnsentProgress(UnsentProgress progress);
+
+  /// Drops what the API has accepted of [sent], as
+  /// [UnsentProgress.settledBy] decides.
+  Future<void> settleUnsentProgress(UnsentProgress sent, {bool newest = false});
+
+  /// Drops everything [readerId] left unsent, which their signing out does:
+  /// no later session on this device may send it for them.
+  Future<void> forgetUnsentProgress({required String readerId});
+
   /// Episodes of [seriesPublicId] this device could open right now for
   /// [readerId] with every page on it, which is what the series screen marks
   /// as saved.
@@ -250,6 +332,9 @@ abstract class OfflineLibrary implements EpisodePageStore {
   /// tell.
   Future<OfflineStorage> readStorage();
 
-  /// Drops everything, pages included.
+  /// Drops every saved episode and screen, pages included.
+  ///
+  /// Unsent progress stays: deleting downloads does not undo what the reader
+  /// read.
   Future<void> clear();
 }

@@ -2873,6 +2873,93 @@ void main() {
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });
+
+    testApp('an episode finished with the API gone is recorded once it is '
+        'back', (tester) async {
+      await withFailureScreenshot(tester, 'offline-progress-sent', () async {
+        const lastPage = ConnectFixtureServer.seedEpisodePageCount - 1;
+        final save = find.byKey(
+          const ValueKey(
+            'episode-save-offline-${ConnectFixtureServer.seedEpisodeId}',
+          ),
+        );
+        await pumpLaunch(
+          tester,
+          baseUrl: server.baseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+        await scrollSeriesTo(tester, save);
+        await tapReachable(tester, save);
+        await pumpUntilTrueAsync(
+          tester,
+          () async => (await offline.readableEpisodeIds(
+            ConnectFixtureServer.seedSeriesId,
+            readerId: ConnectFixtureServer.memberPublicId,
+          )).contains(ConnectFixtureServer.seedEpisodeId),
+          description: 'the whole episode to reach the device',
+          timeout: const Duration(seconds: 30),
+        );
+
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
+
+        await pumpLaunch(
+          tester,
+          baseUrl: closedBaseUrl,
+          session: memberSession(),
+          initialLocation: AppRoutes.episodeViewerPath(
+            ConnectFixtureServer.seedSeriesId,
+            ConnectFixtureServer.seedEpisodeId,
+          ),
+        );
+        await pumpUntilPagesDrawn(tester);
+        for (var page = 0; page < lastPage; page++) {
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('episode-next-page')),
+          );
+          await pumpUntilPagesDrawn(tester);
+        }
+        await pumpUntilTrueAsync(tester, () async {
+          final unsent = await offline.readUnsentProgress(
+            readerId: ConnectFixtureServer.memberPublicId,
+          );
+          return unsent.any(
+            (progress) => progress.finished && progress.pageIndex == lastPage,
+          );
+        }, description: 'the finish and the last page to be queued');
+
+        // Back on a new port, as a device that has reconnected reaches the API
+        // at whatever address it answers at.
+        await server.start();
+        await pumpLaunch(
+          tester,
+          baseUrl: server.baseUrl,
+          session: memberSession(),
+        );
+        await pumpUntilTrue(
+          tester,
+          () =>
+              server.episodeReads.containsKey(
+                ConnectFixtureServer.seedEpisodeId,
+              ) &&
+              server.readingPositions[ConnectFixtureServer.seedEpisodeId] ==
+                  lastPage,
+          description: 'the finish and the last page to reach the API',
+        );
+
+        expect(
+          await offline.readUnsentProgress(
+            readerId: ConnectFixtureServer.memberPublicId,
+          ),
+          isEmpty,
+        );
+      });
+    });
   });
 }
 

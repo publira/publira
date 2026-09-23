@@ -131,6 +131,24 @@ class _RealTimeLibrary implements OfflineLibrary {
   );
 
   @override
+  Future<List<UnsentProgress>> readUnsentProgress({required String readerId}) =>
+      _run(() => _inner.readUnsentProgress(readerId: readerId));
+
+  @override
+  Future<void> queueUnsentProgress(UnsentProgress progress) =>
+      _run(() => _inner.queueUnsentProgress(progress));
+
+  @override
+  Future<void> settleUnsentProgress(
+    UnsentProgress sent, {
+    bool newest = false,
+  }) => _run(() => _inner.settleUnsentProgress(sent, newest: newest));
+
+  @override
+  Future<void> forgetUnsentProgress({required String readerId}) =>
+      _run(() => _inner.forgetUnsentProgress(readerId: readerId));
+
+  @override
   Future<Set<String>> readableEpisodeIds(
     String seriesPublicId, {
     required String readerId,
