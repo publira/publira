@@ -27,9 +27,10 @@ Map<String, String> iosGeneratedFiles(
     'PUBLIRA_ASSOCIATED_DOMAIN = ${manifest.tenantHost}',
     'PUBLIRA_APP_NAME = ${xcconfigValue(manifest.appName)}',
     // Kept apart from DEVELOPMENT_TEAM, which Flutter fills in from the
-    // keychain when the project names none.
+    // keychain when the project names none, and applied to the store build
+    // only, so that every other build keeps signing as it did.
     'PUBLIRA_DEVELOPMENT_TEAM =${developmentTeam == null ? '' : ' $developmentTeam'}',
-    r'DEVELOPMENT_TEAM = $(PUBLIRA_DEVELOPMENT_TEAM)',
+    r'DEVELOPMENT_TEAM[config=Release-production] = $(PUBLIRA_DEVELOPMENT_TEAM)',
     '',
   ].join('\n'),
 };

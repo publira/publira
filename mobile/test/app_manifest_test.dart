@@ -55,7 +55,7 @@ Map<String, String> _xcconfigSettings(String text) {
       continue;
     }
     final assignment = RegExp(
-      r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$',
+      r'^([A-Za-z_][A-Za-z0-9_]*(?:\[[a-z]+=[A-Za-z0-9_*-]+\])*)\s*=\s*(.*)$',
     ).firstMatch(statement);
     if (assignment == null) {
       fail('Xcode cannot read the line "$line"');
@@ -662,19 +662,23 @@ android:
         'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.com',
         'PUBLIRA_APP_NAME': 'Example Reader',
         'PUBLIRA_DEVELOPMENT_TEAM': '',
-        'DEVELOPMENT_TEAM': '',
+        'DEVELOPMENT_TEAM[config=Release-production]': '',
       });
     });
 
-    test('signs under the team it is given', () {
+    test('signs the store build alone under the team it is given', () {
       final manifest = AppManifest.parse(_valid, source: 'app.yaml');
 
+      final settings = settingsOf(manifest, developmentTeam: 'ABCDE12345');
+
+      expect(settings, containsPair('PUBLIRA_DEVELOPMENT_TEAM', 'ABCDE12345'));
       expect(
-        settingsOf(manifest, developmentTeam: 'ABCDE12345'),
-        allOf(
-          containsPair('PUBLIRA_DEVELOPMENT_TEAM', 'ABCDE12345'),
-          containsPair('DEVELOPMENT_TEAM', 'ABCDE12345'),
-        ),
+        settings.keys.where((name) => name.startsWith('DEVELOPMENT_TEAM')),
+        ['DEVELOPMENT_TEAM[config=Release-production]'],
+      );
+      expect(
+        settings['DEVELOPMENT_TEAM[config=Release-production]'],
+        'ABCDE12345',
       );
     });
 

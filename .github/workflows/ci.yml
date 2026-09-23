@@ -782,11 +782,20 @@ jobs:
           PUBLIRA_TENANT_HOST: localhost
 
       # A tenant's production build from the example manifest, through the
-      # command a tenant runs.
+      # command a tenant runs, signed with a throwaway upload key.
       - name: Build / Tenant Android app
-        run: task mobile:build -- mobile/config/app.example.yaml apk
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -noprompt -keystore "${PUBLIRA_ANDROID_KEYSTORE}" \
+            -storepass "${PUBLIRA_ANDROID_KEYSTORE_PASSWORD}" -keypass "${PUBLIRA_ANDROID_KEY_PASSWORD}" \
+            -alias "${PUBLIRA_ANDROID_KEY_ALIAS}" -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Example Reader"
+          task mobile:build -- mobile/config/app.example.yaml apk
         env:
           PUBLIRA_BASE_URL: https://reader.example.com
+          PUBLIRA_ANDROID_KEYSTORE: ${{ runner.temp }}/upload.jks
+          PUBLIRA_ANDROID_KEYSTORE_PASSWORD: throwaway
+          PUBLIRA_ANDROID_KEY_ALIAS: upload
+          PUBLIRA_ANDROID_KEY_PASSWORD: throwaway
 
       - name: Teardown / Server stack
         if: always()
