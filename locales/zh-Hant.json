@@ -1042,6 +1042,7 @@
       "slug_conflict": "已存在相同 slug 的頁面。請換一個 slug。",
       "slug_invalid": "slug 必須為空，或以 / 開頭並且只包含小寫字母、數字與連字號。",
       "slug_reserved": "此 slug 的路徑已保留給網站的登入、註冊、郵件中的連結或帳號設定。請換一個 slug。",
+      "slug_unreachable": "此路徑由網站本身作為語言切換、API 或健康檢查來回應，無法顯示頁面。請換一個 slug。",
       "not_found": "找不到該頁面或版本。請重新載入頁面。",
       "workspace": {
         "slug_description": "公開網址。它會影響公開連結，因此為唯讀。",

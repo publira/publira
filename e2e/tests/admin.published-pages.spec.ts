@@ -7,7 +7,7 @@ import {
   pageFormFields,
   signInAsSeedAdmin,
 } from "../src/admin";
-import { applyScenarioSql, deletePagesByIds, runSql } from "../src/db";
+import { applyScenarioSql, deletePagesByIds } from "../src/db";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import {
   MULTI_TENANT_SCENARIO,
@@ -72,22 +72,6 @@ const expectPublicPageHeading = async (
       page.getByRole("heading", { level: 1, name: title })
     ).toBeVisible({ timeout: 5000 });
   }).toPass({ timeout: 60_000 });
-};
-
-/**
- * `/ja` is the one slug in this suite that cannot carry a unique suffix: the
- * proxy only splits off a segment that is literally a locale code. A run killed
- * before its cleanup would leave the row behind and every later run would fail
- * on the slug conflict, so drop it before creating it.
- */
-const deleteSeedTenantPageBySlug = (slug: string): void => {
-  runSql(`
-    DELETE FROM pages p
-    USING tenants t
-    WHERE p.tenant_id = t.id
-      AND t.domain = 'localhost'
-      AND p.slug = '${slug}';
-  `);
 };
 
 /**
@@ -380,39 +364,24 @@ test.describe("admin published pages", () => {
     await expect(page).toHaveURL(/\/pages\/new/u);
   });
 
-  test("a slug that looks like a locale code still resolves as a public page", async ({
+  test("a slug the site answers as a locale prefix is refused beside the field", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
-    // A locale the tenant does not serve by default: spelling out its own
-    // default redirects to the unprefixed URL, which would strip the segment
-    // this page's slug is made of before anything could match it.
-    const localeSlug = "/ja";
-    const title = `E2E Locale Slug Page ${suffix}`;
-    const body = `Locale-like slug body ${suffix}`;
 
-    deleteSeedTenantPageBySlug(localeSlug);
-    trackPage(
-      await createPageViaUi(page, {
-        contentMarkdown: body,
-        slug: localeSlug,
-        title,
-      })
-    );
-    await publishVersion(page, 1);
+    await page.goto(adminUrl("/pages/new"));
+    const fields = pageFormFields(page);
+    await fillField(fields.slug, "/ja");
+    await fillField(fields.title, `E2E Locale Slug ${suffix}`);
+    await page.getByRole("button", { name: "Create page" }).click();
 
-    // `/ja` is the Japanese home: the locale prefix is split off before the
-    // published-page rules are consulted, and nothing is left to match a slug.
-    const homeResponse = await page.goto(hostUrl(localeSlug));
-    expect(homeResponse?.status(), await page.content()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: title })
-    ).toHaveCount(0);
-
-    // `/ja/ja` is that same page, read under the Japanese locale. This is what
-    // `apps/web-host/proxy.ts` preserves by stripping the locale first.
-    await expectPublicPageHeading(page, `${localeSlug}${localeSlug}`, title);
-    await expect(page.getByText(body)).toBeVisible();
+      page.getByText(
+        "The site answers this path itself, as a language prefix, its API, or a health check, before it looks for a page."
+      )
+    ).toBeVisible();
+    await expect(fields.slug).toHaveAttribute("aria-invalid", "true");
+    await expect(page).toHaveURL(/\/pages\/new/u);
   });
 
   test("another tenant's page is not found in the edit screen", async ({

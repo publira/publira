@@ -1042,6 +1042,7 @@
       "slug_conflict": "A page with the same slug already exists. Choose a different slug.",
       "slug_invalid": "The slug must be empty, or start with / and use only lowercase letters, digits, and hyphens.",
       "slug_reserved": "The site keeps this path for signing in, signing up, the links in its emails, or account settings. Choose a different slug.",
+      "slug_unreachable": "The site answers this path itself, as a language prefix, its API, or a health check, before it looks for a page. Choose a different slug.",
       "not_found": "The page or version could not be found. Reload the page.",
       "workspace": {
         "slug_description": "The public URL. It is read-only because it affects public links.",

@@ -38,6 +38,12 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 		{in: "/resend-verification", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
 		{in: "/settings/notifications", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugReserved},
 		{in: "/help/login", want: "/help/login"},
+		{in: "/ja", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/en/about", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/api/x", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/livez", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/readyz", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/about/ja", want: "/about/ja"},
 	}
 	for _, tt := range tests {
 		got, err := normalizePageSlugForStorage(tt.in)

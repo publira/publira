@@ -96,7 +96,7 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 //   - empty / "/" → ""
 //   - strip leading/trailing slashes, collapse "//"
 //   - each path segment: [a-z0-9][a-z0-9-]*
-//   - the first segment is not one pageslug reserves
+//   - the first segment is not one pageslug reserves or finds unreachable
 //   - stored form always has a single leading "/" (e.g. "/privacy", "/legal/terms")
 func normalizePageSlugForStorage(slug string) (string, error) {
 	normalized := strings.TrimSpace(slug)
@@ -134,6 +134,14 @@ func normalizePageSlugForStorage(slug string) (string, error) {
 			fmt.Errorf("slug must not start with /%s, which the public site keeps for its own screen", first),
 			"slug",
 			rpcerrors.FieldReasonPageSlugReserved,
+		)
+	}
+	if first, unreachable := pageslug.UnreachableFirstSegment("/" + normalized); unreachable {
+		return "", rpcerrors.NewFieldViolationErrorWithReason(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("slug must not start with /%s, which the public site answers before it looks at pages", first),
+			"slug",
+			rpcerrors.FieldReasonPageSlugUnreachable,
 		)
 	}
 

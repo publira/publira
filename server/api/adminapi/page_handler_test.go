@@ -101,6 +101,30 @@ func TestCreatePageRefusesASlugThatTakesOverTheSignInScreen(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestCreatePageRefusesASlugTheSiteAnswersBeforePages(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Slug:   "/ja",
+		Title:  "Japanese",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreatePage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertBadRequestField(t, err, "slug")
+	if reason := badRequestReason(t, err); reason != rpcerrors.FieldReasonPageSlugUnreachable {
+		t.Fatalf("reason = %q, want %q", reason, rpcerrors.FieldReasonPageSlugUnreachable)
+	}
+	assertExpectations(t, mock)
+}
+
 func TestListPagesFirstPageReportsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
