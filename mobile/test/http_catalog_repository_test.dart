@@ -1872,7 +1872,17 @@ void main() {
           isA<CatalogFailure>().having(
             (error) => error.kind,
             'kind',
-            CatalogFailureKind.unexpected,
+            CatalogFailureKind.sessionExpired,
+          ),
+        ),
+      );
+      expect(
+        () => signedIn.listEpisodeReads(limit: 20),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.sessionExpired,
           ),
         ),
       );

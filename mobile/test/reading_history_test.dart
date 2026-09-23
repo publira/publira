@@ -216,6 +216,46 @@ void main() {
     await pumpUntilFound(tester, row(1));
   });
 
+  testWidgets('sends a reader whose session was refused to sign in', (
+    tester,
+  ) async {
+    catalog.episodeReadsError = const CatalogFailure(
+      CatalogFailureKind.sessionExpired,
+    );
+    await pumpApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('reading-history-error')),
+    );
+
+    expect(find.byKey(const ValueKey('reading-history-retry')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('reading-history-sign-in')));
+    await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+
+    expect(router.state.uri.path, AppTab.account.locate(AppRoutes.signIn));
+  });
+
+  testWidgets('gives the whole screen to a session refused on a later page', (
+    tester,
+  ) async {
+    catalog
+      ..episodeReads = [for (var index = 21; index >= 1; index--) read(index)]
+      ..episodeReadsMoreError = const CatalogFailure(
+        CatalogFailureKind.sessionExpired,
+      );
+    await pumpApp(tester);
+    await pumpUntilFound(tester, list);
+
+    await tester.fling(list, const Offset(0, -4000), 1000);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('reading-history-error')),
+    );
+
+    expect(list, findsNothing);
+    expect(find.byKey(const ValueKey('reading-history-sign-in')), findsOne);
+  });
+
   testWidgets('reads the history again when the reader pulls it down', (
     tester,
   ) async {

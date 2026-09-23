@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
@@ -77,9 +78,7 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
 
   /// Reads the history again from the top, since the screen stays mounted
   /// while the reader finishes an episode on another tab.
-  Future<void> _refresh() async {
-    _pager.restart();
-  }
+  Future<void> _refresh() => _pager.refresh();
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +95,15 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
     return ListenableBuilder(
       listenable: _pager,
       builder: (context, _) {
-        final failure = _pager.failure;
+        // A session the API refuses is refused for every page, so it takes
+        // the whole screen, where the way out is to sign in again.
+        final failure =
+            _pager.failure ??
+            (_pager.moreFailure?.kind == CatalogFailureKind.sessionExpired
+                ? _pager.moreFailure
+                : null);
         if (failure != null) {
+          final signIn = failure.kind == CatalogFailureKind.sessionExpired;
           return CatalogMessage(
             key: const ValueKey('reading-history-error'),
             message: catalogFailureCopy(
@@ -105,9 +111,13 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
               failure,
               messages.readingHistoryFailed,
             ),
-            actionKey: const ValueKey('reading-history-retry'),
-            actionLabel: messages.commonRetry,
-            onAction: _pager.restart,
+            actionKey: ValueKey(
+              signIn ? 'reading-history-sign-in' : 'reading-history-retry',
+            ),
+            actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+            onAction: signIn
+                ? () => context.pushInTab(AppRoutes.signIn)
+                : _pager.restart,
           );
         }
         final reads = _pager.items;
@@ -183,6 +193,7 @@ class _ReadingHistoryRow extends StatelessWidget {
     ].join(' ');
     return ListTile(
       key: ValueKey('reading-history-row-${episode.id}'),
+      isThreeLine: true,
       title: Text(title),
       subtitle: Text(
         [

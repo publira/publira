@@ -683,7 +683,9 @@ class HttpCatalogRepository implements CatalogRepository {
       return CatalogFailure(CatalogFailureKind.network, message: error.message);
     }
     return CatalogFailure(
-      CatalogFailureKind.unexpected,
+      error.code == 'unauthenticated'
+          ? CatalogFailureKind.sessionExpired
+          : CatalogFailureKind.unexpected,
       message: error.message,
     );
   }
