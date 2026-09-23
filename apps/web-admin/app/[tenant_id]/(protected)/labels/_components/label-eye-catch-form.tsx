@@ -88,6 +88,7 @@ export const LabelEyeCatchForm = ({
 
       <EyeCatchImageField
         clearEyeCatchImage={clearEyeCatchImage}
+        disabled={isPending}
         fileInputId="label_eye_catch_image"
         fileInputRef={fileInputRef}
         hasVariants={hasVariants}

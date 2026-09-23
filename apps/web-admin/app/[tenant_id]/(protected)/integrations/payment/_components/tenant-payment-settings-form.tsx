@@ -9,6 +9,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { ChangeEvent } from "react";
@@ -227,47 +228,49 @@ const PaymentSettingsFields = ({
         </FieldContent>
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor={enabledId}>
-          <ClientMessage message="admin.settings.payment.enabled" />
-        </FieldLabel>
-        <FieldContent>
-          <label className="inline-flex items-center gap-2 text-sm text-foreground">
-            <input
-              checked={enabled}
-              disabled={fieldsDisabled}
-              id={enabledId}
-              name="enabled"
-              onChange={handleEnabledChange}
-              type="checkbox"
-            />
-            <ClientMessage message="admin.settings.payment.enabled_checkbox" />
-          </label>
-          <FieldDescription>
-            <ClientMessage message="admin.settings.payment.enabled_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+      <Fieldset className="grid gap-5" disabled={isSaving}>
+        <Field>
+          <FieldLabel htmlFor={enabledId}>
+            <ClientMessage message="admin.settings.payment.enabled" />
+          </FieldLabel>
+          <FieldContent>
+            <label className="inline-flex items-center gap-2 text-sm text-foreground">
+              <input
+                checked={enabled}
+                disabled={fieldsDisabled}
+                id={enabledId}
+                name="enabled"
+                onChange={handleEnabledChange}
+                type="checkbox"
+              />
+              <ClientMessage message="admin.settings.payment.enabled_checkbox" />
+            </label>
+            <FieldDescription>
+              <ClientMessage message="admin.settings.payment.enabled_description" />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-      <PaymentSecretField
-        canEdit={!fieldsDisabled}
-        configured={settings.secretKeyConfigured}
-        error={fieldErrors?.secretKey}
-        hint={settings.secretKeyHint}
-        labelKey="admin.settings.payment.secret_key"
-        name="secret_key"
-        required={secretKeyRequired}
-      />
+        <PaymentSecretField
+          canEdit={!fieldsDisabled}
+          configured={settings.secretKeyConfigured}
+          error={fieldErrors?.secretKey}
+          hint={settings.secretKeyHint}
+          labelKey="admin.settings.payment.secret_key"
+          name="secret_key"
+          required={secretKeyRequired}
+        />
 
-      <PaymentSecretField
-        canEdit={!fieldsDisabled}
-        configured={settings.webhookSecretConfigured}
-        error={fieldErrors?.webhookSecret}
-        hint={settings.webhookSecretHint}
-        labelKey="admin.settings.payment.webhook_secret"
-        name="webhook_secret"
-        required={webhookSecretRequired}
-      />
+        <PaymentSecretField
+          canEdit={!fieldsDisabled}
+          configured={settings.webhookSecretConfigured}
+          error={fieldErrors?.webhookSecret}
+          hint={settings.webhookSecretHint}
+          labelKey="admin.settings.payment.webhook_secret"
+          name="webhook_secret"
+          required={webhookSecretRequired}
+        />
+      </Fieldset>
 
       {webhookUrl ? (
         <Field>

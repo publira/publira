@@ -51,6 +51,9 @@ export const TenantTimezoneForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
+  // The save carries the zone picked when it was submitted, so the picker
+  // stays closed until it lands.
+  const controlsDisabled = !canEdit || isPending;
 
   const items = useMemo<ComboboxItem[]>(() => {
     const zones = listSupportedTimeZones();
@@ -86,7 +89,7 @@ export const TenantTimezoneForm = ({
           </FieldLabel>
           <FieldContent>
             <Combobox
-              disabled={!canEdit}
+              disabled={controlsDisabled}
               items={items}
               onValueChange={setTimezone}
               value={timezone}
@@ -124,7 +127,7 @@ export const TenantTimezoneForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={!canEdit || isPending} type="submit">
+          <Button disabled={controlsDisabled} type="submit">
             {isPending
               ? t("admin.settings.saving")
               : t("admin.settings.timezone.submit")}

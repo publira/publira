@@ -15,6 +15,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -165,166 +166,168 @@ export const TicketForm = ({
     <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.access_tickets.form.user" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            name="user_public_id"
-            placeholder={t("admin.access_tickets.form.user_placeholder")}
-            required
-            type="text"
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.access_tickets.form.user_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      {useEpisodeFallbackInput ? (
+      <Fieldset className="grid gap-5" disabled={isPending}>
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.access_tickets.form.episode_id" />
+            <ClientMessage message="admin.access_tickets.form.user" />
           </FieldLabel>
           <FieldContent>
-            {seriesErrorMessage ? (
-              <FormMessage variant="destructive">
-                {seriesErrorMessage}
-              </FormMessage>
-            ) : null}
             <Input
-              name="episode_public_id"
-              placeholder={t(
-                "admin.access_tickets.form.episode_id_placeholder"
-              )}
+              name="user_public_id"
+              placeholder={t("admin.access_tickets.form.user_placeholder")}
               required
               type="text"
             />
             <FieldDescription>
-              {t(
-                seriesItems.length === 0 && !seriesErrorMessage
-                  ? "admin.access_tickets.form.episode_id_no_series"
-                  : "admin.access_tickets.form.episode_id_description"
-              )}
+              <ClientMessage message="admin.access_tickets.form.user_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
-      ) : (
-        <>
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="admin.access_tickets.form.series" />
-            </FieldLabel>
-            <FieldContent>
-              <Combobox
-                items={seriesItems}
-                onValueChange={handleSeriesChange}
-                value={seriesPublicId}
-              >
-                <ComboboxInput
-                  placeholder={t(
-                    "admin.access_tickets.form.series_placeholder"
-                  )}
-                />
-                <ComboboxPopup>
-                  <ComboboxEmpty>
-                    <ClientMessage message="admin.access_tickets.form.series_empty" />
-                  </ComboboxEmpty>
-                  <ComboboxItems />
-                </ComboboxPopup>
-              </Combobox>
-              <FieldDescription>
-                <ClientMessage message="admin.access_tickets.form.series_description" />
-              </FieldDescription>
-            </FieldContent>
-          </Field>
 
+        {useEpisodeFallbackInput ? (
           <Field>
             <FieldLabel required>
-              <ClientMessage message="admin.access_tickets.form.episode" />
+              <ClientMessage message="admin.access_tickets.form.episode_id" />
             </FieldLabel>
             <FieldContent>
-              <Combobox
-                disabled={isEpisodePending || seriesPublicId === ""}
-                items={episodeItems}
-                onValueChange={setEpisodePublicId}
-                value={episodePublicId}
-              >
-                <ComboboxInput
-                  placeholder={t(
-                    isEpisodePending
-                      ? "admin.access_tickets.form.episode_loading"
-                      : "admin.access_tickets.form.episode_placeholder"
-                  )}
-                />
-                <ComboboxPopup>
-                  <ComboboxEmpty>
-                    <ClientMessage message="admin.access_tickets.form.episode_empty" />
-                  </ComboboxEmpty>
-                  <ComboboxItems />
-                </ComboboxPopup>
-              </Combobox>
-              <input
-                name="episode_public_id"
-                type="hidden"
-                value={episodePublicId}
-              />
-              {episodesErrorMessage ? (
-                <>
-                  <FormMessage variant="destructive">
-                    {episodesErrorMessage}
-                  </FormMessage>
-                  <Button
-                    onClick={handleRetryEpisodes}
-                    type="button"
-                    variant="outline"
-                  >
-                    <ClientMessage message="admin.common.retry" />
-                  </Button>
-                </>
+              {seriesErrorMessage ? (
+                <FormMessage variant="destructive">
+                  {seriesErrorMessage}
+                </FormMessage>
               ) : null}
+              <Input
+                name="episode_public_id"
+                placeholder={t(
+                  "admin.access_tickets.form.episode_id_placeholder"
+                )}
+                required
+                type="text"
+              />
               <FieldDescription>
                 {t(
-                  seriesPublicId === ""
-                    ? "admin.access_tickets.form.episode_needs_series"
-                    : "admin.access_tickets.form.episode_description"
+                  seriesItems.length === 0 && !seriesErrorMessage
+                    ? "admin.access_tickets.form.episode_id_no_series"
+                    : "admin.access_tickets.form.episode_id_description"
                 )}
               </FieldDescription>
             </FieldContent>
           </Field>
-        </>
-      )}
+        ) : (
+          <>
+            <Field>
+              <FieldLabel required>
+                <ClientMessage message="admin.access_tickets.form.series" />
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  items={seriesItems}
+                  onValueChange={handleSeriesChange}
+                  value={seriesPublicId}
+                >
+                  <ComboboxInput
+                    placeholder={t(
+                      "admin.access_tickets.form.series_placeholder"
+                    )}
+                  />
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <ClientMessage message="admin.access_tickets.form.series_empty" />
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </Combobox>
+                <FieldDescription>
+                  <ClientMessage message="admin.access_tickets.form.series_description" />
+                </FieldDescription>
+              </FieldContent>
+            </Field>
 
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.access_tickets.form.expires_at" />
-        </FieldLabel>
-        <FieldContent>
-          <Input name="expires_at_local" type="datetime-local" />
-          <input defaultValue="" name="expires_at" type="hidden" />
-          <FieldDescription>
-            <ClientMessage
-              message="admin.access_tickets.form.expires_at_description"
-              values={{ time_zone: timeZone }}
+            <Field>
+              <FieldLabel required>
+                <ClientMessage message="admin.access_tickets.form.episode" />
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  disabled={isEpisodePending || seriesPublicId === ""}
+                  items={episodeItems}
+                  onValueChange={setEpisodePublicId}
+                  value={episodePublicId}
+                >
+                  <ComboboxInput
+                    placeholder={t(
+                      isEpisodePending
+                        ? "admin.access_tickets.form.episode_loading"
+                        : "admin.access_tickets.form.episode_placeholder"
+                    )}
+                  />
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <ClientMessage message="admin.access_tickets.form.episode_empty" />
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </Combobox>
+                <input
+                  name="episode_public_id"
+                  type="hidden"
+                  value={episodePublicId}
+                />
+                {episodesErrorMessage ? (
+                  <>
+                    <FormMessage variant="destructive">
+                      {episodesErrorMessage}
+                    </FormMessage>
+                    <Button
+                      onClick={handleRetryEpisodes}
+                      type="button"
+                      variant="outline"
+                    >
+                      <ClientMessage message="admin.common.retry" />
+                    </Button>
+                  </>
+                ) : null}
+                <FieldDescription>
+                  {t(
+                    seriesPublicId === ""
+                      ? "admin.access_tickets.form.episode_needs_series"
+                      : "admin.access_tickets.form.episode_description"
+                  )}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          </>
+        )}
+
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="admin.access_tickets.form.expires_at" />
+          </FieldLabel>
+          <FieldContent>
+            <Input name="expires_at_local" type="datetime-local" />
+            <input defaultValue="" name="expires_at" type="hidden" />
+            <FieldDescription>
+              <ClientMessage
+                message="admin.access_tickets.form.expires_at_description"
+                values={{ time_zone: timeZone }}
+              />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="admin.access_tickets.form.note" />
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              maxLength={1000}
+              name="note"
+              placeholder={t("admin.access_tickets.form.note_placeholder")}
+              rows={3}
             />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.access_tickets.form.note" />
-        </FieldLabel>
-        <FieldContent>
-          <Textarea
-            maxLength={1000}
-            name="note"
-            placeholder={t("admin.access_tickets.form.note_placeholder")}
-            rows={3}
-          />
-        </FieldContent>
-      </Field>
+          </FieldContent>
+        </Field>
+      </Fieldset>
 
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

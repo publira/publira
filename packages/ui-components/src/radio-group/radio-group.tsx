@@ -8,6 +8,8 @@ import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 import { useId } from "react";
 
+import { useFieldsetDisabled } from "../fieldset/fieldset";
+
 interface RadioGroupItem {
   description?: ReactNode;
   disabled?: boolean;
@@ -23,10 +25,12 @@ export type RadioGroupProps = Omit<BaseRadioGroup.Props<string>, "children"> & {
 
 export const RadioGroup = ({
   className,
+  disabled,
   itemClassName,
   items,
   ...props
 }: RadioGroupProps) => {
+  const fieldsetDisabled = useFieldsetDisabled();
   // Each option is named by its own label rather than by the surrounding
   // `Field`. A `Radio.Root` renders a `role="radio"` span, which a wrapping
   // `<label>` cannot name, and Base UI otherwise gives every radio in a Field
@@ -35,7 +39,11 @@ export const RadioGroup = ({
   const itemIdPrefix = useId();
 
   return (
-    <BaseRadioGroup {...props} className={cn("grid gap-2", className)}>
+    <BaseRadioGroup
+      {...props}
+      className={cn("grid gap-2", className)}
+      disabled={fieldsetDisabled || disabled}
+    >
       {items.map((item) => {
         const labelId = `${itemIdPrefix}-${item.value}-label`;
         const descriptionId = `${itemIdPrefix}-${item.value}-description`;

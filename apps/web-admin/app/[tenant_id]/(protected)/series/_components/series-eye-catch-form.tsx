@@ -163,6 +163,7 @@ export const SeriesEyeCatchForm = ({
 
       <EyeCatchImageField
         clearEyeCatchImage={clearEyeCatchImage}
+        disabled={isPending}
         fileInputId="series_eye_catch_image"
         fileInputRef={fileInputRef}
         hasVariants={hasVariants}

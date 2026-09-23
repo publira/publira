@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
 import { listEpisodeOptionsAction } from "../_lib/actions";
+import type { IssueAccessTicketActionState } from "../ticket-types";
 import { TicketForm } from "./ticket-form";
 
 vi.mock("#components/client-message", () => ({
@@ -104,6 +105,15 @@ const render = (ui: ReactNode) =>
 afterEach(() => {
   cleanup();
 });
+
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  screen.getByLabelText(/User public_id/u),
+  screen.getByLabelText(/Episode public_id/u),
+  screen.getByLabelText(/Expiry/u),
+  screen.getByLabelText(/Note/u),
+];
 
 describe("TicketForm", () => {
   beforeEach(() => {
@@ -244,5 +254,35 @@ describe("TicketForm", () => {
     expect(
       screen.queryByRole("option", { name: "The Earlier Answer (EPISODE-A)" })
     ).toBeNull();
+  });
+
+  // The Action carries what the fields held when the form was submitted, so a
+  // change made while it is in flight would not be the ticket that is issued.
+  it("closes every field while the ticket is being issued", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const issue = Promise.withResolvers<IssueAccessTicketActionState>();
+
+    render(
+      <TicketForm action={() => issue.promise} series={[]} timeZone="UTC" />
+    );
+
+    fireEvent.change(screen.getByLabelText(/User public_id/u), {
+      target: { value: "USER001" },
+    });
+    fireEvent.change(screen.getByLabelText(/Episode public_id/u), {
+      target: { value: "EPISODE001" },
+    });
+
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Issue the ticket" }));
+
+    await waitFor(() => {
+      for (const control of submittedControls()) {
+        expect(control.matches(":disabled")).toBe(true);
+      }
+    });
   });
 });

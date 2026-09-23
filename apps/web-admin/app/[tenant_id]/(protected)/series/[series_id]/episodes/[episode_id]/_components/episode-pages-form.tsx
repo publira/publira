@@ -72,7 +72,12 @@ export const EpisodePagesForm = ({
       event.preventDefault();
       setIsDragOver(false);
       const { files } = event.dataTransfer;
-      if (!inputRef.current || files.length === 0) {
+      // A closed input belongs to an upload already in flight.
+      if (
+        !inputRef.current ||
+        inputRef.current.disabled ||
+        files.length === 0
+      ) {
         return;
       }
 
@@ -221,6 +226,7 @@ export const EpisodePagesForm = ({
               </p>
               <Input
                 accept={acceptValue}
+                disabled={isPending}
                 multiple={uploadMode === "pages"}
                 name={uploadMode === "pages" ? "pages" : "archive"}
                 onChange={handleChange}

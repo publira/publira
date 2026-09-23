@@ -79,6 +79,8 @@ export type {
   FieldLabelProps,
   FieldProps,
 } from "./field";
+export { Fieldset } from "./fieldset";
+export type { FieldsetProps } from "./fieldset";
 export { Figure, FigureLabel, FigureLine, FigureValue } from "./figure-line";
 export { FormMessage } from "./form-message";
 export type { FormMessageProps } from "./form-message";

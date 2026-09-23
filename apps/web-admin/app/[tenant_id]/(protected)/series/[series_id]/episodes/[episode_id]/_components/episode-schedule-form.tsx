@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { toDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback } from "react";
@@ -69,11 +70,13 @@ export const EpisodeScheduleForm = ({
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-        <PublishAtInput
-          defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
-          name="publish_at"
-          timeZone={timeZone}
-        />
+        <Fieldset disabled={isPending}>
+          <PublishAtInput
+            defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
+            name="publish_at"
+            timeZone={timeZone}
+          />
+        </Fieldset>
 
         {state && state.mode === "schedule" ? (
           <FormMessage variant={state.ok ? "success" : "destructive"}>

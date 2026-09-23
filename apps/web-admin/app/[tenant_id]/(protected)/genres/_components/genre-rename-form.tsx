@@ -44,6 +44,7 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
             name: genre.name,
           })}
           className="w-full sm:max-w-xs"
+          disabled={isPending}
           defaultValue={genre.name}
           key={genre.name}
           maxLength={CATALOG_NAME_MAX_LENGTH}

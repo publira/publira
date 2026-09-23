@@ -4,12 +4,19 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
+import type { TenantDefaultLocaleActionState } from "../settings-types";
 import { TenantDefaultLocaleForm } from "./tenant-default-locale-form";
 
 vi.mock("#components/client-message", () => ({
@@ -119,5 +126,37 @@ describe("TenantDefaultLocaleForm", () => {
     expect(
       screen.getByText(/Saving now would overwrite the stored setting/u)
     ).toBeDefined();
+  });
+
+  // The Action carries the locale picked when the form was submitted, so a
+  // pick made while it is in flight would sit under the success message
+  // unsaved.
+  it("closes the picker while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<TenantDefaultLocaleActionState>();
+    const pendingAction = vi.fn(() => save.promise);
+
+    render(
+      <TenantDefaultLocaleForm
+        action={pendingAction}
+        canEdit
+        initialDefaultLocale="en"
+        options={options}
+      />
+    );
+
+    const trigger = screen.getByLabelText("Default language");
+
+    expect(trigger).toHaveProperty("disabled", false);
+
+    fireEvent.click(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Save the default language",
+      })
+    );
+
+    await waitFor(() => {
+      expect(trigger).toHaveProperty("disabled", true);
+    });
   });
 });

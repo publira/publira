@@ -6,9 +6,10 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
@@ -145,5 +146,64 @@ describe("EpisodePagesForm", () => {
 
     expect(inputs).toHaveLength(2);
     expect(inputs.map((input) => input.name)).toEqual(["pages", "pages"]);
+  });
+
+  // The Action carries the files picked when the form was submitted, so a file
+  // picked or dropped while it is in flight would be listed but not uploaded.
+  it("closes the file input and ignores a drop while the upload is in flight", async () => {
+    // Never resolved: the assertions are about the window the upload is open in.
+    const pendingAction = vi.fn(() => Promise.withResolvers<never>().promise);
+    render(
+      <EpisodePagesForm
+        action={pendingAction}
+        episodePublicId="EP001"
+        seriesPublicId="SERIES001"
+      />
+    );
+
+    const input = fileInput();
+    fireEvent.change(input, {
+      target: {
+        files: [new File(["a"], "page-1.png", { type: "image/png" })],
+      },
+    });
+
+    expect(input.disabled).toBe(false);
+
+    // jsdom holds a click back: the files set above never reach the list its
+    // `required` check reads.
+    fireEvent.submit(input.form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(input.disabled).toBe(true);
+    });
+
+    // jsdom has no `DataTransfer`, and its `files` setter takes nothing else,
+    // so both stand in here for what a browser does with a drop.
+    vi.stubGlobal(
+      "DataTransfer",
+      class {
+        files: File[] = [];
+        items = { add: (file: File) => this.files.push(file) };
+      }
+    );
+    Object.defineProperty(input, "files", { value: null, writable: true });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const dropZone = screen.getByText(
+      "Drop images here or select files."
+    ).parentElement;
+    if (!dropZone) {
+      throw new Error("The drop zone is missing.");
+    }
+    fireEvent.drop(dropZone, {
+      dataTransfer: {
+        files: [new File(["b"], "page-2.png", { type: "image/png" })],
+      },
+    });
+
+    expect(screen.queryByText("page-2.png")).toBeNull();
   });
 });

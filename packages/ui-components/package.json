@@ -47,6 +47,10 @@
       "types": "./dist/field/index.d.mts",
       "default": "./dist/field/index.mjs"
     },
+    "./fieldset": {
+      "types": "./dist/fieldset/index.d.mts",
+      "default": "./dist/fieldset/index.mjs"
+    },
     "./figure-line": {
       "types": "./dist/figure-line/index.d.mts",
       "default": "./dist/figure-line/index.mjs"

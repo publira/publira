@@ -2,12 +2,21 @@
 
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { EpisodeCreatorCredit } from "../episode-edit-types";
+import type {
+  EpisodeCreatorCredit,
+  EpisodeEditActionState,
+} from "../episode-edit-types";
 import { EpisodeCreatorCreditsForm } from "./episode-creator-credits-form";
 
 vi.mock("#lib/use-tenant-id", () => ({ useTenantId: () => "TENANT001" }));
@@ -64,10 +73,13 @@ const teamCredits: EpisodeCreatorCredit[] = [
   },
 ];
 
-const renderForm = (initialCredits: EpisodeCreatorCredit[] = [guestCredit]) =>
+const renderForm = (
+  initialCredits: EpisodeCreatorCredit[] = [guestCredit],
+  action: () => Promise<EpisodeEditActionState> = () => Promise.resolve(null)
+) =>
   render(
     <EpisodeCreatorCreditsForm
-      action={() => Promise.resolve(null)}
+      action={action}
       creatorRoles={[{ name: "Artist", publicId: "ROLE001" }]}
       creators={[
         { name: "Guest", publicId: "CREATOR001" },
@@ -102,6 +114,15 @@ const saveButton = () =>
   screen.getByRole<HTMLButtonElement>("button", { name: "Save authors" });
 
 afterEach(cleanup);
+
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  ...screen.getAllByRole("combobox"),
+  screen.getByRole("textbox", { name: "Share of author 1" }),
+  screen.getByRole("button", { name: "Remove author 1" }),
+  screen.getByRole("button", { name: "Add author" }),
+];
 
 describe("EpisodeCreatorCreditsForm", () => {
   it("marks credits added on this episode", () => {
@@ -151,5 +172,24 @@ describe("EpisodeCreatorCreditsForm", () => {
       }).value
     ).toBe("33.33");
     expect(postedCredits()[0]?.shareBps).toBe(3333);
+  });
+  // The Action carries the credits the form held when it was submitted, so a
+  // change made while it is in flight would sit in the list unsaved.
+  it("closes the credits while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<EpisodeEditActionState>();
+    renderForm([guestCredit], () => save.promise);
+
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => {
+      for (const control of submittedControls()) {
+        expect(control.matches(":disabled")).toBe(true);
+      }
+    });
   });
 });

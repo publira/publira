@@ -9,6 +9,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -112,170 +113,176 @@ export const AnnouncementForm = ({
     <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.announcements.form.title" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            maxLength={120}
-            name="title"
-            placeholder={t("admin.announcements.form.title_placeholder")}
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.announcements.form.body" />
-        </FieldLabel>
-        <FieldContent>
-          <Textarea
-            maxLength={2000}
-            name="body"
-            placeholder={t("admin.announcements.form.body_placeholder")}
-            required
-            rows={5}
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.announcements.form.link" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            name="link_url"
-            placeholder={t("admin.announcements.form.link_placeholder")}
-            type="text"
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.announcements.form.link_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.announcements.form.audience" />
-        </FieldLabel>
-        <FieldContent>
-          <div className="grid gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                checked={audienceType === "all"}
-                name="audience_type"
-                onChange={handleAudienceTypeChange}
-                type="radio"
-                value="all"
-              />
-              <ClientMessage message="admin.announcements.form.audience_all" />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                checked={audienceType === "selected"}
-                name="audience_type"
-                onChange={handleAudienceTypeChange}
-                type="radio"
-                value="selected"
-              />
-              <ClientMessage message="admin.announcements.form.audience_selected" />
-            </label>
-          </div>
-        </FieldContent>
-      </Field>
-
-      {audienceType === "all" ? (
+      <Fieldset className="grid gap-5" disabled={isPending}>
         <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.announcements.form.pinned" />
+          <FieldLabel required>
+            <ClientMessage message="admin.announcements.form.title" />
           </FieldLabel>
           <FieldContent>
-            <Checkbox
-              checked={pinned}
-              name="pinned"
-              onCheckedChange={handlePinnedChange}
-              value="on"
+            <Input
+              maxLength={120}
+              name="title"
+              placeholder={t("admin.announcements.form.title_placeholder")}
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.announcements.form.body" />
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              maxLength={2000}
+              name="body"
+              placeholder={t("admin.announcements.form.body_placeholder")}
+              required
+              rows={5}
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="admin.announcements.form.link" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="link_url"
+              placeholder={t("admin.announcements.form.link_placeholder")}
+              type="text"
             />
             <FieldDescription>
-              <ClientMessage message="admin.announcements.form.pinned_description" />
+              <ClientMessage message="admin.announcements.form.link_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
-      ) : null}
 
-      {audienceType === "all" && pinned ? (
         <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.announcements.form.pinned_until" />
+          <FieldLabel required>
+            <ClientMessage message="admin.announcements.form.audience" />
           </FieldLabel>
           <FieldContent>
-            <input defaultValue="" name="pinned_until" type="hidden" />
-            <Input name="pinned_until_local" step={60} type="datetime-local" />
-            <FieldDescription>
-              <ClientMessage
-                message="admin.announcements.form.pinned_until_description"
-                values={{ time_zone: timeZone }}
+            <div className="grid gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={audienceType === "all"}
+                  name="audience_type"
+                  onChange={handleAudienceTypeChange}
+                  type="radio"
+                  value="all"
+                />
+                <ClientMessage message="admin.announcements.form.audience_all" />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={audienceType === "selected"}
+                  name="audience_type"
+                  onChange={handleAudienceTypeChange}
+                  type="radio"
+                  value="selected"
+                />
+                <ClientMessage message="admin.announcements.form.audience_selected" />
+              </label>
+            </div>
+          </FieldContent>
+        </Field>
+
+        {audienceType === "all" ? (
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.announcements.form.pinned" />
+            </FieldLabel>
+            <FieldContent>
+              <Checkbox
+                checked={pinned}
+                name="pinned"
+                onCheckedChange={handlePinnedChange}
+                value="on"
               />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      ) : null}
-
-      {audienceType === "selected" ? (
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.announcements.form.target_users" />
-          </FieldLabel>
-          <FieldContent>
-            {usersErrorMessage ? (
-              <FormMessage variant="destructive">
-                {usersErrorMessage}
-              </FormMessage>
-            ) : null}
-
-            {sortedUsers.length === 0 ? (
               <FieldDescription>
-                <ClientMessage message="admin.announcements.form.target_users_unavailable" />
+                <ClientMessage message="admin.announcements.form.pinned_description" />
               </FieldDescription>
-            ) : (
-              <div className="max-h-72 overflow-y-auto border border-border p-3">
-                <div className="grid gap-2">
-                  {sortedUsers.map((user) => (
-                    <label
-                      className="flex items-center gap-2 text-sm"
-                      key={user.publicId}
-                    >
-                      <input
-                        checked={selectedUserIdSet.has(user.publicId)}
-                        onChange={handleUserToggle}
-                        type="checkbox"
-                        value={user.publicId}
-                      />
-                      <ClientMessage
-                        message="admin.announcements.form.user_option"
-                        values={{ id: user.publicId, name: user.name }}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+            </FieldContent>
+          </Field>
+        ) : null}
 
-            {selectedUserIds.map((publicId) => (
-              <input
-                key={publicId}
-                name="target_user_public_ids"
-                type="hidden"
-                value={publicId}
+        {audienceType === "all" && pinned ? (
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.announcements.form.pinned_until" />
+            </FieldLabel>
+            <FieldContent>
+              <input defaultValue="" name="pinned_until" type="hidden" />
+              <Input
+                name="pinned_until_local"
+                step={60}
+                type="datetime-local"
               />
-            ))}
-          </FieldContent>
-        </Field>
-      ) : null}
+              <FieldDescription>
+                <ClientMessage
+                  message="admin.announcements.form.pinned_until_description"
+                  values={{ time_zone: timeZone }}
+                />
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        ) : null}
+
+        {audienceType === "selected" ? (
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.announcements.form.target_users" />
+            </FieldLabel>
+            <FieldContent>
+              {usersErrorMessage ? (
+                <FormMessage variant="destructive">
+                  {usersErrorMessage}
+                </FormMessage>
+              ) : null}
+
+              {sortedUsers.length === 0 ? (
+                <FieldDescription>
+                  <ClientMessage message="admin.announcements.form.target_users_unavailable" />
+                </FieldDescription>
+              ) : (
+                <div className="max-h-72 overflow-y-auto border border-border p-3">
+                  <div className="grid gap-2">
+                    {sortedUsers.map((user) => (
+                      <label
+                        className="flex items-center gap-2 text-sm"
+                        key={user.publicId}
+                      >
+                        <input
+                          checked={selectedUserIdSet.has(user.publicId)}
+                          onChange={handleUserToggle}
+                          type="checkbox"
+                          value={user.publicId}
+                        />
+                        <ClientMessage
+                          message="admin.announcements.form.user_option"
+                          values={{ id: user.publicId, name: user.name }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedUserIds.map((publicId) => (
+                <input
+                  key={publicId}
+                  name="target_user_public_ids"
+                  type="hidden"
+                  value={publicId}
+                />
+              ))}
+            </FieldContent>
+          </Field>
+        ) : null}
+      </Fieldset>
 
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

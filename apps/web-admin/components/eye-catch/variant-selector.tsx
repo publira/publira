@@ -10,6 +10,7 @@ import { eyeCatchAspectClassName, eyeCatchAspectOrder } from "./aspects";
 import type { EyeCatchVariantItem } from "./types";
 
 interface EyeCatchVariantSelectorProps {
+  disabled?: boolean;
   localPreviewUrl: string;
   onImageClick: () => void;
   onSelectVariantType: (typeKey: string) => void;
@@ -18,6 +19,7 @@ interface EyeCatchVariantSelectorProps {
 }
 
 export const EyeCatchVariantSelector = ({
+  disabled = false,
   localPreviewUrl,
   onImageClick,
   onSelectVariantType,
@@ -81,9 +83,11 @@ export const EyeCatchVariantSelector = ({
               "grid cursor-pointer gap-2 border p-2 transition-colors duration-state ease-state",
               isSelected
                 ? "border-blue-500 bg-blue-50"
-                : "border-border/60 hover:border-blue-300"
+                : "border-border/60 hover:border-blue-300",
+              "disabled:pointer-events-none disabled:opacity-50"
             )}
             data-type-key={typeKey}
+            disabled={disabled}
             key={typeKey}
             onClick={handleButtonClick}
             type="button"

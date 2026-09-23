@@ -164,9 +164,11 @@ const EyeCatchAspectSlot = ({
           variant_type: variantType,
         })}
         className={cn(
-          "relative overflow-hidden rounded-surface border border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary",
+          "relative overflow-hidden rounded-surface border border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary disabled:pointer-events-none disabled:opacity-50",
           eyeCatchAspectClassName(variantType)
         )}
+        // Picking replaces the file an upload in flight has already taken.
+        disabled={isUploading}
         onClick={handlePickImage}
         type="button"
       >
@@ -214,6 +216,7 @@ const EyeCatchAspectSlot = ({
         ) : null}
         <Input
           accept="image/jpeg,image/png,image/webp"
+          disabled={isUploading}
           name="aspect_image"
           onChange={handleImageFileChange}
           ref={fileInputRef}

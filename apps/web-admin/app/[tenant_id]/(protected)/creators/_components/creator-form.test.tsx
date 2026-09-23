@@ -9,13 +9,14 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { CreatorListItem } from "../creator-types";
+import type { CreatorActionState, CreatorListItem } from "../creator-types";
 import { CreatorForm } from "./creator-form";
 
 vi.mock("#components/client-message", () => ({
@@ -153,4 +154,43 @@ it("previews the framed square rather than the whole picked file", () => {
   expect(preview?.style.left).toBe(`${(-100 / 400) * 100}%`);
 
   vi.unstubAllGlobals();
+});
+
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  screen.getByRole("textbox", { name: /Name/u }),
+  screen.getByRole("textbox", { name: "Profile" }),
+  screen.getByLabelText("Author icon image"),
+  screen.getByRole("checkbox", { name: "Remove the current icon image" }),
+];
+
+// The Action carries what the fields held when the form was submitted, so a
+// change made while it is in flight would sit in the form unsaved.
+it("closes every field while the save is in flight", async () => {
+  // Never resolved: the assertions are about the window the save is open in.
+  const save = Promise.withResolvers<CreatorActionState>();
+  render(
+    <CreatorForm
+      action={() => save.promise}
+      initialCreator={{
+        ...creator,
+        iconImageUpdatedAt: "2030-01-01T00:00:00Z",
+        iconImageUrl: "https://cdn.example.com/creators/CREATOR001/icon.webp",
+      }}
+      mode="update"
+    />
+  );
+
+  for (const control of submittedControls()) {
+    expect(control.matches(":disabled")).toBe(false);
+  }
+
+  fireEvent.click(screen.getByRole("button", { name: "Update author" }));
+
+  await waitFor(() => {
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(true);
+    }
+  });
 });

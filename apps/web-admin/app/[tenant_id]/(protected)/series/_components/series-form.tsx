@@ -16,6 +16,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -520,7 +521,7 @@ export const SeriesForm = ({
         value={initialSeries?.publicId ?? ""}
       />
 
-      <div className="grid gap-4">
+      <Fieldset className="grid gap-4" disabled={isPending}>
         <Field>
           <FieldLabel required>
             <ClientMessage message="admin.series.form.title" />
@@ -666,15 +667,15 @@ export const SeriesForm = ({
             initialReadingLayout?.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX
           )}
         />
-      </div>
 
-      {!isUpdate && (
-        <EyeCatchImageField
-          clearEyeCatchImage={false}
-          onImageFileChange={handleEyeCatchImageFileChange}
-          previewImageUrl={eyeCatchPreviewUrl}
-        />
-      )}
+        {!isUpdate && (
+          <EyeCatchImageField
+            clearEyeCatchImage={false}
+            onImageFileChange={handleEyeCatchImageFileChange}
+            previewImageUrl={eyeCatchPreviewUrl}
+          />
+        )}
+      </Fieldset>
 
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

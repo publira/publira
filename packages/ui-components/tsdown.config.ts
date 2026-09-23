@@ -9,6 +9,9 @@ export default defineConfig({
     "src/button/index.ts",
     "src/card/index.ts",
     "src/checkbox/index.ts",
+    // Its own entry for the reason `field.tsx` has one: it calls a hook, which a
+    // Server Component that renders it could not run without the directive.
+    "src/checkbox/checkbox.tsx",
     "src/combobox/index.ts",
     "src/dialog/index.ts",
     "src/empty-state/index.ts",
@@ -17,6 +20,10 @@ export default defineConfig({
     // module tsdown merges into a shared chunk loses it, and `Field`'s
     // `useState` then lands in the server graph.
     "src/field/field.tsx",
+    "src/fieldset/index.ts",
+    // Its own entry for the reason `field.tsx` has one: the controls import its
+    // context, and a shared chunk would drop the `"use client"` directive.
+    "src/fieldset/fieldset.tsx",
     "src/figure-line/index.ts",
     "src/form-actions/index.ts",
     "src/form-message/index.ts",
@@ -27,11 +34,13 @@ export default defineConfig({
     "src/popover/index.ts",
     "src/qr-code/index.ts",
     "src/radio-group/index.ts",
+    "src/radio-group/radio-group.tsx",
     "src/section-error/index.ts",
     "src/section-error-fallback/index.ts",
     "src/select/index.ts",
     "src/skeleton/index.ts",
     "src/switch/index.ts",
+    "src/switch/switch.tsx",
     "src/table/index.ts",
     "src/tabs/index.ts",
     "src/textarea/index.ts",

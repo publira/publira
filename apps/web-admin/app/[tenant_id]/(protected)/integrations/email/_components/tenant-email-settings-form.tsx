@@ -20,6 +20,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -213,6 +214,7 @@ const SmtpTestDialog = ({
               <label className="inline-flex items-center gap-2 text-sm text-foreground">
                 <input
                   checked={sendToSelf}
+                  disabled={isTesting}
                   onChange={handleSendToSelfChange}
                   type="checkbox"
                 />
@@ -236,6 +238,7 @@ const SmtpTestDialog = ({
                   </FieldLabel>
                   <FieldContent>
                     <Input
+                      disabled={isTesting}
                       form={formId}
                       name="recipient_email"
                       placeholder="recipient@example.com"
@@ -367,156 +370,158 @@ export const TenantEmailSettingsForm = ({
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <Field>
-          <FieldLabel htmlFor={smtpOverrideId}>
-            <ClientMessage message="admin.settings.email.override" />
-          </FieldLabel>
-          <FieldContent>
-            <label className="inline-flex items-center gap-2 text-sm text-foreground">
-              <input
-                checked={smtpOverrideEnabled}
-                disabled={!canEdit}
-                id={smtpOverrideId}
-                name="smtp_override_enabled"
-                onChange={handleOverrideChange}
-                type="checkbox"
+        <Fieldset className="grid gap-5" disabled={isSaving}>
+          <Field>
+            <FieldLabel htmlFor={smtpOverrideId}>
+              <ClientMessage message="admin.settings.email.override" />
+            </FieldLabel>
+            <FieldContent>
+              <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                <input
+                  checked={smtpOverrideEnabled}
+                  disabled={!canEdit}
+                  id={smtpOverrideId}
+                  name="smtp_override_enabled"
+                  onChange={handleOverrideChange}
+                  type="checkbox"
+                />
+                <ClientMessage message="admin.settings.email.override_checkbox" />
+              </label>
+              <FieldDescription>
+                <ClientMessage message="admin.settings.email.override_description" />
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel required={fieldsInteractive}>
+              <ClientMessage message="admin.settings.email.host" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={initialSettings.host}
+                disabled={!fieldsInteractive}
+                name="host"
+                placeholder="smtp.example.com"
+                required={fieldsInteractive}
+                type="text"
               />
-              <ClientMessage message="admin.settings.email.override_checkbox" />
-            </label>
-            <FieldDescription>
-              <ClientMessage message="admin.settings.email.override_description" />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel required={fieldsInteractive}>
-            <ClientMessage message="admin.settings.email.host" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={initialSettings.host}
-              disabled={!fieldsInteractive}
-              name="host"
-              placeholder="smtp.example.com"
-              required={fieldsInteractive}
-              type="text"
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel required={fieldsInteractive}>
+              <ClientMessage message="admin.settings.email.port" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={String(initialSettings.port || 587)}
+                disabled={!fieldsInteractive}
+                max={65_535}
+                min={1}
+                name="port"
+                required={fieldsInteractive}
+                type="number"
+              />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel required={fieldsInteractive}>
-            <ClientMessage message="admin.settings.email.port" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={String(initialSettings.port || 587)}
-              disabled={!fieldsInteractive}
-              max={65_535}
-              min={1}
-              name="port"
-              required={fieldsInteractive}
-              type="number"
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel required={fieldsInteractive}>
+              <ClientMessage message="admin.settings.email.username" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={initialSettings.username}
+                disabled={!fieldsInteractive}
+                name="username"
+                required={fieldsInteractive}
+                type="text"
+              />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel required={fieldsInteractive}>
-            <ClientMessage message="admin.settings.email.username" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={initialSettings.username}
-              disabled={!fieldsInteractive}
-              name="username"
-              required={fieldsInteractive}
-              type="text"
-            />
-          </FieldContent>
-        </Field>
+          <PasswordFieldSection
+            fieldsInteractive={fieldsInteractive}
+            hasStoredPassword={hasStoredPassword}
+            isPasswordEditing={isPasswordEditing}
+            onCancelPasswordEdit={handleCancelPasswordEdit}
+            onStartPasswordEdit={handleStartPasswordEdit}
+          />
 
-        <PasswordFieldSection
-          fieldsInteractive={fieldsInteractive}
-          hasStoredPassword={hasStoredPassword}
-          isPasswordEditing={isPasswordEditing}
-          onCancelPasswordEdit={handleCancelPasswordEdit}
-          onStartPasswordEdit={handleStartPasswordEdit}
-        />
+          <Field>
+            <FieldLabel required={fieldsInteractive}>
+              <ClientMessage message="admin.settings.email.encryption" />
+            </FieldLabel>
+            <FieldContent>
+              <Select
+                defaultValue={initialSettings.encryption || "starttls"}
+                disabled={!fieldsInteractive}
+                items={[
+                  { label: "TLS", value: "tls" },
+                  { label: "STARTTLS", value: "starttls" },
+                  {
+                    label: t("admin.settings.email.encryption_none"),
+                    value: "none",
+                  },
+                ]}
+                name="encryption"
+                required={fieldsInteractive}
+              />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel required={fieldsInteractive}>
-            <ClientMessage message="admin.settings.email.encryption" />
-          </FieldLabel>
-          <FieldContent>
-            <Select
-              defaultValue={initialSettings.encryption || "starttls"}
-              disabled={!fieldsInteractive}
-              items={[
-                { label: "TLS", value: "tls" },
-                { label: "STARTTLS", value: "starttls" },
-                {
-                  label: t("admin.settings.email.encryption_none"),
-                  value: "none",
-                },
-              ]}
-              name="encryption"
-              required={fieldsInteractive}
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.settings.email.from_name" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={initialSettings.fromName}
+                disabled={!fieldsInteractive}
+                name="from_name"
+                placeholder={
+                  tenantName || t("admin.settings.email.from_name_fallback")
+                }
+                type="text"
+              />
+              <FieldDescription>
+                <ClientMessage message="admin.settings.email.from_name_description" />
+              </FieldDescription>
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.settings.email.from_name" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={initialSettings.fromName}
-              disabled={!fieldsInteractive}
-              name="from_name"
-              placeholder={
-                tenantName || t("admin.settings.email.from_name_fallback")
-              }
-              type="text"
-            />
-            <FieldDescription>
-              <ClientMessage message="admin.settings.email.from_name_description" />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel required={fieldsInteractive}>
+              <ClientMessage message="admin.settings.email.from_address" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={initialSettings.fromAddress}
+                disabled={!fieldsInteractive}
+                name="from_address"
+                placeholder="noreply@example.com"
+                required={fieldsInteractive}
+                type="email"
+              />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel required={fieldsInteractive}>
-            <ClientMessage message="admin.settings.email.from_address" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={initialSettings.fromAddress}
-              disabled={!fieldsInteractive}
-              name="from_address"
-              placeholder="noreply@example.com"
-              required={fieldsInteractive}
-              type="email"
-            />
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.settings.email.reply_to" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              defaultValue={initialSettings.replyTo}
-              disabled={!fieldsInteractive}
-              name="reply_to"
-              placeholder="support@example.com"
-              type="email"
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.settings.email.reply_to" />
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={initialSettings.replyTo}
+                disabled={!fieldsInteractive}
+                name="reply_to"
+                placeholder="support@example.com"
+                type="email"
+              />
+            </FieldContent>
+          </Field>
+        </Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -535,8 +540,10 @@ export const TenantEmailSettingsForm = ({
         ) : null}
 
         <div className="flex flex-wrap gap-3">
+          {/* A test sends the fields too, which a save in flight has closed
+              and so left out of the form. */}
           <SmtpTestDialog
-            canTest={fieldsInteractive}
+            canTest={fieldsInteractive && !isSaving}
             dialogOpen={dialogOpen}
             formId={formId}
             isTesting={isTesting}

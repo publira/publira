@@ -330,6 +330,7 @@ export const PageWorkspace = ({
               </FieldLabel>
               <FieldContent>
                 <Input
+                  disabled={isSavePending}
                   name="title"
                   onChange={handleTitleChange}
                   required
@@ -357,6 +358,7 @@ export const PageWorkspace = ({
                 {/* The textarea is the form control, so it stays mounted behind the preview tab: an unmounted one submits nothing and loses the caret. */}
                 <TabsPanel keepMounted value="write">
                   <Textarea
+                    disabled={isSavePending}
                     name="content_markdown"
                     onChange={handleDraftContentChange}
                     rows={14}
@@ -442,8 +444,11 @@ export const PageWorkspace = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
+                      {/* Loading a version rewrites the draft, which an
+                          in-flight save has already taken. */}
                       <Button
                         data-version-id={version.id}
+                        disabled={isSavePending}
                         onClick={handleLoadVersionClick}
                         type="button"
                         variant="outline"

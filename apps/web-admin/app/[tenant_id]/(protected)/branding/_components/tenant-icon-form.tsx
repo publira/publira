@@ -118,6 +118,7 @@ export const TenantIconForm = ({
           <FieldContent>
             <Input
               accept="image/jpeg,image/png,image/webp"
+              disabled={isPending}
               name="icon"
               type="file"
             />

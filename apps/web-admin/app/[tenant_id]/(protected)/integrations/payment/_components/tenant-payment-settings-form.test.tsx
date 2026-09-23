@@ -61,6 +61,14 @@ afterEach(() => {
   cleanup();
 });
 
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  screen.getByLabelText("Enable Stripe payments"),
+  screen.getByRole("button", { name: "Change" }),
+  screen.getByLabelText(/Webhook signing secret/u),
+];
+
 describe("TenantPaymentSettingsForm", () => {
   it("shows an unconfigured tenant as its own status", () => {
     render(
@@ -241,5 +249,39 @@ describe("TenantPaymentSettingsForm", () => {
     });
     expect(screen.queryByDisplayValue(leakedSecret)).toBeNull();
     expect(document.body.textContent).not.toContain(leakedSecret);
+  });
+
+  // The Action carries what the form held when it was submitted, so a change
+  // made while it is in flight would sit in the form unsaved.
+  it("closes the fields while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<TenantPaymentSettingsFormState>();
+
+    render(
+      <TenantPaymentSettingsForm
+        action={() => save.promise}
+        canEdit
+        initialSettings={{
+          ...incompleteSettings,
+          secretKeyConfigured: true,
+          secretKeyHint: "sk_test_••••••••KLMN",
+        }}
+      />
+    );
+
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+
+    fireEvent.change(screen.getByLabelText(/Webhook signing secret/u), {
+      target: { value: "whsec_new" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      for (const control of submittedControls()) {
+        expect(control.matches(":disabled")).toBe(true);
+      }
+    });
   });
 });

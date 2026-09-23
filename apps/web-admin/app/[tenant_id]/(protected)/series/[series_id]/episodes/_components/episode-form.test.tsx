@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
+import type { EpisodeActionState } from "../episode-types";
 import { EpisodeForm } from "./episode-form";
 
 vi.mock("#lib/use-tenant-id", () => ({
@@ -118,4 +125,47 @@ it("creates an episode sold where its series is unless told otherwise", () => {
   expect(screen.getByRole("combobox", { name: "Sold on" }).textContent).toBe(
     "Follow the series (Web only)"
   );
+});
+
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  screen.getByRole("textbox", { name: /Title/u }),
+  screen.getByRole("spinbutton", { name: /Price/u }),
+  screen.getByRole("spinbutton", { name: /Reading period/u }),
+  screen.getByLabelText(/publish_at/u),
+  screen.getByRole("combobox", { name: "Shown on" }),
+  screen.getByRole("combobox", { name: "Sold on" }),
+];
+
+// The Action carries what the fields held when the form was submitted, so a
+// change made while it is in flight would not be the episode that gets created.
+it("closes every field while the save is in flight", async () => {
+  // Never resolved: the assertions are about the window the save is open in.
+  const save = Promise.withResolvers<EpisodeActionState>();
+  const pendingAction = vi.fn(() => save.promise);
+
+  render(
+    <EpisodeForm
+      action={pendingAction}
+      seriesPublicId="SERIES001"
+      timeZone="UTC"
+    />
+  );
+
+  fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {
+    target: { value: "Chapter 1" },
+  });
+
+  for (const control of submittedControls()) {
+    expect(control.matches(":disabled")).toBe(false);
+  }
+
+  fireEvent.click(screen.getByRole("button", { name: "Create episode" }));
+
+  await waitFor(() => {
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(true);
+    }
+  });
 });

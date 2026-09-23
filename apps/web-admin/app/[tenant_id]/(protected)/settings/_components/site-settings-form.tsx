@@ -90,6 +90,7 @@ export const SiteSettingsForm = ({
           </FieldLabel>
           <FieldContent>
             <Input
+              disabled={isPending}
               name="copyright_text"
               onChange={handleCopyrightTextChange}
               placeholder={t("admin.settings.site.copyright_placeholder")}
@@ -108,6 +109,7 @@ export const SiteSettingsForm = ({
           </FieldLabel>
           <FieldContent>
             <Input
+              disabled={isPending}
               name="site_tagline"
               onChange={handleSiteTaglineChange}
               placeholder={t("admin.settings.site.tagline_placeholder")}
@@ -126,6 +128,7 @@ export const SiteSettingsForm = ({
           </FieldLabel>
           <FieldContent>
             <Textarea
+              disabled={isPending}
               name="site_description"
               onChange={handleSiteDescriptionChange}
               placeholder={t(

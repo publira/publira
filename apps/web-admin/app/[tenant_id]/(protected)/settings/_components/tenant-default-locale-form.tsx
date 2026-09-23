@@ -64,6 +64,9 @@ export const TenantDefaultLocaleForm = ({
   // default with it. Editing stays closed until the read succeeds.
   const hasLoadError = Boolean(loadErrorMessage);
   const fieldsDisabled = !canEdit || hasLoadError;
+  // The save carries the locale picked when it was submitted, so the picker
+  // stays closed until it lands.
+  const controlsDisabled = fieldsDisabled || isPending;
 
   const items = options.map((option) => ({
     label: option.label,
@@ -92,7 +95,7 @@ export const TenantDefaultLocaleForm = ({
           </FieldLabel>
           <FieldContent>
             <Select
-              disabled={fieldsDisabled}
+              disabled={controlsDisabled}
               id="tenant_default_locale"
               items={items}
               onValueChange={(value) => {
@@ -131,7 +134,7 @@ export const TenantDefaultLocaleForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={fieldsDisabled || isPending} type="submit">
+          <Button disabled={controlsDisabled} type="submit">
             {isPending
               ? t("admin.settings.saving")
               : t("admin.settings.default_locale.submit")}

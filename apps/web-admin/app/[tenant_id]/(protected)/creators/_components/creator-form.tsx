@@ -7,6 +7,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -272,51 +273,53 @@ export const CreatorForm = ({
         value={initialCreator?.publicId ?? ""}
       />
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.creators.form.name" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            name="name"
-            onChange={handleNameChange}
-            placeholder={t("admin.creators.form.name_placeholder")}
-            required
-            type="text"
-            value={name}
-          />
-        </FieldContent>
-      </Field>
+      <Fieldset className="grid gap-4" disabled={isPending}>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.creators.form.name" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="name"
+              onChange={handleNameChange}
+              placeholder={t("admin.creators.form.name_placeholder")}
+              required
+              type="text"
+              value={name}
+            />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.creators.form.profile" />
-        </FieldLabel>
-        <FieldContent>
-          <Textarea
-            name="profile_text"
-            onChange={handleProfileTextChange}
-            placeholder={t("admin.creators.form.profile_placeholder")}
-            rows={5}
-            value={profileText}
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.creators.form.profile_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel>
+            <ClientMessage message="admin.creators.form.profile" />
+          </FieldLabel>
+          <FieldContent>
+            <Textarea
+              name="profile_text"
+              onChange={handleProfileTextChange}
+              placeholder={t("admin.creators.form.profile_placeholder")}
+              rows={5}
+              value={profileText}
+            />
+            <FieldDescription>
+              <ClientMessage message="admin.creators.form.profile_description" />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-      {/*
-        The saved icon's timestamp keys the field, so a save that replaced
-        or removed the icon remounts it: the picked file, its frame, and the
-        deletion checkbox all belong to that save and none of them mean
-        anything afterwards.
-      */}
-      <IconImageField
-        initialCreator={initialCreator}
-        isUpdate={isUpdate}
-        key={initialCreator?.iconImageUpdatedAt ?? ""}
-      />
+        {/*
+          The saved icon's timestamp keys the field, so a save that replaced
+          or removed the icon remounts it: the picked file, its frame, and the
+          deletion checkbox all belong to that save and none of them mean
+          anything afterwards.
+        */}
+        <IconImageField
+          initialCreator={initialCreator}
+          isUpdate={isUpdate}
+          key={initialCreator?.iconImageUpdatedAt ?? ""}
+        />
+      </Fieldset>
 
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

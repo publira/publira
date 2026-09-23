@@ -17,6 +17,11 @@ import { EyeCatchVariantSelector } from "./variant-selector";
 
 interface EyeCatchImageFieldProps {
   clearEyeCatchImage: boolean;
+  /**
+   * Closes every control, each of which changes the image or the delete flag
+   * the form submits.
+   */
+  disabled?: boolean;
   fileInputId: string;
   fileInputRef: RefObject<HTMLInputElement | null>;
   hasVariants: boolean;
@@ -31,6 +36,7 @@ interface EyeCatchImageFieldProps {
 
 export const EyeCatchImageField = ({
   clearEyeCatchImage,
+  disabled = false,
   fileInputId,
   fileInputRef,
   hasVariants,
@@ -54,7 +60,8 @@ export const EyeCatchImageField = ({
           {!hasVariants || clearEyeCatchImage ? (
             <button
               aria-label={t("admin.eye_catch.select_aria")}
-              className="relative aspect-[3/4] overflow-hidden rounded-surface border-2 border-dashed border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary"
+              className="relative aspect-[3/4] overflow-hidden rounded-surface border-2 border-dashed border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary disabled:pointer-events-none disabled:opacity-50"
+              disabled={disabled}
               onClick={onVariantImageClick}
               type="button"
             >
@@ -70,6 +77,7 @@ export const EyeCatchImageField = ({
             </button>
           ) : (
             <EyeCatchVariantSelector
+              disabled={disabled}
               localPreviewUrl={localPreviewUrl}
               onImageClick={onVariantImageClick}
               onSelectVariantType={onVariantTypeChange}
@@ -82,11 +90,12 @@ export const EyeCatchImageField = ({
             <div className="pt-1">
               <button
                 className={cn(
-                  "text-sm underline underline-offset-4",
+                  "text-sm underline underline-offset-4 disabled:pointer-events-none disabled:opacity-50",
                   clearEyeCatchImage
                     ? "text-destructive"
                     : "text-muted-foreground hover:text-foreground"
                 )}
+                disabled={disabled}
                 onClick={onDeleteToggle}
                 type="button"
               >
@@ -102,6 +111,7 @@ export const EyeCatchImageField = ({
 
         <Input
           accept="image/jpeg,image/png,image/webp"
+          disabled={disabled}
           id={fileInputId}
           name="eye_catch_image"
           onChange={onImageFileChange}

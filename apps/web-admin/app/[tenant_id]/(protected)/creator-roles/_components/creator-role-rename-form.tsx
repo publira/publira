@@ -54,6 +54,7 @@ export const CreatorRoleRenameForm = ({
           </FieldLabel>
           <FieldContent>
             <Input
+              disabled={isPending}
               defaultValue={creatorRole.name}
               key={creatorRole.name}
               maxLength={CREATOR_ROLE_NAME_MAX_LENGTH}
