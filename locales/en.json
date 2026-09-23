@@ -963,6 +963,7 @@
       "announcements_label": "Announcements",
       "audit_label": "Audit logs",
       "branding_label": "Branding",
+      "catalog": "Catalog",
       "comments_label": "Comments",
       "comments_pending": "{$count} comments awaiting approval",
       "contact_messages_label": "Contact messages",
@@ -974,12 +975,14 @@
       "integrations_label": "Integrations",
       "labels_label": "Labels",
       "members_label": "Members",
-      "operations": "Operations",
       "pages_label": "Pages",
+      "readers": "Readers",
       "readers_label": "Readers",
+      "reports": "Reports",
       "royalties_label": "Royalties",
       "series_label": "Series",
-      "settings_label": "Settings"
+      "settings_label": "Settings",
+      "site": "Site"
     },
     "not_found": {
       "description": "This item may have been deleted, or the URL may have changed. Choose it from a list instead.",

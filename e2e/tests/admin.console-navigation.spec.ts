@@ -7,10 +7,10 @@ const sidebarLink = (page: Page, name: string) =>
   page.getByRole("navigation").getByRole("link", { exact: true, name });
 
 /**
- * Where each console screen sits: a list managed like Genres, the tenant's
- * branding, and the outside services it connects to each have a sidebar entry,
- * the royalty close settings are reached from Royalties, and Settings keeps only
- * the tenant-wide settings.
+ * Where each console screen sits: the sidebar groups its entries by kind of
+ * work, a list managed like Genres, the tenant's branding, and the outside
+ * services it connects to each have an entry, the royalty close settings are
+ * reached from Royalties, and Settings keeps only the tenant-wide settings.
  */
 test.describe("web-admin console navigation", () => {
   test("the sidebar places each screen with the work it belongs to", async ({
@@ -18,20 +18,29 @@ test.describe("web-admin console navigation", () => {
   }) => {
     await signInAsSeedAdmin(page, "/");
 
-    await expect(page.getByRole("navigation").getByRole("link")).toHaveText([
+    const navigation = page.getByRole("navigation");
+    // Section headings are paragraphs; the entries' labels are not.
+    await expect(navigation.locator("p")).toHaveText([
+      "Catalog",
+      "Site",
+      "Readers",
+      "Reports",
+      "Administration",
+    ]);
+    await expect(navigation.getByRole("link")).toHaveText([
       "Dashboard",
+      "Series",
       "Labels",
       "Authors",
-      "Genres",
       "Author roles",
-      "Series",
+      "Genres",
       "Pages",
       "Announcements",
-      "Access tickets",
+      "Readers",
       // The pending-comment badge rides on this entry.
       /^Comments/u,
-      "Readers",
       "Contact messages",
+      "Access tickets",
       "Read-through",
       "Royalties",
       "Members",

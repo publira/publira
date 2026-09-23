@@ -963,6 +963,7 @@
       "announcements_label": "公告",
       "audit_label": "审计日志",
       "branding_label": "品牌",
+      "catalog": "作品",
       "comments_label": "评论",
       "comments_pending": "{$count} 条评论等待审核",
       "contact_messages_label": "咨询",
@@ -974,12 +975,14 @@
       "integrations_label": "集成",
       "labels_label": "品牌",
       "members_label": "成员",
-      "operations": "运营",
       "pages_label": "页面",
+      "readers": "读者",
       "readers_label": "读者",
+      "reports": "报表",
       "royalties_label": "版税",
       "series_label": "系列",
-      "settings_label": "设置"
+      "settings_label": "设置",
+      "site": "网站"
     },
     "not_found": {
       "description": "该对象可能已被删除，或 URL 已变更。请改从列表中选择。",

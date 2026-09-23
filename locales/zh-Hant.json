@@ -963,6 +963,7 @@
       "announcements_label": "公告",
       "audit_label": "稽核記錄",
       "branding_label": "品牌",
+      "catalog": "作品",
       "comments_label": "留言",
       "comments_pending": "{$count} 則留言等待審核",
       "contact_messages_label": "諮詢",
@@ -974,12 +975,14 @@
       "integrations_label": "整合",
       "labels_label": "品牌",
       "members_label": "成員",
-      "operations": "營運",
       "pages_label": "頁面",
+      "readers": "讀者",
       "readers_label": "讀者",
+      "reports": "報表",
       "royalties_label": "版稅",
       "series_label": "系列",
-      "settings_label": "設定"
+      "settings_label": "設定",
+      "site": "網站"
     },
     "not_found": {
       "description": "該對象可能已被刪除，或網址已變更。請改從列表中選擇。",

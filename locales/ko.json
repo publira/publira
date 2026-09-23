@@ -963,6 +963,7 @@
       "announcements_label": "공지사항",
       "audit_label": "감사 로그",
       "branding_label": "브랜딩",
+      "catalog": "작품",
       "comments_label": "댓글",
       "comments_pending": "승인 대기 중인 댓글 {$count}건",
       "contact_messages_label": "문의",
@@ -974,12 +975,14 @@
       "integrations_label": "연동",
       "labels_label": "레이블",
       "members_label": "멤버",
-      "operations": "운영",
       "pages_label": "페이지",
+      "readers": "독자",
       "readers_label": "독자",
+      "reports": "리포트",
       "royalties_label": "인세",
       "series_label": "시리즈",
-      "settings_label": "설정"
+      "settings_label": "설정",
+      "site": "사이트"
     },
     "not_found": {
       "description": "해당 항목이 삭제되었거나 URL이 변경되었을 수 있습니다. 목록에서 다시 선택해 주세요.",

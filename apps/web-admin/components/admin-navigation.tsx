@@ -46,17 +46,17 @@ import { PendingCommentBadgeErrorCatch } from "./pending-comment-badge-error-cat
  */
 const hrefs = [
   "/",
+  "/series",
   "/labels",
   "/creators",
-  "/genres",
   "/creator-roles",
-  "/series",
+  "/genres",
   "/pages",
   "/announcements",
-  "/access-tickets",
-  "/comments",
   "/readers",
+  "/comments",
   "/contact-messages",
+  "/access-tickets",
   "/engagement",
   "/royalties",
   "/members",
@@ -69,11 +69,6 @@ const hrefs = [
 export const AdminNavigation = () => (
   <ConsoleSidebarNavigation hrefs={hrefs}>
     <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
-        <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-          <Message message="admin.nav.operations" />
-        </Suspense>
-      </ConsoleSidebarNavigationTitle>
       <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/">
           <ConsoleSidebarNavigationItemIcon>
@@ -83,6 +78,27 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.nav.dashboard_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+      </ConsoleSidebarNavigationItems>
+    </ConsoleSidebarNavigationSection>
+    <ConsoleSidebarNavigationSection>
+      <ConsoleSidebarNavigationTitle>
+        <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+          <Message message="admin.nav.catalog" />
+        </Suspense>
+      </ConsoleSidebarNavigationTitle>
+      <ConsoleSidebarNavigationItems>
+        <ConsoleSidebarNavigationItem href="/series">
+          <ConsoleSidebarNavigationItemIcon>
+            <CollectionIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.nav.series_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
@@ -111,18 +127,6 @@ export const AdminNavigation = () => (
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/genres">
-          <ConsoleSidebarNavigationItemIcon>
-            <ShapesIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
-                <Message message="admin.nav.genres_label" />
-              </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/creator-roles">
           <ConsoleSidebarNavigationItemIcon>
             <IdCardIcon className="size-4" />
@@ -135,18 +139,27 @@ export const AdminNavigation = () => (
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/series">
+        <ConsoleSidebarNavigationItem href="/genres">
           <ConsoleSidebarNavigationItemIcon>
-            <CollectionIcon className="size-4" />
+            <ShapesIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.nav.series_label" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
+                <Message message="admin.nav.genres_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
+      </ConsoleSidebarNavigationItems>
+    </ConsoleSidebarNavigationSection>
+    <ConsoleSidebarNavigationSection>
+      <ConsoleSidebarNavigationTitle>
+        <Suspense fallback={<SkeletonLine className="h-3 w-10" />}>
+          <Message message="admin.nav.site" />
+        </Suspense>
+      </ConsoleSidebarNavigationTitle>
+      <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/pages">
           <ConsoleSidebarNavigationItemIcon>
             <FileTextIcon className="size-4" />
@@ -171,14 +184,23 @@ export const AdminNavigation = () => (
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/access-tickets">
+      </ConsoleSidebarNavigationItems>
+    </ConsoleSidebarNavigationSection>
+    <ConsoleSidebarNavigationSection>
+      <ConsoleSidebarNavigationTitle>
+        <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+          <Message message="admin.nav.readers" />
+        </Suspense>
+      </ConsoleSidebarNavigationTitle>
+      <ConsoleSidebarNavigationItems>
+        <ConsoleSidebarNavigationItem href="/readers">
           <ConsoleSidebarNavigationItemIcon>
-            <TicketIcon className="size-4" />
+            <UserIcon className="size-4" />
           </ConsoleSidebarNavigationItemIcon>
           <ConsoleSidebarNavigationItemHeading>
             <ConsoleSidebarNavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="admin.nav.access_tickets_label" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.readers_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
@@ -202,18 +224,6 @@ export const AdminNavigation = () => (
             </PendingCommentBadgeErrorCatch>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/readers">
-          <ConsoleSidebarNavigationItemIcon>
-            <UserIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="admin.nav.readers_label" />
-              </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
         <ConsoleSidebarNavigationItem href="/contact-messages">
           <ConsoleSidebarNavigationItemIcon>
             <MailIcon className="size-4" />
@@ -226,6 +236,27 @@ export const AdminNavigation = () => (
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
         </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/access-tickets">
+          <ConsoleSidebarNavigationItemIcon>
+            <TicketIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.nav.access_tickets_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+      </ConsoleSidebarNavigationItems>
+    </ConsoleSidebarNavigationSection>
+    <ConsoleSidebarNavigationSection>
+      <ConsoleSidebarNavigationTitle>
+        <Suspense fallback={<SkeletonLine className="h-3 w-14" />}>
+          <Message message="admin.nav.reports" />
+        </Suspense>
+      </ConsoleSidebarNavigationTitle>
+      <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/engagement">
           <ConsoleSidebarNavigationItemIcon>
             <ChartIcon className="size-4" />

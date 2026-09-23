@@ -963,6 +963,7 @@
       "announcements_label": "お知らせ",
       "audit_label": "監査ログ",
       "branding_label": "ブランディング",
+      "catalog": "作品",
       "comments_label": "コメント",
       "comments_pending": "承認待ちのコメント{$count}件",
       "contact_messages_label": "お問い合わせ",
@@ -974,12 +975,14 @@
       "integrations_label": "外部連携",
       "labels_label": "レーベル",
       "members_label": "メンバー",
-      "operations": "運用",
       "pages_label": "ページ",
+      "readers": "読者",
       "readers_label": "読者",
+      "reports": "レポート",
       "royalties_label": "印税",
       "series_label": "シリーズ",
-      "settings_label": "設定"
+      "settings_label": "設定",
+      "site": "サイト"
     },
     "not_found": {
       "description": "お探しの項目は削除されたか、URL が変更された可能性があります。一覧から選び直してください。",
