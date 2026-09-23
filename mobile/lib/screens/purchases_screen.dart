@@ -64,6 +64,10 @@ class _PurchasesListState extends State<_PurchasesList> {
   var _accessToken = '';
   var _started = false;
 
+  /// The pull-to-refresh in progress, completed once the first page it asked
+  /// for has answered.
+  Completer<void>? _refreshing;
+
   /// Reads the list again whenever the reader changes, because what was
   /// bought belongs to whoever holds the session.
   @override
@@ -76,6 +80,12 @@ class _PurchasesListState extends State<_PurchasesList> {
     _started = true;
     _accessToken = accessToken;
     _readFirstPage();
+  }
+
+  @override
+  void dispose() {
+    _refreshing?.complete();
+    super.dispose();
   }
 
   void _readFirstPage() {
@@ -91,6 +101,17 @@ class _PurchasesListState extends State<_PurchasesList> {
       return;
     }
     unawaited(_read(_reads, ''));
+  }
+
+  /// Reads the list again from the top. The screen stays mounted while the
+  /// reader is on another tab, so a purchase made meanwhile appears only
+  /// once they ask for it.
+  Future<void> _refresh() {
+    final pending = Completer<void>();
+    _refreshing?.complete();
+    _refreshing = pending;
+    _readFirstPage();
+    return pending.future;
   }
 
   /// Asks for the page under the last one, unless it is already on its way,
@@ -120,10 +141,17 @@ class _PurchasesListState extends State<_PurchasesList> {
     if (!mounted || read != _reads) {
       return;
     }
+    if (isFirstPage) {
+      _refreshing?.complete();
+      _refreshing = null;
+    }
     setState(() {
       _reading = false;
       if (page == null) {
-        if (isFirstPage) {
+        // A session the API refuses is refused for every page, so it takes the
+        // whole screen, where the way out is to sign in again.
+        if (isFirstPage ||
+            failure?.kind == PurchaseFailureKind.sessionExpired) {
           _failure = failure;
         } else {
           _moreFailure = failure;
@@ -149,12 +177,16 @@ class _PurchasesListState extends State<_PurchasesList> {
     }
     final failure = _failure;
     if (failure != null) {
+      // Retrying would send the token the API just refused.
+      final signIn = failure.kind == PurchaseFailureKind.sessionExpired;
       return CatalogMessage(
         key: const ValueKey('purchases-error'),
         message: _failureCopy(messages, failure),
-        actionKey: const ValueKey('purchases-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: _readFirstPage,
+        actionKey: ValueKey(signIn ? 'purchases-sign-in' : 'purchases-retry'),
+        actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+        onAction: signIn
+            ? () => context.pushInTab(AppRoutes.signIn)
+            : _readFirstPage,
       );
     }
     final purchases = _purchases;
@@ -167,35 +199,48 @@ class _PurchasesListState extends State<_PurchasesList> {
     }
     final hasFooter = _nextToken.isNotEmpty || _moreFailure != null;
     if (purchases.isEmpty && !hasFooter) {
-      return CatalogMessage(
-        key: const ValueKey('purchases-empty'),
-        message: messages.purchasesEmpty,
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        // Scrollable so the pull that reads the list again still starts.
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            CatalogMessage(
+              key: const ValueKey('purchases-empty'),
+              message: messages.purchasesEmpty,
+            ),
+          ],
+        ),
       );
     }
-    return ListView.separated(
-      key: const ValueKey('purchases-list'),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: purchases.length + (hasFooter ? 1 : 0),
-      separatorBuilder: (context, index) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        if (index >= purchases.length - _readAheadRows) {
-          _readMore();
-        }
-        if (index == purchases.length) {
-          return _PurchasesPageFooter(
-            message: _moreFailure == null
-                ? null
-                : _failureCopy(messages, _moreFailure!),
-            onRetry: () {
-              setState(() {
-                _moreFailure = null;
-              });
-              _readMore();
-            },
-          );
-        }
-        return _PurchaseRow(purchase: purchases[index]);
-      },
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.separated(
+        key: const ValueKey('purchases-list'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: purchases.length + (hasFooter ? 1 : 0),
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          if (index >= purchases.length - _readAheadRows) {
+            _readMore();
+          }
+          if (index == purchases.length) {
+            return _PurchasesPageFooter(
+              message: _moreFailure == null
+                  ? null
+                  : _failureCopy(messages, _moreFailure!),
+              onRetry: () {
+                setState(() {
+                  _moreFailure = null;
+                });
+                _readMore();
+              },
+            );
+          }
+          return _PurchaseRow(purchase: purchases[index]);
+        },
+      ),
     );
   }
 

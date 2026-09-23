@@ -259,6 +259,105 @@ void main() {
       );
     });
 
+    testWidgets('sends a reader whose session was refused to sign in', (
+      tester,
+    ) async {
+      purchases.listFailure = const PurchaseFailure(
+        PurchaseFailureKind.sessionExpired,
+      );
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-error')),
+      );
+
+      expect(find.byKey(const ValueKey('purchases-retry')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('purchases-sign-in')));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+
+      expect(router.state.uri.path, AppTab.account.locate(AppRoutes.signIn));
+    });
+
+    testWidgets('gives the whole screen to a session refused on a later page', (
+      tester,
+    ) async {
+      purchases
+        ..pages = [
+          [for (var index = 0; index < 20; index++) purchase('page-1-$index')],
+          [purchase('page-2-0')],
+        ]
+        ..moreFailure = const PurchaseFailure(
+          PurchaseFailureKind.sessionExpired,
+        );
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-list')),
+      );
+
+      await tester.fling(
+        find.byKey(const ValueKey('purchases-list')),
+        const Offset(0, -4000),
+        1000,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-error')),
+      );
+
+      expect(find.byKey(const ValueKey('purchases-list')), findsNothing);
+      expect(find.byKey(const ValueKey('purchases-sign-in')), findsOne);
+    });
+
+    testWidgets('reads the list again when the reader pulls it down', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      purchases.pages = [
+        [purchase('purchase-2'), purchase('purchase-1')],
+      ];
+      await tester.fling(
+        find.byKey(const ValueKey('purchases-list')),
+        const Offset(0, 400),
+        1000,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-2')),
+      );
+    });
+
+    testWidgets('reads an empty list again when the reader pulls it down', (
+      tester,
+    ) async {
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-empty')),
+      );
+
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      await tester.fling(
+        find.byKey(const ValueKey('purchases-empty')),
+        const Offset(0, 400),
+        1000,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+    });
+
     testWidgets('asks a reader who is signed out to sign in', (tester) async {
       await openPurchases(tester, session: null);
       await pumpUntilFound(

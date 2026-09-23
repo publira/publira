@@ -44,6 +44,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Thrown by [listMyPurchases].
   PurchaseFailure? listFailure;
 
+  /// Thrown by [listMyPurchases] for every page but the first.
+  PurchaseFailure? moreFailure;
+
   @override
   Future<bool> acceptsPayments() async => payments;
 
@@ -77,6 +80,10 @@ class FakePurchaseRepository implements PurchaseRepository {
     final failure = listFailure;
     if (failure != null) {
       throw failure;
+    }
+    final more = moreFailure;
+    if (more != null && token.isNotEmpty) {
+      throw more;
     }
     final index = token.isEmpty ? 0 : int.parse(token);
     if (index >= pages.length) {
