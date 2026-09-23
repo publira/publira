@@ -2555,6 +2555,7 @@
         "to_reset_password": "Back to password reset"
       },
       "errors": {
+        "consent_changed": "The pages to agree to have been updated. Read them and agree again.",
         "consent_required": "Agree to the listed pages to create an account.",
         "login_failed": "That email address or password is incorrect. Check them and try again.",
         "name_required": "Enter a display name.",

@@ -3,6 +3,7 @@ import { AgeVerification } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  consentPages,
   getTenantAgeVerification,
   getTenantDefaultLocale,
   getTenantDisplayTimeZone,
@@ -10,6 +11,7 @@ import {
   getTenantSiteInfo,
   getTenantTheme,
   getTenantWebPushPublicKey,
+  readConsentPageVersionIds,
 } from "./tenant";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
@@ -160,6 +162,28 @@ describe("tenant", () => {
       privacyPage: undefined,
       termsPage: undefined,
     });
+  });
+
+  it("Ask consent to a page named for both roles once", () => {
+    const page = { href: "/legal", title: "Legal", versionId: "legal-v1" };
+
+    expect(consentPages({ privacyPage: page, termsPage: page })).toEqual([
+      page,
+    ]);
+  });
+
+  it("Read the versions a sign-up asks consent to past the cache", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      privacyPage: { slug: "/privacy", title: "Privacy", versionId: "p-v2" },
+      termsPage: { slug: "/terms", title: "Terms", versionId: "t-v1" },
+    });
+
+    await expect(readConsentPageVersionIds("TENANT_001")).resolves.toEqual([
+      "t-v1",
+      "p-v2",
+    ]);
+    expect(mockCacheTag).not.toHaveBeenCalled();
   });
 
   it("Treat a store the app is not listed in as absent", async () => {

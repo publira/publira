@@ -2555,6 +2555,7 @@
         "to_reset_password": "비밀번호 재설정으로 돌아가기"
       },
       "errors": {
+        "consent_changed": "동의할 페이지가 업데이트되었습니다. 내용을 읽고 다시 동의해 주세요.",
         "consent_required": "계정을 만들려면 안내된 페이지에 동의해 주세요.",
         "login_failed": "이메일 주소 또는 비밀번호가 올바르지 않습니다.",
         "name_required": "표시 이름을 입력해 주세요.",

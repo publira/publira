@@ -1,9 +1,12 @@
 "use server";
 
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -14,6 +17,7 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import { tenantSiteTag } from "#lib/cache-tags";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   setEmailFlashCookie,
@@ -21,6 +25,7 @@ import {
 } from "#lib/email-flash-cookie";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { readConsentPageVersionIds } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const signupFormSchema = async (locale: Locale) => {
@@ -36,7 +41,8 @@ const signupFormSchema = async (locale: Locale) => {
 
   return z
     .object({
-      // The published versions of the pages the form displayed.
+      // The versions of the pages the form displayed, which may since have
+      // been superseded.
       agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
       birthDate,
       confirmPassword: z
@@ -66,6 +72,11 @@ const signupFormSchema = async (locale: Locale) => {
         path: ["consent"],
       }
     );
+};
+
+const sameVersions = (left: string[], right: string[]): boolean => {
+  const rightIds = new Set(right);
+  return left.length === rightIds.size && left.every((id) => rightIds.has(id));
 };
 
 export const signupAction = async (
@@ -109,8 +120,36 @@ export const signupAction = async (
     password,
     tenantId,
   } = parsed.data;
+  // Sent only while they are still the published versions: a reader who
+  // opened a link from the form read whatever was published then, so older
+  // versions would record consent to text they were never shown.
+  let publishedVersionIds: string[];
+  try {
+    publishedVersionIds = await readConsentPageVersionIds(tenantId);
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, t("host.auth.errors.signup_failed"), {
+        locale: submittedLocale,
+      }),
+      ok: false,
+    };
+  }
+  if (
+    publishedVersionIds.length > 0 &&
+    !sameVersions(agreedPageVersionIds, publishedVersionIds)
+  ) {
+    // The form's cached pages are the stale ones, so dropping them is what
+    // re-renders it with the current pages to agree to.
+    updateTag(tenantSiteTag(tenantId));
+    return {
+      message: t("host.auth.errors.consent_changed"),
+      ok: false,
+    };
+  }
+
   const accepted = await signupPublic({
-    agreedPageVersionIds,
+    agreedPageVersionIds: publishedVersionIds,
     birthDate,
     email,
     name,

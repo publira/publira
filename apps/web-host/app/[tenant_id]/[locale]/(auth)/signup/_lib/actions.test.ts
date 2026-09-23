@@ -1,15 +1,24 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockReadConsentPageVersionIds,
   mockRedirect,
   mockSetEmailFlashCookie,
   mockSignupPublic,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockReadConsentPageVersionIds: vi.fn(),
   mockRedirect: vi.fn(),
   mockSetEmailFlashCookie: vi.fn(),
   mockSignupPublic: vi.fn(),
+  mockUpdateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -29,6 +38,7 @@ vi.mock("#lib/email-flash-cookie", () => ({
 
 vi.mock("#lib/tenant", () => ({
   getTenantDefaultLocale: () => "en",
+  readConsentPageVersionIds: mockReadConsentPageVersionIds,
 }));
 
 const formData = (values: Record<string, string>): FormData => {
@@ -56,6 +66,7 @@ describe("signupAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockReadConsentPageVersionIds.mockResolvedValue([]);
   });
 
   it("stores the destination email in a flash cookie and redirects without a query", async () => {
@@ -80,6 +91,10 @@ describe("signupAction", () => {
   });
 
   it("sends the versions of the pages the reader agreed to", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce([
+      "privacy-v2",
+      "terms-v1",
+    ]);
     mockSignupPublic.mockResolvedValueOnce(true);
     const data = formData({ ...validSignupFields, consent: "on" });
     data.append("agreedPageVersionIds", "terms-v1");
@@ -90,8 +105,62 @@ describe("signupAction", () => {
 
     expect(mockSignupPublic).toHaveBeenCalledWith(
       expect.objectContaining({
-        agreedPageVersionIds: ["terms-v1", "privacy-v2"],
+        agreedPageVersionIds: ["privacy-v2", "terms-v1"],
       })
+    );
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
+  });
+
+  it("asks for consent again when a page was republished after the form rendered", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce([
+      "terms-v2",
+      "privacy-v2",
+    ]);
+    const data = formData({ ...validSignupFields, consent: "on" });
+    data.append("agreedPageVersionIds", "terms-v1");
+    data.append("agreedPageVersionIds", "privacy-v2");
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction({ message: "", ok: false }, data);
+
+    expect(result).toEqual({
+      message:
+        "The pages to agree to have been updated. Read them and agree again.",
+      ok: false,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:site`);
+    expect(mockSignupPublic).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("asks for consent when the tenant named a page after the form rendered", async () => {
+    mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-v1"]);
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction(
+      { message: "", ok: false },
+      formData(validSignupFields)
+    );
+
+    expect(result).toEqual({
+      message:
+        "The pages to agree to have been updated. Read them and agree again.",
+      ok: false,
+    });
+    expect(mockSignupPublic).not.toHaveBeenCalled();
+  });
+
+  it("sends no consent once the tenant names no page any more", async () => {
+    mockSignupPublic.mockResolvedValueOnce(true);
+    const data = formData({ ...validSignupFields, consent: "on" });
+    data.append("agreedPageVersionIds", "terms-v1");
+
+    const { signupAction } = await import("./actions");
+    await signupAction({ message: "", ok: false }, data);
+
+    expect(mockSignupPublic).toHaveBeenCalledWith(
+      expect.objectContaining({ agreedPageVersionIds: [] })
     );
     expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
   });
@@ -107,6 +176,21 @@ describe("signupAction", () => {
       message: "Agree to the listed pages to create an account.",
       ok: false,
     });
+    expect(mockSignupPublic).not.toHaveBeenCalled();
+  });
+
+  it("does not create the account when the published versions cannot be read", async () => {
+    mockReadConsentPageVersionIds.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction(
+      { message: "", ok: false },
+      formData(validSignupFields)
+    );
+
+    expect(result).toEqual(expect.objectContaining({ ok: false }));
     expect(mockSignupPublic).not.toHaveBeenCalled();
   });
 
