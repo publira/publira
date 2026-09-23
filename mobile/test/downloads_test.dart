@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -12,12 +13,14 @@ import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/device_key.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/tenant/tenant_brand.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -35,13 +38,129 @@ class _FixedDeviceKey implements DeviceKeyStore {
       Uint8List.fromList(List<int>.generate(32, (index) => index * 5 % 256));
 }
 
+/// [OfflineLibrary] that runs every call in the root zone and knows when they
+/// are done. In the test's fake zone each continuation after real file I/O
+/// waits for the next frame, so one read took dozens of frames to answer.
+class _RealTimeLibrary implements OfflineLibrary {
+  _RealTimeLibrary(this._inner);
+
+  final OfflineLibrary _inner;
+  final _pending = <Future<void>>{};
+
+  /// Completes once every call started so far has finished.
+  Future<void> get idle => Future.wait(_pending.toList());
+
+  Future<T> _run<T>(Future<T> Function() call) => Zone.root.run(() {
+    final result = call();
+    final done = result.then<void>((_) {}, onError: (_) {});
+    _pending.add(done);
+    unawaited(done.whenComplete(() => _pending.remove(done)));
+    return result;
+  });
+
+  @override
+  Stream<void> get changes => _inner.changes;
+
+  @override
+  Future<SeriesPage?> readSeriesList() => _run(_inner.readSeriesList);
+
+  @override
+  Future<void> writeSeriesList(SeriesPage page) =>
+      _run(() => _inner.writeSeriesList(page));
+
+  @override
+  Future<TenantBrand?> readTenantBrand(String tenantHost) =>
+      _run(() => _inner.readTenantBrand(tenantHost));
+
+  @override
+  Future<void> writeTenantBrand(String tenantHost, TenantBrand brand) =>
+      _run(() => _inner.writeTenantBrand(tenantHost, brand));
+
+  @override
+  Future<SeriesDetail?> readSeriesDetail(String seriesPublicId) =>
+      _run(() => _inner.readSeriesDetail(seriesPublicId));
+
+  @override
+  Future<void> writeSeriesDetail(SeriesDetail detail) =>
+      _run(() => _inner.writeSeriesDetail(detail));
+
+  @override
+  Future<void> removeSeries(String seriesPublicId) =>
+      _run(() => _inner.removeSeries(seriesPublicId));
+
+  @override
+  Future<SavedEpisode?> readEpisode(
+    String seriesPublicId,
+    String episodePublicId,
+  ) => _run(() => _inner.readEpisode(seriesPublicId, episodePublicId));
+
+  @override
+  Future<void> writeEpisode(SavedEpisode episode) =>
+      _run(() => _inner.writeEpisode(episode));
+
+  @override
+  Future<void> removeEpisode(String seriesPublicId, String episodePublicId) =>
+      _run(() => _inner.removeEpisode(seriesPublicId, episodePublicId));
+
+  @override
+  Future<int?> readReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+  }) => _run(
+    () => _inner.readReadingPosition(
+      seriesPublicId,
+      episodePublicId,
+      readerId: readerId,
+    ),
+  );
+
+  @override
+  Future<void> writeReadingPosition(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String readerId,
+    required int pageIndex,
+  }) => _run(
+    () => _inner.writeReadingPosition(
+      seriesPublicId,
+      episodePublicId,
+      readerId: readerId,
+      pageIndex: pageIndex,
+    ),
+  );
+
+  @override
+  Future<Set<String>> readableEpisodeIds(
+    String seriesPublicId, {
+    required String readerId,
+    DateTime? now,
+  }) => _run(
+    () =>
+        _inner.readableEpisodeIds(seriesPublicId, readerId: readerId, now: now),
+  );
+
+  @override
+  Future<Uint8List?> readPage(String key) => _run(() => _inner.readPage(key));
+
+  @override
+  Future<void> writePage(String key, Uint8List bytes) =>
+      _run(() => _inner.writePage(key, bytes));
+
+  @override
+  Future<OfflineStorage> readStorage() => _run(_inner.readStorage);
+
+  @override
+  Future<void> clear() => _run(_inner.clear);
+}
+
 Uint8List _page(int seed) => Uint8List.fromList(
   List<int>.generate(256, (index) => (index + seed) % 256),
 );
 
 void main() {
   late Directory root;
-  late FileOfflineLibrary library;
+  late _RealTimeLibrary library;
   late FakeCatalogRepository origin;
   late GoRouter router;
   late List<Uri> imageRequests;
@@ -52,10 +171,12 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('publira-downloads-');
-    library = FileOfflineLibrary(
-      tenantHost: 'harbor.test',
-      keys: const _FixedDeviceKey(),
-      root: () async => root,
+    library = _RealTimeLibrary(
+      FileOfflineLibrary(
+        tenantHost: 'harbor.test',
+        keys: const _FixedDeviceKey(),
+        root: () async => root,
+      ),
     );
     origin = FakeCatalogRepository(
       series: fixtureSeries,
@@ -72,25 +193,33 @@ void main() {
     }
   });
 
-  /// Real file I/O only runs inside [WidgetTester.runAsync], so every wait on
-  /// the library alternates a slice of real time with a frame.
+  /// Lets the library finish in real time what the app asked of it, then draws
+  /// a frame, until [condition] holds. Rounds are counted rather than timed,
+  /// so a loaded machine makes each one slower instead of making it fail.
+  Future<void> pumpUntilTrue(
+    WidgetTester tester,
+    bool Function() condition, {
+    String description = 'condition',
+  }) async {
+    for (var round = 0; round < 200; round++) {
+      await tester.runAsync(() => library.idle);
+      await tester.pump(const Duration(milliseconds: 50));
+      if (condition()) {
+        return;
+      }
+    }
+    fail('Gave up waiting for $description');
+  }
+
   Future<void> pumpUntilFound(
     WidgetTester tester,
     Finder finder, {
     bool present = true,
-  }) async {
-    final end = DateTime.now().add(const Duration(seconds: 10));
-    while (DateTime.now().isBefore(end)) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 20)),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      if (finder.evaluate().isNotEmpty == present) {
-        return;
-      }
-    }
-    fail('Timed out waiting for $finder to be ${present ? '' : 'not '}found');
-  }
+  }) => pumpUntilTrue(
+    tester,
+    () => finder.evaluate().isNotEmpty == present,
+    description: '$finder to be ${present ? '' : 'not '}found',
+  );
 
   /// Opens the library's downloads from whichever tab is on screen.
   Future<void> openDownloads(WidgetTester tester) async {
@@ -101,25 +230,13 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('library-tab-downloads')));
     await pumpUntilFound(tester, find.byKey(const ValueKey('downloads-usage')));
-  }
-
-  /// [pumpUntilFound] for what only the rendered copy reveals.
-  Future<void> pumpUntilTrue(
-    WidgetTester tester,
-    bool Function() condition, {
-    String description = 'condition',
-  }) async {
-    final end = DateTime.now().add(const Duration(seconds: 10));
-    while (DateTime.now().isBefore(end)) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 20)),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      if (condition()) {
-        return;
-      }
-    }
-    fail('Timed out waiting for $description');
+    // The usage is drawn while the tab still slides in, where a tap on the
+    // screen lands off it.
+    await pumpUntilTrue(
+      tester,
+      () => SchedulerBinding.instance.transientCallbackCount == 0,
+      description: 'the downloads tab to finish sliding in',
+    );
   }
 
   /// Puts [episode] on the device the way reading it would have: the body
@@ -386,10 +503,11 @@ void main() {
     );
     // The body is on the device before its first page is, and the row keeps
     // saying the save is still running.
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    await pumpUntilTrue(
+      tester,
+      () => imageRequests.isNotEmpty,
+      description: 'the first page to be requested',
     );
-    await tester.pump(const Duration(milliseconds: 50));
     expect(
       find.byKey(ValueKey('episode-saving-offline-${_freeEpisode.id}')),
       findsOne,
