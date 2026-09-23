@@ -3018,6 +3018,15 @@ void main() {
           description: 'the whole episode to reach the device',
           timeout: const Duration(seconds: 30),
         );
+        // The episode is readable before the save returns, and the app is
+        // replaced below, so the save is let finish on the screen it began on.
+        await pumpUntilFound(
+          tester,
+          find.text(
+            '“${ConnectFixtureServer.seedEpisodeTitle}” is saved on this '
+            'device.',
+          ),
+        );
 
         final closedBaseUrl = server.baseUrl;
         await server.close();
