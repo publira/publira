@@ -130,7 +130,7 @@ Implementation:
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
-| `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test` and `task e2e:test-lib` for the isolated development-profile and E2E-stack Bash libraries. | This file |
+| `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / Mobile E2E` | `task mobile:test-integration` on an Android emulator with public API and seed, then a production APK from `mobile/config/app.example.yaml` through `task mobile:build`. | [`mobile/README.md`](../../mobile/README.md) |
@@ -254,7 +254,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `node scripts/check-design-tokens.ts`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
-   | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, and `task e2e:test-lib` |
+   | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |
    | `Test / Mobile` | `task mobile:check` |
    | `Test / Mobile E2E` | `task mobile:e2e` |

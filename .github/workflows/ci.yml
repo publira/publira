@@ -170,6 +170,7 @@ jobs:
               - 'e2e/scripts/**'
               - 'Taskfile.yaml'
               - 'e2e/Taskfile.yaml'
+              - 'mobile/Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_db_migrations:
@@ -644,6 +645,7 @@ jobs:
         run: |
           task dev-env:test
           task e2e:test-lib
+          task mobile:test-device-ports
 
   test-mobile:
     name: Test / Mobile

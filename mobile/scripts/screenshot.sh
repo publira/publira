@@ -46,7 +46,7 @@ require_profile_stack() {
 screenshot_on_device() {
   local device="$1" app_id activity route name attempt
   mobile_load_app_config "$(mobile_device_address "${device}")"
-  mobile_bind_device_ports "${device}"
+  mobile_bind_device_port "${device}" "${PUBLIRA_PUBLIC_API_PORT}"
   printf 'profile %s on %s: server %s, tenant %s\n' \
     "${MOBILE_PROFILE_NAME}" "${device}" "${PUBLIRA_BASE_URL}" \
     "${PUBLIRA_TENANT_HOST}"

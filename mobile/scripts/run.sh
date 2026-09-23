@@ -24,7 +24,7 @@ device="${device:-$(mobile_attached_device)}"
 
 mobile_load_app_config "$(mobile_device_address "${device}")"
 mobile_generate_build_config
-mobile_bind_device_ports "${device}"
+mobile_bind_device_port "${device}" "${PUBLIRA_PUBLIC_API_PORT}"
 mapfile -t defines < <(
   mobile_dart_defines "${PUBLIRA_BASE_URL}"
 )

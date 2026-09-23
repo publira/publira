@@ -8,6 +8,8 @@ REPO_ROOT="$(cd "${MOBILE_DIR}/.." && pwd)"
 
 # shellcheck source=../../e2e/scripts/lib.sh
 source "${REPO_ROOT}/e2e/scripts/lib.sh"
+# shellcheck source=app-config.sh
+source "${MOBILE_DIR}/scripts/app-config.sh"
 
 ART_DIR="${PUBLIRA_E2E_RUN_DIR:-${MOBILE_DIR}/.run}/artifacts"
 mkdir -p "${ART_DIR}"
@@ -34,12 +36,9 @@ if [[ -z "${device}" ]]; then
   exit 1
 fi
 
-# `10.0.2.2` is the host as an emulator sees it; loopback there is the emulator
-# itself. The device the tests run on decides, not whatever else adb lists.
-case "${device}" in
-  emulator-*) host_address="10.0.2.2" ;;
-  *) host_address="127.0.0.1" ;;
-esac
+# The device the tests run on decides, not whatever else adb lists.
+host_address="$(mobile_device_address "${device}")"
+mobile_bind_device_port "${device}" "${PUBLIRA_E2E_PUBLIC_API_PORT}"
 export PUBLIRA_BASE_URL="${PUBLIRA_BASE_URL:-http://${host_address}:${PUBLIRA_E2E_PUBLIC_API_PORT}}"
 export PUBLIRA_TENANT_HOST="${PUBLIRA_TENANT_HOST:-localhost}"
 
