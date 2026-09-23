@@ -2678,7 +2678,7 @@ void main() {
 
           expect(
             anonymousIds.anonymousId,
-            Uri.parse(liveBaseUrl).isScheme('https') ? isNotEmpty : isEmpty,
+            Uri.parse(liveBaseUrl).isScheme('https') ? isNotNull : isNull,
           );
         },
       );

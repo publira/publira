@@ -460,11 +460,7 @@ A reader follows a series, and each author credited on it, from the series scree
 
 ## Content views
 
-Opening a series screen or an episode records one view through `ContentViewService/RecordContentView` with `CLIENT_SURFACE_APP`, the same RPC the site's pages call, so an app reader counts toward the tenant's rankings and content statistics.
-
-- A view is recorded once the series or the episode is on screen: a screen still loading, a work the API does not show, a rating gate still standing, and a series screen stacked under an episode opened from a link record nothing. A locked episode is on screen, so it counts
-- A view is instrumentation. It is sent without holding up the screen, and one that fails is dropped rather than shown or retried
-- A signed-in reader is counted by their session. A signed-out one is counted by the `publira_aid` identifier the API mints, which `AnonymousIdStore` keeps in the app's private directory and sends back as the cookie, since the app has no cookie jar. The identifier is `Secure`, so an API reached over plain HTTP counts every signed-out view as a reader of its own
+Opening a series screen or an episode records one view through `ContentViewService/RecordContentView` with `CLIENT_SURFACE_APP`, the same RPC the site's pages call, so an app reader counts toward the tenant's rankings and content statistics. The one thing written to the device is the `publira_aid` identifier a signed-out reader is counted under, which `AnonymousIdStore` keeps with its expiry because the app has no cookie jar.
 
 ## Notification inbox
 
