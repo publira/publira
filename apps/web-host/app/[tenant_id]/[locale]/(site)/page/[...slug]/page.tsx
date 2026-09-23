@@ -14,8 +14,9 @@ import { z } from "zod";
 import { PageLoadError } from "#components/page-load-error";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getPublishedPage } from "#lib/pages";
+import { getPublishedPage, publishedPageHrefFromSlug } from "#lib/pages";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { PublishedPageContent } from "./_components/published-page-view";
 
@@ -44,18 +45,25 @@ export const generateMetadata = async (
   }
   const { slug } = parsedParams;
 
-  const [result, t] = await Promise.all([
+  const [result, t, alternates] = await Promise.all([
     getPublishedPage(tenantId, slug, locale),
     getMessagesFor(locale),
+    tenantLocaleAlternates(
+      tenantId,
+      locale,
+      publishedPageHrefFromSlug(slug.join("/"))
+    ),
   ]);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
   // body below says what actually happened.
   const page = result.ok ? result.value : null;
 
-  return {
-    title: page ? page.title : t("host.errors.not_found_title"),
-  };
+  if (!page) {
+    return { title: t("host.errors.not_found_title") };
+  }
+
+  return { alternates, title: page.title };
 };
 
 const PublishedPageSkeleton = () => (

@@ -29,6 +29,7 @@ import type { PublishedLabelDetail } from "#lib/labels";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   labelDetailHref,
@@ -73,11 +74,12 @@ export const generateMetadata = async ({
   const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
-  const [result, t] = await Promise.all([
+  const [result, t, alternates] = await Promise.all([
     labelId
       ? loadPublishedLabelDetail(tenantId, labelId, locale, token)
       : { ok: true as const, value: null },
     getMessagesFor(locale),
+    tenantLocaleAlternates(tenantId, locale, `/labels/${label_id}`),
   ]);
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
@@ -91,6 +93,7 @@ export const generateMetadata = async ({
   }
 
   return {
+    alternates,
     description: t("host.labels.detail_description", {
       count: label.seriesCount,
       name: label.name,

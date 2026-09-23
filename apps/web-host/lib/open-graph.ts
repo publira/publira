@@ -8,7 +8,7 @@ import type { EyeCatchImageVariant } from "./catalog";
  */
 const OPEN_GRAPH_VARIANT_TYPE = "og";
 
-/** One image on a card, at the absolute address a crawler fetches it from. */
+/** One image on a card, at the path `metadataBase` resolves for a crawler. */
 export interface OpenGraphImage {
   alt: string;
   height: number;
@@ -22,12 +22,8 @@ export interface OpenGraphImage {
  * one showing something that is not the work.
  *
  * The largest `og` variant, because a crawler downsamples and nothing upsamples.
- * The API answers with a root-relative image path, so the address is resolved
- * against the tenant's own origin: a card is fetched by a machine that never
- * saw the page it came from, and a relative path is nothing it can follow.
  */
 export const resolveOpenGraphImage = (
-  origin: string,
   variants: EyeCatchImageVariant[] | undefined,
   alt: string
 ): OpenGraphImage | undefined => {
@@ -48,7 +44,7 @@ export const resolveOpenGraphImage = (
   return {
     alt,
     height: largest.height,
-    url: new URL(largest.url, origin).toString(),
+    url: largest.url,
     width: largest.width,
   };
 };

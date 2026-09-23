@@ -6,13 +6,17 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
+import { getPageAlternates } from "#lib/page-alternates";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const t = await getMessages();
+  const [t, alternates] = await Promise.all([
+    getMessages(),
+    getPageAlternates("/contact/sent"),
+  ]);
 
-  return { title: t("host.contact.sent_title") };
+  return { alternates, title: t("host.contact.sent_title") };
 };
 
 /**

@@ -38,6 +38,7 @@ import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   genreDetailHref,
@@ -79,11 +80,12 @@ export const generateMetadata = async ({
   guardPlaceholders({ genre_id });
 
   const genreId = parseGenreDetailParams({ genre_id });
-  const [genres, t] = await Promise.all([
+  const [genres, t, alternates] = await Promise.all([
     genreId
       ? listPublishedGenres(tenantId, locale)
       : { ok: true as const, value: [] },
     getMessagesFor(locale),
+    tenantLocaleAlternates(tenantId, locale, `/genres/${genre_id}`),
   ]);
 
   // An unavailable genre reads as "not found" for the `<title>` alone; the
@@ -94,7 +96,7 @@ export const generateMetadata = async ({
     return { title: t("host.genres.not_found_title") };
   }
 
-  return { title: genre.name };
+  return { alternates, title: genre.name };
 };
 
 const GenreDetailSkeleton = () => (

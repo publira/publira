@@ -18,6 +18,7 @@ import { listMyAnnouncements } from "#lib/announcements";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
+import { getPageAlternates } from "#lib/page-alternates";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -34,9 +35,12 @@ import {
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const t = await getMessages();
+  const [t, alternates] = await Promise.all([
+    getMessages(),
+    getPageAlternates("/announcements"),
+  ]);
 
-  return { title: t("host.announcements.title") };
+  return { alternates, title: t("host.announcements.title") };
 };
 
 /*

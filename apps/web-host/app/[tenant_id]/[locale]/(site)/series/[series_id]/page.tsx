@@ -44,13 +44,9 @@ import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { shareText } from "#lib/share-text";
-import {
-  getTenantDisplayTimeZone,
-  getTenantPublicOrigin,
-  getTenantSiteLabel,
-} from "#lib/tenant";
+import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
-import { tenantLocaleUrl } from "#lib/tenant-locale-path";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   EpisodeReadMark,
@@ -89,10 +85,9 @@ export const generateMetadata = async (
   }
   const { series_id } = parsedParams;
 
-  const [result, url, origin, siteLabel] = await Promise.all([
+  const [result, alternates, siteLabel] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
-    tenantLocaleUrl(tenantId, locale, `/series/${series_id}`),
-    getTenantPublicOrigin(tenantId),
+    tenantLocaleAlternates(tenantId, locale, `/series/${series_id}`),
     getTenantSiteLabel(tenantId, locale),
   ]);
 
@@ -106,11 +101,13 @@ export const generateMetadata = async (
   }
 
   const description = series.synopsis.trim() || undefined;
-  const image = origin
-    ? resolveOpenGraphImage(origin, series.eyeCatchImageVariants, series.title)
+  // Relative, like the alternates, so both need the same `metadataBase`.
+  const image = alternates
+    ? resolveOpenGraphImage(series.eyeCatchImageVariants, series.title)
     : undefined;
 
   return {
+    alternates,
     description,
     openGraph: {
       description,
@@ -118,7 +115,7 @@ export const generateMetadata = async (
       siteName: siteLabel,
       title: series.title,
       type: "website",
-      url: url ?? undefined,
+      url: alternates?.canonical,
     },
     title: series.title,
     twitter: {

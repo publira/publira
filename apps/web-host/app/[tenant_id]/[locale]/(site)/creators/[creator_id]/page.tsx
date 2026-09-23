@@ -35,6 +35,7 @@ import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   creatorDetailHref,
@@ -88,9 +89,10 @@ export const generateMetadata = async ({
 
   const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
 
-  const [result, t] = await Promise.all([
+  const [result, t, alternates] = await Promise.all([
     loadPublishedCreatorDetail(tenantId, creator_id, locale, token),
     getMessagesFor(locale),
+    tenantLocaleAlternates(tenantId, locale, `/creators/${creator_id}`),
   ]);
 
   // An unavailable creator reads as "not found" for the `<title>` alone; the
@@ -104,6 +106,7 @@ export const generateMetadata = async ({
   }
 
   return {
+    alternates,
     description:
       creator.profileText ||
       t("host.creators.detail_description", {

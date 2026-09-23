@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isLocaleExemptPathname,
+  localeAlternates,
   splitLocalePathname,
   toBarePathname,
   withLocalePrefix,
@@ -51,6 +52,43 @@ describe("withLocalePrefix", () => {
     );
     expect(withLocalePrefix("ja", "ja", "//example.com")).toBe("//example.com");
     expect(withLocalePrefix("ja", "ja", "#section")).toBe("#section");
+  });
+});
+
+describe("localeAlternates", () => {
+  it("names the default locale canonical at its unprefixed path", () => {
+    expect(localeAlternates("ja", "ja", "/series/SR01")).toEqual({
+      canonical: "/series/SR01",
+      languages: {
+        en: "/en/series/SR01",
+        ja: "/series/SR01",
+        ko: "/ko/series/SR01",
+        "x-default": "/series/SR01",
+        "zh-Hans": "/zh-Hans/series/SR01",
+        "zh-Hant": "/zh-Hant/series/SR01",
+      },
+    });
+  });
+
+  it("names a non-default locale canonical at its own prefixed path", () => {
+    const alternates = localeAlternates("en", "ja", "/series/SR01");
+
+    expect(alternates.canonical).toBe("/en/series/SR01");
+    expect(alternates.languages["x-default"]).toBe("/series/SR01");
+  });
+
+  it("follows the tenant's default rather than a fixed one", () => {
+    expect(localeAlternates("ja", "en", "/")).toEqual({
+      canonical: "/ja",
+      languages: {
+        en: "/",
+        ja: "/ja",
+        ko: "/ko",
+        "x-default": "/",
+        "zh-Hans": "/zh-Hans",
+        "zh-Hant": "/zh-Hant",
+      },
+    });
   });
 });
 
