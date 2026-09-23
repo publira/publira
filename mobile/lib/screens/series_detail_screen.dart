@@ -322,8 +322,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           messages.seriesSaveOfflineNoStorage(title: episode.title),
       };
     }
-    // The save outlives the screen, and so does the messenger it reports to.
-    messenger.showSnackBar(SnackBar(content: Text(copy)));
+    // The save outlives the screen, and so does the messenger it reports to,
+    // unless the whole app was replaced while it ran.
+    if (messenger.mounted) {
+      messenger.showSnackBar(SnackBar(content: Text(copy)));
+    }
   }
 
   /// Whether [episode] is one this reader could keep, which is what a row

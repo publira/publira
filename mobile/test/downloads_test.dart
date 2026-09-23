@@ -182,6 +182,7 @@ void main() {
   late FakeCatalogRepository origin;
   late GoRouter router;
   late List<Uri> imageRequests;
+  late EpisodeDownloader downloader;
 
   /// Holds every image response back until it completes, so a test can look
   /// at a save while it runs.
@@ -306,7 +307,7 @@ void main() {
         catalog: catalog,
         auth: auth,
         offline: library,
-        downloader: EpisodeDownloader(
+        downloader: downloader = EpisodeDownloader(
           catalog: catalog,
           library: library,
           openImages: () => EpisodeImageClient(
@@ -584,6 +585,40 @@ void main() {
       tester,
       find.text('“${_freeEpisode.title}” is saved on this device.'),
     );
+  });
+
+  testWidgets('a save that finishes after the app is replaced says nothing', (
+    tester,
+  ) async {
+    imageGate = Completer<void>();
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.seriesDetailPath(_series.id),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await tester.tap(
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-saving-offline-${_freeEpisode.id}')),
+    );
+
+    // Nothing is left on screen, the messenger the save would report to
+    // included.
+    await tester.pumpWidget(const SizedBox());
+    imageGate!.complete();
+    await pumpUntilTrue(
+      tester,
+      () => !downloader.isSaving,
+      description: 'the save to finish',
+    );
+
+    final storage = await tester.runAsync(library.readStorage);
+    expect(storage!.episodes, hasLength(1));
   });
 
   testWidgets(
