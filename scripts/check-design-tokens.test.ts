@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { after, before, describe, it } from "node:test";
 
-import { findInFile } from "./check-design-tokens.ts";
+import { findInFile, scan } from "./check-design-tokens.ts";
 
 const matches = (source: string): string[] =>
   findInFile("example.tsx", source).map((finding) => finding.match);
@@ -65,5 +69,48 @@ describe("findInFile", () => {
 
     assert.equal(finding?.file, "apps/web-admin/example.tsx");
     assert.equal(finding?.line, 2);
+  });
+});
+
+describe("scan", () => {
+  let repository = "";
+
+  const write = async (file: string, source: string): Promise<void> => {
+    await mkdir(path.dirname(path.join(repository, file)), { recursive: true });
+    await writeFile(path.join(repository, file), source);
+  };
+
+  before(async () => {
+    repository = await mkdtemp(path.join(tmpdir(), "check-design-tokens-"));
+    execFileSync("/usr/bin/git", ["init", "--quiet"], { cwd: repository });
+    await write(
+      ".gitattributes",
+      ["**/gen/** linguist-generated", "*.pb.ts linguist-generated"].join("\n")
+    );
+    const comment = [
+      "/**",
+      " * The store answers them in uppercase, with rounded-[ and font-mono.",
+      " */",
+      "export type Tenant = { code: string };",
+    ].join("\n");
+    await write("packages/api-client/src/gen/publira/v1/tenant_pb.ts", comment);
+    await write("packages/api-client/src/tenant.pb.ts", comment);
+    await write(
+      "packages/ui/src/label.tsx",
+      '<p className="uppercase">Label</p>'
+    );
+  });
+
+  after(async () => {
+    await rm(repository, { force: true, recursive: true });
+  });
+
+  it("skips a file .gitattributes marks as generated, whatever its path", async () => {
+    const findings = await scan(["packages"], repository);
+
+    assert.deepEqual(
+      findings.map((finding) => finding.file),
+      [path.join("packages", "ui", "src", "label.tsx")]
+    );
   });
 });

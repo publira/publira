@@ -23,8 +23,11 @@
  * is: the fix is a class name, and finding it locally costs nothing.
  */
 
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { text } from "node:stream/consumers";
 
 /** The directories whose screens the brief governs. */
 const ROOTS = ["apps", "packages"];
@@ -158,6 +161,69 @@ const walk = async (directory: string): Promise<string[]> => {
   return files.flat();
 };
 
+// Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
+const GIT = "/usr/bin/git";
+
+/**
+ * The files `.gitattributes` marks `linguist-generated`. Generated code such as
+ * buf's output carries proto doc comments verbatim, so a word like "uppercase"
+ * there is prose, not a class a screen uses.
+ */
+const generatedFiles = async (
+  repository: string,
+  files: string[]
+): Promise<Set<string>> => {
+  const git = spawn(
+    GIT,
+    ["check-attr", "-z", "--stdin", "linguist-generated"],
+    { cwd: repository, stdio: ["pipe", "pipe", "inherit"] }
+  );
+  git.stdin.end(files.join("\0"));
+  const [output, [code]] = await Promise.all([
+    text(git.stdout),
+    once(git, "close"),
+  ]);
+  if (code !== 0) {
+    throw new Error(`git check-attr exited with ${code}`);
+  }
+
+  // `-z` prints each path, attribute, and value as a NUL-terminated triple.
+  const fields = output.split("\0");
+  const generated = new Set<string>();
+  for (let index = 0; index + 2 < fields.length; index += 3) {
+    if (fields[index + 2] === "set") {
+      generated.add(fields[index] ?? "");
+    }
+  }
+
+  return generated;
+};
+
+/**
+ * Every finding in the hand-written sources under {@link roots}, which are
+ * relative to {@link repository}, as are the files the findings name.
+ */
+export const scan = async (
+  roots: string[],
+  repository = process.cwd()
+): Promise<Finding[]> => {
+  const walked = await Promise.all(
+    roots.map((root) => walk(path.join(repository, root)))
+  );
+  const files = walked.flat().map((file) => path.relative(repository, file));
+  const generated = await generatedFiles(repository, files);
+  const sources = await Promise.all(
+    files
+      .filter((file) => !generated.has(file))
+      .map(async (file) => ({
+        file,
+        source: await readFile(path.join(repository, file), "utf-8"),
+      }))
+  );
+
+  return sources.flatMap(({ file, source }) => findInFile(file, source));
+};
+
 const report = (finding: Finding): void => {
   const message = `\`${finding.match}\` is not a class this design uses. ${finding.advice}`;
   if (process.env.GITHUB_ACTIONS) {
@@ -171,16 +237,7 @@ const report = (finding: Finding): void => {
 };
 
 const main = async (): Promise<void> => {
-  const roots = await Promise.all(ROOTS.map((root) => walk(root)));
-  const sources = await Promise.all(
-    roots.flat().map(async (file) => ({
-      file,
-      source: await readFile(file, "utf-8"),
-    }))
-  );
-  const findings = sources.flatMap(({ file, source }) =>
-    findInFile(file, source)
-  );
+  const findings = await scan(ROOTS);
 
   if (findings.length > 0) {
     for (const finding of findings) {
