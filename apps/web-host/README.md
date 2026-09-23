@@ -65,6 +65,10 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors.
 
+### `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`
+
+The documents that let the tenant's Android and iOS apps open its links, built in `lib/mobile-app-association.ts` from the identities saved in the tenant console and served as `application/json` by the Route Handlers under `app/[tenant_id]/.well-known/`. A platform the tenant has no app on answers 404, and an unavailable API answers 503.
+
 ### Image delivery (`next/image`)
 
 `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of the server's image routes. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through `/images` — a temporary `blob:` preview, for instance — is `unoptimized`.

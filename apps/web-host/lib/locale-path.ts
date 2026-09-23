@@ -20,12 +20,17 @@ import type { Locale } from "@publira/i18n";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
- * Top-level segments served outside the locale tree: the tenant stylesheet and
- * the Route Handlers. They answer machines rather than readers, and Route
- * Handlers cannot read `next/root-params` anyway, so a locale in their URL
- * would be a segment nothing could use.
+ * Top-level segments served outside the locale tree: the tenant stylesheet,
+ * the association documents under `.well-known`, and the Route Handlers. They
+ * answer machines rather than readers, and Route Handlers cannot read
+ * `next/root-params` anyway, so a locale in their URL would be a segment
+ * nothing could use.
  */
-const LOCALE_EXEMPT_TOP_LEVEL_SEGMENTS = new Set(["api", "theme.css"]);
+const LOCALE_EXEMPT_TOP_LEVEL_SEGMENTS = new Set([
+  ".well-known",
+  "api",
+  "theme.css",
+]);
 
 /** An href that leaves the app (or the document) keeps whatever it says. */
 const isExternalHref = (href: string): boolean =>
@@ -42,7 +47,8 @@ export const isLocaleExemptTopLevelSegment = (segment: string): boolean =>
 
 /**
  * Whether `pathname` is served outside the locale tree — `/theme.css`,
- * `/api/v1/revalidate`, `/api/v1/webhook/stripe`.
+ * `/.well-known/assetlinks.json`, `/api/v1/revalidate`,
+ * `/api/v1/webhook/stripe`.
  */
 export const isLocaleExemptPathname = (pathname: string): boolean => {
   const [first] = splitSegments(pathname);

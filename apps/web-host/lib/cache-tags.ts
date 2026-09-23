@@ -43,6 +43,13 @@ export const tenantTodayTag = (tenantId: string) =>
 export const tenantThemeTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:theme`;
 
+/**
+ * The apps the tenant's links open in, read by `/.well-known/assetlinks.json`
+ * and `/.well-known/apple-app-site-association` alone.
+ */
+export const tenantMobileAppAssociationTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:mobile-app-association`;
+
 export const tenantPagesTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:pages`;
 

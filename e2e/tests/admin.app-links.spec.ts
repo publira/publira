@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
@@ -8,11 +8,16 @@ import {
   APP_LINKS_SCENARIO,
   APP_LINKS_TENANT,
 } from "../src/scenarios/app-links";
-import { WEB_ADMIN_APP_LINKS_BASE_URL } from "../src/urls";
+import {
+  WEB_ADMIN_APP_LINKS_BASE_URL,
+  WEB_HOST_APP_LINKS_BASE_URL,
+  WEB_HOST_BASE_URL,
+} from "../src/urls";
 
 /**
  * A tenant administrator naming the Android and iOS apps their site's links
- * open in, and taking one of them away again.
+ * open in, and taking one of them away again, and the association documents
+ * the tenant's site serves from what was saved.
  */
 
 const APP_LINKS_PATH = "/integrations/app-links";
@@ -41,6 +46,43 @@ const storedAssociation = (): string =>
       )
     ), 'none');
   `);
+
+const ASSET_LINKS = "/.well-known/assetlinks.json";
+const APPLE_APP_SITE_ASSOCIATION = "/.well-known/apple-app-site-association";
+
+interface AssociationDocument {
+  body: unknown;
+  contentType: string | undefined;
+  status: number;
+}
+
+const fetchAssociation = async (
+  request: APIRequestContext,
+  origin: string,
+  path: string
+): Promise<AssociationDocument> => {
+  const response = await request.get(`${origin}${path}`, {
+    headers: { "Cache-Control": "no-cache" },
+    maxRedirects: 0,
+  });
+  return {
+    body: response.ok() ? await response.json() : null,
+    contentType: response.headers()["content-type"],
+    status: response.status(),
+  };
+};
+
+/**
+ * A save revalidates the site's read, which marks it stale rather than
+ * dropping it, so the document is polled until it follows.
+ */
+const expectAssociation = (
+  request: APIRequestContext,
+  origin: string,
+  path: string
+) => expect.poll(async () => await fetchAssociation(request, origin, path));
+
+const NOT_SERVED = { body: null, status: 404 };
 
 const openAppLinks = async (page: Page): Promise<void> => {
   await page.goto(`${WEB_ADMIN_APP_LINKS_BASE_URL}${APP_LINKS_PATH}`);
@@ -97,6 +139,58 @@ test.describe("app links", () => {
       `com.example.reader|${FINGERPRINT_A},${FINGERPRINT_B}|ABCDE12345|com.example.reader`
     );
 
+    await expectAssociation(
+      page.request,
+      WEB_HOST_APP_LINKS_BASE_URL,
+      ASSET_LINKS
+    ).toStrictEqual({
+      body: [
+        {
+          relation: ["delegate_permission/common.handle_all_urls"],
+          target: {
+            namespace: "android_app",
+            package_name: "com.example.reader",
+            sha256_cert_fingerprints: [FINGERPRINT_A, FINGERPRINT_B],
+          },
+        },
+      ],
+      contentType: "application/json",
+      status: 200,
+    });
+    await expectAssociation(
+      page.request,
+      WEB_HOST_APP_LINKS_BASE_URL,
+      APPLE_APP_SITE_ASSOCIATION
+    ).toMatchObject({
+      body: {
+        applinks: {
+          details: [
+            expect.objectContaining({
+              appIDs: ["ABCDE12345.com.example.reader"],
+              components: expect.arrayContaining([
+                { "/": "/series/*" },
+                { "/": "/ja/checkout/return" },
+              ]),
+            }),
+          ],
+        },
+      },
+      contentType: "application/json",
+      status: 200,
+    });
+
+    // The development seed tenant has no app, and nothing stands in for one.
+    await expectAssociation(
+      page.request,
+      WEB_HOST_BASE_URL,
+      ASSET_LINKS
+    ).toMatchObject(NOT_SERVED);
+    await expectAssociation(
+      page.request,
+      WEB_HOST_BASE_URL,
+      APPLE_APP_SITE_ASSOCIATION
+    ).toMatchObject(NOT_SERVED);
+
     await page.reload();
     await expect(page.getByLabel("Apple Team ID")).toHaveValue("ABCDE12345");
     await expect(
@@ -133,6 +227,17 @@ test.describe("app links", () => {
 
     await expect(page.getByText(SAVED)).toBeVisible();
     expect(storedAssociation()).toBe("-||ABCDE12345|com.example.reader");
+
+    await expectAssociation(
+      page.request,
+      WEB_HOST_APP_LINKS_BASE_URL,
+      ASSET_LINKS
+    ).toMatchObject(NOT_SERVED);
+    await expectAssociation(
+      page.request,
+      WEB_HOST_APP_LINKS_BASE_URL,
+      APPLE_APP_SITE_ASSOCIATION
+    ).toMatchObject({ status: 200 });
 
     await page.reload();
     await expect(toggle(page, "Android")).not.toBeChecked();
