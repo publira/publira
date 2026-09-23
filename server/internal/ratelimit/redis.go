@@ -54,6 +54,19 @@ func (s *redisStore) Add(ctx context.Context, key string, ttl time.Duration) (bo
 	return s.client.SetNX(ctx, redisKeyPrefix+key, "", max(ttl, minRedisTTL)).Result()
 }
 
+// decrScript decrements only a counter that still exists, so a refund arriving
+// after the window expired does not leave a negative key with no expiry.
+var decrScript = redis.NewScript(`
+if redis.call("EXISTS", KEYS[1]) == 1 and tonumber(redis.call("GET", KEYS[1])) > 0 then
+	return redis.call("DECR", KEYS[1])
+end
+return 0
+`)
+
+func (s *redisStore) Decr(ctx context.Context, key string) error {
+	return decrScript.Run(ctx, s.client, []string{redisKeyPrefix + key}).Err()
+}
+
 func (s *redisStore) Forget(ctx context.Context, key string) error {
 	return s.client.Del(ctx, redisKeyPrefix+key).Err()
 }

@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -212,6 +213,11 @@ func (s *platformServer) CreateTenant(
 		}
 		seenInitialAdminEmail[email] = struct{}{}
 		initialAdminEmails = append(initialAdminEmails, email)
+	}
+	// A new tenant has no users yet, so every initial administrator is sent an
+	// invitation, and each one is charged before the tenant is written.
+	if err := s.mail.AllowEach(ctx, req, mailguard.PlatformScope, initialAdminEmails); err != nil {
+		return nil, err
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

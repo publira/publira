@@ -34,6 +34,8 @@ type Rule struct {
 type Decision struct {
 	Allowed    bool
 	RetryAfter time.Duration
+	// charged names the counters Allow added to, for Refund to take back.
+	charged []string
 }
 
 // Store keeps the counters. The counters are the entire state of a limiter, so
@@ -52,6 +54,9 @@ type Store interface {
 	// held standing until the key's own expiry, and a caller told nothing could
 	// not tell that apart from a removal that worked.
 	Forget(ctx context.Context, key string) error
+	// Decr takes one back from the counter at key. A counter that has already
+	// expired stays absent rather than coming back below zero.
+	Decr(ctx context.Context, key string) error
 }
 
 // Limiter charges actions against a Store.
@@ -83,20 +88,22 @@ func NewWithClock(store Store, clock func() time.Time) *Limiter {
 // endpoint cannot cost them the rest of the day.
 func (l *Limiter) Allow(ctx context.Context, subject string, rules ...Rule) (Decision, error) {
 	now := l.now()
+	var charged []string
 	for _, rule := range rules {
 		if rule.Limit < 1 || rule.Window <= 0 {
-			return Decision{}, fmt.Errorf("ratelimit: rule for %q allows %d actions in %s, want at least one in a positive window", subject, rule.Limit, rule.Window)
+			return Decision{charged: charged}, fmt.Errorf("ratelimit: rule for %q allows %d actions in %s, want at least one in a positive window", subject, rule.Limit, rule.Window)
 		}
 		key, remaining := bucket(subject, rule, now)
 		count, err := l.store.Incr(ctx, key, remaining)
 		if err != nil {
-			return Decision{}, err
+			return Decision{charged: charged}, err
 		}
+		charged = append(charged, key)
 		if count > int64(rule.Limit) {
-			return Decision{RetryAfter: remaining}, nil
+			return Decision{RetryAfter: remaining, charged: charged}, nil
 		}
 	}
-	return Decision{Allowed: true}, nil
+	return Decision{Allowed: true, charged: charged}, nil
 }
 
 // Claim records key for window and reports whether it was free. A caller told
@@ -137,6 +144,17 @@ func (l *Limiter) Reset(ctx context.Context, subject string, rules ...Rule) {
 		}
 		key, _ := bucket(subject, rule, now)
 		_ = l.store.Forget(ctx, key)
+	}
+}
+
+// Refund takes back everything the Allow that answered decision charged,
+// refused or not, for an action that did not go through after all.
+//
+// Like Reset, it is best effort: a counter the store could not take back from
+// keeps what it held until the end of its window.
+func (l *Limiter) Refund(ctx context.Context, decision Decision) {
+	for _, key := range decision.charged {
+		_ = l.store.Decr(ctx, key)
 	}
 }
 

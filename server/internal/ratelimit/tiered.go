@@ -89,6 +89,20 @@ func (s *tieredStore) Forget(ctx context.Context, key string) error {
 	return nil
 }
 
+// Decr takes back from both stores, and falls back around a Redis that will not
+// answer the way Forget does.
+func (s *tieredStore) Decr(ctx context.Context, key string) error {
+	if err := s.memory.Decr(ctx, key); err != nil {
+		return err
+	}
+	if err := s.remote.Decr(ctx, key); err != nil {
+		s.degraded(ctx, "failed to take back from the shared rate limit counter", err)
+		return err
+	}
+	s.recovered(ctx)
+	return nil
+}
+
 // degraded reports that Redis did not answer. The key is deliberately left out
 // of the record: it names the reader, the episode and a digest of what they
 // wrote, none of which says anything about the outage.

@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -42,7 +43,10 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 // tenantInvitationError maps what tenantmembers refuses to this API's codes;
 // anything else is a database failure.
 func (s *platformServer) tenantInvitationError(ctx context.Context, msg string, err error, keyvals ...any) error {
+	var connectErr *connect.Error
 	switch {
+	case errors.As(err, &connectErr):
+		return connectErr
 	case errors.Is(err, tenantmembers.ErrEmailRequired), errors.Is(err, tenantmembers.ErrInvalidEmail):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, tenantmembers.ErrInvitationNotFound):
@@ -141,7 +145,11 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{TenantID: tenant.ID, Email: req.Msg.Email})
+	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{
+		TenantID:  tenant.ID,
+		Email:     req.Msg.Email,
+		AllowMail: s.allowInvitationMail(ctx, req),
+	})
 	if err != nil {
 		return nil, s.tenantInvitationError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
 	}
@@ -176,7 +184,11 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{TenantID: tenant.ID, InvitationID: invitationID})
+	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{
+		TenantID:     tenant.ID,
+		InvitationID: invitationID,
+		AllowMail:    s.allowInvitationMail(ctx, req),
+	})
 	if err != nil {
 		return nil, s.tenantInvitationError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
@@ -210,6 +222,14 @@ func (s *platformServer) CancelTenantAdminInvitation(
 	return connect.NewResponse(&publirasplatformv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
 	}), nil
+}
+
+// allowInvitationMail charges the console's mail allowance for an invitation
+// sent to an address nobody has confirmed.
+func (s *platformServer) allowInvitationMail(ctx context.Context, req connect.AnyRequest) func(string) error {
+	return func(email string) error {
+		return s.mail.Allow(ctx, req, mailguard.PlatformScope, email)
+	}
 }
 
 func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantPublicID, rawInvitationID string) (dbmodels.Tenant, uuid.UUID, error) {

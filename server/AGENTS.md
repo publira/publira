@@ -111,6 +111,8 @@ The exception is the forms that answer a registered address exactly as they answ
 
 A caller over either allowance gets `resource_exhausted` with `Retry-After` and nothing else.
 
+An RPC that mails several addresses in one request charges them through `Guard.AllowEach`, which gives back everything the request spent when any one of them is refused.
+
 Mail a session-bearing RPC sends to the account's own confirmed address — a password-changed notice, an email-changed notice — is not this: there is an account to attribute it to and no arbitrary recipient to aim.
 
 No lint covers this — nothing can tell an RPC that queues mail for an address the caller chose from one that queues it for an address already on file.
