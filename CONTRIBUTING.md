@@ -144,6 +144,15 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
 
 - **Keep one Issue per pull request.** Link it with `Fixes #NNN` in the body so the merge closes it. When a change needs several pull requests, split the Issue rather than the fix.
 
+### Git hooks
+
+`pnpm install` installs [lefthook](https://lefthook.dev/)'s Git hooks, configured in [`lefthook.yml`](lefthook.yml), into every worktree of the clone:
+
+- **`pre-commit`** formats the staged files with oxfmt and adds the result to the commit, and rejects staged Go files that `gofmt -l` reports.
+- **`commit-msg`** rejects a co-author trailer that names an AI coding agent.
+
+The hooks are a shortcut, not the gate: linting, type checks, and tests run only in the commands under [Verifying a change](#verifying-a-change) and in CI. Skip them for one commit with `LEFTHOOK=0 git commit` or `git commit --no-verify`.
+
 ## Language
 
 Everything this repository publishes is English: the Markdown documents, GitHub Issues, pull request titles and bodies, commit messages, and the labels of automated tests (`describe` / `it`, `test`, `t.Run`, `group` / `testWidgets`). Japanese appears only where it is quoted as code: a UI string in an example, the values in `locales/*.json`, and test fixtures. The rule and its edge cases are in the [Documentation, test labels, and GitHub Issues: English](AGENTS.md#documentation-test-labels-and-github-issues-english) section of `AGENTS.md`.

@@ -1,0 +1,25 @@
+# Catches at commit time what CI would otherwise reject a round trip later. CI
+# stays the source of truth: every hook here is bypassable by design.
+
+pre-commit:
+  parallel: true
+  jobs:
+    # A commit whose staged files all sit under ignorePatterns (`task gen`
+    # output) leaves oxfmt nothing to format, which it otherwise treats as an error.
+    - name: oxfmt
+      run: node_modules/.bin/oxfmt --write --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+
+    - name: gofmt
+      glob: "*.go"
+      run: |
+        unformatted="$(gofmt -l {staged_files})"
+        if [ -n "$unformatted" ]; then
+          printf 'Not gofmt-formatted; run gofmt -w on:\n%s\n' "$unformatted"
+          exit 1
+        fi
+
+commit-msg:
+  jobs:
+    - name: agent-trailer
+      run: node scripts/check-agent-trailer.ts {1}
