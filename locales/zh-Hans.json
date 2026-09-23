@@ -3677,7 +3677,7 @@
       "no_pages": "本章还没有页面。",
       "not_found": "找不到章节（{$id}）",
       "offline_not_saved": "您当前处于离线状态，只能阅读已保存到此设备的章节。",
-      "page_failed": "无法加载本页。",
+      "page_failed": "网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "上一章",

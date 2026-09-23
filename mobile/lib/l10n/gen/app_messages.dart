@@ -3510,7 +3510,7 @@ class _AppMessagesJa extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return 'このページを表示できませんでした。もう一度お試しください。';
+    return 'ネットワークエラーか、サーバーの一時的な問題でこのページを読み込めませんでした。再読み込みしてください。';
   }
 
   @override
@@ -5698,7 +5698,7 @@ class _AppMessagesEn extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return 'This page could not be loaded. Try again.';
+    return 'This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.';
   }
 
   @override
@@ -7886,7 +7886,7 @@ class _AppMessagesKo extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return '이 페이지를 표시할 수 없습니다';
+    return '네트워크 오류 또는 서버의 일시적인 문제로 이 페이지를 불러오지 못했습니다. 새로고침해 주세요.';
   }
 
   @override
@@ -10074,7 +10074,7 @@ class _AppMessagesZhHans extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return '无法加载本页。';
+    return '网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。';
   }
 
   @override
@@ -12262,7 +12262,7 @@ class _AppMessagesZhHant extends AppMessages {
 
   @override
   String get viewerPageFailed {
-    return '無法載入本頁。';
+    return '網路錯誤或伺服器暫時發生問題，導致本頁無法載入。請重新載入。';
   }
 
   @override

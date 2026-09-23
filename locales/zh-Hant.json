@@ -3677,7 +3677,7 @@
       "no_pages": "本章還沒有頁面。",
       "not_found": "找不到章節（{$id}）",
       "offline_not_saved": "您目前處於離線狀態，只能閱讀已儲存到此裝置的章節。",
-      "page_failed": "無法載入本頁。",
+      "page_failed": "網路錯誤或伺服器暫時發生問題，導致本頁無法載入。請重新載入。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "上一章",

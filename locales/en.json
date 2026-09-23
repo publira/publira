@@ -3677,7 +3677,7 @@
       "no_pages": "This episode has no pages yet.",
       "not_found": "Episode not found ({$id})",
       "offline_not_saved": "You are offline, and only the episodes saved on this device can be read.",
-      "page_failed": "This page could not be loaded. Try again.",
+      "page_failed": "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "Previous episode",
