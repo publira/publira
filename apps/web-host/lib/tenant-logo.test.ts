@@ -9,6 +9,7 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   commentMode: "disabled",
   defaultLocale: "ja",
   domain: "example.test",
+  legalPages: {},
   name: "Example Tenant",
   publicId: "TENANT_PUBLIC",
   timeZone: "UTC",

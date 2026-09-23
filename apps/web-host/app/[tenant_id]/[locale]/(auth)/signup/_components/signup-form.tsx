@@ -1,4 +1,5 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
@@ -20,7 +21,8 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
-import { getTenantAgeVerification } from "#lib/tenant";
+import { getTenantAgeVerification, getTenantLegalPages } from "#lib/tenant";
+import type { TenantLegalPage } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { signupAction } from "../_lib/actions";
@@ -79,6 +81,62 @@ const BirthDateField = async () => {
           {t("host.auth.signup.birth_date_help")}
         </FieldDescription>
       </FieldContent>
+    </Field>
+  );
+};
+
+/** Opens in a new tab, so reading the text does not throw away the form. */
+const LegalPageLink = ({ page }: { page: TenantLegalPage }) => (
+  <LocaleLink
+    href={page.href}
+    className="text-primary underline underline-offset-4"
+    rel="noopener"
+    target="_blank"
+  >
+    {page.title}
+  </LocaleLink>
+);
+
+/**
+ * Asked only where the tenant names a terms or privacy page. Each version sent
+ * is the one whose title this form links to, so what the API records is the
+ * text the reader was shown.
+ */
+const ConsentField = async () => {
+  const tenantId = await getTenantId();
+  const { privacyPage, termsPage } = await getTenantLegalPages(tenantId);
+  if (!termsPage && !privacyPage) {
+    return null;
+  }
+
+  return (
+    <Field>
+      {termsPage ? (
+        <input
+          name="agreedPageVersionIds"
+          type="hidden"
+          value={termsPage.versionId}
+        />
+      ) : null}
+      {privacyPage ? (
+        <input
+          name="agreedPageVersionIds"
+          type="hidden"
+          value={privacyPage.versionId}
+        />
+      ) : null}
+      <div className="flex items-center gap-2">
+        <Checkbox name="consent" required />
+        <FieldLabel>
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="host.auth.signup.consent_label" />
+          </Suspense>
+        </FieldLabel>
+      </div>
+      <FieldDescription className="flex flex-wrap gap-x-4 gap-y-1 pl-6">
+        {termsPage ? <LegalPageLink page={termsPage} /> : null}
+        {privacyPage ? <LegalPageLink page={privacyPage} /> : null}
+      </FieldDescription>
     </Field>
   );
 };
@@ -157,6 +215,10 @@ export const SignupForm = () => (
             />
           </FieldContent>
         </Field>
+
+        <Suspense fallback={null}>
+          <ConsentField />
+        </Suspense>
 
         <ActionFormSubmit className="justify-self-start">
           <ActionFormIdle>

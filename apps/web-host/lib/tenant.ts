@@ -12,6 +12,7 @@ import { cacheLife } from "next/cache";
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
+import { publishedPageHrefFromSlug } from "./pages";
 
 /**
  * The locale code the API answered with, or a throw when this build has no
@@ -100,6 +101,23 @@ export interface TenantImageVariant {
   fileSizeBytes: number;
 }
 
+/**
+ * A published page the tenant names as its terms of service or privacy policy.
+ * `versionId` is the published version, which a sign-up sends back as the text
+ * the reader agreed to.
+ */
+export interface TenantLegalPage {
+  href: string;
+  title: string;
+  versionId: string;
+}
+
+/** Each role is absent where the tenant names no published page for it. */
+export interface TenantLegalPages {
+  privacyPage?: TenantLegalPage;
+  termsPage?: TenantLegalPage;
+}
+
 export interface TenantSiteInfo {
   /** Whether the public API verified that Checkout can be offered safely. */
   acceptsPayments: boolean;
@@ -117,6 +135,8 @@ export interface TenantSiteInfo {
   defaultLocale: Locale;
   domain: string;
   googlePlayUrl?: string;
+  /** The terms of service and privacy policy a sign-up asks consent to. */
+  legalPages: TenantLegalPages;
   /** The public site's `rel="icon"`; no icon is declared without it. */
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
@@ -164,6 +184,19 @@ type RawTenantImageVariant = Pick<
   | "variantType"
   | "width"
 >;
+
+const toTenantLegalPage = (
+  page: { slug?: string; title?: string; versionId?: string } | undefined
+): TenantLegalPage | undefined => {
+  const slug = nonEmpty(page?.slug);
+  const title = nonEmpty(page?.title);
+  const versionId = nonEmpty(page?.versionId);
+  if (!slug || !title || !versionId) {
+    return undefined;
+  }
+
+  return { href: publishedPageHrefFromSlug(slug), title, versionId };
+};
 
 const toTenantImageVariants = (
   variants: RawTenantImageVariant[] | undefined
@@ -244,6 +277,10 @@ export const getTenantSiteInfo = async (
       iconImageVariants: toTenantImageVariants(
         response.theme?.iconImageVariants
       ),
+      legalPages: {
+        privacyPage: toTenantLegalPage(response.privacyPage),
+        termsPage: toTenantLegalPage(response.termsPage),
+      },
       logoImageUpdatedAt: nonEmpty(response.theme?.logoImageUpdatedAt),
       logoImageVariants: toTenantImageVariants(
         response.theme?.logoImageVariants
@@ -405,6 +442,23 @@ export const getTenantAgeVerification = async (
 ): Promise<TenantAgeVerification> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.ageVerification ?? "none";
+};
+
+/**
+ * The pages a sign-up asks the reader to agree to. One entry point, the way
+ * {@link getTenantDisplayTimeZone} is, so no screen decides on its own whether
+ * consent is asked for.
+ *
+ * An unavailable read degrades to no pages, which only stops the form asking:
+ * the server still refuses a sign-up that carries no consent where the tenant
+ * names a page. The read carries `tenant:<id>:site`, which the API drops when a
+ * nomination or a named page changes.
+ */
+export const getTenantLegalPages = async (
+  tenantId: string
+): Promise<TenantLegalPages> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.legalPages ?? {};
 };
 
 /**

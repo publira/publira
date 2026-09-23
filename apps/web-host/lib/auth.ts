@@ -56,6 +56,8 @@ export interface ProfileUpdate {
 
 /** What the sign-up form collects. `birthDate` is empty when it did not ask. */
 export interface SignupInput {
+  /** The published versions of the pages the reader agreed to. */
+  agreedPageVersionIds: string[];
   birthDate: string;
   email: string;
   name: string;
@@ -103,6 +105,7 @@ export const loginPublic = async (
  * that an account was created.
  */
 export const signupPublic = async ({
+  agreedPageVersionIds,
   birthDate,
   email,
   name,
@@ -111,7 +114,14 @@ export const signupPublic = async ({
 }: SignupInput): Promise<boolean> => {
   try {
     const response = await apiClient.auth.createUser(
-      { birthDate, email, name, password, tenant: { tenantId } },
+      {
+        agreedPageVersionIds,
+        birthDate,
+        email,
+        name,
+        password,
+        tenant: { tenantId },
+      },
       await buildClientAddressHeaders()
     );
     return response.accepted;

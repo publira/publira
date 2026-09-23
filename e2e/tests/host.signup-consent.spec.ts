@@ -1,0 +1,130 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyScenarioSql, querySql } from "../src/db";
+import {
+  SIGNUP_CONSENT_PRIVACY_PAGE,
+  SIGNUP_CONSENT_READER,
+  SIGNUP_CONSENT_SCENARIO,
+  SIGNUP_CONSENT_TERMS_PAGE,
+} from "../src/scenarios/signup-consent";
+import {
+  hostPath,
+  WEB_HOST_BASE_URL,
+  WEB_HOST_SIGNUP_CONSENT_BASE_URL,
+} from "../src/urls";
+
+/**
+ * A tenant that names its terms of service and privacy policy asks a reader to
+ * agree to both before an account is opened, and the account records the
+ * version of each page the form linked to. A tenant that names neither keeps
+ * the form it had.
+ */
+
+const signupUrl = `${WEB_HOST_SIGNUP_CONSENT_BASE_URL}${hostPath("/signup")}`;
+
+const CONSENT_LABEL = "I have read and agree to the following.";
+const SIGNUP_SENT_MESSAGE =
+  "We sent an email to the address you entered. Open it to continue.";
+
+const consentCheckbox = (page: Page) =>
+  page.getByRole("checkbox", { name: CONSENT_LABEL });
+
+const fillSignupForm = async (page: Page): Promise<void> => {
+  await page.getByLabel("Name").fill(SIGNUP_CONSENT_READER.name);
+  await page.getByLabel("Email address").fill(SIGNUP_CONSENT_READER.email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(SIGNUP_CONSENT_READER.password);
+  await page
+    .getByLabel("Confirm password")
+    .fill(SIGNUP_CONSENT_READER.password);
+};
+
+const accountCount = (): string =>
+  querySql(`
+    SELECT count(*)
+    FROM users u
+    JOIN tenants t ON t.id = u.tenant_id
+    WHERE t.public_id = 'CnstTNNTAAA1'
+      AND u.email = '${SIGNUP_CONSENT_READER.email}';
+  `);
+
+const agreedVersionIds = (): string[] =>
+  querySql(`
+    SELECT c.page_version_id
+    FROM user_page_consents c
+    JOIN users u ON u.id = c.user_id
+    JOIN tenants t ON t.id = u.tenant_id
+    WHERE t.public_id = 'CnstTNNTAAA1'
+      AND u.email = '${SIGNUP_CONSENT_READER.email}'
+    ORDER BY c.page_version_id;
+  `)
+    .split("\n")
+    .filter((line) => line.length > 0);
+
+// The sign-up creates the account the next test would collide with, so the
+// suite runs in order and resets itself around either outcome.
+test.describe.configure({ mode: "serial" });
+
+test.describe("web-host sign-up consent", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(SIGNUP_CONSENT_SCENARIO);
+  });
+
+  test.afterAll(() => {
+    applyScenarioSql(SIGNUP_CONSENT_SCENARIO);
+  });
+
+  test("the form links to each page the tenant names", async ({ page }) => {
+    await page.goto(signupUrl);
+
+    await expect(consentCheckbox(page)).not.toBeChecked();
+    await expect(
+      page.getByRole("link", { name: SIGNUP_CONSENT_TERMS_PAGE.title })
+    ).toHaveAttribute("href", SIGNUP_CONSENT_TERMS_PAGE.path);
+    await expect(
+      page.getByRole("link", { name: SIGNUP_CONSENT_PRIVACY_PAGE.title })
+    ).toHaveAttribute("href", SIGNUP_CONSENT_PRIVACY_PAGE.path);
+  });
+
+  test("a sign-up without consent is refused by the form", async ({ page }) => {
+    await page.goto(signupUrl);
+    await fillSignupForm(page);
+
+    const form = page.locator("form").filter({ has: consentCheckbox(page) });
+    await expect
+      .poll(() =>
+        form.evaluate((node: HTMLFormElement) => node.checkValidity())
+      )
+      .toBe(false);
+    await page.getByRole("button", { name: "Sign up" }).click();
+
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeHidden();
+    await expect(page).toHaveURL(signupUrl);
+    expect(accountCount()).toBe("0");
+  });
+
+  test("a sign-up with consent opens an account carrying the versions it agreed to", async ({
+    page,
+  }) => {
+    await page.goto(signupUrl);
+    await fillSignupForm(page);
+    await consentCheckbox(page).check();
+    await page.getByRole("button", { name: "Sign up" }).click();
+
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    expect(accountCount()).toBe("1");
+    expect(agreedVersionIds()).toEqual([
+      SIGNUP_CONSENT_TERMS_PAGE.versionId,
+      SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+    ]);
+  });
+
+  test("a tenant that names no page asks for no consent", async ({ page }) => {
+    await page.goto(`${WEB_HOST_BASE_URL}${hostPath("/signup")}`);
+
+    await expect(page.getByLabel("Confirm password")).toBeVisible();
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+  });
+});

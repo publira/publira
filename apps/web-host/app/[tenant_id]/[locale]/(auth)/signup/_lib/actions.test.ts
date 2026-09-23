@@ -65,6 +65,7 @@ describe("signupAction", () => {
     await signupAction({ message: "", ok: false }, formData(validSignupFields));
 
     expect(mockSignupPublic).toHaveBeenCalledWith({
+      agreedPageVersionIds: [],
       birthDate: "",
       email,
       name: "Example User",
@@ -76,6 +77,37 @@ describe("signupAction", () => {
       email
     );
     expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
+  });
+
+  it("sends the versions of the pages the reader agreed to", async () => {
+    mockSignupPublic.mockResolvedValueOnce(true);
+    const data = formData({ ...validSignupFields, consent: "on" });
+    data.append("agreedPageVersionIds", "terms-v1");
+    data.append("agreedPageVersionIds", "privacy-v2");
+
+    const { signupAction } = await import("./actions");
+    await signupAction({ message: "", ok: false }, data);
+
+    expect(mockSignupPublic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agreedPageVersionIds: ["terms-v1", "privacy-v2"],
+      })
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/signup/pending");
+  });
+
+  it("refuses a sign-up that shows pages to agree to without the consent", async () => {
+    const data = formData(validSignupFields);
+    data.append("agreedPageVersionIds", "terms-v1");
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction({ message: "", ok: false }, data);
+
+    expect(result).toEqual({
+      message: "Agree to the listed pages to create an account.",
+      ok: false,
+    });
+    expect(mockSignupPublic).not.toHaveBeenCalled();
   });
 
   it("does not set a flash cookie when signup fails", async () => {

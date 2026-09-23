@@ -36,11 +36,14 @@ const signupFormSchema = async (locale: Locale) => {
 
   return z
     .object({
+      // The published versions of the pages the form displayed.
+      agreedPageVersionIds: z.array(z.string().trim().min(1)).max(2),
       birthDate,
       confirmPassword: z
         .string({ error: confirmRequired })
         .min(1, confirmRequired)
         .max(1024, t("host.auth.errors.password_confirm_too_long")),
+      consent: z.string().optional(),
       email,
       locale: localeFormSchema,
       name: z
@@ -54,7 +57,15 @@ const signupFormSchema = async (locale: Locale) => {
     .refine((value) => value.password === value.confirmPassword, {
       error: t("host.auth.errors.password_mismatch"),
       path: ["confirmPassword"],
-    });
+    })
+    .refine(
+      (value) =>
+        value.agreedPageVersionIds.length === 0 || value.consent !== undefined,
+      {
+        error: t("host.auth.errors.consent_required"),
+        path: ["consent"],
+      }
+    );
 };
 
 export const signupAction = async (
@@ -71,8 +82,10 @@ export const signupAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      agreedPageVersionIds: "values",
       birthDate: "value",
       confirmPassword: "value",
+      consent: "value",
       email: "value",
       locale: "value",
       name: "value",
@@ -87,8 +100,17 @@ export const signupAction = async (
     };
   }
 
-  const { birthDate, email, locale, name, password, tenantId } = parsed.data;
+  const {
+    agreedPageVersionIds,
+    birthDate,
+    email,
+    locale,
+    name,
+    password,
+    tenantId,
+  } = parsed.data;
   const accepted = await signupPublic({
+    agreedPageVersionIds,
     birthDate,
     email,
     name,
