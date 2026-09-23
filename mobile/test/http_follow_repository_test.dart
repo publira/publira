@@ -76,6 +76,27 @@ void main() {
     expect(request.headers['authorization'], 'Bearer $accessToken');
   });
 
+  test('every follow call names the app', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    final follows = repository();
+
+    await follows.isFollowing(FollowTargetKind.series, seriesId);
+    await follows.follow(FollowTargetKind.creator, creatorId);
+    await follows.unfollow(FollowTargetKind.creator, creatorId);
+    await follows.listMyFollows();
+
+    final calls = server.requests.where(
+      (request) => request.path.contains('/publira.v1.FollowService/'),
+    );
+    expect(
+      {for (final call in calls) call.path.split('/').last},
+      {'GetMyFollowStatus', 'Follow', 'Unfollow', 'ListMyFollows'},
+    );
+    for (final call in calls) {
+      expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+    }
+  });
+
   test('a target the reader does not follow answers false', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 

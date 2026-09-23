@@ -1,3 +1,4 @@
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -64,6 +65,7 @@ class HttpCommentRepository implements CommentRepository {
           'episodePublicId': episodePublicId,
           'limit': _pageSize,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
           'token': token,
         },
         tenantId: tenantId,
@@ -102,6 +104,7 @@ class HttpCommentRepository implements CommentRepository {
           'episodePublicId': episodePublicId,
           'limit': _ownPageSize,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
           'token': '',
         },
         tenantId: tenantId,
@@ -127,6 +130,7 @@ class HttpCommentRepository implements CommentRepository {
           'body': body,
           'episodePublicId': episodePublicId,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,
@@ -172,6 +176,7 @@ class HttpCommentRepository implements CommentRepository {
           'note': note,
           'reason': reason.wireValue,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,

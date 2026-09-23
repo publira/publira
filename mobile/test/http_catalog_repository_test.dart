@@ -1642,6 +1642,41 @@ void main() {
       );
     });
 
+    test('every call of the reader\'s own names the app', () async {
+      const episodeId = ConnectFixtureServer.seedEpisodeId;
+      await signedIn.getReadingPosition(
+        ConnectFixtureServer.seedSeriesId,
+        episodeId,
+      );
+      await signedIn.saveReadingPosition(
+        ConnectFixtureServer.seedSeriesId,
+        episodeId,
+        4,
+      );
+      await signedIn.listRecentSeries(limit: 6);
+      await signedIn.getEpisodeReaction(episodeId);
+      await signedIn.reactToEpisode(episodeId);
+
+      final calls = server.requests.where(
+        (request) =>
+            request.path.contains('/publira.v1.EpisodeReadService/') ||
+            request.path.contains('/publira.v1.RatingService/'),
+      );
+      expect(
+        {for (final call in calls) call.path.split('/').last},
+        {
+          'GetMyReadingPosition',
+          'SaveReadingPosition',
+          'ListMyRecentSeries',
+          'GetMyEpisodeRating',
+          'RateEpisode',
+        },
+      );
+      for (final call in calls) {
+        expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+      }
+    });
+
     test('getReadingPosition answers the page the member stopped on', () async {
       expect(
         await signedIn.getReadingPosition(

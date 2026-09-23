@@ -173,6 +173,35 @@ void main() {
     expect(request.body['note'], 'It gives the ending away.');
   });
 
+  test(
+    'every call that names an episode or its comment names the app',
+    () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      final comments = repository();
+
+      await comments.listComments(episodeId);
+      await comments.listMyComments(episodeId);
+      await comments.post(episodePublicId: episodeId, body: 'Worth the wait.');
+      await comments.report(
+        commentPublicId: 'SeedCMNTAAA1',
+        reason: CommentReportReason.spam,
+      );
+
+      final calls = [
+        for (final procedure in [
+          'ListEpisodeComments',
+          'ListMyEpisodeComments',
+          'PostEpisodeComment',
+          'ReportEpisodeComment',
+        ])
+          server.requestsTo(procedure).single,
+      ];
+      for (final call in calls) {
+        expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+      }
+    },
+  );
+
   test('an API that cannot be reached is a network failure', () async {
     server.commentStatus = HttpStatus.serviceUnavailable;
 

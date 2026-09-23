@@ -1,3 +1,4 @@
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -61,6 +62,7 @@ class HttpFollowRepository implements FollowRepository {
         {
           'limit': pageSize,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
           if (token.isNotEmpty) 'token': token,
         },
         tenantId: tenantId,
@@ -90,6 +92,7 @@ class HttpFollowRepository implements FollowRepository {
         {
           'target': {'publicId': targetId, 'type': kind.wireValue},
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,

@@ -1049,6 +1049,16 @@ class ConnectFixtureServer {
       return;
     }
 
+    // Both rating RPCs answer with the reader's score, which is all a test
+    // reads back from them.
+    if (path.endsWith('/GetMyEpisodeRating') || path.endsWith('/RateEpisode')) {
+      await _write(request, HttpStatus.ok, const {
+        'score': 1,
+        'ratingCount': '1',
+      });
+      return;
+    }
+
     request.response.statusCode = HttpStatus.notFound;
     await request.response.close();
   }
