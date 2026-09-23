@@ -164,53 +164,140 @@ else
   fail "PUBLIRA_E2E_RUSTFS_PORT=9004 produced PUBLIRA_S3_ENDPOINT=${port_s3_endpoint}"
 fi
 
-# Two stacks, two sleep stand-ins. Dedicated temp RUN_DIRs so this never
-# overwrites a live stack's api-server.pid (run.sh invokes us before locking).
+# App teardown. Dedicated temp RUN_DIRs so this never overwrites a live
+# stack's pid files (run.sh invokes us before locking).
 pid_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-pids.XXXXXX")"
-dir_a="${pid_root}/a"
-dir_b="${pid_root}/b"
-sleep 120 &
-pid_a=$!
-sleep 120 &
-pid_b=$!
-cleanup_sleeps() {
-  kill "${pid_a}" "${pid_b}" 2> /dev/null || true
-  wait "${pid_a}" "${pid_b}" 2> /dev/null || true
+started_groups=()
+cleanup_groups() {
+  local pgid
+  for pgid in "${started_groups[@]}"; do
+    kill -s KILL -- "-${pgid}" 2> /dev/null || true
+  done
   rm -rf "${pid_root}"
 }
-trap cleanup_sleeps EXIT
+trap cleanup_groups EXIT
 
-stack_env PUBLIRA_E2E_RUN_DIR="${dir_a}" bash -c '
-  source "$1"
-  ensure_run_dirs
-  write_pid api-server "$2"
-' bash "${LIB}" "${pid_a}"
-stack_env PUBLIRA_E2E_RUN_DIR="${dir_b}" bash -c '
-  source "$1"
-  ensure_run_dirs
-  write_pid api-server "$2"
-' bash "${LIB}" "${pid_b}"
+# Runs lib.sh functions against the RUN_DIR named by the first argument.
+in_run_dir() {
+  local run_dir="$1"
+  shift
+  stack_env PUBLIRA_E2E_RUN_DIR="${pid_root}/${run_dir}" bash -c '
+    source "$1"
+    ensure_run_dirs
+    shift
+    eval "$@"
+  ' bash "${LIB}" "$@"
+}
 
-stack_env PUBLIRA_E2E_RUN_DIR="${dir_a}" bash -c '
-  source "$1"
-  stop_pid_file api-server
-' bash "${LIB}"
+# Starts a stand-in app and sets stand_in_pgid to the process group it runs in.
+start_stand_in() {
+  local run_dir="$1" name="$2"
+  shift 2
+  in_run_dir "${run_dir}" "$(printf '%q ' start_process_group "${name}" "${pid_root}" "${pid_root}/${name}.log" "$@")"
+  stand_in_pgid="$(sed -n '1p' "${pid_root}/${run_dir}/pids/${name}.pid")"
+  started_groups+=("${stand_in_pgid}")
+}
 
-if kill -0 "${pid_a}" 2> /dev/null; then
-  fail "stack A api-server stand-in (pid ${pid_a}) still running after stop"
+group_alive() {
+  kill -0 -- "-$1" 2> /dev/null
+}
+
+wait_for_group_size() {
+  local pgid="$1" expected="$2" _
+  for _ in $(seq 1 100); do
+    [[ "$(ps -A -o pgid= | awk -v pgid="${pgid}" '$1 == pgid' | grep -c .)" == "${expected}" ]] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+port_listening() {
+  ss -ltn 2> /dev/null | grep -qE ":$1\\b"
+}
+
+# Two stacks, two stand-ins: one stack's teardown must not reach the other's.
+start_stand_in a app sleep 120
+pgid_a="${stand_in_pgid}"
+start_stand_in b app sleep 120
+pgid_b="${stand_in_pgid}"
+in_run_dir a stop_pid_file app > /dev/null 2>&1 || true
+if group_alive "${pgid_a}"; then
+  fail "stack A stand-in (group ${pgid_a}) still running after stop"
 else
   pass "stop_pid_file kills only the matching RUN_DIR process"
 fi
-if kill -0 "${pid_b}" 2> /dev/null; then
+if group_alive "${pgid_b}"; then
   pass "stop_pid_file leaves the other RUN_DIR process running"
 else
-  fail "stack B api-server stand-in (pid ${pid_b}) was stopped by stack A"
+  fail "stack B stand-in (group ${pgid_b}) was stopped by stack A"
 fi
 
-kill "${pid_b}" 2> /dev/null || true
-wait "${pid_a}" "${pid_b}" 2> /dev/null || true
-rm -rf "${pid_root}"
+# The dev-mode shape: the recorded pid forks the process that holds the port,
+# the way `next dev` forks `next-server`.
+listen_port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+listener="import socket, time; s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(('127.0.0.1', ${listen_port})); s.listen(); time.sleep(300)"
+start_stand_in chain web-host bash -c 'python3 -c "$1" & wait' bash "${listener}"
+pgid_chain="${stand_in_pgid}"
+wait_for_group_size "${pgid_chain}" 2 || fail "the forking stand-in did not reach two processes"
+for _ in $(seq 1 50); do
+  port_listening "${listen_port}" && break
+  sleep 0.1
+done
+port_listening "${listen_port}" || fail "the forked stand-in never listened on ${listen_port}"
+in_run_dir chain stop_pid_file web-host > /dev/null 2>&1 || true
+if group_alive "${pgid_chain}"; then
+  fail "a descendant of the recorded pid survived the stop"
+elif port_listening "${listen_port}"; then
+  fail "port ${listen_port} is still listening after the stop"
+else
+  pass "stop_pid_file ends the descendants of the recorded pid and frees their port"
+fi
+[[ ! -e "${pid_root}/chain/pids/web-host.pid" ]] || fail "the pid file of a stopped app was kept"
+
+# The recorded pid has exited and its child still runs under the same group.
+start_stand_in orphan app bash -c 'sleep 300 & exit 0'
+pgid_orphan="${stand_in_pgid}"
+wait_for_group_size "${pgid_orphan}" 1 || fail "the stand-in leader did not exit"
+in_run_dir orphan stop_pid_file app > /dev/null 2>&1 || true
+if group_alive "${pgid_orphan}"; then
+  fail "a descendant outlived the stop after the recorded pid had exited"
+else
+  pass "stop_pid_file ends the group after the recorded pid has exited"
+fi
+
+# A group the signals cannot end keeps its pid file, so a repeated teardown can
+# finish it.
+start_stand_in stubborn app sleep 120
+pgid_stubborn="${stand_in_pgid}"
+if in_run_dir stubborn 'kill() { [[ "$1" == "-0" ]] && builtin kill "$@"; }; wait_for_process_group_exit() { false; }; stop_pid_file app' > /dev/null 2>&1; then
+  fail "stop_pid_file reported success while the group survived"
+fi
+if [[ -e "${pid_root}/stubborn/pids/app.pid" ]] && group_alive "${pgid_stubborn}"; then
+  pass "a group that survives the stop keeps its pid file"
+else
+  fail "the pid file of a surviving group was removed"
+fi
+in_run_dir stubborn stop_pid_file app > /dev/null 2>&1 || true
+if group_alive "${pgid_stubborn}" || [[ -e "${pid_root}/stubborn/pids/app.pid" ]]; then
+  fail "a repeated stop did not finish what the first one left"
+else
+  pass "a repeated stop finishes an incomplete one"
+fi
+
+# A pid file whose start time no longer matches names a reused pid.
+start_stand_in reused app sleep 120
+pgid_reused="${stand_in_pgid}"
+printf '%s\n%s\n' "${pgid_reused}" "Thu Jan  1 00:00:00 1970" > "${pid_root}/reused/pids/app.pid"
+in_run_dir reused stop_pid_file app > /dev/null 2>&1 || true
+if group_alive "${pgid_reused}"; then
+  pass "stop_pid_file does not signal a group whose leader was started at another time"
+else
+  fail "stop_pid_file signalled a reused pid"
+fi
+[[ ! -e "${pid_root}/reused/pids/app.pid" ]] || fail "the pid file of a reused pid was kept"
+
 trap - EXIT
+cleanup_groups
 
 # Lease outlives the acquiring shell (up.sh exits, stack stays). A foreign
 # PUBLIRA_E2E_RUN_DIR must not acquire or release; the owner leftover down may.
