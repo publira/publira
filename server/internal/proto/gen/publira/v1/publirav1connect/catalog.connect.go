@@ -147,6 +147,9 @@ const (
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
 type CatalogServiceClient interface {
+	// Every label of the tenant, including one with no published series, so a
+	// label's URL keeps working after its last series is taken down. A label
+	// whose published series are all kept off the calling surface is left out.
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
@@ -170,7 +173,8 @@ type CatalogServiceClient interface {
 	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)
 	// Returns a label that belongs to the requested tenant. Cross-tenant and
 	// missing labels are surfaced as NotFound so a foreign label cannot be
-	// distinguished from one that does not exist.
+	// distinguished from one that does not exist. A label ListPublishedLabels
+	// leaves out for the calling surface is NotFound there too.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
 	// The tenant's genres, in the order the console put them in, each with how
 	// many of its series are published right now.
@@ -433,6 +437,9 @@ func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *conne
 
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
+	// Every label of the tenant, including one with no published series, so a
+	// label's URL keeps working after its last series is taken down. A label
+	// whose published series are all kept off the calling surface is left out.
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
@@ -456,7 +463,8 @@ type CatalogServiceHandler interface {
 	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)
 	// Returns a label that belongs to the requested tenant. Cross-tenant and
 	// missing labels are surfaced as NotFound so a foreign label cannot be
-	// distinguished from one that does not exist.
+	// distinguished from one that does not exist. A label ListPublishedLabels
+	// leaves out for the calling surface is NotFound there too.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
 	// The tenant's genres, in the order the console put them in, each with how
 	// many of its series are published right now.

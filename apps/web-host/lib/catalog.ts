@@ -1217,6 +1217,8 @@ export const listPublishedLabels = async (
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantLabelsTag(normalizedTenantId));
+  // Which labels the list holds depends on where their series are published.
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedLabels>

@@ -473,9 +473,11 @@ type Querier interface {
 	// row, so the existence of an unpublished creator does not leak.
 	GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
-	// Returns a label of the tenant. The row comes back even when the label has
-	// no published series, because a label has no unpublished state of its own. A
-	// label that does not exist, or one of another tenant, returns no row.
+	// Returns a label of the tenant that label_surfaces puts on the surface. The
+	// row comes back even when the label has no published series, because a label
+	// has no unpublished state of its own. A label that does not exist, one of
+	// another tenant, and one whose published series are all kept off the surface
+	// return no row.
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	// A currently public series and the rating the tenant's age rule is applied
@@ -1035,11 +1037,9 @@ type Querier interface {
 	ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTenantDescParams) ([]ListGenresByTenantDescRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
-	// Admin ListLabels and the public ListPublishedLabels are both
-	// (created_at, id) DESC. The order and the columns are the same, so one pair
-	// of queries serves both. Forward uses the DESC query; backward uses ASC so
-	// the index can be scanned in reverse. The handler flips ASC rows back into
-	// display order.
+	// Admin ListLabels is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so the index can be scanned in reverse. The handler flips
+	// ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
 	// The newest computation of each period for one ranking key, newest period
@@ -1285,8 +1285,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPublishedGenresByTenantAscParams) ([]ListPublishedGenresByTenantAscRow, error)
 	ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error)
+	// The backward direction of ListPublishedLabelsDesc.
+	ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedLabelsAscParams) ([]ListPublishedLabelsAscRow, error)
 	// SearchPublishedLabels orders by name instead of creation, so it takes its
-	// own pair of queries rather than the ListLabelsByTenant* pair above. It is
+	// own pair of queries rather than the ListPublishedLabels* pair above. It is
 	// one stage: a label row is a name and its eye catch, so there is nothing
 	// heavy to defer to a second query the way the creator search does.
 	// Unlike GetPublishedLabelDetail, which answers for a label whose last series
@@ -1300,6 +1302,10 @@ type Querier interface {
 	ListPublishedLabelsBySearchNameAsc(ctx context.Context, arg ListPublishedLabelsBySearchNameAscParams) ([]ListPublishedLabelsBySearchNameAscRow, error)
 	// The backward direction of ListPublishedLabelsBySearchNameAsc.
 	ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg ListPublishedLabelsBySearchNameDescParams) ([]ListPublishedLabelsBySearchNameDescRow, error)
+	// The public ListPublishedLabels keeps the order of the admin pair above and
+	// adds the calling surface, which the console does not have.
+	// cursor rules: proto/README.md.
+	ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error)
 	// Every published page, footer or not: the public site routes a path to a page
 	// by this set, so a page left out of the footer is still reachable at its slug.
 	ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error)

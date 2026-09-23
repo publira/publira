@@ -324,6 +324,72 @@ func TestDBCatalogKeepsAnEpisodeWithinItsSeriesSurfaces(t *testing.T) {
 	}
 }
 
+// A label is listed on a surface unless it holds published series and every
+// one of them is kept off that surface, and its detail agrees with the list. A
+// label with no published series stays on both, so its URL outlives its last
+// series.
+func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
+	env := newPublicDBEnv(t)
+	ctx := context.Background()
+	client := env.catalogClient()
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	appOnly := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELAPP0001", Name: "App Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESAPP001", Title: "App Series", LabelID: appOnly.ID, Published: true, Availability: "app"})
+	// A series that is not published yet does not put the label on the web.
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft Series", LabelID: appOnly.ID, Availability: "all"})
+	webOnly := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELWEB0001", Name: "Web Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESWEB001", Title: "Web Series", LabelID: webOnly.ID, Published: true, Availability: "web"})
+	mixed := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELMIXED01", Name: "Mixed Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESMIXAPP", Title: "Mixed App Series", LabelID: mixed.ID, Published: true, Availability: "app"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESMIXWEB", Title: "Mixed Web Series", LabelID: mixed.ID, Published: true, Availability: "web"})
+	takenDown := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELDOWN001", Name: "Taken Down Books"})
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDOWN01", Title: "Taken Down Series", LabelID: takenDown.ID, Availability: "app"})
+	empty := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELEMPTY01", Name: "Empty Books"})
+
+	tests := []struct {
+		name    string
+		surface publirattypesv1.ClientSurface
+		hidden  testutil.Label
+	}{
+		{name: "unnamed", surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_UNSPECIFIED, hidden: appOnly},
+		{name: "web", surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB, hidden: appOnly},
+		{name: "app", surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP, hidden: webOnly},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var want []string
+			for _, label := range []testutil.Label{appOnly, webOnly, mixed, takenDown, empty} {
+				if label.PublicID != tc.hidden.PublicID {
+					want = append(want, label.PublicID)
+				}
+			}
+			slices.Sort(want)
+
+			list, err := client.ListPublishedLabels(ctx, connect.NewRequest(&publirav1.ListPublishedLabelsRequest{Tenant: tenantContext(tenant), Surface: tc.surface}))
+			if err != nil {
+				t.Fatalf("ListPublishedLabels: %v", err)
+			}
+			got := make([]string, 0, len(list.Msg.Labels))
+			for _, label := range list.Msg.Labels {
+				got = append(got, label.GetPublicId())
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, want) {
+				t.Fatalf("ListPublishedLabels = %v, want %v", got, want)
+			}
+
+			for _, publicID := range want {
+				if _, err := client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID, Surface: tc.surface})); err != nil {
+					t.Fatalf("GetPublishedLabelDetail(%s): %v", publicID, err)
+				}
+			}
+			_, err = client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: tc.hidden.PublicID, Surface: tc.surface}))
+			assertConnectCode(t, err, connect.CodeNotFound)
+		})
+	}
+}
+
 func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
