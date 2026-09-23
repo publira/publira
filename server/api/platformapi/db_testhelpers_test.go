@@ -197,8 +197,8 @@ func seedTenant(t *testing.T, pg *testutil.PostgresEnv, publicID, domain, name s
 	return tenant.ID
 }
 
-// seedEndUser inserts a user that holds no tenant role, which is what the platform
-// console calls an end user.
+// seedEndUser inserts a confirmed user that holds no tenant role, which is what
+// the platform console calls an end user.
 func seedEndUser(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, publicID, email, name string) dbmodels.User {
 	t.Helper()
 
@@ -219,6 +219,13 @@ func seedEndUser(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, pub
 	})
 	if err != nil {
 		t.Fatalf("CreateUser %s: %v", publicID, err)
+	}
+	user, err = dbmodels.New(pg.DB).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              user.ID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateUserEmailVerifiedAtByID %s: %v", publicID, err)
 	}
 	return user
 }

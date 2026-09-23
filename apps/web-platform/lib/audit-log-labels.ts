@@ -27,9 +27,9 @@ const auditActionKeys = {
   tenant_info_updated: "platform.audit.actions.tenant_info_updated",
   tenant_resumed: "platform.audit.actions.tenant_resumed",
   tenant_suspended: "platform.audit.actions.tenant_suspended",
-  user_activated: "platform.audit.actions.user_activated",
   user_deleted: "platform.audit.actions.user_deleted",
   user_suspended: "platform.audit.actions.user_suspended",
+  user_unsuspended: "platform.audit.actions.user_unsuspended",
 } as const satisfies Record<string, PlatformMessageKey>;
 
 export const getAuditActionOptions = async (

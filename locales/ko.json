@@ -3907,9 +3907,9 @@
         "tenant_info_updated": "테넌트 정보 변경",
         "tenant_resumed": "테넌트 재개",
         "tenant_suspended": "테넌트 정지",
-        "user_activated": "사용자 활성화",
         "user_deleted": "사용자 삭제",
-        "user_suspended": "사용자 정지"
+        "user_suspended": "사용자 정지",
+        "user_unsuspended": "사용자 정지 해제"
       },
       "actor_filter_placeholder": "실행자 공개 ID로 필터",
       "actor_platform": "플랫폼 관리자",

@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"slices"
 	"testing"
 	"time"
@@ -157,6 +158,59 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 	}
 	if unsuspendResp.Msg.User.Status != userStatusActive {
 		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.User.Status, userStatusActive)
+	}
+
+	getResp, err := client.GetEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetEndUserRequest{
+		PublicId: reader.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetEndUser: %v", err)
+	}
+	if getResp.Msg.User.Status != userStatusActive {
+		t.Fatalf("GetEndUser status = %q, want %s", getResp.Msg.User.Status, userStatusActive)
+	}
+}
+
+// Lifting a suspension must not skip the address confirmation, so an
+// unconfirmed reader goes back to the state VerifyUserEmail activates.
+func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	reader := pg.SeedUnverifiedEndUser(t, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	if _, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
+		PublicId: reader.PublicID,
+	})); err != nil {
+		t.Fatalf("SuspendEndUser: %v", err)
+	}
+	unsuspendResp, err := client.UnsuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UnsuspendEndUserRequest{
+		PublicId: reader.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("UnsuspendEndUser: %v", err)
+	}
+	if unsuspendResp.Msg.User.Status != userStatusInactive {
+		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.User.Status, userStatusInactive)
+	}
+	// The audit trail names the lifted suspension, not an activation that did not happen.
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_audit_logs WHERE action = 'user_unsuspended' AND target_id = $1`, reader.ID.String()); got != 1 {
+		t.Fatalf("user_unsuspended audit rows = %d, want 1", got)
+	}
+
+	// The same two statements VerifyUserEmail runs when the reader follows the link.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	queries := dbmodels.New(pg.DB)
+	if _, err := queries.UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              reader.ID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("UpdateUserEmailVerifiedAtByID: %v", err)
+	}
+	if err := queries.ActivateInactiveUserByID(ctx, reader.ID); err != nil {
+		t.Fatalf("ActivateInactiveUserByID: %v", err)
 	}
 
 	getResp, err := client.GetEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetEndUserRequest{

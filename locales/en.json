@@ -3907,9 +3907,9 @@
         "tenant_info_updated": "Updated tenant details",
         "tenant_resumed": "Resumed a tenant",
         "tenant_suspended": "Suspended a tenant",
-        "user_activated": "Activated a user",
         "user_deleted": "Deleted a user",
-        "user_suspended": "Suspended a user"
+        "user_suspended": "Suspended a user",
+        "user_unsuspended": "Lifted a user's suspension"
       },
       "actor_filter_placeholder": "Filter by actor public ID",
       "actor_platform": "Platform admin",

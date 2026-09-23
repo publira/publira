@@ -34,7 +34,7 @@ func getTenantByUserIDColumns() []string {
 	return []string{"id", "public_id", "name", "created_at"}
 }
 
-// The columns UpdateUserStatus returns.
+// The users columns UpdateUserStatus and UnsuspendUser return.
 func updateUserStatusResultColumns() []string {
 	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}
 }
@@ -243,8 +243,8 @@ func TestUnsuspendEndUser(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatus)).
-		WithArgs("EUSER00001", "active").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnsuspendUser)).
+		WithArgs("EUSER00001").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 

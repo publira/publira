@@ -3907,9 +3907,9 @@
         "tenant_info_updated": "テナント情報を更新",
         "tenant_resumed": "テナントを再開",
         "tenant_suspended": "テナントを停止",
-        "user_activated": "ユーザーを有効化",
         "user_deleted": "ユーザーを削除",
-        "user_suspended": "ユーザーを停止"
+        "user_suspended": "ユーザーを停止",
+        "user_unsuspended": "ユーザーの停止を解除"
       },
       "actor_filter_placeholder": "操作者公開IDで絞り込み",
       "actor_platform": "プラットフォーム管理者",
