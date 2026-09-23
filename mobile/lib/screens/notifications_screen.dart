@@ -139,7 +139,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() {
       _reading = false;
       if (page == null) {
-        if (isFirstPage) {
+        // A session the API refuses is refused for every page, so it takes the
+        // whole screen, where the way out is to sign in again.
+        if (isFirstPage ||
+            failure?.kind == NotificationFailureKind.sessionExpired) {
           _failure = failure;
         } else {
           _moreFailure = failure;
@@ -303,12 +306,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     final failure = _failure;
     if (failure != null) {
+      // Retrying would send the token the API just refused.
+      final signIn = failure.kind == NotificationFailureKind.sessionExpired;
       return CatalogMessage(
         key: const ValueKey('notifications-error'),
         message: _failureCopy(messages, failure, messages.notificationsFailed),
-        actionKey: const ValueKey('notifications-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: _readFirstPage,
+        actionKey: ValueKey(
+          signIn ? 'notifications-sign-in' : 'notifications-retry',
+        ),
+        actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+        onAction: signIn
+            ? () => context.pushInTab(AppRoutes.signIn)
+            : _readFirstPage,
       );
     }
     final notifications = _notifications;

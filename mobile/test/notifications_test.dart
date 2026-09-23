@@ -432,6 +432,50 @@ void main() {
       );
     });
 
+    testWidgets('sends a reader whose session was refused to sign in', (
+      tester,
+    ) async {
+      repository.listFailure = const NotificationFailure(
+        NotificationFailureKind.sessionExpired,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.notifications);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('notifications-error')),
+      );
+
+      expect(find.byKey(const ValueKey('notifications-retry')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('notifications-sign-in')));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+      expect(
+        router.state.uri.path,
+        AppTab.notifications.locate(AppRoutes.signIn),
+      );
+    });
+
+    testWidgets('gives the whole screen to a session refused on a later page', (
+      tester,
+    ) async {
+      repository
+        ..notifications = [
+          for (var index = 1; index <= 30; index++)
+            episodePublished('n-$index'),
+        ]
+        ..pageSize = 10
+        ..moreFailure = const NotificationFailure(
+          NotificationFailureKind.sessionExpired,
+        );
+      await pumpApp(tester, initialLocation: AppRoutes.notifications);
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('notifications-error')),
+      );
+
+      expect(repository.listTokens, ['', '10']);
+      expect(find.byKey(const ValueKey('notifications-list')), findsNothing);
+      expect(find.byKey(const ValueKey('notifications-sign-in')), findsOne);
+    });
+
     testWidgets('asks a guest to sign in', (tester) async {
       await pumpApp(
         tester,

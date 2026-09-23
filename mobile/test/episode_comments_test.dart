@@ -112,6 +112,28 @@ void main() {
     expect(find.byKey(const ValueKey('comment-body')), findsNothing);
   });
 
+  testWidgets('a reader whose session was refused is sent to sign in', (
+    tester,
+  ) async {
+    comments.listFailure = const CommentFailure(
+      CommentFailureKind.sessionExpired,
+    );
+    await pumpComments(tester, session: fakeSession);
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(const ValueKey('episode-comments-error')),
+    );
+
+    expect(
+      find.byKey(const ValueKey('episode-comments-error-retry')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('episode-comments-error-sign-in')),
+    );
+    await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+  });
+
   testWidgets('a signed-in reader posts a comment and reads it back', (
     tester,
   ) async {

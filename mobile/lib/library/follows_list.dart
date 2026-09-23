@@ -120,7 +120,9 @@ class _FollowsListState extends State<FollowsList> {
     setState(() {
       _reading = false;
       if (page == null) {
-        if (isFirstPage) {
+        // A session the API refuses is refused for every page, so it takes the
+        // whole screen, where the way out is to sign in again.
+        if (isFirstPage || failure?.kind == FollowFailureKind.sessionExpired) {
           _failure = failure;
         } else {
           _moreFailure = failure;
@@ -187,12 +189,16 @@ class _FollowsListState extends State<FollowsList> {
     }
     final failure = _failure;
     if (failure != null) {
+      // Retrying would send the token the API just refused.
+      final signIn = failure.kind == FollowFailureKind.sessionExpired;
       return CatalogMessage(
         key: const ValueKey('follows-error'),
         message: _failureCopy(messages, failure),
-        actionKey: const ValueKey('follows-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: _readFirstPage,
+        actionKey: ValueKey(signIn ? 'follows-sign-in' : 'follows-retry'),
+        actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+        onAction: signIn
+            ? () => context.pushInTab(AppRoutes.signIn)
+            : _readFirstPage,
       );
     }
     final targets = _targets;

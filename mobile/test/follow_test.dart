@@ -458,6 +458,51 @@ void main() {
       await pumpUntilFound(tester, find.text(series.title));
     });
 
+    testWidgets('sends a reader whose session was refused to sign in', (
+      tester,
+    ) async {
+      follows.listFailure = const FollowFailure(
+        FollowFailureKind.sessionExpired,
+      );
+      await openFollows(tester);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('follows-error')));
+
+      expect(find.byKey(const ValueKey('follows-retry')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('follows-sign-in')));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
+
+      expect(router.state.uri.path, AppTab.library.locate(AppRoutes.signIn));
+    });
+
+    testWidgets('gives the whole screen to a session refused on a later page', (
+      tester,
+    ) async {
+      follows
+        ..pages = [
+          [
+            for (var index = 0; index < 20; index++)
+              MyFollow(
+                kind: FollowTargetKind.creator,
+                targetId: 'SeedAUTHPAGE$index',
+              ),
+          ],
+          [MyFollow(kind: FollowTargetKind.series, targetId: series.id)],
+        ]
+        ..moreFailure = const FollowFailure(FollowFailureKind.sessionExpired);
+      await openFollows(tester);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('follows-list')));
+
+      await tester.fling(
+        find.byKey(const ValueKey('follows-list')),
+        const Offset(0, -2000),
+        1000,
+      );
+      await pumpUntilFound(tester, find.byKey(const ValueKey('follows-error')));
+
+      expect(find.byKey(const ValueKey('follows-list')), findsNothing);
+      expect(find.byKey(const ValueKey('follows-sign-in')), findsOne);
+    });
+
     testWidgets('asks a reader who is signed out to sign in', (tester) async {
       await openFollows(tester, session: null);
       await pumpUntilRouteSettled(

@@ -10,6 +10,8 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/announcement.dart';
+import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/router.dart';
 
 /// One announcement: its title, when it was posted, its body, and the link
 /// the operator gave it.
@@ -121,6 +123,8 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
           message: messages.announcementsNotFound,
         );
       }
+      // Retrying would send the token the API just refused.
+      final signIn = failure.kind == AnnouncementFailureKind.sessionExpired;
       return CatalogMessage(
         key: const ValueKey('announcement-error'),
         message: announcementFailureCopy(
@@ -128,9 +132,11 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
           failure,
           messages.announcementsDetailFailed,
         ),
-        actionKey: const ValueKey('announcement-retry'),
-        actionLabel: messages.commonRetry,
-        onAction: _read,
+        actionKey: ValueKey(
+          signIn ? 'announcement-sign-in' : 'announcement-retry',
+        ),
+        actionLabel: signIn ? messages.commonSignIn : messages.commonRetry,
+        onAction: signIn ? () => context.pushInTab(AppRoutes.signIn) : _read,
       );
     }
     final announcement = _announcement;

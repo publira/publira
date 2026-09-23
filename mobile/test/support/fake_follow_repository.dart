@@ -23,6 +23,9 @@ class FakeFollowRepository implements FollowRepository {
   FollowFailure? writeFailure;
   FollowFailure? listFailure;
 
+  /// Thrown by [listMyFollows] for every page but the first.
+  FollowFailure? moreFailure;
+
   /// The targets [follow] and [unfollow] were called with, in order, so a test
   /// can assert what the control sent and not only what it drew.
   final followed = <String>[];
@@ -71,6 +74,10 @@ class FakeFollowRepository implements FollowRepository {
     final failure = listFailure;
     if (failure != null) {
       throw failure;
+    }
+    final more = moreFailure;
+    if (more != null && token.isNotEmpty) {
+      throw more;
     }
     final index = token.isEmpty ? 0 : int.parse(token);
     if (index >= pages.length) {

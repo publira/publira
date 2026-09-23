@@ -29,6 +29,10 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
   String? pinnedId;
 
   AnnouncementFailure? listFailure;
+
+  /// Thrown by [list] for every page but the first.
+  AnnouncementFailure? moreFailure;
+
   AnnouncementFailure? getFailure;
   AnnouncementFailure? pinnedFailure;
   AnnouncementFailure? markFailure;
@@ -54,6 +58,10 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
     final failure = listFailure;
     if (failure != null) {
       throw failure;
+    }
+    final more = moreFailure;
+    if (more != null && token.isNotEmpty) {
+      throw more;
     }
     final AnnouncementPage page;
     if (pageSize <= 0) {
