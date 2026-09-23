@@ -3457,6 +3457,7 @@
       "cancelled": "购买已取消，未产生任何扣款。",
       "check_again": "再次确认",
       "confirming": "我们正在确认您的付款。购买生效后即可打开该章节。",
+      "sold_on_web": "在网站上销售",
       "start_failed": "无法开始购买。请稍后再试。"
     },
     "purchases": {
@@ -3569,6 +3570,8 @@
       "load_failed": "无法显示该章节。",
       "locked": "购买后即可阅读本章。",
       "locked_signed_out": "购买后即可阅读本章。如果您已经购买，请登录。",
+      "locked_sold_on_web": "本章在网站上销售。购买后，使用同一账户即可在应用内阅读。",
+      "locked_sold_on_web_signed_out": "本章在网站上销售。如果您已经购买，请登录。",
       "next_episode": "下一章",
       "next_page": "下一页",
       "no_pages": "本章还没有页面。",

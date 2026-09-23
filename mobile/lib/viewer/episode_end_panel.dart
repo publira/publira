@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
 
 /// What the reader is offered once the pages run out: the next episode, or the
@@ -15,6 +16,7 @@ class EpisodeEndPanel extends StatelessWidget {
     super.key,
     required this.detail,
     required this.nextSavedOffline,
+    required this.acceptsPayments,
     required this.onOpenNext,
     required this.onOpenComments,
     required this.onBackToSeries,
@@ -26,6 +28,10 @@ class EpisodeEndPanel extends StatelessWidget {
   /// Whether the next episode's body is already on this device, which is what
   /// tells a reader about to lose their connection that they can go on.
   final bool nextSavedOffline;
+
+  /// Whether the tenant takes payments. Only then is a next episode sold on
+  /// the website alone worded as sold there rather than by its price.
+  final bool acceptsPayments;
 
   /// Opens the episode the reader took. It is handed the neighbour this panel
   /// drew rather than reading it again, so the offer and what it opens cannot
@@ -61,6 +67,7 @@ class EpisodeEndPanel extends StatelessWidget {
               _UpNext(
                 episode: next,
                 savedOffline: nextSavedOffline,
+                acceptsPayments: acceptsPayments,
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
@@ -95,17 +102,31 @@ class _UpNext extends StatelessWidget {
   const _UpNext({
     required this.episode,
     required this.savedOffline,
+    required this.acceptsPayments,
     required this.onOpen,
   });
 
   final EpisodeNeighbor episode;
   final bool savedOffline;
+  final bool acceptsPayments;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final messages = AppMessages.of(context);
+    // What it costs is what it costs again once a free window closes, so the
+    // price is shown by whether the body is public right now rather than by
+    // the number.
+    final String price;
+    if (episode.isFree) {
+      price = messages.commonFree;
+    } else if (acceptsPayments &&
+        episode.purchaseSurface == EpisodePurchaseSurface.web) {
+      price = messages.purchaseSoldOnWeb;
+    } else {
+      price = '¥${messages.formatInteger(episode.price)}';
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -135,15 +156,12 @@ class _UpNext extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        // What it costs is what it costs again once a free
-                        // window closes, so the price is shown by whether the
-                        // body is public right now rather than by the number.
-                        episode.isFree
-                            ? messages.commonFree
-                            : '¥${messages.formatInteger(episode.price)}',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
+                      Flexible(
+                        child: Text(
+                          price,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       if (savedOffline) ...[

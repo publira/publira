@@ -304,6 +304,7 @@ Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'title': episode.title,
   'orderIndex': episode.orderIndex,
   'price': episode.price,
+  'purchaseAvailability': episode.purchaseSurface.wireName,
 };
 
 EpisodeItem? _episodeFromJson(Object? decoded) {
@@ -319,6 +320,9 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
     title: _string(decoded['title']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
+    purchaseSurface: EpisodePurchaseSurface.fromWire(
+      decoded['purchaseAvailability'],
+    ),
   );
 }
 
@@ -328,6 +332,7 @@ Map<String, Object?> _neighborToJson(EpisodeNeighbor neighbor) => {
   'orderIndex': neighbor.orderIndex,
   'price': neighbor.price,
   'isFree': neighbor.isFree,
+  'purchaseAvailability': neighbor.purchaseSurface.wireName,
 };
 
 EpisodeNeighbor? _neighborFromJson(Object? decoded) {
@@ -345,6 +350,9 @@ EpisodeNeighbor? _neighborFromJson(Object? decoded) {
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
     isFree: decoded['isFree'] == true,
+    purchaseSurface: EpisodePurchaseSurface.fromWire(
+      decoded['purchaseAvailability'],
+    ),
   );
 }
 

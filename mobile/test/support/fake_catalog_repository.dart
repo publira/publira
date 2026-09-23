@@ -579,7 +579,11 @@ const fixtureUnknownRatedSeries = SeriesItem(
   ageRating: SeriesAgeRating.unknown,
 );
 
-SeriesDetail fixtureDetail(SeriesItem item) {
+/// [paidSurface] is where the paid episode, the last one, may be bought.
+SeriesDetail fixtureDetail(
+  SeriesItem item, {
+  EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
+}) {
   return SeriesDetail(
     series: item,
     episodes: [
@@ -589,13 +593,21 @@ SeriesDetail fixtureDetail(SeriesItem item) {
           title: '${item.title} #$i',
           orderIndex: i,
           price: i == item.episodeCount ? 500 : 0,
+          purchaseSurface: i == item.episodeCount
+              ? paidSurface
+              : EpisodePurchaseSurface.all,
         ),
     ],
   );
 }
 
-Map<String, SeriesDetail> fixtureDetails() {
-  return {for (final item in fixtureSeries) item.id: fixtureDetail(item)};
+Map<String, SeriesDetail> fixtureDetails({
+  EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
+}) {
+  return {
+    for (final item in fixtureSeries)
+      item.id: fixtureDetail(item, paidSurface: paidSurface),
+  };
 }
 
 /// A continue-reading row over the fixture series, each offering the first
@@ -626,10 +638,11 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeAccess access = EpisodeAccess.free,
   int pageCount = 3,
   SeriesAgeRating? ageRating,
+  EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
 }) {
   final bodies = <String, EpisodeDetail>{};
   for (final item in fixtureSeries) {
-    final episodes = fixtureDetail(item).episodes;
+    final episodes = fixtureDetail(item, paidSurface: paidSurface).episodes;
     for (var index = 0; index < episodes.length; index++) {
       final episode = episodes[index];
       bodies[episodeKey(item.id, episode.id)] = EpisodeDetail(
@@ -671,4 +684,5 @@ EpisodeNeighbor fixtureNeighbor(EpisodeItem episode) => EpisodeNeighbor(
   orderIndex: episode.orderIndex,
   price: episode.price,
   isFree: episode.price == 0,
+  purchaseSurface: episode.purchaseSurface,
 );

@@ -429,6 +429,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       endScreen: EpisodeEndPanel(
         detail: detail,
         nextSavedOffline: next != null && _saved.contains(next.id),
+        acceptsPayments: _acceptsPayments,
         onOpenNext: _open,
         onOpenComments: _commentsOffered ? _openComments : null,
         onBackToSeries: () =>
@@ -457,10 +458,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         ),
       );
     }
-    final buy =
+    final sold =
         _acceptsPayments &&
-            detail.episode.price > 0 &&
-            PurchaseScope.maybeOf(context) != null
+        detail.episode.price > 0 &&
+        PurchaseScope.maybeOf(context) != null;
+    // The app must not steer the reader to an outside checkout, so it names
+    // the website without linking to it.
+    final soldOnWeb =
+        sold && detail.episode.purchaseSurface == EpisodePurchaseSurface.web;
+    final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             price: detail.episode.price,
@@ -470,6 +476,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     final String message;
     if (widget.checkout == CheckoutOutcome.cancelled) {
       message = messages.purchaseCancelled;
+    } else if (soldOnWeb) {
+      message = signedIn
+          ? messages.viewerLockedSoldOnWeb
+          : messages.viewerLockedSoldOnWebSignedOut;
     } else if (signedIn) {
       message = messages.viewerLocked;
     } else {

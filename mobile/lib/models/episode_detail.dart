@@ -78,6 +78,7 @@ class EpisodeNeighbor {
     required this.orderIndex,
     required this.price,
     required this.isFree,
+    this.purchaseSurface = EpisodePurchaseSurface.all,
   });
 
   /// Public id (`public_id`), which addresses the episode.
@@ -94,6 +95,10 @@ class EpisodeNeighbor {
   /// cannot call an episode paid that opens for nothing at the moment the
   /// reader takes it.
   final bool isFree;
+
+  /// Where the episode may be bought, so an offer of one sold on the
+  /// storefront alone names that rather than a price the app cannot take.
+  final EpisodePurchaseSurface purchaseSurface;
 }
 
 /// An episode body plus the series it was read under.

@@ -3457,6 +3457,7 @@
       "cancelled": "The purchase was cancelled. You have not been charged.",
       "check_again": "Check again",
       "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
+      "sold_on_web": "Sold on the website",
       "start_failed": "Could not start the purchase. Try again later."
     },
     "purchases": {
@@ -3569,6 +3570,8 @@
       "load_failed": "Could not show the episode. Try again.",
       "locked": "This episode can be read once it is purchased.",
       "locked_signed_out": "This episode can be read once it is purchased. If you have already bought it, sign in.",
+      "locked_sold_on_web": "This episode is sold on the website. Once bought there, it can be read here with the same account.",
+      "locked_sold_on_web_signed_out": "This episode is sold on the website. If you have already bought it there, sign in.",
       "next_episode": "Next episode",
       "next_page": "Next page",
       "no_pages": "This episode has no pages yet.",

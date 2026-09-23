@@ -390,6 +390,7 @@ void main() {
               orderIndex: 3,
               price: 500,
               isFree: false,
+              purchaseSurface: EpisodePurchaseSurface.web,
             ),
           ),
         ),
@@ -400,8 +401,10 @@ void main() {
 
     final detail = decoded!.episodes.values.single.detail;
     expect(detail.previousEpisode!.id, 'SeedEPSDAAA0');
+    expect(detail.previousEpisode!.purchaseSurface, EpisodePurchaseSurface.all);
     expect(detail.nextEpisode!.title, 'Seed Episode 001-03');
     expect(detail.nextEpisode!.price, 500);
+    expect(detail.nextEpisode!.purchaseSurface, EpisodePurchaseSurface.web);
     expect(detail.nextEpisode!.isFree, isFalse);
   });
 

@@ -256,6 +256,34 @@ class SeriesItem {
   }
 }
 
+/// Which surfaces a paid episode may be bought on, as
+/// `publira.types.v1.SurfaceAvailability` resolves it for the episode.
+enum EpisodePurchaseSurface {
+  all,
+
+  /// The storefront alone, so `StartEpisodeCheckout` refuses the app.
+  web,
+
+  app;
+
+  /// Reads the enum as protojson writes it: by name, and omitted when it is
+  /// unspecified. Unspecified and unknown names are read as [all], since the
+  /// server still refuses a checkout it forbids.
+  static EpisodePurchaseSurface fromWire(Object? raw) {
+    return switch (raw) {
+      'SURFACE_AVAILABILITY_WEB' => EpisodePurchaseSurface.web,
+      'SURFACE_AVAILABILITY_APP' => EpisodePurchaseSurface.app,
+      _ => EpisodePurchaseSurface.all,
+    };
+  }
+
+  String get wireName => switch (this) {
+    EpisodePurchaseSurface.all => 'SURFACE_AVAILABILITY_ALL',
+    EpisodePurchaseSurface.web => 'SURFACE_AVAILABILITY_WEB',
+    EpisodePurchaseSurface.app => 'SURFACE_AVAILABILITY_APP',
+  };
+}
+
 /// One published episode on a series detail page.
 class EpisodeItem {
   const EpisodeItem({
@@ -263,6 +291,7 @@ class EpisodeItem {
     required this.title,
     required this.orderIndex,
     required this.price,
+    this.purchaseSurface = EpisodePurchaseSurface.all,
     this.ratingCount = 0,
   });
 
@@ -270,6 +299,10 @@ class EpisodeItem {
   final String title;
   final int orderIndex;
   final int price;
+
+  /// Where the episode may be bought. The app offers no purchase of one sold
+  /// on the storefront alone and says it is sold there instead.
+  final EpisodePurchaseSurface purchaseSurface;
 
   /// Readers who reacted to this episode. This is a headcount, not a count of
   /// presses, and lets a signed-out reader see the reaction total.
