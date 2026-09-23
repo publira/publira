@@ -335,9 +335,13 @@ test.describe("admin publish flow", () => {
       page.getByRole("heading", { level: 1, name: episodeTitle })
     ).toBeVisible();
 
-    // Parent series detail also lists the published episode.
-    await page.goto(hostUrl(`/series/${seriesId}`));
-    await expect(page.getByText(episodeTitle)).toBeVisible();
+    // Parent series detail also lists the published episode. Another spec's
+    // top page can fill this entry before the publication, and the worker's
+    // drop reaches web-host through the Outbox and only marks it stale.
+    await expect(async () => {
+      await page.goto(hostUrl(`/series/${seriesId}`));
+      await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
   });
 
   test("a missing required field shows an error", async ({ page }) => {
