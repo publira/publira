@@ -216,10 +216,8 @@ func (s *platformServer) CreateTenant(
 	}
 	// A new tenant has no users yet, so every initial administrator is sent an
 	// invitation, and each one is charged before the tenant is written.
-	for _, email := range initialAdminEmails {
-		if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, email); err != nil {
-			return nil, err
-		}
+	if err := s.mail.AllowEach(ctx, req, mailguard.PlatformScope, initialAdminEmails); err != nil {
+		return nil, err
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

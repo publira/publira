@@ -92,29 +92,38 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 }
 
 // Every initial administrator of a new tenant is sent an invitation, so a
-// request naming more addresses than the origin may mail creates no tenant.
+// request naming more addresses than the origin may mail creates no tenant, and
+// spends nothing a smaller request could have used.
 func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 100, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
-	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
-		DefaultLocale: "en",
-		Name:          "Tenant A",
-		Domain:        "tenant-a.example.com",
-		InitialAdminEmails: []string{
-			"first@tenant-a.example.com",
-			"second@tenant-a.example.com",
-			"third@tenant-a.example.com",
-		},
-	}))
-	requireRateLimited(t, "CreateTenant", err)
+	createTenant := func(emails ...string) error {
+		_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+			DefaultLocale:      "en",
+			Name:               "Tenant A",
+			Domain:             "tenant-a.example.com",
+			InitialAdminEmails: emails,
+		}))
+		return err
+	}
+
+	requireRateLimited(t, "CreateTenant", createTenant(
+		"first@tenant-a.example.com",
+		"second@tenant-a.example.com",
+		"third@tenant-a.example.com",
+	))
 
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM tenants"); got != 0 {
 		t.Fatalf("tenant rows = %d, want the refused request to have written none", got)
 	}
 	if got := countOutboxEvents(t, pg, outbox.EventTypeTenantAdminInvitationEmail); got != 0 {
 		t.Fatalf("queued invitation mails = %d, want none", got)
+	}
+
+	if err := createTenant("first@tenant-a.example.com", "second@tenant-a.example.com"); err != nil {
+		t.Fatalf("CreateTenant within the allowance after the refusal: %v", err)
 	}
 }
 

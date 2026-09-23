@@ -78,6 +78,19 @@ func (s *MemoryStore) Forget(_ context.Context, key string) error {
 	return nil
 }
 
+func (s *MemoryStore) Decr(_ context.Context, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.entries[key]
+	if !ok || !entry.expiresAt.After(s.now()) || entry.count < 1 {
+		return nil
+	}
+	entry.count--
+	s.entries[key] = entry
+	return nil
+}
+
 // sweep drops the counters whose window has passed. The caller holds the lock.
 func (s *MemoryStore) sweep(now time.Time) {
 	if now.Sub(s.lastSweep) < sweepInterval {

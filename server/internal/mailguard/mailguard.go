@@ -83,11 +83,49 @@ func NewDefault() *Guard {
 // and charging it first is what keeps them from spending the mailbox allowance
 // of every address they name on the way there.
 func (g *Guard) Allow(ctx context.Context, req connect.AnyRequest, scope, address string) error {
+	policy, err := g.resolve(ctx, scope)
+	if err != nil {
+		return err
+	}
+	_, err = g.charge(ctx, req, policy, scope, address)
+	return err
+}
+
+// AllowEach charges every address as Allow does, for a request that mails all
+// of them or none. When one is refused, everything the request spent is given
+// back, since none of its mail is sent.
+func (g *Guard) AllowEach(ctx context.Context, req connect.AnyRequest, scope string, addresses []string) error {
+	policy, err := g.resolve(ctx, scope)
+	if err != nil {
+		return err
+	}
+	var spent []ratelimit.Decision
+	for _, address := range addresses {
+		decisions, err := g.charge(ctx, req, policy, scope, address)
+		spent = append(spent, decisions...)
+		if err != nil {
+			for _, decision := range spent {
+				g.limiter.Refund(ctx, decision)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *Guard) resolve(ctx context.Context, scope string) (platformpolicy.Policy, error) {
 	policy, err := g.policy.Policy(ctx)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to resolve the mail rate limit", "scope", scope, "error", err)
-		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return platformpolicy.Policy{}, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
+	return policy, nil
+}
+
+// charge spends the origin's and then the mailbox's allowance, and returns what
+// it charged alongside its answer.
+func (g *Guard) charge(ctx context.Context, req connect.AnyRequest, policy platformpolicy.Policy, scope, address string) ([]ratelimit.Decision, error) {
+	var spent []ratelimit.Decision
 	for _, charge := range []struct {
 		subject string
 		rules   []ratelimit.Rule
@@ -96,18 +134,19 @@ func (g *Guard) Allow(ctx context.Context, req connect.AnyRequest, scope, addres
 		{addressSubject(scope, address), Rules(policy.MailRequestsPerAddress)},
 	} {
 		decision, err := g.limiter.Allow(ctx, charge.subject, charge.rules...)
+		spent = append(spent, decision)
 		if err != nil {
 			// The counters fall back to this process when the shared ones cannot
 			// be reached, so nothing is left here that sending the mail anyway
 			// would be the safe answer to.
 			g.logger.ErrorContext(ctx, "failed to charge the mail rate limit", "scope", scope, "error", err)
-			return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+			return spent, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 		}
 		if !decision.Allowed {
-			return rpcerrors.NewRateLimitedError(decision.RetryAfter)
+			return spent, rpcerrors.NewRateLimitedError(decision.RetryAfter)
 		}
 	}
-	return nil
+	return spent, nil
 }
 
 // addressSubject names the mailbox's allowance.

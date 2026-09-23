@@ -227,6 +227,22 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 
 // A request that reached a server without passing the edge still has an origin,
 // and every connection from it is that one origin rather than a fresh one.
+func TestGuardAllowEachGivesBackWhatARefusedBatchSpent(t *testing.T) {
+	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100})
+	addresses := []string{"first@example.com", "second@example.com", "third@example.com"}
+
+	err := guard.AllowEach(t.Context(), request(testSource), testScope, addresses)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("AllowEach over the origin's allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+
+	// Nothing was mailed, so the origin and both mailboxes charged before the
+	// refusal have their allowance back.
+	if err := guard.AllowEach(t.Context(), request(testSource), testScope, addresses[:2]); err != nil {
+		t.Fatalf("AllowEach within the allowance after the refusal = %v, want it allowed", err)
+	}
+}
+
 func TestGuardChargesThePeerWhenTheEdgeRecordedNothing(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
