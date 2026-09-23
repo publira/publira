@@ -22,6 +22,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 
 - [Button / LinkButton](./src/button) - buttons
 - [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - the form field parts
+- [Fieldset](./src/fieldset) - a group of fields closed as one
 - [Input](./src/input) - a text input
 - [Textarea](./src/textarea) - a multi-line text input
 - [Select](./src/select) - a select box
