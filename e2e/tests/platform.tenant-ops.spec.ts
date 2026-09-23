@@ -104,7 +104,7 @@ test.describe("platform tenant operations", () => {
     const suffix = uniqueSuffix();
     const name = `E2E Platform Tenant ${suffix}`;
     const domain = `e2e-${suffix}.localhost`;
-    const adminDomain = `admin-e2e-${suffix}.localhost`;
+    const adminDomain = `admin.e2e-${suffix}.localhost`;
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
@@ -170,7 +170,7 @@ test.describe("platform tenant operations", () => {
     const suffix = uniqueSuffix();
     const name = `E2E Edit Tenant ${suffix}`;
     const domain = `e2e-edit-${suffix}.localhost`;
-    const adminDomain = `admin-e2e-edit-${suffix}.localhost`;
+    const adminDomain = `admin.e2e-edit-${suffix}.localhost`;
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
@@ -188,7 +188,7 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
 
     const newDomain = `e2e-edit2-${suffix}.localhost`;
-    const newAdminDomain = `admin-e2e-edit2-${suffix}.localhost`;
+    const newAdminDomain = `admin.e2e-edit2-${suffix}.localhost`;
     await tenantDomainInput(page).fill(newDomain);
     await tenantAdminDomainInput(page).fill(newAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
@@ -207,7 +207,7 @@ test.describe("platform tenant operations", () => {
     const suffix = uniqueSuffix();
     const name = `E2E Domain Tenant ${suffix}`;
     const domain = `e2e-dom-${suffix}.localhost`;
-    const adminDomain = `admin-e2e-dom-${suffix}.localhost`;
+    const adminDomain = `admin.e2e-dom-${suffix}.localhost`;
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
@@ -241,7 +241,7 @@ test.describe("platform tenant operations", () => {
     }
 
     const movedDomain = `e2e-dom2-${suffix}.localhost`;
-    const movedAdminDomain = `admin-e2e-dom2-${suffix}.localhost`;
+    const movedAdminDomain = `admin.e2e-dom2-${suffix}.localhost`;
     await tenantDomainInput(page).fill(movedDomain);
     await tenantAdminDomainInput(page).fill(movedAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();

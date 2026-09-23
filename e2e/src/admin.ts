@@ -623,10 +623,9 @@ export const genreNamesInOrder = async (page: Page): Promise<string[]> => {
  */
 export const createGenreViaUi = async (
   page: Page,
-  name: string,
-  baseUrl = WEB_ADMIN_BASE_URL
+  name: string
 ): Promise<void> => {
-  await page.goto(adminUrl("/genres", baseUrl));
+  await page.goto(adminUrl("/genres"));
   await fillField(genreCreateField(page), name);
   await page.getByRole("button", { name: "Create genre" }).click();
   await expect(genreNameField(page, name)).toBeVisible({ timeout: 15_000 });

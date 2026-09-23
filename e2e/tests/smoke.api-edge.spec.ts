@@ -2,9 +2,9 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
-  WEB_ADMIN_EDGE_BASE_URL,
+  WEB_ADMIN_BASE_URL,
   WEB_HOST_EDGE_BASE_URL,
-  WEB_PLATFORM_EDGE_BASE_URL,
+  WEB_PLATFORM_BASE_URL,
 } from "../src/urls";
 
 const CATALOG_PROCEDURE = "/api/publira.v1.CatalogService/ListPublishedSeries";
@@ -14,8 +14,8 @@ const PLATFORM_PROCEDURE =
 
 const edgeHosts = [
   ["the tenant site", WEB_HOST_EDGE_BASE_URL],
-  ["the tenant console", WEB_ADMIN_EDGE_BASE_URL],
-  ["the platform console", WEB_PLATFORM_EDGE_BASE_URL],
+  ["the tenant console", WEB_ADMIN_BASE_URL],
+  ["the platform console", WEB_PLATFORM_BASE_URL],
 ] as const;
 
 /**

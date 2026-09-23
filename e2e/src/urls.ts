@@ -67,18 +67,6 @@ export const BROWSER_WS_ENDPOINT = `${envUrl(
   "ws://127.0.0.1:3090"
 )}/`;
 
-/** Tenant admin console (web-admin). Matches seed domain `admin.localhost`. */
-export const WEB_ADMIN_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
-  "http://admin.localhost:4000"
-);
-
-/** Platform console (web-platform). No tenant Host resolution. */
-export const WEB_PLATFORM_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_PLATFORM_BASE_URL",
-  "http://platform.localhost:4100"
-);
-
 /**
  * Mailpit's HTTP API (the `mailpit` service in `e2e/compose.yaml`).
  *
@@ -123,20 +111,19 @@ const withHostname = (baseUrl: string, hostname: string): string => {
 };
 
 /**
- * The tenant console and the platform console, reached through the same edge.
- *
- * `/api` is host-agnostic there, so these are the other two Host headers the
- * API server answers under — which is what `smoke.api-edge.spec.ts` needs to
- * ask it from.
+ * Tenant admin console (web-admin), through the edge: the images it renders are
+ * `/images/...` on its own origin, which only the edge answers. Matches seed
+ * domain `admin.localhost`.
  */
-export const WEB_ADMIN_EDGE_BASE_URL = withHostname(
-  WEB_HOST_EDGE_BASE_URL,
-  "admin.localhost"
+export const WEB_ADMIN_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
+  withHostname(WEB_HOST_EDGE_BASE_URL, "admin.localhost")
 );
 
-export const WEB_PLATFORM_EDGE_BASE_URL = withHostname(
-  WEB_HOST_EDGE_BASE_URL,
-  "platform.localhost"
+/** Platform console (web-platform), through the edge for the same reason. */
+export const WEB_PLATFORM_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_PLATFORM_BASE_URL",
+  withHostname(WEB_HOST_EDGE_BASE_URL, "platform.localhost")
 );
 
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */

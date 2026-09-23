@@ -61,8 +61,10 @@ export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 # carries all three Connect namespaces.
 export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
 export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}}"
-export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_WEB_ADMIN_PORT}}"
-export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_WEB_PLATFORM_PORT}}"
+# The consoles are opened through the edge, like a deployment serves them: the
+# images they render are `/images` on their own origin.
+export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
+export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
 # Same web-host, reached through the edge, by every suite that opens an
 # episode body: `/images` resolves on no other origin.
