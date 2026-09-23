@@ -4,6 +4,7 @@ import {
   createReadyzResponse,
 } from "@publira/utils/health";
 import type { HealthCheck } from "@publira/utils/health";
+import { connection } from "next/server";
 
 const apiBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
 
@@ -18,4 +19,8 @@ const checks: HealthCheck[] = [
   },
 ];
 
-export const GET = () => createReadyzResponse(checks);
+// connection() keeps `next build` from prerendering this handler and running the checks.
+export const GET = async () => {
+  await connection();
+  return createReadyzResponse(checks);
+};
