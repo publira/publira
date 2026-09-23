@@ -24,7 +24,7 @@ const adminUrl = (pathname: string): string =>
 
 const CONFIRM_EMAIL_PATH = "/confirm-email";
 
-const SETTINGS_PATHS = ["/settings/account", "/settings/email"] as const;
+const SETTINGS_PATHS = ["/settings/account", "/integrations/email"] as const;
 
 const REQUESTED_MESSAGE =
   "A confirmation email was sent to both the current and the new address. Open both links to complete the change.";
@@ -143,8 +143,8 @@ const openConfirmation = (page: Page, token: string): Promise<unknown> =>
  * The administrator's own account and this tenant's SMTP settings.
  *
  * `/settings/account` is the email-address change, not a display-name or
- * password form — those controls are not on the console. `/settings/email` is
- * the tenant SMTP override. Tokens are stored as hashes, so every confirmation
+ * password form — those controls are not on the console. `/integrations/email`
+ * is the tenant SMTP override. Tokens are stored as hashes, so every confirmation
  * below opens a token this suite read out of Mailpit.
  *
  * The suite owns the account and the tenant it rewrites —
@@ -323,12 +323,12 @@ test.describe("web-admin operator settings", () => {
         email: ADMIN_OPERATOR_SETTINGS_NEW_EMAIL,
         password: ADMIN_OPERATOR_SETTINGS_ADMIN.password,
       },
-      "/settings/email",
+      "/integrations/email",
       WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL
     );
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "Integrations" })
     ).toBeVisible();
     await expect(page.getByText("Email settings")).toBeVisible();
 
@@ -346,7 +346,7 @@ test.describe("web-admin operator settings", () => {
     expect(smtpFromName()).toBe(ADMIN_OPERATOR_SETTINGS_FROM_NAME);
     expect(smtpOverrideEnabled()).toBe(true);
 
-    await page.goto(adminUrl("/settings/email"));
+    await page.goto(adminUrl("/integrations/email"));
     await expect(page.getByLabel("Sender name (optional)")).toHaveValue(
       ADMIN_OPERATOR_SETTINGS_FROM_NAME
     );

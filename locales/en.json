@@ -962,21 +962,27 @@
       "administration": "Administration",
       "announcements_label": "Announcements",
       "audit_label": "Audit logs",
+      "branding_label": "Branding",
+      "catalog": "Catalog",
       "comments_label": "Comments",
       "comments_pending": "{$count} comments awaiting approval",
       "contact_messages_label": "Contact messages",
+      "creator_roles_label": "Author roles",
       "creators_label": "Authors",
       "dashboard_label": "Dashboard",
       "engagement_label": "Read-through",
       "genres_label": "Genres",
+      "integrations_label": "Integrations",
       "labels_label": "Labels",
       "members_label": "Members",
-      "operations": "Operations",
       "pages_label": "Pages",
+      "readers": "Readers",
       "readers_label": "Readers",
+      "reports": "Reports",
       "royalties_label": "Royalties",
       "series_label": "Series",
-      "settings_label": "Settings"
+      "settings_label": "Settings",
+      "site": "Site"
     },
     "not_found": {
       "description": "This item may have been deleted, or the URL may have changed. Choose it from a list instead.",
@@ -1569,13 +1575,7 @@
       }
     },
     "settings": {
-      "email_error": "Could not display the email settings",
-      "payment_error": "Could not display the payment settings",
-      "mobile_push_error": "Could not display the mobile push settings",
-      "app_links_error": "Could not display the app link settings",
-      "royalties_error": "Could not display the royalty settings",
       "section_error": "Could not display the settings",
-      "theme_error": "Could not display the theme",
       "theme": {
         "color_picker": "Color picker",
         "tabs": {
@@ -1760,18 +1760,6 @@
       "title": "Settings",
       "basic_title": "Settings — General",
       "basic_description": "Manage what this tenant shows on its public site.",
-      "theme_title": "Settings — Theme",
-      "theme_description": "Manage this tenant's theme colors, logo, and icon.",
-      "email_title": "Settings — Email",
-      "email_description": "Manage how this tenant sends email.",
-      "payment_title": "Settings — Payments",
-      "payment_description": "Manage this tenant's Stripe payment settings.",
-      "mobile_push_title": "Settings — Mobile push",
-      "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
-      "app_links_title": "Settings — App links",
-      "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
-      "royalties_title": "Settings — Royalties",
-      "royalties_description": "Choose how this tenant's royalty months are closed into statements.",
       "account_title": "Account settings",
       "account_description": "Manage the administrator account you are signed in as.",
       "tenant_missing": "The tenant ID is missing.",
@@ -1782,13 +1770,6 @@
       "delete_action": "Delete",
       "tabs": {
         "basic": "General",
-        "creator_roles": "Author roles",
-        "theme": "Theme",
-        "email": "Email",
-        "payment": "Payments",
-        "royalties": "Royalties",
-        "mobile_push": "Mobile push",
-        "app_links": "App links",
         "policy": "Limits and retention"
       },
       "image": {
@@ -2216,6 +2197,32 @@
         }
       }
     },
+    "branding": {
+      "title": "Branding",
+      "page_description": "Manage this tenant's theme colors, logo, and icon.",
+      "section_error": "Could not display the branding settings"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "tabs": {
+        "email": "Email",
+        "payment": "Payments",
+        "mobile_push": "Mobile push",
+        "app_links": "App links"
+      },
+      "email_title": "Integrations — Email",
+      "email_description": "Manage how this tenant sends email.",
+      "email_error": "Could not display the email settings",
+      "payment_title": "Integrations — Payments",
+      "payment_description": "Manage this tenant's Stripe payment settings.",
+      "payment_error": "Could not display the payment settings",
+      "mobile_push_title": "Integrations — Mobile push",
+      "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",
+      "mobile_push_error": "Could not display the mobile push settings",
+      "app_links_title": "Integrations — App links",
+      "app_links_description": "Manage the Android and iOS apps this tenant's links open in.",
+      "app_links_error": "Could not display the app link settings"
+    },
     "notifications": {
       "page_description": "Review operational events addressed to you and mark them as read. Announcement delivery is managed on a separate screen.",
       "list_error": "Could not display notifications",
@@ -2398,6 +2405,12 @@
       "not_over": "This month is not over yet, so it cannot be closed.",
       "statements_link": "Closed statements",
       "open_month_link": "Open month",
+      "close_settings_link": "Closing settings",
+      "close_settings": {
+        "title": "Closing settings",
+        "page_description": "Choose how this tenant's royalty months are closed into statements.",
+        "section_error": "Could not display the royalty settings"
+      },
       "totals": {
         "gross": "Sales",
         "refunded": "Refunds",

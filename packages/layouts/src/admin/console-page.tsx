@@ -63,7 +63,7 @@ export const ConsolePageDescription = ({
 }) => <p className="max-w-3xl text-sm text-muted-foreground">{children}</p>;
 
 export const ConsolePageActions = ({ children }: { children: ReactNode }) => (
-  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+  <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
     {children}
   </div>
 );

@@ -962,21 +962,27 @@
       "administration": "管理",
       "announcements_label": "公告",
       "audit_label": "稽核記錄",
+      "branding_label": "品牌",
+      "catalog": "作品",
       "comments_label": "留言",
       "comments_pending": "{$count} 則留言等待審核",
       "contact_messages_label": "諮詢",
+      "creator_roles_label": "作者角色",
       "creators_label": "作者",
       "dashboard_label": "儀表板",
       "engagement_label": "讀完率",
       "genres_label": "類型",
+      "integrations_label": "整合",
       "labels_label": "品牌",
       "members_label": "成員",
-      "operations": "營運",
       "pages_label": "頁面",
+      "readers": "讀者",
       "readers_label": "讀者",
+      "reports": "報表",
       "royalties_label": "版稅",
       "series_label": "系列",
-      "settings_label": "設定"
+      "settings_label": "設定",
+      "site": "網站"
     },
     "not_found": {
       "description": "該對象可能已被刪除，或網址已變更。請改從列表中選擇。",
@@ -1569,13 +1575,7 @@
       }
     },
     "settings": {
-      "email_error": "無法顯示郵件設定",
-      "payment_error": "無法顯示付款設定",
-      "mobile_push_error": "無法顯示行動推播設定",
-      "app_links_error": "無法顯示應用程式連結設定",
-      "royalties_error": "無法顯示版稅設定",
       "section_error": "無法顯示設定",
-      "theme_error": "無法顯示主題",
       "theme": {
         "color_picker": "色彩選擇器",
         "tabs": {
@@ -1760,18 +1760,6 @@
       "title": "設定",
       "basic_title": "設定 — 一般",
       "basic_description": "管理該租戶在公開網站上呈現的內容。",
-      "theme_title": "設定 — 主題",
-      "theme_description": "管理該租戶的主題顏色、標誌與圖示。",
-      "email_title": "設定 — 郵件",
-      "email_description": "管理該租戶寄送郵件的方式。",
-      "payment_title": "設定 — 付款",
-      "payment_description": "管理該租戶的 Stripe 付款設定。",
-      "mobile_push_title": "設定 — 行動推播",
-      "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",
-      "app_links_title": "設定 — 應用程式連結",
-      "app_links_description": "管理該租戶的連結所開啟的 Android 與 iOS 應用程式。",
-      "royalties_title": "設定 — 版稅",
-      "royalties_description": "選擇該租戶如何將版稅月份結算為明細。",
       "account_title": "帳戶設定",
       "account_description": "管理您目前登入的管理員帳戶。",
       "tenant_missing": "缺少租戶 ID。",
@@ -1782,13 +1770,6 @@
       "delete_action": "刪除",
       "tabs": {
         "basic": "一般",
-        "creator_roles": "作者角色",
-        "theme": "主題",
-        "email": "郵件",
-        "payment": "付款",
-        "royalties": "版稅",
-        "mobile_push": "行動推播",
-        "app_links": "應用程式連結",
         "policy": "限制與保留"
       },
       "image": {
@@ -2216,6 +2197,32 @@
         }
       }
     },
+    "branding": {
+      "title": "品牌",
+      "page_description": "管理該租戶的主題顏色、標誌與圖示。",
+      "section_error": "無法顯示品牌設定"
+    },
+    "integrations": {
+      "title": "整合",
+      "tabs": {
+        "email": "郵件",
+        "payment": "付款",
+        "mobile_push": "行動推播",
+        "app_links": "應用程式連結"
+      },
+      "email_title": "整合 — 郵件",
+      "email_description": "管理該租戶寄送郵件的方式。",
+      "email_error": "無法顯示郵件設定",
+      "payment_title": "整合 — 付款",
+      "payment_description": "管理該租戶的 Stripe 付款設定。",
+      "payment_error": "無法顯示付款設定",
+      "mobile_push_title": "整合 — 行動推播",
+      "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",
+      "mobile_push_error": "無法顯示行動推播設定",
+      "app_links_title": "整合 — 應用程式連結",
+      "app_links_description": "管理該租戶的連結所開啟的 Android 與 iOS 應用程式。",
+      "app_links_error": "無法顯示應用程式連結設定"
+    },
     "notifications": {
       "page_description": "查看寄給您的營運事件並標示為已讀。公告的發送在另一個頁面管理。",
       "list_error": "無法顯示通知",
@@ -2398,6 +2405,12 @@
       "not_over": "該月尚未結束，無法結算。",
       "statements_link": "已結算明細",
       "open_month_link": "未結算月份",
+      "close_settings_link": "結算設定",
+      "close_settings": {
+        "title": "結算設定",
+        "page_description": "選擇該租戶如何將版稅月份結算為明細。",
+        "section_error": "無法顯示版稅設定"
+      },
       "totals": {
         "gross": "銷售額",
         "refunded": "退款",

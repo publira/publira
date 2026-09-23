@@ -41,7 +41,7 @@ export type TenantPurchaseSettingsResult =
     };
 
 /**
- * Tag the reads of the tenant default carry — the settings screen and the
+ * Tag the reads of the tenant default carry — the payments screen and the
  * series and episode forms that name it — so a save reaches all of them in
  * the same session.
  */

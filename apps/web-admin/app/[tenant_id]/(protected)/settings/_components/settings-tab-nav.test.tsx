@@ -32,17 +32,7 @@ describe("SettingsTabNav", () => {
     render(<SettingsTabNav current="basic" />);
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
-      [
-        "General",
-        "Author roles",
-        "Theme",
-        "Email",
-        "Payments",
-        "Royalties",
-        "Mobile push",
-        "App links",
-        "Limits and retention",
-      ]
+      ["General", "Limits and retention"]
     );
   });
 

@@ -1,9 +1,9 @@
 -- Scenario: a tenant whose Firebase credentials the E2E may add, replace, and remove
 --
 -- `admin.mobile-push.spec.ts` saves this tenant's FCM service account key from
--- `/settings/mobile-push` and removes it again. The key decides whether the
--- tenant's mobile app is sent any push at all, so no tenant another suite
--- reads can absorb it.
+-- `/integrations/mobile-push` and removes it again. The key decides whether the
+-- tenant's mobile app is sent any push at all, so no tenant another suite reads
+-- can absorb it.
 --
 -- Applying it is also how the suite puts the tenant back: the stored
 -- credentials are deleted, which turns mobile push off.

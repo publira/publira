@@ -83,6 +83,10 @@
       "types": "./dist/heart-icon.d.mts",
       "default": "./dist/heart-icon.mjs"
     },
+    "./id-card-icon": {
+      "types": "./dist/id-card-icon.d.mts",
+      "default": "./dist/id-card-icon.mjs"
+    },
     "./image-icon": {
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
@@ -115,9 +119,17 @@
       "types": "./dist/minimize-icon.d.mts",
       "default": "./dist/minimize-icon.mjs"
     },
+    "./palette-icon": {
+      "types": "./dist/palette-icon.d.mts",
+      "default": "./dist/palette-icon.mjs"
+    },
     "./pen-line-icon": {
       "types": "./dist/pen-line-icon.d.mts",
       "default": "./dist/pen-line-icon.mjs"
+    },
+    "./plug-icon": {
+      "types": "./dist/plug-icon.d.mts",
+      "default": "./dist/plug-icon.mjs"
     },
     "./plus-icon": {
       "types": "./dist/plus-icon.d.mts",

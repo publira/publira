@@ -69,7 +69,7 @@ export type TenantSmtpTestResult =
   | { ok: false; message: string };
 
 /**
- * Tag the settings screen's cached read carries, so `updateTag` in the Server
+ * Tag the email screen's cached read carries, so `updateTag` in the Server
  * Action makes the saved SMTP settings visible in the same session instead of
  * leaving the previous host and sender in the private cache.
  */

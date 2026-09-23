@@ -147,7 +147,9 @@ test.describe("royalties", () => {
         year: "numeric",
       });
 
-    await signIn(page, "/settings/royalties");
+    await signIn(page, "/royalties");
+    await page.getByRole("link", { name: "Closing settings" }).click();
+    await expect(page).toHaveURL(/\/royalties\/settings$/u);
 
     const automatic = page.getByRole("radio", { name: /Close automatically/u });
     await expect(

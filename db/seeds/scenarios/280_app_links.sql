@@ -1,9 +1,9 @@
 -- Scenario: a tenant whose app link identities the E2E may save and clear
 --
 -- `admin.app-links.spec.ts` saves this tenant's Android and iOS app identities
--- from `/settings/app-links` and clears them again. They name the apps every
--- link to the tenant's site opens in, so no tenant another suite reads can
--- absorb them.
+-- from `/integrations/app-links` and clears them again. They name the apps
+-- every link to the tenant's site opens in, so no tenant another suite reads
+-- can absorb them.
 --
 -- Applying it is also how the suite puts the tenant back: the tenant's config
 -- row is deleted, which leaves it with no app on either platform.

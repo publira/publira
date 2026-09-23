@@ -71,7 +71,7 @@ const expectStatus = (
   });
 
 const openThemeSettings = async (page: Page): Promise<void> => {
-  await page.goto(adminUrl("/settings/theme"));
+  await page.goto(adminUrl("/branding"));
   await expect(primaryColorField(page)).toBeVisible({ timeout: 30_000 });
 };
 
@@ -299,7 +299,7 @@ const declaredIconHref = async (page: Page): Promise<string> => {
 
 /**
  * Tenant brand settings reaching the public site: a colour saved on
- * `/settings/theme` is what `GET /theme.css` serves and what the public
+ * `/branding` is what `GET /theme.css` serves and what the public
  * document paints, a logo or icon is what the public header and icon links
  * show, and none of that crosses the tenant boundary.
  *
@@ -323,7 +323,7 @@ test.describe("admin brand settings", () => {
     restoreTheme = false;
     restoreLogo = false;
     restoreIcon = false;
-    await signInAsSeedAdmin(page, "/settings/theme");
+    await signInAsSeedAdmin(page, "/branding");
     await expect(primaryColorField(page)).toBeVisible({ timeout: 30_000 });
     await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
@@ -334,7 +334,7 @@ test.describe("admin brand settings", () => {
     if (!(restoreTheme || restoreLogo || restoreIcon)) {
       return;
     }
-    await signInAsSeedAdmin(page, "/settings/theme");
+    await signInAsSeedAdmin(page, "/branding");
     await expect(primaryColorField(page)).toBeVisible({ timeout: 30_000 });
     if (restoreLogo) {
       await deleteBrandingIfSet(page, "logo", "The logo was deleted.");

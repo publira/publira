@@ -66,12 +66,12 @@ const creatorRoleNamesInOrder = async (page: Page): Promise<string[]> => {
   return await Promise.all(fields.map((field) => field.inputValue()));
 };
 
-/** Register an author role from the `/settings/creator-roles` create form. */
+/** Register an author role from the `/creator-roles` create form. */
 const createCreatorRoleViaUi = async (
   page: Page,
   name: string
 ): Promise<void> => {
-  await page.goto(adminUrl("/settings/creator-roles"));
+  await page.goto(adminUrl("/creator-roles"));
   await fillField(page.getByRole("textbox", { name: /Role name/u }), name);
   await page.getByRole("button", { name: "Create role" }).click();
   await expect(
