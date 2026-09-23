@@ -1964,10 +1964,22 @@ void main() {
         await pumpLive(tester);
         await pumpUntilFound(
           tester,
-          find.byType(ListTile),
+          find.text(ConnectFixtureServer.seedTenantName),
           timeout: const Duration(seconds: 20),
         );
-        expect(find.text(ConnectFixtureServer.seedTenantName), findsOneWidget);
+        // The shelves above the list fill a phone's screen, so the list is
+        // reached the way a reader reaches it.
+        await tester.scrollUntilVisible(
+          find.byType(ListTile).first,
+          300,
+          scrollable: find
+              .byWidgetPredicate(
+                (widget) =>
+                    widget is Scrollable &&
+                    widget.axisDirection == AxisDirection.down,
+              )
+              .first,
+        );
         expect(find.byKey(const ValueKey('catalog-error')), findsNothing);
       });
     });
