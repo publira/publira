@@ -64,6 +64,33 @@ message GetTenantResponse {
   TenantLegalPage privacy_page = 17;
 }
 
+message GetTenantMobileAppAssociationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// The Android app the tenant's links open in, as assetlinks.json names it.
+message TenantAndroidAppAssociation {
+  string application_id = 1;
+  // Colon-separated hex in capital letters (AA:BB:...), one per signing
+  // certificate. Never empty.
+  repeated string sha256_cert_fingerprints = 2;
+}
+
+// The iOS app the tenant's links open in, which apple-app-site-association
+// names as <team_id>.<bundle_identifier>.
+message TenantIosAppAssociation {
+  string team_id = 1;
+  string bundle_identifier = 2;
+}
+
+// A platform is absent where the tenant has no app on it, and nothing stands
+// in for it.
+message GetTenantMobileAppAssociationResponse {
+  TenantAndroidAppAssociation android = 1;
+  TenantIosAppAssociation ios = 2;
+}
+
 service TenantService {
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+  rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
 }
