@@ -84,11 +84,12 @@ var publicDataTables = []struct {
 	// difference between the catalog counting the tenant's free episodes and
 	// counting everyone's.
 	{name: "published_free_episodes", count: "SELECT count(*) FROM published_free_episodes"},
-	// The surface views every catalog read filters through. Like the one above,
+	// The surface views the catalog reads filter through. Like the one above,
 	// they are views, and answer with their owner's rights unless declared
 	// security_invoker.
 	{name: "series_surfaces", count: "SELECT count(*) FROM series_surfaces"},
 	{name: "episode_surfaces", count: "SELECT count(*) FROM episode_surfaces"},
+	{name: "label_surfaces", count: "SELECT count(*) FROM label_surfaces"},
 	// Where an episode may be bought, which the episode reads and the checkout
 	// take from the tenant, the series, and the episode together.
 	{name: "episode_purchase_availability", count: "SELECT count(*) FROM episode_purchase_availability"},

@@ -274,6 +274,12 @@ FROM labels l
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
 WHERE l.tenant_id = $2
     AND l.public_id = $3
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = l.id
+            AND ls.surface = $1::text
+    )
 LIMIT 1
 `
 
@@ -292,9 +298,11 @@ type GetPublishedLabelByPublicIDRow struct {
 	PublishedSeriesCount   int32         `json:"published_series_count"`
 }
 
-// Returns a label of the tenant. The row comes back even when the label has
-// no published series, because a label has no unpublished state of its own. A
-// label that does not exist, or one of another tenant, returns no row.
+// Returns a label of the tenant that label_surfaces puts on the surface. The
+// row comes back even when the label has no published series, because a label
+// has no unpublished state of its own. A label that does not exist, one of
+// another tenant, and one whose published series are all kept off the surface
+// return no row.
 func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, GetPublishedLabelByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
 	var i GetPublishedLabelByPublicIDRow
@@ -490,11 +498,9 @@ type ListLabelsByTenantDescRow struct {
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
-// Admin ListLabels and the public ListPublishedLabels are both
-// (created_at, id) DESC. The order and the columns are the same, so one pair
-// of queries serves both. Forward uses the DESC query; backward uses ASC so
-// the index can be scanned in reverse. The handler flips ASC rows back into
-// display order.
+// Admin ListLabels is (created_at, id) DESC. Forward uses the DESC query;
+// backward uses ASC so the index can be scanned in reverse. The handler flips
+// ASC rows back into display order.
 // cursor rules: proto/README.md.
 func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListLabelsByTenantDesc,
@@ -514,6 +520,93 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPublishedLabelsAsc = `-- name: ListPublishedLabelsAsc :many
+SELECT labels.id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = labels.id
+            AND ls.surface = $2::text
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (labels.created_at, labels.id) >= ($5::timestamptz, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (labels.created_at, labels.id) > ($5::timestamptz, $3::uuid)
+        )
+    )
+ORDER BY labels.created_at ASC, labels.id ASC
+LIMIT $6
+`
+
+type ListPublishedLabelsAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	Surface         string        `json:"surface"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListPublishedLabelsAscRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+// The backward direction of ListPublishedLabelsDesc.
+func (q *Queries) ListPublishedLabelsAsc(ctx context.Context, arg ListPublishedLabelsAscParams) ([]ListPublishedLabelsAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsAsc,
+		arg.TenantID,
+		arg.Surface,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedLabelsAscRow
+	for rows.Next() {
+		var i ListPublishedLabelsAscRow
+		if err := rows.Scan(
+			&i.ID,
 			&i.PublicID,
 			&i.Name,
 			&i.CreatedAt,
@@ -599,7 +692,7 @@ type ListPublishedLabelsBySearchNameAscRow struct {
 }
 
 // SearchPublishedLabels orders by name instead of creation, so it takes its
-// own pair of queries rather than the ListLabelsByTenant* pair above. It is
+// own pair of queries rather than the ListPublishedLabels* pair above. It is
 // one stage: a label row is a name and its eye catch, so there is nothing
 // heavy to defer to a second query the way the creator search does.
 // Unlike GetPublishedLabelDetail, which answers for a label whose last series
@@ -734,6 +827,95 @@ func (q *Queries) ListPublishedLabelsBySearchNameDesc(ctx context.Context, arg L
 			&i.ID,
 			&i.PublicID,
 			&i.Name,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPublishedLabelsDesc = `-- name: ListPublishedLabelsDesc :many
+SELECT labels.id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM label_surfaces ls
+        WHERE ls.label_id = labels.id
+            AND ls.surface = $2::text
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (labels.created_at, labels.id) <= ($5::timestamptz, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (labels.created_at, labels.id) < ($5::timestamptz, $3::uuid)
+        )
+    )
+ORDER BY labels.created_at DESC, labels.id DESC
+LIMIT $6
+`
+
+type ListPublishedLabelsDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	Surface         string        `json:"surface"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListPublishedLabelsDescRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+// The public ListPublishedLabels keeps the order of the admin pair above and
+// adds the calling surface, which the console does not have.
+// cursor rules: proto/README.md.
+func (q *Queries) ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedLabelsDesc,
+		arg.TenantID,
+		arg.Surface,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedLabelsDescRow
+	for rows.Next() {
+		var i ListPublishedLabelsDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.CreatedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
 		); err != nil {

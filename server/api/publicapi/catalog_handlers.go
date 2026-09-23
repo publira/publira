@@ -706,7 +706,7 @@ type labelPageRow struct {
 	createdAt time.Time
 }
 
-func labelPageFromDesc(row dbmodels.ListLabelsByTenantDescRow) labelPageRow {
+func labelPageFromDesc(row dbmodels.ListPublishedLabelsDescRow) labelPageRow {
 	return labelPageRow{
 		labelDisplay: labelDisplay{
 			publicID:               row.PublicID,
@@ -719,7 +719,7 @@ func labelPageFromDesc(row dbmodels.ListLabelsByTenantDescRow) labelPageRow {
 	}
 }
 
-func labelPageFromAsc(row dbmodels.ListLabelsByTenantAscRow) labelPageRow {
+func labelPageFromAsc(row dbmodels.ListPublishedLabelsAscRow) labelPageRow {
 	return labelPageRow{
 		labelDisplay: labelDisplay{
 			publicID:               row.PublicID,
@@ -778,14 +778,16 @@ func toLabelPage[T any](rows []T, convert func(T) labelPageRow) []labelPageRow {
 func (s *apiServer) labelPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
 ) ([]labelPageRow, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
-		rows, err := queries.ListLabelsByTenantAsc(ctx, dbmodels.ListLabelsByTenantAscParams{
+		rows, err := queries.ListPublishedLabelsAsc(ctx, dbmodels.ListPublishedLabelsAscParams{
 			TenantID:        tenantID,
+			Surface:         surface,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -798,8 +800,9 @@ func (s *apiServer) labelPage(
 		return toLabelPage(rows, labelPageFromAsc), nil
 	}
 
-	rows, err := queries.ListLabelsByTenantDesc(ctx, dbmodels.ListLabelsByTenantDescParams{
+	rows, err := queries.ListPublishedLabelsDesc(ctx, dbmodels.ListPublishedLabelsDescParams{
 		TenantID:        tenantID,
+		Surface:         surface,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -820,9 +823,13 @@ func (s *apiServer) ListPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -834,7 +841,7 @@ func (s *apiServer) ListPublishedLabels(
 		}
 	}
 
-	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.labelPage(ctx, tenant.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published labels", err, "tenant_id", tenant.ID.String())
 	}
@@ -870,6 +877,7 @@ func (s *apiServer) ListPublishedLabels(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
 	return connect.NewResponse(res), nil
 }

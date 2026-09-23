@@ -383,6 +383,12 @@ type LabelImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type LabelSurface struct {
+	LabelID  uuid.UUID `json:"label_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Surface  string    `json:"surface"`
+}
+
 type Notification struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`

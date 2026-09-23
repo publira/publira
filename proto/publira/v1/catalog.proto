@@ -17,6 +17,8 @@ message ListPublishedLabelsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message ListPublishedLabelsResponse {
@@ -613,6 +615,9 @@ message ListRelatedSeriesResponse {
 }
 
 service CatalogService {
+  // Every label of the tenant, including one with no published series, so a
+  // label's URL keeps working after its last series is taken down. A label
+  // whose published series are all kept off the calling surface is left out.
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
   rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
@@ -636,7 +641,8 @@ service CatalogService {
   rpc GetPublishedCreatorDetail(GetPublishedCreatorDetailRequest) returns (GetPublishedCreatorDetailResponse) {}
   // Returns a label that belongs to the requested tenant. Cross-tenant and
   // missing labels are surfaced as NotFound so a foreign label cannot be
-  // distinguished from one that does not exist.
+  // distinguished from one that does not exist. A label ListPublishedLabels
+  // leaves out for the calling surface is NotFound there too.
   rpc GetPublishedLabelDetail(GetPublishedLabelDetailRequest) returns (GetPublishedLabelDetailResponse) {}
   // The tenant's genres, in the order the console put them in, each with how
   // many of its series are published right now.
