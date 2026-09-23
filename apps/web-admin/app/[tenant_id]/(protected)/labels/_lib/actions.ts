@@ -25,9 +25,14 @@ import {
   uploadLabelEyeCatchAspectImage,
 } from "#lib/label";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 import { seriesListCacheTag } from "#lib/series";
 
-import type { LabelActionState, LabelMutationMode } from "../label-types";
+import type {
+  LabelActionState,
+  LabelListItem,
+  LabelMutationMode,
+} from "../label-types";
 
 const labelCommonSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -58,10 +63,12 @@ const labelFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
+type LabelActionFailure = Extract<LabelActionState, { ok: false }>;
+
 const toFailure = (
   message: string,
   mode: LabelMutationMode
-): LabelActionState => ({
+): LabelActionFailure => ({
   message,
   mode,
   ok: false,
@@ -118,10 +125,17 @@ export const createLabelAction = async (
   redirect(`/labels/${result.label.publicId}?created=1`);
 };
 
-export const updateLabelAction = async (
-  _prevState: LabelActionState,
+/**
+ * Saves the label the edit screen submitted. The name form and the eye-catch
+ * form both post every field, so they share this and differ only in the
+ * confirmation each gives.
+ */
+const saveLabel = async (
   formData: FormData
-): Promise<LabelActionState> => {
+): Promise<
+  | LabelActionFailure
+  | { label: LabelListItem; ok: true; t: AdminMessageAccessor }
+> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
@@ -197,9 +211,38 @@ export const updateLabelAction = async (
   // `/series` names each row's label, so a rename has to reach that list too.
   updateTag(seriesListCacheTag(tenantId));
 
+  return { label: result.label, ok: true, t };
+};
+
+export const updateLabelAction = async (
+  _prevState: LabelActionState,
+  formData: FormData
+): Promise<LabelActionState> => {
+  const saved = await saveLabel(formData);
+  if (!saved.ok) {
+    return saved;
+  }
+
   return {
-    label: result.label,
-    message: t("admin.labels.updated"),
+    label: saved.label,
+    message: saved.t("admin.labels.updated"),
+    mode: "update",
+    ok: true,
+  };
+};
+
+export const updateLabelEyeCatchAction = async (
+  _prevState: LabelActionState,
+  formData: FormData
+): Promise<LabelActionState> => {
+  const saved = await saveLabel(formData);
+  if (!saved.ok) {
+    return saved;
+  }
+
+  return {
+    label: saved.label,
+    message: saved.t("admin.labels.eye_catch_updated"),
     mode: "update",
     ok: true,
   };

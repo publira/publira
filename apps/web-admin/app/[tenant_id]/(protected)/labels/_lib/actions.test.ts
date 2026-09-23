@@ -80,6 +80,40 @@ describe("label actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
   });
 
+  it("a saved rename confirms the label was updated", async () => {
+    mockUpdateLabel.mockResolvedValueOnce({
+      label: {
+        eyeCatchImageUpdatedAt: "",
+        eyeCatchImageVariants: [],
+        name: "Renamed label",
+        publicId: "LABEL001",
+      },
+      ok: true,
+    });
+
+    const { updateLabelAction } = await import("./actions");
+    const result = await updateLabelAction(null, renameFormData());
+
+    expect(result?.message).toBe("Label updated.");
+  });
+
+  it("a saved eye-catch confirms the cover image was updated", async () => {
+    mockUpdateLabel.mockResolvedValueOnce({
+      label: {
+        eyeCatchImageUpdatedAt: "2026-09-23T00:00:00Z",
+        eyeCatchImageVariants: [],
+        name: "Renamed label",
+        publicId: "LABEL001",
+      },
+      ok: true,
+    });
+
+    const { updateLabelEyeCatchAction } = await import("./actions");
+    const result = await updateLabelEyeCatchAction(null, renameFormData());
+
+    expect(result?.message).toBe("Cover image updated.");
+  });
+
   it("a rejected rename clears no cache", async () => {
     mockUpdateLabel.mockResolvedValueOnce({
       message: "The label could not be updated.",

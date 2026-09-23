@@ -43,6 +43,7 @@ import { LabelForm } from "../_components/label-form";
 import { LabelTabNav } from "../_components/label-tab-nav";
 import {
   updateLabelAction,
+  updateLabelEyeCatchAction,
   uploadLabelEyeCatchAspectImageAction,
 } from "../_lib/actions";
 
@@ -178,7 +179,7 @@ const EditLabelFormData = async ({
       // label remounts it rather than leaving that state behind.
       <div className="grid gap-6" key={result.label.publicId}>
         <LabelEyeCatchForm
-          action={updateLabelAction}
+          action={updateLabelEyeCatchAction}
           initialLabel={result.label}
         />
         <EyeCatchAspectImages
