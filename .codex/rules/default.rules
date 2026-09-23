@@ -9,13 +9,22 @@ prefix_rule(
         "pnpm typecheck",
         "pnpm typegen",
         "pnpm test",
-        "pnpm test --filter web-admin",
     ],
     not_match = [
         "pnpm fix",
         "pnpm install",
         "pnpm dev",
     ],
+)
+
+# `pnpm test` parses `--filter` itself and skips Turborepo, so one package's
+# tests run as `pnpm run test --filter <package>`.
+prefix_rule(
+    pattern = ["pnpm", "run", "test"],
+    decision = "allow",
+    justification = "Allow running one package's tests through Turborepo.",
+    match = ["pnpm run test --filter @publira/web-admin"],
+    not_match = ["pnpm run dev"],
 )
 
 # Formatting is intentionally separate because it modifies workspace files.
