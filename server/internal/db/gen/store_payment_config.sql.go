@@ -57,6 +57,57 @@ func (q *Queries) GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenan
 	return i, err
 }
 
+const ListTenantStoreProductPrices = `-- name: ListTenantStoreProductPrices :many
+SELECT el.price,
+    COUNT(*)::integer AS episode_count
+FROM episodes e
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND el.price > 0
+    AND epa.purchase_availability IN ('all', 'app')
+    -- The app cannot sell an episode it does not show.
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = 'app'
+    )
+GROUP BY el.price
+ORDER BY el.price
+`
+
+type ListTenantStoreProductPricesRow struct {
+	Price        int32 `json:"price"`
+	EpisodeCount int32 `json:"episode_count"`
+}
+
+// The prices a tenant's app sells episodes at, so each one has a store product.
+// Drafts and scheduled episodes count: their product has to exist before they
+// go on sale.
+func (q *Queries) ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantStoreProductPrices, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantStoreProductPricesRow
+	for rows.Next() {
+		var i ListTenantStoreProductPricesRow
+		if err := rows.Scan(&i.Price, &i.EpisodeCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const UpsertTenantAppStoreConfig = `-- name: UpsertTenantAppStoreConfig :one
 INSERT INTO tenant_app_store_config (
         tenant_id,

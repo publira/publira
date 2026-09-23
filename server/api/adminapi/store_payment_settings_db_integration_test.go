@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -19,6 +20,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -160,6 +162,68 @@ func TestDBStorePaymentSettingsRequireTenantAdmin(t *testing.T) {
 		AppPurchaseRoute: routeExternalCheckout,
 	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("update: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	}
+	if _, err := env.paymentClient().ListTenantStoreProducts(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.ListTenantStoreProductsRequest{
+		Tenant: tenant.tenantContext(),
+	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("list products: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+func listDBStoreProducts(t *testing.T, env *adminDBEnv, tenant adminDBTenant) []*publiraadminv1.TenantStoreProduct {
+	t.Helper()
+	resp, err := env.paymentClient().ListTenantStoreProducts(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListTenantStoreProductsRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListTenantStoreProducts: %v", err)
+	}
+	return resp.Msg.Products
+}
+
+// One product per distinct price of a paid episode the app may show and sell,
+// whatever the episode's publication status, and none from another tenant.
+func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
+
+	if got := listDBStoreProducts(t, env, tenant); len(got) != 0 {
+		t.Fatalf("products without episodes = %v, want none", got)
+	}
+
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
+	for _, seed := range []testutil.EpisodeSeed{
+		{PublicID: "EPFREE01", Title: "Free", Price: 0, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EP300A01", Title: "Published 300", Price: 300, Status: testutil.EpisodeStatusPublished},
+		{PublicID: "EP300B01", Title: "Draft 300", Price: 300},
+		{PublicID: "EP500A01", Title: "Scheduled 500", Price: 500, Status: testutil.EpisodeStatusScheduled, ScheduledAt: time.Now().Add(24 * time.Hour)},
+		{PublicID: "EP100A01", Title: "App only 100", Price: 100, Status: testutil.EpisodeStatusPublished, PurchaseAvailability: "app"},
+		{PublicID: "EP700A01", Title: "Web sale only", Price: 700, Status: testutil.EpisodeStatusPublished, PurchaseAvailability: "web"},
+		{PublicID: "EP900A01", Title: "Web shown only", Price: 900, Status: testutil.EpisodeStatusPublished, Availability: "web"},
+	} {
+		env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, seed)
+	}
+	otherSeries := env.PG.SeedSeries(t, other.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESB1", Title: "Series B"})
+	env.PG.SeedEpisode(t, other.Tenant.ID, otherSeries.ID, testutil.EpisodeSeed{PublicID: "EP200B01", Title: "Other tenant", Price: 200, Status: testutil.EpisodeStatusPublished})
+
+	got := listDBStoreProducts(t, env, tenant)
+	want := []struct {
+		productID string
+		price     int32
+		count     int32
+	}{
+		{productID: "episode_100", price: 100, count: 1},
+		{productID: "episode_300", price: 300, count: 2},
+		{productID: "episode_500", price: 500, count: 1},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("products = %v, want %v", got, want)
+	}
+	for i, w := range want {
+		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count {
+			t.Fatalf("products[%d] = %v, want %+v", i, got[i], w)
+		}
 	}
 }
 

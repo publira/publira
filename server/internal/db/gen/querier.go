@@ -1570,6 +1570,10 @@ type Querier interface {
 	// rather than working around: sending to an account that cannot sign in would
 	// announce a message to somebody who cannot read it.
 	ListTenantStaffContactRecipients(ctx context.Context, tenantID uuid.UUID) ([]string, error)
+	// The prices a tenant's app sells episodes at, so each one has a store product.
+	// Drafts and scheduled episodes count: their product has to exist before they
+	// go on sale.
+	ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error)
 	// Worker fan-out: everyone an announcement addressed to the whole tenant
 	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
 	// row to — every user the tenant owns — so the bell counts what the

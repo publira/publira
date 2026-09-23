@@ -62,3 +62,25 @@ SET enabled = EXCLUDED.enabled,
     service_account_key_hint = EXCLUDED.service_account_key_hint,
     updated_at = NOW()
 RETURNING *;
+
+-- name: ListTenantStoreProductPrices :many
+-- The prices a tenant's app sells episodes at, so each one has a store product.
+-- Drafts and scheduled episodes count: their product has to exist before they
+-- go on sale.
+SELECT el.price,
+    COUNT(*)::integer AS episode_count
+FROM episodes e
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND el.price > 0
+    AND epa.purchase_availability IN ('all', 'app')
+    -- The app cannot sell an episode it does not show.
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = 'app'
+    )
+GROUP BY el.price
+ORDER BY el.price;
