@@ -34,7 +34,7 @@ const SESSION = { headers: { Authorization: "Bearer session-token" } };
 
 const download = (overrides?: { period?: string; tenantId?: string }) =>
   GET(
-    new Request("https://admin.example.test/api/royalties/statements/x/csv"),
+    new Request("https://admin.example.test/api/v1/royalties/statements/x/csv"),
     {
       params: Promise.resolve({
         period: overrides?.period ?? "2026-08",
@@ -43,7 +43,7 @@ const download = (overrides?: { period?: string; tenantId?: string }) =>
     }
   );
 
-describe("GET /api/royalties/statements/[period]/csv", () => {
+describe("GET /api/v1/royalties/statements/[period]/csv", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAccessToken.mockResolvedValue("session-token");

@@ -122,7 +122,7 @@ test.describe("royalties", () => {
       })
     ).toHaveAttribute(
       "href",
-      `/api/royalties/statements/${ROYALTIES_SALES.period}/csv`
+      `/api/v1/royalties/statements/${ROYALTIES_SALES.period}/csv`
     );
   });
 
