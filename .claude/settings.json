@@ -11,6 +11,7 @@
       "Bash(pnpm typegen *)",
       "Bash(pnpm test)",
       "Bash(pnpm test *)",
+      "Bash(pnpm run test *)",
       "Bash(pnpm fix)"
     ]
   }

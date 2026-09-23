@@ -136,7 +136,7 @@ Adding a locale or a key is described under "Adding a key" and "Adding a locale"
 pnpm locales:check   # every leaf is a valid simple message
 pnpm locales:generate # regenerate src/__generated__/
 
-pnpm test --filter @publira/i18n
+pnpm run test --filter @publira/i18n
 pnpm typecheck --filter @publira/i18n # the ExactCatalog checks run here
 pnpm build --filter @publira/i18n
 ```
