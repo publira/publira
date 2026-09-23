@@ -589,6 +589,9 @@ task mobile:e2e
 
 # When the API and device are already available
 task mobile:test-integration
+
+# The address and port forwarding each kind of device is given (no device)
+task mobile:test-device-ports
 ```
 
 On failure, logcat and screenshots are left in `mobile/.run/artifacts/`. CI's `Test / Mobile E2E` starts the server and the development seeds, then runs `PUBLIRA_LIVE_API=true task mobile:test-integration` on an Android emulator and uploads the `mobile-e2e-artifacts` artifact on failure. The server's image routes matter here because every seeded episode carries a body, so the live group's reader fetches pages as soon as it opens one.

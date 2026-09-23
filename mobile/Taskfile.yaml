@@ -63,6 +63,11 @@ tasks:
     cmds:
       - flutter test
 
+  test-device-ports:
+    desc: Check the address and port forwarding test-integration gives each kind of device, with adb and flutter stubbed (no device)
+    cmds:
+      - bash scripts/device-ports_test.sh
+
   test-integration:
     desc: Run Flutter integration tests (requires a device or emulator)
     cmds:
