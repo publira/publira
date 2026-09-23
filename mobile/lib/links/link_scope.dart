@@ -3,20 +3,26 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/app_link.dart';
+import 'package:publira/links/external_browser.dart';
 import 'package:publira/links/share_sheet.dart';
 import 'package:publira/models/series_item.dart';
 
-/// The tenant site and the share sheet this run can use.
+/// The tenant site, the share sheet, and the browser this run can use.
 class LinkScope extends InheritedWidget {
   const LinkScope({
     super.key,
     required this.site,
     required this.share,
+    this.browser,
     required super.child,
   });
 
   final PublicSite site;
   final ShareSheet? share;
+
+  /// Where a page on another site opens, absent in a widget test that does
+  /// not follow one.
+  final ExternalBrowser? browser;
 
   static LinkScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<LinkScope>();
@@ -24,7 +30,9 @@ class LinkScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(LinkScope oldWidget) {
-    return site != oldWidget.site || share != oldWidget.share;
+    return site != oldWidget.site ||
+        share != oldWidget.share ||
+        browser != oldWidget.browser;
   }
 }
 

@@ -3242,6 +3242,7 @@
       "list_start": "{$first}、{$rest}",
       "list_two": "{$first}、{$rest}",
       "more_series_failed": "シリーズの続きを表示できませんでした。もう一度お試しください。",
+      "open_link_failed": "遷移先を開けませんでした。",
       "retry": "再試行",
       "series_count": "公開中シリーズ {$count} 件",
       "sign_in": "サインイン"
@@ -3376,6 +3377,11 @@
       "message": "「{$uri}」は存在しません。",
       "title": "ページが見つかりません"
     },
+    "pages": {
+      "body_empty": "本文はまだありません。",
+      "load_failed": "このページを表示できませんでした。もう一度お試しください。",
+      "not_found": "このページは表示できなくなりました。"
+    },
     "notifications": {
       "announcement_posted_description": "運営から「{$title}」が届きました。",
       "announcement_posted_description_unknown": "運営から新しいお知らせが届きました。",
@@ -3419,7 +3425,6 @@
       "mark_all_read": "すべて既読にする",
       "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
       "open_link": "遷移先を開く",
-      "open_link_failed": "遷移先を開けませんでした。",
       "banner_link": "お知らせを読む",
       "banner_dismiss": "このお知らせを閉じる"
     },

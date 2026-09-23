@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:publira/links/external_browser.dart';
 import 'package:publira/links/incoming_links.dart';
 import 'package:publira/links/share_sheet.dart';
 
@@ -49,5 +50,20 @@ class FakeShareSheet implements ShareSheet {
     this.url = url;
     this.title = title;
     this.text = text;
+  }
+}
+
+/// A browser a test reads, so a link handed off can be asserted without
+/// leaving the app.
+class FakeExternalBrowser implements ExternalBrowser {
+  final opened = <Uri>[];
+
+  /// What [open] answers, standing in for a device with nothing to take it.
+  var succeeds = true;
+
+  @override
+  Future<bool> open(Uri url) async {
+    opened.add(url);
+    return succeeds;
   }
 }

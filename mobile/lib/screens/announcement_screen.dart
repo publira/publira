@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/announcement_failure.dart';
-import 'package:publira/announcements/announcement_link.dart';
-import 'package:publira/announcements/follow_announcement_link.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/links/follow_tenant_link.dart';
+import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/announcement.dart';
 
 /// One announcement: its title, when it was posted, its body, and the link
@@ -143,7 +143,7 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
     }
     final theme = Theme.of(context);
     final createdAt = announcement.createdAt;
-    final destination = announcementDestinationFrom(
+    final destination = tenantLinkDestinationFrom(
       context,
       announcement.linkUrl,
     );
@@ -170,13 +170,12 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
             child: FilledButton.icon(
               key: const ValueKey('announcement-open-link'),
               icon: Icon(
-                destination is ExternalAnnouncementDestination
+                destination is ExternalDestination
                     ? Icons.open_in_new
                     : Icons.arrow_forward,
               ),
               label: Text(messages.announcementsOpenLink),
-              onPressed: () =>
-                  followAnnouncementDestination(context, destination),
+              onPressed: () => followTenantLink(context, destination),
             ),
           ),
         ],

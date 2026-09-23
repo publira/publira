@@ -10,11 +10,14 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/announcement.dart';
+import 'package:publira/pages/published_page.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_announcement_repository.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_links.dart';
+import 'support/fake_page_repository.dart';
 import 'support/pump_until.dart';
 import 'support/tap.dart';
 
@@ -45,8 +48,8 @@ void main() {
   late GoRouter router;
   late FakeAnnouncementRepository repository;
   late MemoryDismissedAnnouncementStore dismissed;
-  late List<Uri> launched;
-  late bool launchSucceeds;
+  late FakeExternalBrowser browser;
+  late FakePageRepository pages;
 
   setUp(() {
     repository = FakeAnnouncementRepository(
@@ -58,8 +61,16 @@ void main() {
       pinnedId: 'a-1',
     );
     dismissed = MemoryDismissedAnnouncementStore();
-    launched = [];
-    launchSucceeds = true;
+    browser = FakeExternalBrowser();
+    pages = FakePageRepository(
+      pages: const [
+        PublishedPage(
+          slug: '/privacy',
+          title: 'Privacy policy',
+          contentMarkdown: 'How we keep your data.',
+        ),
+      ],
+    );
     clock = now;
   });
 
@@ -82,12 +93,10 @@ void main() {
           repository: repository,
           dismissed: dismissed,
           now: () => clock,
-          launch: (url) async {
-            launched.add(url);
-            return launchSucceeds;
-          },
         ),
+        pages: pages,
         site: const PublicSite(host: 'shop.example'),
+        browser: browser,
       ),
     );
     await tester.pump();
@@ -494,7 +503,34 @@ void main() {
       await tester.pump();
 
       expect(router.state.uri.path, AppRoutes.seriesDetailPath(seriesId));
-      expect(launched, isEmpty);
+      expect(browser.opened, isEmpty);
+    });
+
+    testWidgets('opens a link to a published page in the app', (tester) async {
+      repository = FakeAnnouncementRepository(
+        announcements: [announcement('a-9', linkUrl: '/en/privacy')],
+      );
+      await openDetail(tester, 'a-9');
+
+      await tester.tap(find.byKey(const ValueKey('announcement-open-link')));
+      await pumpUntilFound(tester, find.text('How we keep your data.'));
+
+      expect(router.state.uri.path, AppRoutes.publishedPagePath('/privacy'));
+      expect(browser.opened, isEmpty);
+    });
+
+    testWidgets('hands a site path that is no page to the tenant site', (
+      tester,
+    ) async {
+      repository = FakeAnnouncementRepository(
+        announcements: [announcement('a-9', linkUrl: '/about')],
+      );
+      await openDetail(tester, 'a-9');
+
+      await tester.tap(find.byKey(const ValueKey('announcement-open-link')));
+      await pumpUntilTrue(tester, () => browser.opened.isNotEmpty);
+
+      expect(browser.opened, [Uri.parse('https://shop.example/about')]);
     });
 
     testWidgets('hands a link to another site to the browser', (tester) async {
@@ -503,11 +539,11 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('announcement-open-link')));
       await tester.pump();
 
-      expect(launched, [Uri.parse('https://elsewhere.example/news')]);
+      expect(browser.opened, [Uri.parse('https://elsewhere.example/news')]);
     });
 
     testWidgets('says so when nothing takes the link', (tester) async {
-      launchSucceeds = false;
+      browser.succeeds = false;
       await openDetail(tester, 'a-2');
 
       await tester.tap(find.byKey(const ValueKey('announcement-open-link')));

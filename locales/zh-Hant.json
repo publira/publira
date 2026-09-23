@@ -3242,6 +3242,7 @@
       "list_start": "{$first}、{$rest}",
       "list_two": "{$first}和{$rest}",
       "more_series_failed": "無法顯示更多系列。請重試。",
+      "open_link_failed": "無法開啟連結。",
       "retry": "重試",
       "series_count": "已發布 {$count} 部系列",
       "sign_in": "登入"
@@ -3376,6 +3377,11 @@
       "message": "「{$uri}」不存在。",
       "title": "找不到頁面"
     },
+    "pages": {
+      "body_empty": "此頁面還沒有內容。",
+      "load_failed": "無法顯示該頁面。請重試。",
+      "not_found": "該頁面已無法查看。"
+    },
     "notifications": {
       "announcement_posted_description": "營運方發布了《{$title}》。",
       "announcement_posted_description_unknown": "營運方發布了新公告。",
@@ -3419,7 +3425,6 @@
       "mark_all_read": "全部標示為已讀",
       "mark_all_read_failed": "無法將全部標示為已讀。請稍後再試。",
       "open_link": "開啟連結",
-      "open_link_failed": "無法開啟連結。",
       "banner_link": "閱讀公告",
       "banner_dismiss": "關閉該公告"
     },

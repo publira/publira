@@ -238,9 +238,6 @@ abstract class AppMessages {
   /// `mobile.announcements.open_link`
   String get announcementsOpenLink;
 
-  /// `mobile.announcements.open_link_failed`
-  String get announcementsOpenLinkFailed;
-
   /// `mobile.announcements.title`
   String get announcementsTitle;
 
@@ -522,6 +519,9 @@ abstract class AppMessages {
 
   /// `mobile.common.more_series_failed`
   String get commonMoreSeriesFailed;
+
+  /// `mobile.common.open_link_failed`
+  String get commonOpenLinkFailed;
 
   /// `mobile.common.retry`
   String get commonRetry;
@@ -923,6 +923,15 @@ abstract class AppMessages {
 
   /// `mobile.notifications.unread_count`
   String notificationsUnreadCount({required String count});
+
+  /// `mobile.pages.body_empty`
+  String get pagesBodyEmpty;
+
+  /// `mobile.pages.load_failed`
+  String get pagesLoadFailed;
+
+  /// `mobile.pages.not_found`
+  String get pagesNotFound;
 
   /// `mobile.purchase.buy`
   String purchaseBuy({required String price});
@@ -1554,11 +1563,6 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
-  String get announcementsOpenLinkFailed {
-    return '遷移先を開けませんでした。';
-  }
-
-  @override
   String get announcementsTitle {
     return 'お知らせ';
   }
@@ -2026,6 +2030,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get commonMoreSeriesFailed {
     return 'シリーズの続きを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get commonOpenLinkFailed {
+    return '遷移先を開けませんでした。';
   }
 
   @override
@@ -2691,6 +2700,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String notificationsUnreadCount({required String count}) {
     return '未読 $count 件';
+  }
+
+  @override
+  String get pagesBodyEmpty {
+    return '本文はまだありません。';
+  }
+
+  @override
+  String get pagesLoadFailed {
+    return 'このページを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get pagesNotFound {
+    return 'このページは表示できなくなりました。';
   }
 
   @override
@@ -3567,11 +3591,6 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
-  String get announcementsOpenLinkFailed {
-    return 'Could not open the link.';
-  }
-
-  @override
   String get announcementsTitle {
     return 'Announcements';
   }
@@ -4039,6 +4058,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get commonMoreSeriesFailed {
     return 'Could not show more series. Try again.';
+  }
+
+  @override
+  String get commonOpenLinkFailed {
+    return 'Could not open the link.';
   }
 
   @override
@@ -4704,6 +4728,21 @@ class _AppMessagesEn extends AppMessages {
   @override
   String notificationsUnreadCount({required String count}) {
     return '$count unread';
+  }
+
+  @override
+  String get pagesBodyEmpty {
+    return 'This page has no content yet.';
+  }
+
+  @override
+  String get pagesLoadFailed {
+    return 'Could not show this page. Try again.';
+  }
+
+  @override
+  String get pagesNotFound {
+    return 'This page is no longer available.';
   }
 
   @override
@@ -5580,11 +5619,6 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
-  String get announcementsOpenLinkFailed {
-    return '링크를 열 수 없습니다.';
-  }
-
-  @override
   String get announcementsTitle {
     return '공지사항';
   }
@@ -6052,6 +6086,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get commonMoreSeriesFailed {
     return '시리즈를 더 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get commonOpenLinkFailed {
+    return '링크를 열 수 없습니다.';
   }
 
   @override
@@ -6717,6 +6756,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String notificationsUnreadCount({required String count}) {
     return '읽지 않음 $count개';
+  }
+
+  @override
+  String get pagesBodyEmpty {
+    return '이 페이지에는 아직 내용이 없습니다.';
+  }
+
+  @override
+  String get pagesLoadFailed {
+    return '이 페이지를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get pagesNotFound {
+    return '이 페이지는 더 이상 볼 수 없습니다.';
   }
 
   @override
@@ -7593,11 +7647,6 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
-  String get announcementsOpenLinkFailed {
-    return '无法打开链接。';
-  }
-
-  @override
   String get announcementsTitle {
     return '公告';
   }
@@ -8065,6 +8114,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get commonMoreSeriesFailed {
     return '无法显示更多系列。请重试。';
+  }
+
+  @override
+  String get commonOpenLinkFailed {
+    return '无法打开链接。';
   }
 
   @override
@@ -8730,6 +8784,21 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String notificationsUnreadCount({required String count}) {
     return '$count 条未读';
+  }
+
+  @override
+  String get pagesBodyEmpty {
+    return '此页面还没有内容。';
+  }
+
+  @override
+  String get pagesLoadFailed {
+    return '无法显示该页面。请重试。';
+  }
+
+  @override
+  String get pagesNotFound {
+    return '该页面已无法查看。';
   }
 
   @override
@@ -9606,11 +9675,6 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
-  String get announcementsOpenLinkFailed {
-    return '無法開啟連結。';
-  }
-
-  @override
   String get announcementsTitle {
     return '公告';
   }
@@ -10078,6 +10142,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get commonMoreSeriesFailed {
     return '無法顯示更多系列。請重試。';
+  }
+
+  @override
+  String get commonOpenLinkFailed {
+    return '無法開啟連結。';
   }
 
   @override
@@ -10743,6 +10812,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String notificationsUnreadCount({required String count}) {
     return '$count 則未讀';
+  }
+
+  @override
+  String get pagesBodyEmpty {
+    return '此頁面還沒有內容。';
+  }
+
+  @override
+  String get pagesLoadFailed {
+    return '無法顯示該頁面。請重試。';
+  }
+
+  @override
+  String get pagesNotFound {
+    return '該頁面已無法查看。';
   }
 
   @override

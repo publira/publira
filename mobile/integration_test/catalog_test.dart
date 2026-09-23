@@ -1713,6 +1713,22 @@ void main() {
       });
     });
 
+    testApp('a published page is set from its Markdown', (tester) async {
+      await withFailureScreenshot(tester, 'live-published-page', () async {
+        // `db/seeds/dev/040_pages.sql` publishes the privacy policy.
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.publishedPagePath('/privacy'),
+        );
+        await pumpUntilFound(
+          tester,
+          find.text('What we collect'),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.text('Privacy policy'), findsOneWidget);
+      });
+    });
+
     testApp('the seed tenant chart reaches the catalog', (tester) async {
       await withFailureScreenshot(tester, 'live-ranking', () async {
         await pumpLive(tester);

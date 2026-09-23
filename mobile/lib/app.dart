@@ -25,6 +25,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/l10n/localizations.dart';
 import 'package:publira/links/app_link.dart';
+import 'package:publira/links/external_browser.dart';
 import 'package:publira/links/incoming_links.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/links/share_sheet.dart';
@@ -36,6 +37,8 @@ import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/pages/http_page_repository.dart';
+import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -50,7 +53,6 @@ import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -66,6 +68,7 @@ class PubliraApp extends StatefulWidget {
     this.notifications,
     this.announcements,
     this.contact,
+    this.pages,
     this.purchases,
     this.checkoutLauncher,
     this.offline,
@@ -76,6 +79,7 @@ class PubliraApp extends StatefulWidget {
     this.site,
     this.incomingLinks,
     this.share,
+    this.browser,
     this.tenantBrand,
   });
 
@@ -113,6 +117,7 @@ class PubliraApp extends StatefulWidget {
         const FileAgeRatingConfirmationStore(),
     IncomingLinks? incomingLinks,
     ShareSheet? share,
+    ExternalBrowser browser = const PluginExternalBrowser(),
     CheckoutLauncher? checkoutLauncher,
     DismissedAnnouncementStore dismissedAnnouncements =
         const FileDismissedAnnouncementStore(),
@@ -166,11 +171,9 @@ class PubliraApp extends StatefulWidget {
           tenants: tenants,
         ),
         dismissed: dismissedAnnouncements,
-        // The system browser, as a checkout page is opened: a page the app
-        // has no screen for is the tenant's site or somewhere else entirely.
-        launch: (url) => launchUrl(url, mode: LaunchMode.externalApplication),
       ),
       contact: HttpContactRepository(client: client, tenants: tenants),
+      pages: HttpPageRepository(client: client, tenants: tenants),
       purchases: HttpPurchaseRepository(client: client, tenants: tenants),
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
       offline: library,
@@ -187,6 +190,7 @@ class PubliraApp extends StatefulWidget {
       site: PublicSite(host: resolved.tenantHost),
       incomingLinks: incomingLinks ?? PluginIncomingLinks(),
       share: share ?? const PluginShareSheet(),
+      browser: browser,
       tenantBrand: TenantBrandController(
         repository: HttpTenantBrandRepository(
           config: resolved,
@@ -239,6 +243,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// contact form, and no screen then leads to one.
   final ContactRepository? contact;
+
+  /// The tenant's published pages.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// pages, and no link then resolves to one.
+  final PageRepository? pages;
 
   /// Paid-episode checkout, and [checkoutLauncher] the page is opened with.
   ///
@@ -306,6 +317,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// share action, or to inject a sheet it can assert against.
   final ShareSheet? share;
+
+  /// The system browser a page on another site is handed to.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// browser, or to inject one it can assert against.
+  final ExternalBrowser? browser;
 
   /// The name, colours, and logo of the tenant the app was built for.
   ///
@@ -591,6 +609,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           defaultLocale: widget.tenantDefaultLocale?.value,
         ),
         share: widget.share,
+        browser: widget.browser,
         child: app,
       );
     }
@@ -615,12 +634,15 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                       board: widget.announcements,
                       child: ContactScope(
                         repository: widget.contact,
-                        child: PurchaseScope(
-                          repository: widget.purchases,
-                          launcher: widget.checkoutLauncher,
-                          child: AgeRatingConfirmationScope(
-                            controller: _ageRating,
-                            child: app,
+                        child: PageScope(
+                          repository: widget.pages,
+                          child: PurchaseScope(
+                            repository: widget.purchases,
+                            launcher: widget.checkoutLauncher,
+                            child: AgeRatingConfirmationScope(
+                              controller: _ageRating,
+                              child: app,
+                            ),
                           ),
                         ),
                       ),

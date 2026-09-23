@@ -22,6 +22,7 @@ import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
+import 'package:publira/screens/published_page_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/reset_password_screen.dart';
 import 'package:publira/screens/search_screen.dart';
@@ -79,6 +80,15 @@ abstract final class AppRoutes {
 
   static String announcementPath(String announcementId) =>
       '$announcements/${Uri.encodeComponent(announcementId)}';
+
+  /// A page the tenant published, which the site serves at its slug and this
+  /// app keeps under one prefix of its own, so no slug can shadow a screen.
+  static const publishedPage = 'page/:pageSlug';
+
+  /// The page published at [slug], in storage form (`/legal/terms`). The slug
+  /// is one encoded segment, since go_router matches no more than one.
+  static String publishedPagePath(String slug) =>
+      '/page/${Uri.encodeComponent(slug.startsWith('/') ? slug.substring(1) : slug)}';
 
   /// The resend form, with [email] already in its field for a reader sent
   /// from a form that knows the address.
@@ -176,6 +186,11 @@ List<RouteBase> _tabRoutes() => [
         ),
       ),
     ],
+  ),
+  GoRoute(
+    path: AppRoutes.publishedPage,
+    builder: (context, state) =>
+        PublishedPageScreen(slug: '/${state.pathParameters['pageSlug']!}'),
   ),
   GoRoute(
     path: AppRoutes.creatorDetail,
