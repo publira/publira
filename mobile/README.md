@@ -276,6 +276,7 @@ mobile/
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
+│   ├── content_views/            # ContentViewRepository: the views the tenant's rankings and content statistics count
 │   ├── crypto/                   # HMAC-SHA256 keystream shared by delivery and storage
 │   ├── follow/                   # FollowRepository and the control a series or an author is followed with
 │   ├── forms/                    # Input shapes the forms share, such as what an email address looks like
@@ -456,6 +457,14 @@ A reader follows a series, and each author credited on it, from the series scree
 - A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
 - The library's Follows tab lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
 - The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
+
+## Content views
+
+Opening a series screen or an episode records one view through `ContentViewService/RecordContentView` with `CLIENT_SURFACE_APP`, the same RPC the site's pages call, so an app reader counts toward the tenant's rankings and content statistics.
+
+- A view is recorded once the series or the episode is on screen: a screen still loading, a work the API does not show, a rating gate still standing, and a series screen stacked under an episode opened from a link record nothing. A locked episode is on screen, so it counts
+- A view is instrumentation. It is sent without holding up the screen, and one that fails is dropped rather than shown or retried
+- A signed-in reader is counted by their session. A signed-out one is counted by the `publira_aid` identifier the API mints, which `AnonymousIdStore` keeps in the app's private directory and sends back as the cookie, since the app has no cookie jar. The identifier is `Secure`, so an API reached over plain HTTP counts every signed-out view as a reader of its own
 
 ## Notification inbox
 

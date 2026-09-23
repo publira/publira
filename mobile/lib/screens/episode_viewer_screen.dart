@@ -12,6 +12,8 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
+import 'package:publira/content_views/content_view_recorder.dart';
+import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -408,7 +410,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
                   rating: open.detail.ageRating,
                   seriesTitle: open.detail.seriesTitle,
                   provenRating: open.provenRating,
-                  child: _body(messages, open),
+                  child: ContentViewRecorder(
+                    kind: ContentViewKind.episode,
+                    publicId: open.detail.episode.id,
+                    child: _body(messages, open),
+                  ),
                 ),
         );
       },

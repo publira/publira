@@ -11,6 +11,8 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
+import 'package:publira/content_views/content_view_recorder.dart';
+import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -153,7 +155,11 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             rating: detail.series.ageRating,
             seriesTitle: detail.series.title,
             provenRating: open.provenRating,
-            child: _SeriesDetailBody(detail: detail),
+            child: ContentViewRecorder(
+              kind: ContentViewKind.series,
+              publicId: detail.series.id,
+              child: _SeriesDetailBody(detail: detail),
+            ),
           ),
         );
       },

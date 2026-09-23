@@ -11,6 +11,13 @@ import 'package:publira/api/connect_exception.dart';
 /// or a sign-out reaches the very next call without rebuilding the client.
 typedef AccessTokenReader = String Function();
 
+/// A unary answer together with its response headers, under lower-cased
+/// names, for the one caller that has to read something beside the body.
+typedef ConnectResponse = ({
+  Map<String, Object?> body,
+  Map<String, String> headers,
+});
+
 /// Minimal Connect JSON unary client for the public API.
 ///
 /// Only the catalog/domain/auth RPCs this app needs are called. Field names
@@ -47,24 +54,42 @@ class ConnectClient {
     String? tenantId,
     String? accessToken,
   }) async {
+    final response = await exchange(
+      procedure,
+      body,
+      tenantId: tenantId,
+      accessToken: accessToken,
+    );
+    return response.body;
+  }
+
+  /// [unary] that also sends [headers] and hands back the response headers.
+  Future<ConnectResponse> exchange(
+    String procedure,
+    Map<String, Object?> body, {
+    String? tenantId,
+    String? accessToken,
+    Map<String, String> headers = const {},
+  }) async {
     final uri = Uri.parse(baseUrl).replace(path: '/api$procedure');
-    final headers = <String, String>{
+    final requestHeaders = <String, String>{
+      ...headers,
       'content-type': 'application/json',
       'connect-protocol-version': '1',
     };
     final trimmedTenant = tenantId?.trim() ?? '';
     if (trimmedTenant.isNotEmpty) {
-      headers[_tenantHeader] = trimmedTenant;
+      requestHeaders[_tenantHeader] = trimmedTenant;
     }
     final trimmedToken = (accessToken ?? this.accessToken).trim();
     if (trimmedToken.isNotEmpty) {
-      headers['authorization'] = 'Bearer $trimmedToken';
+      requestHeaders['authorization'] = 'Bearer $trimmedToken';
     }
 
     late final http.Response response;
     try {
       response = await _http
-          .post(uri, headers: headers, body: jsonEncode(body))
+          .post(uri, headers: requestHeaders, body: jsonEncode(body))
           .timeout(timeout);
     } on TimeoutException {
       throw const ConnectException(
@@ -90,7 +115,7 @@ class ConnectClient {
       );
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return decoded;
+      return (body: decoded, headers: response.headers);
     }
 
     final responseCode = _readString(decoded, 'code');
