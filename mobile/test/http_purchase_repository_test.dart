@@ -120,4 +120,28 @@ void main() {
     expect(await repository().seriesOfEpisode(paidEpisodeId), seriesId);
     expect(await repository().seriesOfEpisode('SeedEPSDNONE'), isNull);
   });
+
+  test('both catalog reads a purchase is offered from name the app', () async {
+    await repository().seriesEpisodeAccess(seriesId);
+    await repository().seriesOfEpisode(paidEpisodeId);
+
+    expect(
+      server.requestsTo('GetSeriesEpisodeAccess').single.body['surface'],
+      'CLIENT_SURFACE_APP',
+    );
+    expect(
+      server.requestsTo('GetEpisodeDetail').single.body['surface'],
+      'CLIENT_SURFACE_APP',
+    );
+  });
+
+  test('a series the storefront alone shows offers nothing to buy', () async {
+    server.seriesAvailability = {seriesId: 'SURFACE_AVAILABILITY_WEB'};
+
+    await expectLater(
+      repository().seriesEpisodeAccess(seriesId),
+      failsWith(PurchaseFailureKind.gone),
+    );
+    expect(await repository().seriesOfEpisode(paidEpisodeId), isNull);
+  });
 }

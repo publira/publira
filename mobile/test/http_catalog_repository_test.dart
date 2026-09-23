@@ -1205,6 +1205,108 @@ void main() {
     });
   });
 
+  group('the surface the app names', () {
+    const webOnly = ConnectFixtureServer.seedSeriesId;
+    const appOnly = 'series-kitchen';
+
+    setUp(() {
+      server.seriesAvailability = {
+        webOnly: 'SURFACE_AVAILABILITY_WEB',
+        appOnly: 'SURFACE_AVAILABILITY_APP',
+      };
+      server.rankedSeries = [
+        for (final (index, series) in server.series.indexed)
+          {'rank': index + 1, 'series': series},
+      ];
+    });
+
+    test('every catalog read names the app', () async {
+      await catalog.listSeries();
+      await catalog.listNewestSeries(limit: 3);
+      await catalog.listRankedSeries(limit: 3, period: RankingPeriod.daily);
+      await catalog.searchSeries(query: 'Seed');
+      await catalog.searchCreators(query: 'Seed');
+      await catalog.searchLabels(query: 'Seed');
+      await catalog.getSeries(webOnly);
+      await catalog.getCreator('SeedAUTHAAA1');
+      await catalog.getCreatorDetail('SeedAUTHAAA1');
+      await catalog.getLabelDetail('SeedLABLAAA1');
+      await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId);
+
+      final reads = server.requests.where(
+        (request) => request.path.contains('/publira.v1.CatalogService/'),
+      );
+      expect(
+        {for (final read in reads) read.path.split('/').last},
+        {
+          'ListPublishedSeries',
+          'ListRankedSeries',
+          'SearchPublishedSeries',
+          'SearchPublishedCreators',
+          'SearchPublishedLabels',
+          'GetSeriesDetail',
+          'GetPublishedCreatorDetail',
+          'GetPublishedLabelDetail',
+          'GetEpisodeDetail',
+        },
+      );
+      for (final read in reads) {
+        expect(read.body['surface'], 'CLIENT_SURFACE_APP', reason: read.path);
+      }
+    });
+
+    test(
+      'a series the storefront alone shows is left out of every list',
+      () async {
+        final ids = [
+          for (final series in (await catalog.listSeries()).series) series.id,
+        ];
+        final ranked = await catalog.listRankedSeries(
+          limit: 3,
+          period: RankingPeriod.weekly,
+        );
+        final searched = await catalog.searchSeries(query: 'Seed');
+
+        expect(ids, [appOnly]);
+        expect([for (final item in ranked) item.series.id], [appOnly]);
+        expect(searched.series, isEmpty);
+      },
+    );
+
+    test(
+      'a series the storefront alone shows reads as missing, episodes too',
+      () async {
+        expect(await catalog.getSeries(webOnly), isNull);
+        expect(
+          await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId),
+          isNull,
+        );
+      },
+    );
+
+    test(
+      'a label whose series the storefront alone shows still opens, empty',
+      () async {
+        final detail = await catalog.getLabelDetail('SeedLABLAAA1');
+
+        expect(detail, isNotNull);
+        expect(detail!.label.seriesCount, 0);
+        expect(detail.series.series, isEmpty);
+      },
+    );
+
+    test('a series shown on both surfaces reads as it always has', () async {
+      server.seriesAvailability = {webOnly: 'SURFACE_AVAILABILITY_ALL'};
+
+      expect(await catalog.getSeries(webOnly), isNotNull);
+      expect(
+        await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId),
+        isNotNull,
+      );
+      expect((await catalog.listSeries()).series, hasLength(2));
+    });
+  });
+
   test('a failed tenant lookup is retried by the next read', () async {
     server.tenantStatus = HttpStatus.serviceUnavailable;
     server.tenantResponse = const {

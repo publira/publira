@@ -1333,6 +1333,84 @@ void main() {
       });
     });
 
+    testApp('a series the storefront alone shows is not in the catalog', (
+      tester,
+    ) async {
+      server.seriesAvailability = {
+        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_WEB',
+      };
+      await withFailureScreenshot(tester, 'fixture-web-only', () async {
+        await pumpApp(tester);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('series-tile-series-kitchen')),
+        );
+
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsNothing,
+        );
+        expect(find.text(ConnectFixtureServer.seedSeriesTitle), findsNothing);
+      });
+    });
+
+    testApp('a link to a series the storefront alone shows opens nothing', (
+      tester,
+    ) async {
+      server.seriesAvailability = {
+        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_WEB',
+      };
+      final links = FakeIncomingLinks(
+        initialUri: Uri.parse(
+          'https://localhost/en/series/${ConnectFixtureServer.seedSeriesId}',
+        ),
+      );
+      addTearDown(links.close);
+      await withFailureScreenshot(tester, 'fixture-web-only-link', () async {
+        await pumpApp(tester, incomingLinks: links);
+        await pumpUntilRouteSettled(
+          tester,
+          find.textContaining('Series not found'),
+        );
+
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/series/${ConnectFixtureServer.seedSeriesId}'
+            '/episodes/${ConnectFixtureServer.seedEpisodeId}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('episode-not-found')),
+        );
+        expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+      });
+    });
+
+    testApp('a series the app alone shows is in the catalog and opens', (
+      tester,
+    ) async {
+      server.seriesAvailability = {
+        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_APP',
+      };
+      await withFailureScreenshot(tester, 'fixture-app-only', () async {
+        await pumpApp(tester);
+        final tile = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        await pumpUntilRouteSettled(tester, tile);
+
+        await tapReachable(tester, tile);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        expect(find.textContaining('Series not found'), findsNothing);
+      });
+    });
+
     testApp('empty catalog shows the empty-state copy', (tester) async {
       server.series = const [];
       await withFailureScreenshot(tester, 'fixture-empty', () async {
