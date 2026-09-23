@@ -73,6 +73,11 @@ tasks:
     cmds:
       - bash scripts/e2e-test.sh {{.CLI_ARGS}}
 
+  test-ios-build:
+    desc: Build both iOS flavors with Xcode and check the manifest's identity reached the built app (macOS)
+    cmds:
+      - bash scripts/ios-build-test.sh
+
   e2e:
     desc: Start the public API stack, run integration tests, always tear down
     cmds:
