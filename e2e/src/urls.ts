@@ -269,6 +269,15 @@ export const WEB_HOST_SIGNUP_CONSENT_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant from the same scenario that names one page as both
+ * its terms of service and its privacy policy.
+ */
+export const WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "shared-consent.localhost")
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

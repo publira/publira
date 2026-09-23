@@ -6,22 +6,27 @@ import {
   SIGNUP_CONSENT_PRIVACY_PAGE,
   SIGNUP_CONSENT_READER,
   SIGNUP_CONSENT_SCENARIO,
+  SIGNUP_CONSENT_SHARED_PAGE,
+  SIGNUP_CONSENT_SHARED_TENANT,
+  SIGNUP_CONSENT_TENANT,
   SIGNUP_CONSENT_TERMS_PAGE,
 } from "../src/scenarios/signup-consent";
 import {
   hostPath,
   WEB_HOST_BASE_URL,
   WEB_HOST_SIGNUP_CONSENT_BASE_URL,
+  WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL,
 } from "../src/urls";
 
 /**
  * A tenant that names its terms of service and privacy policy asks a reader to
  * agree to both before an account is opened, and the account records the
- * version of each page the form linked to. A tenant that names neither keeps
- * the form it had.
+ * version of each page the form linked to. A page named for both roles is
+ * agreed to once. A tenant that names neither keeps the form it had.
  */
 
 const signupUrl = `${WEB_HOST_SIGNUP_CONSENT_BASE_URL}${hostPath("/signup")}`;
+const sharedSignupUrl = `${WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL}${hostPath("/signup")}`;
 
 const CONSENT_LABEL = "I have read and agree to the following.";
 const SIGNUP_SENT_MESSAGE =
@@ -41,22 +46,24 @@ const fillSignupForm = async (page: Page): Promise<void> => {
     .fill(SIGNUP_CONSENT_READER.password);
 };
 
-const accountCount = (): string =>
+const accountCount = (tenantPublicId: string = SIGNUP_CONSENT_TENANT): string =>
   querySql(`
     SELECT count(*)
     FROM users u
     JOIN tenants t ON t.id = u.tenant_id
-    WHERE t.public_id = 'CnstTNNTAAA1'
+    WHERE t.public_id = '${tenantPublicId}'
       AND u.email = '${SIGNUP_CONSENT_READER.email}';
   `);
 
-const agreedVersionIds = (): string[] =>
+const agreedVersionIds = (
+  tenantPublicId: string = SIGNUP_CONSENT_TENANT
+): string[] =>
   querySql(`
     SELECT c.page_version_id
     FROM user_page_consents c
     JOIN users u ON u.id = c.user_id
     JOIN tenants t ON t.id = u.tenant_id
-    WHERE t.public_id = 'CnstTNNTAAA1'
+    WHERE t.public_id = '${tenantPublicId}'
       AND u.email = '${SIGNUP_CONSENT_READER.email}'
     ORDER BY c.page_version_id;
   `)
@@ -118,6 +125,24 @@ test.describe("web-host sign-up consent", () => {
     expect(agreedVersionIds()).toEqual([
       SIGNUP_CONSENT_TERMS_PAGE.versionId,
       SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+    ]);
+  });
+
+  test("a page named for both roles is agreed to once", async ({ page }) => {
+    await page.goto(sharedSignupUrl);
+
+    await expect(
+      page.getByRole("link", { name: SIGNUP_CONSENT_SHARED_PAGE.title })
+    ).toHaveCount(1);
+
+    await fillSignupForm(page);
+    await consentCheckbox(page).check();
+    await page.getByRole("button", { name: "Sign up" }).click();
+
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    expect(accountCount(SIGNUP_CONSENT_SHARED_TENANT)).toBe("1");
+    expect(agreedVersionIds(SIGNUP_CONSENT_SHARED_TENANT)).toEqual([
+      SIGNUP_CONSENT_SHARED_PAGE.versionId,
     ]);
   });
 
