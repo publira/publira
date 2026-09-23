@@ -19,6 +19,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.episodes = const {},
     this.recentSeries = const [],
     this.episodeReads = const [],
+    this.followUpdates = const [],
     this.readingPositions = const {},
     this.searchResults = const [],
     this.creatorSearchResults = const [],
@@ -48,6 +49,8 @@ class FakeCatalogRepository implements CatalogRepository {
     this.recentSeriesError,
     this.episodeReadsError,
     this.episodeReadsMoreError,
+    this.followUpdatesError,
+    this.followUpdatesMoreError,
     this.reactionError,
     this.reactions = const {},
   });
@@ -105,6 +108,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What the reading history is answered with, most recently finished first.
   List<EpisodeReadItem> episodeReads;
 
+  /// What the follow updates are answered with, most recently published first.
+  List<FollowUpdateItem> followUpdates;
+
   /// Saved positions keyed by [episodeKey], which [saveReadingPosition] writes
   /// to so a test can assert what the viewer recorded.
   Map<String, int> readingPositions;
@@ -142,6 +148,14 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// The cursor of every history page asked for, in order.
   final List<String> episodeReadsTokens = [];
+
+  CatalogFailure? followUpdatesError;
+
+  /// What a read of a follow updates page under the first one fails with.
+  CatalogFailure? followUpdatesMoreError;
+
+  /// The cursor of every follow updates page asked for, in order.
+  final List<String> followUpdatesTokens = [];
 
   /// Every episode [markEpisodeAsRead] was called for, in order, including the
   /// calls that failed.
@@ -491,6 +505,26 @@ class FakeCatalogRepository implements CatalogRepository {
     return EpisodeReadPage(
       reads: List<EpisodeReadItem>.from(episodeReads.skip(start).take(limit)),
       nextToken: end < episodeReads.length ? '$end' : '',
+    );
+  }
+
+  @override
+  Future<FollowUpdatePage> listFollowUpdates({
+    required int limit,
+    String token = '',
+  }) async {
+    followUpdatesTokens.add(token);
+    final error = token.isEmpty ? followUpdatesError : followUpdatesMoreError;
+    if (error != null) {
+      throw error;
+    }
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = start + limit;
+    return FollowUpdatePage(
+      updates: List<FollowUpdateItem>.from(
+        followUpdates.skip(start).take(limit),
+      ),
+      nextToken: end < followUpdates.length ? '$end' : '',
     );
   }
 }

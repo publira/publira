@@ -375,6 +375,37 @@ class EpisodeReadPage {
   final String nextToken;
 }
 
+/// One episode that arrived in what the reader follows, as `FollowUpdate`
+/// describes it.
+class FollowUpdateItem {
+  const FollowUpdateItem({
+    required this.series,
+    required this.episode,
+    this.publishedAt,
+  });
+
+  final SeriesItem series;
+  final EpisodeItem episode;
+
+  /// When the episode was published. `null` when the API sent a timestamp this
+  /// build could not read.
+  final DateTime? publishedAt;
+}
+
+/// One page of what arrived in the reader's follows, most recently published
+/// first, as `ListMyFollowUpdatesResponse` answers it.
+class FollowUpdatePage {
+  const FollowUpdatePage({required this.updates, this.nextToken = ''});
+
+  /// A reader who is signed out or has nothing new in what they follow.
+  static const empty = FollowUpdatePage(updates: []);
+
+  final List<FollowUpdateItem> updates;
+
+  /// What the API calls the page after this one. Empty at the end of it.
+  final String nextToken;
+}
+
 /// The window one ranking snapshot covers, as `publira.v1.RankingPeriod` names
 /// them. The batch writes a snapshot per window on every run, so a tenant it
 /// has ranked has both.

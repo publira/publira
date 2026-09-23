@@ -147,7 +147,10 @@ void main() {
     await tapVisible(
       tester,
       find.byKey(const ValueKey('account-sign-out')),
-      scrollable: find.byKey(const ValueKey('account-list')),
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('account-list')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.pumpAndSettle();
 

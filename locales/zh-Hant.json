@@ -3378,6 +3378,15 @@
       "sign_in_prompt": "登入後即可查看您追蹤的系列與作者。",
       "title": "我的追蹤"
     },
+    "follow_updates": {
+      "account_description": "查看您追蹤的系列和作者的新章節。",
+      "empty": "目前沒有更新。追蹤系列或作者後，新章節會顯示在這裡。",
+      "failed": "無法顯示追蹤作品的更新。請重試。",
+      "open_series": "開啟系列",
+      "published_at": "{$date} 發布",
+      "sign_in_prompt": "登入後即可查看您追蹤的系列和作者的更新。",
+      "title": "追蹤作品的更新"
+    },
     "label": {
       "load_failed": "無法顯示該品牌。請重試。",
       "not_found": "找不到品牌（{$id}）",

@@ -182,6 +182,17 @@ abstract class CatalogRepository {
     required int limit,
     String token = '',
   });
+
+  /// The episodes published in the series and by the authors the signed-in
+  /// reader follows, most recently published first.
+  ///
+  /// [token] is the cursor from a previous page; empty for the first page.
+  /// Empty for a reader who is signed out, without a request.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<FollowUpdatePage> listFollowUpdates({
+    required int limit,
+    String token = '',
+  });
 }
 
 /// Looks up the [CatalogRepository] installed by [CatalogScope].

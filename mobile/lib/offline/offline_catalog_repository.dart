@@ -319,6 +319,13 @@ class OfflineCatalogRepository implements CatalogRepository {
     String token = '',
   }) => _origin.listEpisodeReads(limit: limit, token: token);
 
+  /// What arrived in the reader's follows, which only the API can answer.
+  @override
+  Future<FollowUpdatePage> listFollowUpdates({
+    required int limit,
+    String token = '',
+  }) => _origin.listFollowUpdates(limit: limit, token: token);
+
   /// Answers an episode the network could not, from what the device holds.
   Future<EpisodeDetail> _openSaved(
     String seriesPublicId,
