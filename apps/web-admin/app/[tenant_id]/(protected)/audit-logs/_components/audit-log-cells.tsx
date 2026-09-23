@@ -36,11 +36,6 @@ const catalogActionName = (action: string) => {
     case "episode_updated": {
       return <Message message="admin.audit.actions.episode_updated" />;
     }
-    case "episode_publish_schedule_updated": {
-      return (
-        <Message message="admin.audit.actions.episode_publish_schedule_updated" />
-      );
-    }
     case "episode_image_uploaded": {
       return <Message message="admin.audit.actions.episode_image_uploaded" />;
     }

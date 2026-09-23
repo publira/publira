@@ -45,9 +45,6 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
           <option value="episode_updated">
             {t("admin.audit.actions.episode_updated")}
           </option>
-          <option value="episode_publish_schedule_updated">
-            {t("admin.audit.actions.episode_publish_schedule_updated")}
-          </option>
           <option value="episode_image_uploaded">
             {t("admin.audit.actions.episode_image_uploaded")}
           </option>

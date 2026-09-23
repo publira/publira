@@ -6,7 +6,6 @@ export const auditActions = [
   "series_free_windows_created",
   "episode_created",
   "episode_updated",
-  "episode_publish_schedule_updated",
   "episode_image_uploaded",
   "episode_credits_replaced",
   "episode_credits_bulk_edited",
