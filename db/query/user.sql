@@ -587,6 +587,14 @@ SET status = $2
 WHERE public_id = $1
 RETURNING *;
 
+-- name: UnsuspendUser :one
+-- A user who never confirmed their address goes back to inactive, the state
+-- VerifyUserEmail activates.
+UPDATE users
+SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
+WHERE public_id = $1
+RETURNING *;
+
 -- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2

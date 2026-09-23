@@ -2001,6 +2001,9 @@ type Querier interface {
 	// A reader who never confirmed their address goes back to inactive, the state
 	// VerifyUserEmail activates. A reader who is not suspended is no rows.
 	UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenantReaderParams) (UnsuspendTenantReaderRow, error)
+	// A user who never confirmed their address goes back to inactive, the state
+	// VerifyUserEmail activates.
+	UnsuspendUser(ctx context.Context, publicID string) (User, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error

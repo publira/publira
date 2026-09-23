@@ -382,11 +382,7 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, err
 	}
 
-	// Update the status.
-	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
-		PublicID: publicID,
-		Status:   userStatusActive,
-	})
+	updated, err := s.queriesFor(ctx).UnsuspendUser(ctx, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))

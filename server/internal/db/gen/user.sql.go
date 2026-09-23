@@ -1650,6 +1650,34 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 	return i, err
 }
 
+const UnsuspendUser = `-- name: UnsuspendUser :one
+UPDATE users
+SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
+WHERE public_id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
+`
+
+// A user who never confirmed their address goes back to inactive, the state
+// VerifyUserEmail activates.
+func (q *Queries) UnsuspendUser(ctx context.Context, publicID string) (User, error) {
+	row := q.db.QueryRowContext(ctx, UnsuspendUser, publicID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
+	)
+	return i, err
+}
+
 const UpdateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2
