@@ -253,7 +253,6 @@
         "series_created": "시리즈 생성",
         "series_updated": "시리즈 변경",
         "episode_created": "에피소드 생성",
-        "episode_publish_schedule_updated": "공개 일정 변경",
         "creator_created": "작가 생성",
         "creator_updated": "작가 변경",
         "label_created": "레이블 생성",
