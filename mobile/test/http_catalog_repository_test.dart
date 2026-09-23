@@ -888,6 +888,53 @@ void main() {
     expect(detail.nextEpisode!.isFree, isFalse);
   });
 
+  test(
+    'getEpisode reads where the episode and its neighbours are sold',
+    () async {
+      server.episodeResponse = {
+        'episode': {
+          'publicId': 'EP',
+          'title': 'Middle',
+          'orderIndex': 2,
+          'price': 300,
+          'purchaseAvailability': 'SURFACE_AVAILABILITY_WEB',
+        },
+        'series': {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+        },
+        'access': 'EPISODE_ACCESS_LOCKED',
+        'previousEpisode': {
+          'publicId': 'EP01',
+          'title': 'First',
+          'orderIndex': 1,
+          'price': 300,
+          'purchaseAvailability': 'SURFACE_AVAILABILITY_APP',
+        },
+        'nextEpisode': {
+          'publicId': 'EP03',
+          'title': 'Third',
+          'orderIndex': 3,
+          'price': 300,
+        },
+      };
+
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+      );
+
+      expect(detail!.episode.purchaseSurface, EpisodePurchaseSurface.web);
+      expect(
+        detail.previousEpisode!.purchaseSurface,
+        EpisodePurchaseSurface.app,
+      );
+      // protojson omits unspecified, which is how every episode was sold before
+      // the setting existed.
+      expect(detail.nextEpisode!.purchaseSurface, EpisodePurchaseSurface.all);
+    },
+  );
+
   test('getEpisode reports no neighbour at the ends of the series', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,

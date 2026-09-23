@@ -7,6 +7,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
@@ -306,6 +307,125 @@ void main() {
       purchases.seriesFailure = null;
       await tester.tap(find.text('Retry'));
       await pumpUntilFound(tester, pages);
+    });
+  });
+
+  group('an episode sold on the website alone', () {
+    const soldOnWeb = 'Sold on the website';
+
+    setUp(() {
+      catalog
+        ..details = fixtureDetails(paidSurface: EpisodePurchaseSurface.web)
+        ..episodes = fixtureEpisodes(
+          access: EpisodeAccess.locked,
+          paidSurface: EpisodePurchaseSurface.web,
+        );
+    });
+
+    testWidgets('says where it is sold in place of a purchase', (tester) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(
+        tester,
+        find.text(
+          'This episode is sold on the website. Once bought there, it can '
+          'be read here with the same account.',
+        ),
+      );
+
+      expect(buy, findsNothing);
+      expect(find.textContaining('¥'), findsNothing);
+    });
+
+    testWidgets('opens for a guest who bought it there once signed in', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.text(
+          'This episode is sold on the website. If you have already bought '
+          'it there, sign in.',
+        ),
+      );
+      expect(buy, findsNothing);
+
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        paidSurface: EpisodePurchaseSurface.web,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await signIn(tester);
+      await pumpUntilRouteSettled(tester, pages);
+
+      expect(router.routerDelegate.currentConfiguration.uri.path, viewerPath);
+    });
+
+    testWidgets('is named as sold there on the episode list', (tester) async {
+      purchases.access = {paidEpisodeId: EpisodeAccess.locked};
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.seriesDetailPath(seriesId),
+        session: fakeSession,
+      );
+      final row = find.byKey(ValueKey('episode-tile-$paidEpisodeId'));
+      await pumpUntilFound(
+        tester,
+        find.descendant(of: row, matching: find.text(soldOnWeb)),
+      );
+
+      expect(buy, findsNothing);
+      expect(find.text('¥500'), findsNothing);
+    });
+
+    testWidgets('keeps its price where the tenant takes no payments', (
+      tester,
+    ) async {
+      purchases
+        ..payments = false
+        ..access = {paidEpisodeId: EpisodeAccess.locked};
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.seriesDetailPath(seriesId),
+        session: fakeSession,
+      );
+      await pumpUntilFound(tester, find.text('¥500'));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text(soldOnWeb), findsNothing);
+    });
+
+    testWidgets('is named as sold there at the end of the one before it', (
+      tester,
+    ) async {
+      final previousEpisodeId =
+          '$seriesId-ep-${fixtureSeries.first.episodeCount - 1}';
+      catalog.episodes = fixtureEpisodes(
+        paidSurface: EpisodePurchaseSurface.web,
+      );
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.episodeViewerPath(
+          seriesId,
+          previousEpisodeId,
+        ),
+        session: fakeSession,
+      );
+      await pumpUntilFound(tester, pages);
+      for (var turn = 0; turn < 3; turn++) {
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      }
+      final next = find.byKey(const ValueKey('episode-end-next'));
+      await pumpUntilFound(
+        tester,
+        find.descendant(of: next, matching: find.text(soldOnWeb)),
+      );
+
+      expect(
+        find.descendant(of: next, matching: find.text('¥500')),
+        findsNothing,
+      );
+      await pumpUntilNoPendingFrameCallbacks(tester);
     });
   });
 

@@ -536,6 +536,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               title: Text(episode.title),
               trailing: _EpisodeTrailing(
                 price: episode.price,
+                soldOnWeb:
+                    _acceptsPayments &&
+                    episode.purchaseSurface == EpisodePurchaseSurface.web,
                 saved: _saved.contains(episode.id),
                 download: downloader == null || !_canSave(episode)
                     ? null
@@ -550,6 +553,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 buy:
                     _acceptsPayments &&
                         episode.price > 0 &&
+                        episode.purchaseSurface != EpisodePurchaseSurface.web &&
                         _access[episode.id] == EpisodeAccess.locked
                     ? BuyEpisodeButton(
                         episodeId: episode.id,
@@ -615,12 +619,17 @@ class _SeriesLabel extends StatelessWidget {
 class _EpisodeTrailing extends StatelessWidget {
   const _EpisodeTrailing({
     required this.price,
+    required this.soldOnWeb,
     required this.saved,
     required this.download,
     required this.buy,
   });
 
   final int price;
+
+  /// Whether the episode is sold on the website alone, which the row says in
+  /// place of a price the app cannot take.
+  final bool soldOnWeb;
   final bool saved;
 
   /// The way to save the episode, which stands in for the mark where there is
@@ -648,6 +657,11 @@ class _EpisodeTrailing extends StatelessWidget {
           const _SavedOfflineMark(),
         if (buy != null)
           buy
+        else if (price > 0 && soldOnWeb)
+          Text(
+            key: const ValueKey('episode-sold-on-web'),
+            messages.purchaseSoldOnWeb,
+          )
         else if (price > 0)
           Text('¥${messages.formatInteger(price)}'),
       ],

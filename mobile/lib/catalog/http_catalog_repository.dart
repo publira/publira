@@ -879,6 +879,9 @@ class HttpCatalogRepository implements CatalogRepository {
       title: _readString(json, 'title', path),
       orderIndex: _readInt(json, 'orderIndex', path),
       price: _readInt(json, 'price', path),
+      purchaseSurface: EpisodePurchaseSurface.fromWire(
+        json['purchaseAvailability'],
+      ),
       ratingCount: _readCount(json, 'ratingCount', path),
     );
   }
@@ -948,6 +951,9 @@ class HttpCatalogRepository implements CatalogRepository {
       orderIndex: _readInt(json, 'orderIndex', path),
       price: _readInt(json, 'price', path),
       isFree: _readBool(json, 'isFree', path),
+      purchaseSurface: EpisodePurchaseSurface.fromWire(
+        json['purchaseAvailability'],
+      ),
     );
   }
 

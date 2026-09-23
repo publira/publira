@@ -945,6 +945,9 @@ abstract class AppMessages {
   /// `mobile.purchase.confirming`
   String get purchaseConfirming;
 
+  /// `mobile.purchase.sold_on_web`
+  String get purchaseSoldOnWeb;
+
   /// `mobile.purchase.start_failed`
   String get purchaseStartFailed;
 
@@ -1304,6 +1307,12 @@ abstract class AppMessages {
 
   /// `mobile.viewer.locked_signed_out`
   String get viewerLockedSignedOut;
+
+  /// `mobile.viewer.locked_sold_on_web`
+  String get viewerLockedSoldOnWeb;
+
+  /// `mobile.viewer.locked_sold_on_web_signed_out`
+  String get viewerLockedSoldOnWebSignedOut;
 
   /// `mobile.viewer.next_episode`
   String get viewerNextEpisode;
@@ -2804,6 +2813,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get purchaseSoldOnWeb {
+    return 'ウェブサイトで販売';
+  }
+
+  @override
   String get purchaseStartFailed {
     return '購入手続きを開始できませんでした。時間をおいて再試行してください。';
   }
@@ -3401,6 +3415,16 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return 'この話は購入すると読めます。購入済みの場合はサインインしてください。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWeb {
+    return 'この話はウェブサイトで販売しています。購入後は同じアカウントでアプリでも読めます。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWebSignedOut {
+    return 'この話はウェブサイトで販売しています。購入済みの場合はサインインしてください。';
   }
 
   @override
@@ -4942,6 +4966,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get purchaseSoldOnWeb {
+    return 'Sold on the website';
+  }
+
+  @override
   String get purchaseStartFailed {
     return 'Could not start the purchase. Try again later.';
   }
@@ -5539,6 +5568,16 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return 'This episode can be read once it is purchased. If you have already bought it, sign in.';
+  }
+
+  @override
+  String get viewerLockedSoldOnWeb {
+    return 'This episode is sold on the website. Once bought there, it can be read here with the same account.';
+  }
+
+  @override
+  String get viewerLockedSoldOnWebSignedOut {
+    return 'This episode is sold on the website. If you have already bought it there, sign in.';
   }
 
   @override
@@ -7080,6 +7119,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get purchaseSoldOnWeb {
+    return '웹사이트에서 판매';
+  }
+
+  @override
   String get purchaseStartFailed {
     return '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.';
   }
@@ -7677,6 +7721,16 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return '이 에피소드는 구매하면 읽을 수 있습니다. 이미 구매하셨다면 로그인해 주세요.';
+  }
+
+  @override
+  String get viewerLockedSoldOnWeb {
+    return '이 에피소드는 웹사이트에서 판매합니다. 구매 후에는 같은 계정으로 앱에서도 읽을 수 있습니다.';
+  }
+
+  @override
+  String get viewerLockedSoldOnWebSignedOut {
+    return '이 에피소드는 웹사이트에서 판매합니다. 이미 구매하셨다면 로그인해 주세요.';
   }
 
   @override
@@ -9218,6 +9272,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get purchaseSoldOnWeb {
+    return '在网站上销售';
+  }
+
+  @override
   String get purchaseStartFailed {
     return '无法开始购买。请稍后再试。';
   }
@@ -9815,6 +9874,16 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return '购买后即可阅读本章。如果您已经购买，请登录。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWeb {
+    return '本章在网站上销售。购买后，使用同一账户即可在应用内阅读。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWebSignedOut {
+    return '本章在网站上销售。如果您已经购买，请登录。';
   }
 
   @override
@@ -11356,6 +11425,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get purchaseSoldOnWeb {
+    return '在網站上販售';
+  }
+
+  @override
   String get purchaseStartFailed {
     return '無法開始購買。請稍後再試。';
   }
@@ -11953,6 +12027,16 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerLockedSignedOut {
     return '購買後即可閱讀本章。如果您已經購買，請登入。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWeb {
+    return '本章在網站上販售。購買後，使用同一帳戶即可在應用程式內閱讀。';
+  }
+
+  @override
+  String get viewerLockedSoldOnWebSignedOut {
+    return '本章在網站上販售。如果您已經購買，請登入。';
   }
 
   @override
