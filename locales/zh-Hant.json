@@ -2531,6 +2531,7 @@
         "to_reset_password": "返回密碼重設"
       },
       "errors": {
+        "consent_required": "要建立帳戶，請同意所列頁面。",
         "login_failed": "電子郵件地址或密碼不正確。",
         "name_required": "請輸入顯示名稱。",
         "name_too_long": "顯示名稱請控制在 100 個字元以內。",
@@ -2586,6 +2587,7 @@
       "signup": {
         "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。",
         "birth_date_label": "出生日期",
+        "consent_label": "我已閱讀並同意以下內容。",
         "have_account": "已經有帳戶了嗎？",
         "login": "登入",
         "name_label": "名稱",

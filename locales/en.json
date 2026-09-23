@@ -2531,6 +2531,7 @@
         "to_reset_password": "Back to password reset"
       },
       "errors": {
+        "consent_required": "Agree to the listed pages to create an account.",
         "login_failed": "That email address or password is incorrect. Check them and try again.",
         "name_required": "Enter a display name.",
         "name_too_long": "Use 100 characters or fewer for the display name.",
@@ -2586,6 +2587,7 @@
       "signup": {
         "birth_date_help": "This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.",
         "birth_date_label": "Date of birth",
+        "consent_label": "I have read and agree to the following.",
         "have_account": "Already have an account?",
         "login": "Sign in",
         "name_label": "Name",

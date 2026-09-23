@@ -2531,6 +2531,7 @@
         "to_reset_password": "비밀번호 재설정으로 돌아가기"
       },
       "errors": {
+        "consent_required": "계정을 만들려면 안내된 페이지에 동의해 주세요.",
         "login_failed": "이메일 주소 또는 비밀번호가 올바르지 않습니다.",
         "name_required": "표시 이름을 입력해 주세요.",
         "name_too_long": "표시 이름은 100자 이내로 입력해 주세요.",
@@ -2586,6 +2587,7 @@
       "signup": {
         "birth_date_help": "연령 제한이 있는 작품을 열 때 나이를 확인합니다. 나중에 등록할 수도 있지만, 한 번 등록하면 변경할 수 없습니다.",
         "birth_date_label": "생년월일",
+        "consent_label": "아래 내용을 읽고 동의합니다.",
         "have_account": "이미 계정이 있으신가요?",
         "login": "로그인",
         "name_label": "이름",

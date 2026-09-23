@@ -266,6 +266,16 @@ export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant that names its terms and privacy pages, from
+ * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
+ * so the sign-up that asks for consent is not the one another suite drives.
+ */
+export const WEB_HOST_SIGNUP_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_SIGNUP_CONSENT_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "consent.localhost")
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

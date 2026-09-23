@@ -117,6 +117,51 @@ describe("tenant", () => {
     );
   });
 
+  it("Carry the pages the tenant names as its terms and privacy policy", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      privacyPage: {
+        slug: "/privacy",
+        title: "Privacy policy",
+        versionId: "privacy-v2",
+      },
+      termsPage: {
+        slug: "/legal/terms",
+        title: " Terms of service ",
+        versionId: "terms-v1",
+      },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.legalPages).toEqual({
+      privacyPage: {
+        href: "/privacy",
+        title: "Privacy policy",
+        versionId: "privacy-v2",
+      },
+      termsPage: {
+        href: "/legal/terms",
+        title: "Terms of service",
+        versionId: "terms-v1",
+      },
+    });
+  });
+
+  it("Treat a role the tenant names no page for as absent", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      termsPage: { slug: "/terms", title: "Terms", versionId: "" },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.legalPages).toEqual({
+      privacyPage: undefined,
+      termsPage: undefined,
+    });
+  });
+
   it("Treat a store the app is not listed in as absent", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
