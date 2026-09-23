@@ -106,6 +106,11 @@ class ConnectFixtureServer {
       '018f0e8f-1000-7000-8000-000000000001';
   static const memberExpiredPurchaseId = '018f0e8f-1000-7000-8000-000000000002';
 
+  /// The unread announcement and notification the mobile E2E stack gives the
+  /// member (`db/seeds/scenarios/310_mobile_reader_records.sql`).
+  static const memberAnnouncementId = '018f1010-0001-7000-8000-000000000001';
+  static const memberNotificationId = '018f1010-0001-7000-8000-000000000002';
+
   /// Unsigned JWT whose `sub` is [memberPublicId]. It is shaped like the real
   /// public-audience token because image-server derives a page's content key
   /// from the token itself, so a fixture that is not a JWT could not be

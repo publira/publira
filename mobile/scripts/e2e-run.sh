@@ -34,7 +34,7 @@ e2e_log "=== Mobile E2E run start (project=${COMPOSE_PROJECT_NAME}) ==="
 (cd "${REPO_ROOT}" && task server:build)
 
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/up.sh"
-bash "${PUBLIRA_E2E_SCRIPTS_DIR}/db-setup.sh"
+bash "${MOBILE_DIR}/scripts/e2e-db-setup.sh"
 # The one process answers the API and the images. Every seeded episode
 # carries a body, so the reader fetches its pages as soon as a test opens one,
 # and an unanswered fetch fails the run from outside the test that caused it.

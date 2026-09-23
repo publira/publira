@@ -125,7 +125,7 @@ Implementation:
 | Displayed job | Contents | Details |
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
-| `Lint and Format` | `pnpm check` across every file type that oxfmt supports. | [`AGENTS.md`](../../AGENTS.md) |
+| `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-host. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
@@ -252,7 +252,7 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
 
    | Job | Local command |
    | --- | --- |
-   | `Lint and Format` | `pnpm check` |
+   | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `node scripts/check-design-tokens.ts`, and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
