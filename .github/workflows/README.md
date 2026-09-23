@@ -138,7 +138,7 @@ Implementation:
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go. | This file |
-| `Docker / <target>` | `task docker:build:*`, then web/node smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
+| `Docker / <target>` | `task docker:build:*`, then web/node/publiractl smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
 
 The branch ruleset requires only final aggregation job **`Summary`** (shown as `CI / Summary`). Intermediate jobs can be skipped by filters; `Summary` treats `skipped` as success. The same requirement is what the merge queue on `main` runs, so `Summary` has to be reported on merge-group commits as well as on pull requests.
@@ -235,7 +235,7 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 `Test / TypeScript` starts a Valkey service — the same image as `compose.yaml` — and sets `PUBLIRA_REDIS_URL` so `@publira/next-cache-handlers` integration tests reach Redis. Reproduce it with `pnpm test` in the Dev Container.
 
-`Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|server|publiractl|node` commands used locally, followed by `task docker:smoke:web` or `task docker:smoke:node` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
+`Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|server|publiractl|node` commands used locally, followed by `task docker:smoke:web`, `task docker:smoke:node`, or `task docker:smoke:publiractl` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
 
 ## Flutter SDK setup
 

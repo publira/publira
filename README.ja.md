@@ -65,7 +65,7 @@ export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
 export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
 ```
 
-ロールユーザーと開発用パスワードは `db/seeds/baseline` に由来します。各サーバーは自分が接続するロールに対応する変数だけを読むので、そのすべてを設定する必要があります。`PUBLIRA_DB_URL` はマイグレーションツールの接続であり、フォールバック先にするのは `publiractl job` のサブコマンドだけです。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
+ロールユーザーと開発用パスワードは `db/seeds/baseline` に由来します。各サーバーは自分が接続するロールに対応する変数だけを読むので、そのすべてを設定する必要があります。`PUBLIRA_DB_URL` はマイグレーションツールの接続であり、`task db:*` と `publiractl db` がこれで接続します。ほかに読むのはフォールバック先にする `publiractl job` のサブコマンドだけです。`e2e/bootstrap/scripts/lib.sh` が自前のポート向けに同じ一式を export しており、動く参照実装になっています。
 
 Dev Container 専用のままになるものが 2 つあります。
 

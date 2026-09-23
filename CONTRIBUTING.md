@@ -16,7 +16,7 @@ This page answers three questions for a first-time contributor: what to install,
 ├── server/             # [Go] Backend system (single module)
 │   ├── cmd/
 │   │   ├── api-server/       # ConnectRPC API server
-│   │   ├── publiractl/       # The command that operates an install (`publiractl job <kind>` runs a maintenance job by hand)
+│   │   ├── publiractl/       # The command that operates an install (`publiractl db migrate` applies the migrations, `publiractl job <kind>` runs a maintenance job by hand)
 │   │   └── worker/           # Long-lived background worker (Outbox drain + every scheduled job)
 │   └── internal/
 │       ├── db/gen/     # sqlc generated code (DB/Go)

@@ -12,10 +12,10 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | Server (long-running) | [`server/Dockerfile`](./server/Dockerfile) | `server/cmd/publira`, run as `publira server` (the API and image delivery, Manael / libvips) or `publira worker` | `VERSION` |
-| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line, including manual runs of every maintenance job) | none |
+| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations, which the image carries, and manual runs of every maintenance job) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
-A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is for an operator running one of those jobs by hand — a backfill of a named date, a recovery, a dry-run purge — so it is published for that and is not something a deployment has to schedule.
+A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations it carries (`db migrate`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.
 
 Keep the Dev Container separate from production images.
 
@@ -49,9 +49,9 @@ What is being containerized?
 │    → infra/docker/server/Dockerfile (no build ARG; one image for both)
 │    → Select the process with container arguments: docker run publira/publira:local worker
 │
-├─ A Go maintenance job (run by hand; the worker schedules it)
-│    → infra/docker/publiractl/Dockerfile (no build ARG)
-│    → Select the job with container arguments: docker run publira/publiractl:local job <kind>
+├─ The database migrations, or a Go maintenance job (run by hand; the worker schedules it)
+│    → infra/docker/publiractl/Dockerfile (no build ARG; carries db/migrations)
+│    → Select the command with container arguments: docker run publira/publiractl:local db migrate, or job <kind>
 │
 ├─ A long-running non-Next.js Node.js service (apps/<name>)
 │    → infra/docker/node/Dockerfile
@@ -104,10 +104,11 @@ docker build -f infra/docker/server/Dockerfile \
 docker run --rm publira/publira:local          # publira server
 docker run --rm publira/publira:local worker   # publira worker
 
-# publiractl (all jobs share one image; choose the job with container arguments)
+# publiractl (the migrations and all jobs share one image; choose the command with container arguments)
 docker build -f infra/docker/publiractl/Dockerfile \
   -t publira/publiractl:local .
 
+docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
 docker run --rm publira/publiractl:local job purge-content-events
 
 # Node

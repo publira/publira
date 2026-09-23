@@ -302,6 +302,7 @@ jobs:
               - *docs_excluded
               - 'server/**'
               - 'infra/docker/publiractl/**'
+              - 'db/migrations/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
@@ -1121,6 +1122,10 @@ jobs:
           APP_NAME: ${{ matrix.target }}
           PORT: ${{ matrix.port }}
         run: task docker:smoke:node "APP_NAME=${APP_NAME}" "PORT=${PORT}"
+
+      - name: Smoke / publiractl db migrate
+        if: matrix.role == 'publiractl'
+        run: task docker:smoke:publiractl
 
   # Single required status check for the branch ruleset (shown as "CI / Summary").
   # Intermediate jobs may be skipped when their paths did not change.

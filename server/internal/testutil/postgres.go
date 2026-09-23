@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/testcontainers/testcontainers-go"
@@ -24,6 +22,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbmigrate"
 )
 
 const (
@@ -285,6 +284,27 @@ func (e *PostgresEnv) Reset(t *testing.T) {
 	e.DB = db
 }
 
+// CreateEmptyDatabase creates a database no migration has touched in the
+// shared container, drops it when the test ends, and returns its superuser URL.
+func (e *PostgresEnv) CreateEmptyDatabase(t *testing.T) string {
+	t.Helper()
+	name := "empty_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if _, err := e.DB.ExecContext(t.Context(), "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create database %s: %v", name, err)
+	}
+	t.Cleanup(func() {
+		if _, err := e.DB.ExecContext(context.Background(), "DROP DATABASE "+name+" WITH (FORCE)"); err != nil {
+			t.Errorf("drop database %s: %v", name, err)
+		}
+	})
+	u, err := url.Parse(e.URL)
+	if err != nil {
+		t.Fatalf("parse postgres url: %v", err)
+	}
+	u.Path = "/" + name
+	return u.String()
+}
+
 // OpenPlatformDB opens a connection as publira_platform (BYPASSRLS app user).
 // The connection is closed via t.Cleanup.
 func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
@@ -509,7 +529,7 @@ func (e *PostgresEnv) MigrateUpWith(t *testing.T, extra map[string]string) {
 		}
 	}
 
-	m, err := migrate.New("file://"+filepath.ToSlash(dir), "pgx5://"+stripURLScheme(e.URL))
+	m, err := dbmigrate.New(dir, e.URL)
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
@@ -525,15 +545,7 @@ func newMigrate(postgresURL string) (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// migrate's pgx/v5 driver expects the pgx5:// scheme.
-	migrateURL := "pgx5://" + stripURLScheme(postgresURL)
-
-	m, err := migrate.New("file://"+filepath.ToSlash(migrationsDir), migrateURL)
-	if err != nil {
-		return nil, fmt.Errorf("migrate.New: %w", err)
-	}
-	return m, nil
+	return dbmigrate.New(migrationsDir, postgresURL)
 }
 
 func runMigrations(postgresURL string) error {
@@ -565,19 +577,7 @@ func applyAppRoles(ctx context.Context, db *sql.DB) error {
 }
 
 func findMigrationsDir() (string, error) {
-	root, err := findRepoRoot()
-	if err != nil {
-		return "", err
-	}
-	dir := filepath.Join(root, "db", "migrations")
-	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
-		return "", fmt.Errorf("migrations dir not found at %s", dir)
-	}
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return "", err
-	}
-	return abs, nil
+	return dbmigrate.RepoDir()
 }
 
 func findAppRolesSeedPath() (string, error) {
@@ -592,33 +592,13 @@ func findAppRolesSeedPath() (string, error) {
 	return path, nil
 }
 
-// findRepoRoot walks up from the working directory looking for the monorepo root
-// (contains both server/go.mod and db/migrations).
+// findRepoRoot returns the monorepo root, the directory db/migrations is in.
 func findRepoRoot() (string, error) {
-	wd, err := os.Getwd()
+	migrationsDir, err := dbmigrate.RepoDir()
 	if err != nil {
 		return "", err
 	}
-	dir := wd
-	for {
-		serverMod := filepath.Join(dir, "server", "go.mod")
-		migrations := filepath.Join(dir, "db", "migrations")
-		if fileExists(serverMod) && dirExists(migrations) {
-			return dir, nil
-		}
-		// Also accept being inside server/ where parent is the repo root.
-		if filepath.Base(dir) == "server" && fileExists(filepath.Join(dir, "go.mod")) {
-			parent := filepath.Dir(dir)
-			if dirExists(filepath.Join(parent, "db", "migrations")) {
-				return parent, nil
-			}
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("could not locate repo root from %s (need server/go.mod and db/migrations)", wd)
-		}
-		dir = parent
-	}
+	return filepath.Dir(filepath.Dir(migrationsDir)), nil
 }
 
 func appConnectionString(superuserURL, user, password string) (string, error) {
@@ -628,23 +608,6 @@ func appConnectionString(superuserURL, user, password string) (string, error) {
 	}
 	u.User = url.UserPassword(user, password)
 	return u.String(), nil
-}
-
-func stripURLScheme(raw string) string {
-	if i := strings.Index(raw, "://"); i >= 0 {
-		return raw[i+3:]
-	}
-	return raw
-}
-
-func fileExists(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && !st.IsDir()
-}
-
-func dirExists(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && st.IsDir()
 }
 
 func defaultIfEmpty(v, fallback string) string {

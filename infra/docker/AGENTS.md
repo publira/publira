@@ -10,10 +10,10 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | --- | --- |
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
-| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install; carries every maintenance job an operator runs by hand, which the worker schedules as well |
+| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install; carries `db/migrations` for `db migrate` and every maintenance job an operator runs by hand, which the worker schedules as well |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
-| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` (included from repo root) |
+| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
 
 Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
 
@@ -32,7 +32,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 | --- | --- | --- | --- |
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
 | `server` | — | `VERSION` | `server/cmd/publira` → binary `/app/publira`; the process is the container argument (`server`, the default, or `worker`), not a build ARG |
-| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`job <kind>`), not a build ARG |
+| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`db migrate`, `job <kind>`), not a build ARG |
 | `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
 ## Implementation rules
@@ -74,9 +74,10 @@ task docker:build:server
 task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
 
-# Runtime smoke (the roles that have no external dependencies)
+# Runtime smoke (publiractl brings up its own PostgreSQL through compose.smoke.yaml)
 task docker:smoke:web APP_NAME=web-host PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
+task docker:smoke:publiractl
 ```
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
