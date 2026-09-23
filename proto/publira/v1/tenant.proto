@@ -15,6 +15,9 @@ message GetTenantRequest {
 message TenantLegalPage {
   string slug = 1;
   string title = 2;
+  // The published version, which a sign-up sends back in
+  // CreateUserRequest.agreed_page_version_ids.
+  string version_id = 3;
 }
 
 message GetTenantResponse {

@@ -150,11 +150,13 @@ func TestDBGetTenantReportsItsPublishedLegalPages(t *testing.T) {
 	}
 
 	got := getDBTenant(t, env, first)
-	if got.TermsPage.GetSlug() != "/tos" || got.TermsPage.GetTitle() != "Terms of Service" {
-		t.Fatalf("terms_page = %v, want /tos titled Terms of Service", got.TermsPage)
+	if got.TermsPage.GetSlug() != "/tos" || got.TermsPage.GetTitle() != "Terms of Service" ||
+		got.TermsPage.GetVersionId() != terms.VersionID.String() {
+		t.Fatalf("terms_page = %v, want /tos titled Terms of Service at version %s", got.TermsPage, terms.VersionID)
 	}
-	if got.PrivacyPage.GetSlug() != "/privacy" || got.PrivacyPage.GetTitle() != "Privacy Policy" {
-		t.Fatalf("privacy_page = %v, want /privacy titled Privacy Policy", got.PrivacyPage)
+	if got.PrivacyPage.GetSlug() != "/privacy" || got.PrivacyPage.GetTitle() != "Privacy Policy" ||
+		got.PrivacyPage.GetVersionId() != privacy.VersionID.String() {
+		t.Fatalf("privacy_page = %v, want /privacy titled Privacy Policy at version %s", got.PrivacyPage, privacy.VersionID)
 	}
 	if other := getDBTenant(t, env, second); other.TermsPage != nil || other.PrivacyPage != nil {
 		t.Fatalf("tenant B legal pages = %v / %v, want none", other.TermsPage, other.PrivacyPage)

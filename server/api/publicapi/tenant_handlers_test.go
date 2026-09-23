@@ -126,9 +126,9 @@ func expectNoTenantLegalPages(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"terms_page_id", "terms_slug", "terms_title", "terms_published",
-			"privacy_page_id", "privacy_slug", "privacy_title", "privacy_published",
-		}).AddRow(nil, nil, nil, false, nil, nil, nil, false))
+			"terms_page_id", "terms_slug", "terms_title", "terms_published", "terms_published_version_id",
+			"privacy_page_id", "privacy_slug", "privacy_title", "privacy_published", "privacy_published_version_id",
+		}).AddRow(nil, nil, nil, false, nil, nil, nil, nil, false, nil))
 }
 
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {

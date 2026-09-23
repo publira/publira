@@ -323,10 +323,12 @@ SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
     terms.title AS terms_title,
     (terms.published_version_id IS NOT NULL)::boolean AS terms_published,
+    terms.published_version_id AS terms_published_version_id,
     tc.privacy_page_id,
     privacy.slug AS privacy_slug,
     privacy.title AS privacy_title,
-    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published
+    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published,
+    privacy.published_version_id AS privacy_published_version_id
 FROM tenant_config tc
     LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
     AND terms.id = tc.terms_page_id
@@ -336,18 +338,21 @@ WHERE tc.tenant_id = $1
 `
 
 type GetTenantLegalPagesRow struct {
-	TermsPageID      uuid.NullUUID  `json:"terms_page_id"`
-	TermsSlug        sql.NullString `json:"terms_slug"`
-	TermsTitle       sql.NullString `json:"terms_title"`
-	TermsPublished   bool           `json:"terms_published"`
-	PrivacyPageID    uuid.NullUUID  `json:"privacy_page_id"`
-	PrivacySlug      sql.NullString `json:"privacy_slug"`
-	PrivacyTitle     sql.NullString `json:"privacy_title"`
-	PrivacyPublished bool           `json:"privacy_published"`
+	TermsPageID               uuid.NullUUID  `json:"terms_page_id"`
+	TermsSlug                 sql.NullString `json:"terms_slug"`
+	TermsTitle                sql.NullString `json:"terms_title"`
+	TermsPublished            bool           `json:"terms_published"`
+	TermsPublishedVersionID   uuid.NullUUID  `json:"terms_published_version_id"`
+	PrivacyPageID             uuid.NullUUID  `json:"privacy_page_id"`
+	PrivacySlug               sql.NullString `json:"privacy_slug"`
+	PrivacyTitle              sql.NullString `json:"privacy_title"`
+	PrivacyPublished          bool           `json:"privacy_published"`
+	PrivacyPublishedVersionID uuid.NullUUID  `json:"privacy_published_version_id"`
 }
 
 // The pages a tenant names as its terms of service and its privacy policy,
-// each with whether it is published. No row where the tenant has no config.
+// each with its published version, if any. No row where the tenant has no
+// config.
 func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error) {
 	row := q.db.QueryRowContext(ctx, GetTenantLegalPages, tenantID)
 	var i GetTenantLegalPagesRow
@@ -356,10 +361,12 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (
 		&i.TermsSlug,
 		&i.TermsTitle,
 		&i.TermsPublished,
+		&i.TermsPublishedVersionID,
 		&i.PrivacyPageID,
 		&i.PrivacySlug,
 		&i.PrivacyTitle,
 		&i.PrivacyPublished,
+		&i.PrivacyPublishedVersionID,
 	)
 	return i, err
 }

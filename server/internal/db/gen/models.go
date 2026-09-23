@@ -1023,6 +1023,13 @@ type UserNotificationSetting struct {
 	TenantID                  uuid.UUID `json:"tenant_id"`
 }
 
+type UserPageConsent struct {
+	TenantID      uuid.UUID `json:"tenant_id"`
+	UserID        uuid.UUID `json:"user_id"`
+	PageVersionID uuid.UUID `json:"page_version_id"`
+	AgreedAt      time.Time `json:"agreed_at"`
+}
+
 type UserPasswordResetToken struct {
 	ID          uuid.UUID    `json:"id"`
 	TenantID    uuid.UUID    `json:"tenant_id"`
