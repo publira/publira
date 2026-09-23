@@ -3566,6 +3566,8 @@
       "birth_date_clear": "清除出生日期",
       "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。",
       "birth_date_label": "出生日期",
+      "consent_label": "我已閱讀並同意以下內容。",
+      "consent_required": "要建立帳戶，請同意所列頁面。",
       "failed": "無法建立您的帳戶。請檢查您輸入的內容。",
       "have_account": "已經有帳戶了嗎？",
       "name_label": "名稱",

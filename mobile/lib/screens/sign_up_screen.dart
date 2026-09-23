@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/forms/name_input.dart';
 import 'package:publira/forms/password_input.dart';
@@ -42,9 +43,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   var _started = false;
   var _submitting = false;
 
-  /// Whether the tenant checks ages, which decides whether the form offers a
-  /// birth date at all.
-  late Future<AgeVerification> _ageVerification;
+  /// What the tenant asks of a sign-up — a birth date where it checks ages,
+  /// and consent to the pages it names — `null` until `GetTenant` has
+  /// answered, and for good when it could not.
+  SignUpRequirements? _requirements;
 
   /// The date the reader picked, `null` while they have picked none. The
   /// field is optional wherever it is offered: an account without a date can
@@ -67,7 +69,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
     _started = true;
-    _ageVerification = AuthScope.of(context).readAgeVerification();
+    unawaited(_readRequirements());
+  }
+
+  /// A read that fails leaves the form as a tenant that asks nothing gets it:
+  /// the API still refuses a sign-up without the consent it requires.
+  Future<void> _readRequirements() async {
+    final SignUpRequirements requirements;
+    try {
+      requirements = await AuthScope.of(context).readSignUpRequirements();
+    } on Exception {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _requirements = requirements;
+    });
   }
 
   @override
@@ -86,6 +105,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final auth = AuthScope.of(context);
     final email = _emailController.text.trim();
     final birthDate = _birthDate;
+    // Validation has already held the form back without the consent, so the
+    // pages on screen are the ones agreed to.
+    final agreedPageVersionIds = [
+      for (final page in _requirements?.legalPages ?? const <LegalPage>[])
+        page.versionId,
+    ];
     setState(() {
       _submitting = true;
       _failure = null;
@@ -97,6 +122,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         email: email,
         password: _passwordController.text,
         birthDate: birthDate == null ? '' : formatBirthDate(birthDate),
+        agreedPageVersionIds: agreedPageVersionIds,
       );
     } on AuthFailure catch (error) {
       failure = error.kind;
@@ -230,12 +256,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             onFieldSubmitted: (_) => unawaited(_submit()),
           ),
-          _BirthDateField(
-            verification: _ageVerification,
-            date: _birthDate,
-            onPick: () => unawaited(_pickBirthDate()),
-            onClear: () => setState(() => _birthDate = null),
-          ),
+          if (_requirements?.ageVerification == AgeVerification.checked)
+            _BirthDateField(
+              date: _birthDate,
+              onPick: () => unawaited(_pickBirthDate()),
+              onClear: () => setState(() => _birthDate = null),
+            ),
+          if (_requirements?.legalPages case final pages? when pages.isNotEmpty)
+            _ConsentField(pages: pages),
           const SizedBox(height: 24),
           FilledButton(
             key: const ValueKey('sign-up-submit'),
@@ -282,13 +310,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 /// nothing the reader cannot still do.
 class _BirthDateField extends StatelessWidget {
   const _BirthDateField({
-    required this.verification,
     required this.date,
     required this.onPick,
     required this.onClear,
   });
 
-  final Future<AgeVerification> verification;
   final DateTime? date;
   final VoidCallback onPick;
   final VoidCallback onClear;
@@ -296,48 +322,99 @@ class _BirthDateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return FutureBuilder<AgeVerification>(
-      future: verification,
-      builder: (context, snapshot) {
-        if (snapshot.data != AgeVerification.checked) {
-          return const SizedBox.shrink();
-        }
-        final picked = date;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            InputDecorator(
-              key: const ValueKey('sign-up-birth-date'),
-              decoration: InputDecoration(
-                labelText: messages.signUpBirthDateLabel,
-                helperText: messages.signUpBirthDateHelp,
-                helperMaxLines: 4,
-                border: const OutlineInputBorder(),
-                suffixIcon: picked == null
-                    ? IconButton(
-                        key: const ValueKey('sign-up-birth-date-pick'),
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        tooltip: messages.signUpBirthDateLabel,
-                        onPressed: onPick,
-                      )
-                    : IconButton(
-                        key: const ValueKey('sign-up-birth-date-clear'),
-                        icon: const Icon(Icons.close),
-                        tooltip: messages.signUpBirthDateClear,
-                        onPressed: onClear,
-                      ),
-              ),
-              child: InkWell(
-                onTap: onPick,
-                child: Text(
-                  picked == null ? '' : messages.formatCalendarDate(picked),
+    final picked = date;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 16),
+        InputDecorator(
+          key: const ValueKey('sign-up-birth-date'),
+          decoration: InputDecoration(
+            labelText: messages.signUpBirthDateLabel,
+            helperText: messages.signUpBirthDateHelp,
+            helperMaxLines: 4,
+            border: const OutlineInputBorder(),
+            suffixIcon: picked == null
+                ? IconButton(
+                    key: const ValueKey('sign-up-birth-date-pick'),
+                    icon: const Icon(Icons.calendar_today_outlined),
+                    tooltip: messages.signUpBirthDateLabel,
+                    onPressed: onPick,
+                  )
+                : IconButton(
+                    key: const ValueKey('sign-up-birth-date-clear'),
+                    icon: const Icon(Icons.close),
+                    tooltip: messages.signUpBirthDateClear,
+                    onPressed: onClear,
+                  ),
+          ),
+          child: InkWell(
+            onTap: onPick,
+            child: Text(
+              picked == null ? '' : messages.formatCalendarDate(picked),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Consent to the pages the tenant names as its terms of service and its
+/// privacy policy, asked only where it names one, and required there.
+///
+/// Each page opens on its own screen above the form, so reading it keeps
+/// everything the reader has typed.
+class _ConsentField extends StatelessWidget {
+  const _ConsentField({required this.pages});
+
+  final List<LegalPage> pages;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    final theme = Theme.of(context);
+    return FormField<bool>(
+      initialValue: false,
+      validator: (value) =>
+          value ?? false ? null : messages.signUpConsentRequired,
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 16),
+          CheckboxListTile(
+            key: const ValueKey('sign-up-consent'),
+            value: field.value ?? false,
+            onChanged: field.didChange,
+            title: Text(messages.signUpConsentLabel),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final page in pages)
+                TextButton(
+                  key: ValueKey('sign-up-legal-page-${page.slug}'),
+                  onPressed: () => unawaited(
+                    context.pushInTab<void>(
+                      AppRoutes.publishedPagePath(page.slug),
+                    ),
+                  ),
+                  child: Text(page.title),
                 ),
+            ],
+          ),
+          if (field.errorText case final error?)
+            Text(
+              error,
+              key: const ValueKey('sign-up-consent-error'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
               ),
             ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 }

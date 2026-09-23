@@ -4,10 +4,13 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/pages/published_page.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_page_repository.dart';
 import 'support/pump_until.dart';
 
 void main() {
@@ -37,6 +40,15 @@ void main() {
         router: createAppRouter(initialLocation: initialLocation),
         catalog: catalog,
         auth: auth,
+        pages: FakePageRepository(
+          pages: const [
+            PublishedPage(
+              slug: '/legal/terms',
+              title: 'Terms of service',
+              contentMarkdown: 'The terms you agree to.',
+            ),
+          ],
+        ),
       ),
     );
     await tester.pump();
@@ -58,7 +70,13 @@ void main() {
       find.byKey(const ValueKey('sign-up-password-confirm')),
       confirmPassword,
     );
-    await tester.tap(find.byKey(const ValueKey('sign-up-submit')));
+    final submit = find.byKey(const ValueKey('sign-up-submit'));
+    // Let the scroll a focused field starts finish before aiming at the
+    // button below it.
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
   }
 
   testWidgets('the sign-in screen leads to the sign-up form', (tester) async {
@@ -83,7 +101,96 @@ void main() {
     expect(sent.email, email);
     expect(sent.password, password);
     expect(sent.birthDate, isEmpty);
+    expect(sent.agreedPageVersionIds, isEmpty);
     expect(find.text('Sent to: $email'), findsOneWidget);
+  });
+
+  group('where the tenant names its terms and privacy policy', () {
+    setUp(() {
+      repository
+        ..termsPage = const LegalPage(
+          slug: '/legal/terms',
+          title: 'Terms of service',
+          versionId: 'terms-v2',
+        )
+        ..privacyPage = const LegalPage(
+          slug: '/privacy',
+          title: 'Privacy policy',
+          versionId: 'privacy-v1',
+        );
+    });
+
+    testWidgets('a sign-up without the consent is refused', (tester) async {
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+
+      await fillSignUpForm(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent-error')),
+      );
+
+      expect(
+        find.text('Agree to the listed pages to create an account.'),
+        findsOneWidget,
+      );
+      expect(repository.lastSignUp, isNull);
+    });
+
+    testWidgets('a sign-up with the consent carries the versions shown', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+
+      await tester.ensureVisible(find.byKey(const ValueKey('sign-up-consent')));
+      await tester.tap(find.byKey(const ValueKey('sign-up-consent')));
+      await fillSignUpForm(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-pending')),
+      );
+
+      expect(repository.lastSignUp!.agreedPageVersionIds, [
+        'terms-v2',
+        'privacy-v1',
+      ]);
+    });
+
+    testWidgets('a page opens in the app and leads back to the form', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-up-name')),
+        'New Reader',
+      );
+
+      final link = find.byKey(
+        const ValueKey('sign-up-legal-page-/legal/terms'),
+      );
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      await pumpUntilFound(tester, find.text('The terms you agree to.'));
+
+      await tester.pageBack();
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+
+      expect(find.text('New Reader'), findsOneWidget);
+    });
   });
 
   testWidgets('a birth date is offered where the tenant checks ages', (
@@ -107,6 +214,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byKey(const ValueKey('sign-up-birth-date')), findsNothing);
+  });
+
+  testWidgets('no consent is asked for where the tenant names no page', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('sign-up-birth-date')),
+    );
+
+    expect(find.byKey(const ValueKey('sign-up-consent')), findsNothing);
   });
 
   testWidgets('mismatched passwords are refused before the API is called', (

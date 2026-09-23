@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
@@ -178,6 +179,20 @@ void main() {
     expect(request.body['birthDate'], '1998-07-06');
   });
 
+  test('signUp sends the page versions the reader agreed to', () async {
+    await auth.signUp(
+      name: 'New Reader',
+      email: 'new@example.com',
+      password: 'newpassword',
+      agreedPageVersionIds: ['terms-v2', 'privacy-v1'],
+    );
+
+    expect(server.signups['new@example.com']!.agreedPageVersionIds, [
+      'terms-v2',
+      'privacy-v1',
+    ]);
+  });
+
   test('signUp leaves out a birth date the form did not ask for', () async {
     await auth.signUp(
       name: 'New Reader',
@@ -185,10 +200,9 @@ void main() {
       password: 'newpassword',
     );
 
-    expect(
-      server.requestsTo('CreateUser').single.body.containsKey('birthDate'),
-      isFalse,
-    );
+    final body = server.requestsTo('CreateUser').single.body;
+    expect(body.containsKey('birthDate'), isFalse);
+    expect(body.containsKey('agreedPageVersionIds'), isFalse);
   });
 
   test('signUp maps a refused address to invalidInput', () async {
@@ -400,15 +414,46 @@ void main() {
   });
 
   test(
-    'readAgeVerification reports the tenant rule without a session',
+    'readSignUpRequirements reports the tenant rule without a session',
     () async {
-      expect(await auth.readAgeVerification(), AgeVerification.checked);
+      expect(
+        (await auth.readSignUpRequirements()).ageVerification,
+        AgeVerification.checked,
+      );
 
       server.ageVerification = 'AGE_VERIFICATION_NONE';
 
-      expect(await auth.readAgeVerification(), AgeVerification.none);
+      expect(
+        (await auth.readSignUpRequirements()).ageVerification,
+        AgeVerification.none,
+      );
+      expect(server.requestsTo('GetTenant'), hasLength(2));
     },
   );
+
+  test('readSignUpRequirements reads the pages the tenant names', () async {
+    server
+      ..termsPage = {
+        'slug': '/legal/terms',
+        'title': ' Terms of service ',
+        'versionId': 'terms-v2',
+      }
+      ..privacyPage = {'slug': '/privacy', 'title': 'Privacy policy'};
+
+    final requirements = await auth.readSignUpRequirements();
+
+    expect(
+      requirements.termsPage,
+      const LegalPage(
+        slug: '/legal/terms',
+        title: 'Terms of service',
+        versionId: 'terms-v2',
+      ),
+    );
+    // A page named without a published version is not one to agree to.
+    expect(requirements.privacyPage, isNull);
+    expect(requirements.legalPages, [requirements.termsPage]);
+  });
 
   test('refresh maps a token the API rejects to sessionExpired', () async {
     server.activeAccessToken = 'another-token';

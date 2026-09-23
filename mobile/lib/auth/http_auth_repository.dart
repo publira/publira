@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
 /// [AuthRepository] backed by `publira.v1.AuthService` on the public API.
@@ -74,6 +75,7 @@ class HttpAuthRepository implements AuthRepository {
     required String email,
     required String password,
     String birthDate = '',
+    List<String> agreedPageVersionIds = const [],
   }) async {
     try {
       final tenantId = await _tenants.resolve();
@@ -85,6 +87,8 @@ class HttpAuthRepository implements AuthRepository {
         // protojson reads an absent field as the empty string, which is what
         // the API takes as a form that did not ask for a date.
         if (birthDate.isNotEmpty) 'birthDate': birthDate,
+        if (agreedPageVersionIds.isNotEmpty)
+          'agreedPageVersionIds': agreedPageVersionIds,
       }, tenantId: tenantId);
       if (body['accepted'] != true) {
         throw const AuthFailure(
@@ -171,9 +175,13 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AgeVerification> readAgeVerification() async {
+  Future<SignUpRequirements> readSignUpRequirements() async {
     final tenant = await _getTenant();
-    return AgeVerification.fromWire(tenant['ageVerification']);
+    return SignUpRequirements(
+      ageVerification: AgeVerification.fromWire(tenant['ageVerification']),
+      termsPage: LegalPage.fromWire(tenant['termsPage']),
+      privacyPage: LegalPage.fromWire(tenant['privacyPage']),
+    );
   }
 
   @override
