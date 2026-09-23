@@ -63,6 +63,17 @@ export type TenantAgeVerificationActionState =
     }
   | null;
 
+export type TenantLegalPagesActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
 export type EmailChangeActionState =
   | {
       ok: true;

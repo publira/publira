@@ -5,6 +5,7 @@ const {
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantDefaultLocale,
+  mockUpdateTenantLegalPages,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantTimezone,
 } = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantDefaultLocale: vi.fn(),
+  mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
 }));
@@ -49,6 +51,12 @@ vi.mock("#lib/tenant-default-locale", () => ({
   tenantDefaultLocaleCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:default-locale`,
   updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
+}));
+
+vi.mock("#lib/tenant-legal-pages", () => ({
+  tenantLegalPagesCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:legal-pages`,
+  updateTenantLegalPages: mockUpdateTenantLegalPages,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -356,6 +364,90 @@ describe("updateSiteSettingsAction", () => {
       textFormData({ site_tagline: "A tagline", tenant_id: "TENANT001" })
     );
 
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantLegalPagesAction", () => {
+  const termsPageId = "0194d3c6-6c3e-7a4a-8d2e-2f6a1b0c9d01";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("writes both nominations, an empty one clearing its role, and revalidates the tag", async () => {
+    mockUpdateTenantLegalPages.mockResolvedValueOnce({
+      ok: true,
+      pages: {},
+    });
+
+    const { updateTenantLegalPagesAction } = await import("./actions");
+
+    const result = await updateTenantLegalPagesAction(
+      null,
+      textFormData({
+        privacy_page_id: "",
+        tenant_id: "TENANT001",
+        terms_page_id: termsPageId,
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The terms and privacy policy were saved.",
+      ok: true,
+    });
+    expect(mockUpdateTenantLegalPages).toHaveBeenCalledWith(
+      { privacyPageId: "", tenantId: "TENANT001", termsPageId },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:legal-pages");
+  });
+
+  it("refuses a value that is not a page id without calling the API", async () => {
+    const { updateTenantLegalPagesAction } = await import("./actions");
+
+    const result = await updateTenantLegalPagesAction(
+      null,
+      textFormData({
+        privacy_page_id: "privacy",
+        tenant_id: "TENANT001",
+        terms_page_id: termsPageId,
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Choose a page from the list.",
+      ok: false,
+    });
+    expect(mockUpdateTenantLegalPages).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("returns the API's refusal without revalidating", async () => {
+    mockUpdateTenantLegalPages.mockResolvedValueOnce({
+      message:
+        "The page chosen as the terms of service is not published. Reload the page and choose again.",
+      ok: false,
+    });
+
+    const { updateTenantLegalPagesAction } = await import("./actions");
+
+    const result = await updateTenantLegalPagesAction(
+      null,
+      textFormData({
+        privacy_page_id: "",
+        tenant_id: "TENANT001",
+        terms_page_id: termsPageId,
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "The page chosen as the terms of service is not published. Reload the page and choose again.",
+      ok: false,
+    });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

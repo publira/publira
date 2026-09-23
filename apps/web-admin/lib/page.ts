@@ -9,6 +9,8 @@ import {
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
 
@@ -70,6 +72,15 @@ export type ListPagesResult = CursorPageTokens &
  * scope, where a thrown `notFound()` is not observable by the caller.
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
+export type ListPublishedPagesResult =
+  | { ok: true; pages: PageItem[] }
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
 export type GetPageResult =
   | { ok: true; page: PageItem }
   | { notFound: true; ok: false }
@@ -272,6 +283,83 @@ export const listPages = async (
       ),
       ok: false,
       pages: [],
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * Every published page of the tenant, sorted by title, for pickers that may
+ * only name a page the storefront serves.
+ *
+ * An incomplete walk fails rather than handing the picker a partial list that
+ * looks complete.
+ */
+export const listPublishedPages = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListPublishedPagesResult> => {
+  "use cache: private";
+  cacheTag(`pages-${tenantId}`);
+
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const pages: PageItem[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.pages.listPages(
+          { limit, tenant: { tenantId }, token },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.pages ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          const page = mapPage(item);
+          if (page.publishedVersionId) {
+            pages.push(page);
+          }
+        }
+      }
+    );
+
+    if (walkStop !== "completed") {
+      return {
+        message: t("admin.pages.list_failed"),
+        ok: false,
+        requiresSignIn: false,
+      };
+    }
+
+    return {
+      ok: true,
+      pages: pages.toSorted((a, b) =>
+        a.title.localeCompare(b.title, toIntlLocale(locale))
+      ),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
   }

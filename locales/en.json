@@ -1882,6 +1882,30 @@
           "required": "Select which ratings need a proven age."
         }
       },
+      "legal_pages": {
+        "title": "Terms and privacy policy",
+        "description": "Which of your published pages are your terms of service and your privacy policy. The storefront and the app link to them, and readers agree to them when they create an account.",
+        "terms": "Terms of service",
+        "terms_description": "The page readers agree to as your terms of service.",
+        "privacy": "Privacy policy",
+        "privacy_description": "The page readers agree to as your privacy policy.",
+        "placeholder": "Search published pages",
+        "empty": "No published page matches.",
+        "none": "None",
+        "option": "{$title} ({$slug})",
+        "option_unpublished": "{$title} ({$slug}) — unpublished",
+        "unpublished": "“{$title}” is no longer published, so nothing links to it. Publish it again or choose another page.",
+        "load_error_hint": "Saving now would clear the stored pages, so reload the page before changing them.",
+        "submit": "Save the terms and privacy policy",
+        "saved": "The terms and privacy policy were saved.",
+        "load_failed": "Could not load the terms and privacy policy. Please try again later.",
+        "save_failed": "Could not save the terms and privacy policy. Please try again later.",
+        "validation": {
+          "page_invalid": "Choose a page from the list.",
+          "terms_unavailable": "The page chosen as the terms of service is not published. Reload the page and choose again.",
+          "privacy_unavailable": "The page chosen as the privacy policy is not published. Reload the page and choose again."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",
