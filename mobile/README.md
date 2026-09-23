@@ -257,6 +257,8 @@ flutter test
 
 When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E` runs integration tests on an Android emulator (`PUBLIRA_LIVE_API=true task mobile:test-integration`). The CI job starts and stops the server (the public API and the images) and development seeds.
 
+`Test / Mobile iOS` builds the iOS app with Xcode on macOS through `task mobile:test-ios-build`, which needs a Mac with Xcode and `task mobile:deps` run first. It builds the `dev` flavor for the simulator from Publira's own manifest and the `production` flavor, unsigned, from a tenant manifest, reads `CFBundleIdentifier`, `CFBundleDisplayName`, and the associated domain back out of each built app — for the unsigned store build, which carries no entitlements, the associated domain of the entitlements file Xcode resolves for it — confirms that a production build for another tenant host is refused, and fails when the builds leave the working tree changed.
+
 For the full CI job layout, path filters, and triage, see [.github/workflows/README.md](../.github/workflows/README.md).
 
 ## Directory layout

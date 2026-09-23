@@ -65,6 +65,7 @@ jobs:
       test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
       test_mobile_e2e: ${{ steps.plan.outputs.test_mobile_e2e }}
+      test_mobile_ios: ${{ steps.plan.outputs.test_mobile_ios }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       test_routing: ${{ steps.plan.outputs.test_routing }}
@@ -181,6 +182,13 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_mobile:
+              - *docs_excluded
+              - 'mobile/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - 'scripts/setup-flutter.sh'
+            test_mobile_ios:
               - *docs_excluded
               - 'mobile/**'
               - 'Taskfile.yaml'
@@ -346,6 +354,7 @@ jobs:
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_TEST_MOBILE_E2E: ${{ steps.filter.outputs.test_mobile_e2e }}
+          FILTER_TEST_MOBILE_IOS: ${{ steps.filter.outputs.test_mobile_ios }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
@@ -814,6 +823,40 @@ jobs:
             mobile/.run/logs/
           if-no-files-found: ignore
 
+  test-mobile-ios:
+    name: Test / Mobile iOS
+    needs: changes
+    if: needs.changes.outputs.test_mobile_ios == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/setup-flutter.sh
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Validate / iOS builds
+        run: task mobile:test-ios-build
+
+      # What a build left changed in the tree is what has to be committed or
+      # ignored, and the runner is the only place it can be read.
+      - name: Diagnose / Working tree
+        if: failure()
+        run: git add --intent-to-add --all && git status --short && git diff
+
   test-e2e:
     name: Test / E2E
     needs: changes
@@ -1143,6 +1186,7 @@ jobs:
       - test-db-migrations
       - test-mobile
       - test-mobile-e2e
+      - test-mobile-ios
       - test-e2e
       - test-bootstrap
       - test-routing
@@ -1162,6 +1206,7 @@ jobs:
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
+          TEST_MOBILE_IOS: ${{ needs.test-mobile-ios.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           TEST_ROUTING: ${{ needs.test-routing.result }}
@@ -1181,6 +1226,7 @@ jobs:
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / Mobile E2E=${TEST_MOBILE_E2E}" \
+            "Test / Mobile iOS=${TEST_MOBILE_IOS}" \
             "Test / E2E=${TEST_E2E}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Test / Routing=${TEST_ROUTING}" \
