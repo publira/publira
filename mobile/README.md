@@ -157,6 +157,7 @@ A tenant builds the app it publishes from its own manifest:
 1. Copy `config/app.example.yaml` out of the repository and replace every value with the tenant's. The identifiers are what the stores know the app by, so they stay the same for every later release.
 2. Export the origin the app connects to, which a production build requires and the app manifest does not carry.
 3. Run `task mobile:build` with the manifest and the `flutter build` target.
+4. Once the stores list the app, enter its identities in the tenant console, as [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site) describes, so the tenant's links open it.
 
 ```bash
 # From the repository root; a relative manifest path is read from where the task starts
@@ -178,6 +179,28 @@ The command checks the manifest and the arguments, reports every problem before 
 | Any other argument | Passed on to `flutter build` after the command's own, such as the [Firebase configuration](#firebase-configuration) defines, `--build-name`, and `--build-number` |
 
 The build fails when it leaves a change behind in a file Git tracks or does not ignore: a tenant's identity lives only in the generated files, so every tenant builds from the same unmodified checkout.
+
+## Linking a tenant's app to its site
+
+A link on the tenant host opens the published app only once Android and iOS have verified the app against `https://<tenant.host>/.well-known/assetlinks.json` and `https://<tenant.host>/.well-known/apple-app-site-association`. The public site builds both documents from what a tenant administrator saves under **Integrations** → **App links** in the tenant console, and answers 404 for a platform left unticked; a tenant without apps ticks neither.
+
+The values are those of the app the stores distribute: the `production` flavor `task mobile:build` made from the tenant's manifest. The `dev` flavor's `.dev` identifiers are never entered, and a value that differs from the published app by a single character leaves the links opening in the browser.
+
+| App links field | Where the value comes from |
+| --- | --- |
+| **Application ID** | `android.applicationId` in the manifest. Google Play shows the same value as the `id=` of the app's store address |
+| **SHA-256 signing certificate fingerprints** | The certificate the installed app is signed with, which the manifest does not hold. With Play App Signing, it is the SHA-256 fingerprint of the app signing key certificate on the app's **App signing** page in Play Console; the upload key does not sign what Play delivers. Without it, it is the `SHA256:` line `keytool -list -v -keystore <release keystore> -alias <key alias>` prints. One per line, up to ten, so an upload-key build installed outside Play, or a key being rotated in, can be listed beside it |
+| **Apple Team ID** | The ten-character Team ID in the membership details of the Apple Developer account the app is published under, which the manifest does not hold |
+| **Bundle identifier** | `ios.bundleIdentifier` in the manifest. App Store Connect shows the same value as the Bundle ID under **App Information** |
+
+Checking the manifest prints both identifiers as the build used them, so they are copied from its output rather than retyped:
+
+```console
+$ dart run scripts/app_manifest.dart ../tenant/app.yaml
+../tenant/app.yaml: Example Reader for reader.example.com (Android com.example.reader, iOS com.example.reader)
+```
+
+The manifest's `tenant.host` has no field of its own: it has to be a host the tenant's site is served on, because that is where Android and iOS fetch the documents.
 
 ## Quality gates (format / analyze / test)
 
@@ -306,7 +329,7 @@ The catalog's app bar carries the way to the announcements.
 
 ### Tenant links and sharing
 
-A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app.
+A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app; see [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site).
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
