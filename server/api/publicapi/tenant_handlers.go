@@ -127,10 +127,18 @@ func (s *apiServer) publishedLegalPages(ctx context.Context, queries Querier, te
 		return nil, nil
 	}
 	if row.TermsPublished {
-		terms = &publirav1.TenantLegalPage{Slug: row.TermsSlug.String, Title: row.TermsTitle.String}
+		terms = &publirav1.TenantLegalPage{
+			Slug:      row.TermsSlug.String,
+			Title:     row.TermsTitle.String,
+			VersionId: row.TermsPublishedVersionID.UUID.String(),
+		}
 	}
 	if row.PrivacyPublished {
-		privacy = &publirav1.TenantLegalPage{Slug: row.PrivacySlug.String, Title: row.PrivacyTitle.String}
+		privacy = &publirav1.TenantLegalPage{
+			Slug:      row.PrivacySlug.String,
+			Title:     row.PrivacyTitle.String,
+			VersionId: row.PrivacyPublishedVersionID.UUID.String(),
+		}
 	}
 	return terms, privacy
 }

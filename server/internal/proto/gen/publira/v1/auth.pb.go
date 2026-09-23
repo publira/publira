@@ -145,9 +145,15 @@ type CreateUserRequest struct {
 	// a tenant that verifies ages asks for it on the sign-up form: collecting it
 	// later would leave the account that just agreed to give it unable to open
 	// the work it signed up for until it has verified an address and signed in.
-	BirthDate     string `protobuf:"bytes,5,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BirthDate string `protobuf:"bytes,5,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
+	// The version of each page the reader agreed to, as TenantLegalPage.version_id
+	// reported it. Required for every page GetTenant reports as the tenant's
+	// terms or privacy policy, and refused when one names any other page. A
+	// version the page has since superseded is still accepted, since it is the
+	// text the reader was shown.
+	AgreedPageVersionIds []string `protobuf:"bytes,6,rep,name=agreed_page_version_ids,json=agreedPageVersionIds,proto3" json:"agreed_page_version_ids,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CreateUserRequest) Reset() {
@@ -213,6 +219,13 @@ func (x *CreateUserRequest) GetBirthDate() string {
 		return x.BirthDate
 	}
 	return ""
+}
+
+func (x *CreateUserRequest) GetAgreedPageVersionIds() []string {
+	if x != nil {
+		return x.AgreedPageVersionIds
+	}
+	return nil
 }
 
 type CreateUserResponse struct {
@@ -2409,14 +2422,15 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\"}\n" +
 	"\rLoginResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
-	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\xb1\x01\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\xe8\x01\n" +
 	"\x11CreateUserRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x1d\n" +
 	"\n" +
-	"birth_date\x18\x05 \x01(\tR\tbirthDate\"P\n" +
+	"birth_date\x18\x05 \x01(\tR\tbirthDate\x125\n" +
+	"\x17agreed_page_version_ids\x18\x06 \x03(\tR\x14agreedPageVersionIds\"P\n" +
 	"\x12CreateUserResponse\x12\x1a\n" +
 	"\baccepted\x18\x03 \x01(\bR\bacceptedJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x04userR\faccess_token\"g\n" +
 	"\x16VerifyUserEmailRequest\x127\n" +

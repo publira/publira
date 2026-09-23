@@ -69,9 +69,12 @@ func (x *GetTenantRequest) GetTenant() *v1.TenantContext {
 // A published page the tenant names for a role. The slug is in storage form
 // ("/privacy"), which is also the path the storefront serves it at.
 type TenantLegalPage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Slug  string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// The published version, which a sign-up sends back in
+	// CreateUserRequest.agreed_page_version_ids.
+	VersionId     string `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -116,6 +119,13 @@ func (x *TenantLegalPage) GetSlug() string {
 func (x *TenantLegalPage) GetTitle() string {
 	if x != nil {
 		return x.Title
+	}
+	return ""
+}
+
+func (x *TenantLegalPage) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
 	}
 	return ""
 }
@@ -323,10 +333,12 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\";\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"Z\n" +
 	"\x0fTenantLegalPage\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\"\xad\x06\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\"\xad\x06\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +

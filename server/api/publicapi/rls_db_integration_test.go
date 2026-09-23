@@ -162,6 +162,9 @@ var publicDataTables = []struct {
 	{name: "unapplied_stripe_refunds", count: "SELECT count(*) FROM unapplied_stripe_refunds"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
 	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
+	// The page versions a reader agreed to at sign-up, which the storefront's
+	// connection is what records.
+	{name: "user_page_consents", count: "SELECT count(*) FROM user_page_consents"},
 	// The tenant's own notices and one reader's state over them. The inbox is
 	// answered on the storefront's connection, so a missing policy here would
 	// put one tenant's notices — and one reader's read state — in another's.
@@ -286,7 +289,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	commentID := uuid.Must(uuid.NewV7())
 	seed("comment", "INSERT INTO episode_comments (id, tenant_id, public_id, episode_id, user_id, body, status, published_at) VALUES ($1, $2, 'COMMENTA0001', $3, $4, 'A comment about this episode.', 'published', NOW())", commentID, first.ID, episode.ID, member.ID)
 	seed("comment report", "INSERT INTO episode_comment_reports (id, tenant_id, comment_id, reporter_user_id, reason) VALUES ($1, $2, $3, $4, 'spam')", uuid.Must(uuid.NewV7()), first.ID, commentID, member.ID)
-	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	privacy := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	seed("page consent", "INSERT INTO user_page_consents (tenant_id, user_id, page_version_id) VALUES ($1, $2, $3)", first.ID, member.ID, privacy.VersionID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
 	announcementID := insertAnnouncement(t, env, first.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
 	seed("announcement read", "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID)

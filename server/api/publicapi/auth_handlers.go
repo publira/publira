@@ -425,6 +425,16 @@ func (s *apiServer) CreateUser(
 		birthDate = sql.NullTime{Time: parsed, Valid: true}
 	}
 
+	agreedVersionIDs, err := s.signupConsents(ctx, tenant.ID, req.Msg.AgreedPageVersionIds)
+	if err != nil {
+		reason := "consent_lookup_failed"
+		if connect.CodeOf(err) == connect.CodeInvalidArgument {
+			reason = "invalid_consent"
+		}
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
+		return nil, err
+	}
+
 	// Charged before the address is looked up, so a caller out of allowance is
 	// refused the same way whether or not the address has an account, and
 	// neither the account nor the notice below is written on the way there.
@@ -519,6 +529,16 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create email verification token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
+	for _, versionID := range agreedVersionIDs {
+		if err := txq.CreateUserPageConsent(ctx, dbmodels.CreateUserPageConsentParams{
+			TenantID:      tenant.ID,
+			UserID:        user.ID,
+			PageVersionID: versionID,
+		}); err != nil {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "consent_create_failed")
+			return nil, s.internalDBError(ctx, "failed to record page consent", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		}
+	}
 	if err := enqueueReaderEmailVerificationEmail(ctx, txq, tenant.ID, verificationID, verificationToken); err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "verification_email_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -530,6 +550,69 @@ func (s *apiServer) CreateUser(
 
 	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "verification_email_enqueued")
 	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+}
+
+// signupConsents checks the page versions a sign-up agreed to against the
+// pages the tenant names as its terms and privacy policy, and answers the
+// versions to record. Every named page that is published needs exactly one
+// published version of its own; a tenant that names none needs nothing.
+func (s *apiServer) signupConsents(ctx context.Context, tenantID uuid.UUID, rawIDs []string) ([]uuid.UUID, error) {
+	required := map[uuid.UUID]bool{}
+	legal, err := s.queriesFor(ctx).GetTenantLegalPages(ctx, tenantID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenantID.String())
+	}
+	if legal.TermsPublished {
+		required[legal.TermsPageID.UUID] = false
+	}
+	if legal.PrivacyPublished {
+		required[legal.PrivacyPageID.UUID] = false
+	}
+
+	invalid := func(message string) error {
+		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New(message), "agreed_page_version_ids")
+	}
+	versionIDs := make([]uuid.UUID, 0, len(rawIDs))
+	for _, raw := range rawIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, invalid("agreed page version id is not a valid id")
+		}
+		versionIDs = append(versionIDs, id)
+	}
+	if len(versionIDs) > 0 {
+		versions, err := s.queriesFor(ctx).ListPublishedPageVersionsByIDsForTenant(ctx, dbmodels.ListPublishedPageVersionsByIDsForTenantParams{
+			TenantID: tenantID,
+			Ids:      versionIDs,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read agreed page versions", err, "tenant_id", tenantID.String())
+		}
+		pageOf := make(map[uuid.UUID]uuid.UUID, len(versions))
+		for _, version := range versions {
+			pageOf[version.ID] = version.PageID
+		}
+		for _, id := range versionIDs {
+			pageID, ok := pageOf[id]
+			if !ok {
+				return nil, invalid("agreed page version is not a published version of this tenant")
+			}
+			agreed, named := required[pageID]
+			if !named {
+				return nil, invalid("agreed page version is not of a page the tenant asks consent to")
+			}
+			if agreed {
+				return nil, invalid("more than one version agreed to for the same page")
+			}
+			required[pageID] = true
+		}
+	}
+	for _, agreed := range required {
+		if !agreed {
+			return nil, invalid("consent to the tenant's terms and privacy policy is required")
+		}
+	}
+	return versionIDs, nil
 }
 
 // acceptSignupForRegisteredEmail answers a sign-up whose address already has an

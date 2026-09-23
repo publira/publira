@@ -253,6 +253,7 @@ type Querier interface {
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
+	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
@@ -600,7 +601,8 @@ type Querier interface {
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// The pages a tenant names as its terms of service and its privacy policy,
-	// each with whether it is published. No row where the tenant has no config.
+	// each with its published version, if any. No row where the tenant has no
+	// config.
 	GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	// One reader in the shape ListTenantReaders* returns. A staff account and an
@@ -1295,6 +1297,9 @@ type Querier interface {
 	// Every published page, footer or not: the public site routes a path to a page
 	// by this set, so a page left out of the footer is still reachable at its slug.
 	ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error)
+	// The versions among the given ids that the tenant has published, current or
+	// superseded, each with its page. A draft is left out: no reader was shown it.
+	ListPublishedPageVersionsByIDsForTenant(ctx context.Context, arg ListPublishedPageVersionsByIDsForTenantParams) ([]ListPublishedPageVersionsByIDsForTenantRow, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
 	// reader navigates to them from.
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)

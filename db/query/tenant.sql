@@ -213,15 +213,18 @@ RETURNING *;
 
 -- name: GetTenantLegalPages :one
 -- The pages a tenant names as its terms of service and its privacy policy,
--- each with whether it is published. No row where the tenant has no config.
+-- each with its published version, if any. No row where the tenant has no
+-- config.
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
     terms.title AS terms_title,
     (terms.published_version_id IS NOT NULL)::boolean AS terms_published,
+    terms.published_version_id AS terms_published_version_id,
     tc.privacy_page_id,
     privacy.slug AS privacy_slug,
     privacy.title AS privacy_title,
-    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published
+    (privacy.published_version_id IS NOT NULL)::boolean AS privacy_published,
+    privacy.published_version_id AS privacy_published_version_id
 FROM tenant_config tc
     LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
     AND terms.id = tc.terms_page_id

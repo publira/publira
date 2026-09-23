@@ -28,6 +28,12 @@ message CreateUserRequest {
   // later would leave the account that just agreed to give it unable to open
   // the work it signed up for until it has verified an address and signed in.
   string birth_date = 5;
+  // The version of each page the reader agreed to, as TenantLegalPage.version_id
+  // reported it. Required for every page GetTenant reports as the tenant's
+  // terms or privacy policy, and refused when one names any other page. A
+  // version the page has since superseded is still accepted, since it is the
+  // text the reader was shown.
+  repeated string agreed_page_version_ids = 6;
 }
 
 message CreateUserResponse {
