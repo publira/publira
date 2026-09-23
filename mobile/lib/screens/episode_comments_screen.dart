@@ -137,6 +137,11 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
       throw pageFailure!;
     }
     final (own, ownFailure) = await ownRead;
+    // The public page is read without a session, so the reader's own comments
+    // are where a refused session shows, and it takes the whole screen.
+    if (ownFailure?.kind == CommentFailureKind.sessionExpired) {
+      throw ownFailure!;
+    }
 
     return _Section(
       mode: mode,

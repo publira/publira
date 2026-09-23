@@ -115,14 +115,18 @@ void main() {
   testWidgets('a reader whose session was refused is sent to sign in', (
     tester,
   ) async {
-    comments.listFailure = const CommentFailure(
-      CommentFailureKind.sessionExpired,
-    );
+    comments
+      ..ownFailure = const CommentFailure(CommentFailureKind.sessionExpired)
+      ..pages = {
+        '': EpisodeCommentPage(comments: [otherReader()]),
+      };
     await pumpComments(tester, session: fakeSession);
     await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('episode-comments-error')),
     );
+
+    expect(find.byKey(const ValueKey('comment-body')), findsNothing);
 
     expect(
       find.byKey(const ValueKey('episode-comments-error-retry')),
