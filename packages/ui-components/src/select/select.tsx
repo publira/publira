@@ -6,6 +6,7 @@ import { ChevronDownIcon } from "@publira/icons/chevron-down-icon";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 
+import { FieldPopupTrigger } from "../field/field";
 import { FLOATING_TRANSITION } from "../motion";
 
 interface SelectItem {
@@ -39,6 +40,7 @@ export const Select = ({
           className
         )}
         id={id}
+        render={<FieldPopupTrigger />}
       >
         <BaseSelect.Value placeholder={placeholder} />
         <BaseSelect.Icon className="text-muted-foreground">
