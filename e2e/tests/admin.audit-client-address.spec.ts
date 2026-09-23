@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 import { createGenreViaUi, signInAsAdmin } from "../src/admin";
 import { deleteGenresByNames, querySql, quoteSqlLiteral } from "../src/db";
 import { SEED_ADMIN, uniqueSuffix } from "../src/scenarios/admin-publish";
-import { WEB_ADMIN_EDGE_BASE_URL } from "../src/urls";
 
 /**
  * The E2E edge listens on loopback, so loopback is the address it names in
@@ -29,8 +28,8 @@ test.describe("console audit log client address", () => {
   test("records the operator's address the edge named for a console action", async ({
     page,
   }) => {
-    await signInAsAdmin(page, SEED_ADMIN, "/genres", WEB_ADMIN_EDGE_BASE_URL);
-    await createGenreViaUi(page, genreName, WEB_ADMIN_EDGE_BASE_URL);
+    await signInAsAdmin(page, SEED_ADMIN, "/genres");
+    await createGenreViaUi(page, genreName);
 
     await expect
       .poll(() => auditedClientAddress(genreName), { timeout: 15_000 })

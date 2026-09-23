@@ -31,10 +31,9 @@ const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
 /**
- * A delivered eye-catch is `/images/{series,labels}/{id}/{ratio}/{width}` on
- * the reader's origin, and only the Traefik edge joins web-host and
- * image-server under one host and port. The console is a different origin, so
- * the previews there name the path and the bytes are read from the edge.
+ * The bytes behind a preview's `/images/...` path, read on the reader's origin.
+ * The runner cannot resolve the console's `admin.localhost` itself, so the
+ * request goes to the edge under the public site's host.
  */
 const edgeUrl = (pathname: string): string =>
   `${WEB_HOST_EDGE_BASE_URL}${pathname}`;
@@ -305,6 +304,18 @@ test.describe("admin eye-catch upload", () => {
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "series");
+    // The console draws each preview from its own origin, not only names it.
+    await Promise.all(
+      EYE_CATCH_ASPECTS.map((aspect) =>
+        expect
+          .poll(() =>
+            aspectSlot(page, aspect)
+              .getByRole("img")
+              .evaluate((image: HTMLImageElement) => image.naturalWidth)
+          )
+          .toBeGreaterThan(0)
+      )
+    );
 
     const digests = await aspectDigests(request, sources);
     // Four crops of one source, so four different images — a ratio serving
