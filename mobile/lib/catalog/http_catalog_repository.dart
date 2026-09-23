@@ -1,3 +1,4 @@
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -150,6 +151,7 @@ class HttpCatalogRepository implements CatalogRepository {
     return _client.unary(procedure, {
       'limit': searchPageLimit,
       'query': query,
+      'surface': appClientSurface,
       if (token.isNotEmpty) 'token': token,
       'tenant': {'tenantId': tenantId},
     }, tenantId: tenantId);
@@ -182,6 +184,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _client.unary(_listProcedure, {
         'limit': limit,
         'order': order,
+        'surface': appClientSurface,
         if (token.isNotEmpty) 'token': token,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
@@ -208,6 +211,7 @@ class HttpCatalogRepository implements CatalogRepository {
           RankingPeriod.daily => 'RANKING_PERIOD_DAILY',
           RankingPeriod.weekly => 'RANKING_PERIOD_WEEKLY',
         },
+        'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       return _parseRankedSeries(body['rankedSeries']);
@@ -243,6 +247,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_detailProcedure, {
         'publicId': publicId,
+        'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       return _parseSeriesDetail(body);
@@ -268,6 +273,7 @@ class HttpCatalogRepository implements CatalogRepository {
         // back to twenty.
         'limit': 1,
         'publicId': publicId,
+        'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       final creator = _expectMap(body['creator'], 'creator');
@@ -342,6 +348,7 @@ class HttpCatalogRepository implements CatalogRepository {
     return _client.unary(procedure, {
       'limit': detailSeriesPageLimit,
       'publicId': publicId,
+      'surface': appClientSurface,
       if (token.isNotEmpty) 'token': token,
       'tenant': {'tenantId': tenantId},
     }, tenantId: tenantId);
@@ -398,6 +405,7 @@ class HttpCatalogRepository implements CatalogRepository {
         _episodeProcedure,
         {
           'publicId': episodePublicId,
+          'surface': appClientSurface,
           'tenant': {'tenantId': tenantId},
         },
         tenantId: tenantId,

@@ -260,6 +260,42 @@ void main() {
   });
 
   testWidgets(
+    'a saved episode the app no longer shows is dropped rather than opened',
+    (tester) async {
+      await seed(tester, body(_freeEpisode.id));
+      // The tenant has since kept the work to the storefront, which the API
+      // answers the app as a work it does not have.
+      origin.episodes = {
+        for (final entry in fixtureEpisodes().entries)
+          if (entry.value.episode.id != _freeEpisode.id) entry.key: entry.value,
+      };
+
+      await pumpApp(tester, initialLocation: AppRoutes.library);
+      await openDownloads(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
+      );
+      await tester.tap(
+        find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('episode-not-found')),
+      );
+
+      expect(find.byKey(const ValueKey('episode-page-view')), findsNothing);
+
+      router.pop();
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('downloads-empty')),
+      );
+      expect(usage(tester), '0 B of 512 MB used');
+    },
+  );
+
+  testWidgets(
     'deleting an episode frees its bytes and takes the mark off its row',
     (tester) async {
       await seed(tester, body(_freeEpisode.id));

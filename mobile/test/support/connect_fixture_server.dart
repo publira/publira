@@ -17,6 +17,7 @@ class ConnectFixtureServer {
     this.defaultLocale = defaultTenantLocale,
     this.series = const [],
     this.seriesPageSize = 0,
+    this.seriesAvailability = const {},
     this.rankedSeries = const [],
     this.details = const {},
     this.episodes = const {},
@@ -417,6 +418,15 @@ class ConnectFixtureServer {
   /// the page's first row, written out.
   int seriesPageSize;
 
+  /// Where each series may be shown, as the `SurfaceAvailability` name the
+  /// console stored, keyed by public id. A series missing here is shown on
+  /// both surfaces.
+  ///
+  /// Every catalog read answers only with what the surface its request names
+  /// may show, and a request naming none is answered as the storefront, the
+  /// way the API answers it.
+  Map<String, String> seriesAvailability;
+
   /// `RankedSeries` entries `ListRankedSeries` answers with, whichever period
   /// is asked for. Empty acts out a tenant the ranking batch has not run for.
   List<Map<String, Object?>> rankedSeries;
@@ -686,7 +696,8 @@ class ConnectFixtureServer {
         listStatus,
         listResponse ??
             {
-              if (listStatus == HttpStatus.ok) ..._seriesPage(body['token']),
+              if (listStatus == HttpStatus.ok)
+                ..._seriesPage(_seriesShownTo(body), body['token']),
               if (listStatus != HttpStatus.ok) 'code': 'unavailable',
               if (listStatus != HttpStatus.ok) 'message': 'unavailable',
             },
@@ -697,7 +708,7 @@ class ConnectFixtureServer {
     if (path.endsWith('/SearchPublishedSeries')) {
       await _write(request, searchStatus, {
         if (searchStatus == HttpStatus.ok)
-          ..._searchPage(body['query'], body['token']),
+          ..._searchPage(_seriesShownTo(body), body['query'], body['token']),
         if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
         if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
       });
@@ -705,11 +716,15 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/ListRankedSeries')) {
+      final ranked = [
+        for (final entry in rankedSeries)
+          if (_shows(body, (entry['series'] as Map?)?['publicId'])) entry,
+      ];
       await _write(request, rankedStatus, {
         // protojson omits an empty repeated field, which is how a tenant the
         // ranking batch has not run for is answered.
-        if (rankedStatus == HttpStatus.ok && rankedSeries.isNotEmpty)
-          'rankedSeries': rankedSeries,
+        if (rankedStatus == HttpStatus.ok && ranked.isNotEmpty)
+          'rankedSeries': ranked,
         if (rankedStatus != HttpStatus.ok) 'code': 'unavailable',
         if (rankedStatus != HttpStatus.ok) 'message': 'unavailable',
       });
@@ -854,7 +869,7 @@ class ConnectFixtureServer {
         return;
       }
       final publicId = _publicIdOf(body);
-      final detail = details[publicId];
+      final detail = _shows(body, publicId) ? details[publicId] : null;
       if (detail == null) {
         await _write(request, HttpStatus.notFound, {
           'code': 'not_found',
@@ -880,7 +895,8 @@ class ConnectFixtureServer {
       final episode = _isAuthorized(request)
           ? entitledEpisodes[publicId] ?? episodes[publicId]
           : episodes[publicId];
-      if (episode == null) {
+      if (episode == null ||
+          !_shows(body, (episode['series'] as Map?)?['publicId'])) {
         await _write(request, HttpStatus.notFound, {
           'code': 'not_found',
           'message': 'episode not found',
@@ -954,8 +970,10 @@ class ConnectFixtureServer {
           ..._namedPage(
             creators ? 'creators' : 'labels',
             creators
-                ? _publishedCreators().where(_hasPublishedSeries)
-                : _publishedLabels(),
+                ? _publishedCreators(
+                    _seriesShownTo(body),
+                  ).where(_hasPublishedSeries)
+                : _publishedLabels(_seriesShownTo(body)),
             body['query'],
             body['token'],
           ),
@@ -969,9 +987,11 @@ class ConnectFixtureServer {
         path.endsWith('/GetPublishedLabelDetail')) {
       final creators = path.endsWith('/GetPublishedCreatorDetail');
       final publicId = _publicIdOf(body);
-      final target = (creators ? _publishedCreators() : _publishedLabels())
-          .where((item) => item['publicId'] == publicId)
-          .firstOrNull;
+      final shown = _seriesShownTo(body);
+      final target =
+          (creators ? _publishedCreators(shown) : _publishedLabels(shown))
+              .where((item) => item['publicId'] == publicId)
+              .firstOrNull;
       if (target == null) {
         await _write(request, HttpStatus.notFound, {
           'code': 'not_found',
@@ -979,7 +999,7 @@ class ConnectFixtureServer {
         });
         return;
       }
-      final credited = series.where((item) {
+      final credited = shown.where((item) {
         if (!creators) {
           return (item['label'] as Map?)?['publicId'] == publicId;
         }
@@ -1034,7 +1054,10 @@ class ConnectFixtureServer {
     HttpRequest request,
     Map<String, Object?> body,
   ) async {
-    final detail = details[body['seriesPublicId']];
+    final seriesPublicId = body['seriesPublicId'];
+    final detail = _shows(body, seriesPublicId)
+        ? details[seriesPublicId]
+        : null;
     if (detail == null) {
       await _write(request, HttpStatus.notFound, {
         'code': 'not_found',
@@ -1100,11 +1123,30 @@ class ConnectFixtureServer {
     });
   }
 
+  /// Whether the surface [body] names may show the series [seriesPublicId].
+  bool _shows(Map<String, Object?> body, Object? seriesPublicId) {
+    final app = body['surface'] == 'CLIENT_SURFACE_APP';
+    return switch (seriesAvailability[seriesPublicId]) {
+      'SURFACE_AVAILABILITY_WEB' => !app,
+      'SURFACE_AVAILABILITY_APP' => app,
+      _ => true,
+    };
+  }
+
+  /// The [series] the surface [body] names may show.
+  List<Map<String, Object?>> _seriesShownTo(Map<String, Object?> body) => [
+    for (final item in series)
+      if (_shows(body, item['publicId'])) item,
+  ];
+
   /// The page of [series] the request's token asks for, with the token of the
   /// page under it when there is one.
   ///
   /// protojson omits an empty string, so the last page carries no `nextToken`.
-  Map<String, Object?> _seriesPage(Object? token) {
+  Map<String, Object?> _seriesPage(
+    List<Map<String, Object?>> series,
+    Object? token,
+  ) {
     if (seriesPageSize <= 0) {
       return {'series': series};
     }
@@ -1119,7 +1161,9 @@ class ConnectFixtureServer {
   /// The creators credited on [series], once each, in the shape
   /// `PublishedCreator` arrives in, followed by the rest of [seedCreators],
   /// which a follow row can still name with nothing published.
-  List<Map<String, Object?>> _publishedCreators() {
+  List<Map<String, Object?>> _publishedCreators(
+    List<Map<String, Object?>> series,
+  ) {
     final creators = <String, Map<String, Object?>>{};
     final counted = <String>{};
     for (final item in series) {
@@ -1159,7 +1203,9 @@ class ConnectFixtureServer {
   /// The labels of [series], once each, in the shape `PublishedLabel` arrives
   /// in. A label is known here only through a series that carries it, so
   /// every one of them holds a published series.
-  List<Map<String, Object?>> _publishedLabels() {
+  List<Map<String, Object?>> _publishedLabels(
+    List<Map<String, Object?>> series,
+  ) {
     final labels = <String, Map<String, Object?>>{};
     for (final item in series) {
       final json = item['label'] as Map?;
@@ -1221,7 +1267,11 @@ class ConnectFixtureServer {
   /// One page of the series whose title or synopsis contains [query], the
   /// case-insensitive substring match `SearchPublishedSeries` performs, in the
   /// title order it answers them in.
-  Map<String, Object?> _searchPage(Object? query, Object? token) {
+  Map<String, Object?> _searchPage(
+    List<Map<String, Object?>> series,
+    Object? query,
+    Object? token,
+  ) {
     final keyword = query is String ? query.trim().toLowerCase() : '';
     final matches =
         series.where((item) {

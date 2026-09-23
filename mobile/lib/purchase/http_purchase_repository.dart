@@ -1,3 +1,4 @@
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -43,6 +44,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_accessProcedure, {
         'seriesPublicId': seriesPublicId,
+        'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       final raw = body['episodes'];
@@ -74,6 +76,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_episodeProcedure, {
         'publicId': episodePublicId,
+        'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
       final series = body['series'];
