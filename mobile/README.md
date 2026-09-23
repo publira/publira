@@ -146,7 +146,7 @@ dart run scripts/app_manifest.dart --generate path/to/app.yaml
 | Generated file | Read by |
 | --- | --- |
 | `app.properties` | `android/app/build.gradle.kts`, which stops with the command to run when the file is missing |
-| `App.xcconfig` | `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`, which include it; the Runner target's first build phase, `scripts/ios-check-app-config.sh`, stops with the command to run when it is missing |
+| `App.xcconfig` | `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`, which include it, with the team `PUBLIRA_IOS_DEVELOPMENT_TEAM` names; the Runner target's first build phase, `scripts/ios-check-app-config.sh`, stops with the command to run when it is missing |
 
 The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED_DIR` names (relative to `mobile/`); builds for two tenants running at once each name their own. Gradle reads the directory the variable names, but Xcode reads `.generated/` only, and an iOS build stops when the variable names another directory. `task mobile:deps` generates Publira's own, and so do `task mobile:run`, `task mobile:screenshot`, and `task mobile:test-integration` before every build, replacing whatever another manifest generated. Development, screenshots, the integration tests, and CI therefore build as Publira without anyone writing a manifest; only a tenant's build names one.
 
@@ -156,14 +156,19 @@ A tenant builds the app it publishes from its own manifest:
 
 1. Copy `config/app.example.yaml` out of the repository and replace every value with the tenant's. The identifiers are what the stores know the app by, so they stay the same for every later release.
 2. Export the origin the app connects to, which a production build requires and the app manifest does not carry.
-3. Run `task mobile:build` with the manifest and the `flutter build` target.
-4. Once the stores list the app, enter its identities in the tenant console, as [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site) describes, so the tenant's links open it.
+3. Export the [signing inputs](#signing-a-tenants-app) of the platform being built.
+4. Run `task mobile:build` with the manifest and the `flutter build` target.
+5. Once the stores list the app, enter its identities in the tenant console, as [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site) describes, so the tenant's links open it.
 
 ```bash
 # From the repository root; a relative manifest path is read from where the task starts
 export PUBLIRA_BASE_URL=https://reader.example.com
 
+export PUBLIRA_ANDROID_KEYSTORE=../tenant/upload.jks
+export PUBLIRA_ANDROID_KEYSTORE_PASSWORD=... PUBLIRA_ANDROID_KEY_ALIAS=upload PUBLIRA_ANDROID_KEY_PASSWORD=...
 task mobile:build -- ../tenant/app.yaml appbundle
+
+export PUBLIRA_IOS_DEVELOPMENT_TEAM=ABCDE12345
 task mobile:build -- ../tenant/app.yaml ipa
 ```
 
@@ -176,9 +181,27 @@ The command checks the manifest and the arguments, reports every problem before 
 | `--flavor` | `production` when no flavor is named; `--flavor dev` builds the development app under the same manifest |
 | `tenant.host` | Passed as `--dart-define=PUBLIRA_TENANT_HOST`, so the app asks the API about the tenant whose links it claims. Giving the define as well is refused |
 | `PUBLIRA_BASE_URL` | Passed as the define of the same name. A production build requires it, as an `https://` origin with no path, query, or fragment; a development build without it keeps the defaults of [Connecting to the public API](#connecting-to-the-public-api). Giving the defines as well is refused |
+| `PUBLIRA_ANDROID_KEYSTORE` | Resolved from where the task starts and passed on to Gradle |
+| `PUBLIRA_IOS_DEVELOPMENT_TEAM` | Checked as a Team ID and generated into `App.xcconfig` |
 | Any other argument | Passed on to `flutter build` after the command's own, such as the [Firebase configuration](#firebase-configuration) defines, `--build-name`, and `--build-number` |
 
 The build fails when it leaves a change behind in a file Git tracks or does not ignore: a tenant's identity lives only in the generated files, so every tenant builds from the same unmodified checkout.
+
+### Signing a tenant's app
+
+A production release is signed with the tenant's own keys, which the environment names so that neither the keys nor their passwords reach the app manifest or the repository. Every other build — the `dev` flavor, and debug and profile builds of either flavor — signs as Flutter does by default, so development, screenshots, the integration tests, and CI need no signing input.
+
+| Variable | What it is |
+| --- | --- |
+| `PUBLIRA_ANDROID_KEYSTORE` | The upload keystore. A relative path is read from `mobile/` by a direct `flutter build`, and from where the task starts by `task mobile:build` |
+| `PUBLIRA_ANDROID_KEYSTORE_PASSWORD` | The keystore's password |
+| `PUBLIRA_ANDROID_KEY_ALIAS` | The alias of the upload key in the keystore |
+| `PUBLIRA_ANDROID_KEY_PASSWORD` | The upload key's password |
+| `PUBLIRA_IOS_DEVELOPMENT_TEAM` | The ten-character Team ID of the Apple Developer account the app is published under |
+
+Android reads its four variables while Gradle configures the build. A `production` `release` build — `flutter build apk` or `appbundle` — stops before compiling when any of them is missing or the keystore is not a file, rather than falling back to the debug keys Google Play refuses. With Play App Signing the key is the upload key; Google Play re-signs what it delivers.
+
+iOS takes the team through the generated build configuration, which `task mobile:build` and `dart run scripts/app_manifest.dart --generate` write it into as `DEVELOPMENT_TEAM`, so `project.pbxproj` never names one. The Runner target keeps automatic signing: Xcode on the Mac that builds has to be signed in to an account of that team, and creates the certificate and profiles itself. A `Release-production` build for a device stops in the Runner target's first build phase when the configuration was generated without a team, rather than letting Flutter sign under whichever team it finds in the keychain.
 
 ## Linking a tenant's app to its site
 

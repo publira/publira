@@ -27,13 +27,14 @@ fun dartDefines(): Map<String, String> {
     }.toMap()
 }
 
+val mobileDir: File = rootDir.parentFile
+
 /**
  * The app's identity, generated from an app manifest by
  * `scripts/app_manifest.dart --generate` into the directory
  * PUBLIRA_MOBILE_GENERATED_DIR names, else `mobile/.generated/`.
  */
 val app: Properties = run {
-    val mobileDir = rootDir.parentFile
     val generatedDir =
         providers.environmentVariable("PUBLIRA_MOBILE_GENERATED_DIR").orNull
             ?.takeIf { it.isNotEmpty() }
@@ -48,6 +49,24 @@ val app: Properties = run {
     }
     Properties().apply { file.reader(Charsets.UTF_8).use { load(it) } }
 }
+
+/**
+ * The upload key a production release is signed with, which the environment
+ * names so that neither the key nor its passwords reach a tracked file. A
+ * relative keystore path is read from `mobile/`.
+ */
+val uploadKeyVariables =
+    listOf(
+        "PUBLIRA_ANDROID_KEYSTORE",
+        "PUBLIRA_ANDROID_KEYSTORE_PASSWORD",
+        "PUBLIRA_ANDROID_KEY_ALIAS",
+        "PUBLIRA_ANDROID_KEY_PASSWORD",
+    )
+val uploadKey: Map<String, String> =
+    uploadKeyVariables.mapNotNull { name ->
+        providers.environmentVariable(name).orNull?.takeIf { it.isNotEmpty() }?.let { name to it }
+    }.toMap()
+val uploadKeystore: File? = uploadKey["PUBLIRA_ANDROID_KEYSTORE"]?.let { mobileDir.resolve(it) }
 
 fun appValue(key: String): String =
     app.getProperty("publira.$key")
@@ -92,25 +111,33 @@ android {
         resValues = true
     }
 
+    signingConfigs {
+        if (uploadKey.keys == uploadKeyVariables.toSet()) {
+            create("upload") {
+                storeFile = uploadKeystore
+                storePassword = uploadKey.getValue("PUBLIRA_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = uploadKey.getValue("PUBLIRA_ANDROID_KEY_ALIAS")
+                keyPassword = uploadKey.getValue("PUBLIRA_ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     flavorDimensions += "environment"
 
     productFlavors {
         create("dev") {
             dimension = "environment"
             applicationIdSuffix = ".dev"
+            signingConfig = signingConfigs.getByName("debug")
             resValue("string", "app_name", stringResource("${appValue("appName")} Dev"))
         }
         create("production") {
             dimension = "environment"
             resValue("string", "app_name", stringResource(appValue("appName")))
-        }
-    }
-
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // The debug build type keeps its own debug signing, which takes
+            // precedence over a flavor's; a release without the upload key is
+            // refused below.
+            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
         }
     }
 }
@@ -126,6 +153,21 @@ gradle.taskGraph.whenReady {
     require(!productionBuild || dartDefines()["PUBLIRA_TENANT_HOST"] == appValue("tenantHost")) {
         "Production builds require --dart-define=PUBLIRA_TENANT_HOST=" +
             "${appValue("tenantHost")}, the tenant.host of the app manifest"
+    }
+
+    // Google Play refuses a binary signed with the debug keys.
+    val productionRelease = allTasks.any {
+        it.project == project && Regex("^(package|bundle)ProductionRelease").containsMatchIn(it.name)
+    }
+    if (productionRelease) {
+        val missing = uploadKeyVariables.filterNot(uploadKey::containsKey)
+        require(missing.isEmpty()) {
+            "Production release builds are signed with the tenant's upload key; export " +
+                missing.joinToString(", ")
+        }
+        require(uploadKeystore!!.isFile) {
+            "PUBLIRA_ANDROID_KEYSTORE names $uploadKeystore, which is not a file"
+        }
     }
 }
 

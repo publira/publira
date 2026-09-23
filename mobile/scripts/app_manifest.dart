@@ -4,13 +4,15 @@
 //   dart run scripts/app_manifest.dart [--generate] [<manifest>]
 //
 // Without a manifest it reads config/app.default.yaml, Publira's own. The
-// configuration goes into $PUBLIRA_MOBILE_GENERATED_DIR, else .generated/.
+// configuration goes into $PUBLIRA_MOBILE_GENERATED_DIR, else .generated/,
+// and signs iOS device builds under $PUBLIRA_IOS_DEVELOPMENT_TEAM.
 
 import 'dart:io';
 
 import 'app_manifest/generate.dart';
 import 'app_manifest/generated_files.dart';
 import 'app_manifest/manifest.dart';
+import 'app_manifest/signing.dart';
 
 Future<void> main(List<String> arguments) async {
   final generate = arguments.contains('--generate');
@@ -30,9 +32,16 @@ Future<void> main(List<String> arguments) async {
   final AppManifest manifest;
   try {
     manifest = generate
-        ? await generateBuildConfiguration(file, directory)
+        ? await generateBuildConfiguration(
+            file,
+            directory,
+            iosDevelopmentTeam: iosDevelopmentTeam(Platform.environment),
+          )
         : await AppManifest.load(file);
   } on AppManifestException catch (error) {
+    stderr.writeln(error);
+    exit(1);
+  } on SigningException catch (error) {
     stderr.writeln(error);
     exit(1);
   }
