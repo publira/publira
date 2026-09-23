@@ -175,3 +175,24 @@ tasks:
           exit 1
         fi
         echo "smoke ok: {{.APP_NAME}} /livez and /readyz (host port ${host_port})"
+
+  smoke:publiractl:
+    desc: Migrate an empty database with a built publiractl image and check the version it reports
+    vars:
+      PROJECT: publira-publiractl-smoke
+    cmds:
+      - |
+        set -euo pipefail
+        compose() { docker compose -p "{{.PROJECT}}" -f infra/docker/publiractl/compose.smoke.yaml "$@"; }
+        cleanup() { compose down -v >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        cleanup
+        compose run --rm -T publiractl db migrate
+        compose run --rm -T publiractl db migrate
+        head="$(find db/migrations -name '*.up.sql' -printf '%f\n' | cut -d_ -f1 | sort -n | tail -1)"
+        version="$(compose run --rm -T publiractl db version)"
+        if [ "${version}" != "$(printf 'version %s\ndirty false' "${head}")" ]; then
+          echo "smoke failed: db version reported ${version}, want version ${head}, not dirty" >&2
+          exit 1
+        fi
+        echo "smoke ok: publiractl migrated an empty database to ${head}"

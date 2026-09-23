@@ -1,0 +1,25 @@
+# Smoke check for the publiractl image: `task docker:smoke:publiractl` migrates
+# an empty database with nothing but PUBLIRA_DB_URL set, which only works when
+# the image carries db/migrations.
+
+services:
+  db:
+    image: postgres:18.6-alpine3.23@sha256:885cf05d376c7cf27afef02073e6bdac3841252537f16e244fd1c1e6a7c99fb1
+    environment:
+      POSTGRES_DB: publira
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  publiractl:
+    image: publira/publiractl:local
+    environment:
+      PUBLIRA_DB_URL: postgres://postgres:password@db:5432/publira?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy

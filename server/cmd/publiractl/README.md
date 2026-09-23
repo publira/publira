@@ -1,15 +1,47 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group; `job` is the only one, the manual interface to the maintenance jobs, and the second argument names the job.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, and `job` is the manual interface to the maintenance jobs, whose second argument names the job.
 
 ```bash
 task server:build
+./server/bin/publiractl db migrate
 ./server/bin/publiractl job aggregate-content-stats
 ```
 
-Without a command, with a command other than `job`, or with a job name that is not one of the ten below, the binary prints its usage to stderr and exits non-zero.
+Without a command, with a command other than `db` or `job`, with a subcommand that is not one of the ones below, or with an argument after it, the binary prints its usage to stderr and exits non-zero.
 
-Nothing needs to schedule it. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. `publiractl job` is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
+The container image carries the same binary, with the command passed as container arguments:
+
+```bash
+task docker:build:publiractl
+docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
+docker run --rm publira/publiractl:local job purge-content-events
+```
+
+## db
+
+Applies `db/migrations/` to a database and reports what it holds, so a deployment brings its schema forward with the image it runs rather than with a separately installed golang-migrate CLI.
+
+| Command | What it does |
+| --- | --- |
+| `db migrate` | Applies every pending migration and exits zero, also when there is nothing to apply. The structured log records the version it started from and the version it ended at. A dirty database is refused before anything runs |
+| `db version` | Prints the version `schema_migrations` records (`0` for a database no migration has touched) and whether it is dirty |
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl db version
+```
+
+Environment variables:
+
+- `PUBLIRA_DB_URL`: the connection that owns the schema. Required: unlike the `job` group, the `db` group reads no other variable and never falls back to the development URL, so an unset variable fails before connecting.
+- `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
+
+River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../worker/README.md) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## job
+
+Nothing needs to schedule a job. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. `publiractl job` is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
 
 Every job here is a thin invocation of `internal/maintenance`, and the worker registers the same ten jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
 
@@ -29,13 +61,6 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
-
-The container image carries the same binary, with the command passed as container arguments:
-
-```bash
-task docker:build:publiractl
-docker run --rm publira/publiractl:local job purge-content-events
-```
 
 ## project-episode-reads
 

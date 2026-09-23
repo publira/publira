@@ -2,9 +2,10 @@
 // connects to PostgreSQL directly rather than through ConnectRPC, so it works
 // on a deployment that serves no platform API.
 //
-// The first argument names a command group. The only one is job, which runs
-// one of the worker's maintenance jobs by hand: the second argument names the
-// job, which is configured through environment variables, rebuilds, purges, or
+// The first argument names a command group. db applies db/migrations to the
+// database PUBLIRA_DB_URL names and reports its schema version. job runs one of
+// the worker's maintenance jobs by hand: the second argument names the job,
+// which is configured through environment variables, rebuilds, purges, or
 // closes a period of data once, and exits. The worker schedules the same jobs,
 // so nothing needs to schedule this command.
 //
@@ -104,6 +105,8 @@ func run(args []string, stderr io.Writer) int {
 		return usageError(stderr, "a command is required", usage())
 	}
 	switch args[0] {
+	case "db":
+		return runDB(args[1:], stderr)
 	case "job":
 		return runJob(args[1:], stderr)
 	default:
@@ -167,6 +170,7 @@ func usageError(w io.Writer, reason, usage string) int {
 
 func usage() string {
 	return "\nUsage: publiractl <command>\n\nCommands:\n" +
+		"  db                        Apply the database migrations and report the schema version\n" +
 		"  job                       Run one of the worker's maintenance jobs by hand\n"
 }
 
