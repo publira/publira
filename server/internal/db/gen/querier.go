@@ -514,8 +514,9 @@ type Querier interface {
 	//     -> episode_comment_reports_tenant_comment_reporter_key
 	// The comment a reader is allowed to report: one that is published, on an
 	// episode that is itself public right now. The publication predicate is the one
-	// GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
-	// that has been unpublished since is as absent here as one that never existed.
+	// GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+	// on an episode that has been unpublished since, or that the calling surface may
+	// not show, is as absent here as one that never existed.
 	//
 	// Every join carries the tenant because the catalog's foreign keys are
 	// single-column: episodes.series_id names a series without naming its tenant,
@@ -779,9 +780,8 @@ type Querier interface {
 	// id is a UUIDv7, so the order stays unique even when created_at ties.
 	// cursor rules: proto/README.md.
 	ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error)
-	// Display data for the published series, narrowed by tenant id. A NULL
-	// surface filters by no surface, for the member reads that do not name one;
-	// the catalog always names one.
+	// Display data for the published series, narrowed by tenant id and by the
+	// surface the caller names.
 	// No ORDER BY: the caller sorts the rows into the id order stage one settled
 	// on.
 	ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error)
@@ -1071,9 +1071,9 @@ type Querier interface {
 	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
 	// The episodes this reader has finished, most recently finished first.
 	//
-	// Publication is re-checked here, so a history entry never names an episode
-	// the storefront has taken down; that is the same rule ListMyRecentSeries
-	// applies to a series. Body access is not re-checked: the reader did finish
+	// Publication and the calling surface are re-checked here, so a history entry
+	// never names an episode the storefront has taken down or the surface may not
+	// show; that is the same rule ListMyRecentSeries applies to a series. Body access is not re-checked: the reader did finish
 	// the episode, and a rental that has since expired is still part of what they
 	// read, which is also how ListMyPurchases keeps an expired purchase.
 	//
@@ -1087,9 +1087,9 @@ type Querier interface {
 	// Which episodes of one series this reader has already finished, so the series
 	// detail can mark the rows of its episode list.
 	//
-	// Publication is left to the caller: the list this answers is the published
-	// episode list the series detail already holds, so an id that matches nothing
-	// in it marks nothing. What the query is scoped to is the reader, through the
+	// Publication and the surface are left to the caller: the list this answers
+	// is the episode list the series detail already holds for its surface, so an id
+	// that matches nothing in it marks nothing. What the query is scoped to is the reader, through the
 	// member RLS policy episode_reads carries and the columns repeated here.
 	ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error)
 	// The backward direction of ListMyFollowUpdatesDesc.
@@ -1106,8 +1106,9 @@ type Querier interface {
 	// so a member who follows both a series and one of its creators sees the
 	// episode once.
 	//
-	// Publication is re-checked on both the series and the listing, so the list
-	// never names something the storefront has taken down; that is the same rule
+	// Publication is re-checked on both the series and the listing, and the
+	// calling surface on the episode, so the list never names something the
+	// storefront has taken down or the surface may not show; that is the same rule
 	// ListMyEpisodeReads applies to a history entry.
 	//
 	// Each branch starts from the member's own follows, on
@@ -1119,6 +1120,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
+	// The reader's library, newest purchase first. Publication is not re-checked,
+	// so a purchase outlives the episode being taken down, but the calling surface
+	// is: an episode that surface may not show is left out of the library read
+	// there, as it is left out of the catalog.
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	// The backward direction of ListMyRecentSeriesDesc.
 	ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error)
@@ -1142,8 +1147,9 @@ type Querier interface {
 	// be resumed. An episode the reader has not bought is still the one they are
 	// meant to open next, because its own page is where they buy it; its saved
 	// position is withheld, because a page they cannot reach is not a place to
-	// resume. Episodes of an unpublished series are dropped ahead of all of that,
-	// so a series taken down reads like one that was never opened.
+	// resume. Episodes of an unpublished series, and episodes the calling surface
+	// may not show, are dropped ahead of all of that, so a series taken down or
+	// kept off the surface reads like one that was never opened.
 	//
 	// The sort key is an aggregate over the reader's own rows rather than a stored
 	// column, so no index orders it directly. Both halves of the scan start from
@@ -1584,7 +1590,8 @@ type Querier interface {
 	ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUserFollowsByCreatedAtAscParams) ([]ListUserFollowsByCreatedAtAscRow, error)
 	// The API can expose one timeline while keeping each relationship's storage
 	// and future aggregates independent. Public joins make a target that is no
-	// longer visible disappear from this member's list without revealing why.
+	// longer visible, or that the calling surface may not show, disappear from
+	// this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.

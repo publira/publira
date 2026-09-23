@@ -116,7 +116,7 @@ func (s *apiServer) ListPublishedGenres(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (s *apiServer) ListPublishedTags(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}

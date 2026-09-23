@@ -29,7 +29,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}

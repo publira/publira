@@ -34,10 +34,12 @@ type resolvedFollowTarget struct {
 
 // resolveFollowTarget always starts from the public catalog query. This gives
 // all follow RPCs the same not-found behaviour for foreign, unpublished, and
-// missing targets before they read or change a member-specific relation.
+// missing targets, and for targets the calling surface may not show, before
+// they read or change a member-specific relation.
 func (s *apiServer) resolveFollowTarget(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	target *publirav1.FollowTarget,
 ) (resolvedFollowTarget, error) {
 	if target == nil || strings.TrimSpace(target.PublicId) == "" {
@@ -49,7 +51,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE:
 		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 			TenantID: tenantID,
-			Surface:  anySurface,
+			Surface:  surface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {
@@ -62,7 +64,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR:
 		row, err := queries.GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
 			TenantID: tenantID,
-			Surface:  anySurface,
+			Surface:  surface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {
@@ -75,7 +77,7 @@ func (s *apiServer) resolveFollowTarget(
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
 		row, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
-			Surface:  anySurface,
+			Surface:  surface,
 			PublicID: strings.TrimSpace(target.PublicId),
 		})
 		if err == nil {
@@ -105,6 +107,7 @@ func (s *apiServer) scopeFollowUser(ctx context.Context, userID uuid.UUID) error
 func (s *apiServer) followStatus(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	target resolvedFollowTarget,
 ) (bool, error) {
 	queries := s.queriesFor(ctx)
@@ -113,18 +116,21 @@ func (s *apiServer) followStatus(
 		return queries.UserFollowsPublishedEpisode(ctx, dbmodels.UserFollowsPublishedEpisodeParams{
 			TenantID:  tenantID,
 			UserID:    userID,
+			Surface:   surface,
 			EpisodeID: target.id,
 		})
 	case followTargetCreator:
 		return queries.UserFollowsPublishedCreator(ctx, dbmodels.UserFollowsPublishedCreatorParams{
 			TenantID:  tenantID,
 			UserID:    userID,
+			Surface:   surface,
 			CreatorID: target.id,
 		})
 	case followTargetSeries:
 		return queries.UserFollowsPublishedSeries(ctx, dbmodels.UserFollowsPublishedSeriesParams{
 			TenantID: tenantID,
 			UserID:   userID,
+			Surface:  surface,
 			SeriesID: target.id,
 		})
 	default:
@@ -140,14 +146,18 @@ func (s *apiServer) GetMyFollowStatus(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
-		return nil, err
-	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, req.Msg.Target)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
-	following, err := s.followStatus(ctx, tenant.ID, user.ID, target)
+	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
+		return nil, err
+	}
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
+	if err != nil {
+		return nil, err
+	}
+	following, err := s.followStatus(ctx, tenant.ID, user.ID, surface, target)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get follow status", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -162,10 +172,14 @@ func (s *apiServer) Follow(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, req.Msg.Target)
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -195,10 +209,14 @@ func (s *apiServer) Unfollow(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, req.Msg.Target)
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +304,7 @@ type followTargetPublicIDs struct {
 func (s *apiServer) followTargetPublicIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	follows []followPageRow,
 ) (followTargetPublicIDs, error) {
 	ids := followTargetPublicIDs{
@@ -311,6 +330,7 @@ func (s *apiServer) followTargetPublicIDs(
 	if len(episodeIDs) > 0 {
 		rows, err := queries.ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedEpisodeFollowTargetPublicIDsByIDsParams{
 			TenantID: tenantID,
+			Surface:  surface,
 			Ids:      episodeIDs,
 		})
 		if err != nil {
@@ -323,6 +343,7 @@ func (s *apiServer) followTargetPublicIDs(
 	if len(creatorIDs) > 0 {
 		rows, err := queries.ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedCreatorFollowTargetPublicIDsByIDsParams{
 			TenantID: tenantID,
+			Surface:  surface,
 			Ids:      creatorIDs,
 		})
 		if err != nil {
@@ -335,6 +356,7 @@ func (s *apiServer) followTargetPublicIDs(
 	if len(seriesIDs) > 0 {
 		rows, err := queries.ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedSeriesFollowTargetPublicIDsByIDsParams{
 			TenantID: tenantID,
+			Surface:  surface,
 			Ids:      seriesIDs,
 		})
 		if err != nil {
@@ -350,6 +372,7 @@ func (s *apiServer) followTargetPublicIDs(
 func (s *apiServer) followPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	keys followCursorKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -357,6 +380,7 @@ func (s *apiServer) followPage(
 	params := dbmodels.ListUserFollowsByCreatedAtDescParams{
 		TenantID:         tenantID,
 		UserID:           userID,
+		Surface:          surface,
 		CursorCreatedAt:  keys.createdAt,
 		CursorInclusive:  keys.inclusive,
 		CursorTargetType: keys.targetType,
@@ -406,11 +430,15 @@ func (s *apiServer) ListMyFollows(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultFollowPageSize, maxFollowPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -422,12 +450,12 @@ func (s *apiServer) ListMyFollows(
 		}
 	}
 
-	rows, err := s.followPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.followPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list follows", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
-	publicIDs, err := s.followTargetPublicIDs(ctx, tenant.ID, rows)
+	publicIDs, err := s.followTargetPublicIDs(ctx, tenant.ID, surface, rows)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to resolve public follow targets", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -473,5 +501,6 @@ func (s *apiServer) ListMyFollows(
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeFollowRecoveryToken(pagination.Forward, keys)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return noStorePrivateResponse(res), nil
 }

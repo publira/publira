@@ -47,6 +47,8 @@ message ListEpisodeCommentsRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message ListEpisodeCommentsResponse {
@@ -66,6 +68,8 @@ message ListMyEpisodeCommentsRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 message ListMyEpisodeCommentsResponse {
@@ -83,6 +87,8 @@ message PostEpisodeCommentRequest {
   // Non-blank after trimming and at most 1000 Unicode code points. Anything
   // else is invalid_argument.
   string body = 3;
+  // The client making the call. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message PostEpisodeCommentResponse {
@@ -122,6 +128,8 @@ message ReportEpisodeCommentRequest {
   // Optional. At most 1000 Unicode code points once trimmed; a blank note is
   // stored as no note at all.
   string note = 4;
+  // The client making the call. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 5;
 }
 
 // Deliberately empty. The reporter is told that their report was accepted and

@@ -52,7 +52,8 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- name: ListUserFollowsByCreatedAtDesc :many
 -- The API can expose one timeline while keeping each relationship's storage
 -- and future aggregates independent. Public joins make a target that is no
--- longer visible disappear from this member's list without revealing why.
+-- longer visible, or that the calling surface may not show, disappear from
+-- this member's list without revealing why.
 SELECT target_type,
     target_id,
     created_at
@@ -75,6 +76,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
@@ -94,6 +101,12 @@ FROM (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
         )
     UNION ALL
     SELECT 'series'::text AS target_type,
@@ -107,6 +120,12 @@ FROM (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 ) AS follows
 WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
     OR (
@@ -155,6 +174,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
@@ -174,6 +199,12 @@ FROM (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
         )
     UNION ALL
     SELECT 'series'::text AS target_type,
@@ -187,6 +218,12 @@ FROM (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 ) AS follows
 WHERE sqlc.narg('cursor_created_at')::timestamptz IS NULL
     OR (
@@ -227,7 +264,13 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW();
+    AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    );
 
 -- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
 SELECT c.id,
@@ -245,6 +288,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
     );
 
 -- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
@@ -255,7 +304,13 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.id = ANY(sqlc.arg('ids')::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW();
+    AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = sqlc.arg('surface')::text
+    );
 
 -- name: UserFollowsPublishedEpisode :one
 -- Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
@@ -278,6 +333,12 @@ SELECT EXISTS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
 ) AS follows_published_episode;
 
 -- name: UserFollowsPublishedCreator :one
@@ -301,6 +362,12 @@ SELECT EXISTS (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = sqlc.arg('surface')::text
+                )
         )
 ) AS follows_published_creator;
 
@@ -318,6 +385,12 @@ SELECT EXISTS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
 ) AS follows_published_series;
 
 -- name: ListEpisodeFollowerIDs :many
@@ -376,8 +449,9 @@ LIMIT sqlc.arg('limit');
 -- so a member who follows both a series and one of its creators sees the
 -- episode once.
 --
--- Publication is re-checked on both the series and the listing, so the list
--- never names something the storefront has taken down; that is the same rule
+-- Publication is re-checked on both the series and the listing, and the
+-- calling surface on the episode, so the list never names something the
+-- storefront has taken down or the surface may not show; that is the same rule
 -- ListMyEpisodeReads applies to a history entry.
 --
 -- Each branch starts from the member's own follows, on
@@ -415,6 +489,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
@@ -439,6 +519,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
 ) AS updates
 WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
     OR (
@@ -489,6 +575,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
@@ -513,6 +605,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
 ) AS updates
 WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
     OR (

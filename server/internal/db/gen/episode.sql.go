@@ -344,22 +344,19 @@ WHERE s.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
-        )
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetPublishedEpisodeByPublicIDForTenantParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	PublicID string         `json:"public_id"`
-	Surface  sql.NullString `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetPublishedEpisodeByPublicIDForTenantRow struct {
@@ -828,31 +825,38 @@ WHERE r.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (r.read_at, r.id) >= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (r.read_at, r.id) > (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY r.read_at ASC,
     r.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyEpisodeReadsAscParams struct {
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
+	Surface         string        `json:"surface"`
 	CursorReadAt    sql.NullTime  `json:"cursor_read_at"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
@@ -874,6 +878,7 @@ func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeRe
 	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsAsc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorReadAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -928,31 +933,38 @@ WHERE r.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (r.read_at, r.id) <= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (r.read_at, r.id) < (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY r.read_at DESC,
     r.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyEpisodeReadsDescParams struct {
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
+	Surface         string        `json:"surface"`
 	CursorReadAt    sql.NullTime  `json:"cursor_read_at"`
 	CursorInclusive bool          `json:"cursor_inclusive"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
@@ -971,9 +983,9 @@ type ListMyEpisodeReadsDescRow struct {
 
 // The episodes this reader has finished, most recently finished first.
 //
-// Publication is re-checked here, so a history entry never names an episode
-// the storefront has taken down; that is the same rule ListMyRecentSeries
-// applies to a series. Body access is not re-checked: the reader did finish
+// Publication and the calling surface are re-checked here, so a history entry
+// never names an episode the storefront has taken down or the surface may not
+// show; that is the same rule ListMyRecentSeries applies to a series. Body access is not re-checked: the reader did finish
 // the episode, and a rental that has since expired is still part of what they
 // read, which is also how ListMyPurchases keeps an expired purchase.
 //
@@ -987,6 +999,7 @@ func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeR
 	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsDesc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorReadAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -1042,9 +1055,9 @@ type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
 // Which episodes of one series this reader has already finished, so the series
 // detail can mark the rows of its episode list.
 //
-// Publication is left to the caller: the list this answers is the published
-// episode list the series detail already holds, so an id that matches nothing
-// in it marks nothing. What the query is scoped to is the reader, through the
+// Publication and the surface are left to the caller: the list this answers
+// is the episode list the series detail already holds for its surface, so an id
+// that matches nothing in it marks nothing. What the query is scoped to is the reader, through the
 // member RLS policy episode_reads carries and the columns repeated here.
 func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesPublicID)
@@ -1480,6 +1493,12 @@ WHERE s.tenant_id = $2
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $5::text
+    )
     AND (
         el.price = 0
         OR EXISTS (
@@ -1518,6 +1537,7 @@ type MarkPublishedEpisodeAsReadParams struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	UserID          uuid.UUID `json:"user_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
+	Surface         string    `json:"surface"`
 }
 
 // Inserts the first completed read only after checking publication and body
@@ -1532,6 +1552,7 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodePublicID,
+		arg.Surface,
 	)
 	var i EpisodeRead
 	err := row.Scan(

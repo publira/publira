@@ -346,7 +346,7 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +403,7 @@ func (s *apiServer) ListRankedSeries(
 		rankByID[pageRow.id] = pageRow.rank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list ranked series", err, "tenant_id", tenant.ID.String())
 	}

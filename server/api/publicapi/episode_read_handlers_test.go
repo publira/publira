@@ -53,7 +53,7 @@ func (f *episodeReadFixture) mark(publicID string) (*connect.Response[publirav1.
 func (f *episodeReadFixture) expectMark(publicID string, episodeID uuid.UUID, readAt time.Time) {
 	readID := uuid.Must(uuid.NewV7())
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
-		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, publicID).
+		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, publicID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "episode_id", "read_at"}).
 			AddRow(readID, f.tenantID, f.userID, episodeID, readAt))
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ProjectEpisodeCompleteEvent)).
@@ -82,7 +82,7 @@ func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing
 func TestMarkEpisodeAsReadHidesUnavailableEpisodes(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
-		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, "UNAVAILABLE").
+		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, "UNAVAILABLE", "web").
 		WillReturnError(sql.ErrNoRows)
 
 	_, err := fixture.mark("UNAVAILABLE")

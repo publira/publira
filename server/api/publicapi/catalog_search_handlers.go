@@ -146,7 +146,7 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (s *apiServer) SearchPublishedSeries(
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -262,7 +262,7 @@ func (s *apiServer) SearchPublishedCreators(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (s *apiServer) SearchPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surfaceArg(surface), ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}

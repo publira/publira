@@ -24,8 +24,9 @@
 -- name: GetReportableEpisodeCommentByPublicIDForTenant :one
 -- The comment a reader is allowed to report: one that is published, on an
 -- episode that is itself public right now. The publication predicate is the one
--- GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
--- that has been unpublished since is as absent here as one that never existed.
+-- GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+-- on an episode that has been unpublished since, or that the calling surface may
+-- not show, is as absent here as one that never existed.
 --
 -- Every join carries the tenant because the catalog's foreign keys are
 -- single-column: episodes.series_id names a series without naming its tenant,
@@ -62,6 +63,12 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
 LIMIT 1;
 
 -- name: CreateEpisodeCommentReport :one

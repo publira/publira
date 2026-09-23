@@ -54,6 +54,10 @@ func (s *apiServer) MarkEpisodeAsRead(
 	if publicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -68,10 +72,11 @@ func (s *apiServer) MarkEpisodeAsRead(
 		TenantID:        tenant.ID,
 		UserID:          user.ID,
 		EpisodePublicID: publicID,
+		Surface:         surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// Publication, tenant, and entitlement failures deliberately share one
-		// response so this member cannot probe for unavailable episode IDs.
+		// Publication, surface, tenant, and entitlement failures deliberately
+		// share one response so this member cannot probe for unavailable episode IDs.
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
 	if err != nil {
@@ -134,11 +139,15 @@ func (s *apiServer) ListMyEpisodeReads(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultEpisodeReadPageSize, maxEpisodeReadPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -151,7 +160,7 @@ func (s *apiServer) ListMyEpisodeReads(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.episodeReadPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.episodeReadPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode reads", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -183,6 +192,7 @@ func (s *apiServer) ListMyEpisodeReads(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
 	return noStorePrivateResponse(res), nil
 }
@@ -193,6 +203,7 @@ func (s *apiServer) ListMyEpisodeReads(
 func (s *apiServer) episodeReadPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -201,6 +212,7 @@ func (s *apiServer) episodeReadPage(
 	params := dbmodels.ListMyEpisodeReadsDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
+		Surface:         surface,
 		CursorReadAt:    sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},

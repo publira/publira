@@ -417,12 +417,10 @@ func activeSeriesPageRowsFromIDs(ids []uuid.UUID) []activeSeriesPageRow {
 
 // activeSeriesRowsInOrder fetches the display rows for a page and puts them back
 // in the order the keyset query decided; the detail query is unordered.
-// `surface` is the catalog read's, or anySurface for a member read that names
-// none.
 func (s *apiServer) activeSeriesRowsInOrder(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	surface sql.NullString,
+	surface string,
 	ids []uuid.UUID,
 ) ([]dbmodels.ListActiveSeriesByIDsRow, error) {
 	if len(ids) == 0 {
@@ -884,7 +882,7 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -922,7 +920,7 @@ func (s *apiServer) ListPublishedSeries(
 		ids = append(ids, pageRow.id)
 		latestEpisodeAtByID[pageRow.id] = pageRow.latestEpisodeAt
 	}
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -965,7 +963,7 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -1116,11 +1114,11 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId, Surface: surfaceArg(surface)})
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId, Surface: surface})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))

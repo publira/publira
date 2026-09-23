@@ -33,6 +33,12 @@ WITH readable AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
         AND (
             el.price = 0
             OR EXISTS (
@@ -108,6 +114,12 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
     AND (
         el.price = 0
         OR EXISTS (
@@ -179,6 +191,12 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
     AND (
         el.price = 0
         OR EXISTS (
@@ -233,8 +251,9 @@ LIMIT 1;
 -- be resumed. An episode the reader has not bought is still the one they are
 -- meant to open next, because its own page is where they buy it; its saved
 -- position is withheld, because a page they cannot reach is not a place to
--- resume. Episodes of an unpublished series are dropped ahead of all of that,
--- so a series taken down reads like one that was never opened.
+-- resume. Episodes of an unpublished series, and episodes the calling surface
+-- may not show, are dropped ahead of all of that, so a series taken down or
+-- kept off the surface reads like one that was never opened.
 --
 -- The sort key is an aggregate over the reader's own rows rather than a stored
 -- column, so no index orders it directly. Both halves of the scan start from
@@ -272,6 +291,12 @@ touched_episodes AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     GROUP BY e.series_id,
         e.id,
         e.order_index
@@ -308,6 +333,12 @@ continue_from AS (
                     AND nl.status = 'published'
                     AND nl.published_at IS NOT NULL
                     AND nl.published_at <= NOW()
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = n.id
+                            AND es.surface = sqlc.arg('surface')::text
+                    )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr
@@ -422,6 +453,12 @@ touched_episodes AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
     GROUP BY e.series_id,
         e.id,
         e.order_index
@@ -458,6 +495,12 @@ continue_from AS (
                     AND nl.status = 'published'
                     AND nl.published_at IS NOT NULL
                     AND nl.published_at <= NOW()
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = n.id
+                            AND es.surface = sqlc.arg('surface')::text
+                    )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr

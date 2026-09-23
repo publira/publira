@@ -45,13 +45,15 @@ func (s *apiServer) scopeRatingUser(ctx context.Context, userID uuid.UUID) error
 
 // resolveRatingEpisode starts every RPC in this file from the public catalog
 // query, the way the follow target does: a foreign, unpublished, or missing
-// episode is NotFound before anything of the reader's is read or written.
+// episode, or one the calling surface may not show, is NotFound before anything
+// of the reader's is read or written.
 //
 // The row it returns carries the stored tally as well, so the reply the reader
 // gets back costs one read rather than two.
 func (s *apiServer) resolveRatingEpisode(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	episodePublicID string,
 ) (dbmodels.GetPublishedEpisodeByPublicIDForTenantRow, error) {
 	publicID := strings.TrimSpace(episodePublicID)
@@ -61,7 +63,7 @@ func (s *apiServer) resolveRatingEpisode(
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 		TenantID: tenantID,
-		Surface:  anySurface,
+		Surface:  surface,
 		PublicID: publicID,
 	})
 	if err == nil {
@@ -152,10 +154,14 @@ func (s *apiServer) GetMyEpisodeRating(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +203,10 @@ func (s *apiServer) GetMySeriesRating(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -209,7 +219,7 @@ func (s *apiServer) GetMySeriesRating(
 	// anything of the reader's is read.
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 		TenantID: tenant.ID,
-		Surface:  anySurface,
+		Surface:  surface,
 		PublicID: seriesPublicID,
 	})
 	if err != nil {
@@ -248,10 +258,14 @@ func (s *apiServer) RateEpisode(
 	if err := s.chargeReaderAction(ctx, actionRateEpisode, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}

@@ -211,7 +211,7 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
-	surface, err := catalogSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (s *apiServer) ListRelatedSeries(
 	// and none of them can be told apart.
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 		TenantID: tenant.ID,
-		Surface:  surfaceArg(surface),
+		Surface:  surface,
 		PublicID: seriesPublicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -275,7 +275,7 @@ func (s *apiServer) ListRelatedSeries(
 		sortKeysByID[pageRow.id] = pageRow.sortKeys
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surfaceArg(surface), ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list related series", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}

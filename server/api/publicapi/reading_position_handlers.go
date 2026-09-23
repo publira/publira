@@ -39,6 +39,10 @@ func (s *apiServer) SaveReadingPosition(
 	if publicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -48,6 +52,7 @@ func (s *apiServer) SaveReadingPosition(
 		UserID:          user.ID,
 		EpisodePublicID: publicID,
 		PageIndex:       req.Msg.PageIndex,
+		Surface:         surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Publication, tenant, and entitlement failures share one response for
@@ -93,6 +98,10 @@ func (s *apiServer) GetMyReadingPosition(
 	if publicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -101,6 +110,7 @@ func (s *apiServer) GetMyReadingPosition(
 		TenantID:        tenant.ID,
 		UserID:          user.ID,
 		EpisodePublicID: publicID,
+		Surface:         surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return noStorePrivateResponse(&publirav1.GetMyReadingPositionResponse{}), nil
@@ -141,6 +151,10 @@ func (s *apiServer) GetMySeriesProgress(
 	if seriesPublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series public id is required"))
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -159,6 +173,7 @@ func (s *apiServer) GetMySeriesProgress(
 		TenantID:       tenant.ID,
 		UserID:         user.ID,
 		SeriesPublicID: seriesPublicID,
+		Surface:        surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return noStorePrivateResponse(res), nil
@@ -195,11 +210,15 @@ func (s *apiServer) ListMyRecentSeries(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecentSeriesPageSize, maxRecentSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -212,7 +231,7 @@ func (s *apiServer) ListMyRecentSeries(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.recentSeriesPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.recentSeriesPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -224,7 +243,7 @@ func (s *apiServer) ListMyRecentSeries(
 		ids = append(ids, row.SeriesID)
 		rowBySeriesID[row.SeriesID] = row
 	}
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, anySurface, ids)
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -258,6 +277,7 @@ func (s *apiServer) ListMyRecentSeries(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
 	return noStorePrivateResponse(res), nil
 }
@@ -268,6 +288,7 @@ func (s *apiServer) ListMyRecentSeries(
 func (s *apiServer) recentSeriesPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -276,6 +297,7 @@ func (s *apiServer) recentSeriesPage(
 	params := dbmodels.ListMyRecentSeriesDescParams{
 		TenantID:             tenantID,
 		UserID:               userID,
+		Surface:              surface,
 		CursorLastActivityAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive:      keys.Inclusive,
 		CursorSeriesID:       uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},

@@ -30,6 +30,12 @@ WHERE rp.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $4::text
+    )
     AND (
         el.price = 0
         OR EXISTS (
@@ -66,6 +72,7 @@ type GetMyEpisodeReadingPositionParams struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	UserID          uuid.UUID `json:"user_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
+	Surface         string    `json:"surface"`
 }
 
 type GetMyEpisodeReadingPositionRow struct {
@@ -78,7 +85,12 @@ type GetMyEpisodeReadingPositionRow struct {
 // access the save is: an episode they may no longer open has no position to
 // resume, and answering with one would tell them the row is still there.
 func (q *Queries) GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error) {
-	row := q.db.QueryRowContext(ctx, GetMyEpisodeReadingPosition, arg.TenantID, arg.UserID, arg.EpisodePublicID)
+	row := q.db.QueryRowContext(ctx, GetMyEpisodeReadingPosition,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodePublicID,
+		arg.Surface,
+	)
 	var i GetMyEpisodeReadingPositionRow
 	err := row.Scan(&i.PageIndex, &i.PageCount, &i.UpdatedAt)
 	return i, err
@@ -116,6 +128,12 @@ WHERE rp.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $4::text
+    )
     AND (
         el.price = 0
         OR EXISTS (
@@ -154,6 +172,7 @@ type GetMySeriesReadingProgressParams struct {
 	TenantID       uuid.UUID `json:"tenant_id"`
 	UserID         uuid.UUID `json:"user_id"`
 	SeriesPublicID string    `json:"series_public_id"`
+	Surface        string    `json:"surface"`
 }
 
 type GetMySeriesReadingProgressRow struct {
@@ -180,7 +199,12 @@ type GetMySeriesReadingProgressRow struct {
 // an expired rental hands the reader the episode before it instead of a
 // position they cannot act on.
 func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error) {
-	row := q.db.QueryRowContext(ctx, GetMySeriesReadingProgress, arg.TenantID, arg.UserID, arg.SeriesPublicID)
+	row := q.db.QueryRowContext(ctx, GetMySeriesReadingProgress,
+		arg.TenantID,
+		arg.UserID,
+		arg.SeriesPublicID,
+		arg.Surface,
+	)
 	var i GetMySeriesReadingProgressRow
 	err := row.Scan(
 		&i.EpisodePublicID,
@@ -229,6 +253,12 @@ touched_episodes AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $7::text
+        )
     GROUP BY e.series_id,
         e.id,
         e.order_index
@@ -265,6 +295,12 @@ continue_from AS (
                     AND nl.status = 'published'
                     AND nl.published_at IS NOT NULL
                     AND nl.published_at <= NOW()
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = n.id
+                            AND es.surface = $7::text
+                    )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr
@@ -356,6 +392,7 @@ type ListMyRecentSeriesAscParams struct {
 	CursorInclusive      bool          `json:"cursor_inclusive"`
 	CursorSeriesID       uuid.NullUUID `json:"cursor_series_id"`
 	Limit                int32         `json:"limit"`
+	Surface              string        `json:"surface"`
 }
 
 type ListMyRecentSeriesAscRow struct {
@@ -383,6 +420,7 @@ func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSer
 		arg.CursorInclusive,
 		arg.CursorSeriesID,
 		arg.Limit,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -449,6 +487,12 @@ touched_episodes AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $7::text
+        )
     GROUP BY e.series_id,
         e.id,
         e.order_index
@@ -485,6 +529,12 @@ continue_from AS (
                     AND nl.status = 'published'
                     AND nl.published_at IS NOT NULL
                     AND nl.published_at <= NOW()
+                    AND EXISTS (
+                        SELECT 1
+                        FROM episode_surfaces es
+                        WHERE es.episode_id = n.id
+                            AND es.surface = $7::text
+                    )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr
@@ -576,6 +626,7 @@ type ListMyRecentSeriesDescParams struct {
 	CursorInclusive      bool          `json:"cursor_inclusive"`
 	CursorSeriesID       uuid.NullUUID `json:"cursor_series_id"`
 	Limit                int32         `json:"limit"`
+	Surface              string        `json:"surface"`
 }
 
 type ListMyRecentSeriesDescRow struct {
@@ -614,8 +665,9 @@ type ListMyRecentSeriesDescRow struct {
 // be resumed. An episode the reader has not bought is still the one they are
 // meant to open next, because its own page is where they buy it; its saved
 // position is withheld, because a page they cannot reach is not a place to
-// resume. Episodes of an unpublished series are dropped ahead of all of that,
-// so a series taken down reads like one that was never opened.
+// resume. Episodes of an unpublished series, and episodes the calling surface
+// may not show, are dropped ahead of all of that, so a series taken down or
+// kept off the surface reads like one that was never opened.
 //
 // The sort key is an aggregate over the reader's own rows rather than a stored
 // column, so no index orders it directly. Both halves of the scan start from
@@ -632,6 +684,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 		arg.CursorInclusive,
 		arg.CursorSeriesID,
 		arg.Limit,
+		arg.Surface,
 	)
 	if err != nil {
 		return nil, err
@@ -687,6 +740,12 @@ WITH readable AS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
         AND (
             el.price = 0
             OR EXISTS (
@@ -701,7 +760,7 @@ WITH readable AS (
                 FROM purchases p
                 WHERE p.tenant_id = $1
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = $3::uuid
+                    AND p.user_id = $4::uuid
                     AND p.episode_id = e.id
                     AND (p.expires_at IS NULL OR p.expires_at > NOW())
                     AND p.refunded_at IS NULL
@@ -710,7 +769,7 @@ WITH readable AS (
                 SELECT 1
                 FROM access_tickets at
                 WHERE at.tenant_id = $1
-                    AND at.user_id = $3
+                    AND at.user_id = $4
                     AND at.episode_id = e.id
                     AND at.revoked_at IS NULL
                     AND (at.expires_at IS NULL OR at.expires_at > NOW())
@@ -720,10 +779,10 @@ WITH readable AS (
 ),
 saved AS (
     INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count)
-    SELECT $1, $3, r.id, $4::integer, r.page_count
+    SELECT $1, $4, r.id, $5::integer, r.page_count
     FROM readable r
-    WHERE $4::integer >= 0
-        AND $4::integer < r.page_count
+    WHERE $5::integer >= 0
+        AND $5::integer < r.page_count
     ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
     SET page_index = EXCLUDED.page_index,
         page_count = EXCLUDED.page_count,
@@ -746,6 +805,7 @@ FROM readable r
 type SaveEpisodeReadingPositionParams struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
+	Surface         string    `json:"surface"`
 	UserID          uuid.UUID `json:"user_id"`
 	PageIndex       int32     `json:"page_index"`
 }
@@ -777,6 +837,7 @@ func (q *Queries) SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisod
 	row := q.db.QueryRowContext(ctx, SaveEpisodeReadingPosition,
 		arg.TenantID,
 		arg.EpisodePublicID,
+		arg.Surface,
 		arg.UserID,
 		arg.PageIndex,
 	)

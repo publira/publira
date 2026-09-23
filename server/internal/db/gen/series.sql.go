@@ -129,22 +129,19 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        $3::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_surfaces ss
-            WHERE ss.series_id = s.id
-                AND ss.surface = $3::text
-        )
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetPublishedSeriesIDByPublicIDParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	PublicID string         `json:"public_id"`
-	Surface  sql.NullString `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+	Surface  string    `json:"surface"`
 }
 
 // Resolves a currently public series to its internal ID and nothing else.

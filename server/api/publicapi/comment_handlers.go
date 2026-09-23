@@ -39,11 +39,13 @@ const (
 
 // resolvePublicEpisode is the entry point of every comment RPC that names an
 // episode. Reading, posting, and the author's own list all start from the same
-// public query, so an episode of another tenant, an unpublished one, and one
-// that never existed are a single not-found answer.
+// public query, so an episode of another tenant, an unpublished one, one the
+// calling surface may not show, and one that never existed are a single
+// not-found answer.
 func (s *apiServer) resolvePublicEpisode(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	episodePublicID string,
 ) (dbmodels.GetPublishedEpisodeByPublicIDForTenantRow, error) {
 	publicID := strings.TrimSpace(episodePublicID)
@@ -52,7 +54,7 @@ func (s *apiServer) resolvePublicEpisode(
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 		TenantID: tenantID,
-		Surface:  anySurface,
+		Surface:  surface,
 		PublicID: publicID,
 	})
 	if err == nil {
@@ -194,7 +196,11 @@ func (s *apiServer) ListEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +316,11 @@ func (s *apiServer) ListMyEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +473,11 @@ func (s *apiServer) PostEpisodeComment(
 	if err := s.chargeReaderAction(ctx, actionPostComment, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -725,6 +739,10 @@ func (s *apiServer) ReportEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
 	// A reporter who has spent their allowance is stopped before the lookup, so
 	// this RPC cannot be walked to find out which comments exist.
 	if err := s.chargeReaderAction(ctx, actionReportComment, tenant.ID, user.ID); err != nil {
@@ -734,11 +752,13 @@ func (s *apiServer) ReportEpisodeComment(
 	comment, err := s.queriesFor(ctx).GetReportableEpisodeCommentByPublicIDForTenant(ctx, dbmodels.GetReportableEpisodeCommentByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: publicID,
+		Surface:  surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// A comment awaiting approval, one staff removed, one its author withdrew,
-		// one of another tenant, one on an episode that is no longer public, and
-		// one that never existed share this answer: the reporter can see none of
+		// one of another tenant, one on an episode that is no longer public or
+		// that the calling surface may not show, and one that never existed share
+		// this answer: the reporter can see none of
 		// them, so none of them may be confirmed to exist either.
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
 	}

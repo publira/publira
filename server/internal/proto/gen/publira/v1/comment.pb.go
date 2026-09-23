@@ -252,7 +252,9 @@ type ListEpisodeCommentsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -313,6 +315,13 @@ func (x *ListEpisodeCommentsRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListEpisodeCommentsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListEpisodeCommentsResponse struct {
@@ -386,7 +395,9 @@ type ListMyEpisodeCommentsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -447,6 +458,13 @@ func (x *ListMyEpisodeCommentsRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyEpisodeCommentsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyEpisodeCommentsResponse struct {
@@ -518,7 +536,9 @@ type PostEpisodeCommentRequest struct {
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// Non-blank after trimming and at most 1000 Unicode code points. Anything
 	// else is invalid_argument.
-	Body          string `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	Body string `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -572,6 +592,13 @@ func (x *PostEpisodeCommentRequest) GetBody() string {
 		return x.Body
 	}
 	return ""
+}
+
+func (x *PostEpisodeCommentRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type PostEpisodeCommentResponse struct {
@@ -719,7 +746,9 @@ type ReportEpisodeCommentRequest struct {
 	Reason CommentReportReason `protobuf:"varint,3,opt,name=reason,proto3,enum=publira.v1.CommentReportReason" json:"reason,omitempty"`
 	// Optional. At most 1000 Unicode code points once trimmed; a blank note is
 	// stored as no note at all.
-	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	Note string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -782,6 +811,13 @@ func (x *ReportEpisodeCommentRequest) GetNote() string {
 	return ""
 }
 
+func (x *ReportEpisodeCommentRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
 // Deliberately empty. The reporter is told that their report was accepted and
 // nothing else: what a comment's report count is, and whether the threshold
 // moved it, would tell one reader what other readers have done about it.
@@ -840,42 +876,46 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12+\n" +
-	"\x11awaiting_approval\x18\x04 \x01(\bR\x10awaitingApproval\"\xad\x01\n" +
+	"\x11awaiting_approval\x18\x04 \x01(\bR\x10awaitingApproval\"\xe8\x01\n" +
 	"\x1aListEpisodeCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"\x9b\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x9b\x01\n" +
 	"\x1bListEpisodeCommentsResponse\x126\n" +
 	"\bcomments\x18\x01 \x03(\v2\x1a.publira.v1.EpisodeCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xaf\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xea\x01\n" +
 	"\x1cListMyEpisodeCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"\x9f\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x9f\x01\n" +
 	"\x1dListMyEpisodeCommentsResponse\x128\n" +
 	"\bcomments\x18\x01 \x03(\v2\x1c.publira.v1.MyEpisodeCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x94\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xcf\x01\n" +
 	"\x19PostEpisodeCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\"T\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"T\n" +
 	"\x1aPostEpisodeCommentResponse\x126\n" +
 	"\acomment\x18\x01 \x01(\v2\x1c.publira.v1.MyEpisodeCommentR\acomment\"\x84\x01\n" +
 	"\x1dWithdrawEpisodeCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\" \n" +
-	"\x1eWithdrawEpisodeCommentResponse\"\xcf\x01\n" +
+	"\x1eWithdrawEpisodeCommentResponse\"\x8a\x02\n" +
 	"\x1bReportEpisodeCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\x127\n" +
 	"\x06reason\x18\x03 \x01(\x0e2\x1f.publira.v1.CommentReportReasonR\x06reason\x12\x12\n" +
-	"\x04note\x18\x04 \x01(\tR\x04note\"\x1e\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\x129\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1e\n" +
 	"\x1cReportEpisodeCommentResponse*\xc1\x01\n" +
 	"\x13CommentReportReason\x12%\n" +
 	"!COMMENT_REPORT_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
@@ -919,32 +959,37 @@ var file_publira_v1_comment_proto_goTypes = []any{
 	(*ReportEpisodeCommentRequest)(nil),    // 11: publira.v1.ReportEpisodeCommentRequest
 	(*ReportEpisodeCommentResponse)(nil),   // 12: publira.v1.ReportEpisodeCommentResponse
 	(*v1.TenantContext)(nil),               // 13: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                  // 14: publira.types.v1.ClientSurface
 }
 var file_publira_v1_comment_proto_depIdxs = []int32{
 	13, // 0: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 1: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
-	13, // 2: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 3: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
-	13, // 4: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 5: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
-	13, // 6: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 7: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 8: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
-	3,  // 9: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
-	5,  // 10: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
-	7,  // 11: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
-	9,  // 12: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
-	11, // 13: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
-	4,  // 14: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
-	6,  // 15: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
-	8,  // 16: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
-	10, // 17: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
-	12, // 18: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	14, // 1: publira.v1.ListEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	1,  // 2: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
+	13, // 3: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 4: publira.v1.ListMyEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 5: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
+	13, // 6: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 7: publira.v1.PostEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 8: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
+	13, // 9: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 10: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 11: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
+	14, // 12: publira.v1.ReportEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 13: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
+	5,  // 14: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
+	7,  // 15: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
+	9,  // 16: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
+	11, // 17: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
+	4,  // 18: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
+	6,  // 19: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
+	8,  // 20: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
+	10, // 21: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
+	12, // 22: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_comment_proto_init() }

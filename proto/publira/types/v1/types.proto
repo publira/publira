@@ -376,10 +376,12 @@ enum CommentMode {
   COMMENT_MODE_APPROVAL_REQUIRED = 3;
 }
 
-// The client a public catalog read is made from. A work may be withheld from
-// either of them (SurfaceAvailability), and the catalog answers each one with
-// the works it may show, so the rule lives on the server rather than in two
-// clients filtering a full catalog.
+// The client a public read or write that acts on a work is made from: the
+// catalog, and the reader's own follows, reading history, library, ratings,
+// comments, and views. A work may be withheld from either of them
+// (SurfaceAvailability), and the server answers each one with the works it may
+// show, so the rule lives on the server rather than in two clients filtering a
+// full catalog.
 enum ClientSurface {
   // Answered as CLIENT_SURFACE_WEB, so a caller that names nothing keeps
   // seeing what the storefront sees.
@@ -396,9 +398,9 @@ enum ClientSurface {
 // episode may narrow it (episodes.availability): an episode is shown only where
 // its series is, so its own value can take it off a surface but never put it on
 // one its series is kept off. A work kept off a surface is absent from every
-// list, search, ranking, and recommendation read that surface makes, and a read
-// of it by public ID answers not_found exactly as it does for an unpublished
-// one.
+// list, search, ranking, and recommendation read that surface makes, and from
+// the reader's own lists read there, and a read or write of it by public ID
+// answers not_found exactly as it does for an unpublished one.
 //
 // Where an episode is bought, the tenant states a default
 // (tenant_config.purchase_availability), and a series and then an episode may

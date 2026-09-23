@@ -29,7 +29,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
@@ -78,7 +78,7 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
@@ -127,6 +127,7 @@ func TestPurchaseListForwardPageReturnsNeighborTokens(t *testing.T) {
 		WithArgs(
 			tenantID,
 			userID,
+			"web",
 			sql.NullTime{Time: cursorAt, Valid: true},
 			false,
 			uuid.NullUUID{UUID: cursorID, Valid: true},
@@ -138,7 +139,7 @@ func TestPurchaseListForwardPageReturnsNeighborTokens(t *testing.T) {
 	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token:  pagination.EncodeTimeUUID(pagination.Forward, cursorAt, cursorID),
+		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Forward, cursorAt, cursorID)),
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
@@ -168,6 +169,7 @@ func TestPurchaseListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *testing
 		WithArgs(
 			tenantID,
 			userID,
+			"web",
 			sql.NullTime{Time: cursorAt, Valid: true},
 			false,
 			uuid.NullUUID{UUID: cursorID, Valid: true},
@@ -179,7 +181,7 @@ func TestPurchaseListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *testing
 	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token:  pagination.EncodeTimeUUID(pagination.Backward, cursorAt, cursorID),
+		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Backward, cursorAt, cursorID)),
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
@@ -234,6 +236,7 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 				WithArgs(
 					tenantID,
 					userID,
+					"web",
 					sql.NullTime{Time: cursorAt, Valid: true},
 					tt.inclusive,
 					uuid.NullUUID{UUID: cursorID, Valid: true},
@@ -241,9 +244,9 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 				).
 				WillReturnRows(purchaseRows())
 
-			token := pagination.EncodeTimeUUID(tt.direction, cursorAt, cursorID)
+			token := onWeb(pagination.EncodeTimeUUID(tt.direction, cursorAt, cursorID))
 			if tt.inclusive {
-				token = pagination.EncodeTimeUUIDRecovery(tt.direction, cursorAt, cursorID)
+				token = onWeb(pagination.EncodeTimeUUIDRecovery(tt.direction, cursorAt, cursorID))
 			}
 			client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
 			response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
@@ -257,11 +260,11 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 
 			wantPreviousToken := tt.wantPreviousToken
 			if wantPreviousToken == "recovery backward" {
-				wantPreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, cursorAt, cursorID)
+				wantPreviousToken = onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Backward, cursorAt, cursorID))
 			}
 			wantNextToken := tt.wantNextToken
 			if wantNextToken == "recovery forward" {
-				wantNextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, cursorAt, cursorID)
+				wantNextToken = onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Forward, cursorAt, cursorID))
 			}
 			if response.Msg.PreviousToken != wantPreviousToken || response.Msg.NextToken != wantNextToken {
 				t.Fatalf("tokens = (%q, %q), want (%q, %q)", response.Msg.PreviousToken, response.Msg.NextToken, wantPreviousToken, wantNextToken)
@@ -344,9 +347,9 @@ func assertPurchaseIDs(t *testing.T, purchases []*publirav1.MyPurchase, want []u
 
 func assertPurchaseToken(t *testing.T, raw string, wantDirection pagination.Direction, wantTime time.Time, wantID uuid.UUID) {
 	t.Helper()
-	cursor, err := pagination.Decode(raw)
+	cursor, err := decodeSurfaceToken(raw, "web")
 	if err != nil {
-		t.Fatalf("Decode(%q): %v", raw, err)
+		t.Fatalf("decodeSurfaceToken(%q): %v", raw, err)
 	}
 	keys, err := pagination.DecodeTimeUUID(cursor)
 	if err != nil {

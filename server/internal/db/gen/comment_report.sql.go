@@ -275,12 +275,19 @@ WHERE c.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
 LIMIT 1
 `
 
 type GetReportableEpisodeCommentByPublicIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	PublicID string    `json:"public_id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
@@ -319,8 +326,9 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 //
 // The comment a reader is allowed to report: one that is published, on an
 // episode that is itself public right now. The publication predicate is the one
-// GetPublishedEpisodeByPublicIDForTenant applies, so a comment on an episode
-// that has been unpublished since is as absent here as one that never existed.
+// GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+// on an episode that has been unpublished since, or that the calling surface may
+// not show, is as absent here as one that never existed.
 //
 // Every join carries the tenant because the catalog's foreign keys are
 // single-column: episodes.series_id names a series without naming its tenant,
@@ -335,7 +343,7 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 // staff notification the report raises names what the queue is about, and
 // reading it here keeps the report one round trip.
 func (q *Queries) GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
 	var i GetReportableEpisodeCommentByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,

@@ -187,10 +187,12 @@ type resolvedContentViewTarget struct {
 
 // resolveContentViewTarget mirrors resolveRatingTarget: every member-facing RPC
 // that acts on a catalog entity starts from the public query, so a foreign,
-// unpublished, or missing target is NotFound before anything is written.
+// unpublished, or missing target, or one the calling surface may not show, is
+// NotFound before anything is written.
 func (s *apiServer) resolveContentViewTarget(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	target *publirav1.ContentViewTarget,
 ) (resolvedContentViewTarget, error) {
 	if target == nil || strings.TrimSpace(target.PublicId) == "" {
@@ -203,7 +205,7 @@ func (s *apiServer) resolveContentViewTarget(
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 		seriesID, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
 			TenantID: tenantID,
-			Surface:  anySurface,
+			Surface:  surface,
 			PublicID: publicID,
 		})
 		if err == nil {
@@ -216,7 +218,7 @@ func (s *apiServer) resolveContentViewTarget(
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
 		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
 			TenantID: tenantID,
-			Surface:  anySurface,
+			Surface:  surface,
 			PublicID: publicID,
 		})
 		if err == nil {
@@ -254,7 +256,11 @@ func (s *apiServer) RecordContentView(
 	if err != nil {
 		return nil, err
 	}
-	target, err := s.resolveContentViewTarget(ctx, tenant.ID, req.Msg.Target)
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.resolveContentViewTarget(ctx, tenant.ID, surface, req.Msg.Target)
 	if err != nil {
 		return nil, err
 	}

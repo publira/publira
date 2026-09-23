@@ -262,14 +262,11 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
-            AND (
-                $1::text IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM series_surfaces ss
-                    WHERE ss.series_id = s.id
-                        AND ss.surface = $1::text
-                )
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
             )
     ) AS published_series_count
 FROM creators c
@@ -292,23 +289,20 @@ WHERE c.tenant_id = $2
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
-            AND (
-                $1::text IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM series_surfaces ss
-                    WHERE ss.series_id = s.id
-                        AND ss.surface = $1::text
-                )
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $1::text
             )
     )
 LIMIT 1
 `
 
 type GetPublishedCreatorByPublicIDParams struct {
-	Surface  sql.NullString `json:"surface"`
-	TenantID uuid.UUID      `json:"tenant_id"`
-	PublicID string         `json:"public_id"`
+	Surface  string    `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
 }
 
 type GetPublishedCreatorByPublicIDRow struct {
