@@ -398,7 +398,7 @@ func (s *platformServer) UnsuspendEndUser(
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
 		ActorPlatformUserID: actor.UserID,
 		ActorRole:           actor.Role,
-		Action:              "user_activated",
+		Action:              "user_unsuspended",
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,

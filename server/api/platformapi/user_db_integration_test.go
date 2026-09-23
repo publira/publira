@@ -194,6 +194,10 @@ func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
 	if unsuspendResp.Msg.User.Status != userStatusInactive {
 		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.User.Status, userStatusInactive)
 	}
+	// The audit trail names the lifted suspension, not an activation that did not happen.
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_audit_logs WHERE action = 'user_unsuspended' AND target_id = $1`, reader.ID.String()); got != 1 {
+		t.Fatalf("user_unsuspended audit rows = %d, want 1", got)
+	}
 
 	// The same two statements VerifyUserEmail runs when the reader follows the link.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

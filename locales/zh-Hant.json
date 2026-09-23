@@ -3907,9 +3907,9 @@
         "tenant_info_updated": "更新了租戶資訊",
         "tenant_resumed": "恢復了租戶",
         "tenant_suspended": "暫停了租戶",
-        "user_activated": "啟用了使用者",
         "user_deleted": "刪除了使用者",
-        "user_suspended": "暫停了使用者"
+        "user_suspended": "暫停了使用者",
+        "user_unsuspended": "解除了使用者暫停"
       },
       "actor_filter_placeholder": "依操作者公開 ID 篩選",
       "actor_platform": "平台管理員",
