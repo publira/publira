@@ -312,6 +312,13 @@ class OfflineCatalogRepository implements CatalogRepository {
     String token = '',
   }) => _origin.listRecentSeries(limit: limit, token: token);
 
+  /// The reader's history across every device, which only the API holds.
+  @override
+  Future<EpisodeReadPage> listEpisodeReads({
+    required int limit,
+    String token = '',
+  }) => _origin.listEpisodeReads(limit: limit, token: token);
+
   /// Answers an episode the network could not, from what the device holds.
   Future<EpisodeDetail> _openSaved(
     String seriesPublicId,

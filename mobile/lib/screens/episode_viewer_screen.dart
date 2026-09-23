@@ -608,6 +608,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       CatalogFailureKind.network => messages.errorsRpcUnavailable,
       CatalogFailureKind.notSaved => messages.viewerOfflineNotSaved,
       CatalogFailureKind.saveExpired => messages.viewerSaveExpired,
+      CatalogFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
       CatalogFailureKind.unexpected => messages.viewerLoadFailed,
     };
   }

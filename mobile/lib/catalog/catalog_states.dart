@@ -19,6 +19,7 @@ String catalogFailureCopy(
     CatalogFailureKind.network => messages.errorsRpcUnavailable,
     CatalogFailureKind.notSaved ||
     CatalogFailureKind.saveExpired => messages.catalogOfflineNotSaved,
+    CatalogFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
     CatalogFailureKind.unexpected => fallback,
   };
 }

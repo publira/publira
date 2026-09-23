@@ -987,6 +987,27 @@ abstract class AppMessages {
   /// `mobile.push.open`
   String get pushOpen;
 
+  /// `mobile.reading_history.account_description`
+  String get readingHistoryAccountDescription;
+
+  /// `mobile.reading_history.empty`
+  String get readingHistoryEmpty;
+
+  /// `mobile.reading_history.failed`
+  String get readingHistoryFailed;
+
+  /// `mobile.reading_history.finished_at`
+  String readingHistoryFinishedAt({required String date});
+
+  /// `mobile.reading_history.open_series`
+  String get readingHistoryOpenSeries;
+
+  /// `mobile.reading_history.sign_in_prompt`
+  String get readingHistorySignInPrompt;
+
+  /// `mobile.reading_history.title`
+  String get readingHistoryTitle;
+
   /// `mobile.resend_verification.description`
   String get resendVerificationDescription;
 
@@ -2850,6 +2871,41 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get pushOpen {
     return '開く';
+  }
+
+  @override
+  String get readingHistoryAccountDescription {
+    return 'どこで読んだものも含め、読み終えたエピソードを確認できます。';
+  }
+
+  @override
+  String get readingHistoryEmpty {
+    return 'まだ読み終えたエピソードはありません。最後まで読んだエピソードは、サインインしたどの端末でもここに表示されます。';
+  }
+
+  @override
+  String get readingHistoryFailed {
+    return '読書履歴を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String readingHistoryFinishedAt({required String date}) {
+    return '$date に読了';
+  }
+
+  @override
+  String get readingHistoryOpenSeries {
+    return 'シリーズを開く';
+  }
+
+  @override
+  String get readingHistorySignInPrompt {
+    return 'サインインすると、読み終えたエピソードを確認できます。';
+  }
+
+  @override
+  String get readingHistoryTitle {
+    return '読書履歴';
   }
 
   @override
@@ -4956,6 +5012,41 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get readingHistoryAccountDescription {
+    return 'Episodes you have finished, wherever you read them.';
+  }
+
+  @override
+  String get readingHistoryEmpty {
+    return 'You have not finished any episodes yet. Episodes you read to the end appear here on every device you sign in on.';
+  }
+
+  @override
+  String get readingHistoryFailed {
+    return 'Could not show your reading history. Try again.';
+  }
+
+  @override
+  String readingHistoryFinishedAt({required String date}) {
+    return 'Finished $date';
+  }
+
+  @override
+  String get readingHistoryOpenSeries {
+    return 'Open the series';
+  }
+
+  @override
+  String get readingHistorySignInPrompt {
+    return 'Sign in to see the episodes you have finished.';
+  }
+
+  @override
+  String get readingHistoryTitle {
+    return 'Reading history';
+  }
+
+  @override
   String get resendVerificationDescription {
     return 'Enter the address you signed up with. If it is still waiting to be confirmed, a new link goes out to it.';
   }
@@ -7056,6 +7147,41 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get pushOpen {
     return '열기';
+  }
+
+  @override
+  String get readingHistoryAccountDescription {
+    return '어디에서 읽었든 다 읽은 에피소드를 확인할 수 있습니다.';
+  }
+
+  @override
+  String get readingHistoryEmpty {
+    return '아직 다 읽은 에피소드가 없습니다. 끝까지 읽은 에피소드는 로그인한 모든 기기에서 여기에 표시됩니다.';
+  }
+
+  @override
+  String get readingHistoryFailed {
+    return '읽은 기록을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String readingHistoryFinishedAt({required String date}) {
+    return '$date에 완독';
+  }
+
+  @override
+  String get readingHistoryOpenSeries {
+    return '시리즈 열기';
+  }
+
+  @override
+  String get readingHistorySignInPrompt {
+    return '로그인하면 다 읽은 에피소드를 볼 수 있습니다.';
+  }
+
+  @override
+  String get readingHistoryTitle {
+    return '읽은 기록';
   }
 
   @override
@@ -9162,6 +9288,41 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get readingHistoryAccountDescription {
+    return '查看您读完的章节，无论在哪里阅读。';
+  }
+
+  @override
+  String get readingHistoryEmpty {
+    return '您还没有读完任何章节。读到最后的章节会显示在您登录的每台设备上。';
+  }
+
+  @override
+  String get readingHistoryFailed {
+    return '无法显示您的阅读记录。请重试。';
+  }
+
+  @override
+  String readingHistoryFinishedAt({required String date}) {
+    return '$date 读完';
+  }
+
+  @override
+  String get readingHistoryOpenSeries {
+    return '打开系列';
+  }
+
+  @override
+  String get readingHistorySignInPrompt {
+    return '登录后即可查看您读完的章节。';
+  }
+
+  @override
+  String get readingHistoryTitle {
+    return '阅读记录';
+  }
+
+  @override
   String get resendVerificationDescription {
     return '请输入您注册时使用的邮箱地址。如果它仍在等待确认，我们会向它发送新的链接。';
   }
@@ -11262,6 +11423,41 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get pushOpen {
     return '開啟';
+  }
+
+  @override
+  String get readingHistoryAccountDescription {
+    return '查看您讀完的章節，無論在哪裡閱讀。';
+  }
+
+  @override
+  String get readingHistoryEmpty {
+    return '您還沒有讀完任何章節。讀到最後的章節會顯示在您登入的每台裝置上。';
+  }
+
+  @override
+  String get readingHistoryFailed {
+    return '無法顯示您的閱讀記錄。請重試。';
+  }
+
+  @override
+  String readingHistoryFinishedAt({required String date}) {
+    return '$date 讀完';
+  }
+
+  @override
+  String get readingHistoryOpenSeries {
+    return '開啟系列';
+  }
+
+  @override
+  String get readingHistorySignInPrompt {
+    return '登入後即可查看您讀完的章節。';
+  }
+
+  @override
+  String get readingHistoryTitle {
+    return '閱讀記錄';
   }
 
   @override

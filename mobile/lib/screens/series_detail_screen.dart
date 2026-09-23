@@ -168,6 +168,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
       CatalogFailureKind.network => messages.errorsRpcUnavailable,
       CatalogFailureKind.notSaved ||
       CatalogFailureKind.saveExpired => messages.seriesOfflineNotSaved,
+      CatalogFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
       CatalogFailureKind.unexpected => messages.seriesLoadFailed,
     };
   }

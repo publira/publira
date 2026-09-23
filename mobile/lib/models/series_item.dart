@@ -312,6 +312,36 @@ class RecentSeriesPage {
   final String nextToken;
 }
 
+/// One episode the reader finished, as `MyEpisodeRead` describes it.
+class EpisodeReadItem {
+  const EpisodeReadItem({
+    required this.series,
+    required this.episode,
+    this.readAt,
+  });
+
+  final SeriesItem series;
+  final EpisodeItem episode;
+
+  /// When the reader first finished it, which a re-read does not move. `null`
+  /// when the API sent a timestamp this build could not read.
+  final DateTime? readAt;
+}
+
+/// One page of the reader's reading history, most recently finished first, as
+/// `ListMyEpisodeReadsResponse` answers it.
+class EpisodeReadPage {
+  const EpisodeReadPage({required this.reads, this.nextToken = ''});
+
+  /// A reader who is signed out or has finished nothing.
+  static const empty = EpisodeReadPage(reads: []);
+
+  final List<EpisodeReadItem> reads;
+
+  /// What the API calls the page after this one. Empty at the end of it.
+  final String nextToken;
+}
+
 /// The window one ranking snapshot covers, as `publira.v1.RankingPeriod` names
 /// them. The batch writes a snapshot per window on every run, so a tenant it
 /// has ranked has both.

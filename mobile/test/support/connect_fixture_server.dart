@@ -382,6 +382,26 @@ class ConnectFixtureServer {
     ];
   }
 
+  static List<Map<String, Object?>> populatedEpisodeReads() {
+    return [
+      {
+        'series': {
+          'publicId': seedSeriesId,
+          'title': seedSeriesTitle,
+          'synopsis': seedSeriesSynopsis,
+          'eyeCatchImageVariants': seedEyeCatchVariants(),
+        },
+        'episode': {
+          'publicId': seedEpisodeId,
+          'title': seedEpisodeTitle,
+          'orderIndex': 1,
+          'price': 0,
+        },
+        'readAt': '2026-09-01T00:00:00Z',
+      },
+    ];
+  }
+
   static Map<String, Map<String, Object?>> populatedDetails() {
     return {
       seedSeriesId: {
@@ -464,6 +484,11 @@ class ConnectFixtureServer {
   /// with, in the order they are given, at most the request's `limit` to a
   /// page with the token written the way [followsPageSize] writes one.
   List<Map<String, Object?>> recentSeries;
+
+  /// `MyEpisodeRead` entries `ListMyEpisodeReads` answers a signed-in member
+  /// with, in the order they are given, at most the request's `limit` to a
+  /// page.
+  List<Map<String, Object?>> episodeReadHistory = const [];
 
   /// The tenant's comment policy, as `GetTenant` answers it. Set it to
   /// `COMMENT_MODE_DISABLED` to act out a tenant that takes no comments.
@@ -985,6 +1010,7 @@ class ConnectFixtureServer {
     if (path.endsWith('/GetMyReadingPosition') ||
         path.endsWith('/SaveReadingPosition') ||
         path.endsWith('/MarkEpisodeAsRead') ||
+        path.endsWith('/ListMyEpisodeReads') ||
         path.endsWith('/ListMyRecentSeries')) {
       if (!_isAuthorized(request)) {
         await _write(request, HttpStatus.unauthorized, {
@@ -1748,6 +1774,23 @@ class ConnectFixtureServer {
       await _write(request, HttpStatus.ok, {
         'series': recentSeries.sublist(start, end),
         if (end < recentSeries.length) 'nextToken': '$end',
+      });
+      return;
+    }
+    if (path.endsWith('/ListMyEpisodeReads')) {
+      final limit = body['limit'] as int? ?? 0;
+      final token = body['token'] as String? ?? '';
+      final start = min(
+        token.isEmpty ? 0 : int.parse(token),
+        episodeReadHistory.length,
+      );
+      final end = limit <= 0
+          ? episodeReadHistory.length
+          : min(start + limit, episodeReadHistory.length);
+      await _write(request, HttpStatus.ok, {
+        // protojson omits an empty repeated field.
+        if (end > start) 'reads': episodeReadHistory.sublist(start, end),
+        if (end < episodeReadHistory.length) 'nextToken': '$end',
       });
       return;
     }

@@ -3473,6 +3473,15 @@
       "sign_in_prompt": "Sign in to see the episodes you bought.",
       "title": "Purchases"
     },
+    "reading_history": {
+      "account_description": "Episodes you have finished, wherever you read them.",
+      "empty": "You have not finished any episodes yet. Episodes you read to the end appear here on every device you sign in on.",
+      "failed": "Could not show your reading history. Try again.",
+      "finished_at": "Finished {$date}",
+      "open_series": "Open the series",
+      "sign_in_prompt": "Sign in to see the episodes you have finished.",
+      "title": "Reading history"
+    },
     "push": {
       "open": "Open"
     },

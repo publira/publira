@@ -74,6 +74,10 @@ class CatalogPager<T, H> extends ChangeNotifier {
 
   var _disposed = false;
 
+  /// Completed once the first page [restart] asked for has answered, or once
+  /// nothing waits for it any more.
+  Completer<void>? _firstPage;
+
   /// Reads the first page again, through [reader] when one is given, and drops
   /// every row read before.
   void restart([CatalogPageReader<T, H>? reader]) {
@@ -81,15 +85,25 @@ class CatalogPager<T, H> extends ChangeNotifier {
       _reader = reader;
     }
     _reset();
+    _settleFirstPage();
+    _firstPage = Completer<void>();
     _reading = true;
     notifyListeners();
     unawaited(_read(++_reads, ''));
+  }
+
+  /// Reads the first page again and completes once it has answered, which is
+  /// what a pull-to-refresh waits on.
+  Future<void> refresh() {
+    restart();
+    return _firstPage!.future;
   }
 
   /// Drops every row and stops waiting for the page in flight, which leaves
   /// the pager holding nothing until it is restarted.
   void clear() {
     _reset();
+    _settleFirstPage();
     _reads++;
     notifyListeners();
   }
@@ -115,6 +129,7 @@ class CatalogPager<T, H> extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _settleFirstPage();
     super.dispose();
   }
 
@@ -126,6 +141,11 @@ class CatalogPager<T, H> extends ChangeNotifier {
     _failure = null;
     _moreFailure = null;
     _reading = false;
+  }
+
+  void _settleFirstPage() {
+    _firstPage?.complete();
+    _firstPage = null;
   }
 
   Future<void> _read(int read, String token) async {
@@ -141,6 +161,9 @@ class CatalogPager<T, H> extends ChangeNotifier {
       return;
     }
     _reading = false;
+    if (isFirstPage) {
+      _settleFirstPage();
+    }
     if (failure != null) {
       if (isFirstPage) {
         _failure = failure;

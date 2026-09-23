@@ -11,6 +11,10 @@ enum CatalogFailureKind {
   /// grant inside the offline grace period, so it is no longer opened.
   saveExpired,
 
+  /// Connect `unauthenticated`: the API refused the session the read was
+  /// sent with, so asking again with it cannot succeed.
+  sessionExpired,
+
   /// Anything else, including Connect `internal`.
   unexpected,
 }
