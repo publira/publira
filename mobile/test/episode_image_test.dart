@@ -156,6 +156,25 @@ void main() {
     expect(find.byKey(const ValueKey('episode-page-view')), findsOneWidget);
   });
 
+  testWidgets('a failed page keeps its copy off the edges of the page', (
+    tester,
+  ) async {
+    final client = EpisodeImageClient(
+      httpClient: MockClient((_) async => http.Response('', 503)),
+    );
+
+    await _pumpReader(tester, client: client, headers: headers);
+    await tester.pump();
+
+    final error = find.byKey(const ValueKey('episode-page-error'));
+    final page = tester.getRect(error);
+    final copy = tester.getRect(
+      find.descendant(of: error, matching: find.byType(Text)).first,
+    );
+    expect(copy.left - page.left, greaterThanOrEqualTo(24));
+    expect(page.right - copy.right, greaterThanOrEqualTo(24));
+  });
+
   test('two providers for the same page under the same credential match', () {
     final client = EpisodeImageClient(
       httpClient: MockClient((_) async => http.Response('', 404)),

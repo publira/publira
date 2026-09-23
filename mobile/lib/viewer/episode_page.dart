@@ -95,25 +95,28 @@ class _PageError extends StatelessWidget {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            messages.viewerPageFailed,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            key: const ValueKey('episode-page-retry'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white70),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              messages.viewerPageFailed,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white),
             ),
-            onPressed: onRetry,
-            child: Text(messages.viewerReload),
-          ),
-        ],
+            const SizedBox(height: 12),
+            OutlinedButton(
+              key: const ValueKey('episode-page-retry'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white70),
+              ),
+              onPressed: onRetry,
+              child: Text(messages.viewerReload),
+            ),
+          ],
+        ),
       ),
     );
   }
