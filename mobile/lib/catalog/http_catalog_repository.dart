@@ -53,6 +53,8 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.EpisodeReadService/GetMyReadingPosition';
   static const _saveReadingPositionProcedure =
       '/publira.v1.EpisodeReadService/SaveReadingPosition';
+  static const _markReadProcedure =
+      '/publira.v1.EpisodeReadService/MarkEpisodeAsRead';
   static const _recentSeriesProcedure =
       '/publira.v1.EpisodeReadService/ListMyRecentSeries';
   static const _myEpisodeRatingProcedure =
@@ -479,6 +481,29 @@ class HttpCatalogRepository implements CatalogRepository {
         {
           'episodePublicId': episodePublicId,
           'pageIndex': pageIndex,
+          'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<void> markEpisodeAsRead(String episodePublicId) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _markReadProcedure,
+        {
+          'episodePublicId': episodePublicId,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },

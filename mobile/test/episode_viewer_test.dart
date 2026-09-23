@@ -1045,6 +1045,96 @@ void main() {
     await pumpUntilNoPendingFrameCallbacks(tester);
   });
 
+  group('finishing the episode', () {
+    testWidgets('the last page on screen records the finish once', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilRouteSettled(tester, pageView);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('2 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, [episodeId]);
+
+      // Paging over the end, and back from it, is the same finish.
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, endPanel);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilFound(tester, find.text('2 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, [episodeId]);
+    });
+
+    testWidgets('an episode opened on its last page is finished', (
+      tester,
+    ) async {
+      catalog.readingPositions = {episodeKey(seriesId, episodeId): 2};
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilRouteSettled(tester, pageView);
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(catalog.markedRead, [episodeId]);
+    });
+
+    testWidgets('a spread carrying the last page is finished', (tester) async {
+      catalog.episodes = fixtureEpisodes(pageCount: 5);
+      await pumpApp(tester, session: fakeSession, screen: landscape);
+      await pumpUntilFound(tester, pageView);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('2–3 / 5'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('4–5 / 5'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, [episodeId]);
+    });
+
+    testWidgets('a finish that failed is sent on the next arrival', (
+      tester,
+    ) async {
+      catalog.markReadError = const CatalogFailure(
+        CatalogFailureKind.network,
+        message: 'offline',
+      );
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilRouteSettled(tester, pageView);
+
+      await turnToEnd(tester);
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(catalog.markedRead, [episodeId]);
+
+      catalog.markReadError = null;
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      await tester.tap(find.byKey(const ValueKey('episode-previous-page')));
+      await pumpUntilFound(tester, find.text('2 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilFound(tester, find.text('3 / 3'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+
+      expect(catalog.markedRead, [episodeId, episodeId]);
+    });
+  });
+
   testWidgets('leaving the reader records the page it was left on', (
     tester,
   ) async {

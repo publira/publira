@@ -1653,6 +1653,7 @@ void main() {
         episodeId,
         4,
       );
+      await signedIn.markEpisodeAsRead(episodeId);
       await signedIn.listRecentSeries(limit: 6);
       await signedIn.getEpisodeReaction(episodeId);
       await signedIn.reactToEpisode(episodeId);
@@ -1667,6 +1668,7 @@ void main() {
         {
           'GetMyReadingPosition',
           'SaveReadingPosition',
+          'MarkEpisodeAsRead',
           'ListMyRecentSeries',
           'GetMyEpisodeRating',
           'RateEpisode',
@@ -1706,6 +1708,21 @@ void main() {
 
       expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 4);
       final recorded = server.requestsTo('SaveReadingPosition').single;
+      expect(
+        recorded.headers['authorization'],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+      expect(
+        (recorded.body['tenant']! as Map)['tenantId'],
+        ConnectFixtureServer.defaultTenantId,
+      );
+    });
+
+    test('markEpisodeAsRead records the finish against the episode', () async {
+      await signedIn.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId);
+
+      expect(server.episodeReads.keys, [ConnectFixtureServer.seedEpisodeId]);
+      final recorded = server.requestsTo('MarkEpisodeAsRead').single;
       expect(
         recorded.headers['authorization'],
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
@@ -1769,6 +1786,7 @@ void main() {
         ConnectFixtureServer.seedEpisodeId,
         4,
       );
+      await catalog.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId);
       expect((await catalog.listRecentSeries(limit: 6)).series, isEmpty);
 
       // Nothing was asked, so nothing was refused: the API answers a request
@@ -1776,6 +1794,7 @@ void main() {
       // worth a round trip.
       expect(server.requestsTo('GetMyReadingPosition'), isEmpty);
       expect(server.requestsTo('SaveReadingPosition'), isEmpty);
+      expect(server.requestsTo('MarkEpisodeAsRead'), isEmpty);
       expect(server.requestsTo('ListMyRecentSeries'), isEmpty);
       expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 11);
     });

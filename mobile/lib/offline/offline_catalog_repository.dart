@@ -284,6 +284,12 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
+  /// Sent straight to the API, which is the only record of what a reader
+  /// finished.
+  @override
+  Future<void> markEpisodeAsRead(String episodePublicId) =>
+      _origin.markEpisodeAsRead(episodePublicId);
+
   // Reactions are account-specific and immediately visible on the website, so
   // unlike catalog reads they are never served from or queued into offline
   // storage.

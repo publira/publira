@@ -43,6 +43,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.creatorError,
     this.episodeError,
     this.readingPositionError,
+    this.markReadError,
     this.recentSeriesError,
     this.reactionError,
     this.reactions = const {},
@@ -126,7 +127,12 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? creatorError;
   CatalogFailure? episodeError;
   CatalogFailure? readingPositionError;
+  CatalogFailure? markReadError;
   CatalogFailure? recentSeriesError;
+
+  /// Every episode [markEpisodeAsRead] was called for, in order, including the
+  /// calls that failed.
+  final List<String> markedRead = [];
   CatalogFailure? reactionError;
 
   /// Held open by a test that switches readers while a reaction is loading.
@@ -386,6 +392,15 @@ class FakeCatalogRepository implements CatalogRepository {
       ...readingPositions,
       episodeKey(seriesPublicId, episodePublicId): pageIndex,
     };
+  }
+
+  @override
+  Future<void> markEpisodeAsRead(String episodePublicId) async {
+    markedRead.add(episodePublicId);
+    final error = markReadError;
+    if (error != null) {
+      throw error;
+    }
   }
 
   @override

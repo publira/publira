@@ -2,11 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:integration_test/integration_test.dart';
-import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
+import 'package:publira/api/client_surface.dart';
+import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/episode_page_store.dart';
+import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/config.dart';
 import 'package:publira/offline/file_offline_library.dart';
@@ -1679,6 +1684,7 @@ void main() {
     Future<void> pumpLive(
       WidgetTester tester, {
       String? initialLocation,
+      AuthSession? session,
     }) async {
       await tester.pumpWidget(
         PubliraApp.fromConfig(
@@ -1689,7 +1695,7 @@ void main() {
           router: createAppRouter(
             initialLocation: initialLocation ?? AppRoutes.catalog,
           ),
-          store: InMemorySessionStore(),
+          store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           offline: FileOfflineLibrary(
             tenantHost: liveTenantHost,
@@ -1698,6 +1704,138 @@ void main() {
         ),
       );
       await tester.pump();
+    }
+
+    /// The seed member signed in over the live API, with the client that
+    /// reads their own records.
+    Future<
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+    >
+    signInSeedMember() async {
+      final httpClient = http.Client();
+      addTearDown(httpClient.close);
+      final client = ConnectClient(
+        baseUrl: liveBaseUrl,
+        httpClient: httpClient,
+      );
+      final tenants = TenantResolver(
+        client: client,
+        tenantHost: liveTenantHost,
+      );
+      final session =
+          await HttpAuthRepository(
+            config: const AppConfig(
+              baseUrl: liveBaseUrl,
+              tenantHost: liveTenantHost,
+            ),
+            client: client,
+            tenants: tenants,
+          ).signIn(
+            email: ConnectFixtureServer.memberEmail,
+            password: ConnectFixtureServer.memberPassword,
+          );
+      return (client: client, tenants: tenants, session: session);
+    }
+
+    /// Opens the free seed episode for [session] one page before its end and
+    /// turns to its last page.
+    ///
+    /// The position is saved at the API first, so the viewer draws two pages
+    /// rather than the whole body: an emulator decodes in software, and every
+    /// page it holds is memory the host may not have.
+    Future<void> finishSeedEpisode(
+      WidgetTester tester,
+      AuthSession session,
+    ) async {
+      final httpClient = http.Client();
+      addTearDown(httpClient.close);
+      final client = ConnectClient(
+        baseUrl: liveBaseUrl,
+        httpClient: httpClient,
+      );
+      final tenantId = await TenantResolver(
+        client: client,
+        tenantHost: liveTenantHost,
+      ).resolve();
+      final detail = await client.unary(
+        '/publira.v1.CatalogService/GetEpisodeDetail',
+        {
+          'publicId': ConnectFixtureServer.seedEpisodeId,
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      final pageCount = (detail['images']! as List).length;
+      await client.unary(
+        '/publira.v1.EpisodeReadService/SaveReadingPosition',
+        {
+          'episodePublicId': ConnectFixtureServer.seedEpisodeId,
+          'pageIndex': pageCount - 2,
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+
+      await pumpLive(
+        tester,
+        initialLocation: AppRoutes.episodeViewerPath(
+          ConnectFixtureServer.seedSeriesId,
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+        session: session,
+      );
+      await pumpUntilPagesDrawn(tester);
+      await pumpUntilFound(tester, find.text('${pageCount - 1} / $pageCount'));
+      await tapReachable(
+        tester,
+        find.byKey(const ValueKey('episode-next-page')),
+      );
+      await pumpUntilFound(tester, find.text('$pageCount / $pageCount'));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    }
+
+    /// The public ids of the episodes [member] finished, as the API lists
+    /// them.
+    Future<List<Object?>> finishedEpisodeIds(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      final body = await member.client.unary(
+        '/publira.v1.EpisodeReadService/ListMyEpisodeReads',
+        {
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+      return [
+        for (final read in body['reads'] as List? ?? const [])
+          ((read as Map)['episode'] as Map)['publicId'],
+      ];
+    }
+
+    /// Waits for the API to list the free seed episode among what [member]
+    /// finished. The finish is sent once the last page is drawn, without
+    /// holding up the reader, so it may land a moment after the page does.
+    Future<void> pumpUntilSeedEpisodeRecorded(
+      WidgetTester tester,
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final end = DateTime.now().add(const Duration(seconds: 10));
+      var readIds = await finishedEpisodeIds(member);
+      while (!readIds.contains(ConnectFixtureServer.seedEpisodeId) &&
+          DateTime.now().isBefore(end)) {
+        await tester.pump(const Duration(milliseconds: 200));
+        readIds = await finishedEpisodeIds(member);
+      }
+      expect(readIds, contains(ConnectFixtureServer.seedEpisodeId));
     }
 
     testApp('catalog lists series from the seed tenant', (tester) async {
@@ -2017,6 +2155,27 @@ void main() {
 
         await tapReachable(tester, readable);
         await pumpUntilPagesDrawn(tester);
+      });
+    });
+
+    testApp('the seed member finishes an episode and the API records it', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-episode-read', () async {
+        final member = await signInSeedMember();
+        // A finish is recorded once and kept, so one already on record would
+        // pass this test whether or not the viewer sent anything.
+        expect(
+          await finishedEpisodeIds(member),
+          isNot(contains(ConnectFixtureServer.seedEpisodeId)),
+          reason: 'the stack must start from a fresh seed',
+        );
+
+        await finishSeedEpisode(tester, member.session);
+
+        // The site reads the same history, so what the API answers is what the
+        // reader finds there.
+        await pumpUntilSeedEpisodeRecorded(tester, member);
       });
     });
 
