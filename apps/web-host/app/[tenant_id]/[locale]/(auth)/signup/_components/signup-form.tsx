@@ -100,11 +100,17 @@ const LegalPageLink = ({ page }: { page: TenantLegalPage }) => (
 /**
  * Asked only where the tenant names a terms or privacy page. Each version sent
  * is the one whose title this form links to, so what the API records is the
- * text the reader was shown.
+ * text the reader was shown. A page named for both roles is listed and sent
+ * once, because the API takes exactly one version of each page.
  */
 const ConsentField = async () => {
   const tenantId = await getTenantId();
-  const { privacyPage, termsPage } = await getTenantLegalPages(tenantId);
+  const legalPages = await getTenantLegalPages(tenantId);
+  const { termsPage } = legalPages;
+  const privacyPage =
+    legalPages.privacyPage?.versionId === termsPage?.versionId
+      ? undefined
+      : legalPages.privacyPage;
   if (!termsPage && !privacyPage) {
     return null;
   }
