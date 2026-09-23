@@ -445,6 +445,7 @@ class HttpCatalogRepository implements CatalogRepository {
         {
           'episodePublicId': episodePublicId,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,
@@ -479,6 +480,7 @@ class HttpCatalogRepository implements CatalogRepository {
           'episodePublicId': episodePublicId,
           'pageIndex': pageIndex,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,
@@ -501,6 +503,7 @@ class HttpCatalogRepository implements CatalogRepository {
         {
           'episodePublicId': episodePublicId,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,
@@ -528,6 +531,7 @@ class HttpCatalogRepository implements CatalogRepository {
           'episodePublicId': episodePublicId,
           'presses': 1,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
         },
         tenantId: tenantId,
         accessToken: accessToken,
@@ -554,6 +558,7 @@ class HttpCatalogRepository implements CatalogRepository {
         {
           'limit': limit,
           'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
           if (token.isNotEmpty) 'token': token,
         },
         tenantId: tenantId,
