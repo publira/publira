@@ -209,7 +209,7 @@ class PubliraApp extends StatefulWidget {
       // The web has no signal for a screenshot.
       screenCaptures: kIsWeb
           ? null
-          : ScreenCaptureNotices(captures: const PlatformScreenCaptures()),
+          : ScreenCaptureNotices(captures: PlatformScreenCaptures()),
     );
   }
 

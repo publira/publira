@@ -4,8 +4,9 @@ import 'package:flutter/widgets.dart';
 /// Screenshots the reader takes of the app, as the OS reports them after the
 /// fact.
 abstract class ScreenCaptures {
-  /// One event per screenshot. It is a broadcast stream, so a viewer replacing
-  /// another can listen before the one it replaces has let go.
+  /// One event per screenshot, on a broadcast stream every viewer shares, so a
+  /// viewer replacing another can listen before the one it replaces has let
+  /// go.
   Stream<void> get captures;
 }
 
@@ -14,12 +15,17 @@ abstract class ScreenCaptures {
 /// Android reports only from Android 14 on, and older versions stay silent
 /// rather than failing.
 class PlatformScreenCaptures implements ScreenCaptures {
-  const PlatformScreenCaptures();
+  PlatformScreenCaptures([
+    EventChannel channel = const EventChannel(
+      'dev.publira.app/screen_captures',
+    ),
+  ]) : captures = channel.receiveBroadcastStream().map((_) {});
 
-  static const _channel = EventChannel('dev.publira.app/screen_captures');
-
+  /// Built once: every `receiveBroadcastStream` call is a stream of its own,
+  /// and the last listener of any of them leaving stops the platform side for
+  /// all of them.
   @override
-  Stream<void> get captures => _channel.receiveBroadcastStream().map((_) {});
+  final Stream<void> captures;
 }
 
 /// The screenshots the episode viewer answers with a notice, and the episodes

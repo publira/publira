@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
@@ -1272,6 +1273,41 @@ void main() {
       expect(notice, findsNothing);
 
       await capture(tester);
+
+      expect(notice, findsOneWidget);
+    });
+
+    testWidgets('the platform keeps reporting to the viewer that replaced '
+        'another', (tester) async {
+      // The channel as the platform answers it: one sink, which a cancel from
+      // any stream on the channel takes away.
+      const channel = EventChannel('test/screen_captures');
+      MockStreamHandlerEventSink? sink;
+      final messenger = tester.binding.defaultBinaryMessenger
+        ..setMockStreamHandler(
+          channel,
+          MockStreamHandler.inline(
+            onListen: (_, events) {
+              sink = events;
+            },
+            onCancel: (_) {
+              sink = null;
+            },
+          ),
+        );
+      addTearDown(() => messenger.setMockStreamHandler(channel, null));
+      await pumpApp(
+        tester,
+        screenCaptures: ScreenCaptureNotices(
+          captures: PlatformScreenCaptures(channel),
+        ),
+      );
+      await pumpUntilFound(tester, pageView);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-episode')));
+      await pumpUntilRouteSettled(tester, firstPageOf(nextEpisodeId));
+      sink?.success(null);
+      await pumpUntilFound(tester, notice);
 
       expect(notice, findsOneWidget);
     });
