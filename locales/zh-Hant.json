@@ -2555,6 +2555,7 @@
         "to_reset_password": "返回密碼重設"
       },
       "errors": {
+        "consent_changed": "需要同意的頁面已更新。請閱讀後重新同意。",
         "consent_required": "要建立帳戶，請同意所列頁面。",
         "login_failed": "電子郵件地址或密碼不正確。",
         "name_required": "請輸入顯示名稱。",

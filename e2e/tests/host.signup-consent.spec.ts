@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { applyScenarioSql, querySql } from "../src/db";
+import { applyScenarioSql, querySql, runSql } from "../src/db";
 import {
   SIGNUP_CONSENT_PRIVACY_PAGE,
   SIGNUP_CONSENT_READER,
@@ -22,13 +22,17 @@ import {
  * A tenant that names its terms of service and privacy policy asks a reader to
  * agree to both before an account is opened, and the account records the
  * version of each page the form linked to. A page named for both roles is
- * agreed to once. A tenant that names neither keeps the form it had.
+ * agreed to once. A tenant that names neither keeps the form it had. A page
+ * republished while the form is open is agreed to again before the account is
+ * opened.
  */
 
 const signupUrl = `${WEB_HOST_SIGNUP_CONSENT_BASE_URL}${hostPath("/signup")}`;
 const sharedSignupUrl = `${WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL}${hostPath("/signup")}`;
 
 const CONSENT_LABEL = "I have read and agree to the following.";
+const CONSENT_CHANGED_MESSAGE =
+  "The pages to agree to have been updated. Read them and agree again.";
 const SIGNUP_SENT_MESSAGE =
   "We sent an email to the address you entered. Open it to continue.";
 
@@ -69,6 +73,36 @@ const agreedVersionIds = (
   `)
     .split("\n")
     .filter((line) => line.length > 0);
+
+/**
+ * A third version of the terms page, published straight into the database the
+ * way the console publishes one. No cache revalidation follows, so the form
+ * can only learn of it from the submission.
+ */
+const REPUBLISHED_TERMS_VERSION_ID = "018f0ff0-0003-7000-8000-000000000005";
+
+const republishTermsPage = (): void => {
+  runSql(`
+    INSERT INTO page_versions (
+        id, page_id, tenant_id, version_number, content_markdown, status,
+        published_at
+    )
+    SELECT
+        '${REPUBLISHED_TERMS_VERSION_ID}', p.id, p.tenant_id, 3,
+        'The terms of service, revised again.', 'published', NOW()
+    FROM pages p
+    JOIN tenants t ON t.id = p.tenant_id
+    WHERE t.public_id = '${SIGNUP_CONSENT_TENANT}'
+      AND p.slug = '${SIGNUP_CONSENT_TERMS_PAGE.path}';
+
+    UPDATE pages p
+    SET published_version_id = '${REPUBLISHED_TERMS_VERSION_ID}'
+    FROM tenants t
+    WHERE t.id = p.tenant_id
+      AND t.public_id = '${SIGNUP_CONSENT_TENANT}'
+      AND p.slug = '${SIGNUP_CONSENT_TERMS_PAGE.path}';
+  `);
+};
 
 // The sign-up creates the account the next test would collide with, so the
 // suite runs in order and resets itself around either outcome.
@@ -143,6 +177,33 @@ test.describe("web-host sign-up consent", () => {
     expect(accountCount(SIGNUP_CONSENT_SHARED_TENANT)).toBe("1");
     expect(agreedVersionIds(SIGNUP_CONSENT_SHARED_TENANT)).toEqual([
       SIGNUP_CONSENT_SHARED_PAGE.versionId,
+    ]);
+  });
+
+  test("a page republished after the form rendered is agreed to again", async ({
+    page,
+  }) => {
+    // Starts from the scenario rather than the account an earlier test opened.
+    applyScenarioSql(SIGNUP_CONSENT_SCENARIO);
+    await page.goto(signupUrl);
+    await fillSignupForm(page);
+    await consentCheckbox(page).check();
+
+    republishTermsPage();
+    await page.getByRole("button", { name: "Sign up" }).click();
+
+    await expect(page.getByText(CONSENT_CHANGED_MESSAGE)).toBeVisible();
+    await expect(consentCheckbox(page)).not.toBeChecked();
+    expect(accountCount()).toBe("0");
+
+    await fillSignupForm(page);
+    await consentCheckbox(page).check();
+    await page.getByRole("button", { name: "Sign up" }).click();
+
+    await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
+    expect(agreedVersionIds()).toEqual([
+      SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+      REPUBLISHED_TERMS_VERSION_ID,
     ]);
   });
 

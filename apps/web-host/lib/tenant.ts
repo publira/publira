@@ -462,6 +462,38 @@ export const getTenantLegalPages = async (
 };
 
 /**
+ * The pages a sign-up asks consent to, each once: a page named for both roles
+ * is one page, and the API takes exactly one version of it.
+ */
+export const consentPages = ({
+  privacyPage,
+  termsPage,
+}: TenantLegalPages): TenantLegalPage[] => [
+  ...(termsPage ? [termsPage] : []),
+  ...(privacyPage && privacyPage.versionId !== termsPage?.versionId
+    ? [privacyPage]
+    : []),
+];
+
+/**
+ * The versions a sign-up would ask consent to right now, read past the cache.
+ * The cached read can hold a version the tenant has since superseded, and a
+ * sign-up must record only text the reader could have been shown.
+ */
+export const readConsentPageVersionIds = async (
+  tenantId: string
+): Promise<string[]> => {
+  const response = await apiClient.tenant.getTenant({
+    tenant: { tenantId: tenantId.trim() },
+  });
+
+  return consentPages({
+    privacyPage: toTenantLegalPage(response.privacyPage),
+    termsPage: toTenantLegalPage(response.termsPage),
+  }).map((page) => page.versionId);
+};
+
+/**
  * The VAPID public key a browser subscribes to Web Push with, or `null` when
  * the platform has not configured Web Push. One entry point, the way
  * {@link getTenantDisplayTimeZone} is, so no screen decides on its own whether

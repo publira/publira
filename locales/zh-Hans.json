@@ -2555,6 +2555,7 @@
         "to_reset_password": "返回密码重设"
       },
       "errors": {
+        "consent_changed": "需要同意的页面已更新。请阅读后重新同意。",
         "consent_required": "要创建账户，请同意所列页面。",
         "login_failed": "邮箱地址或密码不正确。",
         "name_required": "请输入显示名称。",
