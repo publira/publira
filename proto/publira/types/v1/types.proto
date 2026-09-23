@@ -392,6 +392,20 @@ enum ClientSurface {
   CLIENT_SURFACE_APP = 2;
 }
 
+// How a tenant's app sells an episode the app may sell
+// (tenant_config.app_purchase_route). Where an episode may be bought at all is
+// SurfaceAvailability; this says only which purchase the app offers for it.
+enum AppPurchaseRoute {
+  // Never answered by a read. A write naming it is rejected: the tenant states
+  // one of the two routes.
+  APP_PURCHASE_ROUTE_UNSPECIFIED = 0;
+  // The web checkout, opened in the system browser. What every tenant sells
+  // through until it chooses otherwise.
+  APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT = 1;
+  // The App Store's or Google Play's own in-app purchase.
+  APP_PURCHASE_ROUTE_STORE = 2;
+}
+
 // Which surfaces a work may be shown on, or an episode bought on.
 //
 // Where a work is shown, a series states it (series.availability) and an

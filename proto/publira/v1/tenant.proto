@@ -62,6 +62,10 @@ message GetTenantResponse {
   // published, so a link built from one always resolves.
   TenantLegalPage terms_page = 16;
   TenantLegalPage privacy_page = 17;
+  // Which purchase the tenant's app offers for an episode it may sell. Never
+  // APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
+  // through the external checkout.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 18;
 }
 
 message GetTenantMobileAppAssociationRequest {

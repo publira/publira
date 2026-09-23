@@ -47,7 +47,93 @@ message UpdateTenantPaymentSettingsResponse {
   TenantPaymentSettings settings = 1;
 }
 
+// Non-secret view of the App Store Connect API key the server talks to the App
+// Store with. The .p8 private key never appears here.
+message TenantAppStorePaymentSettings {
+  bool enabled = 1;
+  // The issuer ID and the key ID are not secret and are answered as stored.
+  string issuer_id = 2;
+  string key_id = 3;
+  bool private_key_configured = 4;
+  // Display hint derived at write time. Empty when no key is stored.
+  string private_key_hint = 5;
+  // The app the store sells in: the bundle identifier the tenant's iOS app
+  // association names. Empty where it names none, and edited there, not here.
+  string bundle_identifier = 6;
+  // True when enabled, the key is stored, and bundle_identifier is not empty.
+  bool ready = 7;
+}
+
+// Non-secret view of the service account the server talks to Google Play as.
+// The JSON key never appears here.
+message TenantGooglePlayPaymentSettings {
+  bool enabled = 1;
+  // The client_email of the stored key, which the tenant grants access to in
+  // the Play Console. Empty when no key is stored.
+  string service_account_email = 2;
+  bool service_account_key_configured = 3;
+  // Display hint derived at write time. Empty when no key is stored.
+  string service_account_key_hint = 4;
+  // The app the store sells in: the application ID the tenant's Android app
+  // association names. Empty where it names none, and edited there, not here.
+  string package_name = 5;
+  // True when enabled, the key is stored, and package_name is not empty.
+  bool ready = 6;
+}
+
+message TenantStorePaymentSettings {
+  // Never APP_PURCHASE_ROUTE_UNSPECIFIED on a read.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 1;
+  TenantAppStorePaymentSettings app_store = 2;
+  TenantGooglePlayPaymentSettings google_play = 3;
+}
+
+message GetTenantStorePaymentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantStorePaymentSettingsResponse {
+  TenantStorePaymentSettings settings = 1;
+}
+
+message AppStorePaymentSettingsUpdate {
+  bool enabled = 1;
+  // A UUID, and a ten-character key ID in capital letters and digits. Both are
+  // required while enabled; an empty value clears one.
+  string issuer_id = 2;
+  string key_id = 3;
+  SecretUpdateMode private_key_update_mode = 4;
+  // The contents of the .p8 file App Store Connect issued, a PKCS #8 EC
+  // private key in PEM form.
+  string private_key = 5;
+}
+
+message GooglePlayPaymentSettingsUpdate {
+  bool enabled = 1;
+  SecretUpdateMode service_account_key_update_mode = 2;
+  // The JSON key file of a service account, as the Google Cloud console
+  // downloads it.
+  string service_account_key = 3;
+}
+
+message UpdateTenantStorePaymentSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Every field is written, and an absent store is written disabled with its
+  // key left as it is. APP_PURCHASE_ROUTE_UNSPECIFIED is invalid_argument, and
+  // APP_PURCHASE_ROUTE_STORE is failed_precondition unless a store is ready
+  // once this request is applied.
+  publira.types.v1.AppPurchaseRoute app_purchase_route = 2;
+  AppStorePaymentSettingsUpdate app_store = 3;
+  GooglePlayPaymentSettingsUpdate google_play = 4;
+}
+
+message UpdateTenantStorePaymentSettingsResponse {
+  TenantStorePaymentSettings settings = 1;
+}
+
 service AdminPaymentSettingsService {
   rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
+  rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
+  rpc UpdateTenantStorePaymentSettings(UpdateTenantStorePaymentSettingsRequest) returns (UpdateTenantStorePaymentSettingsResponse) {}
 }

@@ -346,6 +346,604 @@ func (x *UpdateTenantPaymentSettingsResponse) GetSettings() *TenantPaymentSettin
 	return nil
 }
 
+// Non-secret view of the App Store Connect API key the server talks to the App
+// Store with. The .p8 private key never appears here.
+type TenantAppStorePaymentSettings struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// The issuer ID and the key ID are not secret and are answered as stored.
+	IssuerId             string `protobuf:"bytes,2,opt,name=issuer_id,json=issuerId,proto3" json:"issuer_id,omitempty"`
+	KeyId                string `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	PrivateKeyConfigured bool   `protobuf:"varint,4,opt,name=private_key_configured,json=privateKeyConfigured,proto3" json:"private_key_configured,omitempty"`
+	// Display hint derived at write time. Empty when no key is stored.
+	PrivateKeyHint string `protobuf:"bytes,5,opt,name=private_key_hint,json=privateKeyHint,proto3" json:"private_key_hint,omitempty"`
+	// The app the store sells in: the bundle identifier the tenant's iOS app
+	// association names. Empty where it names none, and edited there, not here.
+	BundleIdentifier string `protobuf:"bytes,6,opt,name=bundle_identifier,json=bundleIdentifier,proto3" json:"bundle_identifier,omitempty"`
+	// True when enabled, the key is stored, and bundle_identifier is not empty.
+	Ready         bool `protobuf:"varint,7,opt,name=ready,proto3" json:"ready,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantAppStorePaymentSettings) Reset() {
+	*x = TenantAppStorePaymentSettings{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantAppStorePaymentSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantAppStorePaymentSettings) ProtoMessage() {}
+
+func (x *TenantAppStorePaymentSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantAppStorePaymentSettings.ProtoReflect.Descriptor instead.
+func (*TenantAppStorePaymentSettings) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TenantAppStorePaymentSettings) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *TenantAppStorePaymentSettings) GetIssuerId() string {
+	if x != nil {
+		return x.IssuerId
+	}
+	return ""
+}
+
+func (x *TenantAppStorePaymentSettings) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *TenantAppStorePaymentSettings) GetPrivateKeyConfigured() bool {
+	if x != nil {
+		return x.PrivateKeyConfigured
+	}
+	return false
+}
+
+func (x *TenantAppStorePaymentSettings) GetPrivateKeyHint() string {
+	if x != nil {
+		return x.PrivateKeyHint
+	}
+	return ""
+}
+
+func (x *TenantAppStorePaymentSettings) GetBundleIdentifier() string {
+	if x != nil {
+		return x.BundleIdentifier
+	}
+	return ""
+}
+
+func (x *TenantAppStorePaymentSettings) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
+}
+
+// Non-secret view of the service account the server talks to Google Play as.
+// The JSON key never appears here.
+type TenantGooglePlayPaymentSettings struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// The client_email of the stored key, which the tenant grants access to in
+	// the Play Console. Empty when no key is stored.
+	ServiceAccountEmail         string `protobuf:"bytes,2,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	ServiceAccountKeyConfigured bool   `protobuf:"varint,3,opt,name=service_account_key_configured,json=serviceAccountKeyConfigured,proto3" json:"service_account_key_configured,omitempty"`
+	// Display hint derived at write time. Empty when no key is stored.
+	ServiceAccountKeyHint string `protobuf:"bytes,4,opt,name=service_account_key_hint,json=serviceAccountKeyHint,proto3" json:"service_account_key_hint,omitempty"`
+	// The app the store sells in: the application ID the tenant's Android app
+	// association names. Empty where it names none, and edited there, not here.
+	PackageName string `protobuf:"bytes,5,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
+	// True when enabled, the key is stored, and package_name is not empty.
+	Ready         bool `protobuf:"varint,6,opt,name=ready,proto3" json:"ready,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantGooglePlayPaymentSettings) Reset() {
+	*x = TenantGooglePlayPaymentSettings{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantGooglePlayPaymentSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantGooglePlayPaymentSettings) ProtoMessage() {}
+
+func (x *TenantGooglePlayPaymentSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantGooglePlayPaymentSettings.ProtoReflect.Descriptor instead.
+func (*TenantGooglePlayPaymentSettings) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetServiceAccountEmail() string {
+	if x != nil {
+		return x.ServiceAccountEmail
+	}
+	return ""
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetServiceAccountKeyConfigured() bool {
+	if x != nil {
+		return x.ServiceAccountKeyConfigured
+	}
+	return false
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetServiceAccountKeyHint() string {
+	if x != nil {
+		return x.ServiceAccountKeyHint
+	}
+	return ""
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetPackageName() string {
+	if x != nil {
+		return x.PackageName
+	}
+	return ""
+}
+
+func (x *TenantGooglePlayPaymentSettings) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
+}
+
+type TenantStorePaymentSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Never APP_PURCHASE_ROUTE_UNSPECIFIED on a read.
+	AppPurchaseRoute v1.AppPurchaseRoute              `protobuf:"varint,1,opt,name=app_purchase_route,json=appPurchaseRoute,proto3,enum=publira.types.v1.AppPurchaseRoute" json:"app_purchase_route,omitempty"`
+	AppStore         *TenantAppStorePaymentSettings   `protobuf:"bytes,2,opt,name=app_store,json=appStore,proto3" json:"app_store,omitempty"`
+	GooglePlay       *TenantGooglePlayPaymentSettings `protobuf:"bytes,3,opt,name=google_play,json=googlePlay,proto3" json:"google_play,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *TenantStorePaymentSettings) Reset() {
+	*x = TenantStorePaymentSettings{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantStorePaymentSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantStorePaymentSettings) ProtoMessage() {}
+
+func (x *TenantStorePaymentSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantStorePaymentSettings.ProtoReflect.Descriptor instead.
+func (*TenantStorePaymentSettings) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TenantStorePaymentSettings) GetAppPurchaseRoute() v1.AppPurchaseRoute {
+	if x != nil {
+		return x.AppPurchaseRoute
+	}
+	return v1.AppPurchaseRoute(0)
+}
+
+func (x *TenantStorePaymentSettings) GetAppStore() *TenantAppStorePaymentSettings {
+	if x != nil {
+		return x.AppStore
+	}
+	return nil
+}
+
+func (x *TenantStorePaymentSettings) GetGooglePlay() *TenantGooglePlayPaymentSettings {
+	if x != nil {
+		return x.GooglePlay
+	}
+	return nil
+}
+
+type GetTenantStorePaymentSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantStorePaymentSettingsRequest) Reset() {
+	*x = GetTenantStorePaymentSettingsRequest{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantStorePaymentSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantStorePaymentSettingsRequest) ProtoMessage() {}
+
+func (x *GetTenantStorePaymentSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantStorePaymentSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantStorePaymentSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetTenantStorePaymentSettingsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantStorePaymentSettingsResponse struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Settings      *TenantStorePaymentSettings `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantStorePaymentSettingsResponse) Reset() {
+	*x = GetTenantStorePaymentSettingsResponse{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantStorePaymentSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantStorePaymentSettingsResponse) ProtoMessage() {}
+
+func (x *GetTenantStorePaymentSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantStorePaymentSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantStorePaymentSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetTenantStorePaymentSettingsResponse) GetSettings() *TenantStorePaymentSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type AppStorePaymentSettingsUpdate struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// A UUID, and a ten-character key ID in capital letters and digits. Both are
+	// required while enabled; an empty value clears one.
+	IssuerId             string           `protobuf:"bytes,2,opt,name=issuer_id,json=issuerId,proto3" json:"issuer_id,omitempty"`
+	KeyId                string           `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	PrivateKeyUpdateMode SecretUpdateMode `protobuf:"varint,4,opt,name=private_key_update_mode,json=privateKeyUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"private_key_update_mode,omitempty"`
+	// The contents of the .p8 file App Store Connect issued, a PKCS #8 EC
+	// private key in PEM form.
+	PrivateKey    string `protobuf:"bytes,5,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppStorePaymentSettingsUpdate) Reset() {
+	*x = AppStorePaymentSettingsUpdate{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppStorePaymentSettingsUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppStorePaymentSettingsUpdate) ProtoMessage() {}
+
+func (x *AppStorePaymentSettingsUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppStorePaymentSettingsUpdate.ProtoReflect.Descriptor instead.
+func (*AppStorePaymentSettingsUpdate) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AppStorePaymentSettingsUpdate) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *AppStorePaymentSettingsUpdate) GetIssuerId() string {
+	if x != nil {
+		return x.IssuerId
+	}
+	return ""
+}
+
+func (x *AppStorePaymentSettingsUpdate) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *AppStorePaymentSettingsUpdate) GetPrivateKeyUpdateMode() SecretUpdateMode {
+	if x != nil {
+		return x.PrivateKeyUpdateMode
+	}
+	return SecretUpdateMode_SECRET_UPDATE_MODE_UNSPECIFIED
+}
+
+func (x *AppStorePaymentSettingsUpdate) GetPrivateKey() string {
+	if x != nil {
+		return x.PrivateKey
+	}
+	return ""
+}
+
+type GooglePlayPaymentSettingsUpdate struct {
+	state                       protoimpl.MessageState `protogen:"open.v1"`
+	Enabled                     bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	ServiceAccountKeyUpdateMode SecretUpdateMode       `protobuf:"varint,2,opt,name=service_account_key_update_mode,json=serviceAccountKeyUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"service_account_key_update_mode,omitempty"`
+	// The JSON key file of a service account, as the Google Cloud console
+	// downloads it.
+	ServiceAccountKey string `protobuf:"bytes,3,opt,name=service_account_key,json=serviceAccountKey,proto3" json:"service_account_key,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GooglePlayPaymentSettingsUpdate) Reset() {
+	*x = GooglePlayPaymentSettingsUpdate{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GooglePlayPaymentSettingsUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GooglePlayPaymentSettingsUpdate) ProtoMessage() {}
+
+func (x *GooglePlayPaymentSettingsUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GooglePlayPaymentSettingsUpdate.ProtoReflect.Descriptor instead.
+func (*GooglePlayPaymentSettingsUpdate) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GooglePlayPaymentSettingsUpdate) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GooglePlayPaymentSettingsUpdate) GetServiceAccountKeyUpdateMode() SecretUpdateMode {
+	if x != nil {
+		return x.ServiceAccountKeyUpdateMode
+	}
+	return SecretUpdateMode_SECRET_UPDATE_MODE_UNSPECIFIED
+}
+
+func (x *GooglePlayPaymentSettingsUpdate) GetServiceAccountKey() string {
+	if x != nil {
+		return x.ServiceAccountKey
+	}
+	return ""
+}
+
+type UpdateTenantStorePaymentSettingsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Every field is written, and an absent store is written disabled with its
+	// key left as it is. APP_PURCHASE_ROUTE_UNSPECIFIED is invalid_argument, and
+	// APP_PURCHASE_ROUTE_STORE is failed_precondition unless a store is ready
+	// once this request is applied.
+	AppPurchaseRoute v1.AppPurchaseRoute              `protobuf:"varint,2,opt,name=app_purchase_route,json=appPurchaseRoute,proto3,enum=publira.types.v1.AppPurchaseRoute" json:"app_purchase_route,omitempty"`
+	AppStore         *AppStorePaymentSettingsUpdate   `protobuf:"bytes,3,opt,name=app_store,json=appStore,proto3" json:"app_store,omitempty"`
+	GooglePlay       *GooglePlayPaymentSettingsUpdate `protobuf:"bytes,4,opt,name=google_play,json=googlePlay,proto3" json:"google_play,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) Reset() {
+	*x = UpdateTenantStorePaymentSettingsRequest{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantStorePaymentSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantStorePaymentSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantStorePaymentSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) GetAppPurchaseRoute() v1.AppPurchaseRoute {
+	if x != nil {
+		return x.AppPurchaseRoute
+	}
+	return v1.AppPurchaseRoute(0)
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) GetAppStore() *AppStorePaymentSettingsUpdate {
+	if x != nil {
+		return x.AppStore
+	}
+	return nil
+}
+
+func (x *UpdateTenantStorePaymentSettingsRequest) GetGooglePlay() *GooglePlayPaymentSettingsUpdate {
+	if x != nil {
+		return x.GooglePlay
+	}
+	return nil
+}
+
+type UpdateTenantStorePaymentSettingsResponse struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Settings      *TenantStorePaymentSettings `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantStorePaymentSettingsResponse) Reset() {
+	*x = UpdateTenantStorePaymentSettingsResponse{}
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantStorePaymentSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantStorePaymentSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateTenantStorePaymentSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_payment_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantStorePaymentSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantStorePaymentSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_payment_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *UpdateTenantStorePaymentSettingsResponse) GetSettings() *TenantStorePaymentSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 var File_publira_admin_v1_payment_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_payment_proto_rawDesc = "" +
@@ -373,10 +971,55 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\x1awebhook_secret_update_mode\x18\x06 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x17webhookSecretUpdateMode\x12%\n" +
 	"\x0ewebhook_secret\x18\a \x01(\tR\rwebhookSecret\"j\n" +
 	"#UpdateTenantPaymentSettingsResponse\x12C\n" +
-	"\bsettings\x18\x01 \x01(\v2'.publira.admin.v1.TenantPaymentSettingsR\bsettings2\xb2\x02\n" +
+	"\bsettings\x18\x01 \x01(\v2'.publira.admin.v1.TenantPaymentSettingsR\bsettings\"\x90\x02\n" +
+	"\x1dTenantAppStorePaymentSettings\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1b\n" +
+	"\tissuer_id\x18\x02 \x01(\tR\bissuerId\x12\x15\n" +
+	"\x06key_id\x18\x03 \x01(\tR\x05keyId\x124\n" +
+	"\x16private_key_configured\x18\x04 \x01(\bR\x14privateKeyConfigured\x12(\n" +
+	"\x10private_key_hint\x18\x05 \x01(\tR\x0eprivateKeyHint\x12+\n" +
+	"\x11bundle_identifier\x18\x06 \x01(\tR\x10bundleIdentifier\x12\x14\n" +
+	"\x05ready\x18\a \x01(\bR\x05ready\"\xa6\x02\n" +
+	"\x1fTenantGooglePlayPaymentSettings\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x122\n" +
+	"\x15service_account_email\x18\x02 \x01(\tR\x13serviceAccountEmail\x12C\n" +
+	"\x1eservice_account_key_configured\x18\x03 \x01(\bR\x1bserviceAccountKeyConfigured\x127\n" +
+	"\x18service_account_key_hint\x18\x04 \x01(\tR\x15serviceAccountKeyHint\x12!\n" +
+	"\fpackage_name\x18\x05 \x01(\tR\vpackageName\x12\x14\n" +
+	"\x05ready\x18\x06 \x01(\bR\x05ready\"\x90\x02\n" +
+	"\x1aTenantStorePaymentSettings\x12P\n" +
+	"\x12app_purchase_route\x18\x01 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\x12L\n" +
+	"\tapp_store\x18\x02 \x01(\v2/.publira.admin.v1.TenantAppStorePaymentSettingsR\bappStore\x12R\n" +
+	"\vgoogle_play\x18\x03 \x01(\v21.publira.admin.v1.TenantGooglePlayPaymentSettingsR\n" +
+	"googlePlay\"_\n" +
+	"$GetTenantStorePaymentSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"q\n" +
+	"%GetTenantStorePaymentSettingsResponse\x12H\n" +
+	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings\"\xe9\x01\n" +
+	"\x1dAppStorePaymentSettingsUpdate\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1b\n" +
+	"\tissuer_id\x18\x02 \x01(\tR\bissuerId\x12\x15\n" +
+	"\x06key_id\x18\x03 \x01(\tR\x05keyId\x12Y\n" +
+	"\x17private_key_update_mode\x18\x04 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x14privateKeyUpdateMode\x12\x1f\n" +
+	"\vprivate_key\x18\x05 \x01(\tR\n" +
+	"privateKey\"\xd5\x01\n" +
+	"\x1fGooglePlayPaymentSettingsUpdate\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12h\n" +
+	"\x1fservice_account_key_update_mode\x18\x02 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x1bserviceAccountKeyUpdateMode\x12.\n" +
+	"\x13service_account_key\x18\x03 \x01(\tR\x11serviceAccountKey\"\xd6\x02\n" +
+	"'UpdateTenantStorePaymentSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12P\n" +
+	"\x12app_purchase_route\x18\x02 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\x12L\n" +
+	"\tapp_store\x18\x03 \x01(\v2/.publira.admin.v1.AppStorePaymentSettingsUpdateR\bappStore\x12R\n" +
+	"\vgoogle_play\x18\x04 \x01(\v21.publira.admin.v1.GooglePlayPaymentSettingsUpdateR\n" +
+	"googlePlay\"t\n" +
+	"(UpdateTenantStorePaymentSettingsResponse\x12H\n" +
+	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings2\xe5\x04\n" +
 	"\x1bAdminPaymentSettingsService\x12\x83\x01\n" +
 	"\x18GetTenantPaymentSettings\x121.publira.admin.v1.GetTenantPaymentSettingsRequest\x1a2.publira.admin.v1.GetTenantPaymentSettingsResponse\"\x00\x12\x8c\x01\n" +
-	"\x1bUpdateTenantPaymentSettings\x124.publira.admin.v1.UpdateTenantPaymentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantPaymentSettingsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x1bUpdateTenantPaymentSettings\x124.publira.admin.v1.UpdateTenantPaymentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantPaymentSettingsResponse\"\x00\x12\x92\x01\n" +
+	"\x1dGetTenantStorePaymentSettings\x126.publira.admin.v1.GetTenantStorePaymentSettingsRequest\x1a7.publira.admin.v1.GetTenantStorePaymentSettingsResponse\"\x00\x12\x9b\x01\n" +
+	" UpdateTenantStorePaymentSettings\x129.publira.admin.v1.UpdateTenantStorePaymentSettingsRequest\x1a:.publira.admin.v1.UpdateTenantStorePaymentSettingsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_payment_proto_rawDescOnce sync.Once
@@ -390,32 +1033,58 @@ func file_publira_admin_v1_payment_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_payment_proto_rawDescData
 }
 
-var file_publira_admin_v1_payment_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_publira_admin_v1_payment_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_admin_v1_payment_proto_goTypes = []any{
-	(*TenantPaymentSettings)(nil),               // 0: publira.admin.v1.TenantPaymentSettings
-	(*GetTenantPaymentSettingsRequest)(nil),     // 1: publira.admin.v1.GetTenantPaymentSettingsRequest
-	(*GetTenantPaymentSettingsResponse)(nil),    // 2: publira.admin.v1.GetTenantPaymentSettingsResponse
-	(*UpdateTenantPaymentSettingsRequest)(nil),  // 3: publira.admin.v1.UpdateTenantPaymentSettingsRequest
-	(*UpdateTenantPaymentSettingsResponse)(nil), // 4: publira.admin.v1.UpdateTenantPaymentSettingsResponse
-	(*v1.TenantContext)(nil),                    // 5: publira.types.v1.TenantContext
-	(SecretUpdateMode)(0),                       // 6: publira.admin.v1.SecretUpdateMode
+	(*TenantPaymentSettings)(nil),                    // 0: publira.admin.v1.TenantPaymentSettings
+	(*GetTenantPaymentSettingsRequest)(nil),          // 1: publira.admin.v1.GetTenantPaymentSettingsRequest
+	(*GetTenantPaymentSettingsResponse)(nil),         // 2: publira.admin.v1.GetTenantPaymentSettingsResponse
+	(*UpdateTenantPaymentSettingsRequest)(nil),       // 3: publira.admin.v1.UpdateTenantPaymentSettingsRequest
+	(*UpdateTenantPaymentSettingsResponse)(nil),      // 4: publira.admin.v1.UpdateTenantPaymentSettingsResponse
+	(*TenantAppStorePaymentSettings)(nil),            // 5: publira.admin.v1.TenantAppStorePaymentSettings
+	(*TenantGooglePlayPaymentSettings)(nil),          // 6: publira.admin.v1.TenantGooglePlayPaymentSettings
+	(*TenantStorePaymentSettings)(nil),               // 7: publira.admin.v1.TenantStorePaymentSettings
+	(*GetTenantStorePaymentSettingsRequest)(nil),     // 8: publira.admin.v1.GetTenantStorePaymentSettingsRequest
+	(*GetTenantStorePaymentSettingsResponse)(nil),    // 9: publira.admin.v1.GetTenantStorePaymentSettingsResponse
+	(*AppStorePaymentSettingsUpdate)(nil),            // 10: publira.admin.v1.AppStorePaymentSettingsUpdate
+	(*GooglePlayPaymentSettingsUpdate)(nil),          // 11: publira.admin.v1.GooglePlayPaymentSettingsUpdate
+	(*UpdateTenantStorePaymentSettingsRequest)(nil),  // 12: publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
+	(*UpdateTenantStorePaymentSettingsResponse)(nil), // 13: publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
+	(*v1.TenantContext)(nil),                         // 14: publira.types.v1.TenantContext
+	(SecretUpdateMode)(0),                            // 15: publira.admin.v1.SecretUpdateMode
+	(v1.AppPurchaseRoute)(0),                         // 16: publira.types.v1.AppPurchaseRoute
 }
 var file_publira_admin_v1_payment_proto_depIdxs = []int32{
-	5, // 0: publira.admin.v1.GetTenantPaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.admin.v1.GetTenantPaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantPaymentSettings
-	5, // 2: publira.admin.v1.UpdateTenantPaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	6, // 3: publira.admin.v1.UpdateTenantPaymentSettingsRequest.secret_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
-	6, // 4: publira.admin.v1.UpdateTenantPaymentSettingsRequest.webhook_secret_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
-	0, // 5: publira.admin.v1.UpdateTenantPaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantPaymentSettings
-	1, // 6: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:input_type -> publira.admin.v1.GetTenantPaymentSettingsRequest
-	3, // 7: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:input_type -> publira.admin.v1.UpdateTenantPaymentSettingsRequest
-	2, // 8: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:output_type -> publira.admin.v1.GetTenantPaymentSettingsResponse
-	4, // 9: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:output_type -> publira.admin.v1.UpdateTenantPaymentSettingsResponse
-	8, // [8:10] is the sub-list for method output_type
-	6, // [6:8] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	14, // 0: publira.admin.v1.GetTenantPaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 1: publira.admin.v1.GetTenantPaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantPaymentSettings
+	14, // 2: publira.admin.v1.UpdateTenantPaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 3: publira.admin.v1.UpdateTenantPaymentSettingsRequest.secret_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	15, // 4: publira.admin.v1.UpdateTenantPaymentSettingsRequest.webhook_secret_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	0,  // 5: publira.admin.v1.UpdateTenantPaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantPaymentSettings
+	16, // 6: publira.admin.v1.TenantStorePaymentSettings.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
+	5,  // 7: publira.admin.v1.TenantStorePaymentSettings.app_store:type_name -> publira.admin.v1.TenantAppStorePaymentSettings
+	6,  // 8: publira.admin.v1.TenantStorePaymentSettings.google_play:type_name -> publira.admin.v1.TenantGooglePlayPaymentSettings
+	14, // 9: publira.admin.v1.GetTenantStorePaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7,  // 10: publira.admin.v1.GetTenantStorePaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantStorePaymentSettings
+	15, // 11: publira.admin.v1.AppStorePaymentSettingsUpdate.private_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	15, // 12: publira.admin.v1.GooglePlayPaymentSettingsUpdate.service_account_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	14, // 13: publira.admin.v1.UpdateTenantStorePaymentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 14: publira.admin.v1.UpdateTenantStorePaymentSettingsRequest.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
+	10, // 15: publira.admin.v1.UpdateTenantStorePaymentSettingsRequest.app_store:type_name -> publira.admin.v1.AppStorePaymentSettingsUpdate
+	11, // 16: publira.admin.v1.UpdateTenantStorePaymentSettingsRequest.google_play:type_name -> publira.admin.v1.GooglePlayPaymentSettingsUpdate
+	7,  // 17: publira.admin.v1.UpdateTenantStorePaymentSettingsResponse.settings:type_name -> publira.admin.v1.TenantStorePaymentSettings
+	1,  // 18: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:input_type -> publira.admin.v1.GetTenantPaymentSettingsRequest
+	3,  // 19: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:input_type -> publira.admin.v1.UpdateTenantPaymentSettingsRequest
+	8,  // 20: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:input_type -> publira.admin.v1.GetTenantStorePaymentSettingsRequest
+	12, // 21: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:input_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
+	2,  // 22: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:output_type -> publira.admin.v1.GetTenantPaymentSettingsResponse
+	4,  // 23: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:output_type -> publira.admin.v1.UpdateTenantPaymentSettingsResponse
+	9,  // 24: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:output_type -> publira.admin.v1.GetTenantStorePaymentSettingsResponse
+	13, // 25: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:output_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_payment_proto_init() }
@@ -430,7 +1099,7 @@ func file_publira_admin_v1_payment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_payment_proto_rawDesc), len(file_publira_admin_v1_payment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

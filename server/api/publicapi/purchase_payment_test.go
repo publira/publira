@@ -171,6 +171,14 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 
 // expectPurchasableEpisode stands in for the checkout's read of a paid episode
 // the named surface may show, sold where purchaseAvailability says.
+// expectAppPurchaseRoute stands in for the route read a checkout from the app
+// makes before anything else about the purchase.
+func expectAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, route string) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantAppPurchaseRoute)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"app_purchase_route"}).AddRow(route))
+}
+
 func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeByPublicIDForTenant)).
 		WithArgs("EPISODE001", tenantID, surface).
@@ -200,6 +208,9 @@ func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.
 			episodeID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(env.mock, tenantID, "TENANT", now)
 			expectAuthSession(env.mock, tenantID, userID, now)
+			if tc.client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+				expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
+			}
 			expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 			expectPurchasableEpisode(env.mock, tenantID, episodeID, tc.surface, tc.purchaseAvailability)
 
@@ -230,6 +241,7 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	episodeID := uuid.Must(uuid.NewV7())
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
+	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
@@ -247,6 +259,60 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	}
 	if resp.Msg.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
 		t.Fatalf("checkout_url = %q", resp.Msg.CheckoutUrl)
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestStartEpisodeCheckoutRefusesTheAppOfATenantSellingThroughTheStore(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(env.mock, tenantID, "TENANT", now)
+	expectAuthSession(env.mock, tenantID, userID, now)
+	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteStore)
+
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+		EpisodePublicId: "EPISODE001",
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+	}, tenantID.String()))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	if env.checkout.input.successURL != "" {
+		t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.successURL)
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(env.mock, tenantID, "TENANT", now)
+	expectAuthSession(env.mock, tenantID, userID, now)
+	// No route read: the route decides only what the app offers.
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	if _, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+		EpisodePublicId: "EPISODE001",
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
+	}, tenantID.String())); err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
 	assertPublicExpectations(t, env.mock)
 }
@@ -302,6 +368,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	episodeID := uuid.Must(uuid.NewV7())
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
+	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
