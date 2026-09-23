@@ -3377,6 +3377,15 @@
       "sign_in_prompt": "登录后即可查看您关注的系列和作者。",
       "title": "我的关注"
     },
+    "follow_updates": {
+      "account_description": "查看您关注的系列和作者的新章节。",
+      "empty": "暂时没有更新。关注系列或作者后，新章节会显示在这里。",
+      "failed": "无法显示关注作品的更新。请重试。",
+      "open_series": "打开系列",
+      "published_at": "{$date} 发布",
+      "sign_in_prompt": "登录后即可查看您关注的系列和作者的更新。",
+      "title": "关注作品的更新"
+    },
     "label": {
       "load_failed": "无法显示该品牌。请重试。",
       "not_found": "找不到品牌（{$id}）",

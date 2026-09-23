@@ -72,6 +72,14 @@ class AccountScreen extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.accountReadingHistory),
                   ),
                   const Divider(height: 1),
+                  ListTile(
+                    key: const ValueKey('account-follow-updates'),
+                    title: Text(messages.followUpdatesTitle),
+                    subtitle: Text(messages.followUpdatesAccountDescription),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountFollowUpdates),
+                  ),
+                  const Divider(height: 1),
                   // Keyed by the reader, so another account signing in reads
                   // its own date rather than showing the last one's.
                   _BirthDateRow(key: ValueKey(session.userPublicId)),

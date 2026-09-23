@@ -53,6 +53,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
+  /// What scrolls the account screen, whose lower rows sit below the test
+  /// viewport.
+  final accountList = find.descendant(
+    of: find.byKey(const ValueKey('account-list')),
+    matching: find.byType(Scrollable),
+  );
+
   /// Opens the account screen's [row] and waits for [arrived] on the screen
   /// it leads to.
   Future<void> openFromAccount(
@@ -61,7 +68,11 @@ void main() {
     String arrived,
   ) async {
     await pumpApp(tester);
-    await tapVisible(tester, find.byKey(ValueKey(row)));
+    await tapVisible(
+      tester,
+      find.byKey(ValueKey(row)),
+      scrollable: accountList,
+    );
     await pumpUntilFound(tester, find.byKey(ValueKey(arrived)));
   }
 
@@ -507,10 +518,15 @@ void main() {
       await tapVisible(
         tester,
         find.byKey(const ValueKey('account-notifications')),
+        scrollable: accountList,
       );
       await pumpUntilTrue(tester, () => push.enabled);
 
-      await tapVisible(tester, find.byKey(const ValueKey('account-delete')));
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('account-delete')),
+        scrollable: accountList,
+      );
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('delete-account-password')),

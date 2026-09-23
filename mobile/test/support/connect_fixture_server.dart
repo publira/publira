@@ -507,6 +507,11 @@ class ConnectFixtureServer {
   /// see it in the next list.
   List<Map<String, Object?>> myFollows;
 
+  /// `FollowUpdate` entries `ListMyFollowUpdates` answers a signed-in member
+  /// with, in the order they are given, at most the request's `limit` to a
+  /// page.
+  List<Map<String, Object?>> followUpdates = const [];
+
   /// How many of [myFollows] one `ListMyFollows` page holds. `0` answers the
   /// whole of it at once, which is what every read that is not about paging
   /// expects.
@@ -1504,6 +1509,10 @@ class ConnectFixtureServer {
       });
       return;
     }
+    if (path.endsWith('/ListMyFollowUpdates')) {
+      await _write(request, HttpStatus.ok, _followUpdatesPage(body));
+      return;
+    }
     if (path.endsWith('/ListMyFollows')) {
       await _write(request, HttpStatus.ok, _followsPage(body['token']));
       return;
@@ -1542,6 +1551,24 @@ class ConnectFixtureServer {
     await _write(request, HttpStatus.ok, {
       if (followed.isNotEmpty) 'isFollowing': true,
     });
+  }
+
+  /// The page of [followUpdates] the request's limit and token ask for.
+  Map<String, Object?> _followUpdatesPage(Map<String, Object?> body) {
+    final limit = body['limit'] as int? ?? 0;
+    final token = body['token'] as String? ?? '';
+    final start = min(
+      token.isEmpty ? 0 : int.parse(token),
+      followUpdates.length,
+    );
+    final end = limit <= 0
+        ? followUpdates.length
+        : min(start + limit, followUpdates.length);
+    return {
+      // protojson omits an empty repeated field.
+      if (end > start) 'updates': followUpdates.sublist(start, end),
+      if (end < followUpdates.length) 'nextToken': '$end',
+    };
   }
 
   /// The page of [myFollows] the request's token asks for, with the token of

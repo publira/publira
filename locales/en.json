@@ -3377,6 +3377,15 @@
       "sign_in_prompt": "Sign in to see the series and authors you follow.",
       "title": "Follows"
     },
+    "follow_updates": {
+      "account_description": "New episodes of the series and authors you follow.",
+      "empty": "Nothing new right now. Follow a series or an author, and their new episodes appear here.",
+      "failed": "Could not show what is new in your follows. Try again.",
+      "open_series": "Open the series",
+      "published_at": "Published {$date}",
+      "sign_in_prompt": "Sign in to see what is new in the series and authors you follow.",
+      "title": "New from your follows"
+    },
     "label": {
       "load_failed": "Could not show the label. Try again.",
       "not_found": "Label not found ({$id})",

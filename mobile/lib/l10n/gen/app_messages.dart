@@ -766,6 +766,27 @@ abstract class AppMessages {
   /// `mobile.follow.updating`
   String get followUpdating;
 
+  /// `mobile.follow_updates.account_description`
+  String get followUpdatesAccountDescription;
+
+  /// `mobile.follow_updates.empty`
+  String get followUpdatesEmpty;
+
+  /// `mobile.follow_updates.failed`
+  String get followUpdatesFailed;
+
+  /// `mobile.follow_updates.open_series`
+  String get followUpdatesOpenSeries;
+
+  /// `mobile.follow_updates.published_at`
+  String followUpdatesPublishedAt({required String date});
+
+  /// `mobile.follow_updates.sign_in_prompt`
+  String get followUpdatesSignInPrompt;
+
+  /// `mobile.follow_updates.title`
+  String get followUpdatesTitle;
+
   /// `mobile.follows.empty`
   String get followsEmpty;
 
@@ -2515,6 +2536,41 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get followUpdating {
     return '更新中…';
+  }
+
+  @override
+  String get followUpdatesAccountDescription {
+    return 'フォロー中のシリーズと著者の新しいエピソードを確認できます。';
+  }
+
+  @override
+  String get followUpdatesEmpty {
+    return '新着はまだありません。シリーズや著者をフォローすると、新着エピソードがここに並びます。';
+  }
+
+  @override
+  String get followUpdatesFailed {
+    return 'フォロー中の新着を表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get followUpdatesOpenSeries {
+    return 'シリーズを開く';
+  }
+
+  @override
+  String followUpdatesPublishedAt({required String date}) {
+    return '$date に公開';
+  }
+
+  @override
+  String get followUpdatesSignInPrompt {
+    return 'サインインすると、フォロー中のシリーズと著者の新着を確認できます。';
+  }
+
+  @override
+  String get followUpdatesTitle {
+    return 'フォロー中の新着';
   }
 
   @override
@@ -4671,6 +4727,41 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get followUpdatesAccountDescription {
+    return 'New episodes of the series and authors you follow.';
+  }
+
+  @override
+  String get followUpdatesEmpty {
+    return 'Nothing new right now. Follow a series or an author, and their new episodes appear here.';
+  }
+
+  @override
+  String get followUpdatesFailed {
+    return 'Could not show what is new in your follows. Try again.';
+  }
+
+  @override
+  String get followUpdatesOpenSeries {
+    return 'Open the series';
+  }
+
+  @override
+  String followUpdatesPublishedAt({required String date}) {
+    return 'Published $date';
+  }
+
+  @override
+  String get followUpdatesSignInPrompt {
+    return 'Sign in to see what is new in the series and authors you follow.';
+  }
+
+  @override
+  String get followUpdatesTitle {
+    return 'New from your follows';
+  }
+
+  @override
   String get followsEmpty {
     return 'You are not following anything yet. Follow a series or an author from its page, and it appears here.';
   }
@@ -6821,6 +6912,41 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get followUpdating {
     return '업데이트 중…';
+  }
+
+  @override
+  String get followUpdatesAccountDescription {
+    return '팔로우 중인 시리즈와 작가의 새 에피소드를 확인할 수 있습니다.';
+  }
+
+  @override
+  String get followUpdatesEmpty {
+    return '아직 새 소식이 없습니다. 시리즈나 작가를 팔로우하면 새 에피소드가 여기에 표시됩니다.';
+  }
+
+  @override
+  String get followUpdatesFailed {
+    return '팔로우 중인 작품의 새 소식을 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get followUpdatesOpenSeries {
+    return '시리즈 열기';
+  }
+
+  @override
+  String followUpdatesPublishedAt({required String date}) {
+    return '$date에 공개';
+  }
+
+  @override
+  String get followUpdatesSignInPrompt {
+    return '로그인하면 팔로우 중인 시리즈와 작가의 새 소식을 볼 수 있습니다.';
+  }
+
+  @override
+  String get followUpdatesTitle {
+    return '팔로우 중인 작품의 새 소식';
   }
 
   @override
@@ -8977,6 +9103,41 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get followUpdatesAccountDescription {
+    return '查看您关注的系列和作者的新章节。';
+  }
+
+  @override
+  String get followUpdatesEmpty {
+    return '暂时没有更新。关注系列或作者后，新章节会显示在这里。';
+  }
+
+  @override
+  String get followUpdatesFailed {
+    return '无法显示关注作品的更新。请重试。';
+  }
+
+  @override
+  String get followUpdatesOpenSeries {
+    return '打开系列';
+  }
+
+  @override
+  String followUpdatesPublishedAt({required String date}) {
+    return '$date 发布';
+  }
+
+  @override
+  String get followUpdatesSignInPrompt {
+    return '登录后即可查看您关注的系列和作者的更新。';
+  }
+
+  @override
+  String get followUpdatesTitle {
+    return '关注作品的更新';
+  }
+
+  @override
   String get followsEmpty {
     return '您还没有关注任何内容。在系列或作者页面关注后，会显示在这里。';
   }
@@ -11127,6 +11288,41 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get followUpdating {
     return '正在更新…';
+  }
+
+  @override
+  String get followUpdatesAccountDescription {
+    return '查看您追蹤的系列和作者的新章節。';
+  }
+
+  @override
+  String get followUpdatesEmpty {
+    return '目前沒有更新。追蹤系列或作者後，新章節會顯示在這裡。';
+  }
+
+  @override
+  String get followUpdatesFailed {
+    return '無法顯示追蹤作品的更新。請重試。';
+  }
+
+  @override
+  String get followUpdatesOpenSeries {
+    return '開啟系列';
+  }
+
+  @override
+  String followUpdatesPublishedAt({required String date}) {
+    return '$date 發布';
+  }
+
+  @override
+  String get followUpdatesSignInPrompt {
+    return '登入後即可查看您追蹤的系列和作者的更新。';
+  }
+
+  @override
+  String get followUpdatesTitle {
+    return '追蹤作品的更新';
   }
 
   @override

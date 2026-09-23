@@ -57,6 +57,8 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.EpisodeReadService/MarkEpisodeAsRead';
   static const _episodeReadsProcedure =
       '/publira.v1.EpisodeReadService/ListMyEpisodeReads';
+  static const _followUpdatesProcedure =
+      '/publira.v1.FollowService/ListMyFollowUpdates';
   static const _recentSeriesProcedure =
       '/publira.v1.EpisodeReadService/ListMyRecentSeries';
   static const _myEpisodeRatingProcedure =
@@ -654,6 +656,60 @@ class HttpCatalogRepository implements CatalogRepository {
         })
         .toList();
     return List<EpisodeReadItem>.unmodifiable(items);
+  }
+
+  @override
+  Future<FollowUpdatePage> listFollowUpdates({
+    required int limit,
+    String token = '',
+  }) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return FollowUpdatePage.empty;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _followUpdatesProcedure,
+        {
+          'limit': limit,
+          'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
+          if (token.isNotEmpty) 'token': token,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return FollowUpdatePage(
+        updates: _parseFollowUpdates(body['updates']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  List<FollowUpdateItem> _parseFollowUpdates(Object? raw) {
+    if (raw == null) {
+      return const [];
+    }
+    final items = _expectList(raw, 'updates')
+        .map((item) => _expectMap(item, 'updates[]'))
+        .map((json) {
+          final episode = _expectMap(json['episode'], 'updates[].episode');
+          return FollowUpdateItem(
+            series: _seriesFromJson(
+              _expectMap(json['series'], 'updates[].series'),
+              'updates[].series',
+            ),
+            episode: _episodeFromJson(episode, 'updates[].episode'),
+            publishedAt: DateTime.tryParse(
+              _readString(episode, 'publishedAt', 'updates[].episode'),
+            )?.toLocal(),
+          );
+        })
+        .toList();
+    return List<FollowUpdateItem>.unmodifiable(items);
   }
 
   List<RecentSeriesItem> _parseRecentSeries(Object? raw) {

@@ -1936,6 +1936,116 @@ void main() {
     });
   });
 
+  group('the follow updates of one member', () {
+    late HttpCatalogRepository signedIn;
+
+    /// A newly published episode of [seriesId].
+    Map<String, Object?> arrival(String seriesId, String episodeId) {
+      return {
+        'series': {'publicId': seriesId, 'title': 'Series $seriesId'},
+        'episode': {
+          'publicId': episodeId,
+          'title': 'Episode $episodeId',
+          'orderIndex': 3,
+          'price': 0,
+          'publishedAt': '2026-09-01T00:00:00Z',
+        },
+      };
+    }
+
+    setUp(() {
+      server.followUpdates = [
+        arrival('series-a', 'episode-a'),
+        arrival('series-b', 'episode-b'),
+      ];
+      signedIn = HttpCatalogRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+    });
+
+    test('maps the episode, its series, and when it was published', () async {
+      final updates = (await signedIn.listFollowUpdates(limit: 20)).updates;
+
+      expect(updates.first.series.id, 'series-a');
+      expect(updates.first.series.title, 'Series series-a');
+      expect(updates.first.episode.id, 'episode-a');
+      expect(updates.first.episode.orderIndex, 3);
+      expect(updates.first.publishedAt, DateTime.utc(2026, 9, 1).toLocal());
+      final request = server.requestsTo('ListMyFollowUpdates').single;
+      expect(request.body['limit'], 20);
+      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      expect(
+        request.headers['authorization'],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+    });
+
+    test('asks for the page the token names', () async {
+      final first = await signedIn.listFollowUpdates(limit: 1);
+      final second = await signedIn.listFollowUpdates(
+        limit: 1,
+        token: first.nextToken,
+      );
+
+      expect(first.updates.single.episode.id, 'episode-a');
+      expect(second.updates.single.episode.id, 'episode-b');
+      expect(second.nextToken, isEmpty);
+      final requests = server.requestsTo('ListMyFollowUpdates');
+      expect(requests.first.body.containsKey('token'), isFalse);
+      expect(requests.last.body['token'], first.nextToken);
+    });
+
+    test('a member with nothing new has an empty list', () async {
+      server.followUpdates = const [];
+
+      final page = await signedIn.listFollowUpdates(limit: 20);
+
+      expect(page.updates, isEmpty);
+      expect(page.nextToken, isEmpty);
+    });
+
+    test('an episode without a readable publish time still lists', () async {
+      final update = server.followUpdates.first;
+      server.followUpdates = [
+        {
+          ...update,
+          'episode': {
+            ...update['episode']! as Map<String, Object?>,
+            'publishedAt': 'not a time',
+          },
+        },
+      ];
+
+      final updates = (await signedIn.listFollowUpdates(limit: 20)).updates;
+
+      expect(updates.single.publishedAt, isNull);
+    });
+
+    test('a guest asks the API for none of it', () async {
+      expect((await catalog.listFollowUpdates(limit: 20)).updates, isEmpty);
+      expect(server.requestsTo('ListMyFollowUpdates'), isEmpty);
+    });
+
+    test('a rejected session is reported as one', () async {
+      server.activeAccessToken = 'another-token';
+
+      expect(
+        () => signedIn.listFollowUpdates(limit: 20),
+        throwsA(
+          isA<CatalogFailure>().having(
+            (error) => error.kind,
+            'kind',
+            CatalogFailureKind.sessionExpired,
+          ),
+        ),
+      );
+    });
+  });
+
   test('getEpisode rejects a body without a series', () async {
     server.episodeResponse = {
       'episode': {'publicId': 'EP', 'title': 'Orphan'},

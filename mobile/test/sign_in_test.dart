@@ -12,6 +12,7 @@ import 'package:publira/router.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
+import 'support/tap.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -158,12 +159,16 @@ void main() {
   ) async {
     auth = fakeAuthController(session: fakeSession, repository: repository);
     await pumpApp(tester, initialLocation: AppRoutes.account);
-    await pumpUntilFound(
+    await pumpUntilFound(tester, find.byKey(const ValueKey('account-list')));
+
+    await tapVisible(
       tester,
       find.byKey(const ValueKey('account-sign-out')),
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('account-list')),
+        matching: find.byType(Scrollable),
+      ),
     );
-
-    await tester.tap(find.byKey(const ValueKey('account-sign-out')));
     await pumpUntilFound(tester, find.text('You are not signed in.'));
 
     expect(auth.isSignedIn, isFalse);

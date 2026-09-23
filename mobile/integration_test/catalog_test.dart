@@ -1820,6 +1820,27 @@ void main() {
       ];
     }
 
+    /// The rows `ListMyFollowUpdates` answers [member] with, first page only.
+    Future<List<Map<Object?, Object?>>> followUpdates(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      final body = await member.client.unary(
+        '/publira.v1.FollowService/ListMyFollowUpdates',
+        {
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+      return [
+        for (final update in body['updates'] as List? ?? const [])
+          update as Map<Object?, Object?>,
+      ];
+    }
+
     /// Waits for the API to list the free seed episode among what [member]
     /// finished. The finish is sent once the last page is drawn, without
     /// holding up the reader, so it may land a moment after the page does.
@@ -2216,6 +2237,51 @@ void main() {
 
         await tapReachable(tester, row);
         await pumpUntilPagesDrawn(tester);
+      });
+    });
+
+    testApp('the seed member finds what their follows published', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-follow-updates', () async {
+        final member = await signInSeedMember();
+        // The seed has the member follow Seed Series 011, its author, and the
+        // author of Seed Series 070, and nothing that reaches Seed Series 001.
+        final updates = await followUpdates(member);
+        final seriesIds = [
+          for (final update in updates) (update['series']! as Map)['publicId'],
+        ];
+        expect(seriesIds, contains('SeedSERSAA11'));
+        expect(seriesIds, isNot(contains(ConnectFixtureServer.seedSeriesId)));
+
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.accountFollowUpdates,
+          session: member.session,
+        );
+        final newest = updates.first;
+        final episodeId = (newest['episode']! as Map)['publicId'];
+        final seriesTitle = (newest['series']! as Map)['title']! as String;
+        final row = find.byKey(ValueKey('follow-updates-row-$episodeId'));
+        await pumpUntilRouteSettled(
+          tester,
+          row,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.descendant(of: row, matching: find.textContaining(seriesTitle)),
+          findsOne,
+        );
+
+        await tapReachable(
+          tester,
+          find.byKey(ValueKey('follow-updates-series-$episodeId')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.widgetWithText(AppBar, seriesTitle),
+          timeout: const Duration(seconds: 20),
+        );
       });
     });
 
