@@ -146,6 +146,13 @@ abstract class CatalogRepository {
     int pageIndex,
   );
 
+  /// Records that the signed-in reader finished [episodePublicId]. A re-read
+  /// keeps the first record, and a guest is left alone.
+  ///
+  /// Throws [CatalogFailure] on a transport or unexpected server error, and
+  /// on an episode the reader may not read.
+  Future<void> markEpisodeAsRead(String episodePublicId);
+
   /// This signed-in reader's reaction state for an episode. A signed-out
   /// reader has no private state, so this returns `null` without a request.
   Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId);

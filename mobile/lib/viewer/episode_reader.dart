@@ -38,6 +38,7 @@ class EpisodeReader extends StatefulWidget {
     required this.imageHeaders,
     this.initialPageIndex = 0,
     this.onPageChanged,
+    this.onFinished,
     this.endScreen,
     this.onNextEpisode,
     this.onPreviousEpisode,
@@ -59,6 +60,11 @@ class EpisodeReader extends StatefulWidget {
   /// The reader moved to another page of the episode. It is not called for
   /// [initialPageIndex], which is the page they were already on.
   final ValueChanged<int>? onPageChanged;
+
+  /// The last page came on screen, or the end screen past it, from anywhere
+  /// short of both. It is called for an episode opened on its last page too,
+  /// and for a turn of the device that pairs the last page onto the screen.
+  final VoidCallback? onFinished;
 
   /// What the reader is shown once the pages run out, on the screen after the
   /// last one. Null leaves the body ending on its last page.
@@ -107,6 +113,10 @@ class _EpisodeReaderState extends State<EpisodeReader> {
   /// It is not a page of the episode, so [_index] stays on the last one they
   /// read and the counter along the bottom keeps naming it.
   var _atEnd = false;
+
+  /// Whether the screen on display holds the last page or the end screen, as
+  /// of the last build.
+  var _finished = false;
 
   @override
   void initState() {
@@ -194,6 +204,24 @@ class _EpisodeReaderState extends State<EpisodeReader> {
     }
   }
 
+  /// Reports the arrival at the end once the frame that shows it is drawn.
+  /// Only a layout says which pages share the screen, so this is noted from
+  /// the build rather than from a page turn.
+  void _noteFinished(bool finished) {
+    if (finished == _finished) {
+      return;
+    }
+    _finished = finished;
+    if (!finished || widget.onFinished == null) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onFinished?.call();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -206,6 +234,7 @@ class _EpisodeReaderState extends State<EpisodeReader> {
         );
         final screen = _screenOf(spreads);
         final pages = spreads.pagesAt(spreads.spreadOf(_index));
+        _noteFinished(_atEnd || pages.last == widget.images.length - 1);
         return Stack(
           children: [
             _ReaderPager(

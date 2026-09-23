@@ -456,6 +456,10 @@ class ConnectFixtureServer {
   /// what the viewer recorded.
   Map<String, int> readingPositions;
 
+  /// When the signed-in member first finished each episode, keyed by episode
+  /// public id. `MarkEpisodeAsRead` writes here and keeps the first instant.
+  final Map<String, String> episodeReads = {};
+
   /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
   /// with, in the order they are given, at most the request's `limit` to a
   /// page with the token written the way [followsPageSize] writes one.
@@ -980,6 +984,7 @@ class ConnectFixtureServer {
     // API refuses one without it.
     if (path.endsWith('/GetMyReadingPosition') ||
         path.endsWith('/SaveReadingPosition') ||
+        path.endsWith('/MarkEpisodeAsRead') ||
         path.endsWith('/ListMyRecentSeries')) {
       if (!_isAuthorized(request)) {
         await _write(request, HttpStatus.unauthorized, {
@@ -1723,7 +1728,8 @@ class ConnectFixtureServer {
     await _write(request, HttpStatus.ok, const {'marked': true});
   }
 
-  /// Answers the reading-position and continue-reading RPCs of one member.
+  /// Answers the reading-position, finished-episode, and continue-reading RPCs
+  /// of one member.
   Future<void> _writeEpisodeRead(
     HttpRequest request,
     String path,
@@ -1746,6 +1752,14 @@ class ConnectFixtureServer {
       return;
     }
     final episodeId = body['episodePublicId'] as String? ?? '';
+    if (path.endsWith('/MarkEpisodeAsRead')) {
+      final readAt = episodeReads.putIfAbsent(
+        episodeId,
+        () => DateTime.now().toUtc().toIso8601String(),
+      );
+      await _write(request, HttpStatus.ok, {'readAt': readAt});
+      return;
+    }
     if (path.endsWith('/SaveReadingPosition')) {
       final pageIndex = body['pageIndex'] as int? ?? 0;
       readingPositions = {...readingPositions, episodeId: pageIndex};

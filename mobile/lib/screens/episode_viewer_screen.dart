@@ -24,6 +24,7 @@ import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
+import 'package:publira/viewer/episode_read_recorder.dart';
 import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
 
@@ -112,6 +113,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// longer be looked up.
   ReadingPositionSaver? _saver;
 
+  /// Records that the reader finished the episode, for the session that is
+  /// signed in now.
+  EpisodeReadRecorder? _recorder;
+
   /// Whether the reader asked to give a birth date, which the account tab
   /// takes, and whether this tab has since gone off screen for it. The date is
   /// read back once the tab is on screen again.
@@ -163,6 +168,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         widget.episodeId,
         pageIndex,
       ),
+    );
+    _recorder = EpisodeReadRecorder(
+      send: () => catalog.markEpisodeAsRead(widget.episodeId),
     );
     _future = _load(
       catalog,
@@ -426,6 +434,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       spreadStartIndex: detail.spreadStartIndex,
       initialPageIndex: open.startPage,
       onPageChanged: (pageIndex) => _saver?.save(pageIndex),
+      onFinished: () => _recorder?.record(),
       endScreen: EpisodeEndPanel(
         detail: detail,
         nextSavedOffline: next != null && _saved.contains(next.id),
