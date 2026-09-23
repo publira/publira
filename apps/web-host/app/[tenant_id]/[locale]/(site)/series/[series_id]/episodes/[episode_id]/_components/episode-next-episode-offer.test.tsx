@@ -64,6 +64,7 @@ const nextEpisode: EpisodeNeighborItem = {
   orderIndex: 3,
   price: 0,
   publicId: "EPISODE_003",
+  purchaseSurface: "all",
   title: "Third light",
 };
 
@@ -100,6 +101,40 @@ describe("EpisodeNextEpisodeOffer", () => {
     const link = screen.getByRole("link", { name: /Next episode/u });
     expect(link.textContent).toContain("¥500");
     expect(link.textContent).not.toContain("Free");
+  });
+
+  it("says a paid next episode sold in the app alone is sold there, not its price", async () => {
+    await renderOffer({
+      ...nextEpisode,
+      isFree: false,
+      price: 500,
+      purchaseSurface: "app",
+    });
+
+    const link = screen.getByRole("link", { name: /Next episode/u });
+    expect(link.textContent).toContain("Sold in the app");
+    expect(link.textContent).not.toContain("¥500");
+  });
+
+  it("names the price of a paid next episode sold on the web", async () => {
+    await renderOffer({
+      ...nextEpisode,
+      isFree: false,
+      price: 500,
+      purchaseSurface: "web",
+    });
+
+    const link = screen.getByRole("link", { name: /Next episode/u });
+    expect(link.textContent).toContain("¥500");
+    expect(link.textContent).not.toContain("Sold in the app");
+  });
+
+  it("calls a free next episode free wherever it is sold", async () => {
+    await renderOffer({ ...nextEpisode, purchaseSurface: "app" });
+
+    const link = screen.getByRole("link", { name: /Next episode/u });
+    expect(link.textContent).toContain("Free");
+    expect(link.textContent).not.toContain("Sold in the app");
   });
 
   it("keeps the control on the last episode, disabled but still focusable", async () => {

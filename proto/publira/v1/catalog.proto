@@ -197,6 +197,10 @@ message EpisodeNeighbor {
   // differently, so a link to the next one names the team the reader will
   // actually find on it.
   repeated publira.types.v1.Creator creators = 6;
+  // Which surfaces the episode may be bought on, resolved as
+  // Episode.purchase_availability is, so a link to a paid episode sold on the
+  // other surface alone does not quote a price this surface cannot take.
+  publira.types.v1.SurfaceAvailability purchase_availability = 7;
 }
 
 // Episode detail for public viewing.

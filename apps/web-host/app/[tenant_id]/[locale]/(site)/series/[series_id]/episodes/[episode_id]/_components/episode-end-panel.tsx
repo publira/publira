@@ -1,9 +1,9 @@
-import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { EpisodePrice } from "#components/episode-price";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -86,13 +86,11 @@ const EpisodeNeighborRow = ({
           </span>
         </span>
         <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
-          {episode.isFree ? (
-            <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-              <Message message="host.common.free" />
-            </Suspense>
-          ) : (
-            `¥${episode.price.toLocaleString(toIntlLocale(locale))}`
-          )}
+          <EpisodePrice
+            locale={locale}
+            price={episode.isFree ? 0 : episode.price}
+            purchaseSurface={episode.purchaseSurface}
+          />
         </span>
       </span>
     </LocaleLink>

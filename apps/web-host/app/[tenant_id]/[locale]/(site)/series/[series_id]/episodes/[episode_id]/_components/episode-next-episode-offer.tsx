@@ -1,8 +1,8 @@
-import { toIntlLocale } from "@publira/i18n";
 import { Button, buttonVariants } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
+import { EpisodePrice } from "#components/episode-price";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
 import { FollowControlSkeleton } from "#components/follow-button";
 import { FollowControl } from "#components/follow-control";
@@ -102,13 +102,11 @@ export const EpisodeNextEpisodeOffer = async ({
             </Suspense>
           </span>
           <span>
-            {nextEpisode.isFree ? (
-              <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
-                <Message message="host.common.free" />
-              </Suspense>
-            ) : (
-              `¥${nextEpisode.price.toLocaleString(toIntlLocale(locale))}`
-            )}
+            <EpisodePrice
+              locale={locale}
+              price={nextEpisode.isFree ? 0 : nextEpisode.price}
+              purchaseSurface={nextEpisode.purchaseSurface}
+            />
           </span>
         </span>
         <span className="line-clamp-2 underline-offset-4 group-hover:underline">
