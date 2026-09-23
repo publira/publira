@@ -428,8 +428,10 @@ describe("catalog.getEpisodeDetail", () => {
         orderIndex: 3,
         price: 500,
         publicId: "EP_003",
+        purchaseAvailability: SurfaceAvailability.APP,
         title: "Episode 3",
       },
+      // Unspecified, which reads as both surfaces.
       previousEpisode: {
         isFree: true,
         orderIndex: 1,
@@ -456,6 +458,7 @@ describe("catalog.getEpisodeDetail", () => {
       orderIndex: 1,
       price: 0,
       publicId: "EP_001",
+      purchaseSurface: "all",
       title: "Episode 1",
     });
     expect(detail?.nextEpisode).toEqual({
@@ -463,6 +466,7 @@ describe("catalog.getEpisodeDetail", () => {
       orderIndex: 3,
       price: 500,
       publicId: "EP_003",
+      purchaseSurface: "app",
       title: "Episode 3",
     });
   });

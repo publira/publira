@@ -413,13 +413,19 @@ export interface EpisodeNeighborItem {
   orderIndex: number;
   price: number;
   publicId: string;
+  purchaseSurface: EpisodePurchaseSurface;
   title: string;
 }
 
 /** The generated `EpisodeNeighbor` fields {@link mapEpisodeNeighbor} reads. */
 type RawEpisodeNeighbor = Pick<
   EpisodeNeighbor,
-  "isFree" | "orderIndex" | "price" | "publicId" | "title"
+  | "isFree"
+  | "orderIndex"
+  | "price"
+  | "publicId"
+  | "purchaseAvailability"
+  | "title"
 >;
 
 /**
@@ -440,6 +446,7 @@ const mapEpisodeNeighbor = (
     orderIndex: neighbor.orderIndex ?? 0,
     price: neighbor.price ?? 0,
     publicId,
+    purchaseSurface: toEpisodePurchaseSurface(neighbor.purchaseAvailability),
     title: neighbor.title ?? "",
   };
 };

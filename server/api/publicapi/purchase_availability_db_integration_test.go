@@ -220,3 +220,63 @@ func TestDBCatalogReadsCarryWhereAnEpisodeMayBeBought(t *testing.T) {
 		t.Fatalf("store listings = %q, %q", tenant.Msg.AppStoreUrl, tenant.Msg.GooglePlayUrl)
 	}
 }
+
+// The links either side of an episode carry where each neighbour may be bought,
+// resolved from the tenant through the series to the neighbour as the episode
+// read resolves it, so the storefront does not quote a price it cannot take.
+func TestDBEpisodeNeighborsCarryWhereTheyMayBeBought(t *testing.T) {
+	env := newPurchaseSurfaceEnv(t)
+	env.setTenantDefault(t, "web")
+	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSURFSR004", Title: "Neighbours Apart", Published: true})
+	previous := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP005", Status: testutil.EpisodeStatusPublished, Price: 500, PurchaseAvailability: "app"})
+	current := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP006", Status: testutil.EpisodeStatusPublished, Price: 500})
+	next := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP007", Status: testutil.EpisodeStatusPublished, Price: 500})
+
+	catalog := publirav1connect.NewCatalogServiceClient(env.ts.Client(), env.ts.URL)
+	neighbors := func() (previousAvailability, nextAvailability publirattypesv1.SurfaceAvailability) {
+		t.Helper()
+		got, err := catalog.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(env.tenant), PublicId: current.PublicID}))
+		if err != nil {
+			t.Fatalf("GetEpisodeDetail: %v", err)
+		}
+		if got.Msg.PreviousEpisode.GetPublicId() != previous.PublicID || got.Msg.NextEpisode.GetPublicId() != next.PublicID {
+			t.Fatalf("neighbours = %q, %q", got.Msg.PreviousEpisode.GetPublicId(), got.Msg.NextEpisode.GetPublicId())
+		}
+		return got.Msg.PreviousEpisode.PurchaseAvailability, got.Msg.NextEpisode.PurchaseAvailability
+	}
+
+	steps := []struct {
+		name         string
+		arrange      func()
+		wantPrevious publirattypesv1.SurfaceAvailability
+		wantNext     publirattypesv1.SurfaceAvailability
+	}{
+		{
+			name:         "the episode's own value, and the tenant's",
+			arrange:      func() {},
+			wantPrevious: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+			wantNext:     publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
+		},
+		{
+			name: "the series' value over the tenant's",
+			arrange: func() {
+				env.exec(t, `UPDATE series SET purchase_availability = 'app' WHERE id = $1`, series.ID)
+			},
+			wantPrevious: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+			wantNext:     publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+		},
+		{
+			name:         "the episode's own value over the series'",
+			arrange:      func() { env.setEpisodePurchase(t, previous.ID, "all") },
+			wantPrevious: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_ALL,
+			wantNext:     publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+		},
+	}
+	for _, step := range steps {
+		step.arrange()
+		gotPrevious, gotNext := neighbors()
+		if gotPrevious != step.wantPrevious || gotNext != step.wantNext {
+			t.Fatalf("%s: neighbours purchase_availability = %s, %s, want %s, %s", step.name, gotPrevious, gotNext, step.wantPrevious, step.wantNext)
+		}
+	}
+}

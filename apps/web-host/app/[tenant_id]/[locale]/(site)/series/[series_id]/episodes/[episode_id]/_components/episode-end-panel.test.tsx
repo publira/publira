@@ -114,6 +114,7 @@ const nextEpisode: EpisodeNeighborItem = {
   orderIndex: 3,
   price: 0,
   publicId: "EPISODE_003",
+  purchaseSurface: "all",
   title: "Third light",
 };
 
@@ -122,6 +123,7 @@ const previousEpisode: EpisodeNeighborItem = {
   orderIndex: 1,
   price: 0,
   publicId: "EPISODE_001",
+  purchaseSurface: "all",
   title: "First light",
 };
 
@@ -199,6 +201,60 @@ describe("EpisodeEndPanel", () => {
     });
 
     expect(screen.getByText("Free")).toBeDefined();
+  });
+
+  it("says a paid neighbour sold in the app alone is sold there, on either side", async () => {
+    await renderPanel({
+      neighbor: {
+        ...nextEpisode,
+        isFree: false,
+        price: 500,
+        purchaseSurface: "app",
+      },
+      previousNeighbor: {
+        ...previousEpisode,
+        isFree: false,
+        price: 300,
+        purchaseSurface: "app",
+      },
+    });
+
+    expect(
+      screen.getByRole("link", { name: /Third light/u }).textContent
+    ).toContain("Sold in the app");
+    expect(
+      screen.getByRole("link", { name: /First light/u }).textContent
+    ).toContain("Sold in the app");
+    expect(screen.queryByText("¥500")).toBeNull();
+    expect(screen.queryByText("¥300")).toBeNull();
+  });
+
+  it("names the price of a paid neighbour sold on the web", async () => {
+    await renderPanel({
+      neighbor: {
+        ...nextEpisode,
+        isFree: false,
+        price: 500,
+        purchaseSurface: "web",
+      },
+    });
+
+    expect(screen.getByText("¥500")).toBeDefined();
+    expect(screen.queryByText("Sold in the app")).toBeNull();
+  });
+
+  it("keeps a free neighbour free wherever it is sold", async () => {
+    await renderPanel({
+      neighbor: {
+        ...nextEpisode,
+        isFree: true,
+        price: 500,
+        purchaseSurface: "app",
+      },
+    });
+
+    expect(screen.getByText("Free")).toBeDefined();
+    expect(screen.queryByText("Sold in the app")).toBeNull();
   });
 
   it("says the reader is up to date on the last episode, and offers to follow", async () => {

@@ -1099,10 +1099,12 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
                     AND fw.starts_at <= NOW()
                     AND fw.ends_at > NOW()
             )
-        ) AS is_free
+        ) AS is_free,
+        epa.purchase_availability
     FROM episodes e
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
+        JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     WHERE s.tenant_id = $1
         AND e.series_id = $2
         AND (e.order_index, e.id) < ($3::int4, $4::uuid)
@@ -1139,10 +1141,12 @@ UNION ALL
                     AND fw.starts_at <= NOW()
                     AND fw.ends_at > NOW()
             )
-        ) AS is_free
+        ) AS is_free,
+        epa.purchase_availability
     FROM episodes e
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
+        JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     WHERE s.tenant_id = $1
         AND e.series_id = $2
         AND (e.order_index, e.id) > ($3::int4, $4::uuid)
@@ -1173,13 +1177,14 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 }
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
-	Direction  int32        `json:"direction"`
-	ID         uuid.UUID    `json:"id"`
-	PublicID   string       `json:"public_id"`
-	Title      string       `json:"title"`
-	OrderIndex int32        `json:"order_index"`
-	Price      int32        `json:"price"`
-	IsFree     sql.NullBool `json:"is_free"`
+	Direction            int32        `json:"direction"`
+	ID                   uuid.UUID    `json:"id"`
+	PublicID             string       `json:"public_id"`
+	Title                string       `json:"title"`
+	OrderIndex           int32        `json:"order_index"`
+	Price                int32        `json:"price"`
+	IsFree               sql.NullBool `json:"is_free"`
+	PurchaseAvailability string       `json:"purchase_availability"`
 }
 
 // The published episodes on either side of one episode within its own series,
@@ -1195,7 +1200,8 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 //
 // `is_free` is the same rule the body access uses, price 0 or an open free
 // window, so a link cannot say "paid" about an episode that is free at the
-// moment the reader would follow it.
+// moment the reader would follow it. `purchase_availability` is resolved
+// through the series and the tenant as the episode read resolves it.
 func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeNeighborsForTenant,
 		arg.TenantID,
@@ -1219,6 +1225,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 			&i.OrderIndex,
 			&i.Price,
 			&i.IsFree,
+			&i.PurchaseAvailability,
 		); err != nil {
 			return nil, err
 		}

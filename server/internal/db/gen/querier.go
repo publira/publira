@@ -1266,7 +1266,8 @@ type Querier interface {
 	//
 	// `is_free` is the same rule the body access uses, price 0 or an open free
 	// window, so a link cannot say "paid" about an episode that is free at the
-	// moment the reader would follow it.
+	// moment the reader would follow it. `purchase_availability` is resolved
+	// through the series and the tenant as the episode read resolves it.
 	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// The public genre list: the tenant's whole genre list, in the order the

@@ -1266,7 +1266,10 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	previousEpisode, nextEpisode := episodeNeighborsFromRows(neighborRows, creditsByEpisodeID)
+	previousEpisode, nextEpisode, err := episodeNeighborsFromRows(neighborRows, creditsByEpisodeID)
+	if err != nil {
+		return nil, s.internalError(ctx, "episode neighbour holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+	}
 
 	episode := protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row)
 	episode.Creators = creditsByEpisodeID[row.ID]
@@ -1341,15 +1344,20 @@ func (s *apiServer) publishedEpisodeNeighborRows(
 func episodeNeighborsFromRows(
 	rows []dbmodels.ListPublishedEpisodeNeighborsForTenantRow,
 	creditsByEpisodeID map[uuid.UUID][]*publirattypesv1.Creator,
-) (previous, next *publirav1.EpisodeNeighbor) {
+) (previous, next *publirav1.EpisodeNeighbor, err error) {
 	for _, neighbor := range rows {
+		purchaseAvailability, availabilityErr := protomapper.SurfaceAvailabilityFromStored(neighbor.PurchaseAvailability)
+		if availabilityErr != nil {
+			return nil, nil, availabilityErr
+		}
 		mapped := &publirav1.EpisodeNeighbor{
-			PublicId:   neighbor.PublicID,
-			Title:      neighbor.Title,
-			OrderIndex: neighbor.OrderIndex,
-			Price:      neighbor.Price,
-			IsFree:     neighbor.IsFree.Valid && neighbor.IsFree.Bool,
-			Creators:   creditsByEpisodeID[neighbor.ID],
+			PublicId:             neighbor.PublicID,
+			Title:                neighbor.Title,
+			OrderIndex:           neighbor.OrderIndex,
+			Price:                neighbor.Price,
+			IsFree:               neighbor.IsFree.Valid && neighbor.IsFree.Bool,
+			Creators:             creditsByEpisodeID[neighbor.ID],
+			PurchaseAvailability: purchaseAvailability,
 		}
 		if neighbor.Direction < 0 {
 			previous = mapped
@@ -1358,7 +1366,7 @@ func episodeNeighborsFromRows(
 		next = mapped
 	}
 
-	return previous, next
+	return previous, next, nil
 }
 
 // episodeCreditsByEpisodeIDs reads the credits of the given episodes, grouped
