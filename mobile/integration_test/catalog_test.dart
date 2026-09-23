@@ -1798,6 +1798,28 @@ void main() {
       await pumpUntilNoPendingFrameCallbacks(tester);
     }
 
+    /// The public ids of the episodes [member] finished, as the API lists
+    /// them.
+    Future<List<Object?>> finishedEpisodeIds(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      final body = await member.client.unary(
+        '/publira.v1.EpisodeReadService/ListMyEpisodeReads',
+        {
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+      return [
+        for (final read in body['reads'] as List? ?? const [])
+          ((read as Map)['episode'] as Map)['publicId'],
+      ];
+    }
+
     /// Waits for the API to list the free seed episode among what [member]
     /// finished. The finish is sent once the last page is drawn, without
     /// holding up the reader, so it may land a moment after the page does.
@@ -1806,29 +1828,12 @@ void main() {
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
       member,
     ) async {
-      final tenantId = await member.tenants.resolve();
-      Future<List<Object?>> readEpisodeIds() async {
-        final body = await member.client.unary(
-          '/publira.v1.EpisodeReadService/ListMyEpisodeReads',
-          {
-            'surface': appClientSurface,
-            'tenant': {'tenantId': tenantId},
-          },
-          tenantId: tenantId,
-          accessToken: member.session.accessToken,
-        );
-        return [
-          for (final read in body['reads'] as List? ?? const [])
-            ((read as Map)['episode'] as Map)['publicId'],
-        ];
-      }
-
       final end = DateTime.now().add(const Duration(seconds: 10));
-      var readIds = await readEpisodeIds();
+      var readIds = await finishedEpisodeIds(member);
       while (!readIds.contains(ConnectFixtureServer.seedEpisodeId) &&
           DateTime.now().isBefore(end)) {
         await tester.pump(const Duration(milliseconds: 200));
-        readIds = await readEpisodeIds();
+        readIds = await finishedEpisodeIds(member);
       }
       expect(readIds, contains(ConnectFixtureServer.seedEpisodeId));
     }
@@ -2158,6 +2163,13 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'live-episode-read', () async {
         final member = await signInSeedMember();
+        // A finish is recorded once and kept, so one already on record would
+        // pass this test whether or not the viewer sent anything.
+        expect(
+          await finishedEpisodeIds(member),
+          isNot(contains(ConnectFixtureServer.seedEpisodeId)),
+          reason: 'the stack must start from a fresh seed',
+        );
 
         await finishSeedEpisode(tester, member.session);
 
