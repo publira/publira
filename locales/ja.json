@@ -3677,7 +3677,7 @@
       "no_pages": "このエピソードにはまだページがありません",
       "not_found": "エピソードが見つかりません ({$id})",
       "offline_not_saved": "オフラインのため、このエピソードを表示できません。端末に保存済みのエピソードのみ読めます。",
-      "page_failed": "このページを表示できませんでした。もう一度お試しください。",
+      "page_failed": "ネットワークエラーか、サーバーの一時的な問題でこのページを読み込めませんでした。再読み込みしてください。",
       "page_status": "{$page} / {$total}",
       "page_status_range": "{$first}–{$last} / {$total}",
       "previous_episode": "前のエピソード",
