@@ -304,6 +304,15 @@ abstract class AppMessages {
   /// `mobile.catalog.empty`
   String get catalogEmpty;
 
+  /// `mobile.catalog.genres_failed`
+  String get catalogGenresFailed;
+
+  /// `mobile.catalog.genres_heading`
+  String get catalogGenresHeading;
+
+  /// `mobile.catalog.genres_view_all`
+  String get catalogGenresViewAll;
+
   /// `mobile.catalog.load_failed`
   String get catalogLoadFailed;
 
@@ -808,6 +817,27 @@ abstract class AppMessages {
   /// `mobile.follows.title`
   String get followsTitle;
 
+  /// `mobile.genre.load_failed`
+  String get genreLoadFailed;
+
+  /// `mobile.genre.not_found`
+  String genreNotFound({required String id});
+
+  /// `mobile.genre.series_empty`
+  String get genreSeriesEmpty;
+
+  /// `mobile.genre.title`
+  String get genreTitle;
+
+  /// `mobile.genres.empty`
+  String get genresEmpty;
+
+  /// `mobile.genres.load_failed`
+  String get genresLoadFailed;
+
+  /// `mobile.genres.title`
+  String get genresTitle;
+
   /// `mobile.label.load_failed`
   String get labelLoadFailed;
 
@@ -1209,6 +1239,33 @@ abstract class AppMessages {
   /// `mobile.series.title`
   String get seriesTitle;
 
+  /// `mobile.series_filter.clear`
+  String get seriesFilterClear;
+
+  /// `mobile.series_filter.empty`
+  String get seriesFilterEmpty;
+
+  /// `mobile.series_filter.free`
+  String get seriesFilterFree;
+
+  /// `mobile.series_filter.order`
+  String get seriesFilterOrder;
+
+  /// `mobile.series_filter.order_newest`
+  String get seriesFilterOrderNewest;
+
+  /// `mobile.series_filter.order_title`
+  String get seriesFilterOrderTitle;
+
+  /// `mobile.series_filter.order_updated`
+  String get seriesFilterOrderUpdated;
+
+  /// `mobile.series_filter.status`
+  String get seriesFilterStatus;
+
+  /// `mobile.series_filter.status_all`
+  String get seriesFilterStatusAll;
+
   /// `mobile.share.action`
   String get shareAction;
 
@@ -1277,6 +1334,18 @@ abstract class AppMessages {
 
   /// `mobile.sign_up_pending.title`
   String get signUpPendingTitle;
+
+  /// `mobile.tag.load_failed`
+  String get tagLoadFailed;
+
+  /// `mobile.tag.not_found`
+  String tagNotFound({required String slug});
+
+  /// `mobile.tag.series_empty`
+  String get tagSeriesEmpty;
+
+  /// `mobile.tag.title`
+  String get tagTitle;
 
   /// `mobile.verify_email.expired`
   String get verifyEmailExpired;
@@ -1775,6 +1844,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get catalogEmpty {
     return '公開中のシリーズはありません';
+  }
+
+  @override
+  String get catalogGenresFailed {
+    return 'ジャンルを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get catalogGenresHeading {
+    return 'ジャンルから探す';
+  }
+
+  @override
+  String get catalogGenresViewAll {
+    return 'すべて見る';
   }
 
   @override
@@ -2618,6 +2702,41 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get genreLoadFailed {
+    return 'ジャンルを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String genreNotFound({required String id}) {
+    return 'ジャンルが見つかりません ($id)';
+  }
+
+  @override
+  String get genreSeriesEmpty {
+    return 'このジャンルのシリーズはまだ公開されていません。';
+  }
+
+  @override
+  String get genreTitle {
+    return 'ジャンル';
+  }
+
+  @override
+  String get genresEmpty {
+    return 'ジャンルはまだ登録されていません。';
+  }
+
+  @override
+  String get genresLoadFailed {
+    return 'ジャンルを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String get genresTitle {
+    return 'ジャンル一覧';
+  }
+
+  @override
   String get labelLoadFailed {
     return 'レーベルを表示できませんでした。もう一度お試しください。';
   }
@@ -3283,6 +3402,51 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get seriesFilterClear {
+    return '条件をクリア';
+  }
+
+  @override
+  String get seriesFilterEmpty {
+    return '条件に一致するシリーズはありません。';
+  }
+
+  @override
+  String get seriesFilterFree {
+    return '無料で読める';
+  }
+
+  @override
+  String get seriesFilterOrder {
+    return '並び順';
+  }
+
+  @override
+  String get seriesFilterOrderNewest {
+    return '新着順';
+  }
+
+  @override
+  String get seriesFilterOrderTitle {
+    return 'タイトル順';
+  }
+
+  @override
+  String get seriesFilterOrderUpdated {
+    return '更新順';
+  }
+
+  @override
+  String get seriesFilterStatus {
+    return '連載状況';
+  }
+
+  @override
+  String get seriesFilterStatusAll {
+    return 'すべての状況';
+  }
+
+  @override
   String get shareAction {
     return '共有';
   }
@@ -3395,6 +3559,26 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get signUpPendingTitle {
     return 'メールの確認';
+  }
+
+  @override
+  String get tagLoadFailed {
+    return 'タグを表示できませんでした。もう一度お試しください。';
+  }
+
+  @override
+  String tagNotFound({required String slug}) {
+    return 'タグが見つかりません ($slug)';
+  }
+
+  @override
+  String get tagSeriesEmpty {
+    return 'このタグのシリーズはまだ公開されていません。';
+  }
+
+  @override
+  String get tagTitle {
+    return 'タグ';
   }
 
   @override
@@ -3978,6 +4162,21 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get catalogEmpty {
     return 'No series have been published yet.';
+  }
+
+  @override
+  String get catalogGenresFailed {
+    return 'Could not show the genres. Try again.';
+  }
+
+  @override
+  String get catalogGenresHeading {
+    return 'Browse by genre';
+  }
+
+  @override
+  String get catalogGenresViewAll {
+    return 'View all';
   }
 
   @override
@@ -4821,6 +5020,41 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get genreLoadFailed {
+    return 'Could not show the genre. Try again.';
+  }
+
+  @override
+  String genreNotFound({required String id}) {
+    return 'Genre not found ($id)';
+  }
+
+  @override
+  String get genreSeriesEmpty {
+    return 'No published series carry this genre yet.';
+  }
+
+  @override
+  String get genreTitle {
+    return 'Genre';
+  }
+
+  @override
+  String get genresEmpty {
+    return 'No genres have been registered yet.';
+  }
+
+  @override
+  String get genresLoadFailed {
+    return 'Could not show the genres. Try again.';
+  }
+
+  @override
+  String get genresTitle {
+    return 'Genres';
+  }
+
+  @override
   String get labelLoadFailed {
     return 'Could not show the label. Try again.';
   }
@@ -5486,6 +5720,51 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get seriesFilterClear {
+    return 'Clear filters';
+  }
+
+  @override
+  String get seriesFilterEmpty {
+    return 'No series match these filters.';
+  }
+
+  @override
+  String get seriesFilterFree {
+    return 'Free to start';
+  }
+
+  @override
+  String get seriesFilterOrder {
+    return 'Sort';
+  }
+
+  @override
+  String get seriesFilterOrderNewest {
+    return 'Newest';
+  }
+
+  @override
+  String get seriesFilterOrderTitle {
+    return 'Title';
+  }
+
+  @override
+  String get seriesFilterOrderUpdated {
+    return 'Recently updated';
+  }
+
+  @override
+  String get seriesFilterStatus {
+    return 'Status';
+  }
+
+  @override
+  String get seriesFilterStatusAll {
+    return 'All statuses';
+  }
+
+  @override
   String get shareAction {
     return 'Share';
   }
@@ -5598,6 +5877,26 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get signUpPendingTitle {
     return 'Check your email';
+  }
+
+  @override
+  String get tagLoadFailed {
+    return 'Could not show the tag. Try again.';
+  }
+
+  @override
+  String tagNotFound({required String slug}) {
+    return 'Tag not found ($slug)';
+  }
+
+  @override
+  String get tagSeriesEmpty {
+    return 'No published series carry this tag yet.';
+  }
+
+  @override
+  String get tagTitle {
+    return 'Tag';
   }
 
   @override
@@ -6181,6 +6480,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get catalogEmpty {
     return '아직 공개된 시리즈가 없습니다';
+  }
+
+  @override
+  String get catalogGenresFailed {
+    return '장르를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get catalogGenresHeading {
+    return '장르로 찾기';
+  }
+
+  @override
+  String get catalogGenresViewAll {
+    return '모두 보기';
   }
 
   @override
@@ -7024,6 +7338,41 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get genreLoadFailed {
+    return '장르를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String genreNotFound({required String id}) {
+    return '장르를 찾을 수 없습니다 ($id)';
+  }
+
+  @override
+  String get genreSeriesEmpty {
+    return '이 장르의 시리즈는 아직 공개되지 않았습니다.';
+  }
+
+  @override
+  String get genreTitle {
+    return '장르';
+  }
+
+  @override
+  String get genresEmpty {
+    return '아직 등록된 장르가 없습니다.';
+  }
+
+  @override
+  String get genresLoadFailed {
+    return '장르를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String get genresTitle {
+    return '장르 목록';
+  }
+
+  @override
   String get labelLoadFailed {
     return '레이블을 표시할 수 없습니다. 다시 시도해 주세요.';
   }
@@ -7689,6 +8038,51 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get seriesFilterClear {
+    return '조건 지우기';
+  }
+
+  @override
+  String get seriesFilterEmpty {
+    return '조건에 맞는 시리즈가 없습니다.';
+  }
+
+  @override
+  String get seriesFilterFree {
+    return '무료로 읽기';
+  }
+
+  @override
+  String get seriesFilterOrder {
+    return '정렬';
+  }
+
+  @override
+  String get seriesFilterOrderNewest {
+    return '최신순';
+  }
+
+  @override
+  String get seriesFilterOrderTitle {
+    return '제목순';
+  }
+
+  @override
+  String get seriesFilterOrderUpdated {
+    return '업데이트순';
+  }
+
+  @override
+  String get seriesFilterStatus {
+    return '연재 상태';
+  }
+
+  @override
+  String get seriesFilterStatusAll {
+    return '전체 상태';
+  }
+
+  @override
   String get shareAction {
     return '공유';
   }
@@ -7801,6 +8195,26 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get signUpPendingTitle {
     return '메일 확인';
+  }
+
+  @override
+  String get tagLoadFailed {
+    return '태그를 표시할 수 없습니다. 다시 시도해 주세요.';
+  }
+
+  @override
+  String tagNotFound({required String slug}) {
+    return '태그를 찾을 수 없습니다 ($slug)';
+  }
+
+  @override
+  String get tagSeriesEmpty {
+    return '이 태그의 시리즈는 아직 공개되지 않았습니다.';
+  }
+
+  @override
+  String get tagTitle {
+    return '태그';
   }
 
   @override
@@ -8384,6 +8798,21 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get catalogEmpty {
     return '还没有发布任何系列。';
+  }
+
+  @override
+  String get catalogGenresFailed {
+    return '无法显示类型。请重试。';
+  }
+
+  @override
+  String get catalogGenresHeading {
+    return '按类型浏览';
+  }
+
+  @override
+  String get catalogGenresViewAll {
+    return '查看全部';
   }
 
   @override
@@ -9227,6 +9656,41 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get genreLoadFailed {
+    return '无法显示该类型。请重试。';
+  }
+
+  @override
+  String genreNotFound({required String id}) {
+    return '找不到该类型（$id）';
+  }
+
+  @override
+  String get genreSeriesEmpty {
+    return '尚无属于该类型的已发布系列。';
+  }
+
+  @override
+  String get genreTitle {
+    return '类型';
+  }
+
+  @override
+  String get genresEmpty {
+    return '尚未登记任何类型。';
+  }
+
+  @override
+  String get genresLoadFailed {
+    return '无法显示类型。请重试。';
+  }
+
+  @override
+  String get genresTitle {
+    return '类型';
+  }
+
+  @override
   String get labelLoadFailed {
     return '无法显示该品牌。请重试。';
   }
@@ -9892,6 +10356,51 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get seriesFilterClear {
+    return '清除条件';
+  }
+
+  @override
+  String get seriesFilterEmpty {
+    return '没有符合这些条件的系列。';
+  }
+
+  @override
+  String get seriesFilterFree {
+    return '可免费阅读';
+  }
+
+  @override
+  String get seriesFilterOrder {
+    return '排序';
+  }
+
+  @override
+  String get seriesFilterOrderNewest {
+    return '最新发布';
+  }
+
+  @override
+  String get seriesFilterOrderTitle {
+    return '按标题';
+  }
+
+  @override
+  String get seriesFilterOrderUpdated {
+    return '最近更新';
+  }
+
+  @override
+  String get seriesFilterStatus {
+    return '连载状态';
+  }
+
+  @override
+  String get seriesFilterStatusAll {
+    return '全部状态';
+  }
+
+  @override
   String get shareAction {
     return '分享';
   }
@@ -10004,6 +10513,26 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get signUpPendingTitle {
     return '请查收邮件';
+  }
+
+  @override
+  String get tagLoadFailed {
+    return '无法显示该标签。请重试。';
+  }
+
+  @override
+  String tagNotFound({required String slug}) {
+    return '找不到该标签（$slug）';
+  }
+
+  @override
+  String get tagSeriesEmpty {
+    return '尚无带有该标签的已发布系列。';
+  }
+
+  @override
+  String get tagTitle {
+    return '标签';
   }
 
   @override
@@ -10587,6 +11116,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get catalogEmpty {
     return '尚未發布任何系列。';
+  }
+
+  @override
+  String get catalogGenresFailed {
+    return '無法顯示類型。請重試。';
+  }
+
+  @override
+  String get catalogGenresHeading {
+    return '依類型瀏覽';
+  }
+
+  @override
+  String get catalogGenresViewAll {
+    return '查看全部';
   }
 
   @override
@@ -11430,6 +11974,41 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get genreLoadFailed {
+    return '無法顯示該類型。請重試。';
+  }
+
+  @override
+  String genreNotFound({required String id}) {
+    return '找不到該類型（$id）';
+  }
+
+  @override
+  String get genreSeriesEmpty {
+    return '尚無屬於該類型的已發布系列。';
+  }
+
+  @override
+  String get genreTitle {
+    return '類型';
+  }
+
+  @override
+  String get genresEmpty {
+    return '尚未新增任何類型。';
+  }
+
+  @override
+  String get genresLoadFailed {
+    return '無法顯示類型。請重試。';
+  }
+
+  @override
+  String get genresTitle {
+    return '類型';
+  }
+
+  @override
   String get labelLoadFailed {
     return '無法顯示該品牌。請重試。';
   }
@@ -12095,6 +12674,51 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get seriesFilterClear {
+    return '清除條件';
+  }
+
+  @override
+  String get seriesFilterEmpty {
+    return '沒有符合這些條件的系列。';
+  }
+
+  @override
+  String get seriesFilterFree {
+    return '可免費閱讀';
+  }
+
+  @override
+  String get seriesFilterOrder {
+    return '排序';
+  }
+
+  @override
+  String get seriesFilterOrderNewest {
+    return '最新發布';
+  }
+
+  @override
+  String get seriesFilterOrderTitle {
+    return '按標題';
+  }
+
+  @override
+  String get seriesFilterOrderUpdated {
+    return '最近更新';
+  }
+
+  @override
+  String get seriesFilterStatus {
+    return '連載狀態';
+  }
+
+  @override
+  String get seriesFilterStatusAll {
+    return '全部狀態';
+  }
+
+  @override
   String get shareAction {
     return '分享';
   }
@@ -12207,6 +12831,26 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get signUpPendingTitle {
     return '請查收郵件';
+  }
+
+  @override
+  String get tagLoadFailed {
+    return '無法顯示該標籤。請重試。';
+  }
+
+  @override
+  String tagNotFound({required String slug}) {
+    return '找不到該標籤（$slug）';
+  }
+
+  @override
+  String get tagSeriesEmpty {
+    return '尚無帶有該標籤的已發布系列。';
+  }
+
+  @override
+  String get tagTitle {
+    return '標籤';
   }
 
   @override

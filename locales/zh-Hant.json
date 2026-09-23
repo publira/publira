@@ -3413,6 +3413,9 @@
       "continue_failed": "無法顯示您正在閱讀的作品。",
       "continue_heading": "繼續閱讀",
       "empty": "尚未發布任何系列。",
+      "genres_failed": "無法顯示類型。請重試。",
+      "genres_heading": "依類型瀏覽",
+      "genres_view_all": "查看全部",
       "load_failed": "無法顯示作品目錄。",
       "new_arrivals_failed": "無法顯示最新上架的系列。",
       "new_arrivals_heading": "最新上架",
@@ -3555,6 +3558,34 @@
       "series_empty": "目前沒有已發布的系列。",
       "series_heading": "該品牌的系列",
       "title": "品牌"
+    },
+    "genres": {
+      "empty": "尚未新增任何類型。",
+      "load_failed": "無法顯示類型。請重試。",
+      "title": "類型"
+    },
+    "genre": {
+      "load_failed": "無法顯示該類型。請重試。",
+      "not_found": "找不到該類型（{$id}）",
+      "series_empty": "尚無屬於該類型的已發布系列。",
+      "title": "類型"
+    },
+    "tag": {
+      "load_failed": "無法顯示該標籤。請重試。",
+      "not_found": "找不到該標籤（{$slug}）",
+      "series_empty": "尚無帶有該標籤的已發布系列。",
+      "title": "標籤"
+    },
+    "series_filter": {
+      "clear": "清除條件",
+      "empty": "沒有符合這些條件的系列。",
+      "free": "可免費閱讀",
+      "order": "排序",
+      "order_newest": "最新發布",
+      "order_title": "按標題",
+      "order_updated": "最近更新",
+      "status": "連載狀態",
+      "status_all": "全部狀態"
     },
     "library": {
       "continue_empty": "您還沒有正在閱讀的作品。開始閱讀集數後，就會顯示在這裡。",

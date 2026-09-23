@@ -35,7 +35,19 @@
         ],
         "rpcs": ["ListPublishedGenres", "ListPublishedTags"]
       },
-      "exception": "Not in the app yet: #2578."
+      "mobile": {
+        "routes": ["/genres", "/genres/:genreId", "/tags/:tagSlug"],
+        "rpcs": [
+          "ListPublishedGenres",
+          "ListPublishedTags",
+          "ListPublishedSeries"
+        ]
+      },
+      "tests": [
+        "a genre from the catalog lists the series carrying it",
+        "a tag on a series lists the series carrying it",
+        "the seed genres and tags reach the app on the live API"
+      ]
     },
     {
       "name": "The full ranking",

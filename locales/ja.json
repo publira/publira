@@ -3413,6 +3413,9 @@
       "continue_failed": "読みかけの作品を表示できませんでした。もう一度お試しください。",
       "continue_heading": "読みかけの作品",
       "empty": "公開中のシリーズはありません",
+      "genres_failed": "ジャンルを表示できませんでした。もう一度お試しください。",
+      "genres_heading": "ジャンルから探す",
+      "genres_view_all": "すべて見る",
       "load_failed": "カタログを表示できませんでした。もう一度お試しください。",
       "new_arrivals_failed": "新着シリーズを表示できませんでした。もう一度お試しください。",
       "new_arrivals_heading": "新着シリーズ",
@@ -3555,6 +3558,34 @@
       "series_empty": "まだ公開中シリーズはありません。",
       "series_heading": "所属シリーズ",
       "title": "レーベル"
+    },
+    "genres": {
+      "empty": "ジャンルはまだ登録されていません。",
+      "load_failed": "ジャンルを表示できませんでした。もう一度お試しください。",
+      "title": "ジャンル一覧"
+    },
+    "genre": {
+      "load_failed": "ジャンルを表示できませんでした。もう一度お試しください。",
+      "not_found": "ジャンルが見つかりません ({$id})",
+      "series_empty": "このジャンルのシリーズはまだ公開されていません。",
+      "title": "ジャンル"
+    },
+    "tag": {
+      "load_failed": "タグを表示できませんでした。もう一度お試しください。",
+      "not_found": "タグが見つかりません ({$slug})",
+      "series_empty": "このタグのシリーズはまだ公開されていません。",
+      "title": "タグ"
+    },
+    "series_filter": {
+      "clear": "条件をクリア",
+      "empty": "条件に一致するシリーズはありません。",
+      "free": "無料で読める",
+      "order": "並び順",
+      "order_newest": "新着順",
+      "order_title": "タイトル順",
+      "order_updated": "更新順",
+      "status": "連載状況",
+      "status_all": "すべての状況"
     },
     "library": {
       "continue_empty": "読みかけの作品はまだありません。エピソードを読み始めると、ここに表示されます。",

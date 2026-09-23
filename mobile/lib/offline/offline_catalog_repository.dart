@@ -6,6 +6,7 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/progress_outbox.dart';
@@ -189,6 +190,28 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<LabelDetail?> getLabelDetail(String publicId, {String token = ''}) =>
       _origin.getLabelDetail(publicId, token: token);
+
+  /// The classification is read from the API alone: the device keeps what a
+  /// reader opened, not the lists they browsed through.
+  @override
+  Future<List<PublishedGenre>> listGenres() => _origin.listGenres();
+
+  @override
+  Future<PublishedTag?> getTag(String slug) => _origin.getTag(slug);
+
+  @override
+  Future<SeriesPage?> listGenreSeries(
+    String genreId, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _origin.listGenreSeries(genreId, filter: filter, token: token);
+
+  @override
+  Future<SeriesPage?> listTagSeries(
+    String slug, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _origin.listTagSeries(slug, filter: filter, token: token);
 
   @override
   Future<EpisodeDetail?> getEpisode(

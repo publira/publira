@@ -183,6 +183,7 @@ Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'scheduleWeekdays': series.scheduleWeekdays,
   if (series.ageRating != null) 'ageRating': series.ageRating!.name,
   'genres': [for (final genre in series.genres) _genreToJson(genre)],
+  'tags': [for (final tag in series.tags) _tagToJson(tag)],
 };
 
 SeriesItem? _seriesFromJson(Object? decoded) {
@@ -196,6 +197,7 @@ SeriesItem? _seriesFromJson(Object? decoded) {
   final rawVariants = decoded['eyeCatchVariants'];
   final rawCreators = decoded['creators'];
   final rawGenres = decoded['genres'];
+  final rawTags = decoded['tags'];
   final rawWeekdays = decoded['scheduleWeekdays'];
   return SeriesItem(
     id: id,
@@ -224,6 +226,11 @@ SeriesItem? _seriesFromJson(Object? decoded) {
       for (final item in rawGenres is List ? rawGenres : const [])
         ?_genreFromJson(item),
     ],
+    // A file written before tags were saved holds none.
+    tags: [
+      for (final item in rawTags is List ? rawTags : const [])
+        ?_tagFromJson(item),
+    ],
   );
 }
 
@@ -242,6 +249,23 @@ SeriesGenre? _genreFromJson(Object? decoded) {
     return null;
   }
   return SeriesGenre(id: id, name: name);
+}
+
+Map<String, Object?> _tagToJson(SeriesTag tag) => {
+  'slug': tag.slug,
+  'name': tag.name,
+};
+
+SeriesTag? _tagFromJson(Object? decoded) {
+  if (decoded is! Map) {
+    return null;
+  }
+  final slug = _string(decoded['slug']);
+  final name = _string(decoded['name']);
+  if (slug.isEmpty || name.isEmpty) {
+    return null;
+  }
+  return SeriesTag(slug: slug, name: name);
 }
 
 SeriesStatus? _statusFromJson(Object? raw) {

@@ -308,6 +308,7 @@ void main() {
           scheduleWeekdays: [1, 4],
           ageRating: SeriesAgeRating.r15,
           genres: [SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy')],
+          tags: [SeriesTag(slug: 'time-travel', name: 'Time travel')],
         ),
       ],
     ).toJson();
@@ -320,6 +321,8 @@ void main() {
     expect(series.ageRating, SeriesAgeRating.r15);
     expect(series.genres.single.name, 'Fantasy');
     expect(series.genres.single.id, 'SeedGENRAAA1');
+    expect(series.tags.single.slug, 'time-travel');
+    expect(series.tags.single.name, 'Time travel');
   });
 
   test('an unrecognized stored age rating is read as unknown', () {
@@ -356,6 +359,7 @@ void main() {
       expect(decoded!.series!.single.creators, isEmpty);
       expect(decoded.series!.single.status, isNull);
       expect(decoded.series!.single.genres, isEmpty);
+      expect(decoded.series!.single.tags, isEmpty);
       expect(decoded.series!.single.ageRating, isNull);
     },
   );

@@ -3,6 +3,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 /// How long a search keyword may be, as every `SearchPublished*` RPC measures
@@ -110,6 +111,40 @@ abstract class CatalogRepository {
   /// so a link kept from before keeps opening it.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<LabelDetail?> getLabelDetail(String publicId, {String token});
+
+  /// Every genre the tenant curates, in the tenant's genre order.
+  ///
+  /// A genre no published series carries is still listed, at zero, so a link
+  /// to one keeps opening it after its last series is taken down.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<PublishedGenre>> listGenres();
+
+  /// The tag [slug] addresses, or `null` when no published series carries it.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<PublishedTag?> getTag(String slug);
+
+  /// One page of the published series carrying the genre [genreId], narrowed
+  /// and ordered by [filter], or `null` when the tenant curates no such genre.
+  ///
+  /// [token] is empty for the first page, and otherwise the
+  /// [SeriesPage.nextToken] of the page above the one wanted under the same
+  /// [filter]: a token belongs to the filter it was built for.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesPage?> listGenreSeries(
+    String genreId, {
+    SeriesListFilter filter,
+    String token,
+  });
+
+  /// One page of the published series carrying the tag [slug], or `null` when
+  /// no published series carries it. [filter] and [token] follow
+  /// [listGenreSeries].
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<SeriesPage?> listTagSeries(
+    String slug, {
+    SeriesListFilter filter,
+    String token,
+  });
 
   /// Body of [episodePublicId] for the reader. Returns `null` when the episode
   /// is missing, unpublished, not in this tenant, or belongs to a series other

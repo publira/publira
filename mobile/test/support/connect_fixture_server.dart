@@ -19,6 +19,7 @@ class ConnectFixtureServer {
     this.seriesPageSize = 0,
     this.seriesAvailability = const {},
     this.rankedSeries = const [],
+    this.genres = const [],
     this.details = const {},
     this.episodes = const {},
     this.entitledEpisodes = const {},
@@ -248,6 +249,23 @@ class ConnectFixtureServer {
     ];
   }
 
+  /// The tags of the seed series, in the shape `Series` arrives in.
+  static List<Map<String, Object?>> seedTags() {
+    return [
+      {'name': 'Time travel', 'slug': 'time-travel'},
+    ];
+  }
+
+  /// The genres the development seed curates first, in its order. The second
+  /// carries nothing [populatedSeries] holds, which a genre still listed at
+  /// zero is.
+  static List<Map<String, Object?>> populatedGenres() {
+    return [
+      ...seedGenres(),
+      {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+    ];
+  }
+
   static List<Map<String, Object?>> populatedSeries() {
     return [
       {
@@ -260,6 +278,7 @@ class ConnectFixtureServer {
         'status': 'SERIES_STATUS_ONGOING',
         'scheduleWeekdays': [1, 4],
         'genres': seedGenres(),
+        'tags': seedTags(),
       },
       {
         'publicId': 'series-kitchen',
@@ -419,6 +438,7 @@ class ConnectFixtureServer {
           'status': 'SERIES_STATUS_ONGOING',
           'scheduleWeekdays': [1, 4],
           'genres': seedGenres(),
+          'tags': seedTags(),
         },
         'episodes': [
           {
@@ -462,6 +482,10 @@ class ConnectFixtureServer {
   /// may show, and a request naming none is answered as the storefront, the
   /// way the API answers it.
   Map<String, String> seriesAvailability;
+
+  /// The genres the tenant curates, in the shape `Genre` arrives in and in the
+  /// tenant's order. `ListPublishedGenres` counts each over the series shown.
+  List<Map<String, Object?>> genres;
 
   /// `RankedSeries` entries `ListRankedSeries` answers with, whichever period
   /// is asked for. Empty acts out a tenant the ranking batch has not run for.
@@ -777,6 +801,43 @@ class ConnectFixtureServer {
       return;
     }
 
+    final missing = path.endsWith('/ListPublishedSeries')
+        ? _classifiedMissing(body)
+        : null;
+    if (missing != null) {
+      await _write(request, HttpStatus.notFound, {
+        'code': 'not_found',
+        'message': '$missing not found',
+      });
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedGenres')) {
+      final shown = _seriesShownTo(body);
+      await _write(request, HttpStatus.ok, {
+        ..._pageOf('genres', [
+          for (final genre in genres)
+            {
+              ...genre,
+              'publishedSeriesCount': shown
+                  .where(
+                    (item) =>
+                        _carries(item, 'genres', 'publicId', genre['publicId']),
+                  )
+                  .length,
+            },
+        ], body['token']),
+      });
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedTags')) {
+      await _write(request, HttpStatus.ok, {
+        ..._pageOf('tags', _publishedTags(_seriesShownTo(body)), body['token']),
+      });
+      return;
+    }
+
     if (path.endsWith('/ListPublishedSeries')) {
       await _write(
         request,
@@ -784,7 +845,7 @@ class ConnectFixtureServer {
         listResponse ??
             {
               if (listStatus == HttpStatus.ok)
-                ..._seriesPage(_seriesShownTo(body), body['token']),
+                ..._seriesPage(_classified(body), body['token']),
               if (listStatus != HttpStatus.ok) 'code': 'unavailable',
               if (listStatus != HttpStatus.ok) 'message': 'unavailable',
             },
@@ -1309,6 +1370,84 @@ class ConnectFixtureServer {
       'SURFACE_AVAILABILITY_APP' => app,
       _ => true,
     };
+  }
+
+  /// Whether [item] carries the classification whose [key] is [value] in its
+  /// [field]: a genre by public id, a tag by slug.
+  static bool _carries(
+    Map<String, Object?> item,
+    String field,
+    String key,
+    Object? value,
+  ) => (item[field] as List? ?? const []).any(
+    (entry) => (entry as Map)[key] == value,
+  );
+
+  /// The genre or tag a `ListPublishedSeries` [body] narrows to when the
+  /// tenant has no such one, which the API answers `not_found`; `null` when it
+  /// narrows to nothing or to one that exists.
+  String? _classifiedMissing(Map<String, Object?> body) {
+    final genre = body['genrePublicId'];
+    if (genre is String &&
+        genre.isNotEmpty &&
+        !genres.any((item) => item['publicId'] == genre)) {
+      return 'genre';
+    }
+    final tag = body['tagSlug'];
+    if (tag is String &&
+        tag.isNotEmpty &&
+        !series.any((item) => _carries(item, 'tags', 'slug', tag))) {
+      return 'tag';
+    }
+    return null;
+  }
+
+  /// The series shown to [body], narrowed by the genre, tag, and status it
+  /// names. The order and the free-to-start filter are left to the API.
+  List<Map<String, Object?>> _classified(Map<String, Object?> body) {
+    final genre = body['genrePublicId'];
+    final tag = body['tagSlug'];
+    final status = body['status'];
+    return [
+      for (final item in _seriesShownTo(body))
+        if ((genre is! String ||
+                genre.isEmpty ||
+                _carries(item, 'genres', 'publicId', genre)) &&
+            (tag is! String ||
+                tag.isEmpty ||
+                _carries(item, 'tags', 'slug', tag)) &&
+            (status == null || item['status'] == status))
+          item,
+    ];
+  }
+
+  /// The tags [series] carry, counted, most carried first and then by slug,
+  /// the way `ListPublishedTags` orders them.
+  List<Map<String, Object?>> _publishedTags(List<Map<String, Object?>> series) {
+    final tags = <String, Map<String, Object?>>{};
+    for (final item in series) {
+      for (final entry in item['tags'] as List? ?? const []) {
+        final tag = entry as Map;
+        final counted = tags.putIfAbsent(
+          tag['slug'] as String,
+          () => {
+            'name': tag['name'],
+            'slug': tag['slug'],
+            'publishedSeriesCount': 0,
+          },
+        );
+        counted['publishedSeriesCount'] =
+            (counted['publishedSeriesCount']! as int) + 1;
+      }
+    }
+    return tags.values.toList()..sort((a, b) {
+      final byCount = (b['publishedSeriesCount']! as int).compareTo(
+        a['publishedSeriesCount']! as int,
+      );
+      return byCount != 0
+          ? byCount
+          : (a['slug']! as String).compareTo(b['slug']! as String);
+    });
   }
 
   /// The [series] the surface [body] names may show.

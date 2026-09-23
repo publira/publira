@@ -128,6 +128,7 @@ void main() {
         details: ConnectFixtureServer.populatedDetails(),
         episodes: ConnectFixtureServer.populatedEpisodes(),
         entitledEpisodes: ConnectFixtureServer.populatedEntitledEpisodes(),
+        genres: ConnectFixtureServer.populatedGenres(),
       );
       await server.start();
     });
@@ -446,6 +447,58 @@ void main() {
         );
 
         expect(find.text('Profile text for Seed Author 001'), findsOneWidget);
+        expect(
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testApp('a genre from the catalog lists the series carrying it', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-genre', () async {
+        await pumpApp(tester);
+        final genre = find.byKey(const ValueKey('genre-chip-SeedGENRAAA1'));
+        await pumpUntilRouteSettled(tester, genre);
+        await tapVisible(tester, genre);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
+        );
+
+        expect(find.byKey(const ValueKey('genre-body')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('series-tile-series-kitchen')),
+          findsNothing,
+        );
+        final request = server.requestsTo('ListPublishedSeries').last;
+        expect(request.body['genrePublicId'], 'SeedGENRAAA1');
+        expect(request.body['surface'], appClientSurface);
+      });
+    });
+
+    testApp('a tag on a series lists the series carrying it', (tester) async {
+      await withFailureScreenshot(tester, 'fixture-tag', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+        );
+        final tag = find.byKey(const ValueKey('series-tag-time-travel'));
+        await pumpUntilRouteSettled(tester, tag);
+        await tapVisible(tester, tag);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('tag-body')),
+        );
+
+        expect(find.text('Time travel'), findsWidgets);
         expect(
           find.byKey(
             const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
@@ -2043,6 +2096,60 @@ void main() {
         );
 
         expect(find.byKey(const ValueKey('label-error')), findsNothing);
+      });
+    });
+
+    testApp('the seed genres and tags reach the app on the live API', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-genre-tag', () async {
+        await pumpLive(tester);
+        // The seed deals its genres and tags round-robin over the series in
+        // title order, so its first series is in the first genre and carries
+        // the first tag by slug.
+        final genre = find.byKey(const ValueKey('genre-chip-SeedGENRAAA1'));
+        await pumpUntilRouteSettled(
+          tester,
+          genre,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, genre);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('genre-body')),
+          timeout: const Duration(seconds: 20),
+        );
+        expect(find.byKey(const ValueKey('genre-error')), findsNothing);
+        expect(find.byKey(const ValueKey('genre-series-empty')), findsNothing);
+
+        final series = find.byKey(
+          const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+        );
+        await tester.tap(find.byKey(const ValueKey('series-filter-order')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Title').last);
+        await pumpUntilRouteSettled(
+          tester,
+          series,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, series);
+
+        final tag = find.byKey(const ValueKey('series-tag-found-family'));
+        await pumpUntilRouteSettled(
+          tester,
+          tag,
+          timeout: const Duration(seconds: 20),
+        );
+        await tapVisible(tester, tag);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('tag-body')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        expect(find.byKey(const ValueKey('tag-error')), findsNothing);
+        expect(find.byKey(const ValueKey('tag-series-empty')), findsNothing);
       });
     });
 
