@@ -46,6 +46,9 @@ const (
 	// AdminPaymentSettingsServiceUpdateTenantStorePaymentSettingsProcedure is the fully-qualified name
 	// of the AdminPaymentSettingsService's UpdateTenantStorePaymentSettings RPC.
 	AdminPaymentSettingsServiceUpdateTenantStorePaymentSettingsProcedure = "/publira.admin.v1.AdminPaymentSettingsService/UpdateTenantStorePaymentSettings"
+	// AdminPaymentSettingsServiceListTenantStoreProductsProcedure is the fully-qualified name of the
+	// AdminPaymentSettingsService's ListTenantStoreProducts RPC.
+	AdminPaymentSettingsServiceListTenantStoreProductsProcedure = "/publira.admin.v1.AdminPaymentSettingsService/ListTenantStoreProducts"
 )
 
 // AdminPaymentSettingsServiceClient is a client for the
@@ -55,6 +58,7 @@ type AdminPaymentSettingsServiceClient interface {
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
 	UpdateTenantStorePaymentSettings(context.Context, *connect.Request[v1.UpdateTenantStorePaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantStorePaymentSettingsResponse], error)
+	ListTenantStoreProducts(context.Context, *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error)
 }
 
 // NewAdminPaymentSettingsServiceClient constructs a client for the
@@ -93,6 +97,12 @@ func NewAdminPaymentSettingsServiceClient(httpClient connect.HTTPClient, baseURL
 			connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("UpdateTenantStorePaymentSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		listTenantStoreProducts: connect.NewClient[v1.ListTenantStoreProductsRequest, v1.ListTenantStoreProductsResponse](
+			httpClient,
+			baseURL+AdminPaymentSettingsServiceListTenantStoreProductsProcedure,
+			connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("ListTenantStoreProducts")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -102,6 +112,7 @@ type adminPaymentSettingsServiceClient struct {
 	updateTenantPaymentSettings      *connect.Client[v1.UpdateTenantPaymentSettingsRequest, v1.UpdateTenantPaymentSettingsResponse]
 	getTenantStorePaymentSettings    *connect.Client[v1.GetTenantStorePaymentSettingsRequest, v1.GetTenantStorePaymentSettingsResponse]
 	updateTenantStorePaymentSettings *connect.Client[v1.UpdateTenantStorePaymentSettingsRequest, v1.UpdateTenantStorePaymentSettingsResponse]
+	listTenantStoreProducts          *connect.Client[v1.ListTenantStoreProductsRequest, v1.ListTenantStoreProductsResponse]
 }
 
 // GetTenantPaymentSettings calls
@@ -128,6 +139,12 @@ func (c *adminPaymentSettingsServiceClient) UpdateTenantStorePaymentSettings(ctx
 	return c.updateTenantStorePaymentSettings.CallUnary(ctx, req)
 }
 
+// ListTenantStoreProducts calls
+// publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts.
+func (c *adminPaymentSettingsServiceClient) ListTenantStoreProducts(ctx context.Context, req *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error) {
+	return c.listTenantStoreProducts.CallUnary(ctx, req)
+}
+
 // AdminPaymentSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminPaymentSettingsService service.
 type AdminPaymentSettingsServiceHandler interface {
@@ -135,6 +152,7 @@ type AdminPaymentSettingsServiceHandler interface {
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
 	UpdateTenantStorePaymentSettings(context.Context, *connect.Request[v1.UpdateTenantStorePaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantStorePaymentSettingsResponse], error)
+	ListTenantStoreProducts(context.Context, *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error)
 }
 
 // NewAdminPaymentSettingsServiceHandler builds an HTTP handler from the service implementation. It
@@ -168,6 +186,12 @@ func NewAdminPaymentSettingsServiceHandler(svc AdminPaymentSettingsServiceHandle
 		connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("UpdateTenantStorePaymentSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminPaymentSettingsServiceListTenantStoreProductsHandler := connect.NewUnaryHandler(
+		AdminPaymentSettingsServiceListTenantStoreProductsProcedure,
+		svc.ListTenantStoreProducts,
+		connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("ListTenantStoreProducts")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminPaymentSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure:
@@ -178,6 +202,8 @@ func NewAdminPaymentSettingsServiceHandler(svc AdminPaymentSettingsServiceHandle
 			adminPaymentSettingsServiceGetTenantStorePaymentSettingsHandler.ServeHTTP(w, r)
 		case AdminPaymentSettingsServiceUpdateTenantStorePaymentSettingsProcedure:
 			adminPaymentSettingsServiceUpdateTenantStorePaymentSettingsHandler.ServeHTTP(w, r)
+		case AdminPaymentSettingsServiceListTenantStoreProductsProcedure:
+			adminPaymentSettingsServiceListTenantStoreProductsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -201,4 +227,8 @@ func (UnimplementedAdminPaymentSettingsServiceHandler) GetTenantStorePaymentSett
 
 func (UnimplementedAdminPaymentSettingsServiceHandler) UpdateTenantStorePaymentSettings(context.Context, *connect.Request[v1.UpdateTenantStorePaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantStorePaymentSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings is not implemented"))
+}
+
+func (UnimplementedAdminPaymentSettingsServiceHandler) ListTenantStoreProducts(context.Context, *connect.Request[v1.ListTenantStoreProductsRequest]) (*connect.Response[v1.ListTenantStoreProductsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts is not implemented"))
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/storeproduct"
 )
 
 // tenantPaymentRevalidateTags lists the cached public tenant response that
@@ -255,4 +256,31 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 		return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateTenantStorePaymentSettingsResponse{Settings: settings}), nil
+}
+
+func (s *adminServer) ListTenantStoreProducts(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListTenantStoreProductsRequest],
+) (*connect.Response[publiraadminv1.ListTenantStoreProductsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.queriesFor(ctx).ListTenantStoreProductPrices(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list tenant store product prices", err, "tenant_id", tenant.ID.String())
+	}
+	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows))
+	for _, row := range rows {
+		products = append(products, &publiraadminv1.TenantStoreProduct{
+			ProductId:    storeproduct.ProductID(row.Price),
+			Price:        row.Price,
+			EpisodeCount: row.EpisodeCount,
+		})
+	}
+	return connect.NewResponse(&publiraadminv1.ListTenantStoreProductsResponse{Products: products}), nil
 }

@@ -131,9 +131,30 @@ message UpdateTenantStorePaymentSettingsResponse {
   TenantStorePaymentSettings settings = 1;
 }
 
+// A consumable product the tenant creates in App Store Connect and the Play
+// Console, one per price its catalog sells in the app at.
+message TenantStoreProduct {
+  // The same ID in both stores, derived from the price.
+  string product_id = 1;
+  // The price in JPY.
+  int32 price = 2;
+  // How many episodes sell at this price, drafts and scheduled ones included.
+  int32 episode_count = 3;
+}
+
+message ListTenantStoreProductsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListTenantStoreProductsResponse {
+  // Ordered by price. Only paid episodes the app may show and sell are counted.
+  repeated TenantStoreProduct products = 1;
+}
+
 service AdminPaymentSettingsService {
   rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
   rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
   rpc UpdateTenantStorePaymentSettings(UpdateTenantStorePaymentSettingsRequest) returns (UpdateTenantStorePaymentSettingsResponse) {}
+  rpc ListTenantStoreProducts(ListTenantStoreProductsRequest) returns (ListTenantStoreProductsResponse) {}
 }
