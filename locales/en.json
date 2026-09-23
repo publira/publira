@@ -3242,6 +3242,7 @@
       "list_start": "{$first}, {$rest}",
       "list_two": "{$first} and {$rest}",
       "more_series_failed": "Could not show more series. Try again.",
+      "open_link_failed": "Could not open the link.",
       "retry": "Retry",
       "series_count": "{$count} published series",
       "sign_in": "Sign in"
@@ -3376,6 +3377,11 @@
       "message": "“{$uri}” does not exist.",
       "title": "Page not found"
     },
+    "pages": {
+      "body_empty": "This page has no content yet.",
+      "load_failed": "Could not show this page. Try again.",
+      "not_found": "This page is no longer available."
+    },
     "notifications": {
       "announcement_posted_description": "“{$title}” was posted by the operator.",
       "announcement_posted_description_unknown": "The operator posted a new announcement.",
@@ -3419,7 +3425,6 @@
       "mark_all_read": "Mark all as read",
       "mark_all_read_failed": "Could not mark everything as read. Please try again later.",
       "open_link": "Open link",
-      "open_link_failed": "Could not open the link.",
       "banner_link": "Read the announcement",
       "banner_dismiss": "Close this announcement"
     },

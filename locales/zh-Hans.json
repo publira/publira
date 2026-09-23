@@ -3242,6 +3242,7 @@
       "list_start": "{$first}、{$rest}",
       "list_two": "{$first}和{$rest}",
       "more_series_failed": "无法显示更多系列。请重试。",
+      "open_link_failed": "无法打开链接。",
       "retry": "重试",
       "series_count": "已发布 {$count} 部系列",
       "sign_in": "登录"
@@ -3376,6 +3377,11 @@
       "message": "“{$uri}”不存在。",
       "title": "找不到页面"
     },
+    "pages": {
+      "body_empty": "此页面还没有内容。",
+      "load_failed": "无法显示该页面。请重试。",
+      "not_found": "该页面已无法查看。"
+    },
     "notifications": {
       "announcement_posted_description": "运营方发布了《{$title}》。",
       "announcement_posted_description_unknown": "运营方发布了新公告。",
@@ -3419,7 +3425,6 @@
       "mark_all_read": "全部标记为已读",
       "mark_all_read_failed": "无法将全部标记为已读。请稍后再试。",
       "open_link": "打开链接",
-      "open_link_failed": "无法打开链接。",
       "banner_link": "阅读公告",
       "banner_dismiss": "关闭该公告"
     },

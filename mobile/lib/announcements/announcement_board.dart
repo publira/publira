@@ -13,17 +13,12 @@ class AnnouncementBoard extends ChangeNotifier {
     required this._repository,
     DismissedAnnouncementStore? dismissed,
     DateTime Function()? now,
-    Future<bool> Function(Uri url)? launch,
   }) : _dismissed = dismissed ?? MemoryDismissedAnnouncementStore(),
-       _now = now ?? DateTime.now,
-       _launch = launch ?? _launchNothing;
-
-  static Future<bool> _launchNothing(Uri url) async => false;
+       _now = now ?? DateTime.now;
 
   final AnnouncementRepository _repository;
   final DismissedAnnouncementStore _dismissed;
   final DateTime Function() _now;
-  final Future<bool> Function(Uri url) _launch;
 
   Announcement? _pinned;
   var _dismissedId = '';
@@ -105,16 +100,6 @@ class AnnouncementBoard extends ChangeNotifier {
 
   /// Throws [AnnouncementFailure].
   Future<void> markAllRead() => _repository.markAllRead();
-
-  /// Hands [url], a page the app has no screen for, to the browser. Answers
-  /// whether something took it.
-  Future<bool> openExternal(Uri url) async {
-    try {
-      return await _launch(url);
-    } on Object {
-      return false;
-    }
-  }
 
   void _scheduleExpiry() {
     _expiry?.cancel();

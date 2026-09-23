@@ -47,6 +47,8 @@ class ConnectFixtureServer {
     this.notificationStatus = HttpStatus.ok,
     this.contactStatus = HttpStatus.ok,
     this.contactErrorCode = 'unavailable',
+    this.pageStatus = HttpStatus.ok,
+    Map<String, ({String title, String contentMarkdown})>? publishedPages,
     this.signupStatus = HttpStatus.ok,
     this.signupErrorCode = 'unavailable',
     this.verificationRequestStatus = HttpStatus.ok,
@@ -66,7 +68,7 @@ class ConnectFixtureServer {
     this.detailResponse,
     this.episodeResponse,
     this.tenantResponse,
-  });
+  }) : publishedPages = publishedPages ?? {};
 
   static const defaultTenantId = '018f0e6a-1000-7000-8000-000000000001';
 
@@ -531,6 +533,13 @@ class ConnectFixtureServer {
   int contactStatus;
   String contactErrorCode;
 
+  /// What every `PublicPagesService` RPC answers with, so a test can act out
+  /// an API that cannot be reached.
+  int pageStatus;
+
+  /// The tenant's published pages, keyed by slug in storage form.
+  Map<String, ({String title, String contentMarkdown})> publishedPages;
+
   /// What `CreateUser` answers with, and the Connect code of the error body
   /// when that is not 200, so a test can act out an API that refuses a
   /// sign-up for any of its reasons.
@@ -818,6 +827,43 @@ class ConnectFixtureServer {
           'email': memberEmail,
         },
       });
+      return;
+    }
+
+    if (path.endsWith('/GetPublishedPage')) {
+      final slug = _trimmed(body['slug']);
+      final page = publishedPages[slug];
+      if (pageStatus != HttpStatus.ok) {
+        await _write(request, pageStatus, {
+          'code': 'unavailable',
+          'message': 'unavailable',
+        });
+      } else if (page == null) {
+        await _write(request, HttpStatus.notFound, {
+          'code': 'not_found',
+          'message': 'page not found',
+        });
+      } else {
+        await _write(request, HttpStatus.ok, {
+          'page': {'slug': slug, 'title': page.title},
+          // protojson omits an empty body.
+          'version': {
+            if (page.contentMarkdown.isNotEmpty)
+              'contentMarkdown': page.contentMarkdown,
+          },
+        });
+      }
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedPageSlugs')) {
+      await _write(
+        request,
+        pageStatus,
+        pageStatus == HttpStatus.ok
+            ? {'slugs': publishedPages.keys.toList()}
+            : {'code': 'unavailable', 'message': 'unavailable'},
+      );
       return;
     }
 

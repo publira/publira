@@ -224,7 +224,7 @@ mobile/
 │   ├── config.dart               # --dart-define API / image / tenant configuration
 │   ├── api/                      # Connect JSON client, tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
-│   ├── announcements/            # AnnouncementBoard: the tenant's announcements, the pinned banner, and where a link leads
+│   ├── announcements/            # AnnouncementBoard: the tenant's announcements and the pinned banner
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
@@ -233,14 +233,15 @@ mobile/
 │   ├── forms/                    # Input shapes the forms share, such as what an email address looks like
 │   ├── l10n/                     # Locale resolution, delegates, and the catalog compiled into gen/
 │   ├── library/                  # The library's lists: continue reading, follows, and downloads
-│   ├── links/                    # Tenant-site URL parsing, incoming App Links, and the share sheet
+│   ├── links/                    # Tenant-site URL parsing, where a link a tenant wrote leads, incoming App Links, the share sheet, and the browser
 │   ├── navigation/               # The bottom navigation bar, its tabs, and navigation onto a tab's stack
 │   ├── offline/                  # Encrypted library of saved catalog, episodes, and pages
+│   ├── pages/                    # PageRepository: the tenant's published pages
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements
+│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
@@ -276,6 +277,7 @@ Every tab holds the catalog's routes and the sign-in forms under its own root, s
 | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
 | `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
 | `/announcements/:announcementId` | One announcement |
+| `/page/:pageSlug` | A page the tenant published, its slug one encoded segment (`/page/legal%2Fterms`) |
 | `/series/:seriesId` | Series details |
 | `/creators/:creatorId` | An author and the published series credited to them |
 | `/labels/:labelId` | A label and its published series |
@@ -419,6 +421,12 @@ A reader follows a series, and each author credited on it, from the series scree
 ## Announcements
 
 `/announcements` lists the tenant's announcements from the announcement RPCs of `AuthService`, the same list the site shows at its own `/announcements`, and `/announcements/:announcementId` shows one. Both are read without a session; a signed-in reader's session adds read state and the marks that set it. The pinned announcement (`GetPinnedAnnouncement`) is a banner at the top of the catalog. The announcements are online only, and the one thing written to the device is the id of the banner the reader closed, which `DismissedAnnouncementStore` keeps as the site's cookie does.
+
+## Published pages
+
+`/page/:pageSlug` sets a page the tenant published — its terms of service, its privacy policy, or anything else — from the Markdown `PublicPagesService/GetPublishedPage` answers with, in the app rather than in a browser. The page is online only.
+
+A link in an announcement or in a page body goes to a screen of the app when the app has one. A path on the tenant site it has none for opens the page screen when `ListPublishedPageSlugs` names it, and the site in the system browser otherwise; a URL on another site opens in the browser. Anything else, a `javascript:` or `file:` URL among them, does nothing. An image in a page is fetched only from an `https` address.
 
 ## Offline reading
 
