@@ -1,0 +1,492 @@
+{
+  "capabilities": [
+    {
+      "name": "Catalog top: the ranking and new-arrival shelves above every series",
+      "web": { "routes": ["[locale]/(site)"], "rpcs": ["ListRankedSeries"] },
+      "mobile": {
+        "routes": ["/"],
+        "rpcs": ["ListRankedSeries", "ListPublishedSeries"]
+      },
+      "tests": [
+        "launches onto a catalog populated from the public API",
+        "the shelves of the catalog stand above the whole of it",
+        "the seed tenant chart reaches the catalog"
+      ]
+    },
+    {
+      "name": "The list of every published series",
+      "web": {
+        "routes": ["[locale]/(site)/series"],
+        "rpcs": ["ListPublishedSeries"]
+      },
+      "mobile": { "routes": ["/"], "rpcs": ["ListPublishedSeries"] },
+      "tests": [
+        "catalog lists series from the seed tenant",
+        "empty catalog shows the empty-state copy"
+      ]
+    },
+    {
+      "name": "Browsing by genre and tag",
+      "web": {
+        "routes": [
+          "[locale]/(site)/genres",
+          "[locale]/(site)/genres/[genre_id]",
+          "[locale]/(site)/tags/[tag_slug]"
+        ],
+        "rpcs": ["ListPublishedGenres", "ListPublishedTags"]
+      },
+      "exception": "Not in the app yet: #2578."
+    },
+    {
+      "name": "The full ranking",
+      "web": {
+        "routes": ["[locale]/(site)/ranking"],
+        "rpcs": ["ListRankedSeries"]
+      },
+      "exception": "The app shows the first ten positions on its catalog; the whole chart is #2826."
+    },
+    {
+      "name": "The list of every author and every label",
+      "web": {
+        "routes": ["[locale]/(site)/creators", "[locale]/(site)/labels"],
+        "rpcs": ["ListPublishedCreators", "ListPublishedLabels"]
+      },
+      "exception": "Not in the app yet: #2826."
+    },
+    {
+      "name": "Search across series, authors, and labels",
+      "web": {
+        "routes": ["[locale]/(site)/search"],
+        "rpcs": [
+          "SearchPublishedSeries",
+          "SearchPublishedCreators",
+          "SearchPublishedLabels"
+        ]
+      },
+      "mobile": {
+        "routes": ["/search"],
+        "rpcs": [
+          "SearchPublishedSeries",
+          "SearchPublishedCreators",
+          "SearchPublishedLabels"
+        ]
+      },
+      "tests": [
+        "finds a series by part of its title and opens it",
+        "a keyword finds the seed series on the live API"
+      ]
+    },
+    {
+      "name": "An author and the series credited to them",
+      "web": {
+        "routes": ["[locale]/(site)/creators/[creator_id]"],
+        "rpcs": ["GetPublishedCreatorDetail"]
+      },
+      "mobile": {
+        "routes": ["/creators/:creatorId"],
+        "rpcs": ["GetPublishedCreatorDetail"]
+      },
+      "tests": [
+        "finds an author by name and opens their series",
+        "a name reaches the seed author and label on the live API"
+      ]
+    },
+    {
+      "name": "A label and its series",
+      "web": {
+        "routes": ["[locale]/(site)/labels/[label_id]"],
+        "rpcs": ["GetPublishedLabelDetail"]
+      },
+      "mobile": {
+        "routes": ["/labels/:labelId"],
+        "rpcs": ["GetPublishedLabelDetail"]
+      },
+      "tests": [
+        "finds a label by name and opens its series",
+        "a name reaches the seed author and label on the live API"
+      ]
+    },
+    {
+      "name": "A series and its episodes",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": ["GetSeriesDetail"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId"],
+        "rpcs": ["GetSeriesDetail", "GetSeriesEpisodeAccess"]
+      },
+      "tests": [
+        "opens series detail from the catalog list",
+        "seed series detail is reachable by public id"
+      ]
+    },
+    {
+      "name": "Reading progress, ratings, related series, and recommendations around a series",
+      "web": {
+        "rpcs": [
+          "GetMySeriesProgress",
+          "GetMySeriesRating",
+          "ListRelatedSeries",
+          "ListRecommendedSeries"
+        ]
+      },
+      "exception": "Not in the app yet: #2827."
+    },
+    {
+      "name": "The episode viewer, free and locked",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]/episodes/[episode_id]"],
+        "rpcs": ["GetEpisodeDetail"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["GetEpisodeDetail"]
+      },
+      "tests": [
+        "opens the reader on a free episode body",
+        "a free seed episode reaches the reader on the live API",
+        "a paid seed episode is locked for an anonymous reader"
+      ]
+    },
+    {
+      "name": "The page a member stopped on",
+      "web": {
+        "routes": [
+          "api/v1/series/[series_id]/episodes/[episode_id]/reading-position"
+        ],
+        "rpcs": ["GetMyReadingPosition", "SaveReadingPosition"]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["GetMyReadingPosition", "SaveReadingPosition"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "an episode opens on the page the member stopped on",
+        "the page a member turns to is recorded at the API"
+      ]
+    },
+    {
+      "name": "Finished-reading history",
+      "web": {
+        "routes": ["api/v1/series/[series_id]/episodes/[episode_id]/read"],
+        "rpcs": ["MarkEpisodeAsRead", "ListMyEpisodeReads"]
+      },
+      "mobile": {
+        "routes": ["/account/reading-history"],
+        "rpcs": ["MarkEpisodeAsRead", "ListMyEpisodeReads"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "the seed member finishes an episode and the API records it",
+        "an episode the seed member finished is in their history"
+      ]
+    },
+    {
+      "name": "My Page: what arrived in the follows and what the member was reading",
+      "web": {
+        "routes": ["[locale]/(site)/my"],
+        "rpcs": ["ListMyFollowUpdates", "ListMyRecentSeries"]
+      },
+      "mobile": {
+        "routes": ["/account/follow-updates", "/library"],
+        "rpcs": ["ListMyFollowUpdates", "ListMyRecentSeries"]
+      },
+      "sharedRecord": true,
+      "tests": ["the seed member finds what their follows published"]
+    },
+    {
+      "name": "Following series and authors",
+      "web": {
+        "routes": ["[locale]/(site)/settings/follows"],
+        "rpcs": ["Follow", "Unfollow", "GetMyFollowStatus", "ListMyFollows"]
+      },
+      "mobile": {
+        "routes": ["/library"],
+        "rpcs": ["Follow", "Unfollow", "GetMyFollowStatus", "ListMyFollows"]
+      }
+    },
+    {
+      "name": "Rating an episode",
+      "web": { "rpcs": ["RateEpisode", "GetMyEpisodeRating"] },
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["RateEpisode", "GetMyEpisodeRating"]
+      }
+    },
+    {
+      "name": "Episode comments",
+      "web": {
+        "rpcs": [
+          "ListEpisodeComments",
+          "ListMyEpisodeComments",
+          "PostEpisodeComment",
+          "ReportEpisodeComment",
+          "WithdrawEpisodeComment"
+        ]
+      },
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId/comments"],
+        "rpcs": [
+          "ListEpisodeComments",
+          "ListMyEpisodeComments",
+          "PostEpisodeComment",
+          "ReportEpisodeComment",
+          "WithdrawEpisodeComment"
+        ]
+      }
+    },
+    {
+      "name": "Notification inbox",
+      "web": {
+        "routes": ["[locale]/(site)/notifications"],
+        "rpcs": [
+          "ListNotifications",
+          "CountUnreadNotifications",
+          "MarkNotificationAsRead",
+          "MarkAllNotificationsAsRead"
+        ]
+      },
+      "mobile": {
+        "routes": ["/notifications"],
+        "rpcs": [
+          "ListNotifications",
+          "CountUnreadNotifications",
+          "MarkNotificationAsRead",
+          "MarkAllNotificationsAsRead"
+        ]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a notification no push delivered is found in the inbox",
+        "the seed member reads and clears a notification from the live API"
+      ]
+    },
+    {
+      "name": "Push notifications",
+      "web": { "rpcs": ["RegisterPushDevice", "UnregisterPushDevice"] },
+      "mobile": { "rpcs": ["RegisterPushDevice", "UnregisterPushDevice"] }
+    },
+    {
+      "name": "Announcements and the pinned banner",
+      "web": {
+        "routes": ["[locale]/(site)/announcements"],
+        "rpcs": [
+          "ListAnnouncements",
+          "GetAnnouncement",
+          "GetPinnedAnnouncement",
+          "MarkAnnouncementAsRead",
+          "MarkAllAnnouncementsAsRead"
+        ]
+      },
+      "mobile": {
+        "routes": ["/announcements", "/announcements/:announcementId"],
+        "rpcs": [
+          "ListAnnouncements",
+          "GetAnnouncement",
+          "GetPinnedAnnouncement",
+          "MarkAnnouncementAsRead",
+          "MarkAllAnnouncementsAsRead"
+        ]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a pinned announcement is read, closed, and marked read",
+        "a visitor reads the live announcements",
+        "the seed member reads a live announcement and it stays read"
+      ]
+    },
+    {
+      "name": "A page the tenant published",
+      "web": {
+        "routes": ["[locale]/(site)/page/[...slug]"],
+        "rpcs": ["GetPublishedPage", "ListPublishedPageSlugs"]
+      },
+      "mobile": {
+        "routes": ["/page/:pageSlug"],
+        "rpcs": ["GetPublishedPage", "ListPublishedPageSlugs"]
+      },
+      "tests": ["a published page is set from its Markdown"]
+    },
+    {
+      "name": "The list of the tenant's published pages",
+      "web": { "rpcs": ["ListPublishedPages"] },
+      "exception": "The storefront lists them in its footer; the app has no list yet: #2829."
+    },
+    {
+      "name": "Buying an episode and the purchase library",
+      "web": {
+        "routes": ["[locale]/(site)/my/library"],
+        "rpcs": ["StartEpisodeCheckout", "ListMyPurchases"]
+      },
+      "mobile": {
+        "routes": ["/account/purchases", "/checkout/return"],
+        "rpcs": ["StartEpisodeCheckout", "ListMyPurchases"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a purchase made in the browser opens the episode",
+        "the seed member opens a purchase from any device"
+      ]
+    },
+    {
+      "name": "Signing in",
+      "web": {
+        "routes": ["[locale]/(auth)/login"],
+        "rpcs": ["Login", "GetMe"]
+      },
+      "mobile": { "routes": ["/sign-in"], "rpcs": ["Login", "GetMe"] },
+      "tests": [
+        "signing in unlocks a paid episode body",
+        "the seed member signs in and unlocks their ticketed episode"
+      ]
+    },
+    {
+      "name": "Signing out at the API",
+      "web": { "rpcs": ["Logout"] },
+      "exception": "The app drops its session without telling the API, which only audits the sign-out: #2830."
+    },
+    {
+      "name": "Signing up and confirming the address",
+      "web": {
+        "routes": [
+          "[locale]/(auth)/signup",
+          "[locale]/(auth)/signup/pending",
+          "[locale]/(auth)/verify"
+        ],
+        "rpcs": ["CreateUser", "VerifyUserEmail"]
+      },
+      "mobile": {
+        "routes": ["/sign-up", "/verify"],
+        "rpcs": ["CreateUser", "VerifyUserEmail"]
+      },
+      "tests": [
+        "a reader signs up, opens the confirmation link, and signs in",
+        "the live API takes a sign-up and holds the account back"
+      ]
+    },
+    {
+      "name": "Asking for a fresh confirmation link",
+      "web": {
+        "routes": [
+          "[locale]/(auth)/resend-verification",
+          "[locale]/(auth)/resend-verification/requested"
+        ],
+        "rpcs": ["RequestEmailVerification"]
+      },
+      "mobile": {
+        "routes": ["/resend-verification"],
+        "rpcs": ["RequestEmailVerification"]
+      },
+      "tests": ["an unconfirmed address is sent a fresh confirmation link"]
+    },
+    {
+      "name": "Resetting a forgotten password",
+      "web": {
+        "routes": [
+          "[locale]/(auth)/reset-password",
+          "[locale]/(auth)/reset-password/requested",
+          "[locale]/(auth)/confirm-password"
+        ],
+        "rpcs": ["RequestPasswordReset", "ConfirmPasswordReset"]
+      },
+      "mobile": {
+        "routes": ["/reset-password", "/confirm-password"],
+        "rpcs": ["RequestPasswordReset", "ConfirmPasswordReset"]
+      },
+      "tests": [
+        "a member who forgot their password sets a new one and signs in",
+        "the live API takes a password reset request"
+      ]
+    },
+    {
+      "name": "Account settings: name, address, password, and deleting the account",
+      "web": {
+        "routes": [
+          "[locale]/(site)/settings",
+          "[locale]/(site)/settings/security"
+        ],
+        "rpcs": ["UpdateMe", "ChangePassword", "RequestEmailChange", "DeleteMe"]
+      },
+      "mobile": {
+        "routes": [
+          "/account",
+          "/account/name",
+          "/account/email",
+          "/account/password",
+          "/account/delete"
+        ],
+        "rpcs": ["UpdateMe", "ChangePassword", "RequestEmailChange", "DeleteMe"]
+      },
+      "tests": [
+        "a member renames the account and changes the password in the app",
+        "deleting the account signs the device out for good"
+      ]
+    },
+    {
+      "name": "Confirming a new email address",
+      "web": {
+        "routes": ["[locale]/(auth)/confirm-email"],
+        "rpcs": ["ConfirmEmailChange"]
+      },
+      "mobile": {
+        "routes": ["/confirm-email"],
+        "rpcs": ["ConfirmEmailChange"]
+      },
+      "tests": ["an email change is requested and its link opens the app"]
+    },
+    {
+      "name": "Email notification settings",
+      "web": {
+        "routes": ["[locale]/(site)/settings/notifications"],
+        "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
+      },
+      "exception": "Not in the app yet: #2828."
+    },
+    {
+      "name": "Viewer preferences",
+      "web": { "rpcs": ["GetViewerPreferences", "UpdateViewerPreferences"] },
+      "exception": "The one preference widens the web viewer to the whole browser window and hides the site header. The app's viewer always fills the screen, so there is nothing for it to change."
+    },
+    {
+      "name": "Writing to the tenant",
+      "web": {
+        "routes": ["[locale]/(site)/contact", "[locale]/(site)/contact/sent"],
+        "rpcs": ["SubmitContactMessage"]
+      },
+      "mobile": {
+        "routes": ["/account/contact"],
+        "rpcs": ["SubmitContactMessage"]
+      }
+    },
+    {
+      "name": "Resolving the tenant from the host it is reached on",
+      "web": { "rpcs": ["GetTenantByDomain"] },
+      "mobile": { "rpcs": ["GetTenantByDomain"] }
+    },
+    {
+      "name": "The tenant's own settings: comments, payments, sign-up requirements",
+      "web": { "rpcs": ["GetTenant"] },
+      "mobile": { "rpcs": ["GetTenant"] }
+    },
+    {
+      "name": "Counting what a reader opens",
+      "web": { "routes": ["api/v1/views"], "rpcs": ["RecordContentView"] },
+      "exception": "Not in the app yet: #2825."
+    },
+    {
+      "name": "Stripe's payment webhook",
+      "web": {
+        "routes": ["api/v1/webhook/stripe"],
+        "rpcs": ["ProcessStripeWebhook"]
+      },
+      "exception": "Stripe's servers call it; no reader reaches it. A purchase made from the app lands here too."
+    },
+    {
+      "name": "The files that hand the tenant's links to its app",
+      "web": { "rpcs": ["GetTenantMobileAppAssociation"] },
+      "exception": "The operating system reads them to open the app; the app is the other end of them rather than a reader of them."
+    }
+  ]
+}

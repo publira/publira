@@ -634,8 +634,11 @@ The screens are taken on an attached device or emulator, which the app is built 
 - A paid episode saved by a member closing again once they sign out, and leaving the device once the API takes the grant back
 - An episode opening on the page the API already held for the member, and the page they turn to reaching the API
 - An episode reopening on its saved page once the API is gone
+- A notification and an announcement opened by the seed member, and the read mark each sends reaching the API
 
-By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`), signing in as `member@example.com`, who holds a seeded access ticket for the paid episode.
+`integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-host` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-host` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
+
+By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`), signing in as `member@example.com`, who holds a seeded access ticket for the paid episode. The live group also reads the unread announcement and notification `db/seeds/scenarios/310_mobile_reader_records.sql` gives that member, which `scripts/e2e-db-setup.sh` applies after the stack's own setup; apply it again before re-running against a stack that is already up.
 
 ```bash
 # In the Dev Container, boot the emulator first (see "Android emulator in the Dev Container")

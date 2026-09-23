@@ -1841,6 +1841,47 @@ void main() {
       ];
     }
 
+    /// Whether the API holds the row [id] of `rows` in [procedure]'s first
+    /// page as read for [member], or null when the page does not list it.
+    Future<bool?> isReadAtApi(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member, {
+      required String procedure,
+      required String rows,
+      required String id,
+    }) async {
+      final tenantId = await member.tenants.resolve();
+      final body = await member.client.unary(
+        procedure,
+        {
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: member.session.accessToken,
+      );
+      for (final row in body[rows] as List? ?? const []) {
+        if ((row as Map)['id'] == id) {
+          return row['isRead'] == true;
+        }
+      }
+      return null;
+    }
+
+    /// Waits for the API to answer [read] with true: a read mark is sent
+    /// without holding up the screen, so it may land a moment after it.
+    Future<void> pumpUntilReadAtApi(
+      WidgetTester tester,
+      Future<bool?> Function() read,
+    ) async {
+      final end = DateTime.now().add(const Duration(seconds: 10));
+      var isRead = await read();
+      while (isRead != true && DateTime.now().isBefore(end)) {
+        await tester.pump(const Duration(milliseconds: 200));
+        isRead = await read();
+      }
+      expect(isRead, isTrue);
+    }
+
     /// Waits for the API to list the free seed episode among what [member]
     /// finished. The finish is sent once the last page is drawn, without
     /// holding up the reader, so it may land a moment after the page does.
@@ -2425,16 +2466,31 @@ void main() {
       });
     });
 
-    testApp('the seed member reads their inbox from the live API', (
+    testApp('the seed member reads and clears a notification from the live API', (
       tester,
     ) async {
       await withFailureScreenshot(tester, 'live-notifications', () async {
+        final member = await signInSeedMember();
+        Future<bool?> isRead() => isReadAtApi(
+          member,
+          procedure: '/publira.v1.NotificationService/ListNotifications',
+          rows: 'notifications',
+          id: ConnectFixtureServer.memberNotificationId,
+        );
+        // A row already read would pass whether or not the app sent a mark.
+        expect(
+          await isRead(),
+          isFalse,
+          reason:
+              'the stack must start from '
+              'db/seeds/scenarios/310_mobile_reader_records.sql',
+        );
+
         await pumpLive(tester, initialLocation: AppRoutes.notifications);
         await pumpUntilRouteSettled(
           tester,
           find.byKey(const ValueKey('notifications-sign-in')),
         );
-
         await tapReachable(
           tester,
           find.byKey(const ValueKey('notifications-sign-in')),
@@ -2456,39 +2512,98 @@ void main() {
           find.byKey(const ValueKey('sign-in-submit')),
         );
 
-        // The development seed delivers the member no notification, so what
-        // this proves is that both inbox reads are answered, not what they
-        // hold.
         await pumpUntilRouteSettled(
           tester,
-          find.byWidgetPredicate(
-            (widget) =>
-                widget.key == const ValueKey('notifications-empty') ||
-                widget.key == const ValueKey('notifications-list'),
+          find.byKey(
+            const ValueKey(
+              'notification-unread-${ConnectFixtureServer.memberNotificationId}',
+            ),
           ),
           timeout: const Duration(seconds: 20),
         );
-        expect(find.byKey(const ValueKey('notifications-error')), findsNothing);
+        await tapReachable(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'notification-${ConnectFixtureServer.memberNotificationId}',
+            ),
+          ),
+        );
+        await pumpUntilPagesDrawn(tester);
+
+        // The site reads the same record, so the bell it shows this member
+        // has the row read as well.
+        await pumpUntilReadAtApi(tester, isRead);
       });
     });
 
     testApp('a visitor reads the live announcements', (tester) async {
       await withFailureScreenshot(tester, 'live-announcements', () async {
         await pumpLive(tester, initialLocation: AppRoutes.announcements);
-        // The development seed posts no announcement for this tenant, so what
-        // this proves is that the list is answered without a session and with
-        // one, not what it holds.
-        final answered = find.byWidgetPredicate(
-          (widget) =>
-              widget.key == const ValueKey('announcements-empty') ||
-              widget.key == const ValueKey('announcements-list'),
-        );
         await pumpUntilRouteSettled(
           tester,
-          answered,
+          find.byKey(
+            const ValueKey(
+              'announcement-row-${ConnectFixtureServer.memberAnnouncementId}',
+            ),
+          ),
           timeout: const Duration(seconds: 20),
         );
         expect(find.byKey(const ValueKey('announcements-error')), findsNothing);
+      });
+    });
+
+    testApp('the seed member reads a live announcement and it stays read', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-announcement-read', () async {
+        final member = await signInSeedMember();
+        Future<bool?> isRead() => isReadAtApi(
+          member,
+          procedure: '/publira.v1.AuthService/ListAnnouncements',
+          rows: 'announcements',
+          id: ConnectFixtureServer.memberAnnouncementId,
+        );
+        expect(
+          await isRead(),
+          isFalse,
+          reason:
+              'the stack must start from '
+              'db/seeds/scenarios/310_mobile_reader_records.sql',
+        );
+
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.announcements,
+          session: member.session,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'announcement-unread-${ConnectFixtureServer.memberAnnouncementId}',
+            ),
+          ),
+          timeout: const Duration(seconds: 20),
+        );
+        await tapReachable(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'announcement-row-${ConnectFixtureServer.memberAnnouncementId}',
+            ),
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(
+            const ValueKey(
+              'announcement-${ConnectFixtureServer.memberAnnouncementId}',
+            ),
+          ),
+        );
+
+        await pumpUntilReadAtApi(tester, isRead);
       });
     });
 

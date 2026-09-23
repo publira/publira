@@ -383,6 +383,12 @@ jobs:
       - name: Validate / Lint and Format
         run: pnpm check
 
+      # Here rather than in Check, whose path filter leaves out mobile/: the
+      # matrix is held both to web-host and to the app, and this job runs for
+      # a change to either.
+      - name: Validate / Reader parity
+        run: pnpm reader-parity:check
+
   check:
     name: Check
     needs: changes
@@ -770,7 +776,7 @@ jobs:
         run: |
           set -euo pipefail
           bash e2e/scripts/up.sh
-          bash e2e/scripts/db-setup.sh
+          bash mobile/scripts/e2e-db-setup.sh
           bash e2e/scripts/server.sh start-wait
 
       - name: Enable KVM
