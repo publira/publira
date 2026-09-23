@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
@@ -14,6 +15,9 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/config.dart';
+import 'package:publira/content_views/anonymous_id_store.dart';
+import 'package:publira/content_views/content_view_repository.dart';
+import 'package:publira/content_views/http_content_view_repository.dart';
 import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/router.dart';
 
@@ -158,6 +162,7 @@ void main() {
           ),
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
+          anonymousIds: MemoryAnonymousIdStore(),
           offline: FileOfflineLibrary(
             tenantHost: 'localhost',
             root: () async => offlineRoot,
@@ -1697,6 +1702,7 @@ void main() {
           ),
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
+          anonymousIds: MemoryAnonymousIdStore(),
           offline: FileOfflineLibrary(
             tenantHost: liveTenantHost,
             root: () async => offlineRoot,
@@ -2607,6 +2613,77 @@ void main() {
       });
     });
 
+    group('content views', () {
+      /// The views recorder the app builds, as [accessToken] would send them.
+      HttpContentViewRepository contentViews({
+        String accessToken = '',
+        AnonymousIdStore? anonymousIds,
+      }) {
+        final httpClient = http.Client();
+        addTearDown(httpClient.close);
+        final client = ConnectClient(
+          baseUrl: liveBaseUrl,
+          httpClient: httpClient,
+          accessToken: () => accessToken,
+        );
+        return HttpContentViewRepository(
+          client: client,
+          tenants: TenantResolver(client: client, tenantHost: liveTenantHost),
+          anonymousIds: anonymousIds ?? MemoryAnonymousIdStore(),
+        );
+      }
+
+      test('the live API takes a series and an episode view', () async {
+        final views = contentViews();
+
+        await views.record(
+          ContentViewKind.series,
+          ConnectFixtureServer.seedSeriesId,
+        );
+        await views.record(
+          ContentViewKind.episode,
+          ConnectFixtureServer.seedEpisodeId,
+        );
+      });
+
+      test('the live API takes a signed-in reader\'s view', () async {
+        final member = await signInSeedMember();
+
+        await contentViews(
+          accessToken: member.session.accessToken,
+        ).record(ContentViewKind.episode, ConnectFixtureServer.seedEpisodeId);
+      });
+
+      test('the live API refuses a view of a work it does not show', () async {
+        await expectLater(
+          contentViews().record(ContentViewKind.series, 'MissingSERS01'),
+          throwsA(
+            isA<ConnectException>().having(
+              (error) => error.isNotFound,
+              'isNotFound',
+              isTrue,
+            ),
+          ),
+        );
+      });
+
+      test(
+        'the Secure identifier the live API mints is not kept over HTTP',
+        () async {
+          final anonymousIds = MemoryAnonymousIdStore();
+
+          await contentViews(
+            anonymousIds: anonymousIds,
+          ).record(ContentViewKind.series, ConnectFixtureServer.seedSeriesId);
+
+          expect(
+            anonymousIds.anonymousId,
+            Uri.parse(liveBaseUrl).isScheme('https') ? isNotNull : isNull,
+          );
+        },
+      );
+    });
+
     testApp('wrong credentials are rejected by the live API', (tester) async {
       await withFailureScreenshot(tester, 'live-sign-in-error', () async {
         await pumpLive(tester, initialLocation: AppRoutes.signIn);
@@ -2713,6 +2790,7 @@ void main() {
           ),
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
+          anonymousIds: MemoryAnonymousIdStore(),
           offline: offline,
         ),
       );

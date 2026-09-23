@@ -19,6 +19,9 @@ import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/contact/http_contact_repository.dart';
+import 'package:publira/content_views/anonymous_id_store.dart';
+import 'package:publira/content_views/content_view_repository.dart';
+import 'package:publira/content_views/http_content_view_repository.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/follow/http_follow_repository.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -67,6 +70,7 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.comments,
     this.follows,
+    this.contentViews,
     this.notifications,
     this.announcements,
     this.contact,
@@ -106,6 +110,10 @@ class PubliraApp extends StatefulWidget {
   /// on-device test replaces so a closed banner does not carry from one test
   /// to the next.
   ///
+  /// [anonymousIds] keeps the identifier a signed-out reader's views are
+  /// counted under, which an on-device test replaces so one test's reader is
+  /// not the next one's.
+  ///
   /// [messaging] is the device's notification service, which `main` resolves
   /// before the first frame because initializing Firebase is asynchronous. It
   /// is `null` for a build carrying no Firebase project, and push is off then.
@@ -125,6 +133,7 @@ class PubliraApp extends StatefulWidget {
     CheckoutLauncher? checkoutLauncher,
     DismissedAnnouncementStore dismissedAnnouncements =
         const FileDismissedAnnouncementStore(),
+    AnonymousIdStore anonymousIds = const FileAnonymousIdStore(),
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library =
@@ -163,6 +172,11 @@ class PubliraApp extends StatefulWidget {
       auth: auth,
       comments: HttpCommentRepository(client: client, tenants: tenants),
       follows: HttpFollowRepository(client: client, tenants: tenants),
+      contentViews: HttpContentViewRepository(
+        client: client,
+        tenants: tenants,
+        anonymousIds: anonymousIds,
+      ),
       notifications: NotificationInbox(
         repository: HttpNotificationRepository(
           client: client,
@@ -230,6 +244,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// follows at all, and no screen then offers to follow anything.
   final FollowRepository? follows;
+
+  /// Where a series or an episode the reader opened is counted.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app without
+  /// recording any view.
+  final ContentViewRepository? contentViews;
 
   /// The signed-in reader's notification inbox and its unread count.
   ///
@@ -672,22 +693,25 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                 repository: widget.comments,
                 child: FollowScope(
                   repository: widget.follows,
-                  child: NotificationScope(
-                    inbox: widget.notifications,
-                    child: AnnouncementScope(
-                      board: widget.announcements,
-                      child: ContactScope(
-                        repository: widget.contact,
-                        child: PageScope(
-                          repository: widget.pages,
-                          child: PurchaseScope(
-                            repository: widget.purchases,
-                            launcher: widget.checkoutLauncher,
-                            child: AgeRatingConfirmationScope(
-                              controller: _ageRating,
-                              child: ScreenCaptureScope(
-                                notices: widget.screenCaptures,
-                                child: app,
+                  child: ContentViewScope(
+                    repository: widget.contentViews,
+                    child: NotificationScope(
+                      inbox: widget.notifications,
+                      child: AnnouncementScope(
+                        board: widget.announcements,
+                        child: ContactScope(
+                          repository: widget.contact,
+                          child: PageScope(
+                            repository: widget.pages,
+                            child: PurchaseScope(
+                              repository: widget.purchases,
+                              launcher: widget.checkoutLauncher,
+                              child: AgeRatingConfirmationScope(
+                                controller: _ageRating,
+                                child: ScreenCaptureScope(
+                                  notices: widget.screenCaptures,
+                                  child: app,
+                                ),
                               ),
                             ),
                           ),

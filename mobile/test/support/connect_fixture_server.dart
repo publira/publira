@@ -689,6 +689,18 @@ class ConnectFixtureServer {
   /// shape the client is not expecting.
   Object? tenantResponse;
 
+  /// The status `RecordContentView` answers with.
+  int contentViewStatus = HttpStatus.ok;
+
+  /// The `Set-Cookie` value `RecordContentView` answers a caller with when it
+  /// sent neither a bearer nor a `publira_aid` cookie, the way the API mints
+  /// one. Secure, as the API's is.
+  String mintedAnonymousIdCookie =
+      'publira_aid=$mintedAnonymousId; Path=/; Max-Age=15552000; HttpOnly; '
+      'Secure; SameSite=Lax';
+
+  static const mintedAnonymousId = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+
   /// Headers of the last `GET /images/...` request, so a test can assert what
   /// the reader sends to image-server.
   HttpHeaders? lastImageRequestHeaders;
@@ -1176,6 +1188,27 @@ class ConnectFixtureServer {
         if (pushDeviceStatus != HttpStatus.ok) 'code': 'unavailable',
         if (pushDeviceStatus != HttpStatus.ok) 'message': 'unavailable',
       });
+      return;
+    }
+
+    if (path.endsWith('/RecordContentView')) {
+      if (contentViewStatus != HttpStatus.ok) {
+        await _write(request, contentViewStatus, const {
+          'code': 'unavailable',
+          'message': 'unavailable',
+        });
+        return;
+      }
+      final identified =
+          request.headers.value(HttpHeaders.authorizationHeader) != null ||
+          request.cookies.any((cookie) => cookie.name == 'publira_aid');
+      if (!identified) {
+        request.response.headers.add(
+          HttpHeaders.setCookieHeader,
+          mintedAnonymousIdCookie,
+        );
+      }
+      await _write(request, HttpStatus.ok, const <String, Object?>{});
       return;
     }
 
