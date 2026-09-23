@@ -29,6 +29,7 @@ export type {
   TenantAndroidAppAssociation,
   TenantCommunityLimitOverrides,
   TenantIosAppAssociation,
+  TenantLegalPage,
   TenantMobileAppAssociation,
   TenantPurchaseSettings,
   TenantRetentionOverrides,

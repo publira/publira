@@ -1882,6 +1882,30 @@
           "required": "請選擇需要證明年齡的分級。"
         }
       },
+      "legal_pages": {
+        "title": "服務條款與隱私權政策",
+        "description": "從已發布的頁面中選擇哪一個作為服務條款、哪一個作為隱私權政策。店面和應用程式會連結到它們，讀者在建立帳戶時需同意這些頁面。",
+        "terms": "服務條款",
+        "terms_description": "讀者作為服務條款同意的頁面。",
+        "privacy": "隱私權政策",
+        "privacy_description": "讀者作為隱私權政策同意的頁面。",
+        "placeholder": "搜尋已發布的頁面",
+        "empty": "沒有相符的已發布頁面。",
+        "none": "無",
+        "option": "{$title}（{$slug}）",
+        "option_unpublished": "{$title}（{$slug}）— 未發布",
+        "unpublished": "「{$title}」已下架，因此沒有任何地方連結到它。請重新發布，或選擇其他頁面。",
+        "load_error_hint": "此時儲存會清除已儲存的頁面設定，請先重新載入頁面，再進行修改。",
+        "submit": "儲存服務條款與隱私權政策",
+        "saved": "服務條款與隱私權政策已儲存。",
+        "load_failed": "無法載入服務條款與隱私權政策。請稍後再試。",
+        "save_failed": "無法儲存服務條款與隱私權政策。請稍後再試。",
+        "validation": {
+          "page_invalid": "請從清單中選擇頁面。",
+          "terms_unavailable": "選為服務條款的頁面未發布。請重新載入頁面後再選擇。",
+          "privacy_unavailable": "選為隱私權政策的頁面未發布。請重新載入頁面後再選擇。"
+        }
+      },
       "icon": {
         "title": "圖示",
         "description": "公開網站在瀏覽器分頁與網址列中顯示的圖示。",

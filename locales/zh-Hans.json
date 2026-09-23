@@ -1882,6 +1882,30 @@
           "required": "请选择需要证明年龄的分级。"
         }
       },
+      "legal_pages": {
+        "title": "服务条款与隐私政策",
+        "description": "从已发布的页面中选择哪一个作为服务条款、哪一个作为隐私政策。店面和应用会链接到它们，读者在创建账户时需同意这些页面。",
+        "terms": "服务条款",
+        "terms_description": "读者作为服务条款同意的页面。",
+        "privacy": "隐私政策",
+        "privacy_description": "读者作为隐私政策同意的页面。",
+        "placeholder": "搜索已发布的页面",
+        "empty": "没有匹配的已发布页面。",
+        "none": "无",
+        "option": "{$title}（{$slug}）",
+        "option_unpublished": "{$title}（{$slug}）— 未发布",
+        "unpublished": "“{$title}”已下架，因此没有任何地方链接到它。请重新发布，或选择其他页面。",
+        "load_error_hint": "此时保存会清除已保存的页面设置，请先重新加载页面，然后再修改。",
+        "submit": "保存服务条款与隐私政策",
+        "saved": "服务条款与隐私政策已保存。",
+        "load_failed": "无法加载服务条款与隐私政策。请稍后再试。",
+        "save_failed": "无法保存服务条款与隐私政策。请稍后再试。",
+        "validation": {
+          "page_invalid": "请从列表中选择页面。",
+          "terms_unavailable": "选为服务条款的页面未发布。请重新加载页面后再选择。",
+          "privacy_unavailable": "选为隐私政策的页面未发布。请重新加载页面后再选择。"
+        }
+      },
       "icon": {
         "title": "图标",
         "description": "公开站点在浏览器标签页和地址栏中显示的图标。",

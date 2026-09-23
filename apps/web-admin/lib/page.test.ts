@@ -156,6 +156,73 @@ const slugViolation = (reason = "") =>
     },
   ]);
 
+describe("listPublishedPages", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("walks every page of the list and keeps only the published pages, sorted by title", async () => {
+    mockListPages
+      .mockResolvedValueOnce({
+        nextToken: "second",
+        pages: [
+          { ...page("p1", "Terms"), publishedVersionId: "v1" },
+          page("p2", "Draft"),
+        ],
+      })
+      .mockResolvedValueOnce({
+        nextToken: "",
+        pages: [{ ...page("p3", "Privacy"), publishedVersionId: "v3" }],
+      });
+
+    const { listPublishedPages } = await import("./page");
+    const result = await listPublishedPages("TENANT001", "en");
+
+    expect(mockListPages).toHaveBeenNthCalledWith(
+      2,
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "second" },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      pages: [
+        { id: "p3", title: "Privacy" },
+        { id: "p1", title: "Terms" },
+      ],
+    });
+  });
+
+  // A partial list would read as "these are all the published pages" and hide
+  // the rest from the picker.
+  it("fails rather than answering a list whose walk did not finish", async () => {
+    mockListPages.mockResolvedValue({
+      nextToken: "same",
+      pages: [{ ...page("p1", "Terms"), publishedVersionId: "v1" }],
+    });
+
+    const { listPublishedPages } = await import("./page");
+    const result = await listPublishedPages("TENANT001", "en");
+
+    expect(result).toEqual({
+      message: "Could not load the page. Please try again later.",
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("asks for a sign-in when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValueOnce("");
+
+    const { listPublishedPages } = await import("./page");
+    const result = await listPublishedPages("TENANT001", "en");
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockListPages).not.toHaveBeenCalled();
+  });
+});
+
 describe("createPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();

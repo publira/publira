@@ -26,11 +26,13 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { listPublishedPages } from "#lib/page";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantAgeVerification } from "#lib/tenant-age-verification";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
@@ -39,12 +41,14 @@ import { TenantAgeVerificationForm } from "./_components/tenant-age-verification
 import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
 import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
+import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 import {
   updateSiteSettingsAction,
   updateTenantAgeVerificationAction,
   updateTenantCommentSettingsAction,
   updateTenantDefaultLocaleAction,
+  updateTenantLegalPagesAction,
   updateTenantTimezoneAction,
 } from "./_lib/actions";
 
@@ -87,6 +91,11 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
     </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-48" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </AdminSection>
   </AdminSections>
 );
 
@@ -106,6 +115,8 @@ const SettingsForms = async () => {
     defaultLocaleResult,
     commentSettingsResult,
     ageVerificationResult,
+    legalPagesResult,
+    publishedPagesResult,
     currentUserResult,
     options,
   ] = await Promise.all([
@@ -114,6 +125,8 @@ const SettingsForms = async () => {
     getTenantDefaultLocale(tenantId, locale),
     getTenantCommentSettings(tenantId, locale),
     getTenantAgeVerification(tenantId, locale),
+    getTenantLegalPages(tenantId, locale),
+    listPublishedPages(tenantId, locale),
     getAdminCurrentUser(tenantId),
     tenantDefaultLocaleOptions(),
   ]);
@@ -124,6 +137,8 @@ const SettingsForms = async () => {
     defaultLocaleResult,
     commentSettingsResult,
     ageVerificationResult,
+    legalPagesResult,
+    publishedPagesResult,
     currentUserResult
   );
 
@@ -195,6 +210,31 @@ const SettingsForms = async () => {
         }
         loadErrorMessage={
           ageVerificationResult.ok ? undefined : ageVerificationResult.message
+        }
+      />
+
+      <TenantLegalPagesForm
+        action={updateTenantLegalPagesAction}
+        canEdit={canEdit}
+        initialPages={legalPagesResult.ok ? legalPagesResult.pages : undefined}
+        loadErrorMessage={
+          legalPagesResult.ok ? undefined : legalPagesResult.message
+        }
+        // Listing pages is an admin RPC, so its refusal of anyone else is not a
+        // failure worth reporting next to controls they cannot use anyway.
+        pagesErrorMessage={
+          canEdit && !publishedPagesResult.ok
+            ? publishedPagesResult.message
+            : undefined
+        }
+        publishedPages={
+          publishedPagesResult.ok
+            ? publishedPagesResult.pages.map((page) => ({
+                pageId: page.id,
+                slug: page.slug,
+                title: page.title,
+              }))
+            : []
         }
       />
     </AdminSections>

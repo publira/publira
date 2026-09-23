@@ -35,6 +35,10 @@ import {
   updateTenantDefaultLocale,
 } from "#lib/tenant-default-locale";
 import {
+  tenantLegalPagesCacheTag,
+  updateTenantLegalPages,
+} from "#lib/tenant-legal-pages";
+import {
   tenantTimezoneCacheTag,
   updateTenantTimezone,
 } from "#lib/tenant-timezone";
@@ -45,6 +49,7 @@ import type {
   TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
   TenantDefaultLocaleActionState,
+  TenantLegalPagesActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
 
@@ -121,6 +126,24 @@ const tenantAgeVerificationSchema = async (locale: Locale) => {
     ageVerification: z.enum(TENANT_AGE_VERIFICATIONS, {
       error: t("admin.settings.age_verification.validation.required"),
     }),
+  });
+};
+
+/**
+ * Each nomination is empty, which clears it, or a page id. Whether that page is
+ * a published page of the tenant is the server's check.
+ */
+const tenantLegalPagesSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const error = t("admin.settings.legal_pages.validation.page_invalid");
+  const pageId = z
+    .string({ error })
+    .trim()
+    .pipe(z.union([z.literal(""), z.uuid({ error })], { error }));
+
+  return z.object({
+    privacyPageId: pageId,
+    termsPageId: pageId,
   });
 };
 
@@ -396,6 +419,63 @@ export const updateTenantAgeVerificationAction = async (
   return {
     ageVerification: result.ageVerification,
     message: t("admin.settings.age_verification.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantLegalPagesAction = async (
+  _prevState: TenantLegalPagesActionState,
+  formData: FormData
+): Promise<TenantLegalPagesActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const schema = await tenantLegalPagesSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      privacyPageId: { kind: "value", name: "privacy_page_id" },
+      termsPageId: { kind: "value", name: "terms_page_id" },
+    })
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantLegalPages(
+      {
+        privacyPageId: parsed.data.privacyPageId,
+        tenantId,
+        termsPageId: parsed.data.termsPageId,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the nominations through a private cache. The
+  // storefront's own cached copy is dropped by the API as the update lands.
+  updateTag(tenantLegalPagesCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.legal_pages.saved"),
     ok: true,
   };
 };
