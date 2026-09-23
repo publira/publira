@@ -8,9 +8,7 @@ import {
 export const GET = async (
   _request: NextRequest,
   { params }: RouteContext<"/[tenant_id]/.well-known/assetlinks.json">
-) => {
-  const { tenant_id: tenantId } = await params;
-  return respondWithMobileAppAssociation(tenantId, ({ android }) =>
+) =>
+  respondWithMobileAppAssociation(await params, ({ android }) =>
     android ? toAssetLinks(android) : undefined
   );
-};

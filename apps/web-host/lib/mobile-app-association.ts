@@ -2,8 +2,12 @@ import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { getLocales } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
-import { isPlaceholderStaticParam } from "@publira/utils/static-param-placeholder";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import { cacheLife } from "next/cache";
+import { z } from "zod";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantMobileAppAssociationTag } from "./cache-tags";
@@ -118,6 +122,14 @@ const CACHE_CONTROL =
   "public, max-age=30, s-maxage=30, stale-while-revalidate=60";
 
 /**
+ * The rewritten `[tenant_id]` segment. A value that is not a tenant UUID
+ * means the request bypassed `proxy.ts`, so there is no tenant to ask about.
+ */
+const associationRouteParamsSchema = z.object({
+  tenant_id: routeParamString().refine(isTenantIdFormat),
+});
+
+/**
  * Answer an association document for the tenant `proxy.ts` rewrote the
  * request onto. `toDocument` returns `undefined` where the tenant has no app on
  * the platform, which is a 404 rather than a document naming some other app.
@@ -125,17 +137,15 @@ const CACHE_CONTROL =
  * recording that the site claims no app.
  */
 export const respondWithMobileAppAssociation = async (
-  tenantId: string,
+  params: unknown,
   toDocument: (association: TenantMobileAppAssociation) => unknown
 ): Promise<Response> => {
-  // The placeholder appears while generating static paths, and a non-UUID
-  // segment means the request bypassed `proxy.ts`: either way there is no
-  // tenant to ask about.
-  if (isPlaceholderStaticParam(tenantId) || !isTenantIdFormat(tenantId)) {
+  const parsed = parseRouteParams(associationRouteParamsSchema, params);
+  if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const association = await getTenantMobileAppAssociation(tenantId);
+  const association = await getTenantMobileAppAssociation(parsed.tenant_id);
   if (!association.ok) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },

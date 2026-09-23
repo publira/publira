@@ -10,9 +10,7 @@ export const GET = async (
   {
     params,
   }: RouteContext<"/[tenant_id]/.well-known/apple-app-site-association">
-) => {
-  const { tenant_id: tenantId } = await params;
-  return respondWithMobileAppAssociation(tenantId, ({ ios }) =>
+) =>
+  respondWithMobileAppAssociation(await params, ({ ios }) =>
     ios ? toAppleAppSiteAssociation(ios) : undefined
   );
-};

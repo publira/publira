@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/static-param-placeholder";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -94,9 +95,15 @@ describe("GET /.well-known/assetlinks.json", () => {
   });
 
   it("answers 404 without asking the API for a segment that is not a tenant", async () => {
-    const response = await get("favicon.ico");
+    const responses = await Promise.all(
+      ["favicon.ico", STATIC_PARAM_PLACEHOLDER, ""].map((segment) =>
+        get(segment)
+      )
+    );
 
-    expect(response.status).toBe(404);
+    expect(responses.map((response) => response.status)).toStrictEqual([
+      404, 404, 404,
+    ]);
     expect(mockGetAssociation).not.toHaveBeenCalled();
   });
 });
