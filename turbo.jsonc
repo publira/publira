@@ -54,12 +54,6 @@
       "passThroughEnv": ["NEXT_OTEL_*", "OTEL_*", "PORT", "PUBLIRA_*"],
       "persistent": true,
     },
-    "generate:api": {
-      "outputs": ["packages/api-client/src/gen/**"],
-    },
-    "lint": {
-      "dependsOn": ["^lint"],
-    },
     "test": {
       "dependsOn": ["^build"],
       // Do not pass PUBLIRA_* here. The Dev Container exports a full
