@@ -4,6 +4,7 @@ import {
   isRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { MyFollow } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -157,6 +158,7 @@ const readFollowList = async (
     const response = await apiClient.follow.listMyFollows(
       {
         limit: input.limit ?? defaultFollowPageSize,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",
       },

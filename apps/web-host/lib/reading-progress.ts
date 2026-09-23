@@ -3,6 +3,7 @@ import {
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type {
   RecentSeries,
   SeriesProgress,
@@ -158,6 +159,7 @@ export const listMyRecentSeries = async (
     const response = await apiClient.episodeRead.listMyRecentSeries(
       {
         limit: input.limit ?? defaultRecentSeriesLimit,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",
       },
@@ -219,7 +221,7 @@ export const getMySeriesProgress = cache(
 
     try {
       const response = await apiClient.episodeRead.getMySeriesProgress(
-        { seriesPublicId, tenant: { tenantId } },
+        { seriesPublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
         buildSessionHeaders(sessionId)
       );
       return {

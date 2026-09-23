@@ -1,5 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { SeriesAgeRating } from "@publira/api-client/public/types";
+import {
+  ClientSurface,
+  SeriesAgeRating,
+} from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMySeriesProgress, listMyRecentSeries } from "./reading-progress";
@@ -76,7 +79,12 @@ describe("listMyRecentSeries", () => {
       ],
     });
     expect(mockListMyRecentSeries).toHaveBeenCalledWith(
-      { limit: 6, tenant: { tenantId: TENANT_ID }, token: "" },
+      {
+        limit: 6,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+        token: "",
+      },
       { Authorization: "Bearer session-token" }
     );
   });
@@ -165,7 +173,11 @@ describe("getMySeriesProgress", () => {
       signedIn: true,
     });
     expect(mockGetMySeriesProgress).toHaveBeenCalledWith(
-      { seriesPublicId: SERIES_PUBLIC_ID, tenant: { tenantId: TENANT_ID } },
+      {
+        seriesPublicId: SERIES_PUBLIC_ID,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+      },
       { Authorization: "Bearer session-token" }
     );
   });

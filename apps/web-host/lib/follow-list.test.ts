@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { FollowTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FollowListEntry } from "./follow-list";
@@ -74,6 +75,7 @@ describe("listMyFollows", () => {
     expect(mockListMyFollows).toHaveBeenCalledWith(
       {
         limit: 20,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "current-page",
       },
@@ -96,6 +98,7 @@ describe("listMyFollows", () => {
     expect(mockListMyFollows).toHaveBeenCalledWith(
       {
         limit: 20,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",
       },

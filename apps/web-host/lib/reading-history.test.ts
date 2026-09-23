@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listMyEpisodeReads } from "./reading-history";
@@ -51,7 +52,12 @@ describe("listMyEpisodeReads", () => {
       reads: [read],
     });
     expect(mockListMyEpisodeReads).toHaveBeenCalledWith(
-      { limit: 20, tenant: { tenantId: TENANT_ID }, token: "" },
+      {
+        limit: 20,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+        token: "",
+      },
       { Authorization: "Bearer session-token" }
     );
   });
@@ -60,7 +66,12 @@ describe("listMyEpisodeReads", () => {
     await listMyEpisodeReads(TENANT_ID, { limit: 5, locale: "en", token: "t" });
 
     expect(mockListMyEpisodeReads).toHaveBeenCalledWith(
-      { limit: 5, tenant: { tenantId: TENANT_ID }, token: "t" },
+      {
+        limit: 5,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+        token: "t",
+      },
       { Authorization: "Bearer session-token" }
     );
   });

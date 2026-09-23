@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { FollowTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -93,6 +94,7 @@ describe("getMyFollowStatus", () => {
 
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
       {
+        surface: ClientSurface.WEB,
         target: { publicId: "CREATOR01", type: FollowTargetType.CREATOR },
         tenant: { tenantId },
       },
@@ -163,6 +165,7 @@ describe("followTarget / unfollowTarget", () => {
     ).resolves.toEqual({ isFollowing: true, ok: true });
     expect(mockFollow).toHaveBeenCalledWith(
       {
+        surface: ClientSurface.WEB,
         target: { publicId: "SERIES01", type: FollowTargetType.SERIES },
         tenant: { tenantId },
       },
@@ -181,6 +184,10 @@ describe("followTarget / unfollowTarget", () => {
         tenantId,
       })
     ).resolves.toEqual({ isFollowing: false, ok: true });
+    expect(mockUnfollow).toHaveBeenCalledWith(
+      expect.objectContaining({ surface: ClientSurface.WEB }),
+      expect.anything()
+    );
   });
 
   it("Unauthenticated rethrows for reauthentication", async () => {

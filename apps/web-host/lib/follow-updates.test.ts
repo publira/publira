@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listMyFollowUpdates } from "./follow-updates";
@@ -59,7 +60,12 @@ describe("listMyFollowUpdates", () => {
       ],
     });
     expect(mockListMyFollowUpdates).toHaveBeenCalledWith(
-      { limit: 6, tenant: { tenantId: TENANT_ID }, token: "" },
+      {
+        limit: 6,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+        token: "",
+      },
       { Authorization: "Bearer session-token" }
     );
   });

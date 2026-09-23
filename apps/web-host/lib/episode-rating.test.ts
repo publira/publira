@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { EpisodeRatingMode } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -125,6 +126,7 @@ describe("getMyEpisodeRating", () => {
     expect(mockGetMyEpisodeRating).toHaveBeenCalledWith(
       {
         episodePublicId: "EPISODE01",
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -199,6 +201,7 @@ describe("rateEpisode", () => {
       {
         episodePublicId: "EPISODE01",
         presses: 1,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }

@@ -1,4 +1,5 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 
 import {
   apiClient,
@@ -17,7 +18,7 @@ export const getMySeriesRating = async (
   }
   try {
     const response = await apiClient.rating.getMySeriesRating(
-      { seriesPublicId, tenant: { tenantId } },
+      { seriesPublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
     return response.ratedEpisodeCount > 0 ? response.ratingAverage : null;
