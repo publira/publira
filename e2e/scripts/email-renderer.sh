@@ -35,16 +35,11 @@ start_email_renderer() {
   fi
 
   e2e_log "starting email-renderer (:${PUBLIRA_E2E_EMAIL_RENDERER_PORT})"
-  # `exec`: without it $! can name the subshell, and stopping it would leave the
-  # server holding the port. Bash usually optimizes this away; do not rely on it.
-  (
-    cd "${app_dir}"
-    exec env \
-      HOST="127.0.0.1" \
-      PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
-      node dist/index.mjs
-  ) >> "${LOG_DIR}/email-renderer.log" 2>&1 &
-  write_pid "email-renderer" $!
+  start_process_group "email-renderer" "${app_dir}" "${LOG_DIR}/email-renderer.log" \
+    env \
+    HOST="127.0.0.1" \
+    PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
+    node dist/index.mjs
 }
 
 wait_email_renderer_ready() {

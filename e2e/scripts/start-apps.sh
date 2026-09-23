@@ -44,34 +44,25 @@ start_web_app() {
   local web_mode="${PUBLIRA_E2E_WEB_MODE:-start}"
   e2e_log "starting ${app_name} (mode=${web_mode}, host=${bind_host}, port ${app_port})"
 
+  local run_dir command
   if [[ "${web_mode}" == "dev" ]]; then
-    (
-      cd "${app_dir}"
-      env \
-        PORT="${app_port}" \
-        HOSTNAME="${bind_host}" \
-        PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
-        PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
-        PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-        PUBLIRA_CACHE_APP="${cache_app}" \
-        PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
-        pnpm exec next dev --port "${app_port}" --hostname "${bind_host}"
-    ) > "${LOG_DIR}/${app_name}.log" 2>&1 &
+    run_dir="${app_dir}"
+    command=(pnpm exec next dev --port "${app_port}" --hostname "${bind_host}")
   else
-    (
-      cd "${standalone_app_dir}"
-      env \
-        PORT="${app_port}" \
-        HOSTNAME="${bind_host}" \
-        PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
-        PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
-        PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-        PUBLIRA_CACHE_APP="${cache_app}" \
-        PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
-        node server.js
-    ) > "${LOG_DIR}/${app_name}.log" 2>&1 &
+    run_dir="${standalone_app_dir}"
+    command=(node server.js)
   fi
-  write_pid "${app_name}" $!
+  : > "${LOG_DIR}/${app_name}.log"
+  start_process_group "${app_name}" "${run_dir}" "${LOG_DIR}/${app_name}.log" \
+    env \
+    PORT="${app_port}" \
+    HOSTNAME="${bind_host}" \
+    PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
+    PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+    PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PUBLIRA_CACHE_APP="${cache_app}" \
+    PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
+    "${command[@]}"
 }
 
 for port in \

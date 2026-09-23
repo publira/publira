@@ -544,6 +544,38 @@ write_pid() {
   printf '%s\n%s\n' "${pid}" "$(pid_start_time "${pid}")" > "${PID_DIR}/${name}.pid"
 }
 
+# Job control gives the job a process group whose id is the recorded pid, so
+# stop_pid_file also reaches what it forks: `next dev` binds from a child.
+start_process_group() {
+  local name="$1" dir="$2" log="$3" pid
+  shift 3
+  set -m
+  (cd "${dir}" && exec "$@") >> "${log}" 2>&1 < /dev/null &
+  pid=$!
+  set +m
+  # The pid file is the only handle teardown uses, so the job is dropped from
+  # this shell rather than reported back over whatever it prints next.
+  disown "%%"
+  write_pid "${name}" "${pid}"
+}
+
+# A zombie still answers `kill -0`, and one nobody reaps would keep a finished
+# group alive forever, so only a member that is not a zombie counts.
+process_group_is_running() {
+  ps -A -o pgid=,stat= 2> /dev/null | awk -v pgid="$1" '$1 == pgid && $2 !~ /^Z/ { found = 1 } END { exit !found }'
+}
+
+wait_for_process_group_exit() {
+  local pgid="$1" _
+  for _ in $(seq 1 30); do
+    process_group_is_running "${pgid}" || return 0
+    sleep 0.2
+  done
+  ! process_group_is_running "${pgid}"
+}
+
+# The pid file is removed only once its group is gone, so a repeated teardown
+# can finish an incomplete one.
 stop_pid_file() {
   local name="$1"
   local file="${PID_DIR}/${name}.pid"
@@ -553,28 +585,26 @@ stop_pid_file() {
   local pid recorded_start
   pid="$(sed -n '1p' "${file}" 2> /dev/null || true)"
   recorded_start="$(sed -n '2p' "${file}" 2> /dev/null || true)"
-  if ! is_pid_running "${pid}"; then
+  if [[ ! "${pid}" =~ ^[0-9]+$ ]] || ! process_group_is_running "${pid}"; then
     rm -f "${file}"
     return 0
   fi
-  # Guard against a reused PID belonging to an unrelated process.
-  if [[ -z "${recorded_start}" || "$(pid_start_time "${pid}")" != "${recorded_start}" ]]; then
+  # A pid is not reused while a group still carries it, so only a live leader
+  # started at another time means the number now belongs to someone else.
+  if is_pid_running "${pid}" && [[ -z "${recorded_start}" || "$(pid_start_time "${pid}")" != "${recorded_start}" ]]; then
     e2e_log "skipping ${name}: pid ${pid} start time does not match (likely reused)"
     rm -f "${file}"
     return 0
   fi
-  e2e_log "stopping ${name} (pid ${pid})"
-  kill "${pid}" 2> /dev/null || true
-  local _
-  for _ in $(seq 1 30); do
-    if ! is_pid_running "${pid}"; then
-      break
+  e2e_log "stopping ${name} (process group ${pid})"
+  kill -s TERM -- "-${pid}" 2> /dev/null || true
+  if ! wait_for_process_group_exit "${pid}"; then
+    e2e_log "force-killing ${name} (process group ${pid})"
+    kill -s KILL -- "-${pid}" 2> /dev/null || true
+    if ! wait_for_process_group_exit "${pid}"; then
+      e2e_err "${name} still has processes in group ${pid}; run: task e2e:down"
+      return 1
     fi
-    sleep 0.2
-  done
-  if is_pid_running "${pid}"; then
-    e2e_log "force-killing ${name} (pid ${pid})"
-    kill -9 "${pid}" 2> /dev/null || true
   fi
   rm -f "${file}"
 }
