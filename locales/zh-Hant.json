@@ -3473,6 +3473,15 @@
       "sign_in_prompt": "登入後即可查看您購買的章節。",
       "title": "已購買"
     },
+    "reading_history": {
+      "account_description": "查看您讀完的章節，無論在哪裡閱讀。",
+      "empty": "您還沒有讀完任何章節。讀到最後的章節會顯示在您登入的每台裝置上。",
+      "failed": "無法顯示您的閱讀記錄。請重試。",
+      "finished_at": "{$date} 讀完",
+      "open_series": "開啟系列",
+      "sign_in_prompt": "登入後即可查看您讀完的章節。",
+      "title": "閱讀記錄"
+    },
     "push": {
       "open": "開啟"
     },

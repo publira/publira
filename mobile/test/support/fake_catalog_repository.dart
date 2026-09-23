@@ -18,6 +18,7 @@ class FakeCatalogRepository implements CatalogRepository {
     this.details = const {},
     this.episodes = const {},
     this.recentSeries = const [],
+    this.episodeReads = const [],
     this.readingPositions = const {},
     this.searchResults = const [],
     this.creatorSearchResults = const [],
@@ -45,6 +46,8 @@ class FakeCatalogRepository implements CatalogRepository {
     this.readingPositionError,
     this.markReadError,
     this.recentSeriesError,
+    this.episodeReadsError,
+    this.episodeReadsMoreError,
     this.reactionError,
     this.reactions = const {},
   });
@@ -99,6 +102,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What the continue-reading row is answered with.
   List<RecentSeriesItem> recentSeries;
 
+  /// What the reading history is answered with, most recently finished first.
+  List<EpisodeReadItem> episodeReads;
+
   /// Saved positions keyed by [episodeKey], which [saveReadingPosition] writes
   /// to so a test can assert what the viewer recorded.
   Map<String, int> readingPositions;
@@ -129,6 +135,13 @@ class FakeCatalogRepository implements CatalogRepository {
   CatalogFailure? readingPositionError;
   CatalogFailure? markReadError;
   CatalogFailure? recentSeriesError;
+  CatalogFailure? episodeReadsError;
+
+  /// What a read of a history page under the first one fails with.
+  CatalogFailure? episodeReadsMoreError;
+
+  /// The cursor of every history page asked for, in order.
+  final List<String> episodeReadsTokens = [];
 
   /// Every episode [markEpisodeAsRead] was called for, in order, including the
   /// calls that failed.
@@ -460,6 +473,24 @@ class FakeCatalogRepository implements CatalogRepository {
     return RecentSeriesPage(
       series: List<RecentSeriesItem>.from(recentSeries.skip(start).take(limit)),
       nextToken: end < recentSeries.length ? '$end' : '',
+    );
+  }
+
+  @override
+  Future<EpisodeReadPage> listEpisodeReads({
+    required int limit,
+    String token = '',
+  }) async {
+    episodeReadsTokens.add(token);
+    final error = token.isEmpty ? episodeReadsError : episodeReadsMoreError;
+    if (error != null) {
+      throw error;
+    }
+    final start = token.isEmpty ? 0 : int.parse(token);
+    final end = start + limit;
+    return EpisodeReadPage(
+      reads: List<EpisodeReadItem>.from(episodeReads.skip(start).take(limit)),
+      nextToken: end < episodeReads.length ? '$end' : '',
     );
   }
 }

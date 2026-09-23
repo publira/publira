@@ -2179,6 +2179,46 @@ void main() {
       });
     });
 
+    testApp('an episode the seed member finished is in their history', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'live-reading-history', () async {
+        final member = await signInSeedMember();
+        await finishSeedEpisode(tester, member.session);
+        await pumpUntilSeedEpisodeRecorded(tester, member);
+
+        // A fresh launch, the way the reader comes back to the app later. The
+        // app is taken down first: a second one pumped over it would keep the
+        // first one's state, router included.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpLive(
+          tester,
+          initialLocation: AppRoutes.accountReadingHistory,
+          session: member.session,
+        );
+        final row = find.byKey(
+          const ValueKey(
+            'reading-history-row-${ConnectFixtureServer.seedEpisodeId}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          row,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining(ConnectFixtureServer.seedSeriesTitle),
+          ),
+          findsOne,
+        );
+
+        await tapReachable(tester, row);
+        await pumpUntilPagesDrawn(tester);
+      });
+    });
+
     testApp('the live API takes a sign-up and holds the account back', (
       tester,
     ) async {

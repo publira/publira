@@ -12,6 +12,7 @@ import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_push.dart';
 import 'support/pump_until.dart';
+import 'support/tap.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -143,7 +144,11 @@ void main() {
     store.token = 'device-token';
     await pumpApp(tester, initialLocation: AppRoutes.account);
 
-    await tester.tap(find.byKey(const ValueKey('account-sign-out')));
+    await tapVisible(
+      tester,
+      find.byKey(const ValueKey('account-sign-out')),
+      scrollable: find.byKey(const ValueKey('account-list')),
+    );
     await tester.pumpAndSettle();
 
     expect(repository.unregistered, ['device-token']);

@@ -3473,6 +3473,15 @@
       "sign_in_prompt": "登录后即可查看您购买的章节。",
       "title": "已购买"
     },
+    "reading_history": {
+      "account_description": "查看您读完的章节，无论在哪里阅读。",
+      "empty": "您还没有读完任何章节。读到最后的章节会显示在您登录的每台设备上。",
+      "failed": "无法显示您的阅读记录。请重试。",
+      "finished_at": "{$date} 读完",
+      "open_series": "打开系列",
+      "sign_in_prompt": "登录后即可查看您读完的章节。",
+      "title": "阅读记录"
+    },
     "push": {
       "open": "打开"
     },

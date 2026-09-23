@@ -55,6 +55,8 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.EpisodeReadService/SaveReadingPosition';
   static const _markReadProcedure =
       '/publira.v1.EpisodeReadService/MarkEpisodeAsRead';
+  static const _episodeReadsProcedure =
+      '/publira.v1.EpisodeReadService/ListMyEpisodeReads';
   static const _recentSeriesProcedure =
       '/publira.v1.EpisodeReadService/ListMyRecentSeries';
   static const _myEpisodeRatingProcedure =
@@ -596,6 +598,62 @@ class HttpCatalogRepository implements CatalogRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<EpisodeReadPage> listEpisodeReads({
+    required int limit,
+    String token = '',
+  }) async {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return EpisodeReadPage.empty;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _episodeReadsProcedure,
+        {
+          'limit': limit,
+          'tenant': {'tenantId': tenantId},
+          'surface': appClientSurface,
+          if (token.isNotEmpty) 'token': token,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return EpisodeReadPage(
+        reads: _parseEpisodeReads(body['reads']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  List<EpisodeReadItem> _parseEpisodeReads(Object? raw) {
+    if (raw == null) {
+      return const [];
+    }
+    final items = _expectList(raw, 'reads')
+        .map((item) => _expectMap(item, 'reads[]'))
+        .map((json) {
+          return EpisodeReadItem(
+            series: _seriesFromJson(
+              _expectMap(json['series'], 'reads[].series'),
+              'reads[].series',
+            ),
+            episode: _episodeFromJson(
+              _expectMap(json['episode'], 'reads[].episode'),
+              'reads[].episode',
+            ),
+            readAt: DateTime.tryParse(
+              _readString(json, 'readAt', 'reads[]'),
+            )?.toLocal(),
+          );
+        })
+        .toList();
+    return List<EpisodeReadItem>.unmodifiable(items);
   }
 
   List<RecentSeriesItem> _parseRecentSeries(Object? raw) {

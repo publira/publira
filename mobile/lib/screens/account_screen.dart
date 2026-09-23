@@ -64,6 +64,14 @@ class AccountScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   const _PurchasesEntry(),
+                  ListTile(
+                    key: const ValueKey('account-reading-history'),
+                    title: Text(messages.readingHistoryTitle),
+                    subtitle: Text(messages.readingHistoryAccountDescription),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.accountReadingHistory),
+                  ),
+                  const Divider(height: 1),
                   // Keyed by the reader, so another account signing in reads
                   // its own date rather than showing the last one's.
                   _BirthDateRow(key: ValueKey(session.userPublicId)),
