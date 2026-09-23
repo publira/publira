@@ -218,3 +218,57 @@ func testPKCS8PEM(t *testing.T, key any) string {
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
 }
+
+// The app each store sells in is the one the app association names, so while
+// the tenant sells through the store the association may not take away the
+// last app a ready store sells in; it may still change the other platform.
+func TestDBMobileAppAssociationKeepsAnAppForTheStoreRoute(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ios := &publiraadminv1.TenantIosAppAssociation{TeamId: "ABCDE12345", BundleIdentifier: testStoreAppIdentity}
+	android := &publiraadminv1.TenantAndroidAppAssociation{ApplicationId: testStoreAppIdentity, Sha256CertFingerprints: []string{testFingerprintA}}
+	if _, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{Ios: ios}); err != nil {
+		t.Fatalf("UpdateTenantMobileAppAssociation: %v", err)
+	}
+	if _, err := updateDBStorePaymentSettings(env, tenant, &publiraadminv1.UpdateTenantStorePaymentSettingsRequest{
+		AppPurchaseRoute: routeStore,
+		AppStore: &publiraadminv1.AppStorePaymentSettingsUpdate{
+			Enabled:              true,
+			IssuerId:             testStoreIssuerID,
+			KeyId:                testStoreKeyID,
+			PrivateKeyUpdateMode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
+			PrivateKey:           testAppStorePrivateKey(t),
+		},
+	}); err != nil {
+		t.Fatalf("UpdateTenantStorePaymentSettings: %v", err)
+	}
+
+	if _, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{Ios: ios, Android: android}); err != nil {
+		t.Fatalf("adding the Android app: %v", err)
+	}
+	if _, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{Android: android}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("removing the iOS app: code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	if got := getDBTenantMobileAppAssociation(t, env, tenant); got.Ios == nil {
+		t.Fatalf("association after a refused save = %v, want the iOS app kept", got)
+	}
+	if got := getDBStorePaymentSettings(t, env, tenant); got.AppPurchaseRoute != routeStore || !got.AppStore.Ready {
+		t.Fatalf("store settings after a refused save = %v, want a ready App Store on the store route", got)
+	}
+
+	// Back on the external checkout, the app may go.
+	if _, err := updateDBStorePaymentSettings(env, tenant, &publiraadminv1.UpdateTenantStorePaymentSettingsRequest{
+		AppPurchaseRoute: routeExternalCheckout,
+		AppStore: &publiraadminv1.AppStorePaymentSettingsUpdate{
+			Enabled:              true,
+			IssuerId:             testStoreIssuerID,
+			KeyId:                testStoreKeyID,
+			PrivateKeyUpdateMode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+		},
+	}); err != nil {
+		t.Fatalf("UpdateTenantStorePaymentSettings: %v", err)
+	}
+	if _, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{}); err != nil {
+		t.Fatalf("removing both apps on the external checkout: %v", err)
+	}
+}

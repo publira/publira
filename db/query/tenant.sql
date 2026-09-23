@@ -194,6 +194,15 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     updated_at = NOW()
 RETURNING *;
 
+-- name: LockTenantConfigByTenantID :one
+-- Serializes the writes that together decide whether the store route has a
+-- store that can sell: the store settings and the app association. A tenant
+-- with no row has nothing to lock and cannot be on the store route either.
+SELECT *
+FROM tenant_config
+WHERE tenant_id = $1
+FOR UPDATE;
+
 -- name: GetTenantAppPurchaseRoute :one
 -- A tenant with no config row has no row here either, and sells through the
 -- external checkout, which is what the column's default says.

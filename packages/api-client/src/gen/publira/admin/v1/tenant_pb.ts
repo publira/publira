@@ -742,7 +742,8 @@ export type UpdateTenantMobileAppAssociationRequest = Message<"publira.admin.v1.
   /**
    * Both platforms are written, and an absent one is cleared. A present one
    * needs every field, in the formats the app manifest accepts; anything else
-   * is invalid_argument.
+   * is invalid_argument. While the tenant's app sells through the store, a
+   * change that leaves no ready store an app to sell in is failed_precondition.
    *
    * @generated from field: publira.admin.v1.TenantMobileAppAssociation association = 2;
    */

@@ -539,6 +539,44 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 	return items, nil
 }
 
+const LockTenantConfigByTenantID = `-- name: LockTenantConfigByTenantID :one
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+FROM tenant_config
+WHERE tenant_id = $1
+FOR UPDATE
+`
+
+// Serializes the writes that together decide whether the store route has a
+// store that can sell: the store settings and the app association. A tenant
+// with no row has nothing to lock and cannot be on the store route either.
+func (q *Queries) LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, LockTenantConfigByTenantID, tenantID)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+		&i.CommentMode,
+		&i.CommentAutoHideReportThreshold,
+		&i.EpisodeRatingMode,
+		&i.AgeVerification,
+		&i.PurchaseAvailability,
+		&i.AppStoreUrl,
+		&i.GooglePlayUrl,
+		&i.TermsPageID,
+		&i.PrivacyPageID,
+		&i.AndroidApplicationID,
+		pq.Array(&i.AndroidSha256CertFingerprints),
+		&i.IosTeamID,
+		&i.IosBundleIdentifier,
+		&i.AppPurchaseRoute,
+	)
+	return i, err
+}
+
 const LockTenantForUpdate = `-- name: LockTenantForUpdate :one
 SELECT id
 FROM tenants

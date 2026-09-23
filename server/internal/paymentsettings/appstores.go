@@ -45,6 +45,7 @@ var keyIDPattern = regexp.MustCompile(`^[A-Z0-9]{10}$`)
 // [PaymentQuerier], its reads return ciphertext.
 type AppStoresQuerier interface {
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantConfig, error)
+	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantConfig, error)
 	GetTenantAppStoreConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantAppStoreConfig, error)
 	GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantGooglePlayConfig, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg dbmodels.UpsertTenantAppStoreConfigParams) (dbmodels.TenantAppStoreConfig, error)
@@ -106,6 +107,8 @@ type StoreUpdateInput struct {
 // AppStores stores the App Store and Google Play credentials and the app
 // purchase route. Its writes span three tables, so the caller hands it the
 // querier of a transaction and records the audit event once that commits.
+// [AppStores.Update] and [AppStores.RequireReadyStoreForRoute] lock the
+// tenant_config row first, so they serialize against each other.
 type AppStores struct {
 	queries   AppStoresQuerier
 	encryptor SecretManager
@@ -130,7 +133,7 @@ func ResolveAppPurchaseRoute(stored string) (string, error) {
 // Get returns the non-secret view. A tenant that has saved nothing sells
 // through the external checkout and has neither store configured.
 func (a *AppStores) Get(ctx context.Context, tenantID uuid.UUID) (StoreConfig, error) {
-	current, err := a.load(ctx, tenantID)
+	current, err := a.load(ctx, tenantID, a.queries.GetTenantConfigByTenantID)
 	if err != nil {
 		return StoreConfig{}, err
 	}
@@ -151,7 +154,7 @@ func (a *AppStores) Update(ctx context.Context, tenantID uuid.UUID, input StoreU
 	if input.Route != RouteExternalCheckout && input.Route != RouteStore {
 		return StoreConfig{}, ErrInvalidAppPurchaseRoute
 	}
-	current, err := a.load(ctx, tenantID)
+	current, err := a.load(ctx, tenantID, a.queries.LockTenantConfigByTenantID)
 	if err != nil {
 		return StoreConfig{}, err
 	}
@@ -194,6 +197,21 @@ func (a *AppStores) Update(ctx context.Context, tenantID uuid.UUID, input StoreU
 		AppStore:   appStoreConfigFromRow(appStoreRow, current.bundleIdentifier),
 		GooglePlay: googlePlayConfigFromRow(googlePlayRow, current.packageName),
 	}, nil
+}
+
+// RequireReadyStoreForRoute answers [ErrStoreRouteRequiresReadyStore] when the
+// tenant sells through the store and no store can sell. A write to what a
+// store's readiness depends on calls it inside its transaction, after locking
+// the tenant_config row.
+func (a *AppStores) RequireReadyStoreForRoute(ctx context.Context, tenantID uuid.UUID) error {
+	cfg, err := a.Get(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if cfg.Route == RouteStore && !cfg.AppStore.Ready && !cfg.GooglePlay.Ready {
+		return ErrStoreRouteRequiresReadyStore
+	}
+	return nil
 }
 
 func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantAppStoreConfig, update AppStoreUpdate) (dbmodels.UpsertTenantAppStoreConfigParams, error) {
@@ -285,9 +303,13 @@ type storeRows struct {
 	googlePlay       dbmodels.TenantGooglePlayConfig
 }
 
-func (a *AppStores) load(ctx context.Context, tenantID uuid.UUID) (storeRows, error) {
+func (a *AppStores) load(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	readConfig func(context.Context, uuid.UUID) (dbmodels.TenantConfig, error),
+) (storeRows, error) {
 	rows := storeRows{route: RouteExternalCheckout}
-	config, err := a.queries.GetTenantConfigByTenantID(ctx, tenantID)
+	config, err := readConfig(ctx, tenantID)
 	switch {
 	case err == nil:
 		rows.route = config.AppPurchaseRoute

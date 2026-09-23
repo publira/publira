@@ -1638,7 +1638,8 @@ type UpdateTenantMobileAppAssociationRequest struct {
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Both platforms are written, and an absent one is cleared. A present one
 	// needs every field, in the formats the app manifest accepts; anything else
-	// is invalid_argument.
+	// is invalid_argument. While the tenant's app sells through the store, a
+	// change that leaves no ready store an app to sell in is failed_precondition.
 	Association   *TenantMobileAppAssociation `protobuf:"bytes,2,opt,name=association,proto3" json:"association,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

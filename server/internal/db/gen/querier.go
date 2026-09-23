@@ -1701,6 +1701,10 @@ type Querier interface {
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
+	// Serializes the writes that together decide whether the store route has a
+	// store that can sell: the store settings and the app association. A tenant
+	// with no row has nothing to lock and cannot be on the store route either.
+	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	// Lock the tenant row so concurrent tenant branding image uploads and deletes
 	// (icon, logo) serialize. The following read of the current image must be a
 	// separate statement: READ COMMITTED freezes its snapshot at statement start,
