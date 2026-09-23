@@ -12,15 +12,27 @@ const _seriesId = 'SeedSERSAAA1';
 const _episodeId = 'SeedEPSDAAA1';
 const _reader = 'SeedMMBRAAA1';
 const _otherReader = 'SeedMMBRAAA2';
+const _otherEpisodeId = 'SeedEPSDAAA2';
 
 const _network = CatalogFailure(CatalogFailureKind.network);
 const _unexpected = CatalogFailure(CatalogFailureKind.unexpected);
+const _refused = CatalogFailure(CatalogFailureKind.unexpected, refused: true);
 const _sessionExpired = CatalogFailure(CatalogFailureKind.sessionExpired);
 
 /// [FakeCatalogRepository] whose position sends can be held open, so a test
 /// can queue a page while one is on its way.
 class _GatedCatalog extends FakeCatalogRepository {
   Completer<void>? positionGate;
+
+  /// The page [positionGate] holds back, or `null` to hold back every page.
+  int? gatedPage;
+
+  /// Every page sent, in the order the sends reached the API.
+  final List<int> pagesSent = [];
+
+  /// Episodes [markEpisodeAsRead] fails for with [markReadError], so one entry
+  /// can fail while the others go through.
+  Set<String>? markReadFailsFor;
 
   @override
   Future<void> saveReadingPosition(
@@ -29,14 +41,27 @@ class _GatedCatalog extends FakeCatalogRepository {
     int pageIndex,
   ) async {
     final gate = positionGate;
-    if (gate != null) {
+    if (gate != null && (gatedPage == null || gatedPage == pageIndex)) {
       await gate.future;
+    }
+    if (readingPositionError == null) {
+      pagesSent.add(pageIndex);
     }
     return super.saveReadingPosition(
       seriesPublicId,
       episodePublicId,
       pageIndex,
     );
+  }
+
+  @override
+  Future<void> markEpisodeAsRead(String episodePublicId) {
+    final failsFor = markReadFailsFor;
+    if (failsFor != null && !failsFor.contains(episodePublicId)) {
+      markedRead.add(episodePublicId);
+      return Future<void>.value();
+    }
+    return super.markEpisodeAsRead(episodePublicId);
   }
 }
 
@@ -193,16 +218,70 @@ void main() {
       expect(await library.readUnsentProgress(readerId: _reader), hasLength(1));
     });
 
-    test('a send the API turns down is dropped', () async {
+    test('a send the API refuses is dropped', () async {
       final catalog = build();
       origin.markReadError = _network;
       await catalog.markEpisodeAsRead(_episodeId);
 
-      origin.markReadError = _unexpected;
+      origin.markReadError = _refused;
       await catalog.outbox.flush();
 
       expect(await library.readUnsentProgress(readerId: _reader), isEmpty);
     });
+
+    test('a server fault keeps the entry and lets the next one go', () async {
+      final catalog = build();
+      origin.markReadError = _network;
+      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(_otherEpisodeId);
+
+      origin
+        ..markReadError = _unexpected
+        ..markReadFailsFor = {_episodeId};
+      await catalog.outbox.flush();
+
+      expect(origin.markedRead.last, _otherEpisodeId);
+      expect(await library.readUnsentProgress(readerId: _reader), [
+        isA<UnsentProgress>().having(
+          (p) => p.episodeId,
+          'episodeId',
+          _episodeId,
+        ),
+      ]);
+    });
+
+    test('an episode opens on the page still queued, not the API\'s', () async {
+      final catalog = build();
+      origin.readingPositions = {episodeKey(_seriesId, _episodeId): 3};
+      origin.readingPositionError = _network;
+      await catalog.saveReadingPosition(_seriesId, _episodeId, 10);
+
+      origin.readingPositionError = null;
+
+      expect(await catalog.getReadingPosition(_seriesId, _episodeId), 10);
+    });
+
+    test(
+      'a page the viewer sends waits for the older one being replayed',
+      () async {
+        final catalog = build();
+        origin.readingPositionError = _network;
+        await catalog.saveReadingPosition(_seriesId, _episodeId, 1);
+        origin.readingPositionError = null;
+
+        final gate = origin.positionGate = Completer<void>();
+        origin.gatedPage = 1;
+        final flushed = catalog.outbox.flush();
+        await pumpEventQueue();
+        final live = catalog.saveReadingPosition(_seriesId, _episodeId, 2);
+        await pumpEventQueue();
+        gate.complete();
+        await Future.wait([flushed, live]);
+
+        expect(origin.pagesSent, [1, 2]);
+        expect(origin.readingPositions, {episodeKey(_seriesId, _episodeId): 2});
+      },
+    );
 
     test('a page recorded online drops an older one still queued', () async {
       final catalog = build();

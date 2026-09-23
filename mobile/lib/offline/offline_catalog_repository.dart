@@ -224,6 +224,8 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// the app to open on it. It wins only over a position it actually has,
   /// though — an episode it knows nothing about leaves whatever the device
   /// recorded while it was unreachable as the only page the reader stopped on.
+  /// A page [outbox] has yet to send wins over the API too, because sending it
+  /// is what will make it the API's answer.
   @override
   Future<int?> getReadingPosition(
     String seriesPublicId,
@@ -240,7 +242,12 @@ class OfflineCatalogRepository implements CatalogRepository {
         seriesPublicId,
         episodePublicId,
       );
+      // Read before the flush this answer starts, which may send it.
+      final queued = await outbox.queuedPage(reader, episodePublicId);
       _reached();
+      if (queued != null) {
+        return queued;
+      }
       if (position == null) {
         return await library.readReadingPosition(
           seriesPublicId,
@@ -296,10 +303,15 @@ class OfflineCatalogRepository implements CatalogRepository {
       pageIndex: pageIndex,
     );
     try {
-      await _origin.saveReadingPosition(
-        seriesPublicId,
-        episodePublicId,
-        pageIndex,
+      // Through the outbox, which drops the older page queued while the API
+      // was unreachable: sending that one later would move the reader back.
+      await outbox.send(
+        progress,
+        () => _origin.saveReadingPosition(
+          seriesPublicId,
+          episodePublicId,
+          pageIndex,
+        ),
       );
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -308,9 +320,6 @@ class OfflineCatalogRepository implements CatalogRepository {
       await outbox.queue(progress);
       return;
     }
-    // A page queued while the API was unreachable is older than this one, and
-    // sending it later would move the reader back.
-    await outbox.settle(progress);
     _reached();
   }
 
@@ -329,7 +338,10 @@ class OfflineCatalogRepository implements CatalogRepository {
       finished: true,
     );
     try {
-      await _origin.markEpisodeAsRead(episodePublicId);
+      await outbox.send(
+        progress,
+        () => _origin.markEpisodeAsRead(episodePublicId),
+      );
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
         rethrow;
@@ -337,7 +349,6 @@ class OfflineCatalogRepository implements CatalogRepository {
       await outbox.queue(progress);
       return;
     }
-    await outbox.settle(progress);
     _reached();
   }
 

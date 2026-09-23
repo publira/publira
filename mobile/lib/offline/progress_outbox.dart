@@ -27,6 +27,10 @@ class ProgressOutbox {
   Future<void>? _flushing;
   var _again = false;
 
+  /// Runs every send one after another, queued or live, so an older page
+  /// being replayed can never reach the API after a newer one the viewer sent.
+  Future<void> _sending = Future<void>.value();
+
   /// Bumped by every [queue], so a flush that found nothing can tell whether
   /// something arrived while it was reading.
   var _queued = 0;
@@ -42,13 +46,36 @@ class ProgressOutbox {
     return _library.queueUnsentProgress(progress);
   }
 
-  /// The API accepted a page or a finish sent straight to it, which drops
-  /// whatever older one of the same kind is still queued.
-  Future<void> settle(UnsentProgress sent) {
-    if (_emptyFor == sent.readerId) {
-      return Future<void>.value();
+  /// Sends [progress] straight to the API with [send], in turn with any
+  /// flush, and drops whatever older page or finish of it is still queued once
+  /// the API has accepted it.
+  ///
+  /// Whatever [send] throws is rethrown, and nothing is queued for it here.
+  Future<void> send(UnsentProgress progress, Future<void> Function() send) {
+    return _inTurn(() async {
+      await send();
+      if (_emptyFor != progress.readerId) {
+        await _library.settleUnsentProgress(progress, newest: true);
+      }
+    });
+  }
+
+  /// The page [readerId] rested on in [episodePublicId] that the API has not
+  /// taken yet, or `null` when none is queued.
+  ///
+  /// It is newer than anything the API answers with: sending it is what will
+  /// make it the API's answer.
+  Future<int?> queuedPage(String readerId, String episodePublicId) async {
+    if (_emptyFor == readerId) {
+      return null;
     }
-    return _library.settleUnsentProgress(sent, newest: true);
+    final unsent = await _library.readUnsentProgress(readerId: readerId);
+    for (final progress in unsent) {
+      if (progress.episodeId == episodePublicId) {
+        return progress.pageIndex;
+      }
+    }
+    return null;
   }
 
   /// Sends what the signed-in reader has queued.
@@ -76,7 +103,7 @@ class ProgressOutbox {
     try {
       do {
         _again = false;
-        await _pass();
+        await _inTurn(_pass);
       } while (_again);
     } finally {
       _flushing = null;
@@ -103,10 +130,11 @@ class ProgressOutbox {
           episodeId: progress.episodeId,
           finished: true,
         );
-        if (!await _deliver(
-          finish,
-          () => _origin.markEpisodeAsRead(progress.episodeId),
-        )) {
+        if (await _deliver(
+              finish,
+              () => _origin.markEpisodeAsRead(progress.episodeId),
+            ) ==
+            _Delivery.stop) {
           return;
         }
       }
@@ -118,42 +146,71 @@ class ProgressOutbox {
           seriesId: progress.seriesId,
           pageIndex: pageIndex,
         );
-        if (!await _deliver(
-          page,
-          () => _origin.saveReadingPosition(
-            progress.seriesId,
-            progress.episodeId,
-            pageIndex,
-          ),
-        )) {
+        if (await _deliver(
+              page,
+              () => _origin.saveReadingPosition(
+                progress.seriesId,
+                progress.episodeId,
+                pageIndex,
+              ),
+            ) ==
+            _Delivery.stop) {
           return;
         }
       }
     }
   }
 
-  /// Sends [part] and answers whether the flush may go on to the next one.
-  Future<bool> _deliver(
+  /// Sends [part], and answers whether the flush goes on to the next one.
+  Future<_Delivery> _deliver(
     UnsentProgress part,
     Future<void> Function() send,
   ) async {
     // The API reads the session's token in the same turn as this check, so
     // nothing goes out under a reader who did not make it.
     if (_readerId() != part.readerId) {
-      return false;
+      return _Delivery.stop;
     }
     try {
       await send();
     } on CatalogFailure catch (failure) {
       if (failure.kind == CatalogFailureKind.network ||
           failure.kind == CatalogFailureKind.sessionExpired) {
-        return false;
+        return _Delivery.stop;
       }
-      // The API answered and turned it down, as it would every later send.
+      // A server fault passes, so it is kept for the next flush; only this
+      // entry waits for it, not the ones behind it.
+      if (!failure.refused) {
+        return _Delivery.kept;
+      }
     } catch (_) {
-      return false;
+      return _Delivery.stop;
     }
+    // Accepted, or refused in a way every later send would be too.
     await _library.settleUnsentProgress(part);
-    return true;
+    return _Delivery.sent;
   }
+
+  Future<T> _inTurn<T>(Future<T> Function() action) {
+    final completer = Completer<T>();
+    _sending = _sending.then((_) async {
+      try {
+        completer.complete(await action());
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
+  }
+}
+
+enum _Delivery {
+  /// The API took it or refused it for good, so it left the queue.
+  sent,
+
+  /// The API could not take it this time, and it stays for the next flush.
+  kept,
+
+  /// The API cannot be reached, or not as this reader, so the flush ends.
+  stop,
 }

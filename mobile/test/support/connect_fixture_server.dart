@@ -480,6 +480,10 @@ class ConnectFixtureServer {
   /// public id. `MarkEpisodeAsRead` writes here and keeps the first instant.
   final Map<String, String> episodeReads = {};
 
+  /// The Connect code `MarkEpisodeAsRead` fails with, or `null` to record the
+  /// finish.
+  String? markReadErrorCode;
+
   /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
   /// with, in the order they are given, at most the request's `limit` to a
   /// page with the token written the way [followsPageSize] writes one.
@@ -1823,6 +1827,14 @@ class ConnectFixtureServer {
     }
     final episodeId = body['episodePublicId'] as String? ?? '';
     if (path.endsWith('/MarkEpisodeAsRead')) {
+      final errorCode = markReadErrorCode;
+      if (errorCode != null) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': errorCode,
+          'message': errorCode,
+        });
+        return;
+      }
       final readAt = episodeReads.putIfAbsent(
         episodeId,
         () => DateTime.now().toUtc().toIso8601String(),
