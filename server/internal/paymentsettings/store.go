@@ -167,14 +167,20 @@ func (s *Store) loadRow(ctx context.Context, tenantID uuid.UUID) (dbmodels.Tenan
 }
 
 func (s *Store) recordUpdate(ctx context.Context, tenantID uuid.UUID, audit AuditMeta, outcome, reason string) {
-	if s.recorder == nil || audit.ActorUserID == uuid.Nil {
+	RecordUpdate(ctx, s.recorder, tenantID, audit, outcome, reason)
+}
+
+// RecordUpdate records a change to a tenant's payment settings, Stripe's or
+// the stores'. A caller that wrote in a transaction calls it once that commits.
+func RecordUpdate(ctx context.Context, recorder auditlog.Recorder, tenantID uuid.UUID, audit AuditMeta, outcome, reason string) {
+	if recorder == nil || audit.ActorUserID == uuid.Nil {
 		return
 	}
 	targetID := strings.TrimSpace(audit.TargetID)
 	if targetID == "" {
 		targetID = tenantID.String()
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	recorder.RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenantID,
 		ActorUserID: audit.ActorUserID,
 		ActorRole:   audit.ActorRole,

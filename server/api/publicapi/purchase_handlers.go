@@ -86,6 +86,11 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+		if err := s.refuseCheckoutForStoreRoute(ctx, tenant.ID); err != nil {
+			return nil, err
+		}
+	}
 	origin, err := tenantSiteURL(tenant)
 	if err != nil {
 		s.logger.WarnContext(ctx, "checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
@@ -161,6 +166,27 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("failed to start checkout"))
 	}
 	return connect.NewResponse(&publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}), nil
+}
+
+// refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose
+// app sells through the store: that app may not send a reader to the external
+// checkout, whatever an out-of-date build asks for.
+func (s *apiServer) refuseCheckoutForStoreRoute(ctx context.Context, tenantID uuid.UUID) error {
+	stored, err := s.queriesFor(ctx).GetTenantAppPurchaseRoute(ctx, tenantID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return s.internalDBError(ctx, "failed to get tenant app purchase route", err, "tenant_id", tenantID.String())
+	}
+	route, err := paymentsettings.ResolveAppPurchaseRoute(stored)
+	if err != nil {
+		return s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenantID.String())
+	}
+	if route == paymentsettings.RouteStore {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app sells through the store"))
+	}
+	return nil
 }
 
 type purchasePageRow struct {

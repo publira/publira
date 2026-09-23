@@ -777,6 +777,17 @@ type TenantAdminInvitation struct {
 	UpdatedAt  time.Time    `json:"updated_at"`
 }
 
+type TenantAppStoreConfig struct {
+	TenantID            uuid.UUID      `json:"tenant_id"`
+	Enabled             bool           `json:"enabled"`
+	IssuerID            sql.NullString `json:"issuer_id"`
+	KeyID               sql.NullString `json:"key_id"`
+	PrivateKeyEncrypted sql.NullString `json:"private_key_encrypted"`
+	PrivateKeyHint      sql.NullString `json:"private_key_hint"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
 type TenantCommunityLimitOverride struct {
 	TenantID                             uuid.UUID     `json:"tenant_id"`
 	CommentPostLimitPerMinute            sql.NullInt32 `json:"comment_post_limit_per_minute"`
@@ -817,6 +828,7 @@ type TenantConfig struct {
 	AndroidSha256CertFingerprints  []string       `json:"android_sha256_cert_fingerprints"`
 	IosTeamID                      sql.NullString `json:"ios_team_id"`
 	IosBundleIdentifier            sql.NullString `json:"ios_bundle_identifier"`
+	AppPurchaseRoute               string         `json:"app_purchase_route"`
 }
 
 type TenantFcmConfig struct {
@@ -826,6 +838,16 @@ type TenantFcmConfig struct {
 	ServiceAccountJsonEncrypted string    `json:"service_account_json_encrypted"`
 	CreatedAt                   time.Time `json:"created_at"`
 	UpdatedAt                   time.Time `json:"updated_at"`
+}
+
+type TenantGooglePlayConfig struct {
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+	Enabled                    bool           `json:"enabled"`
+	ServiceAccountEmail        sql.NullString `json:"service_account_email"`
+	ServiceAccountKeyEncrypted sql.NullString `json:"service_account_key_encrypted"`
+	ServiceAccountKeyHint      sql.NullString `json:"service_account_key_hint"`
+	CreatedAt                  time.Time      `json:"created_at"`
+	UpdatedAt                  time.Time      `json:"updated_at"`
 }
 
 type TenantImage struct {

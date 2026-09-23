@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
@@ -162,7 +163,19 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 		return nil, err
 	}
 
-	updated, err := s.queriesFor(ctx).UpsertTenantMobileAppAssociation(ctx, dbmodels.UpsertTenantMobileAppAssociationParams{
+	// The app a store sells in is the one named here, so a tenant selling
+	// through the store may not take away the last app a store can sell in.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin tenant mobile app association transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	qtx := dbmodels.New(tx)
+
+	if _, err := qtx.LockTenantConfigByTenantID(ctx, tenant.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to lock tenant config", err, "tenant_id", tenant.ID.String())
+	}
+	updated, err := qtx.UpsertTenantMobileAppAssociation(ctx, dbmodels.UpsertTenantMobileAppAssociationParams{
 		TenantID:                      tenant.ID,
 		AndroidApplicationID:          android.applicationID,
 		AndroidSha256CertFingerprints: android.fingerprints,
@@ -171,6 +184,19 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update tenant mobile app association", err, "tenant_id", tenant.ID.String())
+	}
+	if err := paymentsettings.NewAppStores(qtx, s.encryptor).RequireReadyStoreForRoute(ctx, tenant.ID); err != nil {
+		if errors.Is(err, paymentsettings.ErrStoreRouteRequiresReadyStore) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("the app sells through the store, so a store has to keep an app it can sell in"))
+		}
+		if errors.Is(err, paymentsettings.ErrUnresolvedAppPurchaseRoute) {
+			return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
+		}
+		return nil, s.internalDBError(ctx, "failed to check the store route against the app association", err, "tenant_id", tenant.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
 	s.revalidateTags(ctx, tenant.ID, tenantMobileAppAssociationRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateTenantMobileAppAssociationResponse{

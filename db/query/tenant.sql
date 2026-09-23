@@ -194,6 +194,32 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     updated_at = NOW()
 RETURNING *;
 
+-- name: LockTenantConfigByTenantID :one
+-- Serializes the writes that together decide whether the store route has a
+-- store that can sell: the store settings and the app association. A tenant
+-- with no row has nothing to lock and cannot be on the store route either.
+SELECT *
+FROM tenant_config
+WHERE tenant_id = $1
+FOR UPDATE;
+
+-- name: GetTenantAppPurchaseRoute :one
+-- A tenant with no config row has no row here either, and sells through the
+-- external checkout, which is what the column's default says.
+SELECT app_purchase_route
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1;
+
+-- name: UpsertTenantAppPurchaseRoute :one
+-- An upsert for the reason UpsertTenantCommentSettings gives.
+INSERT INTO tenant_config (tenant_id, app_purchase_route)
+VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE
+SET app_purchase_route = EXCLUDED.app_purchase_route,
+    updated_at = NOW()
+RETURNING app_purchase_route;
+
 -- name: UpsertTenantCommentSettings :one
 -- The settings screen can save what the tenant has decided about commenting
 -- for a tenant whose config row does not exist yet, so both columns are

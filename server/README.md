@@ -85,6 +85,8 @@ Starting Checkout and verifying the webhook both use the enabled configuration i
 
 Tenant administrators register the Stripe secret key and the webhook signing secret through `AdminPaymentSettingsService`. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
 
+The same service stores the App Store Connect API key (issuer ID, key ID, and the `.p8` private key) and the Google Play service account's JSON key, in `tenant_app_store_config` and `tenant_google_play_config`, and the tenant's app purchase route (`tenant_config.app_purchase_route`): `external_checkout`, the Stripe Checkout above, or `store`, the store's in-app purchase. The app each store sells in is the one the tenant's mobile app association names. `TenantService.GetTenant` answers the route, and while it is `store`, `StartEpisodeCheckout` refuses `CLIENT_MOBILE` with `FailedPrecondition`.
+
 In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/stripe` as the webhook endpoint and enable the three events above. For local development, forward with the Stripe CLI:
 
 ```bash

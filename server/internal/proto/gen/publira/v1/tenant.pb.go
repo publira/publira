@@ -171,10 +171,14 @@ type GetTenantResponse struct {
 	// The pages the tenant names as its terms of service and its privacy policy.
 	// Absent where it has named none, and where the page it named is not
 	// published, so a link built from one always resolves.
-	TermsPage     *TenantLegalPage `protobuf:"bytes,16,opt,name=terms_page,json=termsPage,proto3" json:"terms_page,omitempty"`
-	PrivacyPage   *TenantLegalPage `protobuf:"bytes,17,opt,name=privacy_page,json=privacyPage,proto3" json:"privacy_page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TermsPage   *TenantLegalPage `protobuf:"bytes,16,opt,name=terms_page,json=termsPage,proto3" json:"terms_page,omitempty"`
+	PrivacyPage *TenantLegalPage `protobuf:"bytes,17,opt,name=privacy_page,json=privacyPage,proto3" json:"privacy_page,omitempty"`
+	// Which purchase the tenant's app offers for an episode it may sell. Never
+	// APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
+	// through the external checkout.
+	AppPurchaseRoute v1.AppPurchaseRoute `protobuf:"varint,18,opt,name=app_purchase_route,json=appPurchaseRoute,proto3,enum=publira.types.v1.AppPurchaseRoute" json:"app_purchase_route,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -324,6 +328,13 @@ func (x *GetTenantResponse) GetPrivacyPage() *TenantLegalPage {
 		return x.PrivacyPage
 	}
 	return nil
+}
+
+func (x *GetTenantResponse) GetAppPurchaseRoute() v1.AppPurchaseRoute {
+	if x != nil {
+		return x.AppPurchaseRoute
+	}
+	return v1.AppPurchaseRoute(0)
 }
 
 type GetTenantMobileAppAssociationRequest struct {
@@ -545,7 +556,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x03 \x01(\tR\tversionId\"\xad\x06\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\"\xff\x06\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -566,7 +577,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x0fgoogle_play_url\x18\x0f \x01(\tR\rgooglePlayUrl\x12:\n" +
 	"\n" +
 	"terms_page\x18\x10 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x11 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"_\n" +
+	"\fprivacy_page\x18\x11 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\x12P\n" +
+	"\x12app_purchase_route\x18\x12 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\"_\n" +
 	"$GetTenantMobileAppAssociationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"~\n" +
 	"\x1bTenantAndroidAppAssociation\x12%\n" +
@@ -607,6 +619,7 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(*v1.TenantTheme)(nil),                        // 8: publira.types.v1.TenantTheme
 	(v1.CommentMode)(0),                           // 9: publira.types.v1.CommentMode
 	(v1.AgeVerification)(0),                       // 10: publira.types.v1.AgeVerification
+	(v1.AppPurchaseRoute)(0),                      // 11: publira.types.v1.AppPurchaseRoute
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
 	7,  // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -615,18 +628,19 @@ var file_publira_v1_tenant_proto_depIdxs = []int32{
 	10, // 3: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
 	1,  // 4: publira.v1.GetTenantResponse.terms_page:type_name -> publira.v1.TenantLegalPage
 	1,  // 5: publira.v1.GetTenantResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
-	7,  // 6: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	4,  // 7: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
-	5,  // 8: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
-	0,  // 9: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	3,  // 10: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
-	2,  // 11: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	6,  // 12: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	11, // 6: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
+	7,  // 7: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4,  // 8: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
+	5,  // 9: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
+	0,  // 10: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	3,  // 11: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
+	2,  // 12: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	6,  // 13: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
+	12, // [12:14] is the sub-list for method output_type
+	10, // [10:12] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }

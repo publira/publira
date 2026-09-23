@@ -6,7 +6,7 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { SecretUpdateMode } from "./email_pb";
 import { file_publira_admin_v1_email } from "./email_pb";
-import type { TenantContext } from "../../types/v1/types_pb";
+import type { AppPurchaseRoute, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/payment.proto.
  */
 export const file_publira_admin_v1_payment: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3BheW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiwQEKFVRlbmFudFBheW1lbnRTZXR0aW5ncxIQCghwcm92aWRlchgBIAEoCRIPCgdlbmFibGVkGAIgASgIEh0KFXNlY3JldF9rZXlfY29uZmlndXJlZBgDIAEoCBIhChl3ZWJob29rX3NlY3JldF9jb25maWd1cmVkGAQgASgIEhcKD3NlY3JldF9rZXlfaGludBgFIAEoCRIbChN3ZWJob29rX3NlY3JldF9oaW50GAYgASgJEg0KBXJlYWR5GAcgASgIIlIKH0dldFRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Il0KIEdldFRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjkKCHNldHRpbmdzGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRQYXltZW50U2V0dGluZ3MisAIKIlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCHByb3ZpZGVyGAIgASgJEg8KB2VuYWJsZWQYAyABKAgSQgoWc2VjcmV0X2tleV91cGRhdGVfbW9kZRgEIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuU2VjcmV0VXBkYXRlTW9kZRISCgpzZWNyZXRfa2V5GAUgASgJEkYKGndlYmhvb2tfc2VjcmV0X3VwZGF0ZV9tb2RlGAYgASgOMiIucHVibGlyYS5hZG1pbi52MS5TZWNyZXRVcGRhdGVNb2RlEhYKDndlYmhvb2tfc2VjcmV0GAcgASgJImAKI1VwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjkKCHNldHRpbmdzGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRQYXltZW50U2V0dGluZ3MysgIKG0FkbWluUGF5bWVudFNldHRpbmdzU2VydmljZRKDAQoYR2V0VGVuYW50UGF5bWVudFNldHRpbmdzEjEucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRQYXltZW50U2V0dGluZ3NSZXF1ZXN0GjIucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRQYXltZW50U2V0dGluZ3NSZXNwb25zZSIAEowBChtVcGRhdGVUZW5hbnRQYXltZW50U2V0dGluZ3MSNC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QaNS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_admin_v1_email, file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3BheW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiwQEKFVRlbmFudFBheW1lbnRTZXR0aW5ncxIQCghwcm92aWRlchgBIAEoCRIPCgdlbmFibGVkGAIgASgIEh0KFXNlY3JldF9rZXlfY29uZmlndXJlZBgDIAEoCBIhChl3ZWJob29rX3NlY3JldF9jb25maWd1cmVkGAQgASgIEhcKD3NlY3JldF9rZXlfaGludBgFIAEoCRIbChN3ZWJob29rX3NlY3JldF9oaW50GAYgASgJEg0KBXJlYWR5GAcgASgIIlIKH0dldFRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Il0KIEdldFRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjkKCHNldHRpbmdzGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRQYXltZW50U2V0dGluZ3MisAIKIlVwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCHByb3ZpZGVyGAIgASgJEg8KB2VuYWJsZWQYAyABKAgSQgoWc2VjcmV0X2tleV91cGRhdGVfbW9kZRgEIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuU2VjcmV0VXBkYXRlTW9kZRISCgpzZWNyZXRfa2V5GAUgASgJEkYKGndlYmhvb2tfc2VjcmV0X3VwZGF0ZV9tb2RlGAYgASgOMiIucHVibGlyYS5hZG1pbi52MS5TZWNyZXRVcGRhdGVNb2RlEhYKDndlYmhvb2tfc2VjcmV0GAcgASgJImAKI1VwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEjkKCHNldHRpbmdzGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5UZW5hbnRQYXltZW50U2V0dGluZ3MitwEKHVRlbmFudEFwcFN0b3JlUGF5bWVudFNldHRpbmdzEg8KB2VuYWJsZWQYASABKAgSEQoJaXNzdWVyX2lkGAIgASgJEg4KBmtleV9pZBgDIAEoCRIeChZwcml2YXRlX2tleV9jb25maWd1cmVkGAQgASgIEhgKEHByaXZhdGVfa2V5X2hpbnQYBSABKAkSGQoRYnVuZGxlX2lkZW50aWZpZXIYBiABKAkSDQoFcmVhZHkYByABKAgiwAEKH1RlbmFudEdvb2dsZVBsYXlQYXltZW50U2V0dGluZ3MSDwoHZW5hYmxlZBgBIAEoCBIdChVzZXJ2aWNlX2FjY291bnRfZW1haWwYAiABKAkSJgoec2VydmljZV9hY2NvdW50X2tleV9jb25maWd1cmVkGAMgASgIEiAKGHNlcnZpY2VfYWNjb3VudF9rZXlfaGludBgEIAEoCRIUCgxwYWNrYWdlX25hbWUYBSABKAkSDQoFcmVhZHkYBiABKAgi6AEKGlRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzEj4KEmFwcF9wdXJjaGFzZV9yb3V0ZRgBIAEoDjIiLnB1YmxpcmEudHlwZXMudjEuQXBwUHVyY2hhc2VSb3V0ZRJCCglhcHBfc3RvcmUYAiABKAsyLy5wdWJsaXJhLmFkbWluLnYxLlRlbmFudEFwcFN0b3JlUGF5bWVudFNldHRpbmdzEkYKC2dvb2dsZV9wbGF5GAMgASgLMjEucHVibGlyYS5hZG1pbi52MS5UZW5hbnRHb29nbGVQbGF5UGF5bWVudFNldHRpbmdzIlcKJEdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiZwolR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXNwb25zZRI+CghzZXR0aW5ncxgBIAEoCzIsLnB1YmxpcmEuYWRtaW4udjEuVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MirQEKHUFwcFN0b3JlUGF5bWVudFNldHRpbmdzVXBkYXRlEg8KB2VuYWJsZWQYASABKAgSEQoJaXNzdWVyX2lkGAIgASgJEg4KBmtleV9pZBgDIAEoCRJDChdwcml2YXRlX2tleV91cGRhdGVfbW9kZRgEIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuU2VjcmV0VXBkYXRlTW9kZRITCgtwcml2YXRlX2tleRgFIAEoCSKcAQofR29vZ2xlUGxheVBheW1lbnRTZXR0aW5nc1VwZGF0ZRIPCgdlbmFibGVkGAEgASgIEksKH3NlcnZpY2VfYWNjb3VudF9rZXlfdXBkYXRlX21vZGUYAiABKA4yIi5wdWJsaXJhLmFkbWluLnYxLlNlY3JldFVwZGF0ZU1vZGUSGwoTc2VydmljZV9hY2NvdW50X2tleRgDIAEoCSKmAgonVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI+ChJhcHBfcHVyY2hhc2Vfcm91dGUYAiABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLkFwcFB1cmNoYXNlUm91dGUSQgoJYXBwX3N0b3JlGAMgASgLMi8ucHVibGlyYS5hZG1pbi52MS5BcHBTdG9yZVBheW1lbnRTZXR0aW5nc1VwZGF0ZRJGCgtnb29nbGVfcGxheRgEIAEoCzIxLnB1YmxpcmEuYWRtaW4udjEuR29vZ2xlUGxheVBheW1lbnRTZXR0aW5nc1VwZGF0ZSJqCihVcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlEj4KCHNldHRpbmdzGAEgASgLMiwucHVibGlyYS5hZG1pbi52MS5UZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nczLlBAobQWRtaW5QYXltZW50U2V0dGluZ3NTZXJ2aWNlEoMBChhHZXRUZW5hbnRQYXltZW50U2V0dGluZ3MSMS5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFBheW1lbnRTZXR0aW5nc1JlcXVlc3QaMi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgASjAEKG1VwZGF0ZVRlbmFudFBheW1lbnRTZXR0aW5ncxI0LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVxdWVzdBo1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50UGF5bWVudFNldHRpbmdzUmVzcG9uc2UiABKSAQodR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3MSNi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFN0b3JlUGF5bWVudFNldHRpbmdzUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXNwb25zZSIAEpsBCiBVcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5ncxI5LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50U3RvcmVQYXltZW50U2V0dGluZ3NSZXF1ZXN0GjoucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRTdG9yZVBheW1lbnRTZXR0aW5nc1Jlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_admin_v1_email, file_publira_types_v1_types]);
 
 /**
  * Non-secret view of a tenant's payment-provider settings. Secret key and
@@ -174,6 +174,310 @@ export const UpdateTenantPaymentSettingsResponseSchema: GenMessage<UpdateTenantP
   messageDesc(file_publira_admin_v1_payment, 4);
 
 /**
+ * Non-secret view of the App Store Connect API key the server talks to the App
+ * Store with. The .p8 private key never appears here.
+ *
+ * @generated from message publira.admin.v1.TenantAppStorePaymentSettings
+ */
+export type TenantAppStorePaymentSettings = Message<"publira.admin.v1.TenantAppStorePaymentSettings"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * The issuer ID and the key ID are not secret and are answered as stored.
+   *
+   * @generated from field: string issuer_id = 2;
+   */
+  issuerId: string;
+
+  /**
+   * @generated from field: string key_id = 3;
+   */
+  keyId: string;
+
+  /**
+   * @generated from field: bool private_key_configured = 4;
+   */
+  privateKeyConfigured: boolean;
+
+  /**
+   * Display hint derived at write time. Empty when no key is stored.
+   *
+   * @generated from field: string private_key_hint = 5;
+   */
+  privateKeyHint: string;
+
+  /**
+   * The app the store sells in: the bundle identifier the tenant's iOS app
+   * association names. Empty where it names none, and edited there, not here.
+   *
+   * @generated from field: string bundle_identifier = 6;
+   */
+  bundleIdentifier: string;
+
+  /**
+   * True when enabled, the key is stored, and bundle_identifier is not empty.
+   *
+   * @generated from field: bool ready = 7;
+   */
+  ready: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.TenantAppStorePaymentSettings.
+ * Use `create(TenantAppStorePaymentSettingsSchema)` to create a new message.
+ */
+export const TenantAppStorePaymentSettingsSchema: GenMessage<TenantAppStorePaymentSettings> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 5);
+
+/**
+ * Non-secret view of the service account the server talks to Google Play as.
+ * The JSON key never appears here.
+ *
+ * @generated from message publira.admin.v1.TenantGooglePlayPaymentSettings
+ */
+export type TenantGooglePlayPaymentSettings = Message<"publira.admin.v1.TenantGooglePlayPaymentSettings"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * The client_email of the stored key, which the tenant grants access to in
+   * the Play Console. Empty when no key is stored.
+   *
+   * @generated from field: string service_account_email = 2;
+   */
+  serviceAccountEmail: string;
+
+  /**
+   * @generated from field: bool service_account_key_configured = 3;
+   */
+  serviceAccountKeyConfigured: boolean;
+
+  /**
+   * Display hint derived at write time. Empty when no key is stored.
+   *
+   * @generated from field: string service_account_key_hint = 4;
+   */
+  serviceAccountKeyHint: string;
+
+  /**
+   * The app the store sells in: the application ID the tenant's Android app
+   * association names. Empty where it names none, and edited there, not here.
+   *
+   * @generated from field: string package_name = 5;
+   */
+  packageName: string;
+
+  /**
+   * True when enabled, the key is stored, and package_name is not empty.
+   *
+   * @generated from field: bool ready = 6;
+   */
+  ready: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.TenantGooglePlayPaymentSettings.
+ * Use `create(TenantGooglePlayPaymentSettingsSchema)` to create a new message.
+ */
+export const TenantGooglePlayPaymentSettingsSchema: GenMessage<TenantGooglePlayPaymentSettings> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 6);
+
+/**
+ * @generated from message publira.admin.v1.TenantStorePaymentSettings
+ */
+export type TenantStorePaymentSettings = Message<"publira.admin.v1.TenantStorePaymentSettings"> & {
+  /**
+   * Never APP_PURCHASE_ROUTE_UNSPECIFIED on a read.
+   *
+   * @generated from field: publira.types.v1.AppPurchaseRoute app_purchase_route = 1;
+   */
+  appPurchaseRoute: AppPurchaseRoute;
+
+  /**
+   * @generated from field: publira.admin.v1.TenantAppStorePaymentSettings app_store = 2;
+   */
+  appStore?: TenantAppStorePaymentSettings | undefined;
+
+  /**
+   * @generated from field: publira.admin.v1.TenantGooglePlayPaymentSettings google_play = 3;
+   */
+  googlePlay?: TenantGooglePlayPaymentSettings | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.TenantStorePaymentSettings.
+ * Use `create(TenantStorePaymentSettingsSchema)` to create a new message.
+ */
+export const TenantStorePaymentSettingsSchema: GenMessage<TenantStorePaymentSettings> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 7);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantStorePaymentSettingsRequest
+ */
+export type GetTenantStorePaymentSettingsRequest = Message<"publira.admin.v1.GetTenantStorePaymentSettingsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantStorePaymentSettingsRequest.
+ * Use `create(GetTenantStorePaymentSettingsRequestSchema)` to create a new message.
+ */
+export const GetTenantStorePaymentSettingsRequestSchema: GenMessage<GetTenantStorePaymentSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 8);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantStorePaymentSettingsResponse
+ */
+export type GetTenantStorePaymentSettingsResponse = Message<"publira.admin.v1.GetTenantStorePaymentSettingsResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.TenantStorePaymentSettings settings = 1;
+   */
+  settings?: TenantStorePaymentSettings | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantStorePaymentSettingsResponse.
+ * Use `create(GetTenantStorePaymentSettingsResponseSchema)` to create a new message.
+ */
+export const GetTenantStorePaymentSettingsResponseSchema: GenMessage<GetTenantStorePaymentSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 9);
+
+/**
+ * @generated from message publira.admin.v1.AppStorePaymentSettingsUpdate
+ */
+export type AppStorePaymentSettingsUpdate = Message<"publira.admin.v1.AppStorePaymentSettingsUpdate"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * A UUID, and a ten-character key ID in capital letters and digits. Both are
+   * required while enabled; an empty value clears one.
+   *
+   * @generated from field: string issuer_id = 2;
+   */
+  issuerId: string;
+
+  /**
+   * @generated from field: string key_id = 3;
+   */
+  keyId: string;
+
+  /**
+   * @generated from field: publira.admin.v1.SecretUpdateMode private_key_update_mode = 4;
+   */
+  privateKeyUpdateMode: SecretUpdateMode;
+
+  /**
+   * The contents of the .p8 file App Store Connect issued, a PKCS #8 EC
+   * private key in PEM form.
+   *
+   * @generated from field: string private_key = 5;
+   */
+  privateKey: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AppStorePaymentSettingsUpdate.
+ * Use `create(AppStorePaymentSettingsUpdateSchema)` to create a new message.
+ */
+export const AppStorePaymentSettingsUpdateSchema: GenMessage<AppStorePaymentSettingsUpdate> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 10);
+
+/**
+ * @generated from message publira.admin.v1.GooglePlayPaymentSettingsUpdate
+ */
+export type GooglePlayPaymentSettingsUpdate = Message<"publira.admin.v1.GooglePlayPaymentSettingsUpdate"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: publira.admin.v1.SecretUpdateMode service_account_key_update_mode = 2;
+   */
+  serviceAccountKeyUpdateMode: SecretUpdateMode;
+
+  /**
+   * The JSON key file of a service account, as the Google Cloud console
+   * downloads it.
+   *
+   * @generated from field: string service_account_key = 3;
+   */
+  serviceAccountKey: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GooglePlayPaymentSettingsUpdate.
+ * Use `create(GooglePlayPaymentSettingsUpdateSchema)` to create a new message.
+ */
+export const GooglePlayPaymentSettingsUpdateSchema: GenMessage<GooglePlayPaymentSettingsUpdate> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 11);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
+ */
+export type UpdateTenantStorePaymentSettingsRequest = Message<"publira.admin.v1.UpdateTenantStorePaymentSettingsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * Every field is written, and an absent store is written disabled with its
+   * key left as it is. APP_PURCHASE_ROUTE_UNSPECIFIED is invalid_argument, and
+   * APP_PURCHASE_ROUTE_STORE is failed_precondition unless a store is ready
+   * once this request is applied.
+   *
+   * @generated from field: publira.types.v1.AppPurchaseRoute app_purchase_route = 2;
+   */
+  appPurchaseRoute: AppPurchaseRoute;
+
+  /**
+   * @generated from field: publira.admin.v1.AppStorePaymentSettingsUpdate app_store = 3;
+   */
+  appStore?: AppStorePaymentSettingsUpdate | undefined;
+
+  /**
+   * @generated from field: publira.admin.v1.GooglePlayPaymentSettingsUpdate google_play = 4;
+   */
+  googlePlay?: GooglePlayPaymentSettingsUpdate | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantStorePaymentSettingsRequest.
+ * Use `create(UpdateTenantStorePaymentSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateTenantStorePaymentSettingsRequestSchema: GenMessage<UpdateTenantStorePaymentSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 12);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
+ */
+export type UpdateTenantStorePaymentSettingsResponse = Message<"publira.admin.v1.UpdateTenantStorePaymentSettingsResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.TenantStorePaymentSettings settings = 1;
+   */
+  settings?: TenantStorePaymentSettings | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantStorePaymentSettingsResponse.
+ * Use `create(UpdateTenantStorePaymentSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateTenantStorePaymentSettingsResponseSchema: GenMessage<UpdateTenantStorePaymentSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_payment, 13);
+
+/**
  * @generated from service publira.admin.v1.AdminPaymentSettingsService
  */
 export const AdminPaymentSettingsService: GenService<{
@@ -192,6 +496,22 @@ export const AdminPaymentSettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTenantPaymentSettingsRequestSchema;
     output: typeof UpdateTenantPaymentSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings
+   */
+  getTenantStorePaymentSettings: {
+    methodKind: "unary";
+    input: typeof GetTenantStorePaymentSettingsRequestSchema;
+    output: typeof GetTenantStorePaymentSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings
+   */
+  updateTenantStorePaymentSettings: {
+    methodKind: "unary";
+    input: typeof UpdateTenantStorePaymentSettingsRequestSchema;
+    output: typeof UpdateTenantStorePaymentSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_payment, 0);

@@ -54,6 +54,8 @@ func (s *apiServer) GetTenant(
 	ageVerification := publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE
 	appStoreURL := ""
 	googlePlayURL := ""
+	// The column's default: the app sells through the external checkout.
+	appPurchaseRoute := publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT
 	var termsPage, privacyPage *publirav1.TenantLegalPage
 
 	if err == nil {
@@ -68,6 +70,10 @@ func (s *apiServer) GetTenant(
 		}
 		appStoreURL = config.AppStoreUrl.String
 		googlePlayURL = config.GooglePlayUrl.String
+		appPurchaseRoute, err = protomapper.AppPurchaseRouteFromStored(config.AppPurchaseRoute)
+		if err != nil {
+			return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
+		}
 		commentMode, err = protomapper.CommentModeFromStored(config.CommentMode)
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant comment mode is not a supported mode", err, "tenant_id", tenant.ID.String())
@@ -111,6 +117,7 @@ func (s *apiServer) GetTenant(
 		GooglePlayUrl:         googlePlayURL,
 		TermsPage:             termsPage,
 		PrivacyPage:           privacyPage,
+		AppPurchaseRoute:      appPurchaseRoute,
 	}), nil
 }
 

@@ -170,6 +170,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			"{}",
 			nil,
 			nil,
+			"external_checkout",
 		))
 	expectNoTenantLegalPages(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
@@ -603,6 +604,7 @@ func expectTenantConfigWithCommentMode(
 			"{}",
 			nil,
 			nil,
+			"external_checkout",
 		))
 }
 
@@ -665,4 +667,77 @@ func TestGetTenantFailsOnAnUnsupportedAgeVerification(t *testing.T) {
 		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 	}
 	assertPublicExpectations(t, mock)
+}
+
+// The app reads the route before it offers a purchase, so the tenant read
+// answers it, and a tenant that has saved nothing sells through the external
+// checkout.
+func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
+	cases := []struct {
+		name   string
+		stored string
+		want   publirattypesv1.AppPurchaseRoute
+	}{
+		{name: "no config row", want: publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT},
+		{name: "external checkout", stored: "external_checkout", want: publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT},
+		{name: "store", stored: "store", want: publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			if tc.stored == "" {
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+					WithArgs(tenantID).
+					WillReturnError(sql.ErrNoRows)
+			} else {
+				expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, tc.stored)
+				expectNoTenantLegalPages(mock, tenantID)
+			}
+			expectPaymentsUnavailable(mock, tenantID)
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}))
+			if err != nil {
+				t.Fatalf("GetTenant: %v", err)
+			}
+			if resp.Msg.AppPurchaseRoute != tc.want {
+				t.Fatalf("app_purchase_route = %v, want %v", resp.Msg.AppPurchaseRoute, tc.want)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestGetTenantFailsOnAnUnsupportedAppPurchaseRoute(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, "coins")
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, route string) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
+			AddRow(tenantID, nil, nil, now, now, nil, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route))
 }

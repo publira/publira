@@ -591,6 +591,10 @@ type Querier interface {
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
+	// A tenant with no config row has no row here either, and sells through the
+	// external checkout, which is what the column's default says.
+	GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error)
+	GetTenantAppStoreConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantAppStoreConfig, error)
 	// Return the first tenant that matches, keeping the order of the candidate
 	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -602,6 +606,7 @@ type Querier interface {
 	// Returns no rows for a tenant that has no Firebase credentials, which is the
 	// whole "mobile push is disabled" state.
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
+	GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantGooglePlayConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// The pages a tenant names as its terms of service and its privacy policy,
 	// each with its published version, if any. No row where the tenant has no
@@ -1696,6 +1701,10 @@ type Querier interface {
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
+	// Serializes the writes that together decide whether the store route has a
+	// store that can sell: the store settings and the app association. A tenant
+	// with no row has nothing to lock and cannot be on the store route either.
+	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	// Lock the tenant row so concurrent tenant branding image uploads and deletes
 	// (icon, logo) serialize. The following read of the current image must be a
 	// separate statement: READ COMMITTED freezes its snapshot at statement start,
@@ -2079,6 +2088,9 @@ type Querier interface {
 	// verify ages is not a decision a tenant should have to fill in its site copy
 	// to reach.
 	UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives.
+	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
+	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)
 	// The settings screen can save what the tenant has decided about commenting
 	// for a tenant whose config row does not exist yet, so both columns are
 	// written without disturbing the site copy columns UpdateTenantConfig owns.
@@ -2089,6 +2101,7 @@ type Querier interface {
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
+	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives. Both pages are
 	// written together because the console offers them as one card.
 	UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLegalPagesParams) (TenantConfig, error)
