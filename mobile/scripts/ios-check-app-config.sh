@@ -2,7 +2,8 @@
 # Run by Xcode as the Runner target's first build phase. Stops a build whose
 # identity was not generated from an app manifest, was generated into a
 # directory Xcode does not read, or, for a production build, names another
-# tenant than the PUBLIRA_TENANT_HOST the app connects to.
+# tenant than the PUBLIRA_TENANT_HOST the app connects to. A signed production
+# release also needs the team generated from PUBLIRA_IOS_DEVELOPMENT_TEAM.
 set -eu
 
 mobile_dir="$(cd "${SRCROOT}/.." && pwd -P)"
@@ -47,3 +48,12 @@ case "${CONFIGURATION}" in
     fi
     ;;
 esac
+
+# A store build is signed under the tenant's team, never under whichever team
+# Flutter picks from the keychain when the project names none.
+if [ "${CONFIGURATION}" = Release-production ] &&
+  [ "${PLATFORM_NAME:-}" = iphoneos ] &&
+  [ "${CODE_SIGNING_ALLOWED:-YES}" != NO ] &&
+  [ -z "${PUBLIRA_DEVELOPMENT_TEAM:-}" ]; then
+  fail "Production release builds are signed under the tenant's Apple Developer team; export PUBLIRA_IOS_DEVELOPMENT_TEAM and generate again, ${generate}"
+fi

@@ -8,6 +8,7 @@ import '../scripts/app_manifest/generate.dart';
 import '../scripts/app_manifest/generated_files.dart';
 import '../scripts/app_manifest/ios.dart';
 import '../scripts/app_manifest/manifest.dart';
+import '../scripts/app_manifest/signing.dart';
 
 const _valid = '''
 schemaVersion: 1
@@ -54,7 +55,7 @@ Map<String, String> _xcconfigSettings(String text) {
       continue;
     }
     final assignment = RegExp(
-      r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$',
+      r'^([A-Za-z_][A-Za-z0-9_]*(?:\[[a-z]+=[A-Za-z0-9_*-]+\])*)\s*=\s*(.*)$',
     ).firstMatch(statement);
     if (assignment == null) {
       fail('Xcode cannot read the line "$line"');
@@ -637,13 +638,17 @@ android:
   });
 
   group('the iOS build configuration', () {
-    Map<String, String> settingsOf(AppManifest manifest, {String? source}) =>
-        _xcconfigSettings(
-          iosGeneratedFiles(
-            manifest,
-            source: source ?? 'app.yaml',
-          )[iosAppXcconfig]!,
-        );
+    Map<String, String> settingsOf(
+      AppManifest manifest, {
+      String? source,
+      String? developmentTeam,
+    }) => _xcconfigSettings(
+      iosGeneratedFiles(
+        manifest,
+        source: source ?? 'app.yaml',
+        developmentTeam: developmentTeam,
+      )[iosAppXcconfig]!,
+    );
 
     test('carries the tenant identity Xcode reads', () {
       final manifest = AppManifest.parse(
@@ -656,7 +661,25 @@ android:
         'PUBLIRA_BUNDLE_IDENTIFIER': 'com.example.reader-ios',
         'PUBLIRA_ASSOCIATED_DOMAIN': 'reader.example.com',
         'PUBLIRA_APP_NAME': 'Example Reader',
+        'PUBLIRA_DEVELOPMENT_TEAM': '',
+        'DEVELOPMENT_TEAM[config=Release-production]': '',
       });
+    });
+
+    test('signs the store build alone under the team it is given', () {
+      final manifest = AppManifest.parse(_valid, source: 'app.yaml');
+
+      final settings = settingsOf(manifest, developmentTeam: 'ABCDE12345');
+
+      expect(settings, containsPair('PUBLIRA_DEVELOPMENT_TEAM', 'ABCDE12345'));
+      expect(
+        settings.keys.where((name) => name.startsWith('DEVELOPMENT_TEAM')),
+        ['DEVELOPMENT_TEAM[config=Release-production]'],
+      );
+      expect(
+        settings['DEVELOPMENT_TEAM[config=Release-production]'],
+        'ABCDE12345',
+      );
     });
 
     test('keeps whatever characters the name is written in', () {
@@ -740,6 +763,57 @@ android:
         ),
       );
     });
+
+    test('is generated with the team the environment names', () async {
+      final temporary = await Directory.systemTemp.createTemp('app_ios_');
+      addTearDown(() => temporary.delete(recursive: true));
+      final directory = Directory('${temporary.path}/out');
+
+      await generateBuildConfiguration(
+        File('config/app.example.yaml'),
+        directory,
+        iosDevelopmentTeam: iosDevelopmentTeam(const {
+          iosDevelopmentTeamVariable: 'ABCDE12345',
+        }),
+      );
+
+      expect(
+        await File('${directory.path}/App.xcconfig').readAsString(),
+        contains('PUBLIRA_DEVELOPMENT_TEAM = ABCDE12345\n'),
+      );
+    });
+  });
+
+  group('the iOS development team', () {
+    test('is none when the environment names none', () {
+      expect(iosDevelopmentTeam(const {}), isNull);
+      expect(
+        iosDevelopmentTeam(const {iosDevelopmentTeamVariable: ''}),
+        isNull,
+      );
+    });
+
+    for (final team in [
+      'abcde12345',
+      'ABCDE1234',
+      'ABCDE123456',
+      'ABCDE 1234',
+    ]) {
+      test('rejects $team', () {
+        expect(
+          () => iosDevelopmentTeam({iosDevelopmentTeamVariable: team}),
+          throwsA(
+            isA<SigningException>().having(
+              (error) => error.message,
+              'message',
+              startsWith(
+                'PUBLIRA_IOS_DEVELOPMENT_TEAM must be the ten-character',
+              ),
+            ),
+          ),
+        );
+      });
+    }
   });
 
   group('the Xcode build check', () {
@@ -842,6 +916,37 @@ android:
               ),
             );
           }
+        }
+      }
+    });
+
+    test('signs a production release under the generated team', () async {
+      final production = {
+        'CONFIGURATION': 'Release-production',
+        'PLATFORM_NAME': 'iphoneos',
+        'DART_DEFINES': dartDefines(['PUBLIRA_TENANT_HOST=reader.example.com']),
+      };
+      for (final (settings, passes) in [
+        ({'PUBLIRA_DEVELOPMENT_TEAM': 'ABCDE12345'}, true),
+        (<String, String>{}, false),
+        // The team Flutter picks from the keychain for a project naming none.
+        ({'DEVELOPMENT_TEAM': 'ZYXWV98765'}, false),
+        ({'CODE_SIGNING_ALLOWED': 'NO'}, true),
+        ({'PLATFORM_NAME': 'iphonesimulator'}, true),
+        ({'CONFIGURATION': 'Profile-production'}, true),
+        ({'CONFIGURATION': 'Release-dev'}, true),
+      ]) {
+        final result = await check({...production, ...settings});
+
+        expect(result.exitCode == 0, passes, reason: '$settings');
+        if (!passes) {
+          expect(
+            result.stderr,
+            contains(
+              "error: Production release builds are signed under the tenant's "
+              'Apple Developer team; export PUBLIRA_IOS_DEVELOPMENT_TEAM',
+            ),
+          );
         }
       }
     });

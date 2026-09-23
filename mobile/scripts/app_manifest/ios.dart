@@ -12,10 +12,11 @@ const iosAppXcconfig = 'App.xcconfig';
 const _empty = 'PUBLIRA_EMPTY';
 
 /// The files an iOS build reads, keyed by name, for [manifest] read from
-/// [source].
+/// [source], signing a device build under [developmentTeam] when one is given.
 Map<String, String> iosGeneratedFiles(
   AppManifest manifest, {
   required String source,
+  String? developmentTeam,
 }) => {
   iosAppXcconfig: [
     '// Generated from ${commentText(source)} by scripts/app_manifest.dart. '
@@ -25,6 +26,11 @@ Map<String, String> iosGeneratedFiles(
     'PUBLIRA_BUNDLE_IDENTIFIER = ${manifest.iosBundleIdentifier}',
     'PUBLIRA_ASSOCIATED_DOMAIN = ${manifest.tenantHost}',
     'PUBLIRA_APP_NAME = ${xcconfigValue(manifest.appName)}',
+    // Kept apart from DEVELOPMENT_TEAM, which Flutter fills in from the
+    // keychain when the project names none, and applied to the store build
+    // only, so that every other build keeps signing as it did.
+    'PUBLIRA_DEVELOPMENT_TEAM =${developmentTeam == null ? '' : ' $developmentTeam'}',
+    r'DEVELOPMENT_TEAM[config=Release-production] = $(PUBLIRA_DEVELOPMENT_TEAM)',
     '',
   ].join('\n'),
 };

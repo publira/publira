@@ -5,8 +5,9 @@
 //   dart run scripts/build.dart <manifest> <apk|appbundle|ios|ipa> [flutter build arguments]
 //
 // The flavor is production unless the arguments name another. A production
-// build reads the origin it connects to from $PUBLIRA_BASE_URL. The build
-// fails when it changed the working tree.
+// build reads the origin it connects to from $PUBLIRA_BASE_URL, and signs
+// with the keys the environment names. The build fails when it changed the
+// working tree.
 
 import 'dart:io';
 
@@ -14,6 +15,7 @@ import 'app_manifest/flutter_build.dart';
 import 'app_manifest/generate.dart';
 import 'app_manifest/generated_files.dart';
 import 'app_manifest/manifest.dart';
+import 'app_manifest/signing.dart';
 import 'app_manifest/working_tree.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -29,6 +31,7 @@ Future<void> main(List<String> arguments) async {
   final directory = generatedDirectory(mobileDirectory, Platform.environment);
 
   final List<String> flutterArguments;
+  final String? developmentTeam;
   try {
     final manifest = await AppManifest.load(manifestFile);
     if (xcodeBuildTargets.contains(request.target) &&
@@ -44,21 +47,36 @@ Future<void> main(List<String> arguments) async {
       manifest,
       Platform.environment,
     );
+    developmentTeam = iosDevelopmentTeam(Platform.environment);
   } on AppManifestException catch (error) {
     stderr.writeln(error);
     exit(1);
   } on BuildException catch (error) {
     stderr.writeln(error);
     exit(1);
+  } on SigningException catch (error) {
+    stderr.writeln(error);
+    exit(1);
   }
 
   final before = await WorkingTreeSnapshot.take(mobileDirectory);
-  await generateBuildConfiguration(manifestFile, directory);
+  await generateBuildConfiguration(
+    manifestFile,
+    directory,
+    iosDevelopmentTeam: developmentTeam,
+  );
   stdout.writeln('flutter ${flutterArguments.join(' ')}');
   final flutter = await Process.start(
     'flutter',
     flutterArguments,
     workingDirectory: mobileDirectory.path,
+    // Gradle reads a relative keystore path from mobile/; the one given here
+    // was named from where the task started, as the manifest was.
+    environment: {
+      if (Platform.environment[androidKeystoreVariable] case final keystore?
+          when keystore.isNotEmpty)
+        androidKeystoreVariable: File(keystore).absolute.path,
+    },
     mode: ProcessStartMode.inheritStdio,
   );
   final code = await flutter.exitCode;
