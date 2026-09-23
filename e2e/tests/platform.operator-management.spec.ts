@@ -397,9 +397,9 @@ test.describe("platform operator management", () => {
     await expect(
       adminRow.getByRole("cell", { exact: true, name: "Tenant admin" })
     ).toBeVisible();
+    await expect(
+      adminRow.getByRole("cell", { exact: true, name: "Active" })
+    ).toBeVisible();
     await expect(memberRow(SEED_MEMBER.name)).toHaveCount(0);
-    // The status column is not asserted: it words a person's account status with
-    // the catalog written for a tenant
-    // ([#1565](https://github.com/publira/publira/issues/1565)).
   });
 });

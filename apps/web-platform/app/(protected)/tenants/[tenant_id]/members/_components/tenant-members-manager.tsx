@@ -65,11 +65,11 @@ import {
   PlatformSections,
   PlatformSectionTitle,
 } from "#components/platform-page";
-import { getTenantStatusTone } from "#lib/tenant-labels";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
 } from "#lib/tenants";
+import { getEndUserStatusTone } from "#lib/user-labels";
 
 export interface TenantMembersManagerCopy {
   addDescription: string;
@@ -263,10 +263,9 @@ const useTenantMembersCopy = (): TenantMembersManagerCopy => {
     ],
     roleUpdateDescription: t("platform.tenants.role_update_description"),
     statusLabels: {
-      active: t("platform.common.tenant_status.active"),
-      inactive: t("platform.common.tenant_status.inactive"),
-      suspended: t("platform.common.tenant_status.suspended"),
-      trial: t("platform.common.tenant_status.trial"),
+      active: t("platform.common.account_status.active"),
+      inactive: t("platform.common.account_status.inactive"),
+      suspended: t("platform.common.account_status.suspended"),
     },
     unset: t("platform.common.unset"),
   };
@@ -512,7 +511,7 @@ const TenantMemberRow = ({
       <TableCell>{member.email}</TableCell>
       <TableCell>{copy.roleLabels[member.role] ?? member.role}</TableCell>
       <TableCell>
-        <Badge tone={getTenantStatusTone(member.status)}>
+        <Badge tone={getEndUserStatusTone(member.status)}>
           {copy.statusLabels[member.status] ?? member.status}
         </Badge>
       </TableCell>
