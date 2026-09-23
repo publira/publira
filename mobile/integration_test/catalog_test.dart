@@ -3153,12 +3153,14 @@ void main() {
                   lastPage,
           description: 'the finish and the last page to reach the API',
         );
-
-        expect(
-          await offline.readUnsentProgress(
+        // The device drops an entry only after the API has answered, so the
+        // queue can still hold it when the API already has the page.
+        await pumpUntilTrueAsync(
+          tester,
+          () async => (await offline.readUnsentProgress(
             readerId: ConnectFixtureServer.memberPublicId,
-          ),
-          isEmpty,
+          )).isEmpty,
+          description: 'the sent progress to leave the device',
         );
       });
     });
