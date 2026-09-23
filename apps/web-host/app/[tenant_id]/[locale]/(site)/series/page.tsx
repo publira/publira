@@ -31,6 +31,7 @@ import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getPageAlternates } from "#lib/page-alternates";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -53,9 +54,12 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const t = await getMessages();
+  const [t, alternates] = await Promise.all([
+    getMessages(),
+    getPageAlternates("/series"),
+  ]);
 
-  return { title: t("host.series.list_title") };
+  return { alternates, title: t("host.series.list_title") };
 };
 
 /**

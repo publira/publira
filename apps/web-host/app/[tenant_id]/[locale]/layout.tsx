@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { HostMessagesProvider } from "#components/host-messages-provider";
 import { Message } from "#components/message";
 import { OfflineNotice } from "#components/offline-notice";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantPublicOrigin, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -38,12 +38,22 @@ export const generateStaticParams = () =>
  * tenant's own icon on the auth screens too — those are the pages a browser is
  * most likely to bookmark. Metadata is resolved in a pass of its own and
  * streamed into the document, so this read stays out of the route's shell.
+ *
+ * `metadataBase` is the tenant's own domain, so every relative URL a page puts
+ * in its metadata — canonical and language alternates, Open Graph — resolves
+ * there rather than against the request's `Host`.
  */
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const info = await getTenantSiteInfo(tenantId);
+  const [info, origin] = await Promise.all([
+    getTenantSiteInfo(tenantId),
+    getTenantPublicOrigin(tenantId),
+  ]);
 
-  return { icons: resolveTenantIcons(info) };
+  return {
+    icons: resolveTenantIcons(info),
+    metadataBase: origin ? new URL(origin) : undefined,
+  };
 };
 
 /**

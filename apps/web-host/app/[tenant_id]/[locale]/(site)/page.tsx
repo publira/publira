@@ -50,6 +50,7 @@ import { getMessagesFor } from "#lib/messages";
 import { listMyRecentSeries } from "#lib/reading-progress";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   WeeklySchedule,
@@ -162,14 +163,16 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [siteLabel, t] = await Promise.all([
+  const [siteLabel, t, alternates] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
+    tenantLocaleAlternates(tenantId, locale, "/"),
   ]);
 
   // This page shares a route segment with `(site)/layout.tsx`, so Next.js does
   // not apply that layout's `title.template`. Compose the full tab title here.
   return {
+    alternates,
     title: {
       absolute: `${t("host.top.metadata_title")} | ${siteLabel}`,
     },

@@ -19,15 +19,19 @@ import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMe } from "#lib/auth";
 import { getMessages } from "#lib/get-messages";
+import { getPageAlternates } from "#lib/page-alternates";
 import { getTenantId } from "#lib/tenant-id";
 
 import { RetainedInput, RetainedTextarea } from "./_components/retained-fields";
 import { submitContactMessageAction } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const t = await getMessages();
+  const [t, alternates] = await Promise.all([
+    getMessages(),
+    getPageAlternates("/contact"),
+  ]);
 
-  return { title: t("host.contact.title") };
+  return { alternates, title: t("host.contact.title") };
 };
 
 /**

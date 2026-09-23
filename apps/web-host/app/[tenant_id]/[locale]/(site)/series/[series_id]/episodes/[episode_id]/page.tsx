@@ -22,13 +22,9 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { shareText } from "#lib/share-text";
-import {
-  getTenantPublicOrigin,
-  getTenantSiteInfo,
-  getTenantSiteLabel,
-} from "#lib/tenant";
+import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
-import { tenantLocaleUrl } from "#lib/tenant-locale-path";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
@@ -77,11 +73,14 @@ export const generateMetadata = async (
   }
   const { episode_id, series_id } = parsedParams;
 
-  const [result, seriesResult, url, origin, siteLabel, t] = await Promise.all([
+  const [result, seriesResult, alternates, siteLabel, t] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id, locale),
     getSeriesDetail(tenantId, series_id, locale),
-    tenantLocaleUrl(tenantId, locale, episodePath(series_id, episode_id)),
-    getTenantPublicOrigin(tenantId),
+    tenantLocaleAlternates(
+      tenantId,
+      locale,
+      episodePath(series_id, episode_id)
+    ),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
@@ -101,11 +100,12 @@ export const generateMetadata = async (
   // title, and rating rather than its artwork.
   const work = seriesResult.ok ? seriesResult.value?.series : undefined;
   const description = work?.synopsis.trim() || undefined;
-  const image = origin
-    ? resolveOpenGraphImage(origin, work?.eyeCatchImageVariants, series.title)
+  const image = alternates
+    ? resolveOpenGraphImage(work?.eyeCatchImageVariants, series.title)
     : undefined;
 
   return {
+    alternates,
     description,
     openGraph: {
       description,
@@ -113,7 +113,7 @@ export const generateMetadata = async (
       siteName: siteLabel,
       title,
       type: "article",
-      url: url ?? undefined,
+      url: alternates?.canonical,
     },
     title,
     twitter: {

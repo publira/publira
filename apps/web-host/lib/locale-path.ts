@@ -14,7 +14,7 @@
  * Components, and tests all share one implementation.
  */
 
-import { isLocale } from "@publira/i18n";
+import { getLocales, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -97,6 +97,37 @@ export const withLocalePrefix = (
   }
 
   return href === "/" ? `/${locale}` : `/${locale}${href}`;
+};
+
+/** The `alternates` a page's metadata carries, as paths against `metadataBase`. */
+export interface LocaleAlternates {
+  canonical: string;
+  languages: Record<Locale | "x-default", string>;
+}
+
+/**
+ * The canonical path of one page in `locale`, and the same page in every
+ * supported locale, with `x-default` at the tenant default's unprefixed path.
+ *
+ * `href` is the bare path of the page itself, without a query string: a
+ * cursor, a sort order, or a filter names a view of the page, not another one.
+ */
+export const localeAlternates = (
+  locale: Locale,
+  defaultLocale: Locale,
+  href: string
+): LocaleAlternates => {
+  const languages = Object.fromEntries(
+    getLocales().map((code) => [
+      code,
+      withLocalePrefix(code, defaultLocale, href),
+    ])
+  ) as Record<Locale, string>;
+
+  return {
+    canonical: withLocalePrefix(locale, defaultLocale, href),
+    languages: { ...languages, "x-default": href },
+  };
 };
 
 /**

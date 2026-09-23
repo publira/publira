@@ -16,6 +16,7 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getPageAlternates } from "#lib/page-alternates";
 
 import {
   CreatorResults,
@@ -47,13 +48,17 @@ export const generateMetadata = async ({
     getLocale(),
   ]);
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
-  const t = await getMessagesFor(locale);
+  const [t, alternates] = await Promise.all([
+    getMessagesFor(locale),
+    getPageAlternates("/search"),
+  ]);
 
   if (!query) {
-    return { title: t("host.search.title") };
+    return { alternates, title: t("host.search.title") };
   }
 
   return {
+    alternates,
     title: t("host.search.results_title", { query }),
   };
 };

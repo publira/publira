@@ -37,6 +37,7 @@ import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   isNarrowedTagSeries,
@@ -66,11 +67,12 @@ export const generateMetadata = async ({
   guardPlaceholders({ tag_slug });
 
   const tagSlug = parseTagDetailParams({ tag_slug });
-  const [result, t] = await Promise.all([
+  const [result, t, alternates] = await Promise.all([
     tagSlug
       ? findPublishedTagBySlug(tenantId, tagSlug, locale)
       : { ok: true as const, value: null },
     getMessagesFor(locale),
+    tenantLocaleAlternates(tenantId, locale, `/tags/${tag_slug}`),
   ]);
 
   // An unavailable tag reads as "not found" for the `<title>` alone; the page
@@ -81,7 +83,7 @@ export const generateMetadata = async ({
     return { title: t("host.tags.not_found_title") };
   }
 
-  return { title: tag.name };
+  return { alternates, title: tag.name };
 };
 
 const TagDetailSkeleton = () => (

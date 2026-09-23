@@ -17,12 +17,9 @@ const variant = (
   width,
 });
 
-const ORIGIN = "https://example.test";
-
 describe("resolveOpenGraphImage", () => {
-  it("picks the largest og variant and makes its path absolute", () => {
+  it("picks the largest og variant", () => {
     const image = resolveOpenGraphImage(
-      ORIGIN,
       [
         variant("portrait", 1200, 1600),
         variant("og", 600, 315),
@@ -35,7 +32,7 @@ describe("resolveOpenGraphImage", () => {
     expect(image).toEqual({
       alt: "Published Series",
       height: 630,
-      url: `${ORIGIN}/images/series/00000000-0000-4000-8000-000000000000/og/1200`,
+      url: `/images/series/00000000-0000-4000-8000-000000000000/og/1200`,
       width: 1200,
     });
   });
@@ -43,7 +40,6 @@ describe("resolveOpenGraphImage", () => {
   it("returns nothing when the series has no og variant", () => {
     expect(
       resolveOpenGraphImage(
-        ORIGIN,
         [variant("portrait", 1200, 1600), variant("landscape", 1600, 900)],
         "Published Series"
       )
@@ -52,7 +48,7 @@ describe("resolveOpenGraphImage", () => {
 
   it("returns nothing when the series has no eye-catch at all", () => {
     expect(
-      resolveOpenGraphImage(ORIGIN, undefined, "Published Series")
+      resolveOpenGraphImage(undefined, "Published Series")
     ).toBeUndefined();
   });
 });
