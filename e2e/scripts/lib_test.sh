@@ -284,6 +284,34 @@ else
   pass "a repeated stop finishes an incomplete one"
 fi
 
+# A leader whose parent never reaps it stays a zombie in its group.
+zombie_parent_out="${pid_root}/zombie-parent.out"
+python3 -c '
+import os, time
+pid = os.fork()
+if pid == 0:
+    os.setpgid(0, 0)
+    os.execvp("sleep", ["sleep", "300"])
+print(pid, flush=True)
+time.sleep(300)
+' > "${zombie_parent_out}" &
+zombie_parent=$!
+for _ in $(seq 1 50); do
+  [[ -s "${zombie_parent_out}" ]] && break
+  sleep 0.1
+done
+pgid_zombie="$(< "${zombie_parent_out}")"
+started_groups+=("${pgid_zombie}")
+in_run_dir zombie "$(printf '%q ' write_pid app "${pgid_zombie}")"
+kill -s KILL "${pgid_zombie}"
+if in_run_dir zombie stop_pid_file app > /dev/null 2>&1 && [[ ! -e "${pid_root}/zombie/pids/app.pid" ]]; then
+  pass "a group left with only an unreaped zombie counts as stopped"
+else
+  fail "stop_pid_file treated an unreaped zombie as a surviving process"
+fi
+kill "${zombie_parent}" 2> /dev/null || true
+wait "${zombie_parent}" 2> /dev/null || true
+
 # A pid file whose start time no longer matches names a reused pid.
 start_stand_in reused app sleep 120
 pgid_reused="${stand_in_pgid}"

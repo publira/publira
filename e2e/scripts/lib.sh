@@ -559,8 +559,10 @@ start_process_group() {
   write_pid "${name}" "${pid}"
 }
 
+# A zombie still answers `kill -0`, and one nobody reaps would keep a finished
+# group alive forever, so only a member that is not a zombie counts.
 process_group_is_running() {
-  kill -0 -- "-$1" 2> /dev/null
+  ps -A -o pgid=,stat= 2> /dev/null | awk -v pgid="$1" '$1 == pgid && $2 !~ /^Z/ { found = 1 } END { exit !found }'
 }
 
 wait_for_process_group_exit() {
