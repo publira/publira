@@ -68,6 +68,7 @@ describe("isLocaleExemptPathname", () => {
   it("Only paths that process outside the locale are true", () => {
     expect(isLocaleExemptPathname("/theme.css")).toBe(true);
     expect(isLocaleExemptPathname("/api/v1/revalidate")).toBe(true);
+    expect(isLocaleExemptPathname("/.well-known/assetlinks.json")).toBe(true);
     expect(isLocaleExemptPathname("/ja/series")).toBe(false);
     expect(isLocaleExemptPathname("/")).toBe(false);
   });

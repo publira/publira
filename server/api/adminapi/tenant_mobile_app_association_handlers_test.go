@@ -127,3 +127,10 @@ func TestNormalizeIosAssociationRefusesMalformedValues(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantMobileAppAssociationRevalidateTags(t *testing.T) {
+	tags := tenantMobileAppAssociationRevalidateTags(" tenant-id ")
+	if len(tags) != 1 || tags[0] != "tenant:tenant-id:mobile-app-association" {
+		t.Fatalf("tenantMobileAppAssociationRevalidateTags() = %v, want [tenant:tenant-id:mobile-app-association]", tags)
+	}
+}

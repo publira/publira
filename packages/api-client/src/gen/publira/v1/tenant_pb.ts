@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJCCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJIrwEChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRIvCgp0ZXJtc19wYWdlGBAgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2USMQoMcHJpdmFjeV9wYWdlGBEgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2UyWwoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJCCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJIrwEChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRIvCgp0ZXJtc19wYWdlGBAgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2USMQoMcHJpdmFjeV9wYWdlGBEgASgLMhsucHVibGlyYS52MS5UZW5hbnRMZWdhbFBhZ2UiVwokR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXChtUZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SFgoOYXBwbGljYXRpb25faWQYASABKAkSIAoYc2hhMjU2X2NlcnRfZmluZ2VycHJpbnRzGAIgAygJIkUKF1RlbmFudElvc0FwcEFzc29jaWF0aW9uEg8KB3RlYW1faWQYASABKAkSGQoRYnVuZGxlX2lkZW50aWZpZXIYAiABKAkikwEKJUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2USOAoHYW5kcm9pZBgBIAEoCzInLnB1YmxpcmEudjEuVGVuYW50QW5kcm9pZEFwcEFzc29jaWF0aW9uEjAKA2lvcxgCIAEoCzIjLnB1YmxpcmEudjEuVGVuYW50SW9zQXBwQXNzb2NpYXRpb24y5AEKDVRlbmFudFNlcnZpY2USSgoJR2V0VGVuYW50EhwucHVibGlyYS52MS5HZXRUZW5hbnRSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRUZW5hbnRSZXNwb25zZSIAEoYBCh1HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvbhIwLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -195,6 +195,100 @@ export const GetTenantResponseSchema: GenMessage<GetTenantResponse> = /*@__PURE_
   messageDesc(file_publira_v1_tenant, 2);
 
 /**
+ * @generated from message publira.v1.GetTenantMobileAppAssociationRequest
+ */
+export type GetTenantMobileAppAssociationRequest = Message<"publira.v1.GetTenantMobileAppAssociationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantMobileAppAssociationRequest.
+ * Use `create(GetTenantMobileAppAssociationRequestSchema)` to create a new message.
+ */
+export const GetTenantMobileAppAssociationRequestSchema: GenMessage<GetTenantMobileAppAssociationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 3);
+
+/**
+ * The Android app the tenant's links open in, as assetlinks.json names it.
+ *
+ * @generated from message publira.v1.TenantAndroidAppAssociation
+ */
+export type TenantAndroidAppAssociation = Message<"publira.v1.TenantAndroidAppAssociation"> & {
+  /**
+   * @generated from field: string application_id = 1;
+   */
+  applicationId: string;
+
+  /**
+   * Colon-separated hex in capital letters (AA:BB:...), one per signing
+   * certificate. Never empty.
+   *
+   * @generated from field: repeated string sha256_cert_fingerprints = 2;
+   */
+  sha256CertFingerprints: string[];
+};
+
+/**
+ * Describes the message publira.v1.TenantAndroidAppAssociation.
+ * Use `create(TenantAndroidAppAssociationSchema)` to create a new message.
+ */
+export const TenantAndroidAppAssociationSchema: GenMessage<TenantAndroidAppAssociation> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 4);
+
+/**
+ * The iOS app the tenant's links open in, which apple-app-site-association
+ * names as <team_id>.<bundle_identifier>.
+ *
+ * @generated from message publira.v1.TenantIosAppAssociation
+ */
+export type TenantIosAppAssociation = Message<"publira.v1.TenantIosAppAssociation"> & {
+  /**
+   * @generated from field: string team_id = 1;
+   */
+  teamId: string;
+
+  /**
+   * @generated from field: string bundle_identifier = 2;
+   */
+  bundleIdentifier: string;
+};
+
+/**
+ * Describes the message publira.v1.TenantIosAppAssociation.
+ * Use `create(TenantIosAppAssociationSchema)` to create a new message.
+ */
+export const TenantIosAppAssociationSchema: GenMessage<TenantIosAppAssociation> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 5);
+
+/**
+ * A platform is absent where the tenant has no app on it, and nothing stands
+ * in for it.
+ *
+ * @generated from message publira.v1.GetTenantMobileAppAssociationResponse
+ */
+export type GetTenantMobileAppAssociationResponse = Message<"publira.v1.GetTenantMobileAppAssociationResponse"> & {
+  /**
+   * @generated from field: publira.v1.TenantAndroidAppAssociation android = 1;
+   */
+  android?: TenantAndroidAppAssociation | undefined;
+
+  /**
+   * @generated from field: publira.v1.TenantIosAppAssociation ios = 2;
+   */
+  ios?: TenantIosAppAssociation | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantMobileAppAssociationResponse.
+ * Use `create(GetTenantMobileAppAssociationResponseSchema)` to create a new message.
+ */
+export const GetTenantMobileAppAssociationResponseSchema: GenMessage<GetTenantMobileAppAssociationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 6);
+
+/**
  * @generated from service publira.v1.TenantService
  */
 export const TenantService: GenService<{
@@ -205,6 +299,14 @@ export const TenantService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantRequestSchema;
     output: typeof GetTenantResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.TenantService.GetTenantMobileAppAssociation
+   */
+  getTenantMobileAppAssociation: {
+    methodKind: "unary";
+    input: typeof GetTenantMobileAppAssociationRequestSchema;
+    output: typeof GetTenantMobileAppAssociationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_tenant, 0);

@@ -367,6 +367,24 @@ describe("web-host proxy locale routing", () => {
       `/${TENANT_ID}/api/v1/webhook/stripe`
     );
   });
+
+  it("serves the association documents on the tenant without a locale or a redirect", async () => {
+    const { proxy } = await import("./proxy");
+
+    const documents = ["assetlinks.json", "apple-app-site-association"];
+    const responses = await Promise.all(
+      documents.map((document) =>
+        proxy(request(`https://shop.example.com/.well-known/${document}`))
+      )
+    );
+
+    for (const [index, response] of responses.entries()) {
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://shop.example.com/${TENANT_ID}/.well-known/${documents[index]}`
+      );
+    }
+  });
 });
 
 describe("web-host proxy retired paths", () => {

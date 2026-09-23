@@ -24,6 +24,12 @@ var (
 	appleTeamIDPattern          = regexp.MustCompile(`^[A-Z0-9]{10}$`)
 )
 
+// tenantMobileAppAssociationRevalidateTags names the storefront read behind its
+// assetlinks.json and apple-app-site-association.
+func tenantMobileAppAssociationRevalidateTags(tenantID string) []string {
+	return []string{fmt.Sprintf("tenant:%s:mobile-app-association", strings.TrimSpace(tenantID))}
+}
+
 // maxAndroidCertFingerprints bounds how many signing certificates one request
 // may store.
 const maxAndroidCertFingerprints = 10
@@ -166,6 +172,7 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
+	s.revalidateTags(ctx, tenant.ID, tenantMobileAppAssociationRevalidateTags(tenant.ID.String()))
 	return connect.NewResponse(&publiraadminv1.UpdateTenantMobileAppAssociationResponse{
 		Association: tenantMobileAppAssociationFromConfig(updated),
 	}), nil

@@ -242,6 +242,12 @@ export const WEB_ADMIN_APP_LINKS_BASE_URL = envUrl(
   withHostname(WEB_ADMIN_BASE_URL, "admin.app-links.localhost")
 );
 
+/** Public site of the same app links tenant, which serves its association documents. */
+export const WEB_HOST_APP_LINKS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_HOST_APP_LINKS_BASE_URL",
+  withHostname(WEB_HOST_BASE_URL, "app-links.localhost")
+);
+
 /**
  * Admin console of the royalties tenant from
  * `db/seeds/scenarios/260_royalties.sql`. Its suite closes a month, which is
