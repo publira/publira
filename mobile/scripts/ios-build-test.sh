@@ -90,6 +90,26 @@ dart run scripts/build.dart "${manifest}" ios --no-codesign
 expect_info "${device_app}" CFBundleIdentifier com.example.reader
 expect_info "${device_app}" CFBundleDisplayName "${app_name}"
 
+# An unsigned build carries no entitlements, and iOS refuses ad hoc signing,
+# so the store configuration's are checked where Xcode resolves them from.
+release_settings="$(xcodebuild -project ios/Runner.xcodeproj -target Runner \
+  -configuration Release-production -showBuildSettings 2> /dev/null)"
+release_setting() {
+  awk -v name="$1" '$1 == name && $2 == "=" { sub(/^[^=]*= /, ""); print; exit }' \
+    <<< "${release_settings}"
+}
+entitlements="$(release_setting CODE_SIGN_ENTITLEMENTS)"
+[[ "${entitlements}" == Runner/RunnerRelease.entitlements ]] ||
+  fail "Release-production signs with '${entitlements}', not Runner/RunnerRelease.entitlements"
+[[ "$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)" == reader.example.com ]] ||
+  fail "Release-production resolves PUBLIRA_ASSOCIATED_DOMAIN to '$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)'"
+# shellcheck disable=SC2016 # The reference Xcode expands, written literally.
+domain='applinks:$(PUBLIRA_ASSOCIATED_DOMAIN)'
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains:0' \
+  "ios/${entitlements}")" == "${domain}" ]] ||
+  fail "ios/${entitlements} does not claim ${domain}"
+echo "Release-production: ${entitlements} claims ${domain} = applinks:reader.example.com"
+
 status_after="$(git status --porcelain --untracked-files=all)"
 if [[ "${status_after}" != "${status_before}" ]]; then
   echo "${status_after}" >&2
