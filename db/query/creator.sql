@@ -257,14 +257,11 @@ SELECT c.id,
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
-            AND (
-                sqlc.narg('surface')::text IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM series_surfaces ss
-                    WHERE ss.series_id = s.id
-                        AND ss.surface = sqlc.narg('surface')::text
-                )
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
             )
     ) AS published_series_count
 FROM creators c
@@ -287,14 +284,11 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
-            AND (
-                sqlc.narg('surface')::text IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM series_surfaces ss
-                    WHERE ss.series_id = s.id
-                        AND ss.surface = sqlc.narg('surface')::text
-                )
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
             )
     )
 LIMIT 1;

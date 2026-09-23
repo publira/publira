@@ -79,6 +79,10 @@ SELECT EXISTS (
 ) AS has_purchase;
 
 -- name: ListMyPurchasesDesc :many
+-- The reader's library, newest purchase first. Publication is not re-checked,
+-- so a purchase outlives the episode being taken down, but the calling surface
+-- is: an episode that surface may not show is left out of the library read
+-- there, as it is left out of the catalog.
 SELECT p.id,
     p.price_at_purchase,
     p.expires_at,
@@ -97,6 +101,12 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
         OR (
@@ -137,6 +147,12 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = sqlc.arg('surface')::text
+    )
     AND (
         sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
         OR (

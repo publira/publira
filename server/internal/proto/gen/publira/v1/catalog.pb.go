@@ -3420,8 +3420,10 @@ type MarkEpisodeAsReadRequest struct {
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// The public ID of the episode the signed-in member finished reading.
 	EpisodePublicId string `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MarkEpisodeAsReadRequest) Reset() {
@@ -3466,6 +3468,13 @@ func (x *MarkEpisodeAsReadRequest) GetEpisodePublicId() string {
 		return x.EpisodePublicId
 	}
 	return ""
+}
+
+func (x *MarkEpisodeAsReadRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type MarkEpisodeAsReadResponse struct {
@@ -3593,7 +3602,9 @@ type SaveReadingPositionRequest struct {
 	EpisodePublicId string `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// The zero-based page the member stopped on. A page outside the episode is
 	// invalid_argument.
-	PageIndex     int32 `protobuf:"varint,3,opt,name=page_index,json=pageIndex,proto3" json:"page_index,omitempty"`
+	PageIndex int32 `protobuf:"varint,3,opt,name=page_index,json=pageIndex,proto3" json:"page_index,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3649,6 +3660,13 @@ func (x *SaveReadingPositionRequest) GetPageIndex() int32 {
 	return 0
 }
 
+func (x *SaveReadingPositionRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
 type SaveReadingPositionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Position      *ReadingPosition       `protobuf:"bytes,1,opt,name=position,proto3" json:"position,omitempty"`
@@ -3697,8 +3715,10 @@ type GetMyReadingPositionRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMyReadingPositionRequest) Reset() {
@@ -3743,6 +3763,13 @@ func (x *GetMyReadingPositionRequest) GetEpisodePublicId() string {
 		return x.EpisodePublicId
 	}
 	return ""
+}
+
+func (x *GetMyReadingPositionRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type GetMyReadingPositionResponse struct {
@@ -3795,8 +3822,10 @@ type GetMySeriesProgressRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMySeriesProgressRequest) Reset() {
@@ -3841,6 +3870,13 @@ func (x *GetMySeriesProgressRequest) GetSeriesPublicId() string {
 		return x.SeriesPublicId
 	}
 	return ""
+}
+
+func (x *GetMySeriesProgressRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 // The member's standing in one series: the episode they last moved in, where
@@ -4060,7 +4096,9 @@ type ListMyRecentSeriesRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4114,6 +4152,13 @@ func (x *ListMyRecentSeriesRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyRecentSeriesRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyRecentSeriesResponse struct {
@@ -4253,7 +4298,9 @@ type ListMyEpisodeReadsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4307,6 +4354,13 @@ func (x *ListMyEpisodeReadsRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyEpisodeReadsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyEpisodeReadsResponse struct {
@@ -4428,9 +4482,11 @@ func (x *FollowTarget) GetPublicId() string {
 // The current member's state for one public target. This is deliberately kept
 // separate from CatalogService so catalog reads remain shared-cacheable.
 type GetMyFollowStatusRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Target        *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Target *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4479,6 +4535,13 @@ func (x *GetMyFollowStatusRequest) GetTarget() *FollowTarget {
 	return nil
 }
 
+func (x *GetMyFollowStatusRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
 type GetMyFollowStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	IsFollowing   bool                   `protobuf:"varint,1,opt,name=is_following,json=isFollowing,proto3" json:"is_following,omitempty"`
@@ -4524,9 +4587,11 @@ func (x *GetMyFollowStatusResponse) GetIsFollowing() bool {
 }
 
 type FollowRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Target        *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Target *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4575,6 +4640,13 @@ func (x *FollowRequest) GetTarget() *FollowTarget {
 	return nil
 }
 
+func (x *FollowRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
 type FollowResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	IsFollowing   bool                   `protobuf:"varint,1,opt,name=is_following,json=isFollowing,proto3" json:"is_following,omitempty"`
@@ -4620,9 +4692,11 @@ func (x *FollowResponse) GetIsFollowing() bool {
 }
 
 type UnfollowRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Target        *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Target *FollowTarget          `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4669,6 +4743,13 @@ func (x *UnfollowRequest) GetTarget() *FollowTarget {
 		return x.Target
 	}
 	return nil
+}
+
+func (x *UnfollowRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type UnfollowResponse struct {
@@ -4784,7 +4865,9 @@ type ListMyFollowsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4838,6 +4921,13 @@ func (x *ListMyFollowsRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyFollowsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyFollowsResponse struct {
@@ -4965,7 +5055,9 @@ type ListMyFollowUpdatesRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5019,6 +5111,13 @@ func (x *ListMyFollowUpdatesRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyFollowUpdatesRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyFollowUpdatesResponse struct {
@@ -5095,7 +5194,9 @@ type RateEpisodeRequest struct {
 	// How many presses this call reports, so a client that batched a burst of
 	// them makes one request. <= 0 counts as one, and anything above 5 is capped.
 	// Ignored in EPISODE_RATING_MODE_SINGLE, where one press is the whole rating.
-	Presses       int32 `protobuf:"varint,3,opt,name=presses,proto3" json:"presses,omitempty"`
+	Presses int32 `protobuf:"varint,3,opt,name=presses,proto3" json:"presses,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5149,6 +5250,13 @@ func (x *RateEpisodeRequest) GetPresses() int32 {
 		return x.Presses
 	}
 	return 0
+}
+
+func (x *RateEpisodeRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type RateEpisodeResponse struct {
@@ -5219,8 +5327,10 @@ type GetMyEpisodeRatingRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMyEpisodeRatingRequest) Reset() {
@@ -5265,6 +5375,13 @@ func (x *GetMyEpisodeRatingRequest) GetEpisodePublicId() string {
 		return x.EpisodePublicId
 	}
 	return ""
+}
+
+func (x *GetMyEpisodeRatingRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type GetMyEpisodeRatingResponse struct {
@@ -5332,8 +5449,10 @@ type GetMySeriesRatingRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMySeriesRatingRequest) Reset() {
@@ -5378,6 +5497,13 @@ func (x *GetMySeriesRatingRequest) GetSeriesPublicId() string {
 		return x.SeriesPublicId
 	}
 	return ""
+}
+
+func (x *GetMySeriesRatingRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type GetMySeriesRatingResponse struct {
@@ -5494,9 +5620,11 @@ func (x *ContentViewTarget) GetPublicId() string {
 
 // Records that a reader opened the target's detail page.
 type RecordContentViewRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Target        *ContentViewTarget     `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Target *ContentViewTarget     `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5543,6 +5671,13 @@ func (x *RecordContentViewRequest) GetTarget() *ContentViewTarget {
 		return x.Target
 	}
 	return nil
+}
+
+func (x *RecordContentViewRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 // Deliberately empty. The caller reports a view it already rendered, so there
@@ -5799,7 +5934,9 @@ type ListMyPurchasesRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5853,6 +5990,13 @@ func (x *ListMyPurchasesRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListMyPurchasesRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListMyPurchasesResponse struct {
@@ -6240,10 +6384,11 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x7f\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xba\x01\n" +
 	"\x18MarkEpisodeAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"4\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"4\n" +
 	"\x19MarkEpisodeAsReadResponse\x12\x17\n" +
 	"\aread_at\x18\x01 \x01(\tR\x06readAt\"\x9a\x01\n" +
 	"\x0fReadingPosition\x12*\n" +
@@ -6253,22 +6398,25 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"page_count\x18\x03 \x01(\x05R\tpageCount\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\xa0\x01\n" +
+	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\xdb\x01\n" +
 	"\x1aSaveReadingPositionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
 	"\n" +
-	"page_index\x18\x03 \x01(\x05R\tpageIndex\"V\n" +
+	"page_index\x18\x03 \x01(\x05R\tpageIndex\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"V\n" +
 	"\x1bSaveReadingPositionResponse\x127\n" +
-	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\x82\x01\n" +
+	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xbd\x01\n" +
 	"\x1bGetMyReadingPositionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"W\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"W\n" +
 	"\x1cGetMyReadingPositionResponse\x127\n" +
-	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\x7f\n" +
+	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xba\x01\n" +
 	"\x1aGetMySeriesProgressRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
-	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\"\x9f\x01\n" +
+	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x9f\x01\n" +
 	"\x0eSeriesProgress\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x127\n" +
 	"\bposition\x18\x02 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\x12\x1f\n" +
@@ -6281,11 +6429,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
 	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x127\n" +
 	"\bposition\x18\x03 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\x12(\n" +
-	"\x10last_activity_at\x18\x04 \x01(\tR\x0elastActivityAt\"\x80\x01\n" +
+	"\x10last_activity_at\x18\x04 \x01(\tR\x0elastActivityAt\"\xbb\x01\n" +
 	"\x19ListMyRecentSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\x94\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x94\x01\n" +
 	"\x1aListMyRecentSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.v1.RecentSeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -6294,11 +6443,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\rMyEpisodeRead\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
 	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12\x17\n" +
-	"\aread_at\x18\x03 \x01(\tR\x06readAt\"\x80\x01\n" +
+	"\aread_at\x18\x03 \x01(\tR\x06readAt\"\xbb\x01\n" +
 	"\x19ListMyEpisodeReadsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\x93\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x93\x01\n" +
 	"\x1aListMyEpisodeReadsResponse\x12/\n" +
 	"\x05reads\x18\x01 \x03(\v2\x19.publira.v1.MyEpisodeReadR\x05reads\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -6306,20 +6456,23 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"]\n" +
 	"\fFollowTarget\x120\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1c.publira.v1.FollowTargetTypeR\x04type\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x85\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xc0\x01\n" +
 	"\x18GetMyFollowStatusRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
-	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\">\n" +
+	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\">\n" +
 	"\x19GetMyFollowStatusResponse\x12!\n" +
-	"\fis_following\x18\x01 \x01(\bR\visFollowing\"z\n" +
+	"\fis_following\x18\x01 \x01(\bR\visFollowing\"\xb5\x01\n" +
 	"\rFollowRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
-	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\"3\n" +
+	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"3\n" +
 	"\x0eFollowResponse\x12!\n" +
-	"\fis_following\x18\x01 \x01(\bR\visFollowing\"|\n" +
+	"\fis_following\x18\x01 \x01(\bR\visFollowing\"\xb7\x01\n" +
 	"\x0fUnfollowRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
-	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\"5\n" +
+	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"5\n" +
 	"\x10UnfollowResponse\x12!\n" +
 	"\fis_following\x18\x01 \x01(\bR\visFollowing\"\x94\x01\n" +
 	"\bMyFollow\x12=\n" +
@@ -6327,11 +6480,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"targetType\x12(\n" +
 	"\x10target_public_id\x18\x02 \x01(\tR\x0etargetPublicId\x12\x1f\n" +
 	"\vfollowed_at\x18\x03 \x01(\tR\n" +
-	"followedAt\"{\n" +
+	"followedAt\"\xb6\x01\n" +
 	"\x14ListMyFollowsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\x8d\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x8d\x01\n" +
 	"\x15ListMyFollowsResponse\x12.\n" +
 	"\afollows\x18\x01 \x03(\v2\x14.publira.v1.MyFollowR\afollows\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -6339,43 +6493,48 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"u\n" +
 	"\fFollowUpdate\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
-	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\x81\x01\n" +
+	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xbc\x01\n" +
 	"\x1aListMyFollowUpdatesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\x97\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x97\x01\n" +
 	"\x1bListMyFollowUpdatesResponse\x122\n" +
 	"\aupdates\x18\x01 \x03(\v2\x18.publira.v1.FollowUpdateR\aupdates\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x93\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xce\x01\n" +
 	"\x12RateEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x18\n" +
-	"\apresses\x18\x03 \x01(\x05R\apresses\"\x81\x01\n" +
+	"\apresses\x18\x03 \x01(\x05R\apresses\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x81\x01\n" +
 	"\x13RateEpisodeResponse\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x12!\n" +
 	"\frating_count\x18\x02 \x01(\x03R\vratingCount\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\x80\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xbb\x01\n" +
 	"\x19GetMyEpisodeRatingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"\x88\x01\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x88\x01\n" +
 	"\x1aGetMyEpisodeRatingResponse\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x12!\n" +
 	"\frating_count\x18\x02 \x01(\x03R\vratingCount\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"}\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xb8\x01\n" +
 	"\x18GetMySeriesRatingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
-	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\"r\n" +
+	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"r\n" +
 	"\x19GetMySeriesRatingResponse\x12%\n" +
 	"\x0erating_average\x18\x01 \x01(\x01R\rratingAverage\x12.\n" +
 	"\x13rated_episode_count\x18\x02 \x01(\x05R\x11ratedEpisodeCount\"g\n" +
 	"\x11ContentViewTarget\x125\n" +
 	"\x04type\x18\x01 \x01(\x0e2!.publira.v1.ContentViewTargetTypeR\x04type\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x8a\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xc5\x01\n" +
 	"\x18RecordContentViewRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
-	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\"\x1b\n" +
+	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\x129\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1b\n" +
 	"\x19RecordContentViewResponse\"\x8f\x02\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
@@ -6397,11 +6556,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\fpurchased_at\x18\x05 \x01(\tR\vpurchasedAt\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x06 \x01(\tR\texpiresAt\x12\x1b\n" +
-	"\tis_active\x18\a \x01(\bR\bisActive\"}\n" +
+	"\tis_active\x18\a \x01(\bR\bisActive\"\xb8\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\x95\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x95\x01\n" +
 	"\x17ListMyPurchasesResponse\x124\n" +
 	"\tpurchases\x18\x01 \x03(\v2\x16.publira.v1.MyPurchaseR\tpurchases\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -6671,125 +6831,141 @@ var file_publira_v1_catalog_proto_depIdxs = []int32{
 	95,  // 62: publira.v1.ListRelatedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
 	96,  // 63: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
 	92,  // 64: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	92,  // 65: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	49,  // 66: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	92,  // 67: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	49,  // 68: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	92,  // 69: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
-	97,  // 70: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
-	49,  // 71: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
-	55,  // 72: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
-	96,  // 73: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
-	97,  // 74: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
-	49,  // 75: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
-	92,  // 76: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	57,  // 77: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
-	96,  // 78: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
-	97,  // 79: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
-	92,  // 80: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60,  // 81: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
-	4,   // 82: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
-	92,  // 83: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
-	63,  // 84: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
-	92,  // 85: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	63,  // 86: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
-	92,  // 87: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	63,  // 88: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
-	4,   // 89: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
-	92,  // 90: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	70,  // 91: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
-	96,  // 92: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
-	97,  // 93: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
-	92,  // 94: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	73,  // 95: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
-	92,  // 96: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5,   // 97: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	92,  // 98: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	5,   // 99: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	92,  // 100: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	6,   // 101: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
-	92,  // 102: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
-	82,  // 103: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
-	92,  // 104: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7,   // 105: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	97,  // 106: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
-	96,  // 107: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
-	92,  // 108: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	87,  // 109: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
-	92,  // 110: publira.v1.ProcessStripeWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
-	8,   // 111: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	10,  // 112: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	12,  // 113: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	14,  // 114: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
-	17,  // 115: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	21,  // 116: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
-	23,  // 117: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
-	26,  // 118: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
-	29,  // 119: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
-	32,  // 120: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
-	34,  // 121: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
-	36,  // 122: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
-	38,  // 123: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
-	40,  // 124: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
-	43,  // 125: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
-	45,  // 126: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
-	47,  // 127: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
-	50,  // 128: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
-	52,  // 129: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
-	54,  // 130: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
-	58,  // 131: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
-	61,  // 132: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
-	64,  // 133: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
-	66,  // 134: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
-	68,  // 135: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
-	71,  // 136: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
-	74,  // 137: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
-	76,  // 138: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
-	78,  // 139: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
-	80,  // 140: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
-	83,  // 141: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
-	85,  // 142: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
-	88,  // 143: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
-	90,  // 144: publira.v1.PurchaseService.ProcessStripeWebhook:input_type -> publira.v1.ProcessStripeWebhookRequest
-	9,   // 145: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	11,  // 146: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	13,  // 147: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	16,  // 148: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
-	19,  // 149: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	22,  // 150: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
-	24,  // 151: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
-	27,  // 152: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
-	30,  // 153: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
-	33,  // 154: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
-	35,  // 155: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
-	37,  // 156: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
-	39,  // 157: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
-	41,  // 158: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
-	44,  // 159: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
-	46,  // 160: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
-	48,  // 161: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
-	51,  // 162: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
-	53,  // 163: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
-	56,  // 164: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
-	59,  // 165: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
-	62,  // 166: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
-	65,  // 167: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
-	67,  // 168: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
-	69,  // 169: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
-	72,  // 170: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
-	75,  // 171: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
-	77,  // 172: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
-	79,  // 173: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
-	81,  // 174: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
-	84,  // 175: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
-	86,  // 176: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
-	89,  // 177: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
-	91,  // 178: publira.v1.PurchaseService.ProcessStripeWebhook:output_type -> publira.v1.ProcessStripeWebhookResponse
-	145, // [145:179] is the sub-list for method output_type
-	111, // [111:145] is the sub-list for method input_type
-	111, // [111:111] is the sub-list for extension type_name
-	111, // [111:111] is the sub-list for extension extendee
-	0,   // [0:111] is the sub-list for field type_name
+	95,  // 65: publira.v1.MarkEpisodeAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
+	92,  // 66: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 67: publira.v1.SaveReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	49,  // 68: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	92,  // 69: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 70: publira.v1.GetMyReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	49,  // 71: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	92,  // 72: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 73: publira.v1.GetMySeriesProgressRequest.surface:type_name -> publira.types.v1.ClientSurface
+	97,  // 74: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
+	49,  // 75: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
+	55,  // 76: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
+	96,  // 77: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
+	97,  // 78: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
+	49,  // 79: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
+	92,  // 80: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 81: publira.v1.ListMyRecentSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	57,  // 82: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
+	96,  // 83: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
+	97,  // 84: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
+	92,  // 85: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 86: publira.v1.ListMyEpisodeReadsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	60,  // 87: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
+	4,   // 88: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
+	92,  // 89: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 90: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
+	95,  // 91: publira.v1.GetMyFollowStatusRequest.surface:type_name -> publira.types.v1.ClientSurface
+	92,  // 92: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 93: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
+	95,  // 94: publira.v1.FollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	92,  // 95: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 96: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
+	95,  // 97: publira.v1.UnfollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	4,   // 98: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
+	92,  // 99: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 100: publira.v1.ListMyFollowsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	70,  // 101: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
+	96,  // 102: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
+	97,  // 103: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
+	92,  // 104: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 105: publira.v1.ListMyFollowUpdatesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	73,  // 106: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
+	92,  // 107: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 108: publira.v1.RateEpisodeRequest.surface:type_name -> publira.types.v1.ClientSurface
+	5,   // 109: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
+	92,  // 110: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 111: publira.v1.GetMyEpisodeRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	5,   // 112: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
+	92,  // 113: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 114: publira.v1.GetMySeriesRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	6,   // 115: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
+	92,  // 116: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
+	82,  // 117: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
+	95,  // 118: publira.v1.RecordContentViewRequest.surface:type_name -> publira.types.v1.ClientSurface
+	92,  // 119: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7,   // 120: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	97,  // 121: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
+	96,  // 122: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
+	92,  // 123: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	95,  // 124: publira.v1.ListMyPurchasesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	87,  // 125: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
+	92,  // 126: publira.v1.ProcessStripeWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,   // 127: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	10,  // 128: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	12,  // 129: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	14,  // 130: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
+	17,  // 131: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	21,  // 132: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
+	23,  // 133: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
+	26,  // 134: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
+	29,  // 135: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
+	32,  // 136: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
+	34,  // 137: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
+	36,  // 138: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
+	38,  // 139: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
+	40,  // 140: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
+	43,  // 141: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
+	45,  // 142: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
+	47,  // 143: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
+	50,  // 144: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
+	52,  // 145: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
+	54,  // 146: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
+	58,  // 147: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
+	61,  // 148: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
+	64,  // 149: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
+	66,  // 150: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
+	68,  // 151: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
+	71,  // 152: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
+	74,  // 153: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
+	76,  // 154: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
+	78,  // 155: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
+	80,  // 156: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
+	83,  // 157: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
+	85,  // 158: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
+	88,  // 159: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
+	90,  // 160: publira.v1.PurchaseService.ProcessStripeWebhook:input_type -> publira.v1.ProcessStripeWebhookRequest
+	9,   // 161: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	11,  // 162: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	13,  // 163: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	16,  // 164: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
+	19,  // 165: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	22,  // 166: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
+	24,  // 167: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
+	27,  // 168: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
+	30,  // 169: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
+	33,  // 170: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
+	35,  // 171: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
+	37,  // 172: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
+	39,  // 173: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
+	41,  // 174: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
+	44,  // 175: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
+	46,  // 176: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
+	48,  // 177: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
+	51,  // 178: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
+	53,  // 179: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
+	56,  // 180: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
+	59,  // 181: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
+	62,  // 182: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
+	65,  // 183: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
+	67,  // 184: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
+	69,  // 185: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
+	72,  // 186: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
+	75,  // 187: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
+	77,  // 188: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
+	79,  // 189: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
+	81,  // 190: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
+	84,  // 191: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
+	86,  // 192: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
+	89,  // 193: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
+	91,  // 194: publira.v1.PurchaseService.ProcessStripeWebhook:output_type -> publira.v1.ProcessStripeWebhookResponse
+	161, // [161:195] is the sub-list for method output_type
+	127, // [127:161] is the sub-list for method input_type
+	127, // [127:127] is the sub-list for extension type_name
+	127, // [127:127] is the sub-list for extension extendee
+	0,   // [0:127] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }

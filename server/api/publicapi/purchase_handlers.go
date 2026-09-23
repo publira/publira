@@ -64,9 +64,9 @@ func tenantSiteURL(tenant dbmodels.Tenant) (*url.URL, error) {
 // an unnamed catalog surface is.
 func checkoutSurface(client publirav1.StartEpisodeCheckoutRequest_Client) (string, error) {
 	if client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
-		return catalogSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
+		return callingSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
 	}
-	return catalogSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB)
+	return callingSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB)
 }
 
 func (s *apiServer) StartEpisodeCheckout(
@@ -217,6 +217,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 func (s *apiServer) purchasePage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -225,6 +226,7 @@ func (s *apiServer) purchasePage(
 	params := dbmodels.ListMyPurchasesDescParams{
 		TenantID:          tenantID,
 		UserID:            userID,
+		Surface:           surface,
 		CursorPurchasedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive:   keys.Inclusive,
 		CursorID:          uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -282,8 +284,13 @@ func (s *apiServer) ListMyPurchases(
 		return nil, err
 	}
 
+	surface, err := callingSurface(req.Msg.Surface)
+	if err != nil {
+		return nil, err
+	}
+
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultPurchasePageSize, maxPurchasePageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
@@ -295,7 +302,7 @@ func (s *apiServer) ListMyPurchases(
 		}
 	}
 
-	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -322,6 +329,7 @@ func (s *apiServer) ListMyPurchases(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
 	return connect.NewResponse(res), nil
 }

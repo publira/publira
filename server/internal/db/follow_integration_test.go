@@ -231,7 +231,7 @@ func TestUserFollowsTimelineAndPublishedPredicates(t *testing.T) {
 		t.Fatalf("set series followed_at: %v", err)
 	}
 
-	follows, err := q.ListUserFollowsByCreatedAtDesc(ctx, dbmodels.ListUserFollowsByCreatedAtDescParams{TenantID: targets.tenantID, UserID: targets.userID, Limit: 10})
+	follows, err := q.ListUserFollowsByCreatedAtDesc(ctx, dbmodels.ListUserFollowsByCreatedAtDescParams{TenantID: targets.tenantID, UserID: targets.userID, Surface: "web", Limit: 10})
 	if err != nil {
 		t.Fatalf("list follows: %v", err)
 	}
@@ -297,15 +297,15 @@ func publishFollowTargets(t *testing.T, ctx context.Context, db *sql.DB, targets
 
 func assertPublishedFollow(t *testing.T, ctx context.Context, q *dbmodels.Queries, targets followTargets, wantEpisode, wantCreator, wantSeries bool) {
 	t.Helper()
-	episode, err := q.UserFollowsPublishedEpisode(ctx, dbmodels.UserFollowsPublishedEpisodeParams{TenantID: targets.tenantID, UserID: targets.userID, EpisodeID: targets.episodeID})
+	episode, err := q.UserFollowsPublishedEpisode(ctx, dbmodels.UserFollowsPublishedEpisodeParams{TenantID: targets.tenantID, UserID: targets.userID, EpisodeID: targets.episodeID, Surface: "web"})
 	if err != nil || episode != wantEpisode {
 		t.Fatalf("published episode follow = %v, %v; want %v, nil", episode, err, wantEpisode)
 	}
-	creator, err := q.UserFollowsPublishedCreator(ctx, dbmodels.UserFollowsPublishedCreatorParams{TenantID: targets.tenantID, UserID: targets.userID, CreatorID: targets.creatorID})
+	creator, err := q.UserFollowsPublishedCreator(ctx, dbmodels.UserFollowsPublishedCreatorParams{TenantID: targets.tenantID, UserID: targets.userID, CreatorID: targets.creatorID, Surface: "web"})
 	if err != nil || creator != wantCreator {
 		t.Fatalf("published creator follow = %v, %v; want %v, nil", creator, err, wantCreator)
 	}
-	series, err := q.UserFollowsPublishedSeries(ctx, dbmodels.UserFollowsPublishedSeriesParams{TenantID: targets.tenantID, UserID: targets.userID, SeriesID: targets.seriesID})
+	series, err := q.UserFollowsPublishedSeries(ctx, dbmodels.UserFollowsPublishedSeriesParams{TenantID: targets.tenantID, UserID: targets.userID, SeriesID: targets.seriesID, Surface: "web"})
 	if err != nil || series != wantSeries {
 		t.Fatalf("published series follow = %v, %v; want %v, nil", series, err, wantSeries)
 	}

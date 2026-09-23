@@ -30,14 +30,11 @@ SELECT s.id,
         SELECT COUNT(*)
         FROM published_free_episodes fe
         WHERE fe.series_id = s.id
-            AND (
-                $1::text IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM episode_surfaces es
-                    WHERE es.episode_id = fe.episode_id
-                        AND es.surface = $1::text
-                )
+            AND EXISTS (
+                SELECT 1
+                FROM episode_surfaces es
+                WHERE es.episode_id = fe.episode_id
+                    AND es.surface = $1::text
             )
     )::int4 AS free_episode_count,
     COALESCE(
@@ -144,14 +141,11 @@ WHERE s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        $1::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_surfaces ss
-            WHERE ss.series_id = s.id
-                AND ss.surface = $1::text
-        )
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $1::text
     )
 GROUP BY s.id,
     sl.series_id,
@@ -164,9 +158,9 @@ GROUP BY s.id,
 `
 
 type ListActiveSeriesByIDsParams struct {
-	Surface  sql.NullString `json:"surface"`
-	TenantID uuid.UUID      `json:"tenant_id"`
-	Ids      []uuid.UUID    `json:"ids"`
+	Surface  string      `json:"surface"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
 type ListActiveSeriesByIDsRow struct {
@@ -187,9 +181,8 @@ type ListActiveSeriesByIDsRow struct {
 	LabelInfo              json.RawMessage `json:"label_info"`
 }
 
-// Display data for the published series, narrowed by tenant id. A NULL
-// surface filters by no surface, for the member reads that do not name one;
-// the catalog always names one.
+// Display data for the published series, narrowed by tenant id and by the
+// surface the caller names.
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {

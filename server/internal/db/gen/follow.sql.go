@@ -275,6 +275,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
@@ -299,30 +305,37 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
 ) AS updates
-WHERE $3::timestamptz IS NULL
+WHERE $4::timestamptz IS NULL
     OR (
-        $4::boolean
+        $5::boolean
         AND (published_at, episode_id) >= (
-            $3::timestamptz,
-            $5::uuid
+            $4::timestamptz,
+            $6::uuid
         )
     )
     OR (
-        NOT $4::boolean
+        NOT $5::boolean
         AND (published_at, episode_id) > (
-            $3::timestamptz,
-            $5::uuid
+            $4::timestamptz,
+            $6::uuid
         )
     )
 ORDER BY published_at ASC,
     episode_id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyFollowUpdatesAscParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
+	Surface           string        `json:"surface"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorEpisodeID   uuid.NullUUID `json:"cursor_episode_id"`
@@ -343,6 +356,7 @@ func (q *Queries) ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUp
 	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesAsc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorPublishedAt,
 		arg.CursorInclusive,
 		arg.CursorEpisodeID,
@@ -405,6 +419,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
@@ -429,30 +449,37 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
 ) AS updates
-WHERE $3::timestamptz IS NULL
+WHERE $4::timestamptz IS NULL
     OR (
-        $4::boolean
+        $5::boolean
         AND (published_at, episode_id) <= (
-            $3::timestamptz,
-            $5::uuid
+            $4::timestamptz,
+            $6::uuid
         )
     )
     OR (
-        NOT $4::boolean
+        NOT $5::boolean
         AND (published_at, episode_id) < (
-            $3::timestamptz,
-            $5::uuid
+            $4::timestamptz,
+            $6::uuid
         )
     )
 ORDER BY published_at DESC,
     episode_id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyFollowUpdatesDescParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
+	Surface           string        `json:"surface"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorEpisodeID   uuid.NullUUID `json:"cursor_episode_id"`
@@ -480,8 +507,9 @@ type ListMyFollowUpdatesDescRow struct {
 // so a member who follows both a series and one of its creators sees the
 // episode once.
 //
-// Publication is re-checked on both the series and the listing, so the list
-// never names something the storefront has taken down; that is the same rule
+// Publication is re-checked on both the series and the listing, and the
+// calling surface on the episode, so the list never names something the
+// storefront has taken down or the surface may not show; that is the same rule
 // ListMyEpisodeReads applies to a history entry.
 //
 // Each branch starts from the member's own follows, on
@@ -495,6 +523,7 @@ func (q *Queries) ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowU
 	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesDesc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorPublishedAt,
 		arg.CursorInclusive,
 		arg.CursorEpisodeID,
@@ -544,12 +573,19 @@ WHERE c.tenant_id = $1
             AND s.is_published = true
             AND s.published_at IS NOT NULL
             AND s.published_at <= NOW()
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
     )
 `
 
 type ListPublishedCreatorFollowTargetPublicIDsByIDsParams struct {
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
+	Surface  string      `json:"surface"`
 }
 
 type ListPublishedCreatorFollowTargetPublicIDsByIDsRow struct {
@@ -558,7 +594,7 @@ type ListPublishedCreatorFollowTargetPublicIDsByIDsRow struct {
 }
 
 func (q *Queries) ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedCreatorFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids), arg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -596,11 +632,18 @@ WHERE e.tenant_id = $1
     AND el.status = 'published'
     AND el.published_at IS NOT NULL
     AND el.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
 `
 
 type ListPublishedEpisodeFollowTargetPublicIDsByIDsParams struct {
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
+	Surface  string      `json:"surface"`
 }
 
 type ListPublishedEpisodeFollowTargetPublicIDsByIDsRow struct {
@@ -611,7 +654,7 @@ type ListPublishedEpisodeFollowTargetPublicIDsByIDsRow struct {
 // These projections are used only while constructing the public Follow API
 // response. The follow relations and their cursor queries remain UUID-only.
 func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedEpisodeFollowTargetPublicIDsByIDsParams) ([]ListPublishedEpisodeFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids), arg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -642,11 +685,18 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND EXISTS (
+        SELECT 1
+        FROM series_surfaces ss
+        WHERE ss.series_id = s.id
+            AND ss.surface = $3::text
+    )
 `
 
 type ListPublishedSeriesFollowTargetPublicIDsByIDsParams struct {
 	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
+	Surface  string      `json:"surface"`
 }
 
 type ListPublishedSeriesFollowTargetPublicIDsByIDsRow struct {
@@ -655,7 +705,7 @@ type ListPublishedSeriesFollowTargetPublicIDsByIDsRow struct {
 }
 
 func (q *Queries) ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids), arg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -700,6 +750,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
@@ -719,6 +775,12 @@ FROM (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $3::text
+                )
         )
     UNION ALL
     SELECT 'series'::text AS target_type,
@@ -732,33 +794,40 @@ FROM (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $3::text
+        )
 ) AS follows
-WHERE $3::timestamptz IS NULL
+WHERE $4::timestamptz IS NULL
     OR (
-        $4::boolean
+        $5::boolean
         AND (created_at, target_type, target_id) >= (
-            $3::timestamptz,
-            $5::text,
-            $6::uuid
+            $4::timestamptz,
+            $6::text,
+            $7::uuid
         )
     )
     OR (
-        NOT $4::boolean
+        NOT $5::boolean
         AND (created_at, target_type, target_id) > (
-            $3::timestamptz,
-            $5::text,
-            $6::uuid
+            $4::timestamptz,
+            $6::text,
+            $7::uuid
         )
     )
 ORDER BY created_at ASC,
     target_type DESC,
     target_id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListUserFollowsByCreatedAtAscParams struct {
 	TenantID         uuid.UUID      `json:"tenant_id"`
 	UserID           uuid.UUID      `json:"user_id"`
+	Surface          string         `json:"surface"`
 	CursorCreatedAt  sql.NullTime   `json:"cursor_created_at"`
 	CursorInclusive  bool           `json:"cursor_inclusive"`
 	CursorTargetType sql.NullString `json:"cursor_target_type"`
@@ -778,6 +847,7 @@ func (q *Queries) ListUserFollowsByCreatedAtAsc(ctx context.Context, arg ListUse
 	rows, err := q.db.QueryContext(ctx, ListUserFollowsByCreatedAtAsc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorTargetType,
@@ -828,6 +898,12 @@ FROM (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $3::text
+        )
     UNION ALL
     SELECT 'creator'::text AS target_type,
         cf.creator_id AS target_id,
@@ -847,6 +923,12 @@ FROM (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $3::text
+                )
         )
     UNION ALL
     SELECT 'series'::text AS target_type,
@@ -860,33 +942,40 @@ FROM (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $3::text
+        )
 ) AS follows
-WHERE $3::timestamptz IS NULL
+WHERE $4::timestamptz IS NULL
     OR (
-        $4::boolean
+        $5::boolean
         AND (created_at, target_type, target_id) <= (
-            $3::timestamptz,
-            $5::text,
-            $6::uuid
+            $4::timestamptz,
+            $6::text,
+            $7::uuid
         )
     )
     OR (
-        NOT $4::boolean
+        NOT $5::boolean
         AND (created_at, target_type, target_id) < (
-            $3::timestamptz,
-            $5::text,
-            $6::uuid
+            $4::timestamptz,
+            $6::text,
+            $7::uuid
         )
     )
 ORDER BY created_at DESC,
     target_type ASC,
     target_id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListUserFollowsByCreatedAtDescParams struct {
 	TenantID         uuid.UUID      `json:"tenant_id"`
 	UserID           uuid.UUID      `json:"user_id"`
+	Surface          string         `json:"surface"`
 	CursorCreatedAt  sql.NullTime   `json:"cursor_created_at"`
 	CursorInclusive  bool           `json:"cursor_inclusive"`
 	CursorTargetType sql.NullString `json:"cursor_target_type"`
@@ -902,11 +991,13 @@ type ListUserFollowsByCreatedAtDescRow struct {
 
 // The API can expose one timeline while keeping each relationship's storage
 // and future aggregates independent. Public joins make a target that is no
-// longer visible disappear from this member's list without revealing why.
+// longer visible, or that the calling surface may not show, disappear from
+// this member's list without revealing why.
 func (q *Queries) ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListUserFollowsByCreatedAtDesc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorCreatedAt,
 		arg.CursorInclusive,
 		arg.CursorTargetType,
@@ -953,6 +1044,12 @@ SELECT EXISTS (
                 AND s.is_published = true
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
+                AND EXISTS (
+                    SELECT 1
+                    FROM series_surfaces ss
+                    WHERE ss.series_id = s.id
+                        AND ss.surface = $4::text
+                )
         )
 ) AS follows_published_creator
 `
@@ -961,12 +1058,18 @@ type UserFollowsPublishedCreatorParams struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`
 	CreatorID uuid.UUID `json:"creator_id"`
+	Surface   string    `json:"surface"`
 }
 
 // Creators are public when they have at least one active series, matching
 // GetPublishedCreatorByPublicID.
 func (q *Queries) UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, UserFollowsPublishedCreator, arg.TenantID, arg.UserID, arg.CreatorID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedCreator,
+		arg.TenantID,
+		arg.UserID,
+		arg.CreatorID,
+		arg.Surface,
+	)
 	var follows_published_creator bool
 	err := row.Scan(&follows_published_creator)
 	return follows_published_creator, err
@@ -991,6 +1094,12 @@ SELECT EXISTS (
         AND el.status = 'published'
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $4::text
+        )
 ) AS follows_published_episode
 `
 
@@ -998,12 +1107,18 @@ type UserFollowsPublishedEpisodeParams struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`
 	EpisodeID uuid.UUID `json:"episode_id"`
+	Surface   string    `json:"surface"`
 }
 
 // Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
 // otherwise non-public episode is indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, UserFollowsPublishedEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedEpisode,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.Surface,
+	)
 	var follows_published_episode bool
 	err := row.Scan(&follows_published_episode)
 	return follows_published_episode, err
@@ -1021,6 +1136,12 @@ SELECT EXISTS (
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = s.id
+                AND ss.surface = $4::text
+        )
 ) AS follows_published_series
 `
 
@@ -1028,12 +1149,18 @@ type UserFollowsPublishedSeriesParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
 	SeriesID uuid.UUID `json:"series_id"`
+	Surface  string    `json:"surface"`
 }
 
 // Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 // indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, UserFollowsPublishedSeries, arg.TenantID, arg.UserID, arg.SeriesID)
+	row := q.db.QueryRowContext(ctx, UserFollowsPublishedSeries,
+		arg.TenantID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.Surface,
+	)
 	var follows_published_series bool
 	err := row.Scan(&follows_published_series)
 	return follows_published_series, err

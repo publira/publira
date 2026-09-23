@@ -334,31 +334,38 @@ WHERE p.tenant_id = $1
     AND p.user_id = $2::uuid
     AND e.tenant_id = $1
     AND s.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (p.purchased_at, p.id) >= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (p.purchased_at, p.id) > (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY p.purchased_at ASC,
     p.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyPurchasesAscParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
+	Surface           string        `json:"surface"`
 	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
@@ -382,6 +389,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 	rows, err := q.db.QueryContext(ctx, ListMyPurchasesAsc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorPurchasedAt,
 		arg.CursorInclusive,
 		arg.CursorID,
@@ -438,31 +446,38 @@ WHERE p.tenant_id = $1
     AND p.user_id = $2::uuid
     AND e.tenant_id = $1
     AND s.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM episode_surfaces es
+        WHERE es.episode_id = e.id
+            AND es.surface = $3::text
+    )
     AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (p.purchased_at, p.id) <= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (p.purchased_at, p.id) < (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY p.purchased_at DESC,
     p.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyPurchasesDescParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
+	Surface           string        `json:"surface"`
 	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
 	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
@@ -482,10 +497,15 @@ type ListMyPurchasesDescRow struct {
 	SeriesTitle       string       `json:"series_title"`
 }
 
+// The reader's library, newest purchase first. Publication is not re-checked,
+// so a purchase outlives the episode being taken down, but the calling surface
+// is: an episode that surface may not show is left out of the library read
+// there, as it is left out of the catalog.
 func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyPurchasesDesc,
 		arg.TenantID,
 		arg.UserID,
+		arg.Surface,
 		arg.CursorPurchasedAt,
 		arg.CursorInclusive,
 		arg.CursorID,

@@ -227,3 +227,10 @@ func expectSeriesRating(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, aver
 func webToken(direction pagination.Direction, keys ...string) string {
 	return pagination.Encode(direction, append([]string{"surface:web"}, keys...)...)
 }
+
+// onWeb binds an encoded token to the storefront, the way a read from it hands
+// one back.
+func onWeb(token string) string {
+	bindSurfaceTokens("web", &token)
+	return token
+}

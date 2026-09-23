@@ -76,7 +76,7 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 	now := time.Now()
 	expectTenantLookup(mock, fixture.tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(fixture.tenantID, "EPISODE001", nil).
+		WithArgs(fixture.tenantID, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
@@ -210,7 +210,7 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
-		WithArgs(tenantID, "SERIES001", nil).
+		WithArgs(tenantID, "SERIES001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedSeriesViewEvent)).
 		WithArgs(
@@ -344,12 +344,12 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 				if testCase.want == connect.CodeNotFound {
 					mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
-						WithArgs(tenantID, "SERIES404", nil).
+						WithArgs(tenantID, "SERIES404", "web").
 						WillReturnError(sql.ErrNoRows)
 				}
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-					WithArgs(tenantID, "EPISODE404", nil).
+					WithArgs(tenantID, "EPISODE404", "web").
 					WillReturnError(sql.ErrNoRows)
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_UNSPECIFIED:
 			}
