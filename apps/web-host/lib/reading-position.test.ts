@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMyReadingPosition, saveReadingPosition } from "./reading-position";
@@ -49,7 +50,11 @@ describe("getMyReadingPosition", () => {
       getMyReadingPosition({ accessToken: ACCESS_TOKEN, ...target })
     ).resolves.toBe(11);
     expect(mockGetMyReadingPosition).toHaveBeenCalledWith(
-      { episodePublicId: EPISODE_PUBLIC_ID, tenant: { tenantId: TENANT_ID } },
+      {
+        episodePublicId: EPISODE_PUBLIC_ID,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+      },
       { Authorization: "Bearer session-token" }
     );
   });
@@ -103,6 +108,7 @@ describe("saveReadingPosition", () => {
       {
         episodePublicId: EPISODE_PUBLIC_ID,
         pageIndex: 11,
+        surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
       },
       { Authorization: "Bearer session-token" }

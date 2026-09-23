@@ -5,6 +5,7 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { FollowTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -99,6 +100,7 @@ const readFollowStatus = async (
   try {
     const response = await apiClient.follow.getMyFollowStatus(
       {
+        surface: ClientSurface.WEB,
         target: followTargetMessage(targetKind, publicId),
         tenant: { tenantId },
       },
@@ -177,6 +179,7 @@ export const followTarget = async (input: {
   try {
     await apiClient.follow.follow(
       {
+        surface: ClientSurface.WEB,
         target: followTargetMessage(input.targetKind, input.publicId),
         tenant: { tenantId: input.tenantId },
       },
@@ -219,6 +222,7 @@ export const unfollowTarget = async (input: {
   try {
     await apiClient.follow.unfollow(
       {
+        surface: ClientSurface.WEB,
         target: followTargetMessage(input.targetKind, input.publicId),
         tenant: { tenantId: input.tenantId },
       },

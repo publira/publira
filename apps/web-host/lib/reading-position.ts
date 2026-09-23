@@ -1,4 +1,5 @@
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 
 import {
   apiClient,
@@ -51,7 +52,7 @@ export const getMyReadingPosition = async ({
 
   try {
     const response = await apiClient.episodeRead.getMyReadingPosition(
-      { episodePublicId, tenant: { tenantId } },
+      { episodePublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
     return response.position?.pageIndex ?? null;
@@ -90,7 +91,12 @@ export const saveReadingPosition = async ({
 
   try {
     await apiClient.episodeRead.saveReadingPosition(
-      { episodePublicId, pageIndex, tenant: { tenantId } },
+      {
+        episodePublicId,
+        pageIndex,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+      },
       buildSessionHeaders(sessionId)
     );
   } catch (error) {

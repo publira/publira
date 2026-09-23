@@ -5,6 +5,7 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { EpisodeRatingMode } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
@@ -101,6 +102,7 @@ const readMyEpisodeRating = async (
     const response = await apiClient.rating.getMyEpisodeRating(
       {
         episodePublicId,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -191,6 +193,7 @@ export const rateEpisode = async (input: {
       {
         episodePublicId: input.episodePublicId,
         presses: input.presses,
+        surface: ClientSurface.WEB,
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)

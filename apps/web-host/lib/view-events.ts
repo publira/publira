@@ -1,4 +1,5 @@
 import { ContentViewTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { profileCookieName } from "@publira/web-session/cookie-name";
 import { cookies } from "next/headers";
 import { z } from "zod";
@@ -150,6 +151,7 @@ export const recordContentView = async ({
   try {
     await apiClient.contentView.recordContentView(
       {
+        surface: ClientSurface.WEB,
         target: { publicId, type: contentViewTargetTypeByKind[kind] },
         tenant: { tenantId },
       },

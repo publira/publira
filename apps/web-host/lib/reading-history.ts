@@ -4,6 +4,7 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { MyEpisodeRead } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 
@@ -111,6 +112,7 @@ export const listMyEpisodeReads = async (
     const response = await apiClient.episodeRead.listMyEpisodeReads(
       {
         limit: input.limit ?? defaultEpisodeReadsPageSize,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",
       },

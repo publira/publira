@@ -1,4 +1,5 @@
 import { ContentViewTargetType } from "@publira/api-client/public/catalog";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recordContentView, VIEW_ACTOR_COOKIE_NAME } from "./view-events";
@@ -73,6 +74,7 @@ describe("recordContentView", () => {
 
     expect(mockRecordContentView).toHaveBeenCalledWith(
       {
+        surface: ClientSurface.WEB,
         target: { publicId: "EP_001", type: ContentViewTargetType.EPISODE },
         tenant: { tenantId: TENANT_ID },
       },
@@ -92,6 +94,7 @@ describe("recordContentView", () => {
     expect(set).not.toHaveBeenCalled();
     expect(mockRecordContentView).toHaveBeenCalledWith(
       {
+        surface: ClientSurface.WEB,
         target: { publicId: "SR_001", type: ContentViewTargetType.SERIES },
         tenant: { tenantId: TENANT_ID },
       },

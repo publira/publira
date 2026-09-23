@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMySeriesRating } from "./series-rating";
@@ -30,7 +31,11 @@ describe("getMySeriesRating", () => {
     read.mockResolvedValue({ ratedEpisodeCount: 2, ratingAverage: 3.5 });
     expect(await getMySeriesRating("tenant-1", "series-1")).toBe(3.5);
     expect(read).toHaveBeenCalledWith(
-      { seriesPublicId: "series-1", tenant: { tenantId: "tenant-1" } },
+      {
+        seriesPublicId: "series-1",
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "tenant-1" },
+      },
       { headers: { Authorization: "Bearer session-1" } }
     );
   });

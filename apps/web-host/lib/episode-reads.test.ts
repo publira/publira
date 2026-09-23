@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recordEpisodeRead } from "./episode-reads";
@@ -29,7 +30,11 @@ describe("recordEpisodeRead", () => {
     await recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID });
 
     expect(mockMarkEpisodeAsRead).toHaveBeenCalledWith(
-      { episodePublicId: PUBLIC_ID, tenant: { tenantId: TENANT_ID } },
+      {
+        episodePublicId: PUBLIC_ID,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: TENANT_ID },
+      },
       { Authorization: "Bearer session-token" }
     );
   });

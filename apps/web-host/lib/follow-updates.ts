@@ -4,6 +4,7 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { FollowUpdate } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 
@@ -114,6 +115,7 @@ export const listMyFollowUpdates = async (
     const response = await apiClient.follow.listMyFollowUpdates(
       {
         limit: input.limit ?? defaultFollowUpdatesLimit,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",
       },

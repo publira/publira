@@ -5,6 +5,7 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { CommentReportReason } from "@publira/api-client/public/comment";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type {
   EpisodeComment,
   MyEpisodeComment,
@@ -143,6 +144,7 @@ export const listEpisodeComments = async (
     const response = await apiClient.comment.listEpisodeComments({
       episodePublicId: input.episodePublicId,
       limit: COMMENT_PAGE_SIZE,
+      surface: ClientSurface.WEB,
       tenant: { tenantId },
       token: input.token ?? "",
     });
@@ -201,6 +203,7 @@ export const listMyEpisodeComments = async (
       {
         episodePublicId: input.episodePublicId,
         limit: OWN_COMMENT_PAGE_SIZE,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",
       },
@@ -375,6 +378,7 @@ export const postEpisodeComment = async (
       {
         body: input.body,
         episodePublicId: input.episodePublicId,
+        surface: ClientSurface.WEB,
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -507,6 +511,7 @@ export const reportEpisodeComment = async (
         commentPublicId: input.commentPublicId,
         note: input.note,
         reason: reportReasonCodes[input.reason],
+        surface: ClientSurface.WEB,
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)

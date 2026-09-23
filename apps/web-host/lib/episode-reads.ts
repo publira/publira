@@ -1,4 +1,5 @@
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 
 import {
   apiClient,
@@ -42,7 +43,11 @@ export const recordEpisodeRead = async ({
 
   try {
     await apiClient.episodeRead.markEpisodeAsRead(
-      { episodePublicId: publicId, tenant: { tenantId } },
+      {
+        episodePublicId: publicId,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+      },
       buildSessionHeaders(sessionId)
     );
   } catch (error) {

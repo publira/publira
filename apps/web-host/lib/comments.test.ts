@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { CommentReportReason } from "@publira/api-client/public/comment";
+import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeCommentItem, EpisodeCommentPage } from "./comments";
@@ -93,6 +94,9 @@ describe("listEpisodeComments", () => {
       locale: "en",
     });
 
+    expect(mockListEpisodeComments.mock.calls[0]?.[0]).toMatchObject({
+      surface: ClientSurface.WEB,
+    });
     expect(result).toEqual({
       ok: true,
       value: {
@@ -166,6 +170,9 @@ describe("listMyEpisodeComments", () => {
       locale: "en",
     });
 
+    expect(mockListMyEpisodeComments.mock.calls[0]?.[0]).toMatchObject({
+      surface: ClientSurface.WEB,
+    });
     expect(result).toEqual({
       ok: true,
       value: [
@@ -300,6 +307,9 @@ describe("postEpisodeComment", () => {
         tenantId,
       })
     ).resolves.toEqual({ awaitingApproval: true, ok: true });
+    expect(mockPostEpisodeComment.mock.calls[0]?.[0]).toMatchObject({
+      surface: ClientSurface.WEB,
+    });
   });
 
   it("returns the rejection of a locked episode instead of throwing", async () => {
@@ -389,6 +399,7 @@ describe("reportEpisodeComment", () => {
         commentPublicId: "CmntAAAAAAA1",
         note: "  Nothing to do with the episode.  ",
         reason: CommentReportReason.SPOILER,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }

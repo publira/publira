@@ -4,6 +4,7 @@ import {
   isRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { ClientSurface } from "@publira/api-client/public/types";
 import type { MyPurchase } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -120,6 +121,7 @@ const readPurchaseList = async (
     const response = await apiClient.purchase.listMyPurchases(
       {
         limit: input.limit ?? defaultPurchasePageSize,
+        surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",
       },
