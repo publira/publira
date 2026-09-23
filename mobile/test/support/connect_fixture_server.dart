@@ -988,8 +988,10 @@ class ConnectFixtureServer {
       final creators = path.endsWith('/GetPublishedCreatorDetail');
       final publicId = _publicIdOf(body);
       final shown = _seriesShownTo(body);
+      // A label is found among every series, shown or not, because the API
+      // answers one with none of its series on this surface as well.
       final target =
-          (creators ? _publishedCreators(shown) : _publishedLabels(shown))
+          (creators ? _publishedCreators(shown) : _publishedLabels(series))
               .where((item) => item['publicId'] == publicId)
               .firstOrNull;
       if (target == null) {
@@ -1007,7 +1009,10 @@ class ConnectFixtureServer {
         return credits.any((credit) => (credit as Map)['publicId'] == publicId);
       }).toList();
       await _write(request, HttpStatus.ok, {
-        creators ? 'creator' : 'label': target,
+        if (creators)
+          'creator': target
+        else
+          'label': {...target, 'publishedSeriesCount': credited.length},
         ..._pageOf('series', credited, body['token']),
       });
       return;

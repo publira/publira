@@ -1284,6 +1284,17 @@ void main() {
       },
     );
 
+    test(
+      'a label whose series the storefront alone shows still opens, empty',
+      () async {
+        final detail = await catalog.getLabelDetail('SeedLABLAAA1');
+
+        expect(detail, isNotNull);
+        expect(detail!.label.seriesCount, 0);
+        expect(detail.series.series, isEmpty);
+      },
+    );
+
     test('a series shown on both surfaces reads as it always has', () async {
       server.seriesAvailability = {webOnly: 'SURFACE_AVAILABILITY_ALL'};
 
