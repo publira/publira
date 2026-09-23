@@ -3566,6 +3566,7 @@
       "birth_date_clear": "清除出生日期",
       "birth_date_help": "本站点在打开有年龄限制的作品前会核对年龄。您也可以稍后登记，但登记后无法更改。",
       "birth_date_label": "出生日期",
+      "consent_changed": "需要同意的页面已更新。请阅读后重新同意。",
       "consent_label": "我已阅读并同意以下内容。",
       "consent_required": "要创建账户，请同意所列页面。",
       "failed": "无法创建您的账户。请检查您输入的内容。",

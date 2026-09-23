@@ -63,6 +63,15 @@ class SignUpRequirements {
   final LegalPage? termsPage;
   final LegalPage? privacyPage;
 
-  /// The pages the reader is asked to agree to, terms first.
-  List<LegalPage> get legalPages => [?termsPage, ?privacyPage];
+  /// The pages the reader is asked to agree to, terms first. A page named for
+  /// both roles is one page, and the API takes one version of it.
+  List<LegalPage> get legalPages => [
+    ?termsPage,
+    if (privacyPage?.versionId != termsPage?.versionId) ?privacyPage,
+  ];
+
+  /// Whether [other] asks consent to exactly the versions this does.
+  bool asksSameConsentAs(SignUpRequirements other) {
+    return listEquals(legalPages, other.legalPages);
+  }
 }

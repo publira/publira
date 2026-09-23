@@ -493,7 +493,7 @@ A reader signs in with an email address and a password, which `AuthService/Login
 
 ## Sign-up
 
-A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. Both come from one `GetTenant` read, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it.
+A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. Both come from one `GetTenant` read, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it. The form reads the pages again when it sends, and asks for the consent anew when one was republished in between.
 
 - Every accepted sign-up ends on the same screen, whether the address was free or already had an account, because that is all the API reports. It names the address the link went to and offers another one
 - `AuthService/Login` refuses an account whose address is unconfirmed, and the form then offers a fresh link for the address it was given. `/resend-verification` asks for one from scratch, for a reader who arrived with nothing typed

@@ -163,6 +163,78 @@ void main() {
       ]);
     });
 
+    testWidgets('a page named for both roles is agreed to once', (
+      tester,
+    ) async {
+      repository.privacyPage = repository.termsPage;
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+
+      expect(find.text('Terms of service'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('sign-up-consent')));
+      await tester.tap(find.byKey(const ValueKey('sign-up-consent')));
+      await fillSignUpForm(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-pending')),
+      );
+
+      expect(repository.lastSignUp!.agreedPageVersionIds, ['terms-v2']);
+    });
+
+    testWidgets('a page republished before sending is agreed to again', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent')),
+      );
+      await tester.ensureVisible(find.byKey(const ValueKey('sign-up-consent')));
+      await tester.tap(find.byKey(const ValueKey('sign-up-consent')));
+
+      repository.termsPage = const LegalPage(
+        slug: '/legal/terms',
+        title: 'Terms of service',
+        versionId: 'terms-v3',
+      );
+      await fillSignUpForm(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-consent-changed')),
+      );
+
+      expect(repository.lastSignUp, isNull);
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const ValueKey('sign-up-consent')),
+            )
+            .value,
+        isFalse,
+      );
+
+      await tester.ensureVisible(find.byKey(const ValueKey('sign-up-consent')));
+      await tester.tap(find.byKey(const ValueKey('sign-up-consent')));
+      final submit = find.byKey(const ValueKey('sign-up-submit'));
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
+      await tester.tap(submit);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('sign-up-pending')),
+      );
+
+      expect(repository.lastSignUp!.agreedPageVersionIds, [
+        'terms-v3',
+        'privacy-v1',
+      ]);
+    });
+
     testWidgets('a page opens in the app and leads back to the form', (
       tester,
     ) async {

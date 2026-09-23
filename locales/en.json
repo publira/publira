@@ -3566,6 +3566,7 @@
       "birth_date_clear": "Clear the date of birth",
       "birth_date_help": "This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.",
       "birth_date_label": "Date of birth",
+      "consent_changed": "The pages to agree to have been updated. Read them and agree again.",
       "consent_label": "I have read and agree to the following.",
       "consent_required": "Agree to the listed pages to create an account.",
       "failed": "Could not create your account. Please check what you entered.",

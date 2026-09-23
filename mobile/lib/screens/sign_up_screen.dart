@@ -57,6 +57,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   /// build rather than as the copy of the locale it failed under.
   AuthFailureKind? _failure;
 
+  /// Set when the pages to agree to changed between the form being read and
+  /// being sent, which asks the reader for the consent again.
+  var _legalPagesChanged = false;
+
   /// The address the sign-up was accepted for, `null` until it has been.
   /// Holding it is what lets the pending state ask for another mail without
   /// making the reader type the address again.
@@ -105,18 +109,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final auth = AuthScope.of(context);
     final email = _emailController.text.trim();
     final birthDate = _birthDate;
-    // Validation has already held the form back without the consent, so the
-    // pages on screen are the ones agreed to.
-    final agreedPageVersionIds = [
-      for (final page in _requirements?.legalPages ?? const <LegalPage>[])
-        page.versionId,
-    ];
+    final shown = _requirements;
     setState(() {
       _submitting = true;
       _failure = null;
+      _legalPagesChanged = false;
     });
     AuthFailureKind? failure;
     try {
+      // Read again, so a page republished since the form was read — whose
+      // new text a reader may have opened from it — is agreed to anew rather
+      // than recorded as the version the form happened to hold.
+      final current = await auth.readSignUpRequirements();
+      if (current.legalPages.isNotEmpty &&
+          (shown == null || !current.asksSameConsentAs(shown))) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _submitting = false;
+          _requirements = current;
+          _legalPagesChanged = true;
+        });
+        return;
+      }
+      // Validation has already held the form back without the consent, so
+      // the pages on screen are the ones agreed to.
+      final agreedPageVersionIds = [
+        for (final page in current.legalPages) page.versionId,
+      ];
       await auth.signUp(
         name: _nameController.text.trim(),
         email: email,
@@ -199,6 +220,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 16),
+          ] else if (_legalPagesChanged) ...[
+            Text(
+              messages.signUpConsentChanged,
+              key: const ValueKey('sign-up-consent-changed'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            const SizedBox(height: 16),
           ],
           TextFormField(
             key: const ValueKey('sign-up-name'),
@@ -263,7 +291,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
               onClear: () => setState(() => _birthDate = null),
             ),
           if (_requirements?.legalPages case final pages? when pages.isNotEmpty)
-            _ConsentField(pages: pages),
+            // Keyed by the versions, so pages that changed are asked about
+            // with the box cleared.
+            _ConsentField(
+              key: ValueKey(pages.map((page) => page.versionId).join(',')),
+              pages: pages,
+            ),
           const SizedBox(height: 24),
           FilledButton(
             key: const ValueKey('sign-up-submit'),
@@ -366,7 +399,7 @@ class _BirthDateField extends StatelessWidget {
 /// Each page opens on its own screen above the form, so reading it keeps
 /// everything the reader has typed.
 class _ConsentField extends StatelessWidget {
-  const _ConsentField({required this.pages});
+  const _ConsentField({super.key, required this.pages});
 
   final List<LegalPage> pages;
 
