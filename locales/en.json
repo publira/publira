@@ -3661,6 +3661,11 @@
         "sign_in": "Sign in to react",
         "submitting": "Reacting…"
       },
+      "capture_notice": {
+        "body": "These pages belong to {$tenant} and are for your personal use only.",
+        "body_unnamed": "These pages are for your personal use only.",
+        "dismiss": "Close"
+      },
       "end": {
         "up_next": "Up next",
         "up_to_date_description": "“{$title}” has no episode after this one yet.",

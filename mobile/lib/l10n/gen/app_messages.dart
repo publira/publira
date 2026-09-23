@@ -1311,6 +1311,15 @@ abstract class AppMessages {
   /// `mobile.viewer.back_to_series`
   String get viewerBackToSeries;
 
+  /// `mobile.viewer.capture_notice.body`
+  String viewerCaptureNoticeBody({required String tenant});
+
+  /// `mobile.viewer.capture_notice.body_unnamed`
+  String get viewerCaptureNoticeBodyUnnamed;
+
+  /// `mobile.viewer.capture_notice.dismiss`
+  String get viewerCaptureNoticeDismiss;
+
   /// `mobile.viewer.end.up_next`
   String get viewerEndUpNext;
 
@@ -3441,6 +3450,21 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get viewerBackToSeries {
     return 'シリーズへ戻る';
+  }
+
+  @override
+  String viewerCaptureNoticeBody({required String tenant}) {
+    return 'このページの権利は$tenantに帰属します。個人で楽しむ範囲でご利用ください。';
+  }
+
+  @override
+  String get viewerCaptureNoticeBodyUnnamed {
+    return 'このページは個人で楽しむ範囲でご利用ください。';
+  }
+
+  @override
+  String get viewerCaptureNoticeDismiss {
+    return '閉じる';
   }
 
   @override
@@ -5632,6 +5656,21 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String viewerCaptureNoticeBody({required String tenant}) {
+    return 'These pages belong to $tenant and are for your personal use only.';
+  }
+
+  @override
+  String get viewerCaptureNoticeBodyUnnamed {
+    return 'These pages are for your personal use only.';
+  }
+
+  @override
+  String get viewerCaptureNoticeDismiss {
+    return 'Close';
+  }
+
+  @override
   String get viewerEndUpNext {
     return 'Up next';
   }
@@ -7817,6 +7856,21 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get viewerBackToSeries {
     return '시리즈로 돌아가기';
+  }
+
+  @override
+  String viewerCaptureNoticeBody({required String tenant}) {
+    return '이 페이지의 권리는 $tenant에 있습니다. 개인적인 용도로만 이용해 주세요.';
+  }
+
+  @override
+  String get viewerCaptureNoticeBodyUnnamed {
+    return '이 페이지는 개인적인 용도로만 이용해 주세요.';
+  }
+
+  @override
+  String get viewerCaptureNoticeDismiss {
+    return '닫기';
   }
 
   @override
@@ -10008,6 +10062,21 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String viewerCaptureNoticeBody({required String tenant}) {
+    return '本页面的权利归$tenant所有，仅限个人使用。';
+  }
+
+  @override
+  String get viewerCaptureNoticeBodyUnnamed {
+    return '本页面仅限个人使用。';
+  }
+
+  @override
+  String get viewerCaptureNoticeDismiss {
+    return '关闭';
+  }
+
+  @override
   String get viewerEndUpNext {
     return '接下来';
   }
@@ -12193,6 +12262,21 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get viewerBackToSeries {
     return '返回系列';
+  }
+
+  @override
+  String viewerCaptureNoticeBody({required String tenant}) {
+    return '本頁面的權利歸$tenant所有，僅限個人使用。';
+  }
+
+  @override
+  String get viewerCaptureNoticeBodyUnnamed {
+    return '本頁面僅限個人使用。';
+  }
+
+  @override
+  String get viewerCaptureNoticeDismiss {
+    return '關閉';
   }
 
   @override
