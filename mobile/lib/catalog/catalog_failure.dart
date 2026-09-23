@@ -22,10 +22,15 @@ enum CatalogFailureKind {
 /// A failed catalog read. [kind] is what the UI switches on; [message] is
 /// diagnostic only and must not be shown as user-facing copy.
 class CatalogFailure implements Exception {
-  const CatalogFailure(this.kind, {this.message = ''});
+  const CatalogFailure(this.kind, {this.message = '', this.refused = false});
 
   final CatalogFailureKind kind;
   final String message;
+
+  /// Whether the API turned down what the request asked for — an episode it
+  /// does not have, a page outside it, a permission the reader lacks — which
+  /// asking again cannot change. A server fault is not a refusal.
+  final bool refused;
 
   @override
   String toString() => 'CatalogFailure($kind, $message)';

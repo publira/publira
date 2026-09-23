@@ -202,6 +202,60 @@ class FileOfflineLibrary implements OfflineLibrary {
   }
 
   @override
+  Future<List<UnsentProgress>> readUnsentProgress({
+    required String readerId,
+  }) async {
+    final unsent = await _read<List<UnsentProgress>>(
+      (home, index) => [
+        for (final progress in index.unsent.values)
+          if (progress.readerId == readerId) progress,
+      ],
+    );
+    return unsent ?? const [];
+  }
+
+  @override
+  Future<void> queueUnsentProgress(UnsentProgress progress) {
+    return _write((home, index) {
+      final queued = index.unsent[progress.key];
+      index.unsent[progress.key] = queued == null
+          ? progress
+          : queued.mergedWith(progress);
+    });
+  }
+
+  @override
+  Future<void> settleUnsentProgress(
+    UnsentProgress sent, {
+    bool newest = false,
+  }) {
+    return _update((index) {
+      final queued = index.unsent[sent.key];
+      if (queued == null) {
+        return false;
+      }
+      final left = queued.settledBy(sent, newest: newest);
+      if (left.isEmpty) {
+        index.unsent.remove(sent.key);
+      } else {
+        index.unsent[sent.key] = left;
+      }
+      return true;
+    });
+  }
+
+  @override
+  Future<void> forgetUnsentProgress({required String readerId}) {
+    return _update((index) {
+      final before = index.unsent.length;
+      index.unsent.removeWhere(
+        (key, progress) => progress.readerId == readerId,
+      );
+      return index.unsent.length != before;
+    });
+  }
+
+  @override
   Future<Set<String>> readableEpisodeIds(
     String seriesPublicId, {
     required String readerId,
@@ -463,6 +517,19 @@ class FileOfflineLibrary implements OfflineLibrary {
         _pageBytes = null;
       }
     });
+  }
+
+  /// [_write] for an [action] that answers whether it changed anything, so
+  /// one that found nothing to change leaves the index file alone.
+  ///
+  /// The viewer settles every page it records, and the reader is online for
+  /// almost all of them, with nothing queued to settle.
+  Future<void> _update(bool Function(OfflineIndex index) action) {
+    return _write((home, index) async {
+      if (action(index)) {
+        await _writeIndex(home, index);
+      }
+    }, persist: false);
   }
 
   Future<T> _serialize<T>(Future<T> Function() action) {

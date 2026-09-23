@@ -743,8 +743,20 @@ class HttpCatalogRepository implements CatalogRepository {
           ? CatalogFailureKind.sessionExpired
           : CatalogFailureKind.unexpected,
       message: error.message,
+      refused: _refusalCodes.contains(error.code),
     );
   }
+
+  /// Connect codes that answer the request itself rather than the server's
+  /// state, so the same request is answered the same way every time.
+  static const _refusalCodes = {
+    'invalid_argument',
+    'not_found',
+    'permission_denied',
+    'failed_precondition',
+    'out_of_range',
+    'already_exists',
+  };
 
   List<SeriesItem> _parseSeriesList(Object? raw) {
     // protojson omits an empty repeated field, so a missing `series` is the

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -6,6 +8,7 @@ import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
+import 'package:publira/offline/progress_outbox.dart';
 
 /// Reads the public catalog, and keeps what it read so the same screens open
 /// again without a network.
@@ -47,6 +50,17 @@ class OfflineCatalogRepository implements CatalogRepository {
   final ReaderIdReader _readerId;
   final DateTime Function() _clock;
 
+  /// The reading progress the API could not take when it was made.
+  ///
+  /// It is flushed after every read the API answers here, since that is the
+  /// moment the API is known to be reachable again; the app flushes it on
+  /// launch and on resume as well.
+  late final ProgressOutbox outbox = ProgressOutbox(
+    origin: _origin,
+    library: library,
+    readerId: _readerId,
+  );
+
   /// The catalog list, of which the device keeps the first page.
   ///
   /// A page under it is the API's to answer: the reader asks for one by
@@ -58,6 +72,7 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<SeriesPage> listSeries({String token = ''}) async {
     try {
       final page = await _origin.listSeries(token: token);
+      _reached();
       if (token.isEmpty) {
         await library.writeSeriesList(page);
       }
@@ -124,6 +139,7 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {
       final detail = await _origin.getSeries(publicId);
+      _reached();
       if (detail == null) {
         await library.removeSeries(publicId);
         return null;
@@ -185,6 +201,7 @@ class OfflineCatalogRepository implements CatalogRepository {
     final reader = _readerId();
     try {
       final detail = await _origin.getEpisode(seriesPublicId, episodePublicId);
+      _reached();
       if (detail == null) {
         await library.removeEpisode(seriesPublicId, episodePublicId);
         return null;
@@ -207,6 +224,8 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// the app to open on it. It wins only over a position it actually has,
   /// though — an episode it knows nothing about leaves whatever the device
   /// recorded while it was unreachable as the only page the reader stopped on.
+  /// A page [outbox] has yet to send wins over the API too, because sending it
+  /// is what will make it the API's answer.
   @override
   Future<int?> getReadingPosition(
     String seriesPublicId,
@@ -223,6 +242,12 @@ class OfflineCatalogRepository implements CatalogRepository {
         seriesPublicId,
         episodePublicId,
       );
+      // Read before the flush this answer starts, which may send it.
+      final queued = await outbox.queuedPage(reader, episodePublicId);
+      _reached();
+      if (queued != null) {
+        return queued;
+      }
       if (position == null) {
         return await library.readReadingPosition(
           seriesPublicId,
@@ -249,11 +274,12 @@ class OfflineCatalogRepository implements CatalogRepository {
     }
   }
 
-  /// Records the page on the device first, then at the API.
+  /// Records the page on the device first, then at the API, and queues it for
+  /// [outbox] to send when the API cannot be reached.
   ///
   /// The device is written first because it is the record that survives the
-  /// API being unreachable, which is the whole of what a reader turning pages
-  /// offline leaves behind.
+  /// API being unreachable, which is what the viewer resumes from while it
+  /// stays so.
   @override
   Future<void> saveReadingPosition(
     String seriesPublicId,
@@ -270,25 +296,61 @@ class OfflineCatalogRepository implements CatalogRepository {
       readerId: reader,
       pageIndex: pageIndex,
     );
+    final progress = UnsentProgress(
+      readerId: reader,
+      episodeId: episodePublicId,
+      seriesId: seriesPublicId,
+      pageIndex: pageIndex,
+    );
     try {
-      await _origin.saveReadingPosition(
-        seriesPublicId,
-        episodePublicId,
-        pageIndex,
+      // Through the outbox, which drops the older page queued while the API
+      // was unreachable: sending that one later would move the reader back.
+      await outbox.send(
+        progress,
+        () => _origin.saveReadingPosition(
+          seriesPublicId,
+          episodePublicId,
+          pageIndex,
+        ),
       );
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
         rethrow;
       }
-      // The device holds the page until the API can be reached again.
+      await outbox.queue(progress);
+      return;
     }
+    _reached();
   }
 
-  /// Sent straight to the API, which is the only record of what a reader
-  /// finished.
+  /// Sends the finish to the API, and queues it for [outbox] to send when the
+  /// API cannot be reached.
   @override
-  Future<void> markEpisodeAsRead(String episodePublicId) =>
-      _origin.markEpisodeAsRead(episodePublicId);
+  Future<void> markEpisodeAsRead(String episodePublicId) async {
+    final reader = _readerId();
+    // A guest's finish is recorded nowhere, and the API is asked nothing.
+    if (reader.isEmpty) {
+      return _origin.markEpisodeAsRead(episodePublicId);
+    }
+    final progress = UnsentProgress(
+      readerId: reader,
+      episodeId: episodePublicId,
+      finished: true,
+    );
+    try {
+      await outbox.send(
+        progress,
+        () => _origin.markEpisodeAsRead(episodePublicId),
+      );
+    } on CatalogFailure catch (failure) {
+      if (failure.kind != CatalogFailureKind.network) {
+        rethrow;
+      }
+      await outbox.queue(progress);
+      return;
+    }
+    _reached();
+  }
 
   // Reactions are account-specific and immediately visible on the website, so
   // unlike catalog reads they are never served from or queued into offline
@@ -325,6 +387,12 @@ class OfflineCatalogRepository implements CatalogRepository {
     required int limit,
     String token = '',
   }) => _origin.listFollowUpdates(limit: limit, token: token);
+
+  /// The API just answered, so what was queued while it could not be reached
+  /// goes out now.
+  void _reached() {
+    unawaited(outbox.flush());
+  }
 
   /// Answers an episode the network could not, from what the device holds.
   Future<EpisodeDetail> _openSaved(

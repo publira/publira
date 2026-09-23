@@ -37,6 +37,7 @@ import 'package:publira/offline/file_offline_library.dart';
 import 'package:publira/offline/offline_catalog_repository.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/offline/progress_outbox.dart';
 import 'package:publira/pages/http_page_repository.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
@@ -73,6 +74,7 @@ class PubliraApp extends StatefulWidget {
     this.checkoutLauncher,
     this.offline,
     this.downloader,
+    this.progress,
     this.push,
     this.ageRatingConfirmation,
     this.tenantDefaultLocale,
@@ -178,6 +180,7 @@ class PubliraApp extends StatefulWidget {
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
       offline: library,
       downloader: EpisodeDownloader(catalog: catalog, library: library),
+      progress: catalog.outbox,
       push: PushController(
         messaging: messaging,
         repository: HttpPushRepository(client: client, tenants: tenants),
@@ -274,6 +277,14 @@ class PubliraApp extends StatefulWidget {
   /// save one.
   final EpisodeDownloader? downloader;
 
+  /// The reading progress made while the API could not be reached, sent on
+  /// launch, on resume, and on sign-in, and dropped on sign-out.
+  ///
+  /// [PubliraApp.fromConfig] always supplies the one its catalog queues into.
+  /// It is nullable for the direct constructor, which a widget test uses to
+  /// build the app with nothing queued.
+  final ProgressOutbox? progress;
+
   /// The new-episode notifications the reader can turn on.
   ///
   /// [PubliraApp.fromConfig] always supplies one, and the controller itself
@@ -344,6 +355,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// controller reports.
   late bool _wasSignedIn;
 
+  /// Public id of the reader in [_onAuthChanged]'s last look, so the one who
+  /// signed out can still be named once the session is gone.
+  late String _readerId;
+
   /// The confirmation this run owns when the widget did not pass one, so a
   /// widget test that does not care about ratings still has a store.
   AgeRatingConfirmationController? _ownedAgeRating;
@@ -356,6 +371,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _wasSignedIn = widget.auth.isSignedIn;
+    _readerId = widget.auth.session?.userPublicId ?? '';
     final passed = widget.ageRatingConfirmation;
     if (passed != null) {
       _ageRating = passed;
@@ -367,6 +383,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.push?.addListener(_onPushChanged);
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
+      unawaited(widget.progress?.flush());
     }
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
@@ -471,7 +488,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
 
   /// Reads the unread count and the pinned announcement again when the reader
   /// comes back to the app, which is when a notification they were sent or a
-  /// banner pinned in the meantime would otherwise go unseen.
+  /// banner pinned in the meantime would otherwise go unseen. It is also when
+  /// a reader who read offline is most likely to be back on a network.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
@@ -480,6 +498,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     unawaited(widget.announcements?.refreshPinned());
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
+      unawaited(widget.progress?.flush());
     }
   }
 
@@ -504,6 +523,18 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// stored turned out to be gone, offering the way back in rather than
   /// signing them in silently.
   void _onAuthChanged() {
+    final readerId = widget.auth.session?.userPublicId ?? '';
+    if (readerId != _readerId) {
+      final previous = _readerId;
+      _readerId = readerId;
+      if (readerId.isNotEmpty) {
+        unawaited(widget.progress?.flush());
+      } else if (!widget.auth.expired) {
+        // Signing out is the reader's own word. A session the API refused
+        // keeps its queue, so signing back in as the same reader sends it.
+        unawaited(widget.progress?.forget(previous));
+      }
+    }
     final signedIn = widget.auth.isSignedIn;
     if (signedIn != _wasSignedIn) {
       _wasSignedIn = signedIn;

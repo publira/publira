@@ -427,6 +427,82 @@ void main() {
     );
   });
 
+  test('unsent progress is read back by the next launch', () async {
+    await open().queueUnsentProgress(
+      const UnsentProgress(
+        readerId: 'SeedMMBRAAA1',
+        episodeId: 'EP1',
+        seriesId: _seriesId,
+        pageIndex: 4,
+      ),
+    );
+    await open().queueUnsentProgress(
+      const UnsentProgress(
+        readerId: 'SeedMMBRAAA1',
+        episodeId: 'EP1',
+        finished: true,
+      ),
+    );
+
+    final unsent = await open().readUnsentProgress(readerId: 'SeedMMBRAAA1');
+
+    expect(unsent, hasLength(1));
+    expect(unsent.single.seriesId, _seriesId);
+    expect(unsent.single.pageIndex, 4);
+    expect(unsent.single.finished, isTrue);
+  });
+
+  test('unsent progress outlives the episode and the downloads', () async {
+    final library = open();
+    await library.writeEpisode(_episode('EP1'));
+    await library.queueUnsentProgress(
+      const UnsentProgress(
+        readerId: 'SeedMMBRAAA1',
+        episodeId: 'EP1',
+        finished: true,
+      ),
+    );
+
+    await library.removeSeries(_seriesId);
+    await library.clear();
+
+    expect(
+      await open().readUnsentProgress(readerId: 'SeedMMBRAAA1'),
+      hasLength(1),
+    );
+  });
+
+  test('settled progress leaves the device', () async {
+    const finish = UnsentProgress(
+      readerId: 'SeedMMBRAAA1',
+      episodeId: 'EP1',
+      finished: true,
+    );
+    final library = open();
+    await library.queueUnsentProgress(finish);
+
+    await library.settleUnsentProgress(finish);
+
+    expect(await open().readUnsentProgress(readerId: 'SeedMMBRAAA1'), isEmpty);
+  });
+
+  test('forgetting a reader keeps every other reader\'s progress', () async {
+    final library = open();
+    for (final readerId in ['SeedMMBRAAA1', 'SeedMMBRAAA2']) {
+      await library.queueUnsentProgress(
+        UnsentProgress(readerId: readerId, episodeId: 'EP1', finished: true),
+      );
+    }
+
+    await library.forgetUnsentProgress(readerId: 'SeedMMBRAAA1');
+
+    expect(await open().readUnsentProgress(readerId: 'SeedMMBRAAA1'), isEmpty);
+    expect(
+      await open().readUnsentProgress(readerId: 'SeedMMBRAAA2'),
+      hasLength(1),
+    );
+  });
+
   test('a series the API dropped takes its positions with it', () async {
     final library = open();
     await library.writeEpisode(_episode('EP1'));

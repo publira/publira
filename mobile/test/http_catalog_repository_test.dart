@@ -1783,6 +1783,27 @@ void main() {
       );
     });
 
+    for (final (code, refused) in [
+      ('not_found', true),
+      ('invalid_argument', true),
+      ('internal', false),
+    ]) {
+      test('a finish answered $code is ${refused ? '' : 'not '}a refusal', () {
+        server.markReadErrorCode = code;
+
+        expect(
+          () => signedIn.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId),
+          throwsA(
+            isA<CatalogFailure>().having(
+              (failure) => failure.refused,
+              'refused',
+              refused,
+            ),
+          ),
+        );
+      });
+    }
+
     test('listRecentSeries maps the series and the episode to open', () async {
       final items = (await signedIn.listRecentSeries(limit: 6)).series;
 
