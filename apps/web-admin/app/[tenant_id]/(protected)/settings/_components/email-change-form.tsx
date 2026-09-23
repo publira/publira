@@ -81,6 +81,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           <FieldContent>
             <Input
               autoComplete="email"
+              disabled={isPending}
               name="current_email"
               onChange={handleCurrentEmailChange}
               placeholder="current@example.com"
@@ -98,6 +99,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           <FieldContent>
             <Input
               autoComplete="email"
+              disabled={isPending}
               name="new_email"
               onChange={handleNewEmailChange}
               placeholder="new@example.com"
@@ -115,6 +117,7 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           <FieldContent>
             <Input
               autoComplete="current-password"
+              disabled={isPending}
               name="current_password"
               onChange={handleCurrentPasswordChange}
               placeholder="••••••••"

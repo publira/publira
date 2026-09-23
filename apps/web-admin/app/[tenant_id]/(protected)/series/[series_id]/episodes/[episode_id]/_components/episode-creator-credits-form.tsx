@@ -12,6 +12,7 @@ import {
 } from "@publira/ui-components/combobox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 
@@ -241,37 +242,39 @@ export const EpisodeCreatorCreditsForm = ({
           type="hidden"
           value={JSON.stringify(credits)}
         />
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            <ClientMessage message="admin.series.episodes.credits.empty" />
-          </p>
-        ) : (
-          <ul className="grid gap-2">
-            {rows.map((row, index) => (
-              <EpisodeCreditRow
-                creators={creatorItems}
-                key={row.key}
-                onChange={changeRow}
-                onRemove={() => removeRow(row.key)}
-                position={index + 1}
-                roles={roleItems}
-                row={row}
-              />
-            ))}
-          </ul>
-        )}
-        {rows.length > 0 ? <CreditShareSummary total={shareTotal} /> : null}
-        <div>
-          <Button
-            disabled={creatorItems.length === 0 || roleItems.length === 0}
-            onClick={add}
-            type="button"
-            variant="outline"
-          >
-            <PlusIcon aria-hidden="true" className="size-4" />
-            <ClientMessage message="admin.series.form.creators_add" />
-          </Button>
-        </div>
+        <Fieldset className="grid gap-3" disabled={isPending}>
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              <ClientMessage message="admin.series.episodes.credits.empty" />
+            </p>
+          ) : (
+            <ul className="grid gap-2">
+              {rows.map((row, index) => (
+                <EpisodeCreditRow
+                  creators={creatorItems}
+                  key={row.key}
+                  onChange={changeRow}
+                  onRemove={() => removeRow(row.key)}
+                  position={index + 1}
+                  roles={roleItems}
+                  row={row}
+                />
+              ))}
+            </ul>
+          )}
+          {rows.length > 0 ? <CreditShareSummary total={shareTotal} /> : null}
+          <div>
+            <Button
+              disabled={creatorItems.length === 0 || roleItems.length === 0}
+              onClick={add}
+              type="button"
+              variant="outline"
+            >
+              <PlusIcon aria-hidden="true" className="size-4" />
+              <ClientMessage message="admin.series.form.creators_add" />
+            </Button>
+          </div>
+        </Fieldset>
         {state?.mode === "credits" ? (
           <FormMessage variant={state.ok ? "success" : "destructive"}>
             {state.message}

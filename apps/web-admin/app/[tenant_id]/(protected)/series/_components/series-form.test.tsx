@@ -9,13 +9,14 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { SeriesListItem } from "../series-types";
+import type { SeriesActionState, SeriesListItem } from "../series-types";
 import { SeriesForm } from "./series-form";
 
 const mockLocale = vi.hoisted(() => ({ current: "en" as Locale }));
@@ -503,6 +504,68 @@ it("disables the save while the credit shares pass 100%", () => {
   });
 
   expect(save.disabled).toBe(false);
+});
+
+/**
+ * Whether a control refuses input, whichever way it says so. A native control
+ * closed by its `<fieldset>` keeps `disabled` false and matches `:disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true" ||
+  Object.hasOwn(element.dataset, "disabled");
+
+const submittedControls = async () => [
+  screen.getByRole("textbox", { name: /Title/u }),
+  screen.getByRole("textbox", { name: /Synopsis/u }),
+  screen.getByRole("spinbutton", { name: /Reading period/u }),
+  screen.getByRole("combobox", { name: /Label/u }),
+  screen.getByRole("combobox", { name: "Author 1" }),
+  screen.getByRole("combobox", { name: "Role 1" }),
+  screen.getByRole("textbox", { name: "Share of author 1" }),
+  screen.getByLabelText(/Publication date/u),
+  screen.getByRole("checkbox", { name: "Mon" }),
+  await screen.findByRole("combobox", { name: /Genres/u }),
+  await screen.findByRole("combobox", { name: /Tags/u }),
+  await screen.findByRole("combobox", { name: /Serialization status/u }),
+  await screen.findByRole("combobox", { name: /Age rating/u }),
+  await screen.findByRole("combobox", { name: /Comments/u }),
+];
+
+// The Action carries what the form held when it was submitted, and an update
+// writes the whole listing row, so any change made while it is in flight would
+// sit in the form under the success message unsaved.
+it("closes every field while the save is in flight", async () => {
+  // Never resolved: the assertions are about the window the save is open in.
+  const save = Promise.withResolvers<SeriesActionState>();
+  const pendingAction = vi.fn(() => save.promise);
+
+  render(
+    <SeriesForm
+      action={pendingAction}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialSeries={series}
+      labels={labels}
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="UTC"
+    />
+  );
+
+  for (const control of await submittedControls()) {
+    expect(isClosed(control)).toBe(false);
+  }
+
+  fireEvent.click(screen.getByRole("button", { name: "Update series" }));
+
+  await waitFor(async () => {
+    for (const control of await submittedControls()) {
+      expect(isClosed(control)).toBe(true);
+    }
+  });
 });
 
 // The `ja` mirror of the assertions above, which all run under the `en`

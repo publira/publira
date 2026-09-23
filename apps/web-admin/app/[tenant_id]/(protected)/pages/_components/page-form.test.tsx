@@ -6,6 +6,7 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -122,4 +123,33 @@ it("shows any other failure above the button", async () => {
   const message = await screen.findByText(failure.message);
   expect(isBesideSlug(message)).toBe(false);
   expect(slugInput()?.hasAttribute("aria-invalid")).toBe(false);
+});
+
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
+const submittedControls = () => [
+  screen.getByRole("textbox", { name: "slug" }),
+  screen.getByRole("textbox", { name: /Title/u }),
+  screen.getByRole("checkbox", { name: "Show in footer" }),
+  screen.getByRole("textbox", { name: "Content" }),
+];
+
+// The Action carries what the fields held when the form was submitted, so a
+// change made while it is in flight would not be the page that gets created.
+it("closes every field while the save is in flight", async () => {
+  // Never resolved: the assertions are about the window the save is open in.
+  const save = Promise.withResolvers<PageFormState>();
+  render(<PageForm action={() => save.promise} mode="create" />);
+
+  for (const control of submittedControls()) {
+    expect(control.matches(":disabled")).toBe(false);
+  }
+
+  submit();
+
+  await waitFor(() => {
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(true);
+    }
+  });
 });

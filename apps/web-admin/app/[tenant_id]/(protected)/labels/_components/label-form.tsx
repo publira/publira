@@ -77,6 +77,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
         </FieldLabel>
         <FieldContent>
           <Input
+            disabled={isPending}
             name="name"
             onChange={handleNameChange}
             placeholder={t("admin.labels.form.name_placeholder")}
@@ -95,6 +96,7 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
           <FieldContent>
             <Input
               accept="image/jpeg,image/png,image/webp"
+              disabled={isPending}
               name="eye_catch_image"
               type="file"
             />

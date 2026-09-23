@@ -120,6 +120,7 @@ export const TenantLogoForm = ({
           <FieldContent>
             <Input
               accept="image/jpeg,image/png,image/webp"
+              disabled={isPending}
               name="logo"
               type="file"
             />

@@ -4,12 +4,19 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render as renderBase, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderBase,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
+import type { TenantTimezoneActionState } from "../settings-types";
 import { TenantTimezoneForm } from "./tenant-timezone-form";
 
 vi.mock("#components/client-message", () => ({
@@ -107,5 +114,35 @@ describe("TenantTimezoneForm", () => {
     );
 
     expect(screen.getByText("Could not load the time zone.")).toBeDefined();
+  });
+
+  // The Action carries the zone picked when the form was submitted, so a pick
+  // made while it is in flight would sit under the success message unsaved.
+  it("closes the picker while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<TenantTimezoneActionState>();
+    const pendingAction = vi.fn(() => save.promise);
+
+    render(
+      <TenantTimezoneForm
+        action={pendingAction}
+        canEdit
+        initialTimezone="UTC"
+      />
+    );
+
+    const input = screen.getByLabelText<HTMLInputElement>("Time zone");
+
+    expect(input.disabled).toBe(false);
+
+    fireEvent.click(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Save the time zone",
+      })
+    );
+
+    await waitFor(() => {
+      expect(input.disabled).toBe(true);
+    });
   });
 });

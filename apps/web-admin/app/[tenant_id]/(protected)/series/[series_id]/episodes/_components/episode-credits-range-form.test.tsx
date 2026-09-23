@@ -7,6 +7,7 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -150,6 +151,22 @@ const authorPickers = () =>
 const applyButton = () => screen.getByRole("button", { name: "Apply" });
 
 afterEach(cleanup);
+
+/**
+ * Whether a control refuses input. A native control its `<fieldset>`
+ * closes matches `:disabled`, and a Base UI radio says so with
+ * `aria-disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true";
+
+const submittedControls = () => [
+  ...screen.getAllByRole("radio"),
+  ...authorPickers(),
+  episodeCheckbox("EP01", "Episode 1"),
+  episodeCheckbox("EP02", "Episode 2"),
+];
 
 describe("EpisodeCreditsRangeForm", () => {
   it("counts eleven checked episodes of a 40-episode series and does not enable apply until the credit is chosen", () => {
@@ -346,5 +363,32 @@ describe("EpisodeCreditsRangeForm", () => {
       )
     ).toBeDefined();
     expect(applyButton().hasAttribute("disabled")).toBe(true);
+  });
+
+  // The Action carries the operation, the credit, and the selection the form
+  // held when it was submitted, so a change made while it is in flight would
+  // not be the edit that gets applied.
+  it("closes the operation, the credit, and the selection while the edit is in flight", async () => {
+    // Never resolved: the assertions are about the window the edit is open in.
+    const edit = Promise.withResolvers<BulkEditEpisodeCreditsActionState>();
+    render({ action: () => edit.promise, initialSelectedIds: ["EP01"] });
+
+    const [author] = authorPickers();
+    if (!author) {
+      throw new Error("add offers an author picker");
+    }
+    fireEvent.change(author, { target: { value: "CREATOR_B" } });
+
+    for (const control of submittedControls()) {
+      expect(isClosed(control)).toBe(false);
+    }
+
+    fireEvent.click(applyButton());
+
+    await waitFor(() => {
+      for (const control of submittedControls()) {
+        expect(isClosed(control)).toBe(true);
+      }
+    });
   });
 });

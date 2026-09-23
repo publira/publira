@@ -12,6 +12,7 @@ import {
 } from "@publira/ui-components/combobox";
 import { DialogClose, DialogFooter } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
@@ -556,76 +557,78 @@ export const EpisodeCreditsRangeEditor = ({
       />
       <input name="share" type="hidden" value={hidden.share} />
 
-      <Field>
-        <FieldLabel htmlFor={operationId}>
-          {t("admin.series.episodes.credits.operation")}
-        </FieldLabel>
-        <FieldContent>
-          <RadioGroup
-            id={operationId}
-            items={[
-              {
-                description: t(
-                  "admin.series.episodes.credits.operation_add_description"
-                ),
-                label: t("admin.series.episodes.credits.operation_add"),
-                value: "add",
-              },
-              {
-                description: t(
-                  "admin.series.episodes.credits.operation_replace_description"
-                ),
-                label: t("admin.series.episodes.credits.operation_replace"),
-                value: "replace",
-              },
-              {
-                description: t(
-                  "admin.series.episodes.credits.operation_remove_description"
-                ),
-                label: t("admin.series.episodes.credits.operation_remove"),
-                value: "remove",
-              },
-              {
-                description: t(
-                  "admin.series.episodes.credits.operation_set_share_description"
-                ),
-                label: t("admin.series.episodes.credits.operation_set_share"),
-                value: "set_share",
-              },
-            ]}
-            onValueChange={onOperationChange}
-            value={operation}
-          />
-        </FieldContent>
-      </Field>
+      <Fieldset className="grid gap-5" disabled={isPending}>
+        <Field>
+          <FieldLabel htmlFor={operationId}>
+            {t("admin.series.episodes.credits.operation")}
+          </FieldLabel>
+          <FieldContent>
+            <RadioGroup
+              id={operationId}
+              items={[
+                {
+                  description: t(
+                    "admin.series.episodes.credits.operation_add_description"
+                  ),
+                  label: t("admin.series.episodes.credits.operation_add"),
+                  value: "add",
+                },
+                {
+                  description: t(
+                    "admin.series.episodes.credits.operation_replace_description"
+                  ),
+                  label: t("admin.series.episodes.credits.operation_replace"),
+                  value: "replace",
+                },
+                {
+                  description: t(
+                    "admin.series.episodes.credits.operation_remove_description"
+                  ),
+                  label: t("admin.series.episodes.credits.operation_remove"),
+                  value: "remove",
+                },
+                {
+                  description: t(
+                    "admin.series.episodes.credits.operation_set_share_description"
+                  ),
+                  label: t("admin.series.episodes.credits.operation_set_share"),
+                  value: "set_share",
+                },
+              ]}
+              onValueChange={onOperationChange}
+              value={operation}
+            />
+          </FieldContent>
+        </Field>
 
-      <CreditTargetFields
-        credit={credit}
-        creatorItems={creatorItems}
-        from={from}
-        onCreditChange={onCreditChange}
-        onFromChange={onFromChange}
-        onShareChange={onShareChange}
-        onToChange={onToChange}
-        operation={operation}
-        roleItems={roleItems}
-        shareText={shareText}
-        to={to}
-      />
+        <CreditTargetFields
+          credit={credit}
+          creatorItems={creatorItems}
+          from={from}
+          onCreditChange={onCreditChange}
+          onFromChange={onFromChange}
+          onShareChange={onShareChange}
+          onToChange={onToChange}
+          operation={operation}
+          roleItems={roleItems}
+          shareText={shareText}
+          to={to}
+        />
 
-      <EpisodeSelectionFields
-        episodes={episodes}
-        episodesEmpty={episodesEmpty}
-        episodesErrorMessage={episodesErrorMessage}
-        isEpisodePending={isEpisodePending}
-        onClearSelection={onClearSelection}
-        onRetryEpisodes={onRetryEpisodes}
-        onSelectMany={onSelectMany}
-        onToggle={onToggle}
-        selectedCount={selectedCount}
-        selectedIds={selectedIds}
-        selectionTooMany={selectionTooMany}
-      />
+        <EpisodeSelectionFields
+          episodes={episodes}
+          episodesEmpty={episodesEmpty}
+          episodesErrorMessage={episodesErrorMessage}
+          isEpisodePending={isEpisodePending}
+          onClearSelection={onClearSelection}
+          onRetryEpisodes={onRetryEpisodes}
+          onSelectMany={onSelectMany}
+          onToggle={onToggle}
+          selectedCount={selectedCount}
+          selectedIds={selectedIds}
+          selectionTooMany={selectionTooMany}
+        />
+      </Fieldset>
 
       {creatorsErrorMessage ? (
         <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>

@@ -7,6 +7,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +15,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
 
+import type {
+  TenantEmailSettingsFormState,
+  TenantSmtpTestFormState,
+} from "../email-types";
 import { TenantEmailSettingsForm } from "./tenant-email-settings-form";
 
 vi.mock("next/navigation", () => ({
@@ -43,15 +48,24 @@ const EnglishConsole = ({ children }: { children: ReactNode }) => (
   </AdminLocaleProvider>
 );
 
-const renderForm = async (settings: TenantSmtpSettings) => {
+const renderForm = async (
+  settings: TenantSmtpSettings,
+  {
+    saveAction = noopAction,
+    testAction = noopAction,
+  }: {
+    saveAction?: () => Promise<TenantEmailSettingsFormState>;
+    testAction?: () => Promise<TenantSmtpTestFormState>;
+  } = {}
+) => {
   await act(() => {
     render(
       <TenantEmailSettingsForm
         canEdit
         initialSettings={settings}
-        saveAction={noopAction}
+        saveAction={saveAction}
         tenantName="Tenant"
-        testAction={noopAction}
+        testAction={testAction}
       />,
       { wrapper: EnglishConsole }
     );
@@ -93,5 +107,72 @@ describe("TenantEmailSettingsForm", () => {
     await renderForm(storedSettings());
 
     expect(testButton().disabled).toBe(false);
+  });
+
+  // A save carries every field the form held when it was submitted, so a
+  // change made while it is in flight would sit in the form unsaved. A test
+  // started meanwhile would send the fields the save has closed, which a
+  // disabled control leaves out of the form, so it waits too.
+  it("closes the fields and the connection test while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<TenantEmailSettingsFormState>();
+    await renderForm(storedSettings(), { saveAction: () => save.promise });
+
+    // A control its `<fieldset>` closes keeps `disabled` false and matches
+    // `:disabled` instead.
+    const controls = () => [
+      overrideCheckbox(),
+      screen.getByRole("textbox", { name: /Host/u }),
+      screen.getByRole("spinbutton", { name: /Port/u }),
+      screen.getByRole("textbox", { name: /Username/u }),
+      screen.getByRole("button", { name: "Change" }),
+      screen.getByRole("combobox", { name: /Encryption/u }),
+      screen.getByRole("textbox", { name: /Sender name/u }),
+      screen.getByRole("textbox", { name: /Sender email address/u }),
+      screen.getByRole("textbox", { name: /Reply-to address/u }),
+      testButton(),
+    ];
+
+    for (const control of controls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      for (const control of controls()) {
+        expect(control.matches(":disabled")).toBe(true);
+      }
+    });
+  });
+
+  // The test carries the recipient chosen when it was started, so a change
+  // made while it is in flight would not be where the message went.
+  it("closes the recipient while the connection test is in flight", async () => {
+    // Never resolved: the assertions are about the window the test is open in.
+    const test = Promise.withResolvers<TenantSmtpTestFormState>();
+    await renderForm(storedSettings(), { testAction: () => test.promise });
+
+    fireEvent.click(testButton());
+    const sendToSelf = await screen.findByRole<HTMLInputElement>("checkbox", {
+      name: "Send it to myself",
+    });
+    fireEvent.click(sendToSelf);
+    const recipient = await screen.findByRole<HTMLInputElement>("textbox", {
+      name: /Recipient email address/u,
+    });
+    fireEvent.change(recipient, {
+      target: { value: "recipient@example.com" },
+    });
+
+    expect(sendToSelf.disabled).toBe(false);
+    expect(recipient.disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Run the test" }));
+
+    await waitFor(() => {
+      expect(sendToSelf.disabled).toBe(true);
+      expect(recipient.disabled).toBe(true);
+    });
   });
 });

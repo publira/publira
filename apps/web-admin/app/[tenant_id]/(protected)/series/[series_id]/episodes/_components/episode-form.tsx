@@ -7,6 +7,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback } from "react";
@@ -72,61 +73,69 @@ export const EpisodeForm = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.series.episodes.form.title" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            name="title"
-            placeholder={t("admin.series.episodes.form.title_placeholder")}
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
+      <Fieldset className="grid gap-4" disabled={isPending}>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.series.episodes.form.title" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="title"
+              placeholder={t("admin.series.episodes.form.title_placeholder")}
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.series.episodes.form.price" />
-        </FieldLabel>
-        <FieldContent>
-          <Input defaultValue={0} min={0} name="price" required type="number" />
-          <FieldDescription>
-            <ClientMessage message="admin.series.episodes.form.price_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.series.episodes.form.price" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={0}
+              min={0}
+              name="price"
+              required
+              type="number"
+            />
+            <FieldDescription>
+              <ClientMessage message="admin.series.episodes.form.price_description" />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.series.episodes.form.reading_period" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={0}
-            min={0}
-            name="reading_period_hours"
-            required
-            type="number"
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.series.episodes.form.reading_period_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.series.episodes.form.reading_period" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={0}
+              min={0}
+              name="reading_period_hours"
+              required
+              type="number"
+            />
+            <FieldDescription>
+              <ClientMessage message="admin.series.episodes.form.reading_period_description" />
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-      <PublishAtInput timeZone={timeZone} />
+        <PublishAtInput timeZone={timeZone} />
 
-      <EpisodeAvailabilityField
-        initialValue=""
-        seriesAvailability={seriesAvailability}
-      />
+        <EpisodeAvailabilityField
+          initialValue=""
+          seriesAvailability={seriesAvailability}
+        />
 
-      <EpisodePurchaseAvailabilityField
-        initialValue=""
-        seriesPurchaseAvailability={seriesPurchaseAvailability}
-      />
+        <EpisodePurchaseAvailabilityField
+          initialValue=""
+          seriesPurchaseAvailability={seriesPurchaseAvailability}
+        />
+      </Fieldset>
 
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

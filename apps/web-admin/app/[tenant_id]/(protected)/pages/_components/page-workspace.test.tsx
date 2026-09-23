@@ -7,12 +7,17 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleProvider } from "#components/admin-locale-context";
 
-import type { PageListItem, PageVersionListItem } from "../page-types";
+import type {
+  PageFormState,
+  PageListItem,
+  PageVersionListItem,
+} from "../page-types";
 import { PageWorkspace } from "./page-workspace";
 
 vi.mock("#lib/use-tenant-id", () => ({
@@ -44,7 +49,9 @@ const version: PageVersionListItem = {
   versionNumber: 1,
 };
 
-const renderWorkspace = async () => {
+const renderWorkspace = async (
+  saveAction: () => Promise<PageFormState> = noopSaveAction
+) => {
   await act(() => {
     renderBase(
       <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
@@ -53,7 +60,7 @@ const renderWorkspace = async () => {
           initialVersions={[version]}
           publishAction={noopFormAction}
           rollbackAction={noopFormAction}
-          saveAction={noopSaveAction}
+          saveAction={saveAction}
           timeZone="UTC"
           unpublishAction={noopFormAction}
         />
@@ -76,6 +83,12 @@ const editForm = (): HTMLFormElement => {
 afterEach(() => {
   cleanup();
 });
+
+const submittedControls = () => [
+  screen.getByRole<HTMLInputElement>("textbox", { name: /Title/u }),
+  screen.getByRole<HTMLTextAreaElement>("textbox", { name: /Content/u }),
+  screen.getByRole<HTMLButtonElement>("button", { name: "Load content" }),
+];
 
 describe("PageWorkspace", () => {
   it("saves the title and the body through one control", async () => {
@@ -113,5 +126,26 @@ describe("PageWorkspace", () => {
 
     expect(screen.getByText("Unsaved body.")).toBeDefined();
     expect(screen.queryByText("Saved body.")).toBeNull();
+  });
+
+  // The Action carries the title and the body the form held when it was
+  // submitted, so an edit made while it is in flight — typed, or loaded from a
+  // version — would sit in the editor unsaved.
+  it("closes the title, the body, and loading a version while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const save = Promise.withResolvers<PageFormState>();
+    await renderWorkspace(() => save.promise);
+
+    for (const control of submittedControls()) {
+      expect(control.disabled).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Save page" }));
+
+    await waitFor(() => {
+      for (const control of submittedControls()) {
+        expect(control.disabled).toBe(true);
+      }
+    });
   });
 });

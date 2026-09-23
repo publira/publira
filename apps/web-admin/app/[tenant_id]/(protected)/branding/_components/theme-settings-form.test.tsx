@@ -11,6 +11,7 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -135,5 +136,35 @@ describe("ThemeSettingsForm", () => {
     expect(
       screen.getByRole("tab", { name: "Edit", selected: true })
     ).toBeTruthy();
+  });
+
+  // The Action carries the palette the form held when it was submitted, so a
+  // change made while it is in flight would show in the preview unsaved.
+  it("closes every field while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const container = await renderForm(
+      vi.fn(() => Promise.withResolvers<never>().promise)
+    );
+
+    // A control its `<fieldset>` closes keeps `disabled` false and matches
+    // `:disabled` instead.
+    const controls = () => [
+      screen.getByRole("textbox", { name: /Reading and display stack/u }),
+      screen.getByRole("textbox", { name: /Primary color/u }),
+      ...container.querySelectorAll<HTMLInputElement>('input[type="color"]'),
+    ];
+
+    expect(controls().length).toBeGreaterThan(2);
+    for (const control of controls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Save the theme" }));
+
+    await waitFor(() => {
+      for (const control of controls()) {
+        expect(control.matches(":disabled")).toBe(true);
+      }
+    });
   });
 });

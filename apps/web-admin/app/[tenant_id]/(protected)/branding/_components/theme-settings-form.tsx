@@ -7,6 +7,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import {
@@ -403,169 +404,176 @@ export const ThemeSettingsForm = ({
           <form action={formAction} className="contents">
             <input name="tenant_id" type="hidden" value={tenantId} />
 
-            <AdminSection>
-              <AdminSectionHeader>
-                <AdminSectionHeading>
-                  <AdminSectionTitle>
-                    <ClientMessage message="admin.settings.theme.typefaces.title" />
-                  </AdminSectionTitle>
-                  <AdminSectionDescription>
-                    <ClientMessage message="admin.settings.theme.typefaces.description" />
-                  </AdminSectionDescription>
-                </AdminSectionHeading>
-              </AdminSectionHeader>
-              <div className="grid gap-5 sm:max-w-3xl">
-                <Field>
-                  <FieldLabel>
-                    <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      maxLength={512}
-                      name="serif_font_family"
-                      onChange={createFontFamilyHandler("serifFontFamily")}
-                      placeholder={
-                        DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
-                      }
-                      type="text"
-                      value={theme.serifFontFamily}
-                    />
-                    <FieldDescription>
-                      <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
-                    </FieldDescription>
-                    {fieldErrors?.serifFontFamily ? (
-                      <FormMessage variant="destructive">
-                        {fieldErrors.serifFontFamily}
-                      </FormMessage>
-                    ) : null}
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel>
-                    <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      maxLength={512}
-                      name="sans_font_family"
-                      onChange={createFontFamilyHandler("sansFontFamily")}
-                      placeholder={
-                        DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
-                      }
-                      type="text"
-                      value={theme.sansFontFamily}
-                    />
-                    <FieldDescription>
-                      <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
-                    </FieldDescription>
-                    {fieldErrors?.sansFontFamily ? (
-                      <FormMessage variant="destructive">
-                        {fieldErrors.sansFontFamily}
-                      </FormMessage>
-                    ) : null}
-                  </FieldContent>
-                </Field>
-              </div>
-            </AdminSection>
-
-            {colorGroups.map((group) => (
-              <AdminSection key={group.titleKey}>
+            <Fieldset className="contents" disabled={isPending}>
+              <AdminSection>
                 <AdminSectionHeader>
                   <AdminSectionHeading>
-                    <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
+                    <AdminSectionTitle>
+                      <ClientMessage message="admin.settings.theme.typefaces.title" />
+                    </AdminSectionTitle>
                     <AdminSectionDescription>
-                      {t(group.descriptionKey)}
+                      <ClientMessage message="admin.settings.theme.typefaces.description" />
                     </AdminSectionDescription>
                   </AdminSectionHeading>
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
-                  {group.fields.map((field, index) => {
-                    if (index > 0 && group.fields[index - 1]?.inlineWithNext) {
-                      return null;
-                    }
-
-                    if (field.inlineWithNext && group.fields[index + 1]) {
-                      const pair = group.fields[index + 1];
-                      return (
-                        <div
-                          className="grid gap-5 md:grid-cols-2"
-                          key={`${field.key}-${pair.key}`}
-                        >
-                          <Field>
-                            <FieldLabel required>
-                              {t(field.labelKey)}
-                            </FieldLabel>
-                            <FieldContent>
-                              <ColorSwatchInput
-                                name={field.formName}
-                                onChange={createHandler(field.key)}
-                                pickerLabel={pickerLabel}
-                                value={theme[field.key]}
-                              />
-                              {field.descriptionKey ? (
-                                <FieldDescription>
-                                  {t(field.descriptionKey)}
-                                </FieldDescription>
-                              ) : null}
-                              {fieldErrors?.[field.key] ? (
-                                <FormMessage variant="destructive">
-                                  {fieldErrors[field.key]}
-                                </FormMessage>
-                              ) : null}
-                            </FieldContent>
-                          </Field>
-                          <Field>
-                            <FieldLabel required>{t(pair.labelKey)}</FieldLabel>
-                            <FieldContent>
-                              <ColorSwatchInput
-                                name={pair.formName}
-                                onChange={createHandler(pair.key)}
-                                pickerLabel={pickerLabel}
-                                value={theme[pair.key]}
-                              />
-                              {pair.descriptionKey ? (
-                                <FieldDescription>
-                                  {t(pair.descriptionKey)}
-                                </FieldDescription>
-                              ) : null}
-                              {fieldErrors?.[pair.key] ? (
-                                <FormMessage variant="destructive">
-                                  {fieldErrors[pair.key]}
-                                </FormMessage>
-                              ) : null}
-                            </FieldContent>
-                          </Field>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <Field key={field.key}>
-                        <FieldLabel required>{t(field.labelKey)}</FieldLabel>
-                        <FieldContent>
-                          <ColorSwatchInput
-                            name={field.formName}
-                            onChange={createHandler(field.key)}
-                            pickerLabel={pickerLabel}
-                            value={theme[field.key]}
-                          />
-                          {field.descriptionKey ? (
-                            <FieldDescription>
-                              {t(field.descriptionKey)}
-                            </FieldDescription>
-                          ) : null}
-                          {fieldErrors?.[field.key] ? (
-                            <FormMessage variant="destructive">
-                              {fieldErrors[field.key]}
-                            </FormMessage>
-                          ) : null}
-                        </FieldContent>
-                      </Field>
-                    );
-                  })}
+                  <Field>
+                    <FieldLabel>
+                      <ClientMessage message="admin.settings.theme.typefaces.serif.label" />
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        maxLength={512}
+                        name="serif_font_family"
+                        onChange={createFontFamilyHandler("serifFontFamily")}
+                        placeholder={
+                          DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
+                        }
+                        type="text"
+                        value={theme.serifFontFamily}
+                      />
+                      <FieldDescription>
+                        <ClientMessage message="admin.settings.theme.typefaces.serif.description" />
+                      </FieldDescription>
+                      {fieldErrors?.serifFontFamily ? (
+                        <FormMessage variant="destructive">
+                          {fieldErrors.serifFontFamily}
+                        </FormMessage>
+                      ) : null}
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      <ClientMessage message="admin.settings.theme.typefaces.sans.label" />
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        maxLength={512}
+                        name="sans_font_family"
+                        onChange={createFontFamilyHandler("sansFontFamily")}
+                        placeholder={
+                          DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
+                        }
+                        type="text"
+                        value={theme.sansFontFamily}
+                      />
+                      <FieldDescription>
+                        <ClientMessage message="admin.settings.theme.typefaces.sans.description" />
+                      </FieldDescription>
+                      {fieldErrors?.sansFontFamily ? (
+                        <FormMessage variant="destructive">
+                          {fieldErrors.sansFontFamily}
+                        </FormMessage>
+                      ) : null}
+                    </FieldContent>
+                  </Field>
                 </div>
               </AdminSection>
-            ))}
+
+              {colorGroups.map((group) => (
+                <AdminSection key={group.titleKey}>
+                  <AdminSectionHeader>
+                    <AdminSectionHeading>
+                      <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
+                      <AdminSectionDescription>
+                        {t(group.descriptionKey)}
+                      </AdminSectionDescription>
+                    </AdminSectionHeading>
+                  </AdminSectionHeader>
+                  <div className="grid gap-5 sm:max-w-3xl">
+                    {group.fields.map((field, index) => {
+                      if (
+                        index > 0 &&
+                        group.fields[index - 1]?.inlineWithNext
+                      ) {
+                        return null;
+                      }
+
+                      if (field.inlineWithNext && group.fields[index + 1]) {
+                        const pair = group.fields[index + 1];
+                        return (
+                          <div
+                            className="grid gap-5 md:grid-cols-2"
+                            key={`${field.key}-${pair.key}`}
+                          >
+                            <Field>
+                              <FieldLabel required>
+                                {t(field.labelKey)}
+                              </FieldLabel>
+                              <FieldContent>
+                                <ColorSwatchInput
+                                  name={field.formName}
+                                  onChange={createHandler(field.key)}
+                                  pickerLabel={pickerLabel}
+                                  value={theme[field.key]}
+                                />
+                                {field.descriptionKey ? (
+                                  <FieldDescription>
+                                    {t(field.descriptionKey)}
+                                  </FieldDescription>
+                                ) : null}
+                                {fieldErrors?.[field.key] ? (
+                                  <FormMessage variant="destructive">
+                                    {fieldErrors[field.key]}
+                                  </FormMessage>
+                                ) : null}
+                              </FieldContent>
+                            </Field>
+                            <Field>
+                              <FieldLabel required>
+                                {t(pair.labelKey)}
+                              </FieldLabel>
+                              <FieldContent>
+                                <ColorSwatchInput
+                                  name={pair.formName}
+                                  onChange={createHandler(pair.key)}
+                                  pickerLabel={pickerLabel}
+                                  value={theme[pair.key]}
+                                />
+                                {pair.descriptionKey ? (
+                                  <FieldDescription>
+                                    {t(pair.descriptionKey)}
+                                  </FieldDescription>
+                                ) : null}
+                                {fieldErrors?.[pair.key] ? (
+                                  <FormMessage variant="destructive">
+                                    {fieldErrors[pair.key]}
+                                  </FormMessage>
+                                ) : null}
+                              </FieldContent>
+                            </Field>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Field key={field.key}>
+                          <FieldLabel required>{t(field.labelKey)}</FieldLabel>
+                          <FieldContent>
+                            <ColorSwatchInput
+                              name={field.formName}
+                              onChange={createHandler(field.key)}
+                              pickerLabel={pickerLabel}
+                              value={theme[field.key]}
+                            />
+                            {field.descriptionKey ? (
+                              <FieldDescription>
+                                {t(field.descriptionKey)}
+                              </FieldDescription>
+                            ) : null}
+                            {fieldErrors?.[field.key] ? (
+                              <FormMessage variant="destructive">
+                                {fieldErrors[field.key]}
+                              </FormMessage>
+                            ) : null}
+                          </FieldContent>
+                        </Field>
+                      );
+                    })}
+                  </div>
+                </AdminSection>
+              ))}
+            </Fieldset>
 
             {state ? (
               <FormMessage variant={state.ok ? "success" : "destructive"}>

@@ -210,4 +210,24 @@ describe("TenantLogoForm", () => {
         .src.includes("logo-2")
     ).toBe(true);
   });
+
+  // The Action carries the file picked when the form was submitted, and React
+  // resets the form once it settles, so a file picked while it is in flight
+  // would be neither saved nor kept.
+  it("closes the file field while the save is in flight", async () => {
+    // Never resolved: the assertions are about the window the save is open in.
+    const pendingAction = vi.fn(() => Promise.withResolvers<never>().promise);
+
+    render(<TenantLogoForm action={pendingAction} initialLogo={null} />);
+
+    const file = screen.getByLabelText<HTMLInputElement>("Logo image");
+
+    expect(file.disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
+
+    await waitFor(() => {
+      expect(file.disabled).toBe(true);
+    });
+  });
 });

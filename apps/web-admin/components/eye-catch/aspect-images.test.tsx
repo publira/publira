@@ -9,6 +9,7 @@ import {
   fireEvent,
   render as renderBase,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -290,4 +291,38 @@ it("previews the framed region rather than the whole picked file", () => {
   expect(preview?.style.top).toBe(`${(-925 / 1350) * 100}%`);
 
   vi.unstubAllGlobals();
+});
+
+// The Action carries the file picked when the slot was submitted, so a file
+// picked while it is in flight would show in the slot without being uploaded.
+it("closes the slot's picker while its upload is in flight", async () => {
+  const { container } = render(
+    <EyeCatchAspectImages
+      publicId="SERIES001"
+      // Never resolved: the assertions are about the window the upload is open in.
+      uploadAction={() => Promise.withResolvers<never>().promise}
+      variants={[variant("landscape", 1600, 900)]}
+    />
+  );
+
+  const form = container
+    .querySelector('input[name="variant_type"][value="landscape"]')
+    ?.closest("form");
+  const fileInput = form?.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!(form && fileInput)) {
+    throw new Error("the landscape slot has no file input");
+  }
+  const picker = screen.getByRole<HTMLButtonElement>("button", {
+    name: "Select an image for landscape",
+  });
+
+  expect(picker.disabled).toBe(false);
+  expect(fileInput.disabled).toBe(false);
+
+  fireEvent.submit(form);
+
+  await waitFor(() => {
+    expect(picker.disabled).toBe(true);
+    expect(fileInput.disabled).toBe(true);
+  });
 });

@@ -7,6 +7,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -88,83 +89,85 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
         value={displayInFooter ? "true" : "false"}
       />
 
-      <Field invalid={slugError !== null}>
-        <FieldLabel>slug</FieldLabel>
-        <FieldContent>
-          <Input
-            disabled={isUpdate}
-            name="slug"
-            onBlur={handleSlugBlur}
-            onChange={handleSlugChange}
-            placeholder="/privacy"
-            type="text"
-            value={slug}
-          />
-          <FieldDescription>
-            <ClientMessage
-              message="admin.pages.form.slug_description"
-              values={{
-                path: formatPagePath(slug),
-              }}
-            />
-          </FieldDescription>
-          {slugError ? (
-            <FormMessage variant="destructive">{slugError}</FormMessage>
-          ) : null}
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.pages.form.title" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            name="title"
-            onChange={handleTitleChange}
-            placeholder={t("admin.pages.form.title_placeholder")}
-            required
-            type="text"
-            value={title}
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldContent>
-          <label className="inline-flex items-center gap-2 text-sm text-foreground">
-            <input
-              checked={displayInFooter}
-              onChange={handleDisplayInFooterChange}
-              type="checkbox"
-            />
-            <ClientMessage message="admin.pages.form.footer_visible" />
-          </label>
-          <FieldDescription>
-            <ClientMessage message="admin.pages.form.footer_description" />
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      {isUpdate ? null : (
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.pages.form.body" />
-          </FieldLabel>
+      <Fieldset className="grid gap-4" disabled={isPending}>
+        <Field invalid={slugError !== null}>
+          <FieldLabel>slug</FieldLabel>
           <FieldContent>
-            <Textarea
-              name="content_markdown"
-              onChange={handleContentMarkdownChange}
-              placeholder={t("admin.pages.form.body_placeholder")}
-              rows={16}
-              value={contentMarkdown}
+            <Input
+              disabled={isUpdate}
+              name="slug"
+              onBlur={handleSlugBlur}
+              onChange={handleSlugChange}
+              placeholder="/privacy"
+              type="text"
+              value={slug}
             />
             <FieldDescription>
-              <ClientMessage message="admin.pages.form.body_description" />
+              <ClientMessage
+                message="admin.pages.form.slug_description"
+                values={{
+                  path: formatPagePath(slug),
+                }}
+              />
+            </FieldDescription>
+            {slugError ? (
+              <FormMessage variant="destructive">{slugError}</FormMessage>
+            ) : null}
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.pages.form.title" />
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="title"
+              onChange={handleTitleChange}
+              placeholder={t("admin.pages.form.title_placeholder")}
+              required
+              type="text"
+              value={title}
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldContent>
+            <label className="inline-flex items-center gap-2 text-sm text-foreground">
+              <input
+                checked={displayInFooter}
+                onChange={handleDisplayInFooterChange}
+                type="checkbox"
+              />
+              <ClientMessage message="admin.pages.form.footer_visible" />
+            </label>
+            <FieldDescription>
+              <ClientMessage message="admin.pages.form.footer_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
-      )}
+
+        {isUpdate ? null : (
+          <Field>
+            <FieldLabel>
+              <ClientMessage message="admin.pages.form.body" />
+            </FieldLabel>
+            <FieldContent>
+              <Textarea
+                name="content_markdown"
+                onChange={handleContentMarkdownChange}
+                placeholder={t("admin.pages.form.body_placeholder")}
+                rows={16}
+                value={contentMarkdown}
+              />
+              <FieldDescription>
+                <ClientMessage message="admin.pages.form.body_description" />
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        )}
+      </Fieldset>
 
       {formError ? (
         <FormMessage variant="destructive">{formError}</FormMessage>
