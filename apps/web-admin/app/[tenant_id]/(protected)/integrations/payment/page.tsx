@@ -21,16 +21,23 @@ import {
   emptyTenantPaymentSettings,
   getTenantPaymentSettings,
 } from "#lib/payment-settings";
+import {
+  getTenantStorePaymentSettings,
+  listTenantStoreProducts,
+} from "#lib/store-payment-settings";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
+import { StoreProductList } from "./_components/store-product-list";
 import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
 import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
+import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payment-settings-form";
 import {
   updateTenantPaymentSettingsAction,
   updateTenantPurchaseSettingsAction,
+  updateTenantStorePaymentSettingsAction,
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -146,6 +153,75 @@ const SettingsPurchaseForm = async () => {
   );
 };
 
+const SettingsStorePaymentFormSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-40" />
+    <div className="grid gap-3">
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </div>
+  </div>
+);
+
+const SettingsStorePaymentForm = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+
+  const [storeSettingsResult, currentUserResult] = await Promise.all([
+    getTenantStorePaymentSettings(tenantId, locale),
+    getAdminCurrentUser(tenantId),
+  ]);
+
+  await redirectToLoginIfSessionRejected(
+    storeSettingsResult,
+    currentUserResult
+  );
+
+  return (
+    <TenantStorePaymentSettingsForm
+      action={updateTenantStorePaymentSettingsAction}
+      canEdit={isTenantAdminRole(
+        currentUserResult.ok ? currentUserResult.user.role : undefined
+      )}
+      initialSettings={
+        storeSettingsResult.ok ? storeSettingsResult.settings : undefined
+      }
+      loadErrorMessage={
+        storeSettingsResult.ok ? undefined : storeSettingsResult.message
+      }
+    />
+  );
+};
+
+const StoreProductsSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-32" />
+    <div className="grid gap-2">
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </div>
+  </div>
+);
+
+const StoreProducts = async () => {
+  const tenantId = await getTenantId();
+  const locale = await getLocale(tenantId);
+  const result = await listTenantStoreProducts(tenantId, locale);
+
+  await redirectToLoginIfSessionRejected(result);
+
+  return (
+    <StoreProductList
+      listErrorMessage={result.ok ? undefined : result.message}
+      locale={locale}
+      products={result.ok ? result.products : []}
+    />
+  );
+};
+
 const IntegrationsPaymentPage = () => (
   <AdminPage>
     <AdminPageHeader>
@@ -185,6 +261,28 @@ const IntegrationsPaymentPage = () => (
         >
           <Suspense fallback={<SettingsPurchaseFormSkeleton />}>
             <SettingsPurchaseForm />
+          </Suspense>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.store_payment.section_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<SettingsStorePaymentFormSkeleton />}>
+            <SettingsStorePaymentForm />
+          </Suspense>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.settings.store_products.section_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<StoreProductsSkeleton />}>
+            <StoreProducts />
           </Suspense>
         </SectionErrorBoundary>
       </div>

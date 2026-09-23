@@ -1,4 +1,8 @@
 import type { TenantPaymentSettings } from "#lib/payment-settings";
+import type {
+  StorePaymentSettingsFieldErrors,
+  TenantStorePaymentSettings,
+} from "#lib/store-payment-settings";
 import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
 export type TenantPaymentSettingsFieldErrors = Partial<
@@ -32,5 +36,18 @@ export type TenantPurchaseSettingsFormState =
       ok: false;
       message: string;
       fieldErrors?: TenantPurchaseSettingsFieldErrors;
+    }
+  | null;
+
+export type TenantStorePaymentSettingsFormState =
+  | {
+      ok: true;
+      message: string;
+      settings: TenantStorePaymentSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: StorePaymentSettingsFieldErrors;
     }
   | null;

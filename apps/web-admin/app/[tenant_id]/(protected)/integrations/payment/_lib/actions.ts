@@ -10,12 +10,14 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
 } from "#lib/email-settings-shared";
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
+  optionalFileFormSchema,
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -24,6 +26,12 @@ import {
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
+import {
+  tenantStorePaymentSettingsCacheTag,
+  updateTenantStorePaymentSettings,
+} from "#lib/store-payment-settings";
+import type { StoreKeyUpdate } from "#lib/store-payment-settings";
+import { APP_PURCHASE_ROUTES } from "#lib/store-payment-settings-shared";
 import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import {
   tenantPurchaseSettingsCacheTag,
@@ -33,6 +41,7 @@ import {
 import type {
   TenantPaymentSettingsFormState,
   TenantPurchaseSettingsFormState,
+  TenantStorePaymentSettingsFormState,
 } from "../payment-types";
 
 const optionalSecretSchema = z.preprocess(
@@ -201,6 +210,184 @@ export const updateTenantPurchaseSettingsAction = async (
 
   return {
     message: t("admin.settings.purchase.saved"),
+    ok: true,
+    settings: result.settings,
+  };
+};
+
+/** A store key file is a few kilobytes; anything far larger is not one. */
+const MAX_STORE_KEY_FILE_BYTES = 64 * 1024;
+
+/** What the form did with a stored key: kept its hint, replaced, or cleared it. */
+const STORE_KEY_MODES = ["keep", "replace", "clear"] as const;
+
+const storeKeySchema = (fileTooLarge: string) =>
+  z.object({
+    configured: flagOneFormSchema,
+    file: optionalFileFormSchema.refine(
+      (file) => file === undefined || file.size <= MAX_STORE_KEY_FILE_BYTES,
+      fileTooLarge
+    ),
+    mode: z.enum(STORE_KEY_MODES),
+    text: optionalSecretSchema,
+  });
+
+type StoreKeyInput = z.output<ReturnType<typeof storeKeySchema>>;
+
+/** A file chosen wins over pasted text, and neither leaves the key as it is. */
+const hasNewStoreKey = (key: StoreKeyInput): boolean =>
+  key.mode !== "clear" && (key.file !== undefined || key.text.trim() !== "");
+
+const hasStoreKey = (key: StoreKeyInput): boolean =>
+  hasNewStoreKey(key) || (key.configured && key.mode === "keep");
+
+const toStoreKeyUpdate = async (
+  key: StoreKeyInput
+): Promise<StoreKeyUpdate> => {
+  if (key.mode === "clear") {
+    return { mode: SECRET_UPDATE_MODE_CLEAR, value: "" };
+  }
+  const value = (key.file ? await key.file.text() : key.text).trim();
+  return value === ""
+    ? { mode: SECRET_UPDATE_MODE_UNCHANGED, value: "" }
+    : { mode: SECRET_UPDATE_MODE_REPLACE, value };
+};
+
+const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const fileTooLarge = t(
+    "admin.settings.store_payment.validation.key_file_too_large"
+  );
+
+  return z
+    .object({
+      appPurchaseRoute: z.enum(APP_PURCHASE_ROUTES, {
+        error: t("admin.settings.store_payment.validation.route_invalid"),
+      }),
+      appStoreEnabled: checkboxOnFormSchema,
+      googlePlayEnabled: checkboxOnFormSchema,
+      issuerId: optionalSecretSchema.transform((value) => value.trim()),
+      keyId: optionalSecretSchema.transform((value) => value.trim()),
+      privateKey: storeKeySchema(fileTooLarge),
+      serviceAccountKey: storeKeySchema(fileTooLarge),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+    })
+    .superRefine((value, ctx) => {
+      if (value.appStoreEnabled) {
+        if (value.issuerId === "") {
+          ctx.addIssue({
+            code: "custom",
+            message: t(
+              "admin.settings.store_payment.validation.issuer_id_required"
+            ),
+            path: ["issuerId"],
+          });
+        }
+        if (value.keyId === "") {
+          ctx.addIssue({
+            code: "custom",
+            message: t(
+              "admin.settings.store_payment.validation.key_id_required"
+            ),
+            path: ["keyId"],
+          });
+        }
+        if (!hasStoreKey(value.privateKey)) {
+          ctx.addIssue({
+            code: "custom",
+            message: t(
+              "admin.settings.store_payment.validation.private_key_required"
+            ),
+            path: ["privateKey"],
+          });
+        }
+      }
+      if (value.googlePlayEnabled && !hasStoreKey(value.serviceAccountKey)) {
+        ctx.addIssue({
+          code: "custom",
+          message: t(
+            "admin.settings.store_payment.validation.service_account_key_required"
+          ),
+          path: ["serviceAccountKey"],
+        });
+      }
+    });
+};
+
+const storeKeyFormInput = (formData: FormData, name: string) =>
+  toFormDataInput(formData, {
+    configured: { kind: "value", name: `${name}_configured` },
+    file: { kind: "file", name: `${name}_file` },
+    mode: { kind: "value", name: `${name}_mode` },
+    text: { kind: "value", name },
+  });
+
+export const updateTenantStorePaymentSettingsAction = async (
+  _prevState: TenantStorePaymentSettingsFormState,
+  formData: FormData
+): Promise<TenantStorePaymentSettingsFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantStorePaymentSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse({
+    ...toFormDataInput(formData, {
+      appPurchaseRoute: { kind: "value", name: "app_purchase_route" },
+      appStoreEnabled: { kind: "value", name: "app_store_enabled" },
+      googlePlayEnabled: { kind: "value", name: "google_play_enabled" },
+      issuerId: { kind: "value", name: "issuer_id" },
+      keyId: { kind: "value", name: "key_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    }),
+    privateKey: storeKeyFormInput(formData, "private_key"),
+    serviceAccountKey: storeKeyFormInput(formData, "service_account_key"),
+  });
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const [privateKey, serviceAccountKey] = await Promise.all([
+    toStoreKeyUpdate(parsed.data.privateKey),
+    toStoreKeyUpdate(parsed.data.serviceAccountKey),
+  ]);
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantStorePaymentSettings(
+      {
+        appPurchaseRoute: parsed.data.appPurchaseRoute,
+        appStore: {
+          enabled: parsed.data.appStoreEnabled,
+          issuerId: parsed.data.issuerId,
+          keyId: parsed.data.keyId,
+          privateKey,
+        },
+        googlePlay: {
+          enabled: parsed.data.googlePlayEnabled,
+          serviceAccountKey,
+        },
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(tenantStorePaymentSettingsCacheTag(parsed.data.tenantId));
+
+  return {
+    message: t("admin.settings.store_payment.saved"),
     ok: true,
     settings: result.settings,
   };

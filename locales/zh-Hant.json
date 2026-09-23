@@ -2144,6 +2144,88 @@
           "google_play_url_invalid": "請以 https:// URL 輸入 Google Play 網址，或將其留空。"
         }
       },
+      "store_payment": {
+        "title": "應用程式內購買",
+        "description": "透過 App Store 與 Google Play 自己的付款畫面在應用程式中販售章節。金鑰僅供寫入：再次開啟時只會顯示狀態與遮罩，不會顯示值本身。",
+        "section_error": "無法顯示應用程式內購買設定",
+        "route": "應用程式的販售方式",
+        "route_description": "能否在應用程式中購買由「販售位置」決定。這裡只決定應用程式提供哪種購買方式。",
+        "routes": {
+          "external_checkout": "網頁結帳",
+          "external_checkout_description": "應用程式會在瀏覽器中開啟網頁結帳頁面，讀者付款後返回應用程式。由 Stripe 向讀者收費。",
+          "store": "應用程式內購買",
+          "store_description": "應用程式使用商店的付款畫面販售，不會開啟網頁結帳頁面。由商店向讀者收費並扣除其佣金。",
+          "store_unavailable": "下方的App Store 或 Google Play 可用後即可選擇。"
+        },
+        "status": {
+          "ready": "可用",
+          "ready_description": "應用程式中的購買將透過此商店驗證。",
+          "incomplete": "未完成",
+          "incomplete_description": "已啟用，但缺少金鑰或販售所在的應用程式，因此無法驗證購買。",
+          "disabled": "已停用",
+          "disabled_description": "金鑰已儲存，但此商店已停用。",
+          "unset": "未設定",
+          "unset_description": "此商店尚未登錄任何內容。"
+        },
+        "app_store": {
+          "title": "App Store",
+          "enabled": "使用 App Store",
+          "issuer_id": "Issuer ID",
+          "issuer_id_description": "在 App Store Connect 的「使用者與存取權限」→「整合」中，與團隊金鑰清單一起顯示。",
+          "key_id": "金鑰 ID",
+          "private_key": "私密金鑰（.p8）",
+          "private_key_description": "選擇 App Store Connect 核發的 .p8 檔案，或貼上其內容。",
+          "bundle_identifier": "Bundle ID",
+          "bundle_identifier_description": "在「應用程式連結」中設定的 iOS 應用程式。請在該處變更。"
+        },
+        "google_play": {
+          "title": "Google Play",
+          "enabled": "使用 Google Play",
+          "service_account_key": "服務帳戶金鑰（JSON）",
+          "service_account_key_description": "選擇服務帳戶的 JSON 金鑰檔案，或貼上其內容。",
+          "service_account_email": "服務帳戶",
+          "service_account_email_description": "請在 Play Console 的「使用者和權限」中邀請此帳戶存取你的應用程式。",
+          "package_name": "套件名稱",
+          "package_name_description": "在「應用程式連結」中設定的 Android 應用程式 ID。請在該處變更。"
+        },
+        "app_identity_unset": "未設定",
+        "key_file": "金鑰檔案",
+        "key_text": "或貼上內容",
+        "key_change": "替換",
+        "key_change_cancel": "取消變更",
+        "key_clear": "刪除",
+        "key_clear_cancel": "保留金鑰",
+        "key_cleared": "儲存後將刪除已儲存的金鑰。",
+        "submit": "儲存應用程式內購買設定",
+        "saved": "已儲存應用程式內購買設定。",
+        "load_failed": "無法載入應用程式內購買設定。請稍後再試。",
+        "save_failed": "無法儲存應用程式內購買設定。請稍後再試。",
+        "validation": {
+          "route_invalid": "請選擇應用程式的販售方式。",
+          "route_requires_ready_store": "只有當 App Store 或 Google Play 可用（已啟用、有金鑰，並已在「應用程式連結」中設定應用程式）後，應用程式才能透過商店販售。",
+          "issuer_id_required": "請輸入 Issuer ID。",
+          "issuer_id_invalid": "請輸入 App Store Connect 顯示的 Issuer ID（UUID）。",
+          "key_id_required": "請輸入金鑰 ID。",
+          "key_id_invalid": "請輸入 App Store Connect 顯示的金鑰 ID（10 個大寫英文字母與數字）。",
+          "private_key_required": "請選擇或貼上私密金鑰。",
+          "private_key_invalid": "此私密金鑰不是 App Store Connect 核發的 .p8 檔案。",
+          "service_account_key_required": "請選擇或貼上服務帳戶金鑰。",
+          "service_account_key_invalid": "這不是服務帳戶的 JSON 金鑰檔案。",
+          "key_file_too_large": "此檔案過大，不可能是金鑰檔案。"
+        }
+      },
+      "store_products": {
+        "title": "商店商品",
+        "description": "請在 App Store Connect 與 Play Console 中依各自的價格建立這些 ID 的消耗性商品。章節會以其價格對應的商品購買，因此應用程式中販售的付費章節的每個價格都需要一個商品。",
+        "section_error": "無法顯示商店商品",
+        "load_failed": "無法載入商店商品。請稍後再試。",
+        "product_id": "商品 ID",
+        "copy_product_id": "複製商品 ID",
+        "price": "價格",
+        "episodes": "章節數",
+        "empty_title": "目前不需要商品",
+        "empty": "應用程式中尚未販售付費章節。"
+      },
       "mobile_push": {
         "title": "Firebase Cloud Messaging",
         "description": "推播通知透過建置該租戶行動應用程式所用的 Firebase 專案送達，因此憑證必須是同一專案的服務帳戶金鑰。金鑰檔案僅供寫入，儲存後不會再次顯示。",
@@ -2318,7 +2400,7 @@
       "email_description": "管理該租戶寄送郵件的方式。",
       "email_error": "無法顯示郵件設定",
       "payment_title": "整合 — 付款",
-      "payment_description": "管理該租戶的 Stripe 付款設定。",
+      "payment_description": "管理此租戶向讀者收費的方式：網頁結帳使用 Stripe，應用程式內購買使用 App Store 與 Google Play。",
       "payment_error": "無法顯示付款設定",
       "mobile_push_title": "整合 — 行動推播",
       "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",

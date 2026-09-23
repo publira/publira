@@ -9,6 +9,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getMessagesFor } from "#lib/messages";
+import { tenantStorePaymentSettingsCacheTag } from "#lib/store-payment-settings";
 import {
   tenantMobileAppAssociationCacheTag,
   updateTenantMobileAppAssociation,
@@ -45,6 +46,9 @@ export const updateAppLinksAction = async (
   }
 
   updateTag(tenantMobileAppAssociationCacheTag(tenantId));
+  // The payment settings show the app each store sells in, and whether it is
+  // ready depends on it.
+  updateTag(tenantStorePaymentSettingsCacheTag(tenantId));
 
   return { message: t("admin.settings.app_links.saved"), ok: true };
 };
