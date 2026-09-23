@@ -3661,6 +3661,11 @@
         "sign_in": "登入後即可回應",
         "submitting": "正在回應…"
       },
+      "capture_notice": {
+        "body": "本頁面的權利歸{$tenant}所有，僅限個人使用。",
+        "body_unnamed": "本頁面僅限個人使用。",
+        "dismiss": "關閉"
+      },
       "end": {
         "up_next": "接下來",
         "up_to_date_description": "《{$title}》還沒有下一章。",

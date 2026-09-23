@@ -3661,6 +3661,11 @@
         "sign_in": "リアクションするにはサインイン",
         "submitting": "リアクション中…"
       },
+      "capture_notice": {
+        "body": "このページの権利は{$tenant}に帰属します。個人で楽しむ範囲でご利用ください。",
+        "body_unnamed": "このページは個人で楽しむ範囲でご利用ください。",
+        "dismiss": "閉じる"
+      },
       "end": {
         "up_next": "次のエピソード",
         "up_to_date_description": "「{$title}」にはこの先のエピソードがまだありません",

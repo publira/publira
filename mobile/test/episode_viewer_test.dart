@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
@@ -17,13 +18,17 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
+import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
 import 'package:publira/viewer/reading_position.dart';
+import 'package:publira/viewer/screen_captures.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_comment_repository.dart';
 import 'support/fake_offline_library.dart';
+import 'support/fake_screen_captures.dart';
+import 'support/fake_tenant_brand.dart';
 import 'support/pump_until.dart';
 
 void main() {
@@ -80,6 +85,8 @@ void main() {
     FakeCommentRepository? comments,
     String birthDate = '',
     AuthFailure? birthDateFailure,
+    ScreenCaptureNotices? screenCaptures,
+    TenantBrandController? tenantBrand,
   }) async {
     tester.view
       ..physicalSize = screen
@@ -96,6 +103,8 @@ void main() {
         ),
         comments: comments,
         offline: offline,
+        screenCaptures: screenCaptures,
+        tenantBrand: tenantBrand,
       ),
     );
     await tester.pump();
@@ -1154,5 +1163,221 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes'));
 
     expect(catalog.readingPositions[episodeKey(seriesId, episodeId)], 1);
+  });
+
+  group('screenshot notice', () {
+    final notice = find.byKey(const ValueKey('episode-capture-notice'));
+    final nextEpisodeId = '$seriesId-ep-2';
+
+    /// The first page of [id], which only its own viewer draws.
+    Finder firstPageOf(String id) =>
+        find.byKey(ValueKey('episode-page-$id-page-1-0'));
+
+    late FakeScreenCaptures captures;
+    late ScreenCaptureNotices notices;
+
+    setUp(() {
+      captures = FakeScreenCaptures();
+      notices = ScreenCaptureNotices(captures: captures);
+    });
+
+    Future<void> capture(WidgetTester tester) async {
+      captures.capture();
+      await tester.pump();
+    }
+
+    Future<void> dismiss(WidgetTester tester) async {
+      await tester.tap(
+        find.byKey(const ValueKey('episode-capture-notice-dismiss')),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('a screenshot of the pages shows the notice, which closes', (
+      tester,
+    ) async {
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(tester, pageView);
+      expect(notice, findsNothing);
+
+      await capture(tester);
+
+      expect(notice, findsOneWidget);
+      expect(
+        find.text('These pages are for your personal use only.'),
+        findsOneWidget,
+      );
+      // The pages are left as they are, and the reader keeps turning them.
+      expect(page(1), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+      await pumpUntilNoPendingFrameCallbacks(tester);
+      expect(find.text('2 / 3'), findsOneWidget);
+
+      await dismiss(tester);
+
+      expect(notice, findsNothing);
+    });
+
+    testWidgets('the notice names the tenant the pages belong to', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        screenCaptures: notices,
+        tenantBrand: TenantBrandController(
+          tenantHost: 'localhost',
+          repository: FakeTenantBrandRepository(),
+        ),
+      );
+      await pumpUntilFound(tester, pageView);
+
+      await capture(tester);
+
+      expect(
+        find.text(
+          'These pages belong to Seed Tenant and are for your personal use '
+          'only.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an episode shows the notice once, however often it is '
+        'captured', (tester) async {
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(tester, pageView);
+      await capture(tester);
+      await dismiss(tester);
+
+      await capture(tester);
+      expect(notice, findsNothing);
+
+      // Leaving the episode and opening it again is still the same run.
+      await tester.tap(find.byKey(const ValueKey('episode-next-episode')));
+      await pumpUntilRouteSettled(tester, firstPageOf(nextEpisodeId));
+      router.go(viewerPath);
+      await pumpUntilRouteSettled(tester, firstPageOf(episodeId));
+      await capture(tester);
+
+      expect(notice, findsNothing);
+    });
+
+    testWidgets('another episode shows the notice again', (tester) async {
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(tester, pageView);
+      await capture(tester);
+      expect(notice, findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-episode')));
+      await pumpUntilRouteSettled(tester, firstPageOf(nextEpisodeId));
+      expect(notice, findsNothing);
+
+      await capture(tester);
+
+      expect(notice, findsOneWidget);
+    });
+
+    testWidgets('the platform keeps reporting to the viewer that replaced '
+        'another', (tester) async {
+      // The channel as the platform answers it: one sink, which a cancel from
+      // any stream on the channel takes away.
+      const channel = EventChannel('test/screen_captures');
+      MockStreamHandlerEventSink? sink;
+      final messenger = tester.binding.defaultBinaryMessenger
+        ..setMockStreamHandler(
+          channel,
+          MockStreamHandler.inline(
+            onListen: (_, events) {
+              sink = events;
+            },
+            onCancel: (_) {
+              sink = null;
+            },
+          ),
+        );
+      addTearDown(() => messenger.setMockStreamHandler(channel, null));
+      await pumpApp(
+        tester,
+        screenCaptures: ScreenCaptureNotices(
+          captures: PlatformScreenCaptures(channel),
+        ),
+      );
+      await pumpUntilFound(tester, pageView);
+
+      await tester.tap(find.byKey(const ValueKey('episode-next-episode')));
+      await pumpUntilRouteSettled(tester, firstPageOf(nextEpisodeId));
+      sink?.success(null);
+      await pumpUntilFound(tester, notice);
+
+      expect(notice, findsOneWidget);
+    });
+
+    testWidgets('a screenshot of any other screen shows nothing', (
+      tester,
+    ) async {
+      router = createAppRouter(initialLocation: AppRoutes.catalog);
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
+
+      await capture(tester);
+
+      expect(notice, findsNothing);
+      // Nothing outside the viewer listens.
+      expect(captures.hasListener, isFalse);
+    });
+
+    testWidgets('a viewer on a tab left behind answers only its own '
+        'screenshot', (tester) async {
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(tester, pageView);
+
+      router.go(AppRoutes.search);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('tab-search')));
+      await capture(tester);
+      router.go(viewerPath);
+      await pumpUntilRouteSettled(tester, firstPageOf(episodeId));
+
+      expect(notice, findsNothing);
+
+      await capture(tester);
+
+      expect(notice, findsOneWidget);
+    });
+
+    testWidgets('a viewer under its comments shows nothing', (tester) async {
+      await pumpApp(
+        tester,
+        screenCaptures: notices,
+        comments: FakeCommentRepository(),
+      );
+      await pumpUntilFound(tester, pageView);
+      await turnToEnd(tester);
+      final open = find.byKey(const ValueKey('episode-end-comments'));
+      await pumpUntilFound(tester, open);
+      await tester.tap(open);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('episode-comments-empty')),
+      );
+
+      await capture(tester);
+      router.pop();
+      await pumpUntilRouteSettled(tester, endPanel);
+
+      expect(notice, findsNothing);
+    });
+
+    testWidgets('a locked episode shows nothing', (tester) async {
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.locked);
+      await pumpApp(tester, screenCaptures: notices);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('episode-locked')),
+      );
+
+      await capture(tester);
+
+      expect(notice, findsNothing);
+    });
   });
 }

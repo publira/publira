@@ -27,6 +27,7 @@ import 'package:publira/viewer/episode_end_panel.dart';
 import 'package:publira/viewer/episode_read_recorder.dart';
 import 'package:publira/viewer/episode_reader.dart';
 import 'package:publira/viewer/reading_position.dart';
+import 'package:publira/viewer/screen_capture_notice.dart';
 
 /// One episode as this screen opens it: its body, and the page the reader
 /// stopped on last time.
@@ -427,26 +428,29 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
     final next = detail.nextEpisode;
     final previous = detail.previousEpisode;
-    return EpisodeReader(
-      images: detail.images,
-      imageHeaders: detail.imageRequestHeaders,
-      readingDirection: detail.readingDirection,
-      spreadStartIndex: detail.spreadStartIndex,
-      initialPageIndex: open.startPage,
-      onPageChanged: (pageIndex) => _saver?.save(pageIndex),
-      onFinished: () => _recorder?.record(),
-      endScreen: EpisodeEndPanel(
-        detail: detail,
-        nextSavedOffline: next != null && _saved.contains(next.id),
-        acceptsPayments: _acceptsPayments,
-        onOpenNext: _open,
-        onOpenComments: _commentsOffered ? _openComments : null,
-        onBackToSeries: () =>
-            context.goInTab(AppRoutes.seriesDetailPath(widget.seriesId)),
+    return ScreenCaptureNotice(
+      episodeId: widget.episodeId,
+      child: EpisodeReader(
+        images: detail.images,
+        imageHeaders: detail.imageRequestHeaders,
+        readingDirection: detail.readingDirection,
+        spreadStartIndex: detail.spreadStartIndex,
+        initialPageIndex: open.startPage,
+        onPageChanged: (pageIndex) => _saver?.save(pageIndex),
+        onFinished: () => _recorder?.record(),
+        endScreen: EpisodeEndPanel(
+          detail: detail,
+          nextSavedOffline: next != null && _saved.contains(next.id),
+          acceptsPayments: _acceptsPayments,
+          onOpenNext: _open,
+          onOpenComments: _commentsOffered ? _openComments : null,
+          onBackToSeries: () =>
+              context.goInTab(AppRoutes.seriesDetailPath(widget.seriesId)),
+        ),
+        onNextEpisode: next == null ? null : () => _open(next),
+        onPreviousEpisode: previous == null ? null : () => _open(previous),
+        pageStore: OfflineScope.maybeOf(context),
       ),
-      onNextEpisode: next == null ? null : () => _open(next),
-      onPreviousEpisode: previous == null ? null : () => _open(previous),
-      pageStore: OfflineScope.maybeOf(context),
     );
   }
 

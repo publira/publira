@@ -3661,6 +3661,11 @@
         "sign_in": "반응하려면 로그인",
         "submitting": "반응하는 중…"
       },
+      "capture_notice": {
+        "body": "이 페이지의 권리는 {$tenant}에 있습니다. 개인적인 용도로만 이용해 주세요.",
+        "body_unnamed": "이 페이지는 개인적인 용도로만 이용해 주세요.",
+        "dismiss": "닫기"
+      },
       "end": {
         "up_next": "다음 에피소드",
         "up_to_date_description": "“{$title}”에는 아직 다음 에피소드가 없습니다",

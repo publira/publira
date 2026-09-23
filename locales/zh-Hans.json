@@ -3661,6 +3661,11 @@
         "sign_in": "登录后反馈",
         "submitting": "正在反馈…"
       },
+      "capture_notice": {
+        "body": "本页面的权利归{$tenant}所有，仅限个人使用。",
+        "body_unnamed": "本页面仅限个人使用。",
+        "dismiss": "关闭"
+      },
       "end": {
         "up_next": "接下来",
         "up_to_date_description": "《{$title}》还没有下一章。",

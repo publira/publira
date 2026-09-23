@@ -4,6 +4,9 @@
          asks for it the first time the reader turns new-episode notifications
          on from the account screen, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Install-time, so it never prompts. Android 14 and later need it to
+         report the screenshots the episode viewer answers with a notice. -->
+    <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

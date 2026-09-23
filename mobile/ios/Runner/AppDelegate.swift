@@ -12,5 +12,10 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    let captures: FlutterPluginRegistrar? = engineBridge.pluginRegistry.registrar(
+      forPlugin: "ScreenCaptures")
+    if let captures {
+      ScreenCaptures.register(with: captures)
+    }
   }
 }

@@ -54,6 +54,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
+import 'package:publira/viewer/screen_captures.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
@@ -83,6 +84,7 @@ class PubliraApp extends StatefulWidget {
     this.share,
     this.browser,
     this.tenantBrand,
+    this.screenCaptures,
   });
 
   /// Wires the app to the public API described by [config].
@@ -204,6 +206,10 @@ class PubliraApp extends StatefulWidget {
         library: library,
         logoRequestHeaders: resolved.publicImageRequestHeaders,
       ),
+      // The web has no signal for a screenshot.
+      screenCaptures: kIsWeb
+          ? null
+          : ScreenCaptureNotices(captures: PlatformScreenCaptures()),
     );
   }
 
@@ -342,6 +348,13 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app in the
   /// brand defaults with no tenant name.
   final TenantBrandController? tenantBrand;
+
+  /// The screenshots the episode viewer answers with a notice.
+  ///
+  /// [PubliraApp.fromConfig] supplies one everywhere but the web. It is
+  /// nullable for the direct constructor, which a widget test uses to build
+  /// the app with no captures, or to inject a stream it writes itself.
+  final ScreenCaptureNotices? screenCaptures;
 
   @override
   State<PubliraApp> createState() => _PubliraAppState();
@@ -672,7 +685,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                             launcher: widget.checkoutLauncher,
                             child: AgeRatingConfirmationScope(
                               controller: _ageRating,
-                              child: app,
+                              child: ScreenCaptureScope(
+                                notices: widget.screenCaptures,
+                                child: app,
+                              ),
                             ),
                           ),
                         ),
