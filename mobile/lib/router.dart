@@ -23,6 +23,7 @@ import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/published_page_screen.dart';
+import 'package:publira/screens/purchases_screen.dart';
 import 'package:publira/screens/resend_verification_screen.dart';
 import 'package:publira/screens/reset_password_screen.dart';
 import 'package:publira/screens/search_screen.dart';
@@ -64,6 +65,8 @@ abstract final class AppRoutes {
   static const accountDelete = '$account/$delete';
   static const contact = 'contact';
   static const accountContact = '$account/$contact';
+  static const purchases = 'purchases';
+  static const accountPurchases = '$account/$purchases';
 
   /// The catalog's routes, which every tab holds under its own root.
   static const seriesDetail = 'series/:seriesId';
@@ -363,6 +366,10 @@ GoRouter createAppRouter({String? initialLocation}) {
                   GoRoute(
                     path: AppRoutes.contact,
                     builder: (context, state) => const ContactScreen(),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.purchases,
+                    builder: (context, state) => const PurchasesScreen(),
                   ),
                   ..._tabRoutes(),
                 ],

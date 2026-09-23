@@ -3435,6 +3435,20 @@
       "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
       "start_failed": "Could not start the purchase. Try again later."
     },
+    "purchases": {
+      "account_description": "Episodes you bought, including those not saved on this device.",
+      "empty": "You have not bought any episodes yet. Episodes you buy appear here on every device you sign in on.",
+      "ended_at": "Ended {$date}",
+      "expired": "Expired",
+      "failed": "Could not show your purchases. Try again.",
+      "no_expiry": "No expiry",
+      "price": "Paid {$price}",
+      "purchased_at": "Purchased {$date}",
+      "readable": "Readable",
+      "readable_until": "Readable until {$date}",
+      "sign_in_prompt": "Sign in to see the episodes you bought.",
+      "title": "Purchases"
+    },
     "push": {
       "open": "Open"
     },

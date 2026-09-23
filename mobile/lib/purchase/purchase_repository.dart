@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 
 /// How a checkout the browser handed back ended, as the `status` of the
@@ -50,6 +51,13 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
   /// there is nothing to pay for.
   Future<Uri> startEpisodeCheckout(String episodePublicId);
+
+  /// The page of the signed-in reader's purchases [token] names, newest
+  /// first, and the first page for an empty one. A guest has bought nothing,
+  /// so they are answered [MyPurchasePage.empty] without a request.
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error.
+  Future<MyPurchasePage> listMyPurchases({String token = ''});
 }
 
 /// Looks up the [PurchaseRepository] and [CheckoutLauncher] installed by
@@ -74,6 +82,11 @@ class PurchaseScope extends InheritedWidget {
     }
     return scope;
   }
+
+  /// The repository alone, for a screen that lists what was bought and never
+  /// opens a checkout. `null` in a build that offers no purchase.
+  static PurchaseRepository? repositoryOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PurchaseScope>()?.repository;
 
   @override
   bool updateShouldNotify(PurchaseScope oldWidget) =>

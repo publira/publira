@@ -1953,6 +1953,73 @@ void main() {
       });
     });
 
+    testApp('the seed member opens a purchase from any device', (tester) async {
+      await withFailureScreenshot(tester, 'live-purchases', () async {
+        await pumpLive(tester, initialLocation: AppRoutes.accountPurchases);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('purchases-sign-in')),
+          timeout: const Duration(seconds: 20),
+        );
+
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('purchases-sign-in')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-email')),
+          ConnectFixtureServer.memberEmail,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('sign-in-password')),
+          ConnectFixtureServer.memberPassword,
+        );
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+
+        // The seed records the purchases on the API alone, the way one made
+        // on the site reaches a device that never saw the checkout.
+        final readable = find.byKey(
+          const ValueKey(
+            'purchase-row-${ConnectFixtureServer.memberReadablePurchaseId}',
+          ),
+        );
+        final expired = find.byKey(
+          const ValueKey(
+            'purchase-row-${ConnectFixtureServer.memberExpiredPurchaseId}',
+          ),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          readable,
+          timeout: const Duration(seconds: 20),
+        );
+        expect(
+          find.descendant(
+            of: readable,
+            matching: find.byKey(const ValueKey('purchase-readable')),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: expired,
+            matching: find.byKey(const ValueKey('purchase-expired')),
+          ),
+          findsOneWidget,
+        );
+
+        await tapReachable(tester, readable);
+        await pumpUntilPagesDrawn(tester);
+      });
+    });
+
     testApp('the live API takes a sign-up and holds the account back', (
       tester,
     ) async {

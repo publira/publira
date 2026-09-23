@@ -3,6 +3,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 
@@ -18,6 +19,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
       '/publira.v1.CatalogService/GetEpisodeDetail';
   static const _checkoutProcedure =
       '/publira.v1.PurchaseService/StartEpisodeCheckout';
+  static const _listProcedure = '/publira.v1.PurchaseService/ListMyPurchases';
+
+  /// Rows one page asks for. The API caps this at 100 and falls back to 20.
+  static const pageSize = 20;
 
   final ConnectClient _client;
   final TenantResolver _tenants;
@@ -132,6 +137,102 @@ class HttpPurchaseRepository implements PurchaseRepository {
       throw _toFailure(error);
     }
   }
+
+  @override
+  Future<MyPurchasePage> listMyPurchases({String token = ''}) async {
+    // Read once and sent explicitly, so a page is never answered for a reader
+    // other than the one the list was opened for.
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return MyPurchasePage.empty;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _listProcedure,
+        {
+          'limit': pageSize,
+          'surface': appClientSurface,
+          'tenant': {'tenantId': tenantId},
+          if (token.isNotEmpty) 'token': token,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      return MyPurchasePage(
+        purchases: _purchases(body['purchases']),
+        nextToken: _readString(body, 'nextToken'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  List<MyPurchase> _purchases(Object? raw) {
+    // protojson omits an empty repeated field.
+    if (raw == null) {
+      return const [];
+    }
+    if (raw is! List) {
+      throw const PurchaseFailure(
+        PurchaseFailureKind.unexpected,
+        message: 'purchases must be a list',
+      );
+    }
+    return List.unmodifiable(
+      raw
+          .map(
+            (item) => item is Map
+                ? _purchase(item.cast<String, Object?>())
+                : throw const PurchaseFailure(
+                    PurchaseFailureKind.unexpected,
+                    message: 'purchases[] must be an object',
+                  ),
+          )
+          // A row naming no episode to open is a row no screen could render.
+          .nonNulls,
+    );
+  }
+
+  MyPurchase? _purchase(Map<String, Object?> json) {
+    final episode = _map(json['episode']);
+    final series = _map(json['series']);
+    final episodeId = _readString(episode, 'publicId');
+    final seriesId = _readString(series, 'publicId');
+    if (episodeId.isEmpty || seriesId.isEmpty) {
+      return null;
+    }
+    return MyPurchase(
+      id: _readString(json, 'id'),
+      seriesId: seriesId,
+      seriesTitle: _readString(series, 'title'),
+      episodeId: episodeId,
+      episodeTitle: _readString(episode, 'title'),
+      orderIndex: _readInt(episode, 'orderIndex'),
+      price: _readInt(json, 'priceAtPurchase'),
+      // protojson omits a false, which is what every expired row arrives as.
+      isActive: json['isActive'] == true,
+      purchasedAt: _readInstant(json, 'purchasedAt'),
+      expiresAt: _readInstant(json, 'expiresAt'),
+    );
+  }
+
+  Map<String, Object?> _map(Object? value) =>
+      value is Map ? value.cast<String, Object?>() : const {};
+
+  String _readString(Map<String, Object?> json, String key) {
+    final value = json[key];
+    return value is String ? value.trim() : '';
+  }
+
+  /// protojson writes an `int32` as a number and omits a zero.
+  int _readInt(Map<String, Object?> json, String key) {
+    final value = json[key];
+    return value is num ? value.toInt() : 0;
+  }
+
+  DateTime? _readInstant(Map<String, Object?> json, String key) =>
+      DateTime.tryParse(_readString(json, key))?.toLocal();
 
   PurchaseFailure _toFailure(ConnectException error) {
     if (error.isUnavailable) {

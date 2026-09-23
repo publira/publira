@@ -144,4 +144,98 @@ void main() {
     );
     expect(await repository().seriesOfEpisode(paidEpisodeId), isNull);
   });
+
+  group('the purchase library', () {
+    Map<String, Object?> purchase(
+      String id, {
+      required bool active,
+      String expiresAt = '',
+    }) => {
+      'id': id,
+      'episode': {
+        'publicId': paidEpisodeId,
+        'title': 'Seed Episode 001-10',
+        'orderIndex': 10,
+      },
+      'series': {'publicId': seriesId, 'title': 'Seed Series 001'},
+      'priceAtPurchase': 500,
+      'purchasedAt': '2026-01-10T12:00:00Z',
+      if (expiresAt.isNotEmpty) 'expiresAt': expiresAt,
+      // protojson omits a false.
+      if (active) 'isActive': true,
+    };
+
+    test('reads the reader\'s own purchases', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        purchase('purchase-active', active: true),
+        purchase(
+          'purchase-expired',
+          active: false,
+          expiresAt: '2026-01-13T12:00:00Z',
+        ),
+      ];
+
+      final page = await repository().listMyPurchases();
+
+      expect(page.nextToken, isEmpty);
+      final [active, expired] = page.purchases;
+      expect(active.id, 'purchase-active');
+      expect(active.isActive, isTrue);
+      expect(active.expiresAt, isNull);
+      expect(active.seriesId, seriesId);
+      expect(active.seriesTitle, 'Seed Series 001');
+      expect(active.episodeId, paidEpisodeId);
+      expect(active.episodeTitle, 'Seed Episode 001-10');
+      expect(active.orderIndex, 10);
+      expect(active.price, 500);
+      expect(active.purchasedAt?.toUtc(), DateTime.utc(2026, 1, 10, 12));
+      expect(expired.isActive, isFalse);
+      expect(expired.expiresAt?.toUtc(), DateTime.utc(2026, 1, 13, 12));
+      final request = server.requestsTo('ListMyPurchases').single;
+      expect(request.headers['authorization'], 'Bearer $accessToken');
+      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+    });
+
+    test('walks the pages the API names', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server
+        ..myPurchases = [
+          purchase('purchase-1', active: true),
+          purchase('purchase-2', active: true),
+          purchase('purchase-3', active: true),
+        ]
+        ..purchasesPageSize = 2;
+
+      final first = await repository().listMyPurchases();
+      final second = await repository().listMyPurchases(token: first.nextToken);
+
+      expect(first.purchases.map((item) => item.id), [
+        'purchase-1',
+        'purchase-2',
+      ]);
+      expect(second.purchases.map((item) => item.id), ['purchase-3']);
+      expect(second.nextToken, isEmpty);
+    });
+
+    test('a reader who bought nothing is answered an empty page', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+
+      expect((await repository().listMyPurchases()).purchases, isEmpty);
+    });
+
+    test('a guest is not sent to the API for it', () async {
+      expect((await repository().listMyPurchases()).purchases, isEmpty);
+      expect(server.requestsTo('ListMyPurchases'), isEmpty);
+    });
+
+    test('a session the API refuses asks for a sign-in', () async {
+      accessToken = 'a-token-the-api-no-longer-accepts';
+
+      await expectLater(
+        repository().listMyPurchases(),
+        failsWith(PurchaseFailureKind.sessionExpired),
+      );
+    });
+  });
 }
