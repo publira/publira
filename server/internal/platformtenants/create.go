@@ -101,6 +101,7 @@ func (p CreateParams) Validate() (Creation, error) {
 	c.defaultLocale = defaultLocale
 
 	c.initialAdminEmails = make([]string, 0, len(p.InitialAdminEmails))
+	seen := make(map[string]struct{}, len(p.InitialAdminEmails))
 	for _, raw := range p.InitialAdminEmails {
 		email, err := tenantmembers.NormalizeEmail(raw)
 		if errors.Is(err, tenantmembers.ErrEmailRequired) {
@@ -109,9 +110,11 @@ func (p CreateParams) Validate() (Creation, error) {
 		if err != nil {
 			return Creation{}, &InvalidError{Field: FieldInitialAdminEmails, Err: ErrInvalidInitialAdminEmails}
 		}
-		if !slices.Contains(c.initialAdminEmails, email) {
-			c.initialAdminEmails = append(c.initialAdminEmails, email)
+		if _, ok := seen[email]; ok {
+			continue
 		}
+		seen[email] = struct{}{}
+		c.initialAdminEmails = append(c.initialAdminEmails, email)
 	}
 	return c, nil
 }
