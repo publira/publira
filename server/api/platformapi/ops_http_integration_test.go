@@ -235,6 +235,42 @@ func TestListAuditLogsRejectsBrokenToken(t *testing.T) {
 	assertIntegrationExpectations(t, mock)
 }
 
+func TestListAuditLogsRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	tenantLogs := pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT001")
+	boundary := tenantLogs.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+
+	tests := map[string]struct {
+		token                 string
+		tenant, actor, action string
+	}{
+		"another tenant":   {token: boundary, tenant: "TENANT002"},
+		"an actor added":   {token: boundary, tenant: "TENANT001", actor: "USER000001"},
+		"an action added":  {token: boundary, tenant: "TENANT001", action: "tenant_created"},
+		"no filter":        {token: boundary},
+		"a recovery token": {token: tenantLogs.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID), tenant: "TENANT002"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ts, mock := newIntegrationTestServer(t)
+			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, boundaryAt)
+
+			client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+			_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{
+				TenantPublicId:    tt.tenant,
+				ActorUserPublicId: tt.actor,
+				Action:            tt.action,
+				Token:             tt.token,
+			}))
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListAuditLogs error = %v, want invalid_argument for another filter", err)
+			}
+			assertIntegrationExpectations(t, mock)
+		})
+	}
+}
+
 func TestListAuditLogsUnauthenticated(t *testing.T) {
 	ts, _ := newIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)

@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -103,22 +104,26 @@ func (s *apiServer) readerCanReadEpisodeBody(
 	return access.Valid && access.Bool, nil
 }
 
-// commentCursor decodes the shared (created_at, id) keyset token every comment
-// list uses.
-func commentCursor(token string) (pagination.Cursor, pagination.TimeUUIDKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+// commentCursor decodes the (created_at, id) keyset token of one episode's
+// comment list.
+func commentCursor(token string, listKey pagination.ListKey) (pagination.Cursor, pagination.TimeUUIDKeys, error) {
 	cursor, err := pagination.Decode(token)
 	if err != nil {
-		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, invalid
+		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, rpcerrors.NewPageTokenError(err)
 	}
 	if cursor.IsZero() {
 		return cursor, pagination.TimeUUIDKeys{}, nil
 	}
-	keys, err := pagination.DecodeTimeUUID(cursor)
+	keys, err := listKey.DecodeTimeUUID(cursor)
 	if err != nil {
-		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, invalid
+		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, rpcerrors.NewPageTokenError(err)
 	}
 	return cursor, keys, nil
+}
+
+// commentListKey names the comment list of one episode.
+func commentListKey(episodePublicID string) pagination.ListKey {
+	return pagination.NewListKey("created_at_desc").Value("episode_public_id", episodePublicID)
 }
 
 // publicCommentPageRow is one row of either direction of the public list,
@@ -205,7 +210,8 @@ func (s *apiServer) ListEpisodeComments(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
-	cursor, keys, err := commentCursor(req.Msg.Token)
+	listKey := commentListKey(episode.PublicID)
+	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
 	if err != nil {
 		return nil, err
 	}
@@ -232,16 +238,16 @@ func (s *apiServer) ListEpisodeComments(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -325,7 +331,8 @@ func (s *apiServer) ListMyEpisodeComments(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
-	cursor, keys, err := commentCursor(req.Msg.Token)
+	listKey := commentListKey(episode.PublicID)
+	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
 	if err != nil {
 		return nil, err
 	}
@@ -346,16 +353,16 @@ func (s *apiServer) ListMyEpisodeComments(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return noStorePrivateResponse(res), nil
 }

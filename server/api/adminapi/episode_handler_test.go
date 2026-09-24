@@ -1163,12 +1163,16 @@ func episodePublicIDs(items []*publirattypesv1.Episode) []string {
 	return publicIDs
 }
 
+// episodeTestListKey names the episode list of SERIES001, the series every list
+// request here asks for.
+var episodeTestListKey = pagination.NewListKey("order_index_asc").Value("series_public_id", "SERIES001")
+
 func encodeEpisodeTestToken(direction pagination.Direction, orderIndex int32, id uuid.UUID) string {
-	return pagination.Encode(direction, strconv.FormatInt(int64(orderIndex), 10), id.String())
+	return episodeTestListKey.Encode(direction, strconv.FormatInt(int64(orderIndex), 10), id.String())
 }
 
 func encodeEpisodeTestRecoveryToken(direction pagination.Direction, orderIndex int32, id uuid.UUID) string {
-	return pagination.Encode(direction, strconv.FormatInt(int64(orderIndex), 10), id.String(), "inclusive")
+	return episodeTestListKey.Encode(direction, strconv.FormatInt(int64(orderIndex), 10), id.String(), "inclusive")
 }
 
 func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
@@ -1204,7 +1208,7 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
-	wantKeys := []string{"2", ids[1].String()}
+	wantKeys := []string{"order_index_asc+series_public_id:SERIES001", "2", ids[1].String()}
 	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
 	}
@@ -1440,11 +1444,11 @@ func TestListEpisodesInvalidToken(t *testing.T) {
 		{name: "not base64", token: "not-a-valid-token"},
 		{
 			name:  "order index is not a number",
-			token: pagination.Encode(pagination.Forward, "second", uuid.Must(uuid.NewV7()).String()),
+			token: episodeTestListKey.Encode(pagination.Forward, "second", uuid.Must(uuid.NewV7()).String()),
 		},
 		{
 			name:  "trailing key is not the inclusive marker",
-			token: pagination.Encode(pagination.Forward, "2", uuid.Must(uuid.NewV7()).String(), "exclusive"),
+			token: episodeTestListKey.Encode(pagination.Forward, "2", uuid.Must(uuid.NewV7()).String(), "exclusive"),
 		},
 	}
 
@@ -1463,6 +1467,33 @@ func TestListEpisodesInvalidToken(t *testing.T) {
 			}
 			if err.Error() != "invalid_argument: token is invalid" {
 				t.Fatalf("ListEpisodes error = %v, want invalid_argument token is invalid", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListEpisodesRejectsAnotherSeriesToken(t *testing.T) {
+	otherSeries := pagination.NewListKey("order_index_asc").Value("series_public_id", "SERIES002")
+	boundaryID := uuid.Must(uuid.NewV7())
+	tests := map[string]string{
+		"boundary":        otherSeries.Encode(pagination.Forward, "2", boundaryID.String()),
+		"recovery":        otherSeries.Encode(pagination.Backward, "2", boundaryID.String(), "inclusive"),
+		"no series named": pagination.Encode(pagination.Forward, "2", boundaryID.String()),
+	}
+
+	for name, token := range tests {
+		t.Run(name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+			req := newListEpisodesRequest(tenantID, sessionToken)
+			req.Msg.Token = token
+			_, err := client.ListEpisodes(context.Background(), req)
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListEpisodes with another series' token error = %v, want invalid_argument", err)
 			}
 			assertExpectations(t, mock)
 		})

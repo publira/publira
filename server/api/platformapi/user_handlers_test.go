@@ -495,3 +495,51 @@ func TestListEndUsersRejectsBrokenToken(t *testing.T) {
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
+
+func TestListEndUsersRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	suspended := pagination.NewListKey("created_at_desc").Value("status", "suspended")
+
+	tests := map[string]struct {
+		token string
+		req   *publirasplatformv1.ListEndUsersRequest
+	}{
+		"another status": {
+			token: suspended.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{Status: "active"},
+		},
+		"another tenant": {
+			token: suspended.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{Status: "suspended", TenantPublicId: "TENANT001"},
+		},
+		"a public ID set": {
+			token: suspended.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{Status: "suspended", PublicIds: []string{"USER000001"}},
+		},
+		"a created_after bound": {
+			token: suspended.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{Status: "suspended", CreatedAfter: "2026-01-01T00:00:00Z"},
+		},
+		"no filter": {
+			token: suspended.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{},
+		},
+		"a recovery token": {
+			token: suspended.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListEndUsersRequest{Status: "active"},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), "platform_operator", boundaryAt)
+			tt.req.Token = tt.token
+			_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(tt.req))
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListEndUsers error = %v, want invalid_argument for another filter", err)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}

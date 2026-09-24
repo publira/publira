@@ -13,6 +13,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -153,13 +154,6 @@ func (s *adminServer) ListAuditLogs(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys pagination.TimeUUIDKeys
-	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-		}
-	}
 
 	createdFrom, err := parseAuditLogTimeFilter("created_from", req.Msg.CreatedFrom)
 	if err != nil {
@@ -187,6 +181,18 @@ func (s *adminServer) ListAuditLogs(
 		},
 		createdFrom: createdFrom,
 		createdTo:   createdTo,
+	}
+	listKey := pagination.NewListKey("created_at_desc").
+		Value("actor_user_public_id", filters.actorUserPublicID.String).
+		Value("action", filters.action.String).
+		Time("created_from", createdFrom.Time, createdFrom.Valid).
+		Time("created_to", createdTo.Time, createdTo.Valid)
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, rpcerrors.NewPageTokenError(err)
+		}
 	}
 
 	rows, err := s.auditLogPage(ctx, filters, keys, cursor.Direction, limit+1)
@@ -225,11 +231,11 @@ func (s *adminServer) ListAuditLogs(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -237,9 +243,9 @@ func (s *adminServer) ListAuditLogs(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

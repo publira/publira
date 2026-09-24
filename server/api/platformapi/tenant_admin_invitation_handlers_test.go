@@ -52,6 +52,10 @@ func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 }
 
+// tenantAdminInvitationListKey names the invitation list of TENANT001, the
+// tenant every list request here asks for.
+var tenantAdminInvitationListKey = pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT001")
+
 func newTenantAdminInvitationListRequest() *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest] {
 	return connect.NewRequest(&publirasplatformv1.ListTenantAdminInvitationsRequest{TenantPublicId: "TENANT001"})
 }
@@ -89,7 +93,7 @@ func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
-	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	wantKeys := []string{"created_at_desc+tenant_public_id:TENANT001", now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
 	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
 	}
@@ -112,7 +116,7 @@ func TestListTenantAdminInvitationsFollowsNextToken(t *testing.T) {
 
 	req := newTenantAdminInvitationListRequest()
 	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+	req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
 	resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
@@ -145,7 +149,7 @@ func TestListTenantAdminInvitationsFollowsPreviousTokenBackwards(t *testing.T) {
 
 	req := newTenantAdminInvitationListRequest()
 	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
+	req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
 	resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
@@ -188,18 +192,18 @@ func TestListTenantAdminInvitationsEmptyPageReturnsOneRecoveryToken(t *testing.T
 				WillReturnRows(tenantAdminInvitationColumns())
 
 			req := newTenantAdminInvitationListRequest()
-			req.Msg.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
+			req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(test.direction, now, boundaryID)
 			resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 			if err != nil {
 				t.Fatalf("ListTenantAdminInvitations: %v", err)
 			}
 			if test.direction == pagination.Forward {
-				want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+				want := tenantAdminInvitationListKey.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
 				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
 					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
 				}
 			} else {
-				want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
+				want := tenantAdminInvitationListKey.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
 				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
 					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
 				}
@@ -209,11 +213,33 @@ func TestListTenantAdminInvitationsEmptyPageReturnsOneRecoveryToken(t *testing.T
 	}
 }
 
+func TestListTenantAdminInvitationsRejectsAnotherTenantsToken(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	otherTenant := pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT002")
+
+	for name, token := range map[string]string{
+		"boundary": otherTenant.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+		"recovery": otherTenant.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := newTenantAdminInvitationListRequest()
+			req.Msg.Token = token
+			_, err := server.ListTenantAdminInvitations(context.Background(), req)
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListTenantAdminInvitations with another tenant's token error = %v, want invalid_argument", err)
+			}
+		})
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestListTenantAdminInvitationsRejectsInvalidToken(t *testing.T) {
 	tests := []string{
 		"not-base64",
-		pagination.Encode(pagination.Forward, "not-a-time", uuid.Must(uuid.NewV7()).String()),
-		pagination.Encode(pagination.Forward, time.Now().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String(), "not-inclusive"),
+		tenantAdminInvitationListKey.Encode(pagination.Forward, "not-a-time", uuid.Must(uuid.NewV7()).String()),
+		tenantAdminInvitationListKey.Encode(pagination.Forward, time.Now().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String(), "not-inclusive"),
 	}
 
 	for _, token := range tests {

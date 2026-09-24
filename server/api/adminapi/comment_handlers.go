@@ -491,11 +491,19 @@ func (s *adminServer) ListComments(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	authorPublicID := strings.TrimSpace(req.Msg.AuthorPublicId)
+	listKey := pagination.NewListKey("created_at_desc").
+		Value("status", status.String).
+		Value("series_public_id", seriesPublicID).
+		Value("episode_public_id", episodePublicID).
+		Value("author_public_id", authorPublicID)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
@@ -504,7 +512,7 @@ func (s *adminServer) ListComments(
 	// A filter naming nothing this tenant has is an empty list rather than an
 	// error: the console reaches these RPCs with identifiers it read from its
 	// own screens, and a series deleted since then is no reason to refuse.
-	if seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId); seriesPublicID != "" {
+	if seriesPublicID != "" {
 		series, seriesErr := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{
 			TenantID: tenant.ID,
 			PublicID: seriesPublicID,
@@ -518,7 +526,7 @@ func (s *adminServer) ListComments(
 		filter.seriesID = uuid.NullUUID{UUID: series.ID, Valid: true}
 	}
 
-	if episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId); episodePublicID != "" {
+	if episodePublicID != "" {
 		episode, episodeErr := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
 			TenantID: tenant.ID,
 			PublicID: episodePublicID,
@@ -532,7 +540,7 @@ func (s *adminServer) ListComments(
 		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
 	}
 
-	if authorPublicID := strings.TrimSpace(req.Msg.AuthorPublicId); authorPublicID != "" {
+	if authorPublicID != "" {
 		author, authorErr := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			PublicID: authorPublicID,
@@ -567,20 +575,20 @@ func (s *adminServer) ListComments(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, and only once:
 	// when the recovery query is itself empty the boundary row is gone too, so
 	// both tokens stay empty and the client starts over from the first page.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil
@@ -893,11 +901,12 @@ func (s *adminServer) ListCommentReports(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	listKey := pagination.NewListKey("created_at_desc").Value("status", status.String)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
@@ -922,19 +931,19 @@ func (s *adminServer) ListCommentReports(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].ReportCreatedAt, rows[0].ReportID)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].ReportCreatedAt, rows[0].ReportID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.ReportCreatedAt, last.ReportID)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.ReportCreatedAt, last.ReportID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued — purging a comment takes its reports with it. Hand back a token
 	// to where the client came from, and only once.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -58,66 +57,12 @@ type readerListFilters struct {
 	status sql.NullString
 }
 
-func (filters readerListFilters) active() bool {
-	return filters.query.Valid || filters.status.Valid
-}
-
 // key names the filtered list a cursor points into, so a token issued for
-// another filter is refused. The query is escaped so that no search text can
-// spell another filter.
-func (filters readerListFilters) key() string {
-	key := "created_at_desc"
-	if filters.query.Valid {
-		key += "+query:" + url.QueryEscape(filters.query.String)
-	}
-	if filters.status.Valid {
-		key += "+status:" + filters.status.String
-	}
-	return key
-}
-
-func encodeReaderListToken(direction pagination.Direction, filters readerListFilters, at time.Time, id uuid.UUID) string {
-	if !filters.active() {
-		return pagination.EncodeTimeUUID(direction, at, id)
-	}
-	return pagination.Encode(direction, filters.key(), at.UTC().Format(time.RFC3339Nano), id.String())
-}
-
-func encodeReaderListRecoveryToken(direction pagination.Direction, filters readerListFilters, keys pagination.TimeUUIDKeys) string {
-	if !filters.active() {
-		return pagination.EncodeTimeUUIDRecovery(direction, keys.Time, keys.ID)
-	}
-	return pagination.Encode(direction, filters.key(), keys.Time.UTC().Format(time.RFC3339Nano), keys.ID.String(), "inclusive")
-}
-
-func decodeReaderListCursor(cursor pagination.Cursor, filters readerListFilters) (pagination.TimeUUIDKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if !filters.active() {
-		keys, err := pagination.DecodeTimeUUID(cursor)
-		if err != nil {
-			return pagination.TimeUUIDKeys{}, invalid
-		}
-		return keys, nil
-	}
-	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
-		return pagination.TimeUUIDKeys{}, invalid
-	}
-	inclusive := len(cursor.Keys) == 4
-	if inclusive && cursor.Keys[3] != "inclusive" {
-		return pagination.TimeUUIDKeys{}, invalid
-	}
-	if cursor.Keys[0] != filters.key() {
-		return pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another filter"))
-	}
-	at, err := time.Parse(time.RFC3339Nano, cursor.Keys[1])
-	if err != nil {
-		return pagination.TimeUUIDKeys{}, invalid
-	}
-	id, err := uuid.Parse(cursor.Keys[2])
-	if err != nil {
-		return pagination.TimeUUIDKeys{}, invalid
-	}
-	return pagination.TimeUUIDKeys{Time: at.UTC(), ID: id, Inclusive: inclusive, Valid: true}, nil
+// another filter is refused.
+func (filters readerListFilters) key() pagination.ListKey {
+	return pagination.NewListKey("created_at_desc").
+		Value("query", filters.query.String).
+		Value("status", filters.status.String)
 }
 
 func adminReader(row readerRow) *publiraadminv1.AdminReader {
@@ -210,11 +155,12 @@ func (s *adminServer) ListReaders(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	listKey := filters.key()
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = decodeReaderListCursor(cursor, filters)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, err
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
@@ -235,20 +181,20 @@ func (s *adminServer) ListReaders(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeReaderListToken(pagination.Backward, filters, rows[0].CreatedAt, rows[0].ID)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = encodeReaderListToken(pagination.Forward, filters, last.CreatedAt, last.ID)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, and only once:
 	// when the recovery query is itself empty the boundary row is gone too, so
 	// both tokens stay empty and the client starts over from the first page.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = encodeReaderListRecoveryToken(pagination.Backward, filters, keys)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = encodeReaderListRecoveryToken(pagination.Forward, filters, keys)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

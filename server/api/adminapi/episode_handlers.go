@@ -75,16 +75,16 @@ type episodeCursorKeys struct {
 	inclusive  bool
 }
 
-// The ListEpisodes cursor carries the sort keys of the boundary row in query
-// order: order_index, then the id that breaks its ties. A recovery token adds
-// the inclusive marker so the boundary row itself comes back once. Token rules:
-// proto/README.md.
-func encodeEpisodeCursor(direction pagination.Direction, row episodePageRow) string {
-	return pagination.Encode(direction, strconv.FormatInt(int64(row.orderIndex), 10), row.id.String())
+// The ListEpisodes cursor carries the series it lists, then the sort keys of
+// the boundary row in query order: order_index, then the id that breaks its
+// ties. A recovery token adds the inclusive marker so the boundary row itself
+// comes back once. Token rules: proto/README.md.
+func encodeEpisodeCursor(direction pagination.Direction, listKey pagination.ListKey, row episodePageRow) string {
+	return listKey.Encode(direction, strconv.FormatInt(int64(row.orderIndex), 10), row.id.String())
 }
 
-func encodeEpisodeRecoveryToken(direction pagination.Direction, keys episodeCursorKeys) string {
-	return pagination.Encode(
+func encodeEpisodeRecoveryToken(direction pagination.Direction, listKey pagination.ListKey, keys episodeCursorKeys) string {
+	return listKey.Encode(
 		direction,
 		strconv.FormatInt(int64(keys.orderIndex.Int32), 10),
 		keys.id.UUID.String(),
@@ -279,9 +279,14 @@ func (s *adminServer) ListEpisodes(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	listKey := pagination.NewListKey("order_index_asc").Value("series_public_id", req.Msg.SeriesPublicId)
 	var keys episodeCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeEpisodeCursorKeys(cursor)
+		inner, keyErr := listKey.Decode(cursor)
+		if keyErr != nil {
+			return nil, rpcerrors.NewPageTokenError(keyErr)
+		}
+		keys, err = decodeEpisodeCursorKeys(inner)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
@@ -308,10 +313,10 @@ func (s *adminServer) ListEpisodes(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeEpisodeCursor(pagination.Backward, rows[0])
+			res.PreviousToken = encodeEpisodeCursor(pagination.Backward, listKey, rows[0])
 		}
 		if hasNext {
-			res.NextToken = encodeEpisodeCursor(pagination.Forward, rows[len(rows)-1])
+			res.NextToken = encodeEpisodeCursor(pagination.Forward, listKey, rows[len(rows)-1])
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -319,9 +324,9 @@ func (s *adminServer) ListEpisodes(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeEpisodeRecoveryToken(pagination.Backward, keys)
+		res.PreviousToken = encodeEpisodeRecoveryToken(pagination.Backward, listKey, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeEpisodeRecoveryToken(pagination.Forward, keys)
+		res.NextToken = encodeEpisodeRecoveryToken(pagination.Forward, listKey, keys)
 	}
 
 	return connect.NewResponse(res), nil
