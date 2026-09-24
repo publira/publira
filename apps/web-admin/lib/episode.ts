@@ -19,6 +19,7 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { Locale } from "@publira/i18n";
+import { cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -255,6 +256,14 @@ type RawEpisode = Pick<
   | "status"
   | "title"
 >;
+
+/**
+ * The tag `getEpisode()` and `listEpisodeImages()` cache one episode under.
+ * Every Action that changes what the edit screen shows of that episode clears
+ * it, which carries the change back to the screen that submitted.
+ */
+export const episodeCacheTag = (tenantId: string, publicId: string): string =>
+  `episode-${tenantId}-${publicId}`;
 
 const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   // A value naming none of the three is reported by the reads that open a
@@ -746,6 +755,9 @@ export const getEpisode = async (
   },
   locale: Locale
 ): Promise<GetEpisodeResult> => {
+  "use cache: private";
+  cacheTag(episodeCacheTag(input.tenantId, input.publicId));
+
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     getAccessToken(),
@@ -1114,6 +1126,9 @@ export const listEpisodeImages = async (
   },
   locale: Locale
 ): Promise<ListEpisodeImagesResult> => {
+  "use cache: private";
+  cacheTag(episodeCacheTag(input.tenantId, input.episodePublicId));
+
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     getAccessToken(),

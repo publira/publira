@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockBulkEditEpisodeCredits,
+  mockCacheTag,
   mockCreateEpisode,
   mockGetAccessToken,
   mockGetEpisode,
@@ -23,6 +24,7 @@ const {
   mockUpdateEpisodePurchaseAvailability,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
+  mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
@@ -32,6 +34,10 @@ const {
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./session", () => ({

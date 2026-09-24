@@ -14,6 +14,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
+  episodeCacheTag,
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
@@ -221,6 +222,7 @@ export const updateEpisodeScheduleAction = async (
   }
 
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodePublicId));
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
@@ -269,6 +271,8 @@ export const updateEpisodeAvailabilityAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
+  updateTag(episodeCacheTag(tenantId, episodePublicId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?availability_updated=1`
@@ -319,6 +323,8 @@ export const updateEpisodePurchaseAvailabilityAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
+  updateTag(episodeCacheTag(tenantId, episodePublicId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?purchase_availability_updated=1`
@@ -394,6 +400,8 @@ export const updateEpisodeLayoutAction = async (
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
+  updateTag(episodeCacheTag(parsed.data.tenantId, episodePublicId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?layout_updated=1`
@@ -508,6 +516,8 @@ export const uploadEpisodePagesAction = async (
       return toFailure(result.message, "pages");
     }
 
+    updateTag(episodeCacheTag(tenantId, episodePublicId));
+
     redirect(
       `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
     );
@@ -534,6 +544,8 @@ export const uploadEpisodePagesAction = async (
   if (!result.ok) {
     return toFailure(result.message, "pages");
   }
+
+  updateTag(episodeCacheTag(tenantId, episodePublicId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
@@ -586,6 +598,8 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   if (!result.ok) {
     return result;
   }
+
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodePublicId));
 
   return {
     ok: true,
