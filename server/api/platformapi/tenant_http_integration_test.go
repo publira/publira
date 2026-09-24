@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -55,6 +57,26 @@ func TestCreateTenantRejectsEmptyDomain(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertFieldViolation(t, err, "domain")
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestCreateTenantRejectsEmptyName(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validIntegrationCreateTenantRequest()
+	req.Name = "  "
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	if err.Error() != "invalid_argument: name is required" {
+		t.Fatalf("CreateTenant error = %q, want the message it has always had", err)
+	}
+	assertFieldViolation(t, err, "name")
 	assertIntegrationExpectations(t, mock)
 }
 
@@ -72,6 +94,7 @@ func TestCreateTenantRejectsInvalidInitialAdminEmails(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertFieldViolation(t, err, "initial_admin_emails")
 	assertIntegrationExpectations(t, mock)
 }
 
@@ -98,8 +121,8 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
-	mock.ExpectCommit()
 	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
@@ -168,6 +191,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	if !strings.Contains(strings.ToLower(err.Error()), "domain") {
 		t.Fatalf("CreateTenant error = %v, want domain duplicate message", err)
 	}
+	assertFieldViolation(t, err, "domain")
 	assertIntegrationExpectations(t, mock)
 }
 
@@ -193,6 +217,7 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	if !strings.Contains(strings.ToLower(err.Error()), "admin_domain") {
 		t.Fatalf("CreateTenant error = %v, want admin_domain duplicate message", err)
 	}
+	assertFieldViolation(t, err, "admin_domain")
 	assertIntegrationExpectations(t, mock)
 }
 
@@ -213,8 +238,8 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "UTC", "en"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
-	mock.ExpectCommit()
 	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com", DefaultLocale: "  en  "}))
@@ -256,6 +281,7 @@ func TestCreateTenantRejectsMissingOrUnsupportedLocale(t *testing.T) {
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("CreateTenant code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
+			assertFieldViolation(t, err, "default_locale")
 			assertIntegrationExpectations(t, mock)
 		})
 	}
@@ -350,4 +376,27 @@ func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
 		t.Fatalf("ListTenants code = %v, want permission_denied", connect.CodeOf(err))
 	}
 	assertIntegrationExpectations(t, mock)
+}
+
+// assertFieldViolation checks that err names field as the one request field it
+// refused, which is how the console tells its form fields apart.
+func assertFieldViolation(t *testing.T, err error, field string) {
+	t.Helper()
+	var rpcError *connect.Error
+	if !errors.As(err, &rpcError) {
+		t.Fatalf("error type = %T, want *connect.Error", err)
+	}
+	for _, detail := range rpcError.Details() {
+		value, detailErr := detail.Value()
+		if detailErr != nil {
+			t.Fatalf("detail: %v", detailErr)
+		}
+		if badRequest, ok := value.(*errdetails.BadRequest); ok {
+			if len(badRequest.FieldViolations) != 1 || badRequest.FieldViolations[0].Field != field {
+				t.Fatalf("field violations = %v, want %q", badRequest.FieldViolations, field)
+			}
+			return
+		}
+	}
+	t.Fatalf("error %v has no field violation, want %q", err, field)
 }

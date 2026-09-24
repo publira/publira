@@ -36,7 +36,7 @@ type command struct {
 
 // groups are the settings and provisioning command groups, dispatched beside db
 // and job.
-var groups []commandGroup
+var groups = []commandGroup{tenantGroup}
 
 func lookupGroup(name string) *commandGroup {
 	for i := range groups {

@@ -1,14 +1,15 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, and `job` is the manual interface to the maintenance jobs, whose second argument names the job.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, and `tenant` creates a tenant in place of the Platform Console.
 
 ```bash
 task server:build
 ./server/bin/publiractl db migrate
 ./server/bin/publiractl job aggregate-content-stats
+./server/bin/publiractl tenant create -name "Example Comics" -domain comics.example.com -default-locale en
 ```
 
-Without a command, with a command other than `db` or `job`, with a subcommand that is not one of the ones below, or with an argument after it, the binary prints its usage to stderr and exits non-zero.
+Without a command, with a command that is not one of these, with a subcommand that is not one of the ones below, or with an argument after it, the binary prints its usage to stderr and exits non-zero.
 
 The container image carries the same binary, with the command passed as container arguments:
 
@@ -38,6 +39,35 @@ Environment variables:
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../worker/README.md) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## tenant
+
+Creates a tenant the way `PlatformTenantService.CreateTenant` does from the Platform Console — the same implementation, `internal/platformtenants` — so a tenant created here is indistinguishable from one created there: it starts on the platform's default time zone with the default creator roles, and every initial administrator is sent an invitation.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl tenant create \
+  -name "Example Comics" \
+  -domain comics.example.com \
+  -default-locale en \
+  -initial-admin-email owner@comics.example.com
+```
+
+| Flag | What it sets |
+| --- | --- |
+| `-name` | The tenant's name. Required |
+| `-domain` | The host the tenant's site is served on. Required, and no other tenant may hold it |
+| `-admin-domain` | The host the tenant's console is served on, when it is not the default one. No other tenant may hold it |
+| `-default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
+| `-initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
+
+It prints the new tenant's public ID and each invitation it queued to stdout, and files the audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
+
+The invitation mail goes on the outbox, as it does from the console, and the [worker](../publira/README.md#publira-worker) is what sends it. An install running no worker gets the tenant and its pending invitations and sends nothing; an invitation's link expires 24 hours after it is created.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## job
 
