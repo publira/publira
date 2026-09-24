@@ -9,6 +9,11 @@
 // closes a period of data once, and exits. The worker schedules the same jobs,
 // so nothing needs to schedule this command.
 //
+// The settings and provisioning groups change what the Platform Console
+// changes. They connect as PUBLIRA_PLATFORM_DB_URL, take a secret only from a
+// masked prompt or stdin, and file their audit entries under
+// auditlog.SystemPlatformActor.
+//
 // Each job is a thin invocation of internal/maintenance, which the worker's
 // River jobs invoke as well, so an operator's explicit run and a scheduled one
 // are the same implementation.
@@ -114,9 +119,13 @@ func run(args []string, stderr io.Writer) int {
 		return runDB(args[1:], stderr)
 	case "job":
 		return runJob(args[1:], stderr)
-	default:
-		return usageError(stderr, fmt.Sprintf("unknown command %q", args[0]), usage())
 	}
+	if g := lookupGroup(args[0]); g != nil {
+		con := osConsole()
+		con.stderr = stderr
+		return runGroup(g, args[1:], con, os.Stdout)
+	}
+	return usageError(stderr, fmt.Sprintf("unknown command %q", args[0]), usage())
 }
 
 func runJob(args []string, stderr io.Writer) int {
@@ -174,9 +183,14 @@ func usageError(w io.Writer, reason, usage string) int {
 }
 
 func usage() string {
-	return "\nUsage: publiractl <command>\n\nCommands:\n" +
+	var b strings.Builder
+	b.WriteString("\nUsage: publiractl <command>\n\nCommands:\n" +
 		"  db                        Apply the database migrations and report the schema version\n" +
-		"  job                       Run one of the worker's maintenance jobs by hand\n"
+		"  job                       Run one of the worker's maintenance jobs by hand\n")
+	for _, g := range groups {
+		fmt.Fprintf(&b, "  %-25s %s\n", g.name, g.summary)
+	}
+	return b.String()
 }
 
 func jobUsage() string {
