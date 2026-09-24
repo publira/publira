@@ -3,8 +3,19 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
+import {
+  AdminPageActions,
+  AdminPageDescription,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { ErrorBoundaryMessage } from "#components/error-boundary-message";
-import { ErrorScreen } from "#components/error-screen";
+import {
+  ErrorScreen,
+  ErrorScreenDigest,
+  ErrorScreenRetry,
+} from "#components/error-screen";
 
 /**
  * Error boundary for the tenant segment itself. It catches what
@@ -44,30 +55,34 @@ const TenantError = ({
   // The failing layout is what would normally supply the landmark, so this
   // boundary owns the `<main>` element itself.
   <main>
-    <ErrorScreen
-      description={
-        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-          <ErrorBoundaryMessage message="admin.errors.root_description" />
-        </Suspense>
-      }
-      digest={error.digest}
-      digestLabel={
+    <ErrorScreen digest={error.digest} retry={retry}>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageTitle>
+            <Suspense fallback={<SkeletonLine className="h-8 w-80" />}>
+              <ErrorBoundaryMessage message="admin.errors.root_title" />
+            </Suspense>
+          </AdminPageTitle>
+          <AdminPageDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+              <ErrorBoundaryMessage message="admin.errors.root_description" />
+            </Suspense>
+          </AdminPageDescription>
+        </AdminPageHeading>
+        <AdminPageActions>
+          <ErrorScreenRetry>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <ErrorBoundaryMessage message="admin.common.retry" />
+            </Suspense>
+          </ErrorScreenRetry>
+        </AdminPageActions>
+      </AdminPageHeader>
+      <ErrorScreenDigest>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <ErrorBoundaryMessage message="admin.common.error_id" />
         </Suspense>
-      }
-      retry={retry}
-      retryLabel={
-        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <ErrorBoundaryMessage message="admin.common.retry" />
-        </Suspense>
-      }
-      title={
-        <Suspense fallback={<SkeletonLine className="h-8 w-80" />}>
-          <ErrorBoundaryMessage message="admin.errors.root_title" />
-        </Suspense>
-      }
-    />
+      </ErrorScreenDigest>
+    </ErrorScreen>
   </main>
 );
 

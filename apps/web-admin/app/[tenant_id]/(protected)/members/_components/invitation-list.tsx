@@ -5,6 +5,11 @@ import {
 } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -24,7 +29,11 @@ import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -218,11 +227,18 @@ export const InvitationList = async ({
     <div className="grid gap-4">
       {invitations.length === 0 ? (
         <CursorPageEmptyState
-          description={t("admin.members.invitations_empty_description")}
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.members.invitations_title")}
-          title={t("admin.members.invitations_empty_title")}
-        />
+        >
+          <EmptyStateHeading>
+            <EmptyStateTitle>
+              {t("admin.members.invitations_empty_title")}
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              {t("admin.members.invitations_empty_description")}
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+        </CursorPageEmptyState>
       ) : (
         <InvitationTable
           invitations={invitations}
@@ -232,14 +248,18 @@ export const InvitationList = async ({
         />
       )}
       {invitations.length > 0 || hasPageLinks ? (
-        <PaginationFooter
-          ariaLabel={t("admin.members.invitations_pagination_aria")}
-          description={t("admin.members.pagination_description", {
-            count: String(pageSize),
-          })}
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+        <PaginationFooter>
+          <PaginationFooterDescription>
+            {t("admin.members.pagination_description", {
+              count: String(pageSize),
+            })}
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.members.invitations_pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </div>
   );

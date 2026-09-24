@@ -3,8 +3,19 @@
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 
+import {
+  AdminPageActions,
+  AdminPageDescription,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { ClientMessage } from "#components/client-message";
-import { ErrorScreen } from "#components/error-screen";
+import {
+  ErrorScreen,
+  ErrorScreenDigest,
+  ErrorScreenRetry,
+} from "#components/error-screen";
 
 /**
  * Error boundary for the console pages. It wraps the pages and nested layouts
@@ -49,19 +60,29 @@ const ConsoleError = ({
   error: Error & { digest?: string };
   retry: () => void;
 }) => (
-  <ErrorScreen
-    actions={
-      <LinkButton render={<Link href="/" />} variant="outline">
-        <ClientMessage message="admin.common.back_to_dashboard" />
-      </LinkButton>
-    }
-    description={<ClientMessage message="admin.errors.console_description" />}
-    digest={error.digest}
-    digestLabel={<ClientMessage message="admin.common.error_id" />}
-    retry={retry}
-    retryLabel={<ClientMessage message="admin.common.retry" />}
-    title={<ClientMessage message="admin.errors.console_title" />}
-  />
+  <ErrorScreen digest={error.digest} retry={retry}>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageTitle>
+          <ClientMessage message="admin.errors.console_title" />
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <ClientMessage message="admin.errors.console_description" />
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <ErrorScreenRetry>
+          <ClientMessage message="admin.common.retry" />
+        </ErrorScreenRetry>
+        <LinkButton render={<Link href="/" />} variant="outline">
+          <ClientMessage message="admin.common.back_to_dashboard" />
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <ErrorScreenDigest>
+      <ClientMessage message="admin.common.error_id" />
+    </ErrorScreenDigest>
+  </ErrorScreen>
 );
 
 export default ConsoleError;

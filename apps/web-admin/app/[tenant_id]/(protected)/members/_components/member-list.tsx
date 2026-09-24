@@ -5,6 +5,11 @@ import {
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
+import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
   SectionError,
@@ -27,7 +32,11 @@ import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -248,11 +257,16 @@ export const MemberList = async ({
     <div className="grid gap-4">
       {members.length === 0 ? (
         <CursorPageEmptyState
-          description={t("admin.members.empty_description")}
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.members.list_title")}
-          title={t("admin.members.empty_title")}
-        />
+        >
+          <EmptyStateHeading>
+            <EmptyStateTitle>{t("admin.members.empty_title")}</EmptyStateTitle>
+            <EmptyStateDescription>
+              {t("admin.members.empty_description")}
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+        </CursorPageEmptyState>
       ) : (
         <MemberTable
           locale={locale}
@@ -262,14 +276,18 @@ export const MemberList = async ({
         />
       )}
       {members.length > 0 || hasPageLinks ? (
-        <PaginationFooter
-          ariaLabel={t("admin.members.pagination_aria")}
-          description={t("admin.members.pagination_description", {
-            count: String(pageSize),
-          })}
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+        <PaginationFooter>
+          <PaginationFooterDescription>
+            {t("admin.members.pagination_description", {
+              count: String(pageSize),
+            })}
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.members.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </div>
   );

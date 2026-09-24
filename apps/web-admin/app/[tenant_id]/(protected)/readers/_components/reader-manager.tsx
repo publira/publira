@@ -1,6 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -22,7 +27,11 @@ import { Suspense } from "react";
 import { AdminSection } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -74,24 +83,24 @@ const ReaderListBody = ({
 
   if (readers.length === 0) {
     return (
-      <CursorPageEmptyState
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            {filtered ? (
-              <Message message="admin.readers.empty_filtered_description" />
-            ) : (
-              <Message message="admin.readers.empty_description" />
-            )}
-          </Suspense>
-        }
-        hasPageLinks={hasPageLinks}
-        itemLabel={itemLabel}
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.readers.empty_title" />
-          </Suspense>
-        }
-      />
+      <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
+        <EmptyStateHeading>
+          <EmptyStateTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.readers.empty_title" />
+            </Suspense>
+          </EmptyStateTitle>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              {filtered ? (
+                <Message message="admin.readers.empty_filtered_description" />
+              ) : (
+                <Message message="admin.readers.empty_description" />
+              )}
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </CursorPageEmptyState>
     );
   }
 
@@ -180,14 +189,18 @@ export const ReaderManager = async ({
       />
 
       {showPagination ? (
-        <PaginationFooter
-          ariaLabel={t("admin.readers.pagination_aria")}
-          description={t("admin.readers.pagination_description", {
-            count: pageSize,
-          })}
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+        <PaginationFooter>
+          <PaginationFooterDescription>
+            {t("admin.readers.pagination_description", {
+              count: pageSize,
+            })}
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.readers.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </AdminSection>
   );

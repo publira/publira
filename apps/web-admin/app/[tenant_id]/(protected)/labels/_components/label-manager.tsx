@@ -1,6 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -20,7 +25,11 @@ import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -67,11 +76,16 @@ const LabelListBody = async ({
   if (labels.length === 0) {
     return (
       <CursorPageEmptyState
-        description={t("admin.labels.empty_description")}
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.labels.title")}
-        title={t("admin.labels.empty_title")}
-      />
+      >
+        <EmptyStateHeading>
+          <EmptyStateTitle>{t("admin.labels.empty_title")}</EmptyStateTitle>
+          <EmptyStateDescription>
+            {t("admin.labels.empty_description")}
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </CursorPageEmptyState>
     );
   }
 
@@ -139,14 +153,18 @@ export const LabelManager = async ({
       />
 
       {showPagination ? (
-        <PaginationFooter
-          ariaLabel={t("admin.labels.pagination_aria")}
-          description={t("admin.labels.pagination_description", {
-            count: pageSize,
-          })}
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+        <PaginationFooter>
+          <PaginationFooterDescription>
+            {t("admin.labels.pagination_description", {
+              count: pageSize,
+            })}
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.labels.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </div>
   );
