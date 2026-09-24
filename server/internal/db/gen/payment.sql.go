@@ -40,7 +40,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test
 `
 
 type ApplyUnappliedStripeRefundToPurchaseParams struct {
@@ -70,6 +70,9 @@ func (q *Queries) ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg 
 		&i.StripePaymentIntentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
 	)
 	return i, err
 }
@@ -114,7 +117,7 @@ WHERE NOT EXISTS (
         AND g.kind = 'purchase'
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at, store, store_transaction_id, is_test
 `
 
 type CreatePurchaseFromStripeCheckoutParams struct {
@@ -156,6 +159,9 @@ func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg Crea
 		&i.StripePaymentIntentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
 	)
 	return i, err
 }
@@ -561,7 +567,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test
 `
 
 type RecordStripeRefundOnPurchaseParams struct {
@@ -596,6 +602,9 @@ func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordSt
 		&i.StripePaymentIntentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
 	)
 	return i, err
 }

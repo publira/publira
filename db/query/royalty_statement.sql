@@ -5,7 +5,8 @@
 --
 -- The month runs from the first day's midnight to the next month's in the
 -- given zone. A fully refunded sale is not a sale; a partial refund stays a
--- sale and is carried as refunded_amount. The payout is floored per line over
+-- sale and is carried as refunded_amount. A store's test purchase paid the
+-- tenant nothing and is not a sale either. The payout is floored per line over
 -- the month's sum, which keeps the rounding loss to one yen per line.
 SELECT
     ec.creator_id,
@@ -33,6 +34,7 @@ JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
+    AND NOT p.is_test
     AND p.purchased_at >= (sqlc.arg('period')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
     AND p.purchased_at < ((sqlc.arg('period')::date + interval '1 month')::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
 GROUP BY
@@ -53,6 +55,7 @@ SELECT
 FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
+    AND NOT p.is_test
     AND p.purchased_at >= (sqlc.arg('period')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
     AND p.purchased_at < ((sqlc.arg('period')::date + interval '1 month')::timestamp AT TIME ZONE sqlc.arg('time_zone')::text);
 

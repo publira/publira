@@ -204,7 +204,8 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 			 FROM purchases
 			 WHERE tenant_id = $1
 			   AND purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
-			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)),
+			   AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+			   AND NOT is_test),
 			(SELECT count(*)
 			 FROM episode_comments
 			 WHERE tenant_id = $1
@@ -222,7 +223,8 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 //
 // purchase_count comes from the purchases table alone. A purchase is also
 // projected into content_events, so counting both sources would double every
-// sale; purchases is the one that owns the fact.
+// sale; purchases is the one that owns the fact. A store's test purchase is
+// left out, since no reader paid for it.
 //
 // comment_count comes from episode_comments for the same reason and one more:
 // content_events records that a comment was published and never that it was
@@ -255,6 +257,7 @@ WITH episode_events AS (
 	WHERE p.tenant_id = $1
 		AND p.purchased_at >= ($2::date::timestamp AT TIME ZONE $3::text)
 		AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND NOT p.is_test
 	GROUP BY p.episode_id
 ), published_comments AS (
 	SELECT c.episode_id AS entity_id, count(*) AS comment_count

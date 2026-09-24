@@ -21,6 +21,7 @@ SELECT
 FROM purchases p
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
+    AND NOT p.is_test
     AND p.purchased_at >= ($3::date::timestamp AT TIME ZONE $2::text)
     AND p.purchased_at < (($3::date + interval '1 month')::timestamp AT TIME ZONE $2::text)
 `
@@ -251,6 +252,7 @@ JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
+    AND NOT p.is_test
     AND p.purchased_at >= ($3::date::timestamp AT TIME ZONE $2::text)
     AND p.purchased_at < (($3::date + interval '1 month')::timestamp AT TIME ZONE $2::text)
 GROUP BY
@@ -294,7 +296,8 @@ type ListRoyaltyLinesForPeriodRow struct {
 //
 // The month runs from the first day's midnight to the next month's in the
 // given zone. A fully refunded sale is not a sale; a partial refund stays a
-// sale and is carried as refunded_amount. The payout is floored per line over
+// sale and is carried as refunded_amount. A store's test purchase paid the
+// tenant nothing and is not a sale either. The payout is floored per line over
 // the month's sum, which keeps the rounding loss to one yen per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod, arg.TenantID, arg.TimeZone, arg.Period)

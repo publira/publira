@@ -326,6 +326,37 @@ func TestRunCountsAPurchaseWhoseBuyerWasDeleted(t *testing.T) {
 	}
 }
 
+// A store's test purchase opens the episode but paid nobody, so the day it was
+// made in counts only the purchase someone paid for.
+func TestRunLeavesAStoreTestPurchaseUncounted(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	statDate := time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)
+	tenant := pg.SeedTenant(t, "STATSTEST001", "test-stats.example.com", "Test Stats")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TESTSERIES01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "TESTEP001"})
+	paying := pg.SeedEndUser(t, tenant.ID, "TESTBUYER001", "paying@test-stats.example.com", "Paying Buyer")
+	reviewer := pg.SeedEndUser(t, tenant.ID, "TESTBUYER002", "reviewer@test-stats.example.com", "App Reviewer")
+	insertPurchase(t, pg.DB, tenant.ID, paying.ID, episode.ID, statDate.Add(10*time.Hour))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, store, store_transaction_id, is_test)
+		VALUES ($1, $2, $3, $4, 300, $5, 'app_store', '2000000000000001', true)
+	`, uuid.New(), tenant.ID, reviewer.ID, episode.ID, statDate.Add(11*time.Hour)); err != nil {
+		t.Fatalf("insert test purchase: %v", err)
+	}
+
+	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	key := statKey{tenantID: tenant.ID, entityType: "episode", entityID: episode.ID}
+	if got := loadStats(t, pg.DB, statDate)[key].purchaseCount; got != 1 {
+		t.Fatalf("purchase_count = %d, want 1", got)
+	}
+}
+
 func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

@@ -95,6 +95,7 @@ type Querier interface {
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
 	// that was down over one still catches up instead of collecting it.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
+	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
 	// For the tenant dashboard.
@@ -238,6 +239,9 @@ type Querier interface {
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
 	CreateSeriesTag(ctx context.Context, arg CreateSeriesTagParams) error
+	// Records a verified store transaction. A transaction is sold once, so a
+	// second insert of the same one is no row and the caller reads the first.
+	CreateStorePurchase(ctx context.Context, arg CreateStorePurchaseParams) (Purchase, error)
 	// Tenant creation for platform administrators.
 	// default_locale has no column DEFAULT, so the caller always passes it
 	// explicitly. timezone is not left to its column DEFAULT either: the
@@ -385,6 +389,9 @@ type Querier interface {
 	// rate assembled from one page's rows would describe that page instead of the
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
+	// The reading period a purchase of the episode is granted for, read from the
+	// listing the Stripe checkout reads it from.
+	GetEpisodeReadingPeriodHours(ctx context.Context, arg GetEpisodeReadingPeriodHoursParams) (sql.NullInt32, error)
 	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -417,6 +424,8 @@ type Querier interface {
 	// access the save is: an episode they may no longer open has no position to
 	// resume, and answering with one would tell them the row is still there.
 	GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error)
+	// One purchase of the reader's, shaped as the library lists it.
+	GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (GetMyPurchaseRow, error)
 	// What this reader's own reactions say about the series: the mean of the scores
 	// they gave, over the episodes they reacted to and no others. A reader who
 	// finished an episode without reacting is not in this divisor, which is where
@@ -582,6 +591,7 @@ type Querier interface {
 	// reactions — a reaction given today reaches the aggregates with the next run,
 	// and a series shows nothing at all until it does.
 	GetSeriesRating(ctx context.Context, arg GetSeriesRatingParams) (GetSeriesRatingRow, error)
+	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
 	// for the reason GetGenreIDByPublicIDForTenant gives.
@@ -1481,7 +1491,8 @@ type Querier interface {
 	//
 	// The month runs from the first day's midnight to the next month's in the
 	// given zone. A fully refunded sale is not a sale; a partial refund stays a
-	// sale and is carried as refunded_amount. The payout is floored per line over
+	// sale and is carried as refunded_amount. A store's test purchase paid the
+	// tenant nothing and is not a sale either. The payout is floored per line over
 	// the month's sum, which keeps the rounding loss to one yen per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
@@ -1701,6 +1712,10 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
+	// Takes the intent a verified transaction names, holding it until the purchase
+	// it becomes is written, so two confirmations of different transactions
+	// cannot both consume it.
+	LockStorePurchaseIntent(ctx context.Context, arg LockStorePurchaseIntentParams) (StorePurchaseIntent, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -1802,6 +1817,10 @@ type Querier interface {
 	// code. Affecting no row is therefore a reused code, not a missing account.
 	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error)
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// Opens the reader's intent to buy an episode as a store product, or answers
+	// the one already open for the same episode and product, so asking again adds
+	// no row. The no-op update is what makes the existing row come back.
+	OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error)
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning
@@ -1860,6 +1879,10 @@ type Querier interface {
 	// this projection into that aggregate until its source contract moves to
 	// content_events, or purchases will be counted twice.
 	ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error)
+	// Projects a store purchase the way ProjectPurchaseContentEvent projects a
+	// Stripe one, found by the purchase's own ID since a store purchase has no
+	// Checkout Session.
+	ProjectPurchaseContentEventByID(ctx context.Context, arg ProjectPurchaseContentEventByIDParams) (ContentEvent, error)
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over

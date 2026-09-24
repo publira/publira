@@ -154,21 +154,31 @@ func (s *apiServer) StartEpisodeCheckout(
 // app sells through the store: that app may not send a reader to the external
 // checkout, whatever an out-of-date build asks for.
 func (s *apiServer) refuseCheckoutForStoreRoute(ctx context.Context, tenantID uuid.UUID) error {
-	stored, err := s.queriesFor(ctx).GetTenantAppPurchaseRoute(ctx, tenantID)
+	route, err := s.appPurchaseRoute(ctx, tenantID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		return s.internalDBError(ctx, "failed to get tenant app purchase route", err, "tenant_id", tenantID.String())
-	}
-	route, err := paymentsettings.ResolveAppPurchaseRoute(stored)
-	if err != nil {
-		return s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenantID.String())
+		return err
 	}
 	if route == paymentsettings.RouteStore {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app sells through the store"))
 	}
 	return nil
+}
+
+// appPurchaseRoute answers how the tenant's app sells. A tenant that saved no
+// settings sells through the external checkout.
+func (s *apiServer) appPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error) {
+	stored, err := s.queriesFor(ctx).GetTenantAppPurchaseRoute(ctx, tenantID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return paymentsettings.RouteExternalCheckout, nil
+		}
+		return "", s.internalDBError(ctx, "failed to get tenant app purchase route", err, "tenant_id", tenantID.String())
+	}
+	route, err := paymentsettings.ResolveAppPurchaseRoute(stored)
+	if err != nil {
+		return "", s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenantID.String())
+	}
+	return route, nil
 }
 
 type purchasePageRow struct {
