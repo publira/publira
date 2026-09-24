@@ -11,16 +11,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
-	"github.com/publira/publira/server/internal/auth"
-	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
-	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -187,38 +184,23 @@ func (s *platformServer) CreateTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateTenantRequest],
 ) (*connect.Response[publirasplatformv1.CreateTenantResponse], error) {
-	name := strings.TrimSpace(req.Msg.Name)
-	if name == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
-	}
-	domain := strings.TrimSpace(req.Msg.Domain)
-	if domain == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
-	}
-	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	creation, err := platformtenants.CreateParams{
+		Name:               req.Msg.Name,
+		Domain:             req.Msg.Domain,
+		AdminDomain:        req.Msg.AdminDomain,
+		DefaultLocale:      req.Msg.DefaultLocale,
+		InitialAdminEmails: req.Msg.InitialAdminEmails,
+	}.Validate()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, s.platformTenantError(ctx, "invalid create tenant request", err)
 	}
-	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
-	initialAdminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
-	seenInitialAdminEmail := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
-	for _, rawEmail := range req.Msg.InitialAdminEmails {
-		email := strings.TrimSpace(strings.ToLower(rawEmail))
-		if email == "" {
-			continue
-		}
-		if _, err := mail.ParseAddress(email); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid initial_admin_emails"))
-		}
-		if _, exists := seenInitialAdminEmail[email]; exists {
-			continue
-		}
-		seenInitialAdminEmail[email] = struct{}{}
-		initialAdminEmails = append(initialAdminEmails, email)
+	actor, err := s.requirePlatformActor(ctx, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	// A new tenant has no users yet, so every initial administrator is sent an
 	// invitation, and each one is charged before the tenant is written.
-	if err := s.mail.AllowEach(ctx, req, mailguard.PlatformScope, initialAdminEmails); err != nil {
+	if err := s.mail.AllowEach(ctx, req, mailguard.PlatformScope, creation.InitialAdminEmails()); err != nil {
 		return nil, err
 	}
 
@@ -228,115 +210,35 @@ func (s *platformServer) CreateTenant(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	txq := dbmodels.New(tx)
-	pendingInvitationEmails := make([]string, 0, len(initialAdminEmails))
-
-	tenantID, err := uuid.NewV7()
+	created, err := platformtenants.Create(ctx, tx, s.logger, auditlog.PlatformActor{
+		UserID:   actor.UserID,
+		Role:     actor.Role,
+		ClientIP: auditlog.ClientIPFromHeader(req.Header()),
+	}, creation)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.platformTenantError(ctx, "failed to create tenant", err)
 	}
-
-	// The time zone is applied explicitly instead of relying on the column
-	// default, so an install that changed it starts every new tenant on it.
-	// The locale comes from the request: the server never picks a language.
-	defaultTimezone := platformconfig.DefaultTimeZone(ctx, txq)
-
-	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
-		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-			ID:            tenantID,
-			PublicID:      publicID,
-			Domain:        domain,
-			AdminDomain:   adminDomain,
-			Name:          name,
-			Timezone:      defaultTimezone,
-			DefaultLocale: defaultLocale,
-		})
-	})
-	if err != nil {
-		if field := tenantUniqueViolationField(err); field != "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New(field+" already exists"), field)
-		}
-		return nil, s.internalDBError(ctx, "failed to create tenant", err)
-	}
-
-	if err := creatorroles.CreateDefaults(ctx, tx, tenant.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to create default creator roles", err, "tenant_id", tenant.ID.String())
-	}
-
-	for _, email := range initialAdminEmails {
-		user, err := txq.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			Email:    email,
-		})
-		if err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
-				return nil, s.internalDBError(ctx, "failed to get user by email for tenant", err, "tenant_id", tenant.ID.String())
-			}
-
-			invitation, err := tenantmembers.IssueInvitation(ctx, txq, tenant.ID, email)
-			if err != nil {
-				return nil, s.internalDBError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
-			}
-			pendingInvitationEmails = append(pendingInvitationEmails, invitation.Email)
-			continue
-		}
-
-		roles, err := txq.ListTenantUserRoles(ctx, user.ID)
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to list tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-		}
-		if len(roles) > 0 {
-			continue
-		}
-
-		_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-			ID:       uuid.Must(uuid.NewV7()),
-			TenantID: tenant.ID,
-			UserID:   user.ID,
-			Role:     auth.RoleTenantAdmin,
-		})
-		if err != nil {
-			if dberr.IsUniqueViolation(err) {
-				continue
-			}
-			return nil, s.internalDBError(ctx, "failed to create tenant user role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit create tenant", err, "tenant_id", tenant.ID.String())
-	}
-
-	for _, email := range pendingInvitationEmails {
-		if actor, ok := platformActorFromContext(ctx); ok {
-			s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-				ActorPlatformUserID: actor.UserID,
-				ActorRole:           actor.Role,
-				Action:              "tenant_admin_invited",
-				TargetType:          "tenant_admin_invitation",
-				TargetID:            email,
-				Outcome:             auditlog.OutcomeSuccess,
-				ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
-			})
-		}
-	}
-
-	// Record audit log
-	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-			ActorPlatformUserID: actor.UserID,
-			ActorRole:           actor.Role,
-			Action:              "tenant_created",
-			TargetType:          "tenant",
-			TargetID:            tenant.ID.String(),
-			Outcome:             auditlog.OutcomeSuccess,
-			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
-		})
+		return nil, s.internalDBError(ctx, "failed to commit create tenant", err, "tenant_id", created.Tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.CreateTenantResponse{
-		Tenant: tenantToProto(tenant, func() string { return defaultTimezone }),
+		Tenant: tenantToProto(created.Tenant, func() string { return created.Tenant.Timezone }),
 	}), nil
+}
+
+// platformTenantError maps what platformtenants refuses to this API's codes,
+// naming the request field it refused; anything else is a database failure.
+func (s *platformServer) platformTenantError(ctx context.Context, msg string, err error) error {
+	var invalid *platformtenants.InvalidError
+	if errors.As(err, &invalid) {
+		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, invalid, invalid.Field)
+	}
+	var conflict *platformtenants.ConflictError
+	if errors.As(err, &conflict) {
+		return rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, conflict, conflict.Field)
+	}
+	return s.internalDBError(ctx, msg, err)
 }
 
 func (s *platformServer) SuspendTenant(

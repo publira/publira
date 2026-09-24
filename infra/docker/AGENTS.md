@@ -10,7 +10,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | --- | --- |
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
-| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install; carries `db/migrations` for `db migrate` and every maintenance job an operator runs by hand, which the worker schedules as well |
+| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install: `db migrate` over the `db/migrations` it carries, every maintenance job an operator runs by hand (the worker schedules them as well), and `tenant create` |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
