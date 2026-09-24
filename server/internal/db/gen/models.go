@@ -461,7 +461,7 @@ type PlatformAuditLog struct {
 	Reason              sql.NullString `json:"reason"`
 	ClientIp            sql.NullString `json:"client_ip"`
 	CreatedAt           time.Time      `json:"created_at"`
-	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
 }
 
 type PlatformConfig struct {
