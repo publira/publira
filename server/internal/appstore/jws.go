@@ -43,7 +43,11 @@ var (
 	ErrMalformed = errors.New("appstore: signed payload is malformed")
 )
 
-//go:embed AppleRootCA-G3.pem
+// appleRootCAG3 is AppleRootCA-G3.cer as Apple publishes it at
+// https://www.apple.com/certificateauthority/, in DER, whose SHA-256
+// fingerprint is 63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B3A8C488C3653E9179.
+//
+//go:embed AppleRootCA-G3.cer
 var appleRootCAG3 []byte
 
 // Marker extensions Apple puts on the certificates that sign App Store
@@ -79,10 +83,12 @@ type Verifier struct {
 
 // NewVerifier trusts Apple Root CA - G3 alone.
 func NewVerifier() *Verifier {
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(appleRootCAG3) {
+	root, err := x509.ParseCertificate(appleRootCAG3)
+	if err != nil {
 		panic("appstore: the embedded Apple root certificate does not parse")
 	}
+	roots := x509.NewCertPool()
+	roots.AddCert(root)
 	return NewVerifierWithRoots(roots, time.Now)
 }
 
