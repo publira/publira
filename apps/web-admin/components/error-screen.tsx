@@ -1,32 +1,28 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
+import { AdminPage, AdminPageContent } from "#components/admin-page";
+
+interface ErrorScreenState {
+  digest: string | undefined;
+  retry: () => void;
+}
+
+const ErrorScreenStateContext = createContext<ErrorScreenState | null>(null);
 
 interface ErrorScreenProps {
-  /** Extra navigation shown next to the retry button. */
-  actions?: ReactNode;
-  description: ReactNode;
-  digestLabel: ReactNode;
+  /** The console page header, with `ErrorScreenRetry` among its actions, and an `ErrorScreenDigest`. */
+  children: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
    * handle an operator can quote to match the server log.
    */
-  digest?: string;
+  digest: string | undefined;
   retry: () => void;
-  retryLabel: ReactNode;
-  title: ReactNode;
 }
 
 /**
@@ -37,40 +33,71 @@ interface ErrorScreenProps {
  * heading rhythm as every other console page; the scaffold components are
  * plain markup and hold no server-only code.
  *
- * Every string is a node the boundary passes in. This screen resolves no copy
- * of its own, so a boundary that has to load its copy writes the `<Suspense>`
- * each string waits behind where the string is chosen.
+ * Every string is a child the boundary writes, because `app/[tenant_id]/error.tsx`
+ * sits above the provider `<ClientMessage>` reads and resolves its copy another way.
  *
- * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
- * error state, while `retry()` re-fetches and re-renders the boundary's
- * children, which is what an operator means by Retry.
+ * ```tsx
+ * <ErrorScreen digest={error.digest} retry={retry}>
+ *   <AdminPageHeader>
+ *     <AdminPageHeading>
+ *       <AdminPageTitle>…</AdminPageTitle>
+ *       <AdminPageDescription>…</AdminPageDescription>
+ *     </AdminPageHeading>
+ *     <AdminPageActions>
+ *       <ErrorScreenRetry>…</ErrorScreenRetry>
+ *     </AdminPageActions>
+ *   </AdminPageHeader>
+ *   <ErrorScreenDigest>…</ErrorScreenDigest>
+ * </ErrorScreen>
+ * ```
  */
-export const ErrorScreen = ({
-  actions,
-  description,
-  digest,
-  digestLabel,
-  retry,
-  retryLabel,
-  title,
-}: ErrorScreenProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>{title}</AdminPageTitle>
-        <AdminPageDescription>{description}</AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <Button onClick={() => retry()}>{retryLabel}</Button>
-        {actions}
-      </AdminPageActions>
-    </AdminPageHeader>
-    {digest ? (
-      <AdminPageContent>
-        <p className="text-xs text-muted-foreground">
-          {digestLabel} <code className="font-mono">{digest}</code>
-        </p>
-      </AdminPageContent>
-    ) : null}
-  </AdminPage>
-);
+export const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
+  const state = useMemo(() => ({ digest, retry }), [digest, retry]);
+
+  return (
+    <ErrorScreenStateContext value={state}>
+      <AdminPage>{children}</AdminPage>
+    </ErrorScreenStateContext>
+  );
+};
+
+const useErrorScreenState = (): ErrorScreenState => {
+  const state = useContext(ErrorScreenStateContext);
+  if (!state) {
+    throw new Error(
+      "ErrorScreenRetry and ErrorScreenDigest must be rendered inside an ErrorScreen."
+    );
+  }
+  return state;
+};
+
+/**
+ * The control that re-renders the boundary; its children are its label.
+ * `retry()` rather than `reset()`, because only `retry()` re-fetches the
+ * boundary's children, which is what an operator means by Retry.
+ */
+export const ErrorScreenRetry = ({ children }: { children: ReactNode }) => {
+  const { retry } = useErrorScreenState();
+
+  return <Button onClick={() => retry()}>{children}</Button>;
+};
+
+/**
+ * The digest line, behind the children as its prefix ("Error ID:"). Nothing is
+ * rendered when the error carries no digest.
+ */
+export const ErrorScreenDigest = ({ children }: { children: ReactNode }) => {
+  const { digest } = useErrorScreenState();
+
+  if (!digest) {
+    return null;
+  }
+
+  return (
+    <AdminPageContent>
+      <p className="text-xs text-muted-foreground">
+        {children} <code className="font-mono">{digest}</code>
+      </p>
+    </AdminPageContent>
+  );
+};

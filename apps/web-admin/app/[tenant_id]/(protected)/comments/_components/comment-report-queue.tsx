@@ -2,6 +2,11 @@ import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -30,7 +35,11 @@ import {
 } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -292,20 +301,20 @@ const CommentReportListBody = ({
 
   if (reports.length === 0) {
     return (
-      <CursorPageEmptyState
-        description={
-          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-            <Message message="admin.comments.reports.empty_description" />
-          </Suspense>
-        }
-        hasPageLinks={hasPageLinks}
-        itemLabel={itemLabel}
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.comments.reports.empty_title" />
-          </Suspense>
-        }
-      />
+      <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
+        <EmptyStateHeading>
+          <EmptyStateTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.comments.reports.empty_title" />
+            </Suspense>
+          </EmptyStateTitle>
+          <EmptyStateDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.comments.reports.empty_description" />
+            </Suspense>
+          </EmptyStateDescription>
+        </EmptyStateHeading>
+      </CursorPageEmptyState>
     );
   }
 
@@ -449,19 +458,21 @@ export const CommentReportQueue = async ({
       />
 
       {showPagination ? (
-        <PaginationFooter
-          ariaLabel={t("admin.comments.reports.pagination_aria")}
-          description={
+        <PaginationFooter>
+          <PaginationFooterDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message
                 message="admin.comments.reports.pagination_description"
                 values={{ count: pageSize }}
               />
             </Suspense>
-          }
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.comments.reports.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </AdminSection>
   );

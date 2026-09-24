@@ -1,5 +1,11 @@
 import { LinkButton } from "@publira/ui-components/button";
 import {
+  EmptyStateActions,
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -27,7 +33,11 @@ import {
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
@@ -181,28 +191,37 @@ const SeriesEpisodesData = async ({
     return (
       <>
         <CursorPageEmptyState
-          actions={
+          hasPageLinks={hasPageLinks}
+          itemLabel={t("admin.series.episodes.title")}
+        >
+          <EmptyStateHeading>
+            <EmptyStateTitle>
+              {t("admin.series.episodes.empty_title")}
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              <Message message="admin.series.episodes.empty_description" />
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+          <EmptyStateActions>
             <LinkButton
               render={<Link href={`/series/${series_id}/episodes/new`} />}
             >
               <Message message="admin.series.episodes.create_action" />
             </LinkButton>
-          }
-          description={
-            <Message message="admin.series.episodes.empty_description" />
-          }
-          hasPageLinks={hasPageLinks}
-          itemLabel={t("admin.series.episodes.title")}
-          title={t("admin.series.episodes.empty_title")}
-        />
+          </EmptyStateActions>
+        </CursorPageEmptyState>
         {hasPageLinks ? (
-          <PaginationFooter
-            {...pageHrefs}
-            ariaLabel={t("admin.series.episodes.pagination_aria")}
-            description={t("admin.series.episodes.pagination_description", {
-              count: DEFAULT_PAGE_SIZE,
-            })}
-          />
+          <PaginationFooter>
+            <PaginationFooterDescription>
+              {t("admin.series.episodes.pagination_description", {
+                count: DEFAULT_PAGE_SIZE,
+              })}
+            </PaginationFooterDescription>
+            <PaginationControls
+              {...pageHrefs}
+              aria-label={t("admin.series.episodes.pagination_aria")}
+            />
+          </PaginationFooter>
         ) : null}
       </>
     );
@@ -227,13 +246,17 @@ const SeriesEpisodesData = async ({
           timeZone={timeZone}
         />
       </div>
-      <PaginationFooter
-        {...pageHrefs}
-        ariaLabel={t("admin.series.episodes.pagination_aria")}
-        description={t("admin.series.episodes.pagination_description", {
-          count: DEFAULT_PAGE_SIZE,
-        })}
-      />
+      <PaginationFooter>
+        <PaginationFooterDescription>
+          {t("admin.series.episodes.pagination_description", {
+            count: DEFAULT_PAGE_SIZE,
+          })}
+        </PaginationFooterDescription>
+        <PaginationControls
+          {...pageHrefs}
+          aria-label={t("admin.series.episodes.pagination_aria")}
+        />
+      </PaginationFooter>
     </>
   );
 };

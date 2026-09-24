@@ -1,5 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   Figure,
   FigureLabel,
   FigureLine,
@@ -42,7 +47,11 @@ import {
 } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -250,13 +259,18 @@ const EngagementContent = async ({
         </AdminSectionHeader>
         {result.episodes.length === 0 ? (
           <CursorPageEmptyState
-            description={
-              <Message message="admin.engagement.empty_description" />
-            }
             hasPageLinks={hasPageLinks}
             itemLabel={t("admin.engagement.title")}
-            title={t("admin.engagement.empty_title")}
-          />
+          >
+            <EmptyStateHeading>
+              <EmptyStateTitle>
+                {t("admin.engagement.empty_title")}
+              </EmptyStateTitle>
+              <EmptyStateDescription>
+                <Message message="admin.engagement.empty_description" />
+              </EmptyStateDescription>
+            </EmptyStateHeading>
+          </CursorPageEmptyState>
         ) : (
           <Table>
             <TableHeader>
@@ -313,13 +327,17 @@ const EngagementContent = async ({
         )}
 
         {result.episodes.length > 0 || hasPageLinks ? (
-          <PaginationFooter
-            {...pageHrefs}
-            ariaLabel={t("admin.engagement.pagination_aria")}
-            description={t("admin.engagement.pagination_description", {
-              count: DEFAULT_PAGE_SIZE,
-            })}
-          />
+          <PaginationFooter>
+            <PaginationFooterDescription>
+              {t("admin.engagement.pagination_description", {
+                count: DEFAULT_PAGE_SIZE,
+              })}
+            </PaginationFooterDescription>
+            <PaginationControls
+              {...pageHrefs}
+              aria-label={t("admin.engagement.pagination_aria")}
+            />
+          </PaginationFooter>
         ) : null}
       </AdminSection>
     </AdminSections>

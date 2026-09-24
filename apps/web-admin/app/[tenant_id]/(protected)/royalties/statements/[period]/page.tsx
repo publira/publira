@@ -1,5 +1,10 @@
 import { LinkButton } from "@publira/ui-components/button";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorActions,
   SectionErrorDescription,
@@ -39,7 +44,11 @@ import {
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -214,30 +223,37 @@ const StatementContent = async ({
         </AdminSectionHeader>
         {result.lines.length === 0 ? (
           <CursorPageEmptyState
-            description={
-              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                <Message message="admin.royalties.lines.empty_description" />
-              </Suspense>
-            }
             hasPageLinks={hasPageLinks}
             itemLabel={t("admin.royalties.statement.item_label")}
-            title={
-              <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
-                <Message message="admin.royalties.lines.empty_title" />
-              </Suspense>
-            }
-          />
+          >
+            <EmptyStateHeading>
+              <EmptyStateTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                  <Message message="admin.royalties.lines.empty_title" />
+                </Suspense>
+              </EmptyStateTitle>
+              <EmptyStateDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                  <Message message="admin.royalties.lines.empty_description" />
+                </Suspense>
+              </EmptyStateDescription>
+            </EmptyStateHeading>
+          </CursorPageEmptyState>
         ) : (
           <RoyaltyLinesTable lines={result.lines} locale={locale} />
         )}
         {result.lines.length > 0 || hasPageLinks ? (
-          <PaginationFooter
-            {...pageHrefs}
-            ariaLabel={t("admin.royalties.statement.pagination_aria")}
-            description={t("admin.royalties.statement.pagination_description", {
-              count: String(DEFAULT_PAGE_SIZE),
-            })}
-          />
+          <PaginationFooter>
+            <PaginationFooterDescription>
+              {t("admin.royalties.statement.pagination_description", {
+                count: String(DEFAULT_PAGE_SIZE),
+              })}
+            </PaginationFooterDescription>
+            <PaginationControls
+              {...pageHrefs}
+              aria-label={t("admin.royalties.statement.pagination_aria")}
+            />
+          </PaginationFooter>
         ) : null}
       </AdminSection>
     </AdminSections>

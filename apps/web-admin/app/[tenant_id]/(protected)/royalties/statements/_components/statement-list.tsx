@@ -1,6 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
+  EmptyStateDescription,
+  EmptyStateHeading,
+  EmptyStateTitle,
+} from "@publira/ui-components/empty-state";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -26,7 +31,11 @@ import { Suspense } from "react";
 import { AdminSection } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import { PaginationFooter } from "#components/pagination-controls";
+import {
+  PaginationControls,
+  PaginationFooter,
+  PaginationFooterDescription,
+} from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -73,19 +82,22 @@ export const StatementList = async ({
     <AdminSection>
       {statements.length === 0 ? (
         <CursorPageEmptyState
-          description={
-            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="admin.royalties.statements.empty_description" />
-            </Suspense>
-          }
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.royalties.statements.item_label")}
-          title={
-            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.royalties.statements.empty_title" />
-            </Suspense>
-          }
-        />
+        >
+          <EmptyStateHeading>
+            <EmptyStateTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.royalties.statements.empty_title" />
+              </Suspense>
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+                <Message message="admin.royalties.statements.empty_description" />
+              </Suspense>
+            </EmptyStateDescription>
+          </EmptyStateHeading>
+        </CursorPageEmptyState>
       ) : (
         <Table>
           <TableHeader>
@@ -176,19 +188,21 @@ export const StatementList = async ({
       )}
 
       {statements.length > 0 || hasPageLinks ? (
-        <PaginationFooter
-          ariaLabel={t("admin.royalties.statements.pagination_aria")}
-          description={
+        <PaginationFooter>
+          <PaginationFooterDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <Message
                 message="admin.royalties.statements.pagination_description"
                 values={{ count: String(pageSize) }}
               />
             </Suspense>
-          }
-          nextHref={nextHref}
-          previousHref={previousHref}
-        />
+          </PaginationFooterDescription>
+          <PaginationControls
+            aria-label={t("admin.royalties.statements.pagination_aria")}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        </PaginationFooter>
       ) : null}
     </AdminSection>
   );

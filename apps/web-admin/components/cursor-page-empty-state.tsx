@@ -1,6 +1,5 @@
 import {
   EmptyState,
-  EmptyStateActions,
   EmptyStateDescription,
   EmptyStateHeading,
   EmptyStateTitle,
@@ -12,11 +11,14 @@ import type { ReactNode } from "react";
 import { Message } from "#components/message";
 
 interface CursorPageEmptyStateProps {
-  actions?: ReactNode;
-  description: ReactNode;
+  /**
+   * The empty state of the whole list — its `EmptyStateHeading` and, where a
+   * record can be created, its `EmptyStateActions`.
+   */
+  children: ReactNode;
   hasPageLinks: boolean;
+  /** The list's name, interpolated into the wording of a page that lost its rows. */
   itemLabel: string;
-  title: ReactNode;
 }
 
 /**
@@ -24,20 +26,28 @@ interface CursorPageEmptyStateProps {
  * cannot tell apart from the row count alone.
  *
  * Without page links the list holds every row it has, so an empty page means
- * nothing is registered yet and the caller's own wording (plus its "create
- * one" action) is right. With page links the list only lost the rows this page
+ * nothing is registered yet and the caller's `children` (with its "create one"
+ * action) are right. With page links the list only lost the rows this page
  * pointed at, and the way out is the pager rather than a new record — so the
- * create action is dropped and the wording says so.
+ * children are dropped for this component's own wording.
+ *
+ * ```tsx
+ * <CursorPageEmptyState hasPageLinks={…} itemLabel={…}>
+ *   <EmptyStateHeading>
+ *     <EmptyStateTitle>…</EmptyStateTitle>
+ *     <EmptyStateDescription>…</EmptyStateDescription>
+ *   </EmptyStateHeading>
+ *   <EmptyStateActions>…</EmptyStateActions>
+ * </CursorPageEmptyState>
+ * ```
  */
 export const CursorPageEmptyState = ({
-  actions,
-  description,
+  children,
   hasPageLinks,
   itemLabel,
-  title,
-}: CursorPageEmptyStateProps) =>
-  hasPageLinks ? (
-    <EmptyState>
+}: CursorPageEmptyStateProps) => (
+  <EmptyState>
+    {hasPageLinks ? (
       <EmptyStateHeading>
         <EmptyStateTitle>
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -53,13 +63,8 @@ export const CursorPageEmptyState = ({
           </Suspense>
         </EmptyStateDescription>
       </EmptyStateHeading>
-    </EmptyState>
-  ) : (
-    <EmptyState>
-      <EmptyStateHeading>
-        <EmptyStateTitle>{title}</EmptyStateTitle>
-        <EmptyStateDescription>{description}</EmptyStateDescription>
-      </EmptyStateHeading>
-      {actions ? <EmptyStateActions>{actions}</EmptyStateActions> : null}
-    </EmptyState>
-  );
+    ) : (
+      children
+    )}
+  </EmptyState>
+);
