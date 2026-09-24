@@ -121,9 +121,15 @@ func commentCursor(token string, listKey pagination.ListKey) (pagination.Cursor,
 	return cursor, keys, nil
 }
 
-// commentListKey names the comment list of one episode.
-func commentListKey(episodePublicID string) pagination.ListKey {
+// publicCommentListKey names the published comment list of one episode.
+func publicCommentListKey(episodePublicID string) pagination.ListKey {
 	return pagination.NewListKey("created_at_desc").Value("episode_public_id", episodePublicID)
+}
+
+// myCommentListKey names the caller's own unpublished comments on one episode,
+// a different set of rows from the public list of the same episode.
+func myCommentListKey(episodePublicID string) pagination.ListKey {
+	return publicCommentListKey(episodePublicID).Flag("own", true)
 }
 
 // publicCommentPageRow is one row of either direction of the public list,
@@ -210,7 +216,7 @@ func (s *apiServer) ListEpisodeComments(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
-	listKey := commentListKey(episode.PublicID)
+	listKey := publicCommentListKey(episode.PublicID)
 	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
 	if err != nil {
 		return nil, err
@@ -331,7 +337,7 @@ func (s *apiServer) ListMyEpisodeComments(
 		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
-	listKey := commentListKey(episode.PublicID)
+	listKey := myCommentListKey(episode.PublicID)
 	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
 	if err != nil {
 		return nil, err

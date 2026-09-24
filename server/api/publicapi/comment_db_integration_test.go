@@ -608,7 +608,7 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 	}
 }
 
-// A comment token names one episode's list, whichever of the two lists issued it.
+// A comment token names one list of one episode.
 func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 	fixture := newCommentFixture(t, "TOK")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
@@ -655,6 +655,23 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 	recovery := pagination.NewListKey("created_at_desc").
 		Value("episode_public_id", episode.PublicID).
 		EncodeTimeUUIDRecovery(pagination.Backward, time.Now().UTC(), uuid.Must(uuid.NewV7()))
+	// The two lists of one episode hold different rows, so neither takes the
+	// other's token.
+	if _, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Token:           mine.Msg.NextToken,
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListEpisodeComments with the own list's token error = %v, want invalid_argument", err)
+	}
+	if _, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Token:           public.NextToken,
+	}, tokenFor(t, tenant, member))); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListMyEpisodeComments with the public list's token error = %v, want invalid_argument", err)
+	}
+
 	for name, token := range map[string]string{
 		"public boundary": public.NextToken,
 		"own boundary":    mine.Msg.NextToken,
