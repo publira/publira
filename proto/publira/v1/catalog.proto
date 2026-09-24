@@ -1227,19 +1227,23 @@ message ListMyPurchasesResponse {
   string next_token = 3;
 }
 
-// `web-host` forwards Stripe's raw request body and signature to this RPC.
-// Signature verification and all purchase validation stay on the API server.
-message ProcessStripeWebhookRequest {
+// `web-host` forwards a payment provider's raw request body and headers to this
+// RPC. Signature verification and all purchase validation stay on the API
+// server, which reads the signature from the header the provider declares.
+message ProcessPaymentWebhookRequest {
   publira.types.v1.TenantContext tenant = 1;
-  bytes payload = 2;
-  string stripe_signature = 3;
+  // The id of the provider the notification came from, such as `stripe`.
+  string provider = 2;
+  bytes payload = 3;
+  // The request headers, keyed by name. Names are matched case-insensitively.
+  map<string, string> headers = 4;
 }
 
-message ProcessStripeWebhookResponse {}
+message ProcessPaymentWebhookResponse {}
 
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
   // Lists only the authenticated reader's purchases in the requested tenant.
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
-  rpc ProcessStripeWebhook(ProcessStripeWebhookRequest) returns (ProcessStripeWebhookResponse) {}
+  rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}
 }

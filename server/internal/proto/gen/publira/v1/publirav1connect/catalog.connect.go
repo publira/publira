@@ -140,9 +140,9 @@ const (
 	// PurchaseServiceListMyPurchasesProcedure is the fully-qualified name of the PurchaseService's
 	// ListMyPurchases RPC.
 	PurchaseServiceListMyPurchasesProcedure = "/publira.v1.PurchaseService/ListMyPurchases"
-	// PurchaseServiceProcessStripeWebhookProcedure is the fully-qualified name of the PurchaseService's
-	// ProcessStripeWebhook RPC.
-	PurchaseServiceProcessStripeWebhookProcedure = "/publira.v1.PurchaseService/ProcessStripeWebhook"
+	// PurchaseServiceProcessPaymentWebhookProcedure is the fully-qualified name of the
+	// PurchaseService's ProcessPaymentWebhook RPC.
+	PurchaseServiceProcessPaymentWebhookProcedure = "/publira.v1.PurchaseService/ProcessPaymentWebhook"
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -1466,7 +1466,7 @@ type PurchaseServiceClient interface {
 	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
-	ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error)
+	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
 }
 
 // NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. By
@@ -1492,10 +1492,10 @@ func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
 			connect.WithClientOptions(opts...),
 		),
-		processStripeWebhook: connect.NewClient[v1.ProcessStripeWebhookRequest, v1.ProcessStripeWebhookResponse](
+		processPaymentWebhook: connect.NewClient[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse](
 			httpClient,
-			baseURL+PurchaseServiceProcessStripeWebhookProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("ProcessStripeWebhook")),
+			baseURL+PurchaseServiceProcessPaymentWebhookProcedure,
+			connect.WithSchema(purchaseServiceMethods.ByName("ProcessPaymentWebhook")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -1503,9 +1503,9 @@ func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // purchaseServiceClient implements PurchaseServiceClient.
 type purchaseServiceClient struct {
-	startEpisodeCheckout *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
-	listMyPurchases      *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
-	processStripeWebhook *connect.Client[v1.ProcessStripeWebhookRequest, v1.ProcessStripeWebhookResponse]
+	startEpisodeCheckout  *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
+	listMyPurchases       *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
+	processPaymentWebhook *connect.Client[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse]
 }
 
 // StartEpisodeCheckout calls publira.v1.PurchaseService.StartEpisodeCheckout.
@@ -1518,9 +1518,9 @@ func (c *purchaseServiceClient) ListMyPurchases(ctx context.Context, req *connec
 	return c.listMyPurchases.CallUnary(ctx, req)
 }
 
-// ProcessStripeWebhook calls publira.v1.PurchaseService.ProcessStripeWebhook.
-func (c *purchaseServiceClient) ProcessStripeWebhook(ctx context.Context, req *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error) {
-	return c.processStripeWebhook.CallUnary(ctx, req)
+// ProcessPaymentWebhook calls publira.v1.PurchaseService.ProcessPaymentWebhook.
+func (c *purchaseServiceClient) ProcessPaymentWebhook(ctx context.Context, req *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error) {
+	return c.processPaymentWebhook.CallUnary(ctx, req)
 }
 
 // PurchaseServiceHandler is an implementation of the publira.v1.PurchaseService service.
@@ -1528,7 +1528,7 @@ type PurchaseServiceHandler interface {
 	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
-	ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error)
+	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
 }
 
 // NewPurchaseServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1550,10 +1550,10 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 		connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
 		connect.WithHandlerOptions(opts...),
 	)
-	purchaseServiceProcessStripeWebhookHandler := connect.NewUnaryHandler(
-		PurchaseServiceProcessStripeWebhookProcedure,
-		svc.ProcessStripeWebhook,
-		connect.WithSchema(purchaseServiceMethods.ByName("ProcessStripeWebhook")),
+	purchaseServiceProcessPaymentWebhookHandler := connect.NewUnaryHandler(
+		PurchaseServiceProcessPaymentWebhookProcedure,
+		svc.ProcessPaymentWebhook,
+		connect.WithSchema(purchaseServiceMethods.ByName("ProcessPaymentWebhook")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/publira.v1.PurchaseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1562,8 +1562,8 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 			purchaseServiceStartEpisodeCheckoutHandler.ServeHTTP(w, r)
 		case PurchaseServiceListMyPurchasesProcedure:
 			purchaseServiceListMyPurchasesHandler.ServeHTTP(w, r)
-		case PurchaseServiceProcessStripeWebhookProcedure:
-			purchaseServiceProcessStripeWebhookHandler.ServeHTTP(w, r)
+		case PurchaseServiceProcessPaymentWebhookProcedure:
+			purchaseServiceProcessPaymentWebhookHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1581,6 +1581,6 @@ func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *con
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ListMyPurchases is not implemented"))
 }
 
-func (UnimplementedPurchaseServiceHandler) ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessStripeWebhook is not implemented"))
+func (UnimplementedPurchaseServiceHandler) ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessPaymentWebhook is not implemented"))
 }

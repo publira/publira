@@ -16,6 +16,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretcrypto"
 )
 
@@ -96,6 +98,15 @@ func (s Secrets) GoString() string {
 
 func (s Secrets) LogValue() slog.Value {
 	return slog.StringValue("redacted")
+}
+
+// Credentials answers the secrets under the field names the Stripe provider
+// declares, the only provider these settings can hold.
+func (s Secrets) Credentials() paymentprovider.Credentials {
+	return paymentprovider.Credentials{
+		stripe.FieldSecretKey:     s.SecretKey,
+		stripe.FieldWebhookSecret: s.WebhookSecret,
+	}
 }
 
 type UpdateInput struct {

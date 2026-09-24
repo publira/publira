@@ -31,9 +31,12 @@ export const POST = async (
 
   const payload = new Uint8Array(await request.arrayBuffer());
   try {
-    await apiClient.purchase.processStripeWebhook({
+    await apiClient.purchase.processPaymentWebhook({
+      headers: {
+        "stripe-signature": request.headers.get("stripe-signature") ?? "",
+      },
       payload,
-      stripeSignature: request.headers.get("stripe-signature") ?? "",
+      provider: "stripe",
       tenant: { tenantId },
     });
   } catch (error) {

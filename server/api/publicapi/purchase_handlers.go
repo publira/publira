@@ -3,50 +3,35 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/stripe/stripe-go/v86"
-	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
 const (
-	stripeMetadataTenantID           = "tenant_id"
-	stripeMetadataUserID             = "user_id"
-	stripeMetadataEpisodeID          = "episode_id"
-	stripeMetadataPrice              = "price"
-	stripeMetadataReadingPeriodHours = "reading_period_hours"
-
 	defaultPurchasePageSize = int32(20)
 	maxPurchasePageSize     = int32(100)
+
+	// maxPaymentWebhookPayload bounds the notification body a provider may
+	// post.
+	maxPaymentWebhookPayload = 64 << 10
 )
-
-type stripeCheckoutProvider struct {
-	client *stripe.Client
-}
-
-func newStripeCheckoutProvider(secretKey string) *stripeCheckoutProvider {
-	if strings.TrimSpace(secretKey) == "" {
-		return nil
-	}
-	return &stripeCheckoutProvider{client: stripe.NewClient(secretKey)}
-}
 
 func tenantSiteURL(tenant dbmodels.Tenant) (*url.URL, error) {
 	domain := strings.TrimSpace(tenant.Domain)
@@ -96,14 +81,9 @@ func (s *apiServer) StartEpisodeCheckout(
 		s.logger.WarnContext(ctx, "checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-	secrets, err := s.loadEnabledPaymentSecrets(ctx, tenant.ID)
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
-	}
-	stripeProvider := s.stripeProvider(secrets.SecretKey)
-	if stripeProvider == nil {
-		s.logger.WarnContext(ctx, "checkout refused because payments are not configured", "tenant_id", tenant.ID)
-		return nil, paymentsNotConfiguredError()
 	}
 
 	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeByPublicIDForTenant(ctx, dbmodels.GetPurchasableEpisodeByPublicIDForTenantParams{
@@ -150,19 +130,21 @@ func (s *apiServer) StartEpisodeCheckout(
 		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
 		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
-	checkoutURL, err := stripeProvider.create(ctx, stripeCheckoutInput{
-		cancelURL:          cancelURL,
-		episodeID:          episode.ID,
-		episodeTitle:       episode.Title,
-		idempotencyKey:     fmt.Sprintf("episode-checkout:%s:%s:%s", tenant.ID, user.ID, episode.ID),
-		price:              episode.Price,
-		readingPeriodHours: episode.ReadingPeriodHours,
-		successURL:         successURL,
-		tenantID:           tenant.ID,
-		userID:             user.ID,
+	checkoutURL, err := provider.StartCheckout(ctx, credentials, paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:           tenant.ID,
+			ReaderID:           user.ID,
+			EpisodeID:          episode.ID,
+			Price:              episode.Price,
+			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+		},
+		EpisodeTitle:   episode.Title,
+		SuccessURL:     successURL,
+		CancelURL:      cancelURL,
+		IdempotencyKey: fmt.Sprintf("episode-checkout:%s:%s:%s", tenant.ID, user.ID, episode.ID),
 	})
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to create Stripe Checkout session", "error", err, "tenant_id", tenant.ID, "episode_public_id", episodePublicID)
+		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_public_id", episodePublicID)
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("failed to start checkout"))
 	}
 	return connect.NewResponse(&publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}), nil
@@ -360,63 +342,11 @@ func (s *apiServer) ListMyPurchases(
 	return connect.NewResponse(res), nil
 }
 
-type stripeCheckoutInput struct {
-	cancelURL          string
-	episodeID          uuid.UUID
-	episodeTitle       string
-	idempotencyKey     string
-	price              int32
-	readingPeriodHours sql.NullInt32
-	successURL         string
-	tenantID           uuid.UUID
-	userID             uuid.UUID
-}
-
-func (p *stripeCheckoutProvider) create(ctx context.Context, input stripeCheckoutInput) (string, error) {
-	metadata := map[string]string{
-		stripeMetadataTenantID:  input.tenantID.String(),
-		stripeMetadataUserID:    input.userID.String(),
-		stripeMetadataEpisodeID: input.episodeID.String(),
-		stripeMetadataPrice:     strconv.FormatInt(int64(input.price), 10),
-	}
-	if input.readingPeriodHours.Valid {
-		metadata[stripeMetadataReadingPeriodHours] = strconv.FormatInt(int64(input.readingPeriodHours.Int32), 10)
-	}
-	params := &stripe.CheckoutSessionCreateParams{
-		CancelURL: stripe.String(input.cancelURL),
-		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{{
-			PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
-				Currency: stripe.String(string(stripe.CurrencyJPY)),
-				ProductData: &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
-					Name: stripe.String(input.episodeTitle),
-				},
-				UnitAmount: stripe.Int64(int64(input.price)),
-			},
-			Quantity: stripe.Int64(1),
-		}},
-		Metadata:   metadata,
-		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
-		SuccessURL: stripe.String(input.successURL),
-	}
-	params.SetIdempotencyKey(input.idempotencyKey)
-	session, err := p.client.V1CheckoutSessions.Create(ctx, params)
-	if err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(session.URL) == "" {
-		return "", errors.New("stripe returned an empty Checkout URL")
-	}
-	return session.URL, nil
-}
-
 func purchaseReturnURL(base *url.URL, seriesPublicID, episodePublicID, checkout string) string {
 	result := *base
 	result.Path, _ = url.JoinPath("/", "series", seriesPublicID, "episodes", episodePublicID)
 	query := result.Query()
 	query.Set("checkout", checkout)
-	if checkout == "success" {
-		query.Set("session_id", "{CHECKOUT_SESSION_ID}")
-	}
 	result.RawQuery = query.Encode()
 	return result.String()
 }
@@ -431,116 +361,117 @@ func mobilePurchaseReturnURL(base *url.URL, locale, episodePublicID, status stri
 	return result.String()
 }
 
-func (s *apiServer) ProcessStripeWebhook(
+func (s *apiServer) ProcessPaymentWebhook(
 	ctx context.Context,
-	req *connect.Request[publirav1.ProcessStripeWebhookRequest],
-) (*connect.Response[publirav1.ProcessStripeWebhookResponse], error) {
+	req *connect.Request[publirav1.ProcessPaymentWebhookRequest],
+) (*connect.Response[publirav1.ProcessPaymentWebhookResponse], error) {
+	providerID := strings.TrimSpace(req.Msg.Provider)
+	if _, ok := s.paymentProviders.Lookup(providerID); !ok {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("payment provider not found"))
+	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	secrets, err := s.loadEnabledPaymentSecrets(ctx, tenant.ID)
+	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
-	if len(req.Msg.Payload) == 0 || len(req.Msg.Payload) > 64<<10 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe webhook payload"))
+	if provider.Declaration().ID != providerID {
+		s.logger.WarnContext(ctx, "payment webhook names a provider the tenant does not use",
+			"tenant_id", tenant.ID,
+			"provider", providerID,
+			"tenant_provider", provider.Declaration().ID,
+		)
+		return nil, paymentsNotConfiguredError()
 	}
-	event, err := webhook.ConstructEvent(req.Msg.Payload, req.Msg.StripeSignature, secrets.WebhookSecret)
-	if err != nil {
-		s.logger.WarnContext(ctx, "invalid Stripe webhook signature", "tenant_id", tenant.ID)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe signature"))
+	if len(req.Msg.Payload) == 0 || len(req.Msg.Payload) > maxPaymentWebhookPayload {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook payload"))
 	}
-	if event.Type == stripe.EventTypeChargeRefunded {
-		if err := s.recordRefundFromStripeCharge(ctx, s.queriesFor(ctx), tenant.ID, &event); err != nil {
+	headers := make(http.Header, len(req.Msg.Headers))
+	for name, value := range req.Msg.Headers {
+		headers.Set(name, value)
+	}
+	event, err := provider.ParseNotification(req.Msg.Payload, headers, credentials)
+	switch {
+	case errors.Is(err, paymentprovider.ErrInvalidSignature):
+		s.logger.WarnContext(ctx, "invalid payment webhook signature", "tenant_id", tenant.ID, "provider", providerID)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook signature"))
+	case errors.Is(err, paymentprovider.ErrMalformedNotification):
+		s.logger.WarnContext(ctx, "malformed payment webhook", "tenant_id", tenant.ID, "provider", providerID, "error", err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook"))
+	case err != nil:
+		return nil, s.internalError(ctx, "payment webhook could not be processed", err, "tenant_id", tenant.ID.String(), "provider", providerID)
+	}
+
+	switch event := event.(type) {
+	case paymentprovider.Refunded:
+		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, event); err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
+	case paymentprovider.PurchaseCompleted:
+		if event.Purchase.TenantID != tenant.ID {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("checkout tenant does not match webhook path"))
+		}
+		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, event); err != nil {
+			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+		}
 	}
-	if event.Type != stripe.EventTypeCheckoutSessionCompleted && event.Type != stripe.EventTypeCheckoutSessionAsyncPaymentSucceeded {
-		return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
-	}
-	var session stripe.CheckoutSession
-	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe Checkout event"))
-	}
-	metadataTenantID, _, _, _, _, err := stripePurchaseMetadata(&session)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe Checkout metadata"))
-	}
-	if metadataTenantID != tenant.ID {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stripe Checkout tenant does not match webhook path"))
-	}
-	if err := s.createPurchaseFromStripeSession(ctx, s.queriesFor(ctx), tenant.ID, &session); err != nil {
-		return nil, s.internalDBError(ctx, "failed to create purchase from Stripe Checkout", err, "event_id", event.ID, "checkout_session_id", session.ID)
-	}
-	return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
+	return connect.NewResponse(&publirav1.ProcessPaymentWebhookResponse{}), nil
 }
 
-func (s *apiServer) recordRefundFromStripeCharge(
+func (s *apiServer) recordRefund(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
-	event *stripe.Event,
+	event paymentprovider.Refunded,
 ) error {
-	var charge stripe.Charge
-	if err := json.Unmarshal(event.Data.Raw, &charge); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe charge event"))
-	}
-	paymentIntentID := ""
-	if charge.PaymentIntent != nil {
-		paymentIntentID = strings.TrimSpace(charge.PaymentIntent.ID)
-	}
-	if paymentIntentID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("stripe charge names no payment intent"))
-	}
-
 	// An amount is only comparable to price_at_purchase when it arrives in the
 	// currency the checkout charged, and a refund of nothing is not a refund.
 	// Either way the purchase is recorded as refunded in full, which is what a
-	// charge.refunded delivery means when it says nothing more precise.
+	// refund notification means when it says nothing more precise.
 	var refundedAmount sql.NullInt32
-	if charge.Currency == stripe.CurrencyJPY && charge.AmountRefunded > 0 && charge.AmountRefunded <= math.MaxInt32 {
-		refundedAmount = sql.NullInt32{Int32: int32(charge.AmountRefunded), Valid: true}
+	if event.Currency == "JPY" && event.AmountRefunded > 0 && event.AmountRefunded <= math.MaxInt32 {
+		refundedAmount = sql.NullInt32{Int32: int32(event.AmountRefunded), Valid: true}
 	} else {
-		s.logger.WarnContext(ctx, "Stripe refund reported no comparable amount and is recorded as a full refund",
+		s.logger.WarnContext(ctx, "refund reported no comparable amount and is recorded as a full refund",
 			"tenant_id", tenantID,
 			"event_id", event.ID,
-			"payment_intent_id", paymentIntentID,
-			"currency", string(charge.Currency),
-			"amount_refunded", charge.AmountRefunded,
+			"payment_id", event.PaymentID,
+			"currency", event.Currency,
+			"amount_refunded", event.AmountRefunded,
 		)
 	}
 
 	purchase, err := queries.RecordStripeRefundOnPurchase(ctx, dbmodels.RecordStripeRefundOnPurchaseParams{
 		TenantID:              tenantID,
-		StripePaymentIntentID: paymentIntentID,
+		StripePaymentIntentID: event.PaymentID,
 		RefundedAmount:        refundedAmount,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		// The purchase may simply not exist yet: Stripe orders neither its
-		// events nor its retries, so a refund can overtake the Checkout event
-		// that creates the sale. Holding it lets that event apply it, and a
-		// refund that belongs to no purchase of ours costs one row instead of
-		// three days of retries.
+		// The purchase may simply not exist yet: a provider need order neither
+		// its notifications nor its retries, so a refund can overtake the one
+		// that creates the sale. Holding it lets that notification apply it,
+		// and a refund that belongs to no purchase of ours costs one row
+		// instead of days of retries.
 		if err := queries.HoldUnappliedStripeRefund(ctx, dbmodels.HoldUnappliedStripeRefundParams{
 			TenantID:              tenantID,
-			StripePaymentIntentID: paymentIntentID,
+			StripePaymentIntentID: event.PaymentID,
 			RefundedAmount:        refundedAmount,
 		}); err != nil {
-			return s.internalDBError(ctx, "failed to hold an unmatched Stripe refund", err, "event_id", event.ID, "payment_intent_id", paymentIntentID)
+			return s.internalDBError(ctx, "failed to hold an unmatched refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
 		}
-		s.logger.WarnContext(ctx, "Stripe refund matches no purchase yet and is held",
+		s.logger.WarnContext(ctx, "refund matches no purchase yet and is held",
 			"tenant_id", tenantID,
 			"event_id", event.ID,
-			"payment_intent_id", paymentIntentID,
+			"payment_id", event.PaymentID,
 		)
 		return nil
 	}
 	if err != nil {
-		return s.internalDBError(ctx, "failed to record Stripe refund", err, "event_id", event.ID, "payment_intent_id", paymentIntentID)
+		return s.internalDBError(ctx, "failed to record refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
 	}
-	s.logger.InfoContext(ctx, "recorded a Stripe refund on a purchase",
+	s.logger.InfoContext(ctx, "recorded a refund on a purchase",
 		"tenant_id", tenantID,
 		"event_id", event.ID,
 		"purchase_id", purchase.ID,
@@ -550,75 +481,59 @@ func (s *apiServer) recordRefundFromStripeCharge(
 	return nil
 }
 
-func (s *apiServer) createPurchaseFromStripeSession(
+func (s *apiServer) createPurchase(
 	ctx context.Context,
 	queries Querier,
-	expectedTenantID uuid.UUID,
-	session *stripe.CheckoutSession,
+	tenantID uuid.UUID,
+	event paymentprovider.PurchaseCompleted,
 ) error {
-	if session.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid || session.Currency != stripe.CurrencyJPY {
-		return errors.New("checkout session was not paid in JPY")
-	}
-	metadataTenantID, userID, episodeID, price, readingPeriodHours, err := stripePurchaseMetadata(session)
-	if err != nil {
-		return err
-	}
-	if metadataTenantID != expectedTenantID {
-		return errors.New("stripe Checkout tenant does not match webhook path")
-	}
-	if session.AmountTotal != int64(price) || strings.TrimSpace(session.ID) == "" {
-		return errors.New("checkout session amount or ID is invalid")
-	}
-	// The refund events this purchase may later receive name the payment
-	// intent and never the session, so the link has to be stored here.
-	var paymentIntentID sql.NullString
-	if session.PaymentIntent != nil {
-		if id := strings.TrimSpace(session.PaymentIntent.ID); id != "" {
-			paymentIntentID = sql.NullString{String: id, Valid: true}
-		}
+	purchase := event.Purchase
+	var paymentID sql.NullString
+	if event.PaymentID != "" {
+		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
 	}
 	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
-		TenantID:  expectedTenantID,
-		UserID:    userID,
-		EpisodeID: episodeID,
+		TenantID:  tenantID,
+		UserID:    purchase.ReaderID,
+		EpisodeID: purchase.EpisodeID,
 	})
 	if err != nil {
 		return fmt.Errorf("check existing purchase: %w", err)
 	}
 	if hasPurchase {
 		// A prior delivery may have committed purchases before the projection
-		// failed. Continue so Stripe's retry repairs that derived event.
+		// failed. Continue so the provider's retry repairs that derived event.
 	} else {
 		var expiresAt sql.NullTime
-		if readingPeriodHours > 0 {
+		if hours := purchase.ReadingPeriodHours; hours > 0 {
 			now := time.Now().UTC()
-			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(readingPeriodHours/24)).Add(time.Duration(readingPeriodHours%24) * time.Hour), Valid: true}
+			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 		}
 		_, err = queries.CreatePurchaseFromStripeCheckout(ctx, dbmodels.CreatePurchaseFromStripeCheckoutParams{
 			ID:                      uuid.New(),
-			TenantID:                expectedTenantID,
-			UserID:                  userID,
-			EpisodeID:               episodeID,
-			PriceAtPurchase:         price,
+			TenantID:                tenantID,
+			UserID:                  purchase.ReaderID,
+			EpisodeID:               purchase.EpisodeID,
+			PriceAtPurchase:         purchase.Price,
 			ExpiresAt:               expiresAt,
-			StripeCheckoutSessionID: sql.NullString{String: session.ID, Valid: true},
-			StripePaymentIntentID:   paymentIntentID,
+			StripeCheckoutSessionID: sql.NullString{String: event.CheckoutID, Valid: true},
+			StripePaymentIntentID:   paymentID,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("create purchase: %w", err)
 		}
 	}
 
-	if paymentIntentID.Valid {
-		if err := s.applyHeldRefund(ctx, queries, expectedTenantID, paymentIntentID.String); err != nil {
+	if paymentID.Valid {
+		if err := s.applyHeldRefund(ctx, queries, tenantID, paymentID.String); err != nil {
 			return err
 		}
 	}
 
 	_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
 		ID:                      uuid.Must(uuid.NewV7()),
-		TenantID:                expectedTenantID,
-		StripeCheckoutSessionID: session.ID,
+		TenantID:                tenantID,
+		StripeCheckoutSessionID: event.CheckoutID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
@@ -635,11 +550,11 @@ func (s *apiServer) applyHeldRefund(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
-	paymentIntentID string,
+	paymentID string,
 ) error {
 	purchase, err := queries.ApplyUnappliedStripeRefundToPurchase(ctx, dbmodels.ApplyUnappliedStripeRefundToPurchaseParams{
 		TenantID:              tenantID,
-		StripePaymentIntentID: paymentIntentID,
+		StripePaymentIntentID: paymentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
@@ -649,52 +564,18 @@ func (s *apiServer) applyHeldRefund(
 	}
 	if err := queries.ReleaseUnappliedStripeRefund(ctx, dbmodels.ReleaseUnappliedStripeRefundParams{
 		TenantID:              tenantID,
-		StripePaymentIntentID: paymentIntentID,
+		StripePaymentIntentID: paymentID,
 	}); err != nil {
 		return fmt.Errorf("release held refund: %w", err)
 	}
-	s.logger.InfoContext(ctx, "applied a Stripe refund that arrived before its purchase",
+	s.logger.InfoContext(ctx, "applied a refund that arrived before its purchase",
 		"tenant_id", tenantID,
 		"purchase_id", purchase.ID,
-		"payment_intent_id", paymentIntentID,
+		"payment_id", paymentID,
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
 	return nil
-}
-
-func stripePurchaseMetadata(session *stripe.CheckoutSession) (uuid.UUID, uuid.UUID, uuid.UUID, int32, int32, error) {
-	parseID := func(key string) (uuid.UUID, error) {
-		id, err := uuid.Parse(session.Metadata[key])
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("invalid %s metadata: %w", key, err)
-		}
-		return id, nil
-	}
-	tenantID, err := parseID(stripeMetadataTenantID)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, uuid.Nil, 0, 0, err
-	}
-	userID, err := parseID(stripeMetadataUserID)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, uuid.Nil, 0, 0, err
-	}
-	episodeID, err := parseID(stripeMetadataEpisodeID)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, uuid.Nil, 0, 0, err
-	}
-	price, err := strconv.ParseInt(session.Metadata[stripeMetadataPrice], 10, 32)
-	if err != nil || price <= 0 {
-		return uuid.Nil, uuid.Nil, uuid.Nil, 0, 0, errors.New("invalid price metadata")
-	}
-	readingPeriodHours := int64(0)
-	if value, ok := session.Metadata[stripeMetadataReadingPeriodHours]; ok {
-		readingPeriodHours, err = strconv.ParseInt(value, 10, 32)
-		if err != nil || readingPeriodHours < 0 {
-			return uuid.Nil, uuid.Nil, uuid.Nil, 0, 0, errors.New("invalid reading period metadata")
-		}
-	}
-	return tenantID, userID, episodeID, int32(price), int32(readingPeriodHours), nil
 }
 
 func paymentsNotConfiguredError() error {
@@ -705,30 +586,35 @@ func (s *apiServer) paymentStore(ctx context.Context) *paymentsettings.Store {
 	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, nil, s.logger)
 }
 
-func (s *apiServer) stripeProvider(secretKey string) stripeSessionCreator {
-	if strings.TrimSpace(secretKey) == "" {
-		return nil
-	}
-	if s.newStripeProvider == nil {
-		provider := newStripeCheckoutProvider(secretKey)
-		if provider == nil {
-			return nil
-		}
-		return provider
-	}
-	return s.newStripeProvider(secretKey)
-}
-
-func (s *apiServer) loadEnabledPaymentSecrets(ctx context.Context, tenantID uuid.UUID) (paymentsettings.Secrets, error) {
-	_, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+// loadPaymentProvider answers the tenant's enabled payment provider with its
+// credentials, or failed_precondition when the tenant cannot take payments.
+func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Provider, paymentprovider.Credentials, error) {
+	config, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
 	if err != nil {
 		if paymentsettings.IsUnavailable(err) {
 			s.logger.WarnContext(ctx, "tenant payment settings are unavailable",
 				"tenant_id", tenantID,
 			)
-			return paymentsettings.Secrets{}, paymentsNotConfiguredError()
+			return nil, nil, paymentsNotConfiguredError()
 		}
-		return paymentsettings.Secrets{}, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
+		return nil, nil, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
 	}
-	return secrets, nil
+	provider, ok := s.paymentProviders.Lookup(config.Provider)
+	if !ok {
+		s.logger.WarnContext(ctx, "tenant payment provider is not registered",
+			"tenant_id", tenantID,
+			"provider", config.Provider,
+		)
+		return nil, nil, paymentsNotConfiguredError()
+	}
+	credentials := secrets.Credentials()
+	if missing := provider.Declaration().Missing(credentials); len(missing) > 0 {
+		s.logger.WarnContext(ctx, "tenant payment credentials are incomplete",
+			"tenant_id", tenantID,
+			"provider", config.Provider,
+			"missing_fields", missing,
+		)
+		return nil, nil, paymentsNotConfiguredError()
+	}
+	return provider, credentials, nil
 }
