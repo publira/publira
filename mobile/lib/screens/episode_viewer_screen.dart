@@ -337,6 +337,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
   }
 
+  /// Sends a store transaction the server could not take yet again before
+  /// reading the body, since only that confirmation opens it.
+  Future<void> _checkAgain() async {
+    await PurchaseScope.maybeOf(context)?.storePurchaser?.reconcile();
+    if (mounted) {
+      _reload();
+    }
+  }
+
   void _reload() {
     setState(() {
       _future = _load(CatalogScope.of(context), AuthScope.of(context));
@@ -472,7 +481,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         action: OutlinedButton(
           key: const ValueKey('episode-purchase-check-again'),
           style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-          onPressed: _reload,
+          onPressed: () => unawaited(_checkAgain()),
           child: Text(messages.purchaseCheckAgain),
         ),
       );

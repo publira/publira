@@ -33,6 +33,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// record the transaction yet.
   PurchaseFailure? confirmFailure;
 
+  /// Held open by a test that needs a confirmation in flight.
+  Completer<void>? confirmGate;
+
   /// Called for a transaction [confirmStorePurchase] records, which is when
   /// the server starts answering the episode as the reader's.
   void Function()? onConfirmed;
@@ -128,6 +131,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     required String transaction,
     required String productId,
   }) async {
+    await confirmGate?.future;
     final failure = confirmFailure;
     if (failure != null) {
       throw failure;

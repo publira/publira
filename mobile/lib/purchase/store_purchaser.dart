@@ -54,9 +54,10 @@ class StorePurchaser {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   /// Transactions the server has not recorded yet, keyed by what is sent to
-  /// it, so a transaction reported twice is confirmed once.
+  /// it, and the confirmation of each one under way, so a transaction
+  /// reported twice is confirmed once.
   final _unconfirmed = <String, PurchaseDetails>{};
-  final _confirming = <String>{};
+  final _confirming = <String, Future<void>>{};
 
   _OpenPurchase? _open;
 
@@ -71,14 +72,19 @@ class StorePurchaser {
     await _askForUnfinished();
   }
 
-  /// Confirms again every transaction the server has not recorded, which is
-  /// what a sign-in calls, because a transaction reported while signed out
-  /// could not be confirmed.
+  /// Confirms again every transaction the server has not recorded, and
+  /// returns once none is being confirmed any more. A sign-in, a resume, and
+  /// a reader checking a pending purchase again call it, because a
+  /// transaction the server could not take then is taken only by asking again.
   Future<void> reconcile() async {
     for (final purchase in _unconfirmed.values.toList()) {
       await _confirm(purchase);
     }
     await _askForUnfinished();
+    // What Google Play reported arrives on the stream after the call that
+    // asked for it has returned.
+    await Future<void>.delayed(Duration.zero);
+    await Future.wait(_confirming.values.toList());
   }
 
   Future<void> dispose() async {
@@ -200,11 +206,21 @@ class StorePurchaser {
     }
   }
 
-  Future<void> _confirm(PurchaseDetails purchase) async {
+  Future<void> _confirm(PurchaseDetails purchase) {
     final transaction = purchase.verificationData.serverVerificationData;
-    if (transaction.isEmpty || !_confirming.add(transaction)) {
-      return;
+    if (transaction.isEmpty) {
+      return Future.value();
     }
+    return _confirming[transaction] ??= _confirmOnce(purchase, transaction)
+        .whenComplete(() {
+          _confirming.remove(transaction);
+        });
+  }
+
+  Future<void> _confirmOnce(
+    PurchaseDetails purchase,
+    String transaction,
+  ) async {
     _unconfirmed[transaction] = purchase;
     try {
       await repository.confirmStorePurchase(
@@ -221,8 +237,6 @@ class StorePurchaser {
           _fail(purchase, failure);
       }
       return;
-    } finally {
-      _confirming.remove(transaction);
     }
     _unconfirmed.remove(transaction);
     try {

@@ -123,16 +123,66 @@ void main() {
       await pumpUntilFound(tester, confirming);
       expect(platform.finished, isEmpty);
 
-      // The next launch has the store report it again.
+      // Checking again sends the transaction again, rather than waiting for
+      // the store to report it on the next launch.
       purchases.confirmFailure = null;
-      platform.report(FakeInAppPurchasePlatform.paysAtOnce(platform.bought[0]));
-      await pumpUntilTrue(tester, () => platform.finished.isNotEmpty);
-      expect(purchases.confirmed, ['jws-2000000000000001']);
-
       await tester.tap(
         find.byKey(const ValueKey('episode-purchase-check-again')),
       );
       await pumpUntilFound(tester, pages);
+      expect(purchases.confirmed, ['jws-2000000000000001']);
+      expect(platform.finished, hasLength(1));
+    });
+
+    testWidgets('sends a transaction the server could not take on resume', (
+      tester,
+    ) async {
+      purchases.confirmFailure = const PurchaseFailure(
+        PurchaseFailureKind.network,
+      );
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+      await tester.tap(buy);
+      await pumpUntilFound(tester, confirming);
+
+      purchases.confirmFailure = null;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await pumpUntilTrue(tester, () => platform.finished.isNotEmpty);
+
+      expect(purchases.confirmed, ['jws-2000000000000001']);
+    });
+
+    testWidgets('waits for a transaction being confirmed before a new order', (
+      tester,
+    ) async {
+      purchases
+        ..onConfirmed = null
+        ..confirmGate = Completer<void>();
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+      platform.report([
+        FakeInAppPurchasePlatform.storeTransaction(
+          id: '2000000000000004',
+          productId: 'episode_500',
+          intentId: 'intent-an-earlier-episode',
+        ),
+      ]);
+      await tester.pump();
+
+      await tester.tap(buy);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(purchases.storeIntents, isEmpty);
+      expect(platform.bought, isEmpty);
+
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.entitled);
+      purchases.confirmGate!.complete();
+      await pumpUntilFound(tester, pages);
+      expect(purchases.confirmed, [
+        'jws-2000000000000004',
+        'jws-2000000000000001',
+      ]);
+      expect(purchases.storeIntents, [paidEpisodeId]);
     });
 
     testWidgets('confirms on sign-in what the store reported signed out', (

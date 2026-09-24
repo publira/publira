@@ -117,6 +117,10 @@ class PubliraApp extends StatefulWidget {
   /// counted under, which an on-device test replaces so one test's reader is
   /// not the next one's.
   ///
+  /// [inAppPurchase] is the store's in-app purchase, which `main` hands over on
+  /// iOS and Android. An on-device test leaves it out, and the app then offers
+  /// no store purchase, since a test device has no store account to buy with.
+  ///
   /// [messaging] is the device's notification service, which `main` resolves
   /// before the first frame because initializing Firebase is asynchronous. It
   /// is `null` for a build carrying no Firebase project, and push is off then.
@@ -127,6 +131,7 @@ class PubliraApp extends StatefulWidget {
     SessionStore store = const SecureSessionStore(),
     OfflineLibrary? offline,
     PushMessaging? messaging,
+    InAppPurchasePlatform? inAppPurchase,
     PushDeviceStore pushDevices = const SecurePushDeviceStore(),
     AgeRatingConfirmationStore ageRatingConfirmation =
         const FileAgeRatingConfirmationStore(),
@@ -158,7 +163,9 @@ class PubliraApp extends StatefulWidget {
       ),
       store: store,
     );
-    final purchaseStore = deviceInAppPurchaseStore();
+    final purchaseStore = inAppPurchase == null
+        ? null
+        : deviceInAppPurchaseStore();
     final purchases = HttpPurchaseRepository(
       client: client,
       tenants: tenants,
@@ -203,10 +210,10 @@ class PubliraApp extends StatefulWidget {
       pages: HttpPageRepository(client: client, tenants: tenants),
       purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
-      storePurchaser: purchaseStore == null
+      storePurchaser: inAppPurchase == null || purchaseStore == null
           ? null
           : StorePurchaser(
-              platform: InAppPurchasePlatform.instance,
+              platform: inAppPurchase,
               store: purchaseStore,
               repository: purchases,
             ),
@@ -307,9 +314,9 @@ class PubliraApp extends StatefulWidget {
 
   /// The store's in-app purchase, for a tenant whose app sells through it.
   ///
-  /// [PubliraApp.fromConfig] supplies one on iOS and Android, where there is a
-  /// store to buy through. The app starts it on launch and has it confirm what
-  /// the store still holds on every sign-in.
+  /// [PubliraApp.fromConfig] supplies one when it is handed the store's
+  /// platform on iOS or Android. The app starts it on launch and has it
+  /// confirm what the store still holds on sign-in and on resume.
   final StorePurchaser? storePurchaser;
 
   /// What the device holds for reading without a network.
@@ -547,7 +554,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// Reads the unread count and the pinned announcement again when the reader
   /// comes back to the app, which is when a notification they were sent or a
   /// banner pinned in the meantime would otherwise go unseen. It is also when
-  /// a reader who read offline is most likely to be back on a network.
+  /// a reader who read offline is most likely to be back on a network, and
+  /// when a store transaction the server could not take is sent again.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
@@ -557,6 +565,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
       unawaited(widget.progress?.flush());
+      unawaited(widget.storePurchaser?.reconcile());
     }
   }
 
