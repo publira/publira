@@ -192,19 +192,19 @@ describe("savePageAction", () => {
   });
 });
 
+const createForm = (): FormData => {
+  const data = new FormData();
+  data.set("tenant_id", TENANT_ID);
+  data.set("slug", "/login");
+  data.set("title", "Help");
+  return data;
+};
+
 describe("createPageAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
   });
-
-  const createForm = (): FormData => {
-    const data = new FormData();
-    data.set("tenant_id", TENANT_ID);
-    data.set("slug", "/login");
-    data.set("title", "Help");
-    return data;
-  };
 
   it("keeps the field a slug failure belongs to", async () => {
     mockCreatePage.mockResolvedValueOnce({

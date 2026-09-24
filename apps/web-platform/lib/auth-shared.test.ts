@@ -93,6 +93,12 @@ describe("isUnauthenticatedError / rethrowUnauthenticatedRpcError", () => {
   });
 });
 
+const sealed = (expiresAt: string): Promise<string> =>
+  encryptSessionPayload(
+    { accessToken: "header.payload.signature", expiresAt },
+    PUBLIRA_AUTH_SECRET
+  );
+
 describe("hasActivePlatformSessionCookie", () => {
   // `process.env` is shared by every file in the same Vitest worker, so the
   // secret has to be put back or a later file inherits it.
@@ -110,12 +116,6 @@ describe("hasActivePlatformSessionCookie", () => {
     }
     process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
-
-  const sealed = (expiresAt: string): Promise<string> =>
-    encryptSessionPayload(
-      { accessToken: "header.payload.signature", expiresAt },
-      PUBLIRA_AUTH_SECRET
-    );
 
   it("accepts only decryptable, unexpired cookies as valid", async () => {
     const active = await sealed(

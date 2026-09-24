@@ -224,6 +224,15 @@ const bulkCreditFormData = (): FormData => {
   return formData;
 };
 
+const setShareFormData = (share: string): FormData => {
+  const formData = bulkCreditFormData();
+  formData.set("operation", "set_share");
+  formData.set("creator_public_id", "CREATOR_B");
+  formData.set("role_public_id", "ROLE_ARTIST");
+  formData.set("share", share);
+  return formData;
+};
+
 describe("bulkEditEpisodeCreditsAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -314,15 +323,6 @@ describe("bulkEditEpisodeCreditsAction", () => {
     });
     expect(mockBulkEditEpisodeCredits).not.toHaveBeenCalled();
   });
-
-  const setShareFormData = (share: string): FormData => {
-    const formData = bulkCreditFormData();
-    formData.set("operation", "set_share");
-    formData.set("creator_public_id", "CREATOR_B");
-    formData.set("role_public_id", "ROLE_ARTIST");
-    formData.set("share", share);
-    return formData;
-  };
 
   it("sends a set-share with the typed percentage in basis points", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
