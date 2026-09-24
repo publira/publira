@@ -650,7 +650,15 @@
         "system": "自動",
         "unset": "無角色"
       },
-      "cancel": "取消"
+      "cancel": "取消",
+      "sortable": {
+        "instructions": "按空白鍵或 Enter 鍵拿起一列。用方向鍵移動，再按一次空白鍵或 Enter 鍵放到新位置，按 Esc 鍵取消。",
+        "role_description": "可拖曳",
+        "picked_up": "已拿起{$name}，目前位於第 {$position} 位。",
+        "moved": "{$name}已移到第 {$position} 位。",
+        "dropped": "{$name}已放在第 {$position} 位。",
+        "cancelled": "已取消移動。{$name}回到第 {$position} 位。"
+      }
     },
     "contact_messages": {
       "title": "諮詢",

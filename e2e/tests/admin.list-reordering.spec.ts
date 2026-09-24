@@ -9,6 +9,7 @@ import {
   signInAsSeedAdmin,
 } from "../src/admin";
 import { deleteCreatorRolesByNames, deleteSeriesByPublicIds } from "../src/db";
+import { switchConsoleLocale } from "../src/locale";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import { EYE_CATCH_ASPECT_FIXTURES } from "../src/scenarios/eye-catch";
 import { serverActionAnswered } from "../src/server-action";
@@ -56,6 +57,14 @@ const imageSizesInOrder = async (page: Page): Promise<string[]> => {
     return match?.groups?.size ? [match.groups.size] : [];
   });
 };
+
+/**
+ * The status region dnd-kit writes each drag event into. The screen holds
+ * other status regions, so it is found by the one attribute dnd-kit gives it
+ * alone.
+ */
+const announcement = (page: Page): Locator =>
+  page.locator('[role="status"][id^="dnd-kit-announcement"]');
 
 /** The role names, in the order the author roles page lists them. */
 const creatorRoleNamesInOrder = async (page: Page): Promise<string[]> => {
@@ -236,5 +245,68 @@ test.describe("admin list reordering", () => {
     ).toBeVisible();
     const reloaded = await creatorRoleNamesInOrder(page);
     expect(reloaded.indexOf(second)).toBeLessThan(reloaded.indexOf(first));
+  });
+
+  // dnd-kit speaks through a hidden description the handle points at and a
+  // status region it writes on each drag event, both outside the list itself.
+  // Switching language on the same screen is what proves the copy follows the
+  // locale rather than whatever the list was first built with.
+  test("speaks a drag in the console's language and by the row's name", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Spoken Role ${suffix}`;
+    createdCreatorRoleNames.push(name);
+    await createCreatorRoleViaUi(page, name);
+
+    const englishHandle = page.getByRole("button", {
+      exact: true,
+      name: `Reorder ${name}`,
+    });
+    await expect(englishHandle).toHaveAccessibleDescription(
+      /^To pick up a row, press Space or Enter\./u
+    );
+    await expect(englishHandle).toHaveAttribute(
+      "aria-roledescription",
+      "draggable"
+    );
+
+    // A new role goes to the end of the priority order, so the one above it
+    // is where an arrow up takes it.
+    await englishHandle.focus();
+    await page.keyboard.press("Space");
+    await expect(announcement(page)).toHaveText(
+      new RegExp(`^Picked up ${name} at position \\d+\\.$`, "u")
+    );
+    const pickedUpText = await announcement(page).textContent();
+    const pickedUp = Number(pickedUpText?.match(/\d+(?=\.$)/u)?.[0]);
+    await page.keyboard.press("ArrowUp");
+    await expect(announcement(page)).toHaveText(
+      `${name} moved to position ${pickedUp - 1}.`
+    );
+    await page.keyboard.press("Escape");
+    await expect(announcement(page)).toHaveText(
+      `Move cancelled. ${name} returned to position ${pickedUp}.`
+    );
+
+    await switchConsoleLocale(page, "English", "日本語");
+
+    const japaneseHandle = page.getByRole("button", {
+      exact: true,
+      name: `${name} を並べ替え`,
+    });
+    await expect(japaneseHandle).toHaveAccessibleDescription(
+      /^行を持ち上げるには Space キーまたは Enter キーを押します。/u
+    );
+    await expect(japaneseHandle).toHaveAttribute(
+      "aria-roledescription",
+      "ドラッグ可能"
+    );
+
+    await japaneseHandle.focus();
+    await page.keyboard.press("Space");
+    await expect(announcement(page)).toHaveText(
+      new RegExp(`^${name}を持ち上げました。現在 \\d+ 番目です。$`, "u")
+    );
   });
 });

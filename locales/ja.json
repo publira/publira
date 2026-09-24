@@ -650,7 +650,15 @@
         "system": "自動処理",
         "unset": "権限未設定"
       },
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "sortable": {
+        "instructions": "行を持ち上げるには Space キーまたは Enter キーを押します。矢印キーで移動し、もう一度 Space キーまたは Enter キーを押すと新しい位置に置きます。Escape キーで取り消します。",
+        "role_description": "ドラッグ可能",
+        "picked_up": "{$name}を持ち上げました。現在 {$position} 番目です。",
+        "moved": "{$name}を {$position} 番目に移動しました。",
+        "dropped": "{$name}を {$position} 番目に置きました。",
+        "cancelled": "移動を取り消しました。{$name}は {$position} 番目に戻りました。"
+      }
     },
     "contact_messages": {
       "title": "お問い合わせ",
