@@ -650,7 +650,15 @@
         "system": "自动",
         "unset": "无角色"
       },
-      "cancel": "取消"
+      "cancel": "取消",
+      "sortable": {
+        "instructions": "按空格键或 Enter 键拿起一行。用方向键移动，再按一次空格键或 Enter 键放到新位置，按 Esc 键取消。",
+        "role_description": "可拖动",
+        "picked_up": "已拿起{$name}，当前位于第 {$position} 位。",
+        "moved": "{$name}已移到第 {$position} 位。",
+        "dropped": "{$name}已放在第 {$position} 位。",
+        "cancelled": "已取消移动。{$name}回到第 {$position} 位。"
+      }
     },
     "contact_messages": {
       "title": "咨询",

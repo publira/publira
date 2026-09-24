@@ -91,6 +91,7 @@ export const GenreList = ({ genres }: GenreListProps) => {
             id={genre.publicId}
             index={index}
             key={genre.publicId}
+            label={genre.name}
           >
             {/* The height of the name field beside it, so the grip is level
                 with the row's first line rather than above it. */}

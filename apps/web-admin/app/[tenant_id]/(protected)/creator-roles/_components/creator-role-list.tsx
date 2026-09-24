@@ -102,6 +102,7 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
             id={creatorRole.publicId}
             index={index}
             key={creatorRole.publicId}
+            label={creatorRole.name}
           >
             {/* The height of the name field beside it, so the grip and the
                 position are level with the row's first line. */}

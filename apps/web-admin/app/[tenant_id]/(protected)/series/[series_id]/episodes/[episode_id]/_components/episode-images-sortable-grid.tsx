@@ -112,6 +112,7 @@ export const EpisodeImagesSortableGrid = ({
           id={image.id}
           index={index}
           key={image.id}
+          label={t("admin.series.episodes.image_alt", { index: index + 1 })}
         >
           <figure className="grid gap-2">
             <Image

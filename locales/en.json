@@ -650,7 +650,15 @@
         "system": "Automatic",
         "unset": "No role"
       },
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "sortable": {
+        "instructions": "To pick up a row, press Space or Enter. Move it with the arrow keys, then press Space or Enter again to drop it in its new place, or Escape to cancel.",
+        "role_description": "draggable",
+        "picked_up": "Picked up {$name} at position {$position}.",
+        "moved": "{$name} moved to position {$position}.",
+        "dropped": "{$name} dropped at position {$position}.",
+        "cancelled": "Move cancelled. {$name} returned to position {$position}."
+      }
     },
     "contact_messages": {
       "title": "Contact messages",

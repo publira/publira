@@ -173,6 +173,7 @@ export const EpisodesSortableList = ({
             id={episode.publicId}
             index={index}
             key={episode.publicId}
+            label={episode.title}
           >
             <Checkbox
               aria-label={t("admin.series.episodes.credits.select_episode", {

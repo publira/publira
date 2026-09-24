@@ -182,6 +182,12 @@ const CreatorCreditRow = ({
   const t = useClientMessages();
   const creatorComboboxId = useId();
   const roleComboboxId = useId();
+  // The author the row credits, or the position its unfilled picker is named by.
+  const label =
+    creatorItems.find((item) => item.value === creatorPublicId)?.label ??
+    t("admin.series.form.creators_creator_field_label", {
+      position: String(position),
+    });
 
   return (
     <SortableItem
@@ -189,6 +195,7 @@ const CreatorCreditRow = ({
       className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3"
       id={id}
       index={index}
+      label={label}
       type={rolePublicId}
     >
       <SortableItemHandle>
