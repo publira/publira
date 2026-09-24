@@ -1302,6 +1302,22 @@ message ConfirmStorePurchaseResponse {
   MyPurchase purchase = 1;
 }
 
+// `web-host` forwards the raw body of an App Store Server Notifications V2
+// request to this RPC. The signed payload is verified against Apple's root
+// certificate here, and it has to name the tenant's own iOS app.
+//
+// REFUND and REVOKE take back the purchase of the transaction they carry,
+// holding the refund until the purchase is recorded when the app has not
+// confirmed it yet; every other type is acknowledged and changes nothing. A
+// payload that does not verify, or names another app, is invalid_argument, and
+// a tenant with no iOS app is failed_precondition.
+message ProcessAppStoreNotificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes payload = 2;
+}
+
+message ProcessAppStoreNotificationResponse {}
+
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
   // Lists only the authenticated reader's purchases in the requested tenant.
@@ -1309,4 +1325,5 @@ service PurchaseService {
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}
   rpc StartStorePurchase(StartStorePurchaseRequest) returns (StartStorePurchaseResponse) {}
   rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}
+  rpc ProcessAppStoreNotification(ProcessAppStoreNotificationRequest) returns (ProcessAppStoreNotificationResponse) {}
 }

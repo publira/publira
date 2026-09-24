@@ -20,6 +20,10 @@ type Querier interface {
 	AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error
 	AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error
 	AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error
+	// Writes a held refund onto the purchase that has since been recorded. Nothing
+	// matches when no refund is held for the transaction, which is the ordinary
+	// case. The held row is deleted by the caller in the same transaction.
+	ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg ApplyUnappliedStoreRefundToPurchaseParams) (Purchase, error)
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
 	// is held for the payment intent, which is the ordinary case.
@@ -652,6 +656,7 @@ type Querier interface {
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnappliedStoreRefundParams) error
 	// Keeps a refund whose purchase is not here yet, so the Checkout event that
 	// creates the purchase can still apply it. The payment intent is the identity,
 	// so a repeated delivery updates the row rather than adding one.
@@ -1605,6 +1610,10 @@ type Querier interface {
 	// flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	// The tenants whose Google Play store is enabled and names its app, which are
+	// the ones whose voided purchases the worker reads. Read across tenants, so
+	// only a role that bypasses row-level security sees them all.
+	ListTenantsSellingOnGooglePlay(ctx context.Context) ([]uuid.UUID, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 	// the returned rows to preserve the public newest-first display order.
@@ -1713,6 +1722,12 @@ type Querier interface {
 	// it becomes is written, so two confirmations of different transactions
 	// cannot both consume it.
 	LockStorePurchaseIntent(ctx context.Context, arg LockStorePurchaseIntentParams) (StorePurchaseIntent, error)
+	// Serializes, for the rest of the caller's transaction, everything that writes
+	// about one store transaction: its confirmation and its refund. Without it a
+	// refund could find no purchase and be held just after the confirmation that
+	// records the purchase looked for a held refund, and the purchase would keep
+	// opening the episode.
+	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -1902,6 +1917,11 @@ type Querier interface {
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.
 	RecordEpisodeReadProjection(ctx context.Context, arg RecordEpisodeReadProjectionParams) error
+	// Records a store's refund on the purchase of the transaction it names. A
+	// store refunds a consumable in full, so the purchase is refunded its whole
+	// price; a repeated notification or poll leaves the instant already stored.
+	// Nothing matches when the transaction has no purchase here yet.
+	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
 	// Records what Stripe has refunded against one purchase, matched by the
 	// payment intent the refund event names. Nothing matches when the payment
 	// intent belongs to another tenant or to no purchase here, and the caller
@@ -1947,6 +1967,7 @@ type Querier interface {
 	// reports against it do not; leaving them open would let the same reports carry
 	// the comment past the removal threshold again the moment it came back.
 	RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error)
+	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
 	ReleaseUnappliedStripeRefund(ctx context.Context, arg ReleaseUnappliedStripeRefundParams) error
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// Staff deciding one report, either way. It names 'open' as the state it moves

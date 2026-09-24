@@ -993,6 +993,13 @@ type TenantUserRole struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 }
 
+type UnappliedStoreRefund struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	Store              string    `json:"store"`
+	StoreTransactionID string    `json:"store_transaction_id"`
+	ReceivedAt         time.Time `json:"received_at"`
+}
+
 type UnappliedStripeRefund struct {
 	TenantID              uuid.UUID     `json:"tenant_id"`
 	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`

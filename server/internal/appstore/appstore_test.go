@@ -185,3 +185,42 @@ func TestGetTransactionInfoRefusesCredentialsThatCannotSign(t *testing.T) {
 		t.Fatalf("error = %v, want ErrInvalidCredentials", err)
 	}
 }
+
+func TestVerifyNotificationReadsTheRefundAndItsSignedTransaction(t *testing.T) {
+	signer := appstoretest.NewSigner(t)
+	verifier := signer.Verifier()
+	signed := signer.Sign(t, appstoretest.Notification{
+		NotificationType: appstore.NotificationTypeRefund,
+		NotificationUUID: "0f1c6e1a-6c3b-4d5e-9f00-2b1d6b7a8c9d",
+		Version:          "2.0",
+		SignedDate:       time.Now().UnixMilli(),
+		Data: appstoretest.NotificationData{
+			BundleID:              "com.example.reader",
+			Environment:           appstore.EnvironmentProduction,
+			SignedTransactionInfo: signer.Sign(t, transaction()),
+		},
+	})
+
+	notification, err := verifier.VerifyNotification(signed)
+	if err != nil {
+		t.Fatalf("VerifyNotification: %v", err)
+	}
+	if notification.NotificationType != appstore.NotificationTypeRefund || notification.Data.BundleID != "com.example.reader" {
+		t.Fatalf("VerifyNotification = %+v", notification)
+	}
+	refunded, err := verifier.VerifyTransaction(notification.Data.SignedTransactionInfo)
+	if err != nil || refunded.TransactionID != "2000000123456789" {
+		t.Fatalf("the notification's transaction = %+v, %v", refunded, err)
+	}
+}
+
+func TestVerifyNotificationRefusesOneAnotherChainSigned(t *testing.T) {
+	signer := appstoretest.NewSigner(t)
+	signed := appstoretest.NewSigner(t).Sign(t, appstoretest.Notification{
+		NotificationType: appstore.NotificationTypeRefund,
+		NotificationUUID: "0f1c6e1a-6c3b-4d5e-9f00-2b1d6b7a8c9d",
+	})
+	if _, err := signer.Verifier().VerifyNotification(signed); !errors.Is(err, appstore.ErrInvalidSignature) {
+		t.Fatalf("VerifyNotification error = %v, want ErrInvalidSignature", err)
+	}
+}

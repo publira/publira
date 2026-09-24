@@ -94,6 +94,11 @@ var jobs = []job{
 		summary: "Close the royalty statements tenants on automatic closing are owed",
 		run:     runCloseRoyaltyStatements,
 	},
+	{
+		name:    "sync-google-play-voided-purchases",
+		summary: "Take back the purchases Google Play refunded in the last 30 days",
+		run:     runSyncGooglePlayVoidedPurchases,
+	},
 }
 
 func main() {

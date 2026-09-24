@@ -59,6 +59,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
+| `sync-google-play-voided-purchases` | Takes back the purchases Google Play refunded in the last 30 days |
 
 Each job reads its own environment variables — the prefixes do not overlap. OpenTelemetry reports `service.name` as `publira-<job>`, the name the worker's runs of the same job report as well, still overridable with `OTEL_SERVICE_NAME`.
 
@@ -389,3 +390,19 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
 
 The structured log records, per tenant, each month closed with its totals, a month already closed, the previous month when its close day has not come (`due_on`), and a tenant skipped because the previous month ended before automatic closing began; then how many tenants the run went through, how many months it closed, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.
+
+## sync-google-play-voided-purchases
+
+Reads, for every tenant whose Google Play store is enabled and names its app, the purchases Google Play voided in the last 30 days — the whole window its Voided Purchases API keeps — and takes each one back the way a Stripe refund is taken back. A voided purchase the app never confirmed is held in `unapplied_store_refunds` until it is. Running it again changes nothing.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl job sync-google-play-voided-purchases
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the service account key each tenant saved.
+
+The structured log records each tenant that failed, then how many tenants the run went through, how many voided purchases it read, how many of them had no purchase yet, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.

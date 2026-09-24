@@ -173,3 +173,20 @@ func issue(t testing.TB, template, parent *x509.Certificate, key, parentKey *ecd
 	}
 	return cert
 }
+
+// Notification is a responseBodyV2DecodedPayload with the fields a test sets.
+type Notification struct {
+	NotificationType string           `json:"notificationType"`
+	Subtype          string           `json:"subtype,omitempty"`
+	NotificationUUID string           `json:"notificationUUID"`
+	Version          string           `json:"version"`
+	SignedDate       int64            `json:"signedDate"`
+	Data             NotificationData `json:"data"`
+}
+
+// NotificationData is the data object of a notification.
+type NotificationData struct {
+	BundleID              string `json:"bundleId"`
+	Environment           string `json:"environment"`
+	SignedTransactionInfo string `json:"signedTransactionInfo,omitempty"`
+}

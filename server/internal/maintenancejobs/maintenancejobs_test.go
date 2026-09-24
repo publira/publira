@@ -86,14 +86,16 @@ func TestTheRebuildChainIsUniqueOnlyWhileInFlight(t *testing.T) {
 
 // A purge runs on start, so without a completed run counting against the
 // insert every restart would be a pass of its own. Each is kept to one run per
-// interval, the same interval it is scheduled on.
+// interval, the same interval it is scheduled on, and so is the voided
+// purchase sync, whose every pass rereads the same window.
 func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 	for args, interval := range map[river.JobArgs]time.Duration{
-		PurgeContentEventsArgs{}:     contentEventPurgeInterval,
-		PurgeRankingSnapshotsArgs{}:  rankingSnapshotPurgeInterval,
-		PurgeMfaChallengesArgs{}:     mfaChallengePurgeInterval,
-		PurgeWithdrawnCommentsArgs{}: withdrawnCommentPurgeInterval,
-		PurgeOrphanImagesArgs{}:      orphanImagePurgeInterval,
+		PurgeContentEventsArgs{}:            contentEventPurgeInterval,
+		PurgeRankingSnapshotsArgs{}:         rankingSnapshotPurgeInterval,
+		PurgeMfaChallengesArgs{}:            mfaChallengePurgeInterval,
+		PurgeWithdrawnCommentsArgs{}:        withdrawnCommentPurgeInterval,
+		PurgeOrphanImagesArgs{}:             orphanImagePurgeInterval,
+		SyncGooglePlayVoidedPurchasesArgs{}: googlePlayVoidedPurchaseInterval,
 	} {
 		opts := insertOptsOf(t, args)
 		if opts.UniqueOpts.ByPeriod != interval {
@@ -128,13 +130,13 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 }
 
 // Only the head of the daily rebuild chain is scheduled, since each link
-// enqueues the next, and every purge and the automatic royalty close are
-// scheduled on their own.
-func TestTheChainHeadEveryPurgeAndTheRoyaltyCloseAreScheduled(t *testing.T) {
+// enqueues the next, and every purge, the automatic royalty close, and the
+// voided purchase sync are scheduled on their own.
+func TestTheChainHeadEveryPurgeTheRoyaltyCloseAndTheVoidedPurchaseSyncAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 7; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, and the royalty close", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 8; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, and the voided purchase sync", got, want)
 	}
 }
 
@@ -303,6 +305,7 @@ func everyArgs() []river.JobArgs {
 		PurgeWithdrawnCommentsArgs{},
 		PurgeOrphanImagesArgs{},
 		CloseRoyaltyStatementsArgs{},
+		SyncGooglePlayVoidedPurchasesArgs{},
 	}
 }
 
@@ -340,6 +343,9 @@ func probes() map[string]func(*river.Workers) error {
 		},
 		kindCloseRoyaltyStatements: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &closeRoyaltyStatementsWorker{})
+		},
+		kindSyncGooglePlayVoidedPurchases: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &syncGooglePlayVoidedPurchasesWorker{})
 		},
 	}
 }

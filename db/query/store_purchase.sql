@@ -96,3 +96,66 @@ FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND p.id = sqlc.arg('id');
+
+-- name: RecordStoreRefundOnPurchase :one
+-- Records a store's refund on the purchase of the transaction it names. A
+-- store refunds a consumable in full, so the purchase is refunded its whole
+-- price; a repeated notification or poll leaves the instant already stored.
+-- Nothing matches when the transaction has no purchase here yet.
+UPDATE purchases
+SET refunded_amount = price_at_purchase,
+    refunded_at = COALESCE(refunded_at, NOW())
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND store = sqlc.arg('store')::text
+    AND store_transaction_id = sqlc.arg('store_transaction_id')::text
+RETURNING *;
+
+-- name: HoldUnappliedStoreRefund :exec
+INSERT INTO unapplied_store_refunds (
+    tenant_id,
+    store,
+    store_transaction_id
+)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('store')::text,
+    sqlc.arg('store_transaction_id')::text
+)
+ON CONFLICT (tenant_id, store, store_transaction_id) DO
+UPDATE
+SET received_at = NOW();
+
+-- name: ApplyUnappliedStoreRefundToPurchase :one
+-- Writes a held refund onto the purchase that has since been recorded. Nothing
+-- matches when no refund is held for the transaction, which is the ordinary
+-- case. The held row is deleted by the caller in the same transaction.
+UPDATE purchases p
+SET refunded_amount = p.price_at_purchase,
+    refunded_at = COALESCE(p.refunded_at, NOW())
+FROM unapplied_store_refunds r
+WHERE r.tenant_id = p.tenant_id
+    AND r.store = p.store
+    AND r.store_transaction_id = p.store_transaction_id
+    AND p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = sqlc.arg('purchase_id')
+RETURNING p.*;
+
+-- name: ReleaseUnappliedStoreRefund :exec
+DELETE FROM unapplied_store_refunds
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND store = sqlc.arg('store')::text
+    AND store_transaction_id = sqlc.arg('store_transaction_id')::text;
+
+-- name: LockStoreTransaction :exec
+-- Serializes, for the rest of the caller's transaction, everything that writes
+-- about one store transaction: its confirmation and its refund. Without it a
+-- refund could find no purchase and be held just after the confirmation that
+-- records the purchase looked for a held refund, and the purchase would keep
+-- opening the episode.
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'store-transaction:' || sqlc.arg('tenant_id')::uuid::text || ':' ||
+            sqlc.arg('store')::text || ':' || sqlc.arg('store_transaction_id')::text,
+        0
+    )
+);

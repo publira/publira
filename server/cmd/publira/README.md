@@ -186,6 +186,7 @@ The rebuild, purge, and royalty close work runs here as well, on the same River 
 | `maintenance.purge_withdrawn_comments` | Deletes the comments their authors withdrew past the retention window |
 | `maintenance.purge_orphan_images` | Deletes the image rows and storage objects nothing references |
 | `maintenance.close_royalty_statements` | Closes the royalty statements the tenants on automatic closing are owed |
+| `maintenance.sync_google_play_voided_purchases` | Takes back the purchases Google Play refunded |
 
 Each kind is a thin wrapper around `internal/maintenance`, which is the same implementation [`publiractl job`](../publiractl/README.md) invokes for an explicit operator run — a backfill of a named date, a recovery after an incident, a dry-run purge. A pass only the schedule could reach would be a second copy of the maintenance, free to diverge from the one an operator recovers with.
 
@@ -215,6 +216,8 @@ Each purge is scheduled on its own, runs when the client starts, and then once p
 A purge needs no record of what it missed: one pass deletes everything past its cutoff at the moment it runs, so the first pass after downtime drains every row that expired in the meantime. Each is also unique over a run that completed in its current interval, counted from the epoch rather than from the process start, so a restart runs a purge only when none has finished in that interval yet — which is what keeps a deploy from being a sweep of the whole bucket. A pass that failed for good does not count, and the next restart or interval tries again.
 
 `maintenance.close_royalty_statements` is scheduled on its own too: it runs when the client starts and then once an hour, which is how soon a tenant's close day is reached after its local midnight. It needs no record of what it missed either. A pass closes every month a tenant owes, from the month the tenant chose automatic closing through the latest month whose close day has come, so a close day the worker was down for is closed on its return, and a month already closed, by hand or by an earlier pass, is left as it is. Like the chain, it keeps no completed run as a reason to skip one.
+
+`maintenance.sync_google_play_voided_purchases` runs when the client starts and then once an hour, which is at most how long a refunded Play purchase keeps opening its episode. Each pass reads the 30 days Google Play's Voided Purchases API keeps, for every tenant whose Google Play store is enabled and names its app, and writes what it finds idempotently, so it needs no record of what it missed as long as the worker is back within those 30 days. Because every pass rereads the same window, it is unique over a run completed in its current interval, as a purge is.
 
 They run on a queue of their own (`maintenance`) for the reason the ticker jobs do, and then some: a rebuild walks every tenant and a purge deletes in chunks until a table is drained. The queue runs one pass at a time, because these share one database with every request the platform is serving. Each kind is unique over River's in-flight states, so a second instance of this worker enqueues no second copy, and a failed pass is retried three times rather than dropped: every one of them is idempotent, so a pass lost to a connection drop is worth running again.
 

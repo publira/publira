@@ -1,0 +1,9 @@
+{
+  "kind": "androidpublisher#voidedPurchase",
+  "purchaseToken": "opaque-token-up-to-150-chars.AO-J1Oy",
+  "purchaseTimeMillis": "1758700800000",
+  "voidedTimeMillis": "1758787200000",
+  "orderId": "GPA.3312-4460-1718-52019",
+  "voidedSource": 0,
+  "voidedReason": 1
+}

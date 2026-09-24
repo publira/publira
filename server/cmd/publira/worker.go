@@ -144,9 +144,11 @@ func runWorker() int {
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
 	maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
-		DB:      contentStatsDB,
-		Storage: reclaimers,
-		Logger:  logger,
+		DB:         contentStatsDB,
+		Storage:    reclaimers,
+		Secrets:    encryptor,
+		GooglePlay: googleplay.NewClient(googleplay.Config{}),
+		Logger:     logger,
 	})
 	if err != nil {
 		logger.Error("failed to initialize the maintenance jobs", "error", err)

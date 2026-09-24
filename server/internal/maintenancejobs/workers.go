@@ -105,6 +105,18 @@ func (CloseRoyaltyStatementsArgs) Kind() string { return kindCloseRoyaltyStateme
 
 func (CloseRoyaltyStatementsArgs) InsertOpts() river.InsertOpts { return insertOpts() }
 
+// SyncGooglePlayVoidedPurchasesArgs takes back the purchases Google Play
+// refunded. Every pass rereads the whole window the API keeps, so it is kept
+// to one run per interval as a purge is, and a restart is not a pass of its
+// own.
+type SyncGooglePlayVoidedPurchasesArgs struct{}
+
+func (SyncGooglePlayVoidedPurchasesArgs) Kind() string { return kindSyncGooglePlayVoidedPurchases }
+
+func (SyncGooglePlayVoidedPurchasesArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(googlePlayVoidedPurchaseInterval)
+}
+
 type projectEpisodeReadsWorker struct {
 	river.WorkerDefaults[ProjectEpisodeReadsArgs]
 	jobs *Jobs
@@ -276,4 +288,19 @@ func enqueueNext(ctx context.Context, passErr error, next river.JobArgs) error {
 		return errors.Join(passErr, fmt.Errorf("enqueue %s: %w", next.Kind(), err))
 	}
 	return passErr
+}
+
+type syncGooglePlayVoidedPurchasesWorker struct {
+	river.WorkerDefaults[SyncGooglePlayVoidedPurchasesArgs]
+	jobs *Jobs
+}
+
+func (w *syncGooglePlayVoidedPurchasesWorker) Timeout(*river.Job[SyncGooglePlayVoidedPurchasesArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *syncGooglePlayVoidedPurchasesWorker) Work(ctx context.Context, job *river.Job[SyncGooglePlayVoidedPurchasesArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNameSyncGooglePlayVoidedPurchases, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.googlePlayVoidedPurchases.Run(ctx, deps)
+	})
 }

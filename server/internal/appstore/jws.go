@@ -115,6 +115,48 @@ func (v *Verifier) VerifyTransaction(signed string) (Transaction, error) {
 	return transaction, nil
 }
 
+// Notification types the purchase flow acts on. A consumable's refund arrives
+// as REFUND, and REVOKE takes back what Family Sharing had shared.
+const (
+	NotificationTypeRefund = "REFUND"
+	NotificationTypeRevoke = "REVOKE"
+)
+
+// Notification is the part of an App Store Server Notifications V2
+// responseBodyV2DecodedPayload a refund is decided on.
+type Notification struct {
+	NotificationType string           `json:"notificationType"`
+	Subtype          string           `json:"subtype"`
+	NotificationUUID string           `json:"notificationUUID"`
+	Data             NotificationData `json:"data"`
+}
+
+// NotificationData names the app a notification is about and carries the
+// transaction it concerns, signed on its own.
+type NotificationData struct {
+	BundleID              string `json:"bundleId"`
+	Environment           string `json:"environment"`
+	SignedTransactionInfo string `json:"signedTransactionInfo"`
+}
+
+// VerifyNotification checks the signedPayload of an App Store Server
+// Notifications V2 request and reads it. The transaction it carries is signed
+// separately and is checked with [Verifier.VerifyTransaction].
+func (v *Verifier) VerifyNotification(signed string) (Notification, error) {
+	payload, err := v.verify(signed)
+	if err != nil {
+		return Notification{}, err
+	}
+	var notification Notification
+	if err := json.Unmarshal(payload, &notification); err != nil {
+		return Notification{}, fmt.Errorf("%w: %v", ErrMalformed, err)
+	}
+	if notification.NotificationType == "" || notification.NotificationUUID == "" {
+		return Notification{}, fmt.Errorf("%w: notification names no type", ErrMalformed)
+	}
+	return notification, nil
+}
+
 type jwsHeader struct {
 	Alg string   `json:"alg"`
 	X5C []string `json:"x5c"`
