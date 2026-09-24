@@ -43,18 +43,6 @@ catalogMode: strict
 # the window that guards against a freshly published release.
 minimumReleaseAgeExclude:
   - "@publira/*"
-  # An out-of-band security release is worth more than that same window, so the
-  # patched Next.js is let through until it ages out of it.
-  - "next@16.3.6"
-  - "@next/env@16.3.6"
-  - "@next/swc-darwin-arm64@16.3.6"
-  - "@next/swc-darwin-x64@16.3.6"
-  - "@next/swc-linux-arm64-gnu@16.3.6"
-  - "@next/swc-linux-arm64-musl@16.3.6"
-  - "@next/swc-linux-x64-gnu@16.3.6"
-  - "@next/swc-linux-x64-musl@16.3.6"
-  - "@next/swc-win32-arm64-msvc@16.3.6"
-  - "@next/swc-win32-x64-msvc@16.3.6"
 # Swallows the deferred error of a session destroyed on an idle GOAWAY, which
 # otherwise surfaces as an uncaughtException (connectrpc/connect-es#1768).
 patchedDependencies:
