@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -5,7 +6,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
   parseRouteParams,
@@ -14,6 +15,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { z } from "zod";
 
@@ -73,342 +75,467 @@ export const generateMetadata = async (): Promise<Metadata> => {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
 
-// This authenticated editor reads the session before its data can load.
-export const instant = false;
+type EditEpisodePageProps =
+  PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">;
+
+type EditEpisodeSectionProps = Pick<EditEpisodePageProps, "params">;
 
 const editEpisodeParamsSchema = z.object({
   episode_id: routeParamString(),
   series_id: routeParamString(),
 });
 
-const EditEpisodePage = async ({
-  params,
-}: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">) => {
+interface EditEpisodeContext {
+  episodeId: string;
+  locale: Locale;
+  seriesId: string;
+  tenantId: string;
+}
+
+const resolveEditEpisodeContext = async (
+  params: EditEpisodePageProps["params"]
+): Promise<EditEpisodeContext> => {
   const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
   const parsedParams = parseRouteParams(editEpisodeParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
   }
-  const { episode_id, series_id } = parsedParams;
-
   const locale = await getLocale(tenantId);
-  const [
-    episodeResult,
-    imagesResult,
-    seriesResult,
-    creditsResult,
-    creatorsResult,
-    creatorRolesResult,
-    purchaseSettingsResult,
-    timeZone,
-    t,
-  ] = await Promise.all([
-    getEpisode(
-      {
-        publicId: episode_id,
-        seriesPublicId: series_id,
-        tenantId,
-      },
-      locale
-    ),
-    listEpisodeImages(
-      {
-        episodePublicId: episode_id,
-        tenantId,
-      },
-      locale
-    ),
-    // Only to name what the options that follow the series follow, so a read
-    // that failed leaves them unnamed rather than the forms unusable. The
-    // tenant's default is what a series that sets no place of sale follows.
-    getSeries({ publicId: series_id, tenantId }, locale),
-    listEpisodeCredits({ episodePublicId: episode_id, tenantId }, locale),
-    listAllCreators(tenantId, locale),
-    listCreatorRoles(tenantId, locale),
-    getTenantPurchaseSettings(tenantId, locale),
-    getTenantDisplayTimeZone(tenantId),
-    getMessagesFor(locale),
-  ]);
-  if (!episodeResult.ok && episodeResult.notFound) {
+
+  return {
+    episodeId: parsedParams.episode_id,
+    locale,
+    seriesId: parsedParams.series_id,
+    tenantId,
+  };
+};
+
+const loadEpisode = async ({
+  episodeId,
+  locale,
+  seriesId,
+  tenantId,
+}: EditEpisodeContext) => {
+  const result = await getEpisode(
+    { publicId: episodeId, seriesPublicId: seriesId, tenantId },
+    locale
+  );
+  if (!result.ok && result.notFound) {
     notFound();
   }
+  return result;
+};
 
+const EpisodeSectionError = ({
+  message,
+  title,
+}: {
+  message: string;
+  title: ReactNode;
+}) => (
+  <SectionError>
+    <SectionErrorHeading>
+      <SectionErrorTitle>
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          {title}
+        </Suspense>
+      </SectionErrorTitle>
+      <SectionErrorDescription>{message}</SectionErrorDescription>
+    </SectionErrorHeading>
+  </SectionError>
+);
+
+const EditEpisodeContextLine = async ({ params }: EditEpisodeSectionProps) => {
+  const { episodeId, seriesId } = await resolveEditEpisodeContext(params);
+
+  return `Series ${seriesId}, episode ${episodeId}`;
+};
+
+const EditEpisodeActions = async ({ params }: EditEpisodeSectionProps) => {
+  const { seriesId } = await resolveEditEpisodeContext(params);
+
+  return (
+    <div className="flex gap-2">
+      <LinkButton
+        render={<Link href={`/series/${seriesId}/episodes`} />}
+        variant="outline"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.series.episodes.back_to_list" />
+        </Suspense>
+      </LinkButton>
+      <LinkButton
+        render={<Link href={`/series/${seriesId}/episodes/new`} />}
+        variant="outline"
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.series.episodes.new_action" />
+        </Suspense>
+      </LinkButton>
+    </div>
+  );
+};
+
+const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, timeZone] = await Promise.all([
+    loadEpisode(context),
+    getTenantDisplayTimeZone(context.tenantId),
+  ]);
+  await redirectToLoginIfSessionRejected(episodeResult);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.schedule_error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeScheduleForm
+      action={updateEpisodeScheduleAction}
+      episodePublicId={context.episodeId}
+      scheduledAt={episodeResult.episode.scheduledAt}
+      seriesPublicId={context.seriesId}
+      timeZone={timeZone}
+    />
+  );
+};
+
+const EpisodeAvailabilitySection = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, seriesResult] = await Promise.all([
+    loadEpisode(context),
+    // Only to name what the option that follows the series follows, so a read
+    // that failed leaves it unnamed rather than the form unusable.
+    getSeries(
+      { publicId: context.seriesId, tenantId: context.tenantId },
+      context.locale
+    ),
+  ]);
+  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.availability.error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeAvailabilityForm
+      action={updateEpisodeAvailabilityAction}
+      episodePublicId={context.episodeId}
+      initialAvailability={episodeResult.episode.availability}
+      key={`${context.episodeId}:${episodeResult.episode.availability}`}
+      seriesAvailability={
+        seriesResult.ok ? seriesResult.series.availability : undefined
+      }
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+    />
+  );
+};
+
+const EpisodePurchaseAvailabilitySection = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, seriesResult, purchaseSettingsResult] =
+    await Promise.all([
+      loadEpisode(context),
+      // Likewise only to name the place of sale the series follows; a series
+      // that sets none follows the tenant's default.
+      getSeries(
+        { publicId: context.seriesId, tenantId: context.tenantId },
+        context.locale
+      ),
+      getTenantPurchaseSettings(context.tenantId, context.locale),
+    ]);
   await redirectToLoginIfSessionRejected(
     episodeResult,
-    imagesResult,
     seriesResult,
-    creditsResult,
-    creatorsResult,
-    creatorRolesResult,
     purchaseSettingsResult
   );
 
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={
+          <Message message="admin.series.episodes.purchase_availability.error" />
+        }
+      />
+    );
+  }
+
   return (
-    <AdminPage>
-      <AdminPageHeader>
-        <AdminPageHeading>
-          <AdminPageContext>{`Series ${series_id}, episode ${episode_id}`}</AdminPageContext>
-          <AdminPageTitle>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.edit_title" />
-            </Suspense>
-          </AdminPageTitle>
-          <AdminPageDescription>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.edit_description" />
-            </Suspense>
-          </AdminPageDescription>
-        </AdminPageHeading>
-        <AdminPageActions>
-          <div className="flex gap-2">
-            <LinkButton
-              render={<Link href={`/series/${series_id}/episodes`} />}
-              variant="outline"
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.episodes.back_to_list" />
-              </Suspense>
-            </LinkButton>
-            <LinkButton
-              render={<Link href={`/series/${series_id}/episodes/new`} />}
-              variant="outline"
-            >
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.episodes.new_action" />
-              </Suspense>
-            </LinkButton>
-          </div>
-        </AdminPageActions>
-      </AdminPageHeader>
-      <AdminPageContent>
-        <FlashToast
-          keyName="created"
-          title={t("admin.series.episodes.created")}
-        />
-        <FlashToast
-          keyName="schedule_updated"
-          title={t("admin.series.episodes.schedule_updated")}
-        />
-        <FlashToast
-          keyName="availability_updated"
-          title={t("admin.series.episodes.availability.updated")}
-        />
-        <FlashToast
-          keyName="purchase_availability_updated"
-          title={t("admin.series.episodes.purchase_availability.updated")}
-        />
-        <FlashToast
-          keyName="layout_updated"
-          title={t("admin.series.episodes.layout.updated")}
-        />
-        <FlashToast
-          keyName="credits_updated"
-          title={t("admin.series.episodes.credits_updated")}
-        />
-        <FlashToast
-          keyName="pages_uploaded"
-          title={t("admin.series.episodes.pages_uploaded")}
-        />
-        <FlashToast
-          keyName="images_reordered"
-          title={t("admin.series.episodes.image_reordered")}
-        />
-        <FlashToast
-          keyName="image_reorder_error"
-          title={t("admin.series.episodes.image_reorder_error")}
-        />
-
-        <div className="grid gap-6">
-          {episodeResult.ok ? (
-            <EpisodeScheduleForm
-              action={updateEpisodeScheduleAction}
-              episodePublicId={episode_id}
-              scheduledAt={episodeResult.episode.scheduledAt}
-              seriesPublicId={series_id}
-              timeZone={timeZone}
-            />
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="admin.series.episodes.schedule_error" />
-                  </Suspense>
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {episodeResult.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-          {episodeResult.ok ? (
-            <EpisodeAvailabilityForm
-              action={updateEpisodeAvailabilityAction}
-              episodePublicId={episode_id}
-              initialAvailability={episodeResult.episode.availability}
-              key={`${episode_id}:${episodeResult.episode.availability}`}
-              seriesAvailability={
-                seriesResult.ok ? seriesResult.series.availability : undefined
-              }
-              seriesPublicId={series_id}
-              tenantId={tenantId}
-            />
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="admin.series.episodes.availability.error" />
-                  </Suspense>
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {episodeResult.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-          {episodeResult.ok ? (
-            <EpisodePurchaseAvailabilityForm
-              action={updateEpisodePurchaseAvailabilityAction}
-              episodePublicId={episode_id}
-              initialPurchaseAvailability={episodeResult.purchaseAvailability}
-              key={`${episode_id}:purchase:${episodeResult.purchaseAvailability}`}
-              seriesPublicId={series_id}
-              seriesPurchaseAvailability={
-                seriesResult.ok && purchaseSettingsResult.ok
-                  ? resolvePurchaseAvailability(
-                      purchaseSettingsResult.settings.purchaseAvailability,
-                      seriesResult.purchaseAvailability
-                    )
-                  : undefined
-              }
-              tenantId={tenantId}
-            />
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="admin.series.episodes.purchase_availability.error" />
-                  </Suspense>
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {episodeResult.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-          {creditsResult.ok ? (
-            <EpisodeCreatorCreditsForm
-              action={replaceEpisodeCreditsAction}
-              creatorRoles={creatorRolesResult.creatorRoles}
-              creators={creatorsResult.creators}
-              episodePublicId={episode_id}
-              initialCredits={creditsResult.credits}
-              seriesPublicId={series_id}
-            />
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Message message="admin.series.episodes.credits_error" />
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {creditsResult.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-          <EpisodePagesForm
-            action={uploadEpisodePagesAction}
-            episodePublicId={episode_id}
-            seriesPublicId={series_id}
-          />
-
-          <section className="grid gap-3 border border-border p-4">
-            <h2 className="text-sm font-medium">
-              <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-                <Message message="admin.series.episodes.image_list_title" />
-              </Suspense>
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                <Message message="admin.series.episodes.image_list_description" />
-              </Suspense>
-            </p>
-
-            {/*
-              A failed read hands back an empty `images`, so the "nothing
-              uploaded yet" state has to stay behind `imagesResult.ok`;
-              otherwise the section says the images are missing and that they
-              were never uploaded, in the same breath.
-            */}
-            {imagesResult.ok ? null : (
-              <SectionError>
-                <SectionErrorHeading>
-                  <SectionErrorTitle>
-                    <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                      <Message message="admin.series.episodes.image_list_error" />
-                    </Suspense>
-                  </SectionErrorTitle>
-                  <SectionErrorDescription>
-                    {imagesResult.message}
-                  </SectionErrorDescription>
-                </SectionErrorHeading>
-              </SectionError>
-            )}
-
-            {imagesResult.ok && imagesResult.images.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                  <Message message="admin.series.episodes.image_list_empty" />
-                </Suspense>
-              </p>
-            ) : null}
-
-            {imagesResult.images.length > 0 ? (
-              <EpisodeImagesSortableGrid
-                episodePublicId={episode_id}
-                images={imagesResult.images}
-                reorderAction={reorderEpisodeImagesAction}
-                seriesPublicId={series_id}
-              />
-            ) : null}
-          </section>
-
-          {episodeResult.ok ? (
-            <EpisodeReadingLayoutForm
-              action={updateEpisodeLayoutAction}
-              episodePublicId={episode_id}
-              initialLayout={episodeResult.layout}
-              key={`${episode_id}:${episodeResult.layout.readingDirection}:${episodeResult.layout.spreadStartIndex ?? ""}`}
-              pageCount={
-                imagesResult.ok ? imagesResult.images.length : undefined
-              }
-              seriesLayout={
-                seriesResult.ok ? seriesResult.readingLayout : undefined
-              }
-              seriesPublicId={series_id}
-              tenantId={tenantId}
-            />
-          ) : (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
-                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                    <Message message="admin.series.episodes.layout.error" />
-                  </Suspense>
-                </SectionErrorTitle>
-                <SectionErrorDescription>
-                  {episodeResult.message}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
-          )}
-        </div>
-      </AdminPageContent>
-    </AdminPage>
+    <EpisodePurchaseAvailabilityForm
+      action={updateEpisodePurchaseAvailabilityAction}
+      episodePublicId={context.episodeId}
+      initialPurchaseAvailability={episodeResult.purchaseAvailability}
+      key={`${context.episodeId}:purchase:${episodeResult.purchaseAvailability}`}
+      seriesPublicId={context.seriesId}
+      seriesPurchaseAvailability={
+        seriesResult.ok && purchaseSettingsResult.ok
+          ? resolvePurchaseAvailability(
+              purchaseSettingsResult.settings.purchaseAvailability,
+              seriesResult.purchaseAvailability
+            )
+          : undefined
+      }
+      tenantId={context.tenantId}
+    />
   );
 };
+
+const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
+  const { episodeId, locale, seriesId, tenantId } =
+    await resolveEditEpisodeContext(params);
+  const [creditsResult, creatorsResult, creatorRolesResult] = await Promise.all(
+    [
+      listEpisodeCredits({ episodePublicId: episodeId, tenantId }, locale),
+      listAllCreators(tenantId, locale),
+      listCreatorRoles(tenantId, locale),
+    ]
+  );
+  await redirectToLoginIfSessionRejected(
+    creditsResult,
+    creatorsResult,
+    creatorRolesResult
+  );
+
+  if (!creditsResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={creditsResult.message}
+        title={<Message message="admin.series.episodes.credits_error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeCreatorCreditsForm
+      action={replaceEpisodeCreditsAction}
+      creatorRoles={creatorRolesResult.creatorRoles}
+      creators={creatorsResult.creators}
+      episodePublicId={episodeId}
+      initialCredits={creditsResult.credits}
+      seriesPublicId={seriesId}
+    />
+  );
+};
+
+const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
+  const { episodeId, seriesId } = await resolveEditEpisodeContext(params);
+
+  return (
+    <EpisodePagesForm
+      action={uploadEpisodePagesAction}
+      episodePublicId={episodeId}
+      seriesPublicId={seriesId}
+    />
+  );
+};
+
+const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
+  const { episodeId, locale, seriesId, tenantId } =
+    await resolveEditEpisodeContext(params);
+  const imagesResult = await listEpisodeImages(
+    { episodePublicId: episodeId, tenantId },
+    locale
+  );
+  await redirectToLoginIfSessionRejected(imagesResult);
+
+  // A failed read hands back an empty `images`, so the "nothing uploaded yet"
+  // state has to stay behind `imagesResult.ok`; otherwise the section says the
+  // images are missing and that they were never uploaded, in the same breath.
+  if (!imagesResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={imagesResult.message}
+        title={<Message message="admin.series.episodes.image_list_error" />}
+      />
+    );
+  }
+
+  if (imagesResult.images.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+          <Message message="admin.series.episodes.image_list_empty" />
+        </Suspense>
+      </p>
+    );
+  }
+
+  return (
+    <EpisodeImagesSortableGrid
+      episodePublicId={episodeId}
+      images={imagesResult.images}
+      reorderAction={reorderEpisodeImagesAction}
+      seriesPublicId={seriesId}
+    />
+  );
+};
+
+const EpisodeReadingLayoutSection = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, imagesResult, seriesResult] = await Promise.all([
+    loadEpisode(context),
+    listEpisodeImages(
+      { episodePublicId: context.episodeId, tenantId: context.tenantId },
+      context.locale
+    ),
+    getSeries(
+      { publicId: context.seriesId, tenantId: context.tenantId },
+      context.locale
+    ),
+  ]);
+  await redirectToLoginIfSessionRejected(
+    episodeResult,
+    imagesResult,
+    seriesResult
+  );
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.layout.error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeReadingLayoutForm
+      action={updateEpisodeLayoutAction}
+      episodePublicId={context.episodeId}
+      initialLayout={episodeResult.layout}
+      key={`${context.episodeId}:${episodeResult.layout.readingDirection}:${episodeResult.layout.spreadStartIndex ?? ""}`}
+      pageCount={imagesResult.ok ? imagesResult.images.length : undefined}
+      seriesLayout={seriesResult.ok ? seriesResult.readingLayout : undefined}
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+    />
+  );
+};
+
+const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageContext>
+          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+            <EditEpisodeContextLine params={params} />
+          </Suspense>
+        </AdminPageContext>
+        <AdminPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.series.episodes.edit_title" />
+          </Suspense>
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.series.episodes.edit_description" />
+          </Suspense>
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <Suspense
+          fallback={
+            <div className="flex gap-2">
+              <SkeletonLine className="h-10 w-28" />
+              <SkeletonLine className="h-10 w-28" />
+            </div>
+          }
+        >
+          <EditEpisodeActions params={params} />
+        </Suspense>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <FlashToast message="admin.series.episodes.created" />
+      <FlashToast
+        keyName="schedule_updated"
+        message="admin.series.episodes.schedule_updated"
+      />
+      <FlashToast
+        keyName="availability_updated"
+        message="admin.series.episodes.availability.updated"
+      />
+      <FlashToast
+        keyName="purchase_availability_updated"
+        message="admin.series.episodes.purchase_availability.updated"
+      />
+      <FlashToast
+        keyName="layout_updated"
+        message="admin.series.episodes.layout.updated"
+      />
+      <FlashToast
+        keyName="credits_updated"
+        message="admin.series.episodes.credits_updated"
+      />
+      <FlashToast
+        keyName="pages_uploaded"
+        message="admin.series.episodes.pages_uploaded"
+      />
+      <FlashToast
+        keyName="images_reordered"
+        message="admin.series.episodes.image_reordered"
+      />
+      <FlashToast
+        keyName="image_reorder_error"
+        message="admin.series.episodes.image_reorder_error"
+      />
+
+      <div className="grid gap-6">
+        <Suspense fallback={<Skeleton className="h-40" />}>
+          <EpisodeScheduleSection params={params} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-40" />}>
+          <EpisodeAvailabilitySection params={params} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-40" />}>
+          <EpisodePurchaseAvailabilitySection params={params} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-48" />}>
+          <EpisodeCreditsSection params={params} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-40" />}>
+          <EpisodePagesSection params={params} />
+        </Suspense>
+
+        <section className="grid gap-3 border border-border p-4">
+          <h2 className="text-sm font-medium">
+            <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+              <Message message="admin.series.episodes.image_list_title" />
+            </Suspense>
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="admin.series.episodes.image_list_description" />
+            </Suspense>
+          </p>
+          <Suspense fallback={<Skeleton className="h-32" />}>
+            <EpisodeImageList params={params} />
+          </Suspense>
+        </section>
+
+        <Suspense fallback={<Skeleton className="h-40" />}>
+          <EpisodeReadingLayoutSection params={params} />
+        </Suspense>
+      </div>
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default EditEpisodePage;

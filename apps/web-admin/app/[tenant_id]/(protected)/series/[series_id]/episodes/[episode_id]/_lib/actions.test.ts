@@ -54,6 +54,8 @@ vi.mock("#lib/session", () => ({
 }));
 
 vi.mock("#lib/episode", () => ({
+  episodeCacheTag: (tenantId: string, publicId: string) =>
+    `episode-${tenantId}-${publicId}`,
   reorderEpisodeImages: mockReorderEpisodeImages,
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
@@ -109,6 +111,7 @@ describe("episode actions", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?layout_updated=1"
     );
@@ -224,6 +227,7 @@ describe("episode actions", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?availability_updated=1"
     );
@@ -305,6 +309,7 @@ describe("episode actions", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?purchase_availability_updated=1"
     );
@@ -427,6 +432,7 @@ describe("episode actions", () => {
     // The dashboard counts drafts and scheduled episodes and lists them in its
     // publishing queue, so a new schedule changes what it shows.
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );
@@ -541,6 +547,7 @@ describe("episode actions", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
     );
@@ -583,6 +590,7 @@ describe("episode actions", () => {
       },
       "en"
     );
+    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001");
     expect(result).toEqual({ ok: true });
   });
 });
