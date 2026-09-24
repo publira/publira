@@ -327,6 +327,31 @@ fi
 trap - EXIT
 cleanup_groups
 
+# Every acquire asks docker who publishes the data ports, so a stand-in answers
+# for the daemon and another worktree's stack cannot decide these checks.
+stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-docker.XXXXXX")"
+cat > "${stub_dir}/docker" << 'STUB'
+#!/usr/bin/env bash
+# Answers the two `docker ps` queries lib.sh makes. STUB_STACK_PRESENT=1 gives
+# the compose project containers, whose run-directory label is
+# STUB_STACK_RUN_DIR — empty for containers these scripts did not create.
+# STUB_PORT_PROJECT is the compose project publishing the queried port.
+set -euo pipefail
+for arg in "$@"; do
+  if [[ "${arg}" == publish=* ]]; then
+    if [[ -n "${STUB_PORT_PROJECT:-}" ]]; then
+      printf '%s\n' "${STUB_PORT_PROJECT}"
+    fi
+    exit 0
+  fi
+done
+if [[ "${STUB_STACK_PRESENT:-0}" == "1" ]]; then
+  printf '%s\n' "${STUB_STACK_RUN_DIR:-}"
+fi
+STUB
+chmod +x "${stub_dir}/docker"
+PATH="${stub_dir}:${PATH}"
+
 # Lease outlives the acquiring shell (up.sh exits, stack stays). A foreign
 # PUBLIRA_E2E_RUN_DIR must not acquire or release; the owner leftover down may.
 lock_project="publira-e2e-libtest-$$"
@@ -347,6 +372,7 @@ cleanup_lease() {
   rm -f "${lock_err}"
   rm -f "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}.lock" "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}.lease"
   rm -f "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}-other.lock" "${PUBLIRA_E2E_DIR}/.run/locks/${lock_project}-other.lease"
+  rm -rf "${stub_dir}"
 }
 trap cleanup_lease EXIT
 
@@ -543,34 +569,11 @@ fi
 
 # A stack outlives its lease holder: kill the holder and the containers stay up,
 # the ports stay bound, and Postgres keeps answering. Ownership is therefore read
-# off the containers too, which a `docker` stand-in on PATH answers for here so
-# the check still needs no daemon.
+# off the containers too, which the `docker` stand-in answers for here.
 stack_project="${lock_project}-stack"
-stub_dir="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-docker.XXXXXX")"
-cat > "${stub_dir}/docker" << 'STUB'
-#!/usr/bin/env bash
-# Answers the two `docker ps` queries lib.sh makes. STUB_STACK_PRESENT=1 gives
-# the compose project containers, whose run-directory label is
-# STUB_STACK_RUN_DIR — empty for containers these scripts did not create.
-# STUB_PORT_PROJECT is the compose project publishing the queried port.
-set -euo pipefail
-for arg in "$@"; do
-  if [[ "${arg}" == publish=* ]]; then
-    if [[ -n "${STUB_PORT_PROJECT:-}" ]]; then
-      printf '%s\n' "${STUB_PORT_PROJECT}"
-    fi
-    exit 0
-  fi
-done
-if [[ "${STUB_STACK_PRESENT:-0}" == "1" ]]; then
-  printf '%s\n' "${STUB_STACK_RUN_DIR:-}"
-fi
-STUB
-chmod +x "${stub_dir}/docker"
 
 cleanup_stack_checks() {
   cleanup_lease
-  rm -rf "${stub_dir}"
   rm -f "${PUBLIRA_E2E_DIR}/.run/locks/${stack_project}.lock" "${PUBLIRA_E2E_DIR}/.run/locks/${stack_project}.lease"
 }
 trap cleanup_stack_checks EXIT
@@ -581,7 +584,6 @@ acquire_with_stub() {
   local run_dir="$1"
   shift
   stack_env \
-    PATH="${stub_dir}:${PATH}" \
     PUBLIRA_E2E_RUN_DIR="${run_dir}" \
     COMPOSE_PROJECT_NAME="${stack_project}" \
     "$@" \
@@ -593,7 +595,6 @@ acquire_with_stub() {
 
 release_stack_lease() {
   stack_env \
-    PATH="${stub_dir}:${PATH}" \
     PUBLIRA_E2E_RUN_DIR="$1" \
     COMPOSE_PROJECT_NAME="${stack_project}" \
     bash -c '
