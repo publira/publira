@@ -190,6 +190,33 @@ void main() {
       );
     });
 
+    testWidgets('pages its series as the reader reaches the end of them', (
+      tester,
+    ) async {
+      catalog
+        ..detailSeries = {fantasy.id: fixtureCatalog(30)}
+        ..detailSeriesPageSize = 20;
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, tileOf('catalog-series-1'));
+
+      await tester.scrollUntilVisible(
+        tileOf('catalog-series-30'),
+        300,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('genre-body')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+
+      expect(find.byKey(const ValueKey('genre-not-found')), findsNothing);
+      expect(
+        [for (final request in catalog.classifiedSeriesRequests) request.token],
+        ['', '20'],
+      );
+      // The genre was read once, for the first page.
+      expect(find.text('2 published series'), findsOneWidget);
+    });
+
     testWidgets('reads its series again from the top under a changed filter', (
       tester,
     ) async {

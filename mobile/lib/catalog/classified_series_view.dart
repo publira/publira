@@ -105,7 +105,18 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
     Future<CatalogPageRead<SeriesItem, Classification>?> read(
       String token,
     ) async {
-      final classification = token.isEmpty && known == null
+      // The pager keeps the first page's header alone, so a later page reads
+      // only its series.
+      if (token.isNotEmpty) {
+        final series = await widget.readSeries(catalog, filter, token);
+        return series == null
+            ? null
+            : CatalogPageRead(
+                items: series.series,
+                nextToken: series.nextToken,
+              );
+      }
+      final classification = known == null
           ? widget.readClassification(catalog)
           : Future.value(known);
       final page = widget.readSeries(catalog, filter, token);
