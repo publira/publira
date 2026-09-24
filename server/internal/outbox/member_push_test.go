@@ -5,7 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -24,7 +28,7 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	}}
 	sender := &stubPushSender{}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, tenantID, "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -47,10 +51,7 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 		}
 	}
 
-	message := sender.sent[0]
-	if message.Token != "token-a" {
-		t.Fatalf("token = %q", message.Token)
-	}
+	message := sender.sentTo(t, "token-a")
 	if message.Title != "Seed Series" || message.Body != "Episode Three" {
 		t.Fatalf("title/body = %q / %q", message.Title, message.Body)
 	}
@@ -69,8 +70,8 @@ func TestMemberPushNotificationSendsOneMessagePerDevice(t *testing.T) {
 	if len(message.Data) != len(want) {
 		t.Fatalf("data = %v, want exactly %v", message.Data, want)
 	}
-	if sender.sent[1].Data["notification_id"] != second.String() {
-		t.Fatalf("second message mirrors %q, want %s", sender.sent[1].Data["notification_id"], second)
+	if got := sender.sentTo(t, "token-b").Data["notification_id"]; got != second.String() {
+		t.Fatalf("second message mirrors %q, want %s", got, second)
 	}
 }
 
@@ -81,7 +82,7 @@ func TestMemberPushNotificationSendsWebPushAndDeletesGoneEndpoint(t *testing.T) 
 		Endpoint: sql.NullString{String: endpoint, Valid: true}, P256dh: sql.NullString{String: "p256dh", Valid: true}, Auth: sql.NullString{String: "auth", Valid: true},
 	}}}
 	sender := &stubWebPushSender{err: push.ErrEndpointGone}
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{WebSender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{WebSender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -110,7 +111,7 @@ func TestMemberPushNotificationSkipsMobileDevicesOfATenantWithoutFCM(t *testing.
 		"token-b": fcmsettings.ErrNotConfigured,
 	}}
 	webSender := &stubWebPushSender{}
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender, WebSender: webSender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender, WebSender: webSender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -129,7 +130,7 @@ func TestMemberPushNotificationCompletesWhenTheTenantHasNoFCM(t *testing.T) {
 		{NotificationID: uuid.New(), UserID: uuid.New(), Token: "token-a", Platform: "android"},
 	}}
 	sender := &stubPushSender{errs: map[string]error{"token-a": fcmsettings.ErrNotConfigured}}
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestMemberPushNotificationSkipsATypeThatIsNotPushed(t *testing.T) {
 			queries := &stubPushDeviceQuerier{}
 			sender := &stubPushSender{}
 
-			handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+			handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 			event := memberPushEvent(t, uuid.New(), notificationType)
 			if err := handler(context.Background(), event); err != nil {
 				t.Fatalf("handler: %v", err)
@@ -171,7 +172,7 @@ func TestMemberPushNotificationDeletesARevokedToken(t *testing.T) {
 	}}
 	sender := &stubPushSender{errs: map[string]error{"revoked": push.ErrTokenGone}}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -191,7 +192,7 @@ func TestMemberPushNotificationRetriesWhenNothingWasDelivered(t *testing.T) {
 		"token-b": errors.New("fcm is unavailable"),
 	}}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published"))
 	if err == nil {
 		t.Fatal("handler error = nil, want an error")
@@ -215,7 +216,7 @@ func TestMemberPushNotificationCompletesWhenSomeDevicesTookIt(t *testing.T) {
 	}}
 	sender := &stubPushSender{errs: map[string]error{"token-b": errors.New("fcm rate limit")}}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -236,7 +237,7 @@ func TestMemberPushNotificationCompletesWhenOnlyARevokedTokenFailed(t *testing.T
 		"token-b": errors.New("fcm rate limit"),
 	}}
 
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, defaultMemberPushPaging)
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -245,9 +246,116 @@ func TestMemberPushNotificationCompletesWhenOnlyARevokedTokenFailed(t *testing.T
 	}
 }
 
+func TestMemberPushNotificationPagesThroughEveryDevice(t *testing.T) {
+	queries := &stubPushDeviceQuerier{devices: androidDevices("token-1", "token-2", "token-3", "token-4", "token-5")}
+	sender := &stubPushSender{}
+
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, testMemberPushPaging(2))
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	for _, token := range []string{"token-1", "token-2", "token-3", "token-4", "token-5"} {
+		sender.sentTo(t, token)
+	}
+	if queries.listCalls != 3 {
+		t.Fatalf("pages listed = %d, want 3", queries.listCalls)
+	}
+	if want := []string{"token-2", "token-4"}; !slices.Equal(queries.progress, want) {
+		t.Fatalf("recorded cursors = %v, want %v", queries.progress, want)
+	}
+}
+
+// A job whose time is too short for another page hands the event back with
+// its cursor recorded, and the next job carries on from it. Every device takes
+// the message once however many jobs it took.
+func TestMemberPushNotificationResumesAcrossJobs(t *testing.T) {
+	tokens := []string{"token-1", "token-2", "token-3", "token-4", "token-5"}
+	queries := &stubPushDeviceQuerier{devices: androidDevices(tokens...)}
+	sender := &stubPushSender{}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, testMemberPushPaging(2))
+
+	event := memberPushEvent(t, uuid.New(), "episode_published")
+	runs := 0
+	for {
+		runs++
+		if runs > 5 {
+			t.Fatal("the event did not finish within five jobs")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := handler(ctx, event)
+		cancel()
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, ErrResume) {
+			t.Fatalf("run %d: handler error = %v, want ErrResume", runs, err)
+		}
+		event.ProgressCursor = sql.NullString{String: queries.progress[len(queries.progress)-1], Valid: true}
+	}
+
+	if runs != 3 {
+		t.Fatalf("jobs = %d, want one per page (3)", runs)
+	}
+	for _, token := range tokens {
+		sender.sentTo(t, token)
+	}
+}
+
+// A run that settles nothing is retried from the cursor it started at, which
+// is past every device an earlier run reached.
+func TestMemberPushNotificationRetryStartsAfterTheDevicesAlreadyReached(t *testing.T) {
+	queries := &stubPushDeviceQuerier{devices: androidDevices("token-1", "token-2", "token-3", "token-4")}
+	sender := &stubPushSender{}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, testMemberPushPaging(2))
+	event := memberPushEvent(t, uuid.New(), "episode_published")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := handler(ctx, event); !errors.Is(err, ErrResume) {
+		t.Fatalf("first run error = %v, want ErrResume", err)
+	}
+	event.ProgressCursor = sql.NullString{String: "token-2", Valid: true}
+
+	outage := errors.New("fcm is unavailable")
+	sender.errs = map[string]error{"token-3": outage, "token-4": outage}
+	err := handler(context.Background(), event)
+	if err == nil || errors.Is(err, ErrResume) || IsPermanent(err) {
+		t.Fatalf("second run error = %v, want a retriable error", err)
+	}
+	if want := []string{"token-2"}; !slices.Equal(queries.progress, want) {
+		t.Fatalf("recorded cursors = %v, want %v: a run that settled nothing moved the cursor", queries.progress, want)
+	}
+
+	sender.errs = nil
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("third run: %v", err)
+	}
+	for _, token := range []string{"token-1", "token-2", "token-3", "token-4"} {
+		sender.sentTo(t, token)
+	}
+}
+
+// Every send of a page is in flight at once: the sender below answers none of
+// them until the whole page has arrived, which a loop that waits for one send
+// before starting the next never reaches.
+func TestMemberPushNotificationSendsAPageConcurrently(t *testing.T) {
+	const pageSize = 4
+	queries := &stubPushDeviceQuerier{devices: androidDevices("token-1", "token-2", "token-3", "token-4")}
+	sender := &barrierPushSender{want: pageSize, arrived: make(chan struct{})}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, memberPushPaging{
+		pageSize:    pageSize,
+		sendTimeout: 5 * time.Second,
+	})
+
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+}
+
 func TestMemberPushNotificationRejectsAPayloadNamingAnotherTenant(t *testing.T) {
 	queries := &stubPushDeviceQuerier{}
-	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: &stubPushSender{}}, queries)
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: &stubPushSender{}}, queries, defaultMemberPushPaging)
 
 	event := memberPushEvent(t, uuid.New(), "episode_published")
 	event.TenantID = uuid.NullUUID{UUID: uuid.New(), Valid: true}
@@ -282,30 +390,124 @@ func memberPushEvent(t *testing.T, tenantID uuid.UUID, notificationType string) 
 }
 
 type stubPushDeviceQuerier struct {
+	mu        sync.Mutex
 	devices   []dbmodels.ListPushDevicesForNotificationRow
 	listed    dbmodels.ListPushDevicesForNotificationParams
 	listCalls int
 	deleted   []string
+	progress  []string
 }
 
+// ListPushDevicesForNotification pages the way the statement does: in token
+// order, after the cursor, at most one page.
 func (s *stubPushDeviceQuerier) ListPushDevicesForNotification(
 	_ context.Context,
 	arg dbmodels.ListPushDevicesForNotificationParams,
 ) ([]dbmodels.ListPushDevicesForNotificationRow, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.listCalls++
 	s.listed = arg
-	return s.devices, nil
+	devices := slices.Clone(s.devices)
+	slices.SortFunc(devices, func(a, b dbmodels.ListPushDevicesForNotificationRow) int {
+		return strings.Compare(a.Token, b.Token)
+	})
+	var page []dbmodels.ListPushDevicesForNotificationRow
+	for _, device := range devices {
+		if device.Token > arg.AfterToken && len(page) < int(arg.PageSize) {
+			page = append(page, device)
+		}
+	}
+	return page, nil
 }
 
 func (s *stubPushDeviceQuerier) DeleteUserPushDeviceByToken(_ context.Context, token string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.deleted = append(s.deleted, token)
 	return 1, nil
 }
 
+func (s *stubPushDeviceQuerier) RecordOutboxEventProgress(_ context.Context, arg dbmodels.RecordOutboxEventProgressParams) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.progress = append(s.progress, arg.ProgressCursor.String)
+	return 1, nil
+}
+
 type stubPushSender struct {
+	mu      sync.Mutex
 	sent    []push.Message
 	tenants []uuid.UUID
 	errs    map[string]error
+}
+
+func (s *stubPushSender) Send(_ context.Context, tenantID uuid.UUID, message push.Message) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err, ok := s.errs[message.Token]; ok {
+		return err
+	}
+	s.sent = append(s.sent, message)
+	s.tenants = append(s.tenants, tenantID)
+	return nil
+}
+
+// sentTo is the one message the device took, failing when it took none or
+// more than one.
+func (s *stubPushSender) sentTo(t *testing.T, token string) push.Message {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var found []push.Message
+	for _, message := range s.sent {
+		if message.Token == token {
+			found = append(found, message)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("messages sent to %q = %d, want 1", token, len(found))
+	}
+	return found[0]
+}
+
+func androidDevices(tokens ...string) []dbmodels.ListPushDevicesForNotificationRow {
+	devices := make([]dbmodels.ListPushDevicesForNotificationRow, 0, len(tokens))
+	for _, token := range tokens {
+		devices = append(devices, dbmodels.ListPushDevicesForNotificationRow{
+			NotificationID: uuid.New(), UserID: uuid.New(), Token: token, Platform: "android",
+		})
+	}
+	return devices
+}
+
+// testMemberPushPaging leaves a job room for its first page only when the
+// test gives it a deadline, and for every page when it does not.
+func testMemberPushPaging(pageSize int32) memberPushPaging {
+	return memberPushPaging{pageSize: pageSize, sendTimeout: 5 * time.Second, reserve: 5 * time.Second}
+}
+
+// barrierPushSender holds every send until want of them are in flight.
+type barrierPushSender struct {
+	mu      sync.Mutex
+	want    int
+	count   int
+	arrived chan struct{}
+}
+
+func (s *barrierPushSender) Send(ctx context.Context, _ uuid.UUID, _ push.Message) error {
+	s.mu.Lock()
+	s.count++
+	if s.count == s.want {
+		close(s.arrived)
+	}
+	s.mu.Unlock()
+	select {
+	case <-s.arrived:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 type sentWebPush struct {
@@ -314,20 +516,14 @@ type sentWebPush struct {
 }
 
 type stubWebPushSender struct {
+	mu   sync.Mutex
 	sent []sentWebPush
 	err  error
 }
 
 func (s *stubWebPushSender) Send(_ context.Context, subscription push.WebPushSubscription, message push.WebPushMessage) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.sent = append(s.sent, sentWebPush{subscription: subscription, message: message})
 	return s.err
-}
-
-func (s *stubPushSender) Send(_ context.Context, tenantID uuid.UUID, message push.Message) error {
-	if err, ok := s.errs[message.Token]; ok {
-		return err
-	}
-	s.sent = append(s.sent, message)
-	s.tenants = append(s.tenants, tenantID)
-	return nil
 }

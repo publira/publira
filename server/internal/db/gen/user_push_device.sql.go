@@ -59,20 +59,24 @@ SELECT
     d.endpoint,
     d.p256dh,
     d.auth
-FROM notifications n
-    JOIN user_push_devices d
-        ON d.tenant_id = n.tenant_id
-        AND d.user_id = n.user_id
-WHERE n.tenant_id = $1
-    AND n.notification_type = $2
-    AND n.subject_key = $3
+FROM user_push_devices d
+    JOIN notifications n
+        ON n.tenant_id = d.tenant_id
+        AND n.user_id = d.user_id
+WHERE d.tenant_id = $1
+    AND d.token > $2
+    AND n.notification_type = $3
+    AND n.subject_key = $4
 ORDER BY d.token
+LIMIT $5
 `
 
 type ListPushDevicesForNotificationParams struct {
 	TenantID         uuid.UUID `json:"tenant_id"`
+	AfterToken       string    `json:"after_token"`
 	NotificationType string    `json:"notification_type"`
 	SubjectKey       string    `json:"subject_key"`
+	PageSize         int32     `json:"page_size"`
 }
 
 type ListPushDevicesForNotificationRow struct {
@@ -85,11 +89,18 @@ type ListPushDevicesForNotificationRow struct {
 	Auth           sql.NullString `json:"auth"`
 }
 
-// Every device to push one notification to, one row per recipient device. The
-// notification id travels with the token because the push mirrors that row and
-// the app routes from it.
+// One page of the devices to push one notification to, in token order after
+// the previous page's last token (empty for the first page). The walk runs over
+// idx_user_push_devices_tenant_token, so a page reads only the devices after
+// the cursor; the notification id travels along because the app routes from it.
 func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification, arg.TenantID, arg.NotificationType, arg.SubjectKey)
+	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification,
+		arg.TenantID,
+		arg.AfterToken,
+		arg.NotificationType,
+		arg.SubjectKey,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

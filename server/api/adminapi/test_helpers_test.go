@@ -356,14 +356,14 @@ func expectRevalidationRecord(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 		).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "event_type", "payload", "idempotency_key",
-			"status", "attempts", "available_at", "last_error", "created_at", "updated_at",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
 		}).AddRow(
 			uuid.Must(uuid.NewV7()),
 			uuid.NullUUID{UUID: tenantID, Valid: true},
 			outbox.EventTypeNextCacheRevalidation,
 			json.RawMessage(`{"tags":[]}`),
 			"next_cache_revalidation:"+uuid.Must(uuid.NewV7()).String(),
-			"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(),
+			"pending", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
 		))
 }
 

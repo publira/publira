@@ -24,12 +24,12 @@ func platformPasswordResetTokenColumns() []string {
 }
 
 func outboxEventColumns() []string {
-	return []string{"id", "tenant_id", "event_type", "payload", "idempotency_key", "status", "attempts", "available_at", "last_error", "created_at", "updated_at"}
+	return []string{"id", "tenant_id", "event_type", "payload", "idempotency_key", "status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor"}
 }
 
 func newOutboxEventRow(eventType string) *sqlmock.Rows {
 	return sqlmock.NewRows(outboxEventColumns()).
-		AddRow(uuid.Must(uuid.NewV7()), nil, eventType, []byte("{}"), "key", "pending", int32(0), time.Now(), nil, time.Now(), time.Now())
+		AddRow(uuid.Must(uuid.NewV7()), nil, eventType, []byte("{}"), "key", "pending", int32(0), time.Now(), nil, time.Now(), time.Now(), nil)
 }
 
 func platformEmailChangeTokenColumns() []string {

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -77,7 +79,7 @@ type PushHandlerConfig struct {
 	Logger    *slog.Logger
 }
 
-// pushDeviceQuerier is the statement pair the handler runs, named so a test can
+// pushDeviceQuerier is the statements the handler runs, named so a test can
 // drive the send loop without a database behind it.
 type pushDeviceQuerier interface {
 	ListPushDevicesForNotification(
@@ -85,6 +87,28 @@ type pushDeviceQuerier interface {
 		arg dbmodels.ListPushDevicesForNotificationParams,
 	) ([]dbmodels.ListPushDevicesForNotificationRow, error)
 	DeleteUserPushDeviceByToken(ctx context.Context, token string) (int64, error)
+	RecordOutboxEventProgress(ctx context.Context, arg dbmodels.RecordOutboxEventProgressParams) (int64, error)
+}
+
+// memberPushPaging is how the handler walks a tenant's devices within the time
+// one outbox job is given.
+type memberPushPaging struct {
+	// pageSize is both how many devices a page lists and how many sends run at
+	// once, so every send of a page starts together and the page lasts at most
+	// one sendTimeout.
+	pageSize int32
+	// sendTimeout bounds one send, below the push clients' own timeout, so
+	// that the handler knows how long a page can take.
+	sendTimeout time.Duration
+	// reserve is the time a page needs besides its sends: listing it,
+	// recording the cursor, and the worker's own write once the run returns.
+	reserve time.Duration
+}
+
+var defaultMemberPushPaging = memberPushPaging{
+	pageSize:    50,
+	sendTimeout: 10 * time.Second,
+	reserve:     5 * time.Second,
 }
 
 // NewMemberPushNotificationHandler delivers one member notification to every
@@ -105,10 +129,10 @@ func NewMemberPushNotificationHandler(cfg PushHandlerConfig) Handler {
 			return errors.New("member push notification handler database is not configured")
 		}
 	}
-	return newMemberPushNotificationHandler(cfg, dbmodels.New(cfg.DB))
+	return newMemberPushNotificationHandler(cfg, dbmodels.New(cfg.DB), defaultMemberPushPaging)
 }
 
-func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQuerier) Handler {
+func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQuerier, paging memberPushPaging) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.Sender == nil && cfg.WebSender == nil {
 			return errors.New("member push notification handler sender is not configured")
@@ -136,90 +160,164 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 			return nil
 		}
 
-		devices, err := queries.ListPushDevicesForNotification(ctx, dbmodels.ListPushDevicesForNotificationParams{
-			TenantID:         tenantID,
-			NotificationType: notificationType,
-			SubjectKey:       subjectKey,
-		})
-		if err != nil {
-			return fmt.Errorf("list push devices: %w", err)
-		}
+		send := memberPushSender{cfg: cfg, queries: queries, event: event, tenantID: tenantID,
+			notificationType: notificationType, payload: payload, sendTimeout: paging.sendTimeout}
 
+		// FCM keeps no delivery record, so only the cursor keeps a reached device
+		// from a second message. It moves after each page unless the run so far
+		// has settled nothing and failed somewhere, as in an outage, so a retry
+		// resends only what nobody received; the devices a partly successful run
+		// could not reach lose this alert, which the bell still shows.
+		cursor := event.ProgressCursor.String
 		var failures []error
-		settled, skipped := 0, 0
-		for _, device := range devices {
-			data := memberPushData(device.NotificationID, notificationType, payload)
-			var sendErr error
-			switch device.Platform {
-			case "android", "ios":
-				if cfg.Sender == nil {
-					sendErr = errors.New("FCM sender is not configured")
-				} else {
-					sendErr = cfg.Sender.Send(ctx, tenantID, push.Message{Token: device.Token, Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
-				}
-			case "web":
-				if cfg.WebSender == nil {
-					sendErr = errors.New("web push sender is not configured")
-				} else {
-					sendErr = cfg.WebSender.Send(ctx, push.WebPushSubscription{Endpoint: device.Endpoint.String, P256dh: device.P256dh.String, Auth: device.Auth.String}, push.WebPushMessage{Title: payload.SeriesTitle, Body: payload.EpisodeTitle, Data: data})
-				}
-			default:
-				sendErr = fmt.Errorf("unsupported push platform %q", device.Platform)
+		attempted, settled, skipped := 0, 0, 0
+		finished := false
+		for first := true; first || memberPushHasRoomForPage(ctx, paging); first = false {
+			devices, err := queries.ListPushDevicesForNotification(ctx, dbmodels.ListPushDevicesForNotificationParams{
+				TenantID:         tenantID,
+				AfterToken:       cursor,
+				NotificationType: notificationType,
+				SubjectKey:       subjectKey,
+				PageSize:         paging.pageSize,
+			})
+			if err != nil {
+				return fmt.Errorf("list push devices: %w", err)
 			}
-			switch {
-			case sendErr == nil:
-				settled++
-			case errors.Is(sendErr, fcmsettings.ErrNotConfigured):
-				// The device stays registered: the tenant may connect its
-				// Firebase project later, and its app is still installed.
-				skipped++
-			case errors.Is(sendErr, push.ErrTokenGone), errors.Is(sendErr, push.ErrEndpointGone):
-				if _, delErr := queries.DeleteUserPushDeviceByToken(ctx, device.Token); delErr != nil {
-					failures = append(failures, fmt.Errorf("delete revoked push device: %w", delErr))
-					continue
+			for _, outcome := range send.page(ctx, devices) {
+				switch {
+				case outcome.err != nil:
+					failures = append(failures, outcome.err)
+				case outcome.skipped:
+					skipped++
+				default:
+					settled++
 				}
-				settled++
-				logPush(ctx, cfg.Logger, "removed revoked push device", event,
-					"user_id", device.UserID.String())
-			default:
-				failures = append(failures, sendErr)
+			}
+			attempted += len(devices)
+			if len(devices) < int(paging.pageSize) {
+				finished = true
+				break
+			}
+			cursor = devices[len(devices)-1].Token
+			if settled == 0 && len(failures) > 0 {
+				continue
+			}
+			recorded, err := queries.RecordOutboxEventProgress(ctx, dbmodels.RecordOutboxEventProgressParams{
+				ID:             event.ID,
+				ProgressCursor: sql.NullString{String: cursor, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("record member push progress: %w", err)
+			}
+			if recorded == 0 {
+				return errors.New("record member push progress: the event is no longer claimed by this run")
 			}
 		}
 		if skipped > 0 {
+			// The devices stay registered: the tenant may connect its Firebase
+			// project later, and its app is still installed.
 			logPush(ctx, cfg.Logger, "skipped mobile devices; the tenant has no FCM credentials", event,
 				"skipped", skipped)
 		}
-		if len(failures) == 0 {
-			return nil
+		if len(failures) > 0 {
+			joined := errors.Join(failures...)
+			if settled == 0 {
+				return fmt.Errorf("send member push notification to all %d devices failed: %w",
+					attempted, joined)
+			}
+			if cfg.Logger != nil {
+				cfg.Logger.WarnContext(ctx, "member push notification reached some devices and not others",
+					"event_id", event.ID,
+					"event_type", event.EventType,
+					"idempotency_key", event.IdempotencyKey,
+					"settled", settled,
+					"failed", len(failures),
+					"error", joined,
+				)
+			}
 		}
-
-		// A retry re-runs the whole loop, and FCM keeps no delivery record to
-		// consult, so a device that already took the message would take it
-		// again — once per remaining attempt of the retry budget. The event is
-		// therefore retried only when nothing was settled at all, which is what
-		// an outage looks like; a run that reached some of the devices is
-		// completed, and the ones it could not reach lose this alert rather
-		// than every other reader being notified up to ten times over.
-		//
-		// Losing it is the failure this design already accepts: the
-		// `notifications` row is the record and the push is one delivery of it,
-		// so the bell still shows what the device did not.
-		joined := errors.Join(failures...)
-		if settled == 0 {
-			return fmt.Errorf("send member push notification to all %d devices failed: %w",
-				len(devices), joined)
-		}
-		if cfg.Logger != nil {
-			cfg.Logger.WarnContext(ctx, "member push notification reached some devices and not others",
-				"event_id", event.ID,
-				"event_type", event.EventType,
-				"idempotency_key", event.IdempotencyKey,
-				"settled", settled,
-				"failed", len(failures),
-				"error", joined,
-			)
+		if !finished {
+			return ErrResume
 		}
 		return nil
+	}
+}
+
+// memberPushHasRoomForPage reports whether the job has time for one more page
+// at its slowest. A run always takes its first page, so every run moves the
+// cursor even when its budget is shorter than that.
+func memberPushHasRoomForPage(ctx context.Context, paging memberPushPaging) bool {
+	deadline, ok := ctx.Deadline()
+	return !ok || time.Until(deadline) >= paging.sendTimeout+paging.reserve
+}
+
+// memberPushSender sends one event's message to a page of devices.
+type memberPushSender struct {
+	cfg              PushHandlerConfig
+	queries          pushDeviceQuerier
+	event            dbmodels.OutboxEvent
+	tenantID         uuid.UUID
+	notificationType string
+	payload          MemberPushNotificationPayload
+	sendTimeout      time.Duration
+}
+
+// memberPushOutcome is what became of one device. A device is settled when
+// neither field is set: it took the message, or it was revoked and removed.
+type memberPushOutcome struct {
+	skipped bool
+	err     error
+}
+
+// page sends to every device at once and answers once all of them are done.
+func (s memberPushSender) page(ctx context.Context, devices []dbmodels.ListPushDevicesForNotificationRow) []memberPushOutcome {
+	outcomes := make([]memberPushOutcome, len(devices))
+	var wg sync.WaitGroup
+	for i, device := range devices {
+		wg.Go(func() {
+			outcomes[i] = s.device(ctx, device)
+		})
+	}
+	wg.Wait()
+	return outcomes
+}
+
+func (s memberPushSender) device(ctx context.Context, device dbmodels.ListPushDevicesForNotificationRow) memberPushOutcome {
+	sendCtx, cancel := context.WithTimeout(ctx, s.sendTimeout)
+	defer cancel()
+
+	data := memberPushData(device.NotificationID, s.notificationType, s.payload)
+	var sendErr error
+	switch device.Platform {
+	case "android", "ios":
+		if s.cfg.Sender == nil {
+			sendErr = errors.New("FCM sender is not configured")
+		} else {
+			sendErr = s.cfg.Sender.Send(sendCtx, s.tenantID, push.Message{Token: device.Token, Title: s.payload.SeriesTitle, Body: s.payload.EpisodeTitle, Data: data})
+		}
+	case "web":
+		if s.cfg.WebSender == nil {
+			sendErr = errors.New("web push sender is not configured")
+		} else {
+			sendErr = s.cfg.WebSender.Send(sendCtx, push.WebPushSubscription{Endpoint: device.Endpoint.String, P256dh: device.P256dh.String, Auth: device.Auth.String}, push.WebPushMessage{Title: s.payload.SeriesTitle, Body: s.payload.EpisodeTitle, Data: data})
+		}
+	default:
+		sendErr = fmt.Errorf("unsupported push platform %q", device.Platform)
+	}
+	switch {
+	case sendErr == nil:
+		return memberPushOutcome{}
+	case errors.Is(sendErr, fcmsettings.ErrNotConfigured):
+		return memberPushOutcome{skipped: true}
+	case errors.Is(sendErr, push.ErrTokenGone), errors.Is(sendErr, push.ErrEndpointGone):
+		if _, err := s.queries.DeleteUserPushDeviceByToken(ctx, device.Token); err != nil {
+			return memberPushOutcome{err: fmt.Errorf("delete revoked push device: %w", err)}
+		}
+		logPush(ctx, s.cfg.Logger, "removed revoked push device", s.event,
+			"user_id", device.UserID.String())
+		return memberPushOutcome{}
+	default:
+		return memberPushOutcome{err: sendErr}
 	}
 }
 

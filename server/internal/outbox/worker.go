@@ -516,6 +516,9 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 	started := time.Now()
 	herr := handler(ctx, event)
 	w.metrics.recordHandlerDuration(ctx, event.EventType, time.Since(started))
+	if errors.Is(herr, ErrResume) {
+		return w.resume(ctx, event)
+	}
 	if herr != nil {
 		return w.finishFailed(ctx, event, herr)
 	}
@@ -534,6 +537,22 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 		"event_type", event.EventType,
 		"idempotency_key", event.IdempotencyKey,
 		"attempts", event.Attempts,
+	)
+	return nil
+}
+
+func (w *Worker) resume(ctx context.Context, event dbmodels.OutboxEvent) error {
+	if _, err := w.queries.ResumeOutboxEvent(ctx, event.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	w.metrics.recordResumed(ctx, event.EventType)
+	w.cfg.Logger.InfoContext(ctx, "outbox event resumed; the handler has more work",
+		"event_id", event.ID,
+		"event_type", event.EventType,
+		"idempotency_key", event.IdempotencyKey,
 	)
 	return nil
 }

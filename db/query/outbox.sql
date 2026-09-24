@@ -92,11 +92,16 @@ RETURNING o.*;
 -- that dies mid-attempt records no failure, so
 -- RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 -- the same budget and every window ends here.
+--
+-- A finished event has nowhere left to resume from, so its progress
+-- cursor goes too: a paged handler's cursor names one of the rows it
+-- walked, which the event has no reason to keep once it is done.
 -- name: MarkOutboxEventDone :one
 UPDATE outbox_events
 SET
     status = 'done',
     last_error = NULL,
+    progress_cursor = NULL,
     payload = CASE
         WHEN event_type IN (
             'admin_email_change_confirmation_email',
@@ -142,6 +147,30 @@ SET
     attempts = attempts + 1,
     available_at = sqlc.arg('available_at'),
     last_error = sqlc.narg('last_error'),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'processing'
+RETURNING *;
+
+-- A paged handler records how far it has got after each page, so a run
+-- that ends before the event is finished leaves the next one a place to
+-- resume from. Only the run that holds the claim may move it.
+-- name: RecordOutboxEventProgress :execrows
+UPDATE outbox_events
+SET
+    progress_cursor = sqlc.arg('progress_cursor'),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'processing';
+
+-- Hand an event back after a run that made progress and has more to do.
+-- It is due at once and charges no attempt: the retry budget is for
+-- failures, and an event large enough to need many runs is not failing.
+-- name: ResumeOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = NOW(),
     updated_at = NOW()
 WHERE id = sqlc.arg('id')
     AND status = 'processing'

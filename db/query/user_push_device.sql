@@ -55,9 +55,10 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 DELETE FROM user_push_devices
 WHERE token = sqlc.arg('token');
 
--- Every device to push one notification to, one row per recipient device. The
--- notification id travels with the token because the push mirrors that row and
--- the app routes from it.
+-- One page of the devices to push one notification to, in token order after
+-- the previous page's last token (empty for the first page). The walk runs over
+-- idx_user_push_devices_tenant_token, so a page reads only the devices after
+-- the cursor; the notification id travels along because the app routes from it.
 -- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
@@ -67,11 +68,13 @@ SELECT
     d.endpoint,
     d.p256dh,
     d.auth
-FROM notifications n
-    JOIN user_push_devices d
-        ON d.tenant_id = n.tenant_id
-        AND d.user_id = n.user_id
-WHERE n.tenant_id = sqlc.arg('tenant_id')
+FROM user_push_devices d
+    JOIN notifications n
+        ON n.tenant_id = d.tenant_id
+        AND n.user_id = d.user_id
+WHERE d.tenant_id = sqlc.arg('tenant_id')
+    AND d.token > sqlc.arg('after_token')
     AND n.notification_type = sqlc.arg('notification_type')
     AND n.subject_key = sqlc.arg('subject_key')
-ORDER BY d.token;
+ORDER BY d.token
+LIMIT sqlc.arg('page_size');

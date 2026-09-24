@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY idx_user_push_devices_tenant_token;

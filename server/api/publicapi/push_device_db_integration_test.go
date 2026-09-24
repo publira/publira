@@ -71,6 +71,7 @@ func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
 		TenantID:         tenant.ID,
 		NotificationType: "episode_published",
 		SubjectKey:       "episode:E001",
+		PageSize:         50,
 	})
 	if err != nil {
 		t.Fatalf("ListPushDevicesForNotification: %v", err)

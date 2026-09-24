@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -220,6 +223,55 @@ func TestWorkerProcessesPlatformEvent(t *testing.T) {
 
 	startTestWorker(t, pg.DB, outbox.Config{})
 	waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+}
+
+// An event that needs several runs goes back to pending after each one with
+// its cursor kept and no attempt charged, and every run starts where the last
+// recorded one left off.
+func TestWorkerResumesAnEventFromItsRecordedProgress(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertTestEvent(t, ctx, queries, tenant.ID, "test:resume", outbox.TestPayload{})
+
+	var mu sync.Mutex
+	var seen []string
+	handlers := outbox.NewRegistry()
+	handlers.Register(outbox.EventTypeTest, func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, event.ProgressCursor.String)
+		if len(seen) == 3 {
+			return nil
+		}
+		if _, err := queries.RecordOutboxEventProgress(ctx, dbmodels.RecordOutboxEventProgressParams{
+			ID:             event.ID,
+			ProgressCursor: sql.NullString{String: fmt.Sprintf("page-%d", len(seen)), Valid: true},
+		}); err != nil {
+			return err
+		}
+		return outbox.ErrResume
+	})
+
+	w := startTestWorker(t, pg.DB, outbox.Config{Handlers: handlers, MaxAttempts: 1})
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	}
+	if got.ProgressCursor.Valid {
+		t.Fatalf("progress_cursor = %q, want NULL once the event is done", got.ProgressCursor.String)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{"", "page-1", "page-2"}; !slices.Equal(seen, want) {
+		t.Fatalf("cursors the runs started from = %v, want %v", seen, want)
+	}
+	waitMetric(t, ctx, "resumed", &w.Metrics().Resumed, 2)
 }
 
 func insertRawTestEvent(
