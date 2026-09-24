@@ -20,7 +20,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_secure_storage: 10.3.4
-  go_router: 18.0.0
+  go_router: 18.0.1
   http: 1.6.0
   intl: 0.20.3
   path_provider: 2.1.6
