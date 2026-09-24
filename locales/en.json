@@ -2185,7 +2185,9 @@
           "private_key": "Private key (.p8)",
           "private_key_description": "Choose the .p8 file App Store Connect issued, or paste its contents.",
           "bundle_identifier": "Bundle ID",
-          "bundle_identifier_description": "The iOS app named under App links. Change it there."
+          "bundle_identifier_description": "The iOS app named under App links. Change it there.",
+          "notification_url": "App Store Server Notifications URL",
+          "notification_url_description": "Enter this URL as both the Production and the Sandbox Server URL for App Store Server Notifications (Version 2) in App Store Connect, under App Information. A refund Apple reports there takes the purchase back."
         },
         "google_play": {
           "title": "Google Play",

@@ -1,15 +1,23 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockProcessPaymentWebhook } = vi.hoisted(() => ({
-  mockProcessPaymentWebhook: vi.fn(),
-}));
+const { mockProcessAppStoreNotification, mockProcessPaymentWebhook } =
+  vi.hoisted(() => ({
+    mockProcessAppStoreNotification: vi.fn(),
+    mockProcessPaymentWebhook: vi.fn(),
+  }));
 
 vi.mock("#lib/api-client", () => ({
-  apiClient: { purchase: { processPaymentWebhook: mockProcessPaymentWebhook } },
+  apiClient: {
+    purchase: {
+      processAppStoreNotification: mockProcessAppStoreNotification,
+      processPaymentWebhook: mockProcessPaymentWebhook,
+    },
+  },
 }));
 
-const { forwardPaymentWebhook } = await import("./payment-webhook");
+const { forwardAppStoreNotification, forwardPaymentWebhook } =
+  await import("./payment-webhook");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -109,5 +117,60 @@ describe("forwardPaymentWebhook", () => {
         tenantId: TENANT_ID,
       })
     ).rejects.toBe(error);
+  });
+});
+
+const appStoreNotification = () =>
+  new Request("https://shop.example.test/api/v1/webhook/payment/app-store", {
+    body: '{"signedPayload":"eyJhbGciOiJFUzI1NiJ9.e30.sig"}',
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+describe("forwardAppStoreNotification", () => {
+  beforeEach(() => {
+    mockProcessAppStoreNotification.mockReset();
+    mockProcessAppStoreNotification.mockResolvedValue({});
+    mockProcessPaymentWebhook.mockReset();
+  });
+
+  it("forwards the raw body to the App Store notification RPC", async () => {
+    const response = await forwardAppStoreNotification(appStoreNotification(), {
+      tenantId: TENANT_ID,
+    });
+
+    expect(response.status).toBe(204);
+    expect(mockProcessAppStoreNotification).toHaveBeenCalledWith({
+      payload: new TextEncoder().encode(
+        '{"signedPayload":"eyJhbGciOiJFUzI1NiJ9.e30.sig"}'
+      ),
+      tenant: { tenantId: TENANT_ID },
+    });
+    expect(mockProcessPaymentWebhook).not.toHaveBeenCalled();
+  });
+
+  it("answers 400 for a malformed tenant path", async () => {
+    const response = await forwardAppStoreNotification(appStoreNotification(), {
+      tenantId: "not-a-tenant",
+    });
+
+    expect(response.status).toBe(400);
+    expect(mockProcessAppStoreNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [Code.InvalidArgument, 400],
+    [Code.FailedPrecondition, 503],
+    [Code.Unavailable, 503],
+  ])("maps the RPC code %s to %i", async (code, status) => {
+    mockProcessAppStoreNotification.mockRejectedValue(
+      new ConnectError("", code)
+    );
+
+    const response = await forwardAppStoreNotification(appStoreNotification(), {
+      tenantId: TENANT_ID,
+    });
+
+    expect(response.status).toBe(status);
   });
 });

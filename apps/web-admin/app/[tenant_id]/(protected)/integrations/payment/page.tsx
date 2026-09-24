@@ -173,14 +173,17 @@ const SettingsStorePaymentForm = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const [storeSettingsResult, currentUserResult] = await Promise.all([
-    getTenantStorePaymentSettings(tenantId, locale),
-    getAdminCurrentUser(tenantId),
-  ]);
+  const [storeSettingsResult, currentUserResult, tenantResult] =
+    await Promise.all([
+      getTenantStorePaymentSettings(tenantId, locale),
+      getAdminCurrentUser(tenantId),
+      getTenantForSession(tenantId),
+    ]);
 
   await redirectToLoginIfSessionRejected(
     storeSettingsResult,
-    currentUserResult
+    currentUserResult,
+    tenantResult
   );
 
   return (
@@ -194,6 +197,11 @@ const SettingsStorePaymentForm = async () => {
       }
       loadErrorMessage={
         storeSettingsResult.ok ? undefined : storeSettingsResult.message
+      }
+      notificationUrl={
+        tenantResult.ok
+          ? tenantWebhookUrl(tenantResult.tenant.domain, "app-store")
+          : undefined
       }
     />
   );

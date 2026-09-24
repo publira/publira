@@ -257,6 +257,7 @@ const ReadOnlyField = ({
 interface StorePaymentSettingsFieldsProps {
   disabled: boolean;
   fieldErrors?: StorePaymentSettingsFieldErrors;
+  notificationUrl?: string;
   settings: TenantStorePaymentSettings;
 }
 
@@ -269,6 +270,7 @@ interface StorePaymentSettingsFieldsProps {
 const StorePaymentSettingsFields = ({
   disabled,
   fieldErrors,
+  notificationUrl,
   settings,
 }: StorePaymentSettingsFieldsProps) => {
   const routeId = useId();
@@ -475,6 +477,17 @@ const StorePaymentSettingsFields = ({
           }
           value={settings.appStore.bundleIdentifier}
         />
+        {notificationUrl ? (
+          <ReadOnlyField
+            description={
+              <ClientMessage message="admin.settings.store_payment.app_store.notification_url_description" />
+            }
+            label={
+              <ClientMessage message="admin.settings.store_payment.app_store.notification_url" />
+            }
+            value={notificationUrl}
+          />
+        ) : null}
       </fieldset>
 
       <fieldset className="grid gap-5">
@@ -551,6 +564,11 @@ interface TenantStorePaymentSettingsFormProps {
   /** The saved settings, absent when the read failed. */
   initialSettings?: TenantStorePaymentSettings;
   loadErrorMessage?: string;
+  /**
+   * Where App Store Server Notifications reach this tenant, absent while the
+   * tenant has no domain.
+   */
+  notificationUrl?: string;
 }
 
 export const TenantStorePaymentSettingsForm = ({
@@ -558,6 +576,7 @@ export const TenantStorePaymentSettingsForm = ({
   canEdit,
   initialSettings,
   loadErrorMessage,
+  notificationUrl,
 }: TenantStorePaymentSettingsFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -587,6 +606,7 @@ export const TenantStorePaymentSettingsForm = ({
             disabled={fieldsDisabled}
             fieldErrors={state?.ok ? undefined : state?.fieldErrors}
             key={JSON.stringify(settings)}
+            notificationUrl={notificationUrl}
             settings={settings}
           />
         )}

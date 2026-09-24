@@ -2185,7 +2185,9 @@
           "private_key": "秘密鍵（.p8）",
           "private_key_description": "App Store Connect が発行した .p8 ファイルを選ぶか、その内容を貼り付けてください。",
           "bundle_identifier": "Bundle ID",
-          "bundle_identifier_description": "「アプリリンク」で設定した iOS アプリです。変更はそちらで行います。"
+          "bundle_identifier_description": "「アプリリンク」で設定した iOS アプリです。変更はそちらで行います。",
+          "notification_url": "App Store Server Notifications の URL",
+          "notification_url_description": "App Store Connect の「App 情報」で、App Store Server Notifications（バージョン 2）の本番環境とサンドボックス環境の両方のサーバー URL にこの URL を入力してください。Apple が通知した返金は、ここで購入の取り消しに反映されます。"
         },
         "google_play": {
           "title": "Google Play",
