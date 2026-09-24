@@ -53,8 +53,8 @@ services:
       # The whole configuration of the inner Docker daemon: the
       # docker-in-docker feature starts `dockerd` with flags only and never
       # writes this file, so a new daemon option goes into daemon.json here.
-      # The mirror lets Docker Hub pulls avoid the anonymous rate limit
-      # without a `docker login`.
+      # Docker Hub pulls go to Google's cache first, so only an image missing
+      # from it counts against the anonymous rate limit.
       - ./.devcontainer/daemon.json:/etc/docker/daemon.json:ro
     depends_on:
       - db
