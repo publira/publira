@@ -420,6 +420,25 @@ test.describe("platform tenant operations", () => {
     ).toBeVisible();
   });
 
+  test("the default language select keeps its label and description once hydrated", async ({
+    page,
+  }) => {
+    await page.goto(platformUrl("/tenants/new"));
+    const select = page.getByRole("combobox", { name: /^Default language/u });
+
+    // An async Server Component renders this Select, and Base UI publishes
+    // the label and description ids from effects. Choosing an option proves
+    // the trigger hydrated before the references are read.
+    await select.click();
+    await page.getByRole("option", { name: "English" }).click();
+    await expect(select).toHaveText("English");
+
+    await expect(select).toHaveAccessibleName(/^Default language/u);
+    await expect(select).toHaveAccessibleDescription(
+      "The language this tenant's consoles and site start in. Its administrators can change it later in the tenant admin console."
+    );
+  });
+
   test("a missing required field shows an error", async ({ page }) => {
     await page.goto(platformUrl("/tenants/new"));
     await page
