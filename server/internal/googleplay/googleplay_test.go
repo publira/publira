@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
@@ -124,5 +126,29 @@ func TestRequestsRefuseAKeyThatIsNoServiceAccount(t *testing.T) {
 	_, err := googleplay.NewClient(googleplay.Config{}).GetProductPurchase(context.Background(), []byte("{}"), packageName, productID, token)
 	if !errors.Is(err, googleplay.ErrInvalidCredentials) {
 		t.Fatalf("error = %v, want ErrInvalidCredentials", err)
+	}
+}
+
+func TestListVoidedPurchasesFollowsEveryPage(t *testing.T) {
+	server := googleplaytest.NewServer(t)
+	now := time.Now()
+	server.Void(t, packageName, "voided-1", now.Add(-2*time.Hour))
+	server.Void(t, packageName, "voided-2", now.Add(-time.Hour))
+	server.Void(t, packageName, "too-old", now.Add(-40*24*time.Hour))
+	server.Void(t, "com.example.another", "another-app", now.Add(-time.Hour))
+
+	got, err := server.Client().ListVoidedPurchases(context.Background(), key(t), packageName, now.Add(-googleplay.MaxVoidedPurchaseAge), now)
+	if err != nil {
+		t.Fatalf("ListVoidedPurchases: %v", err)
+	}
+	var tokens []string
+	for _, voided := range got {
+		tokens = append(tokens, voided.PurchaseToken)
+	}
+	if strings.Join(tokens, ",") != "voided-1,voided-2" {
+		t.Fatalf("voided tokens = %v, want voided-1 and voided-2", tokens)
+	}
+	if query := server.VoidedRequests[0]; query.Get("type") != "0" {
+		t.Fatalf("type = %q, want one-time products (0)", query.Get("type"))
 	}
 }

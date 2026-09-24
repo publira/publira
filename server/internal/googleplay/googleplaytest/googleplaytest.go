@@ -8,9 +8,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/publira/publira/server/internal/googleplay"
 )
@@ -33,13 +36,16 @@ type Server struct {
 	mu        sync.Mutex
 	purchases map[string]map[string]any
 	consumes  map[string]int
+	voided    map[string][]map[string]any
+	// VoidedRequests records the query of every Voided Purchases request.
+	VoidedRequests []url.Values
 }
 
 // NewServer starts a server that answers the OAuth token exchange and the
 // product purchase endpoints. It is closed when t ends.
 func NewServer(t testing.TB) *Server {
 	t.Helper()
-	s := &Server{purchases: map[string]map[string]any{}, consumes: map[string]int{}}
+	s := &Server{purchases: map[string]map[string]any{}, consumes: map[string]int{}, voided: map[string][]map[string]any{}}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
 	return s
@@ -59,6 +65,18 @@ func (s *Server) Put(t testing.TB, packageName, productID, token, fixture, accou
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.purchases[key(packageName, productID, token)] = purchase
+}
+
+// Void records that Google Play voided the purchase token in packageName at
+// voidedAt, shaped as the recorded Voided Purchases response is.
+func (s *Server) Void(t testing.TB, packageName, token string, voidedAt time.Time) {
+	t.Helper()
+	entry := load(t, "voided_purchase")
+	entry["purchaseToken"] = token
+	entry["voidedTimeMillis"] = strconv.FormatInt(voidedAt.UnixMilli(), 10)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.voided[packageName] = append(s.voided[packageName], entry)
 }
 
 // Consumes counts the consume requests the purchase received.
@@ -95,6 +113,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	// /androidpublisher/v3/applications/{package}/purchases/voidedpurchases
+	if packageName, ok := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, "/androidpublisher/v3/applications/"), "/purchases/voidedpurchases"); ok {
+		s.serveVoided(w, r, packageName)
+		return
+	}
 	// /androidpublisher/v3/applications/{package}/purchases/products/{product}/tokens/{token}[:consume]
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/androidpublisher/v3/applications/"), "/")
 	if len(parts) != 6 || parts[1] != "purchases" || parts[2] != "products" || parts[4] != "tokens" {
@@ -120,4 +143,30 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(purchase)
+}
+
+// serveVoided answers one voided purchase per page, so a client that reads
+// only the first page misses the rest.
+func (s *Server) serveVoided(w http.ResponseWriter, r *http.Request, packageName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.VoidedRequests = append(s.VoidedRequests, r.URL.Query())
+	since, _ := strconv.ParseInt(r.URL.Query().Get("startTime"), 10, 64)
+	until, _ := strconv.ParseInt(r.URL.Query().Get("endTime"), 10, 64)
+	var matching []map[string]any
+	for _, entry := range s.voided[packageName] {
+		at, _ := strconv.ParseInt(entry["voidedTimeMillis"].(string), 10, 64)
+		if at >= since && at <= until {
+			matching = append(matching, entry)
+		}
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("token"))
+	response := map[string]any{}
+	if offset < len(matching) {
+		response["voidedPurchases"] = matching[offset : offset+1]
+		if offset+1 < len(matching) {
+			response["tokenPagination"] = map[string]string{"nextPageToken": strconv.Itoa(offset + 1)}
+		}
+	}
+	_ = json.NewEncoder(w).Encode(response)
 }

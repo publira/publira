@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/maintenance"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -48,6 +49,8 @@ const (
 	ServiceNamePurgeOrphanImages      = "publira-purge-orphan-images"
 
 	ServiceNameCloseRoyaltyStatements = "publira-close-royalty-statements"
+
+	ServiceNameSyncGooglePlayVoidedPurchases = "publira-sync-google-play-voided-purchases"
 )
 
 // QueueName is the River queue they run on. A rebuild walks every tenant and a
@@ -74,6 +77,8 @@ const (
 	kindPurgeOrphanImages      = "maintenance.purge_orphan_images"
 
 	kindCloseRoyaltyStatements = "maintenance.close_royalty_statements"
+
+	kindSyncGooglePlayVoidedPurchases = "maintenance.sync_google_play_voided_purchases"
 )
 
 const (
@@ -96,6 +101,11 @@ const (
 	// royaltyCloseInterval is how often the automatic close looks for a
 	// tenant whose close day has begun, for the same reason.
 	royaltyCloseInterval = time.Hour
+
+	// googlePlayVoidedPurchaseInterval is how often Google Play's refunds are
+	// read, which is at most how long a refunded Play purchase keeps opening
+	// its episode.
+	googlePlayVoidedPurchaseInterval = time.Hour
 )
 
 // How often each purge runs. A retention period is counted in days, so a daily
@@ -125,6 +135,7 @@ func ServiceNames() []string {
 		ServiceNamePurgeWithdrawnComments,
 		ServiceNamePurgeOrphanImages,
 		ServiceNameCloseRoyaltyStatements,
+		ServiceNameSyncGooglePlayVoidedPurchases,
 	}
 }
 
@@ -136,7 +147,11 @@ type Config struct {
 	// with none configured still registers the sweep, whose runs are then
 	// cancelled with storage.ErrNotConfigured.
 	Storage storage.ReclaimerSource
-	Logger  *slog.Logger
+	// Secrets and GooglePlay are what the voided purchase sync reads each
+	// tenant's Google Play refunds with.
+	Secrets    paymentsettings.SecretManager
+	GooglePlay maintenance.VoidedPurchaseLister
+	Logger     *slog.Logger
 }
 
 // Jobs holds the settings each kind runs with for the life of the process.
@@ -161,6 +176,8 @@ type Jobs struct {
 	orphanImages      maintenance.OrphanImagePurge
 
 	royaltyStatements maintenance.RoyaltyStatementClose
+
+	googlePlayVoidedPurchases maintenance.GooglePlayVoidedPurchaseSync
 }
 
 // New reads every job's tunables and holds them with the pool they run on.
@@ -173,9 +190,11 @@ func New(cfg Config) (*Jobs, error) {
 	}
 
 	jobs := &Jobs{deps: maintenance.Deps{
-		DB:      cfg.DB,
-		Storage: cfg.Storage,
-		Logger:  cfg.Logger,
+		DB:         cfg.DB,
+		Storage:    cfg.Storage,
+		Secrets:    cfg.Secrets,
+		GooglePlay: cfg.GooglePlay,
+		Logger:     cfg.Logger,
 	}}
 
 	var err error
@@ -238,6 +257,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &closeRoyaltyStatementsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register close-royalty-statements worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &syncGooglePlayVoidedPurchasesWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register sync-google-play-voided-purchases worker: %w", err)
+	}
 	return nil
 }
 
@@ -262,6 +284,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{withdrawnCommentPurgeInterval, PurgeWithdrawnCommentsArgs{}},
 		{orphanImagePurgeInterval, PurgeOrphanImagesArgs{}},
 		{royaltyCloseInterval, CloseRoyaltyStatementsArgs{}},
+		{googlePlayVoidedPurchaseInterval, SyncGooglePlayVoidedPurchasesArgs{}},
 	}
 	periodic := make([]*river.PeriodicJob, 0, len(schedules))
 	for _, schedule := range schedules {

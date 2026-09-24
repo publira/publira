@@ -149,6 +149,9 @@ const (
 	// PurchaseServiceConfirmStorePurchaseProcedure is the fully-qualified name of the PurchaseService's
 	// ConfirmStorePurchase RPC.
 	PurchaseServiceConfirmStorePurchaseProcedure = "/publira.v1.PurchaseService/ConfirmStorePurchase"
+	// PurchaseServiceProcessAppStoreNotificationProcedure is the fully-qualified name of the
+	// PurchaseService's ProcessAppStoreNotification RPC.
+	PurchaseServiceProcessAppStoreNotificationProcedure = "/publira.v1.PurchaseService/ProcessAppStoreNotification"
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -1475,6 +1478,7 @@ type PurchaseServiceClient interface {
 	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
 	StartStorePurchase(context.Context, *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error)
 	ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error)
+	ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error)
 }
 
 // NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. By
@@ -1518,16 +1522,23 @@ func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(purchaseServiceMethods.ByName("ConfirmStorePurchase")),
 			connect.WithClientOptions(opts...),
 		),
+		processAppStoreNotification: connect.NewClient[v1.ProcessAppStoreNotificationRequest, v1.ProcessAppStoreNotificationResponse](
+			httpClient,
+			baseURL+PurchaseServiceProcessAppStoreNotificationProcedure,
+			connect.WithSchema(purchaseServiceMethods.ByName("ProcessAppStoreNotification")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // purchaseServiceClient implements PurchaseServiceClient.
 type purchaseServiceClient struct {
-	startEpisodeCheckout  *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
-	listMyPurchases       *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
-	processPaymentWebhook *connect.Client[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse]
-	startStorePurchase    *connect.Client[v1.StartStorePurchaseRequest, v1.StartStorePurchaseResponse]
-	confirmStorePurchase  *connect.Client[v1.ConfirmStorePurchaseRequest, v1.ConfirmStorePurchaseResponse]
+	startEpisodeCheckout        *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
+	listMyPurchases             *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
+	processPaymentWebhook       *connect.Client[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse]
+	startStorePurchase          *connect.Client[v1.StartStorePurchaseRequest, v1.StartStorePurchaseResponse]
+	confirmStorePurchase        *connect.Client[v1.ConfirmStorePurchaseRequest, v1.ConfirmStorePurchaseResponse]
+	processAppStoreNotification *connect.Client[v1.ProcessAppStoreNotificationRequest, v1.ProcessAppStoreNotificationResponse]
 }
 
 // StartEpisodeCheckout calls publira.v1.PurchaseService.StartEpisodeCheckout.
@@ -1555,6 +1566,11 @@ func (c *purchaseServiceClient) ConfirmStorePurchase(ctx context.Context, req *c
 	return c.confirmStorePurchase.CallUnary(ctx, req)
 }
 
+// ProcessAppStoreNotification calls publira.v1.PurchaseService.ProcessAppStoreNotification.
+func (c *purchaseServiceClient) ProcessAppStoreNotification(ctx context.Context, req *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error) {
+	return c.processAppStoreNotification.CallUnary(ctx, req)
+}
+
 // PurchaseServiceHandler is an implementation of the publira.v1.PurchaseService service.
 type PurchaseServiceHandler interface {
 	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
@@ -1563,6 +1579,7 @@ type PurchaseServiceHandler interface {
 	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
 	StartStorePurchase(context.Context, *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error)
 	ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error)
+	ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error)
 }
 
 // NewPurchaseServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1602,6 +1619,12 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 		connect.WithSchema(purchaseServiceMethods.ByName("ConfirmStorePurchase")),
 		connect.WithHandlerOptions(opts...),
 	)
+	purchaseServiceProcessAppStoreNotificationHandler := connect.NewUnaryHandler(
+		PurchaseServiceProcessAppStoreNotificationProcedure,
+		svc.ProcessAppStoreNotification,
+		connect.WithSchema(purchaseServiceMethods.ByName("ProcessAppStoreNotification")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.PurchaseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PurchaseServiceStartEpisodeCheckoutProcedure:
@@ -1614,6 +1637,8 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 			purchaseServiceStartStorePurchaseHandler.ServeHTTP(w, r)
 		case PurchaseServiceConfirmStorePurchaseProcedure:
 			purchaseServiceConfirmStorePurchaseHandler.ServeHTTP(w, r)
+		case PurchaseServiceProcessAppStoreNotificationProcedure:
+			purchaseServiceProcessAppStoreNotificationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1641,4 +1666,8 @@ func (UnimplementedPurchaseServiceHandler) StartStorePurchase(context.Context, *
 
 func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ConfirmStorePurchase is not implemented"))
+}
+
+func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessAppStoreNotification is not implemented"))
 }

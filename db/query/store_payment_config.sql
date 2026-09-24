@@ -84,3 +84,14 @@ WHERE e.tenant_id = sqlc.arg('tenant_id')
     )
 GROUP BY el.price
 ORDER BY el.price;
+
+-- name: ListTenantsSellingOnGooglePlay :many
+-- The tenants whose Google Play store is enabled and names its app, which are
+-- the ones whose voided purchases the worker reads. Read across tenants, so
+-- only a role that bypasses row-level security sees them all.
+SELECT gp.tenant_id
+FROM tenant_google_play_config gp
+    JOIN tenant_config tc ON tc.tenant_id = gp.tenant_id
+WHERE gp.enabled
+    AND tc.android_application_id IS NOT NULL
+ORDER BY gp.tenant_id;

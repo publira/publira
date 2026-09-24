@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -116,6 +117,61 @@ func (c *Client) GetProductPurchase(ctx context.Context, serviceAccountKey []byt
 func (c *Client) ConsumeProductPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) error {
 	_, err := c.do(ctx, serviceAccountKey, http.MethodPost, c.purchaseURL(packageName, productID, token)+":consume")
 	return err
+}
+
+// VoidedPurchase is a purchase Google Play refunded, canceled, or charged
+// back.
+type VoidedPurchase struct {
+	PurchaseToken string `json:"purchaseToken"`
+	OrderID       string `json:"orderId"`
+	// VoidedTimeMillis is when the purchase was voided, in milliseconds since
+	// the epoch, as a decimal string.
+	VoidedTimeMillis string `json:"voidedTimeMillis"`
+}
+
+// MaxVoidedPurchaseAge is how far back the Voided Purchases API reads.
+const MaxVoidedPurchaseAge = 30 * 24 * time.Hour
+
+// voidedPurchasesPageSize is the most the API answers in one page.
+const voidedPurchasesPageSize = 1000
+
+// ListVoidedPurchases answers every one-time product purchase in packageName
+// voided between since and until, following the pages the API splits them
+// into. since may be at most [MaxVoidedPurchaseAge] ago.
+func (c *Client) ListVoidedPurchases(ctx context.Context, serviceAccountKey []byte, packageName string, since, until time.Time) ([]VoidedPurchase, error) {
+	var voided []VoidedPurchase
+	pageToken := ""
+	for {
+		query := url.Values{
+			"startTime":  {strconv.FormatInt(since.UnixMilli(), 10)},
+			"endTime":    {strconv.FormatInt(until.UnixMilli(), 10)},
+			"type":       {"0"},
+			"maxResults": {strconv.Itoa(voidedPurchasesPageSize)},
+		}
+		if pageToken != "" {
+			query.Set("token", pageToken)
+		}
+		target := fmt.Sprintf("%s/androidpublisher/v3/applications/%s/purchases/voidedpurchases?%s",
+			c.endpoint, url.PathEscape(packageName), query.Encode())
+		body, err := c.do(ctx, serviceAccountKey, http.MethodGet, target)
+		if err != nil {
+			return nil, err
+		}
+		var page struct {
+			VoidedPurchases []VoidedPurchase `json:"voidedPurchases"`
+			TokenPagination struct {
+				NextPageToken string `json:"nextPageToken"`
+			} `json:"tokenPagination"`
+		}
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, fmt.Errorf("googleplay: decode voided purchases: %w", err)
+		}
+		voided = append(voided, page.VoidedPurchases...)
+		pageToken = page.TokenPagination.NextPageToken
+		if pageToken == "" {
+			return voided, nil
+		}
+	}
 }
 
 func (c *Client) purchaseURL(packageName, productID, token string) string {

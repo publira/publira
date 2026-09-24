@@ -17,6 +17,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -27,15 +28,23 @@ type Deps struct {
 	// Storage resolves the bucket OrphanImagePurge reclaims, and is the one
 	// dependency no other job takes.
 	Storage storage.ReclaimerSource
-	Logger  *slog.Logger
+	// Secrets decrypts the store credentials GooglePlayVoidedPurchaseSync
+	// calls Google Play with, and GooglePlay is the API it calls.
+	Secrets    paymentsettings.SecretManager
+	GooglePlay VoidedPurchaseLister
+	Logger     *slog.Logger
 }
 
 // errNoDB is what a caller that passed no pool gets, rather than the nil
 // dereference the first query would be.
 var errNoDB = errors.New("maintenance: db is nil")
 
-// errNoStorage is the same for the one job that reaches past the database.
-var errNoStorage = errors.New("maintenance: storage is nil")
+// errNoStorage and errNoGooglePlay are the same for the jobs that reach past
+// the database.
+var (
+	errNoStorage    = errors.New("maintenance: storage is nil")
+	errNoGooglePlay = errors.New("maintenance: google play client is nil")
+)
 
 func (d Deps) logger() *slog.Logger {
 	if d.Logger == nil {

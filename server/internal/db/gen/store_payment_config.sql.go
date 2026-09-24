@@ -108,6 +108,41 @@ func (q *Queries) ListTenantStoreProductPrices(ctx context.Context, tenantID uui
 	return items, nil
 }
 
+const ListTenantsSellingOnGooglePlay = `-- name: ListTenantsSellingOnGooglePlay :many
+SELECT gp.tenant_id
+FROM tenant_google_play_config gp
+    JOIN tenant_config tc ON tc.tenant_id = gp.tenant_id
+WHERE gp.enabled
+    AND tc.android_application_id IS NOT NULL
+ORDER BY gp.tenant_id
+`
+
+// The tenants whose Google Play store is enabled and names its app, which are
+// the ones whose voided purchases the worker reads. Read across tenants, so
+// only a role that bypasses row-level security sees them all.
+func (q *Queries) ListTenantsSellingOnGooglePlay(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantsSellingOnGooglePlay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var tenant_id uuid.UUID
+		if err := rows.Scan(&tenant_id); err != nil {
+			return nil, err
+		}
+		items = append(items, tenant_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const UpsertTenantAppStoreConfig = `-- name: UpsertTenantAppStoreConfig :one
 INSERT INTO tenant_app_store_config (
         tenant_id,

@@ -21,12 +21,12 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/storeproduct"
+	"github.com/publira/publira/server/internal/storepurchase"
 )
 
-// Values of purchases.store.
 const (
-	storeAppStore   = "app_store"
-	storeGooglePlay = "google_play"
+	storeAppStore   = storepurchase.StoreAppStore
+	storeGooglePlay = storepurchase.StoreGooglePlay
 )
 
 // appStoreTransactions is the part of the App Store Server API a confirmation
@@ -444,6 +444,14 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record a store purchase", err, "tenant_id", tenantID.String(), "store", transaction.store)
 	}
+	refunded, err := storepurchase.ApplyHeldRefund(ctx, txq, tenantID, purchase.ID, transaction.store, transaction.transactionID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to apply a held store refund", err, "tenant_id", tenantID.String())
+	}
+	if refunded {
+		s.logger.InfoContext(ctx, "applied a store refund that arrived before its purchase",
+			"tenant_id", tenantID, "purchase_id", purchase.ID, "store", transaction.store)
+	}
 	if err := txq.ConsumeStorePurchaseIntent(ctx, dbmodels.ConsumeStorePurchaseIntentParams{TenantID: tenantID, ID: intent.ID}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to consume a store purchase intent", err, "tenant_id", tenantID.String())
 	}
@@ -454,7 +462,8 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	}); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to project a store purchase", err, "tenant_id", tenantID.String())
 	}
-	if transaction.store == storeGooglePlay {
+	// A purchase Google Play has already voided is not one to consume.
+	if transaction.store == storeGooglePlay && !refunded {
 		payload, err := json.Marshal(outbox.GooglePlayPurchaseConsumePayload{
 			TenantID:      tenantID.String(),
 			PurchaseID:    purchase.ID.String(),
