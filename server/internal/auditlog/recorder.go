@@ -21,12 +21,34 @@ const (
 	OutcomeSuccess = "success"
 	OutcomeFailure = "failure"
 
-	// RoleSystem is the actor role of an entry no member of the tenant
-	// produced: a setting the tenant saved earlier, applied by the platform
-	// when the condition it names is met. The tenant roles the console writes
-	// come from the session instead.
+	// RoleSystem is the actor role of an entry no signed-in account produced:
+	// on a tenant, a setting the tenant saved earlier, applied by the platform
+	// when the condition it names is met; on the platform, a change made from
+	// publiractl. The roles the consoles write come from the session instead.
 	RoleSystem = "system"
 )
+
+// PlatformActor is who a platform entry is filed under. The platform API
+// builds one from the signed-in operator; a command with no session files its
+// entries under SystemPlatformActor.
+type PlatformActor struct {
+	// The operator who acted, or uuid.Nil for SystemPlatformActor.
+	UserID   uuid.UUID
+	Role     string
+	ClientIP string
+}
+
+// SystemPlatformActor files an entry under no operator: publiractl has no
+// session and authenticates only as the PostgreSQL role it connects with.
+var SystemPlatformActor = PlatformActor{Role: RoleSystem}
+
+// Entry returns e filed under a, replacing whatever actor e named.
+func (a PlatformActor) Entry(e PlatformEntry) PlatformEntry {
+	e.ActorPlatformUserID = a.UserID
+	e.ActorRole = a.Role
+	e.ClientIP = a.ClientIP
+	return e
+}
 
 // Querier is the minimal DB interface required by Recorder.
 type Querier interface {
@@ -36,6 +58,9 @@ type Querier interface {
 
 // PlatformEntry holds the data for a platform audit log event.
 type PlatformEntry struct {
+	// The operator who acted, or uuid.Nil for a change made with no session.
+	// Leaving it empty requires RoleSystem, which is the only value the stored
+	// row accepts without an operator beside it.
 	ActorPlatformUserID uuid.UUID
 	ActorRole           string
 	Action              string
@@ -117,7 +142,7 @@ func platformEntryParams(e PlatformEntry) (dbmodels.InsertPlatformAuditLogParams
 	}
 	return dbmodels.InsertPlatformAuditLogParams{
 		ID:                  id,
-		ActorPlatformUserID: e.ActorPlatformUserID,
+		ActorPlatformUserID: uuid.NullUUID{UUID: e.ActorPlatformUserID, Valid: e.ActorPlatformUserID != uuid.Nil},
 		ActorRole:           e.ActorRole,
 		Action:              e.Action,
 		TargetType:          sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
@@ -354,37 +379,18 @@ func (r *AsyncRecorder) closeQueue() {
 
 // RecordPlatform enqueues a platform audit entry without blocking on the DB.
 func (r *AsyncRecorder) RecordPlatform(ctx context.Context, e PlatformEntry) {
-	r.logger.InfoContext(ctx, "audit",
-		"actor_platform_user_id", e.ActorPlatformUserID,
-		"actor_role", e.ActorRole,
-		"action", e.Action,
-		"target_type", e.TargetType,
-		"target_id", e.TargetID,
-		"outcome", e.Outcome,
-		"reason", e.Reason,
-		"client_ip", e.ClientIP,
-	)
+	logPlatformEntry(ctx, r.logger, e)
 
-	id, err := uuid.NewV7()
+	params, err := platformEntryParams(e)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "auditlog: failed to generate id", "error", err)
 		return
 	}
 	r.enqueue(queuedEntry{
-		ctx:    ctx,
-		action: e.Action,
-		kind:   "platform",
-		platform: &dbmodels.InsertPlatformAuditLogParams{
-			ID:                  id,
-			ActorPlatformUserID: e.ActorPlatformUserID,
-			ActorRole:           e.ActorRole,
-			Action:              e.Action,
-			TargetType:          sql.NullString{String: e.TargetType, Valid: e.TargetType != ""},
-			TargetID:            sql.NullString{String: e.TargetID, Valid: e.TargetID != ""},
-			Outcome:             e.Outcome,
-			Reason:              sql.NullString{String: e.Reason, Valid: e.Reason != ""},
-			ClientIp:            sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
-		},
+		ctx:      ctx,
+		action:   e.Action,
+		kind:     "platform",
+		platform: &params,
 	})
 }
 

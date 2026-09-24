@@ -73,7 +73,7 @@ INSERT INTO platform_audit_logs (
 
 type InsertPlatformAuditLogParams struct {
 	ID                  uuid.UUID      `json:"id"`
-	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
 	ActorRole           string         `json:"actor_role"`
 	Action              string         `json:"action"`
 	TargetType          sql.NullString `json:"target_type"`
@@ -390,7 +390,7 @@ type ListPlatformAuditLogsAscParams struct {
 
 type ListPlatformAuditLogsAscRow struct {
 	ID                  uuid.UUID      `json:"id"`
-	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
 	ActorRole           string         `json:"actor_role"`
 	Action              string         `json:"action"`
 	TargetType          sql.NullString `json:"target_type"`
@@ -520,7 +520,7 @@ type ListPlatformAuditLogsDescParams struct {
 
 type ListPlatformAuditLogsDescRow struct {
 	ID                  uuid.UUID      `json:"id"`
-	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorPlatformUserID uuid.NullUUID  `json:"actor_platform_user_id"`
 	ActorRole           string         `json:"actor_role"`
 	Action              string         `json:"action"`
 	TargetType          sql.NullString `json:"target_type"`
