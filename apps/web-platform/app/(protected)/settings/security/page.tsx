@@ -32,6 +32,7 @@ const emptyValues: PlatformSecurityPolicy = {
   mailRequestsPerSource: { perDay: 1, perHour: 1 },
   mfaRequiredForTenantAdmin: false,
   passwordVerification: { perDay: 1, perMinute: 1 },
+  storePurchaseConfirmation: { perDay: 1, perMinute: 1 },
 };
 
 const FormSkeleton = () => (

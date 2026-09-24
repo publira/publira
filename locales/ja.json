@@ -3960,6 +3960,9 @@
         "mail_per_source_legend": "送信元ごとのメール要求",
         "mail_source_per_hour": "送信元ごとのメール要求数（1時間）",
         "mail_source_per_day": "送信元ごとのメール要求数（1日）",
+        "store_purchase_title": "アプリ内課金の確定",
+        "store_purchase_per_minute": "読者ごとのアプリ内課金の確定数（1分）",
+        "store_purchase_per_day": "読者ごとのアプリ内課金の確定数（1日）",
         "mfa_required": "テナント管理者に多要素認証を必須にする",
         "save": "セキュリティポリシーを保存",
         "saved": "セキュリティポリシーを保存しました。"

@@ -89,6 +89,14 @@ export const securityPolicyFormFields = {
     name: "password_verification_per_minute",
   },
   revision: "value",
+  storePurchaseConfirmationPerDay: {
+    kind: "value",
+    name: "store_purchase_confirmation_per_day",
+  },
+  storePurchaseConfirmationPerMinute: {
+    kind: "value",
+    name: "store_purchase_confirmation_per_minute",
+  },
 } as const;
 
 export const securityPolicyFormSchema = async (locale: Locale) => {
@@ -96,6 +104,7 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const password = t("platform.policy.security.password_title");
   const perAddress = t("platform.policy.security.mail_per_address_legend");
   const perSource = t("platform.policy.security.mail_per_source_legend");
+  const storePurchase = t("platform.policy.security.store_purchase_title");
 
   return z
     .object({
@@ -110,6 +119,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       passwordVerificationPerDay: limitSchema(t, password),
       passwordVerificationPerMinute: limitSchema(t, password),
       revision: revisionSchema(t),
+      storePurchaseConfirmationPerDay: limitSchema(t, storePurchase),
+      storePurchaseConfirmationPerMinute: limitSchema(t, storePurchase),
     })
     .superRefine(
       refineWindowPairs([
@@ -127,6 +138,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
           day: "mailPerSourcePerDay",
           message: t("platform.policy.day_below_hour", { setting: perSource }),
           short: "mailPerSourcePerHour",
+        },
+        {
+          day: "storePurchaseConfirmationPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: storePurchase,
+          }),
+          short: "storePurchaseConfirmationPerMinute",
         },
       ])
     );

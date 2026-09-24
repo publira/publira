@@ -59,6 +59,10 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.passwordVerificationPerDay,
           perMinute: data.passwordVerificationPerMinute,
         },
+        storePurchaseConfirmation: {
+          perDay: data.storePurchaseConfirmationPerDay,
+          perMinute: data.storePurchaseConfirmationPerMinute,
+        },
       },
       data.revision,
       locale
