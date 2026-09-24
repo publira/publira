@@ -1,17 +1,21 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import '../../test/support/pump_until.dart';
 
 /// [WidgetTester.enterText] for a device whose own keyboard is connected to
 /// the field.
 ///
 /// [WidgetTester.enterText] reaches the framework alone, so the device keyboard
 /// keeps the value the field opened with and can report it back over the
-/// typed text. A value the framework sets itself is sent to the keyboard too,
-/// and the field has to hold it for a few frames to outlast a report already on
-/// its way.
-Future<void> typeText(WidgetTester tester, Finder finder, String text) async {
+/// typed text. This sets the value from the framework side, which sends it to
+/// the device as well, and returns once the device has answered for it with
+/// the field still holding the text.
+Future<void> typeText(
+  WidgetTester tester,
+  Finder finder,
+  String text, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
   await tester.showKeyboard(finder);
   final editable = tester.state<EditableTextState>(
     find.descendant(
@@ -24,14 +28,24 @@ Future<void> typeText(WidgetTester tester, Finder finder, String text) async {
     text: text,
     selection: TextSelection.collapsed(offset: text.length),
   );
-  var heldFrames = 0;
-  await pumpUntilTrue(tester, () {
-    if (editable.textEditingValue.text == text) {
-      heldFrames++;
-      return heldFrames >= 5;
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    if (editable.textEditingValue.text != text) {
+      editable.userUpdateTextEditingValue(
+        value,
+        SelectionChangedCause.keyboard,
+      );
     }
-    heldFrames = 0;
-    editable.userUpdateTextEditingValue(value, SelectionChangedCause.keyboard);
-    return false;
-  }, description: '$finder to hold "$text"');
+    // The device answers the channel in order, so once this returns every
+    // report it sent before taking the value has reached the field.
+    await SystemChannels.textInput.invokeMethod<void>(
+      'TextInput.setEditingState',
+      editable.textEditingValue.toJSON(),
+    );
+    await tester.pump();
+    if (editable.textEditingValue.text == text) {
+      return;
+    }
+  }
+  fail('Timed out waiting for $finder to hold "$text"');
 }
