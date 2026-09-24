@@ -786,11 +786,16 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Setup / Android emulator packages
+        id: emulator-packages
+        run: bash mobile/scripts/emulator-packages.sh
+
       - name: Validate / Mobile E2E
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 34
-          arch: x86_64
+          api-level: ${{ steps.emulator-packages.outputs.api-level }}
+          target: ${{ steps.emulator-packages.outputs.target }}
+          arch: ${{ steps.emulator-packages.outputs.arch }}
           profile: pixel_6
           disable-animations: true
           script: task mobile:test-integration
