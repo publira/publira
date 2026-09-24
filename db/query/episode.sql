@@ -639,19 +639,19 @@ ORDER BY e.order_index ASC,
 -- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
-        WHEN $3 IS NULL THEN 'draft'
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN 'draft'
         ELSE 'scheduled'
     END,
-    scheduled_at = $3,
+    scheduled_at = sqlc.narg('scheduled_at')::timestamptz,
     published_at = CASE
-        WHEN $3 IS NULL THEN NULL
+        WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN NULL
         ELSE el.published_at
     END
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id
-    AND s.tenant_id = $1
-    AND e.public_id = $2;
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND e.public_id = sqlc.arg('public_id');
 
 -- name: UpdateEpisodeLayoutByIDForTenant :exec
 -- Both overrides are written together, and NULL returns a value to following

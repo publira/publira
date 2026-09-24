@@ -1035,7 +1035,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				scheduledAt, _ := time.Parse(time.RFC3339, "2030-01-01T10:00:00+09:00")
 				normalized := scheduledAt.UTC()
 				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenant)).
-					WithArgs(tenantID, "EPISODE001", sql.NullTime{Time: normalized, Valid: true}).
+					WithArgs(sql.NullTime{Time: normalized, Valid: true}, tenantID, "EPISODE001").
 					WillReturnResult(sqlmock.NewResult(0, 1))
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
 					WithArgs(tenantID, "EPISODE001").

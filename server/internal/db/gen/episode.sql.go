@@ -1637,29 +1637,29 @@ func (q *Queries) UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx contex
 const UpdateEpisodePublishScheduleByPublicIDForTenant = `-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
-        WHEN $3 IS NULL THEN 'draft'
+        WHEN $1::timestamptz IS NULL THEN 'draft'
         ELSE 'scheduled'
     END,
-    scheduled_at = $3,
+    scheduled_at = $1::timestamptz,
     published_at = CASE
-        WHEN $3 IS NULL THEN NULL
+        WHEN $1::timestamptz IS NULL THEN NULL
         ELSE el.published_at
     END
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id
-    AND s.tenant_id = $1
-    AND e.public_id = $2
+    AND s.tenant_id = $2
+    AND e.public_id = $3
 `
 
 type UpdateEpisodePublishScheduleByPublicIDForTenantParams struct {
+	ScheduledAt sql.NullTime `json:"scheduled_at"`
 	TenantID    uuid.UUID    `json:"tenant_id"`
 	PublicID    string       `json:"public_id"`
-	ScheduledAt sql.NullTime `json:"scheduled_at"`
 }
 
 func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.ScheduledAt)
+	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByPublicIDForTenant, arg.ScheduledAt, arg.TenantID, arg.PublicID)
 	return err
 }
 
