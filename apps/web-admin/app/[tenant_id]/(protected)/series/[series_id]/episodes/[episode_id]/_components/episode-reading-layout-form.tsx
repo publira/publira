@@ -1,4 +1,12 @@
 import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import type { FormActionState } from "@publira/ui-components/action-form";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -8,14 +16,6 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
-import type { FormActionState } from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,

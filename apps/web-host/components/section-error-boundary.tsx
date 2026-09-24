@@ -5,17 +5,16 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import {
+  SectionErrorCatch,
+  SectionErrorDigest,
+  SectionErrorRetry,
+} from "@publira/ui-components/section-error-fallback";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-
-import {
-  SectionErrorCatch,
-  SectionErrorDigest,
-  SectionErrorRetry,
-} from "./section-error-catch";
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;

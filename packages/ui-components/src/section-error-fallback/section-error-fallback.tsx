@@ -1,5 +1,7 @@
 "use client";
 
+import { catchError } from "next/error";
+import type { ErrorInfo } from "next/error";
 import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
@@ -32,17 +34,8 @@ export interface SectionErrorFallbackProps {
   fallback: ReactNode;
 }
 
-/**
- * The subset of `next/error`'s `ErrorInfo` this fallback reads.
- *
- * Spelled structurally rather than imported so this package keeps no
- * dependency on `next` — `catchError` passes the full `ErrorInfo`, which
- * satisfies this.
- */
-interface SectionErrorInfo {
-  error: unknown;
-  retry: () => void;
-}
+/** The subset of `ErrorInfo` this fallback reads. */
+type SectionErrorInfo = Pick<ErrorInfo, "error" | "retry">;
 
 /**
  * `ErrorInfo["error"]` is `unknown`, and a Server Component error reaches the
@@ -82,24 +75,6 @@ const SectionErrorFallbackState = ({
  * `fallback` tree, every sibling section keeps whatever it already rendered,
  * and `SectionErrorRetry` re-runs only that subtree.
  *
- * Pass it to `catchError` from a module that is already in the client graph:
- *
- * ```tsx
- * "use client";
- *
- * import { sectionErrorFallback } from "@publira/ui-components/section-error-fallback";
- * import { catchError } from "next/error";
- *
- * export const SectionErrorCatch = catchError(sectionErrorFallback);
- * ```
- *
- * The `catchError` call stays in each app because this package is built with
- * `tsdown`, which drops the `"use client"` directive when it bundles — so a
- * boundary exported from here would be evaluated in the server graph, which is
- * exactly where `catchError` cannot run. Each app's `components/` file is
- * compiled by Next.js from source and keeps its directive. That is the same
- * split the route-level `error.tsx` bodies already use.
- *
  * `catchError` rather than a hand-written React error boundary because it knows
  * about the framework: `redirect()` and `notFound()` throw to signal
  * themselves and must not be caught, and the error state has to clear on a
@@ -117,6 +92,12 @@ export const sectionErrorFallback = (
     {fallback}
   </SectionErrorFallbackState>
 );
+
+/**
+ * The section-level error boundary: renders `children`, and the `fallback`
+ * tree in their place once they throw.
+ */
+export const SectionErrorCatch = catchError(sectionErrorFallback);
 
 const useSectionErrorState = (): SectionErrorState => {
   const state = useContext(SectionErrorStateContext);

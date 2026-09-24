@@ -1,4 +1,9 @@
 import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
@@ -14,11 +19,6 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,

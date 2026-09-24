@@ -1,4 +1,5 @@
 import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -10,7 +11,6 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
-import { OfflineNotice } from "#components/offline-notice";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantName } from "#lib/public-api";

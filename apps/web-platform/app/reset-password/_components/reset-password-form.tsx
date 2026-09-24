@@ -1,11 +1,14 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
 
 import { requestPasswordResetAction } from "../_lib/actions";

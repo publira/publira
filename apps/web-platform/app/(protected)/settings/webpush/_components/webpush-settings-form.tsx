@@ -1,4 +1,8 @@
 import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -9,7 +13,6 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
 import {
   PlatformSection,

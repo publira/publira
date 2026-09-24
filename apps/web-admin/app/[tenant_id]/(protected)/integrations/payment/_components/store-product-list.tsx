@@ -6,6 +6,11 @@ import {
   EmptyStateTitle,
 } from "@publira/ui-components/empty-state";
 import {
+  Identifier,
+  IdentifierCopy,
+  IdentifierValue,
+} from "@publira/ui-components/identifier";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -30,11 +35,6 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "#components/identifier";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantStoreProduct } from "#lib/store-payment-settings";

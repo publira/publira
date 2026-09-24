@@ -1,9 +1,4 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
-
-import { getPlatformLocale } from "../lib/locale";
-import { setPlatformLocaleAction } from "../lib/locale-action";
-import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
-import { getMessagesFor } from "../lib/messages";
 import {
   LocaleSwitcher,
   LocaleSwitcherContent,
@@ -11,7 +6,12 @@ import {
   LocaleSwitcherOptions,
   LocaleSwitcherTitle,
   LocaleSwitcherTrigger,
-} from "./locale-switcher-control";
+} from "@publira/ui-components/locale-switcher";
+
+import { getPlatformLocale } from "../lib/locale";
+import { setPlatformLocaleAction } from "../lib/locale-action";
+import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
+import { getMessagesFor } from "../lib/messages";
 
 /** Header display-language control backed by the existing locale cookie. */
 export const PlatformLocaleSwitcher = async () => {

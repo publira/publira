@@ -1,12 +1,12 @@
 "use client";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useState } from "react";
 
-import type { FormActionState } from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,

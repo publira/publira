@@ -1,6 +1,10 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -11,7 +15,6 @@ import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { Message } from "#components/message";
 import {
   PlatformSection,

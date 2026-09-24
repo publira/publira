@@ -1,11 +1,11 @@
 import "./globals.css";
 import { LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { OfflineNotice } from "#components/offline-notice";
 import { PlatformMessagesProvider } from "#components/platform-messages-provider";
 
 export const metadata: Metadata = {

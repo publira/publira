@@ -3,17 +3,17 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
-
 import {
   ActionForm,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
-} from "#components/action-form";
+} from "@publira/ui-components/action-form";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";

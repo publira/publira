@@ -1,3 +1,7 @@
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -9,7 +13,6 @@ import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { AdminDomainPreview } from "#components/admin-domain-preview";
 import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";

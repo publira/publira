@@ -4,6 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -12,8 +13,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import type { FormActionState } from "#components/action-form";
 
 import { MemberInviteForm } from "./member-invite-form";
 

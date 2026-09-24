@@ -1,14 +1,14 @@
 import { AuthScreenNote } from "@publira/layouts/auth-screen";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "#components/action-form";
 import { Message } from "#components/message";
 
 import { acceptInviteAction } from "../_lib/actions";

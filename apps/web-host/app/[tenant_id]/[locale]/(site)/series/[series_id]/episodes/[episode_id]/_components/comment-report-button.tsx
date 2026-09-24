@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -20,7 +21,6 @@ import { RadioGroup } from "@publira/ui-components/radio-group";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useState } from "react";
 
-import type { FormActionState } from "#components/action-form";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 import {

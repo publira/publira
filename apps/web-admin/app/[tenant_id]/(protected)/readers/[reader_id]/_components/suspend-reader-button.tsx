@@ -1,3 +1,8 @@
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -13,11 +18,6 @@ import {
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-} from "#components/action-form";
 import { Message } from "#components/message";
 
 import { suspendReaderAction } from "../_lib/actions";
