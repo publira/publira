@@ -172,18 +172,28 @@ func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUI
 }
 
 // tenantAcceptsStorePayments answers which stores the tenant's app can charge
-// through, on the same terms StartStorePurchase checks. It fails closed like
-// tenantAcceptsPayments.
+// through, for a tenant on the store route. A store counts only once its key
+// decrypts, since ConfirmStorePurchase cannot verify a charge without it, so
+// this fails closed like tenantAcceptsPayments.
 func (s *apiServer) tenantAcceptsStorePayments(ctx context.Context, tenantID uuid.UUID) (appStore, googlePlay bool) {
-	config, err := s.appStores(ctx).Get(ctx, tenantID)
-	if err != nil {
-		s.logger.WarnContext(ctx, "could not determine tenant store payment availability", "tenant_id", tenantID, "error", err)
-		return false, false
+	stores := s.appStores(ctx)
+	_, appStoreErr := stores.LoadAppStoreCredentials(ctx, tenantID)
+	_, googlePlayErr := stores.LoadGooglePlayCredentials(ctx, tenantID)
+	return s.storeAcceptsPayments(ctx, tenantID, storeAppStore, appStoreErr),
+		s.storeAcceptsPayments(ctx, tenantID, storeGooglePlay, googlePlayErr)
+}
+
+// storeAcceptsPayments reads the outcome of loading one store's credentials.
+// A store that is off says nothing worth logging; a ready one whose key does
+// not decrypt is a fault an operator has to see.
+func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID, store string, err error) bool {
+	if err == nil {
+		return true
 	}
-	if config.Route != paymentsettings.RouteStore {
-		return false, false
+	if !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		s.logger.WarnContext(ctx, "could not determine tenant store payment availability", "tenant_id", tenantID, "store", store, "error", err)
 	}
-	return config.AppStore.Ready, config.GooglePlay.Ready
+	return false
 }
 
 // tenantBrandingImageVariants reads the variants of the theme's icon and

@@ -267,6 +267,12 @@ func TestDBGetTenantAnswersWhichStoreTheAppSellsThrough(t *testing.T) {
 		t.Fatalf("App Store alone ready: store payments = %v / %v, want true / false", appStore, googlePlay)
 	}
 
+	// A key this server cannot decrypt could not verify the charge.
+	exec("UPDATE tenant_app_store_config SET private_key_encrypted = 'enc:v1:not-a-key' WHERE tenant_id = $1")
+	if appStore, googlePlay := storePayments(); appStore || googlePlay {
+		t.Fatalf("App Store key that does not decrypt: store payments = %v / %v, want false / false", appStore, googlePlay)
+	}
+
 	exec("UPDATE tenant_config SET app_purchase_route = 'external_checkout' WHERE tenant_id = $1")
 	if appStore, googlePlay := storePayments(); appStore || googlePlay {
 		t.Fatalf("external checkout: store payments = %v / %v, want false / false", appStore, googlePlay)

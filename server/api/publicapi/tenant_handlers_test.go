@@ -744,13 +744,15 @@ func TestGetTenantFailsOnAnUnsupportedAppPurchaseRoute(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-// expectStoreReadinessUnavailable stands in for a store read that fails
-// after the route was read as store.
+// expectStoreReadinessUnavailable stands in for the credential reads of both
+// stores failing after the route was read as store.
 func expectStoreReadinessUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
-	expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, "store")
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantAppStoreConfigByTenantID)).
-		WithArgs(tenantID).
-		WillReturnError(errors.New("connection reset"))
+	for range 2 {
+		expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, "store")
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantAppStoreConfigByTenantID)).
+			WithArgs(tenantID).
+			WillReturnError(errors.New("connection reset"))
+	}
 }
 
 func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, route string) {
