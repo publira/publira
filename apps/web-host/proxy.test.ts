@@ -373,6 +373,7 @@ describe("web-host proxy locale routing", () => {
   it.each([
     "/api/v1/webhook/payment/stripe",
     "/api/v1/webhook/payment/pay_jp",
+    "/api/v1/webhook/payment/app-store",
     "/api/v1/webhook/stripe",
   ])(
     "rewrites the webhook %s to the tenant without a locale",

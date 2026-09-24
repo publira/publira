@@ -488,6 +488,14 @@
       "exception": "Not in the app yet: #2825."
     },
     {
+      "name": "The App Store's server notifications",
+      "web": {
+        "routes": ["api/v1/webhook/payment/app-store"],
+        "rpcs": ["ProcessAppStoreNotification"]
+      },
+      "exception": "Apple's servers call it to report a refund; no reader reaches it."
+    },
+    {
       "name": "The payment providers' webhooks",
       "web": {
         "routes": [

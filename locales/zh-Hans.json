@@ -2185,7 +2185,9 @@
           "private_key": "私钥（.p8）",
           "private_key_description": "选择 App Store Connect 签发的 .p8 文件，或粘贴其内容。",
           "bundle_identifier": "Bundle ID",
-          "bundle_identifier_description": "在“应用链接”中设置的 iOS 应用。请在那里修改。"
+          "bundle_identifier_description": "在“应用链接”中设置的 iOS 应用。请在那里修改。",
+          "notification_url": "App Store 服务器通知 URL",
+          "notification_url_description": "请在 App Store Connect 的“App 信息”中，将此 URL 同时填入 App Store 服务器通知（版本 2）的生产服务器 URL 和沙盒服务器 URL。Apple 通知的退款会通过它撤销相应的购买。"
         },
         "google_play": {
           "title": "Google Play",

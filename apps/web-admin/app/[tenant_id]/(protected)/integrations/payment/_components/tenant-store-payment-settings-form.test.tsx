@@ -116,6 +116,37 @@ describe("TenantStorePaymentSettingsForm", () => {
     expect(posted("app_purchase_route")).toBe("external_checkout");
   });
 
+  it("shows the URL App Store Server Notifications are sent to", async () => {
+    await renderForm(
+      <TenantStorePaymentSettingsForm
+        action={noopAction}
+        canEdit
+        initialSettings={readySettings}
+        notificationUrl="https://shop.example.com/api/v1/webhook/payment/app-store"
+      />
+    );
+
+    const url = screen.getByLabelText<HTMLInputElement>(
+      "App Store Server Notifications URL"
+    );
+    expect(url.value).toBe(
+      "https://shop.example.com/api/v1/webhook/payment/app-store"
+    );
+    expect(url.readOnly).toBe(true);
+  });
+
+  it("leaves the notification URL out while the tenant has no domain", async () => {
+    await renderForm(
+      <TenantStorePaymentSettingsForm
+        action={noopAction}
+        canEdit
+        initialSettings={readySettings}
+      />
+    );
+
+    expect(screen.queryByText("App Store Server Notifications URL")).toBeNull();
+  });
+
   it("asks for a key as a file or pasted text where none is stored", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
