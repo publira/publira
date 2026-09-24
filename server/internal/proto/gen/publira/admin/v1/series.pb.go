@@ -510,7 +510,7 @@ func (x *SeriesScheduleWeekdays) GetWeekdays() []int32 {
 }
 
 // Each field this request can leave absent — the optional ones and
-// schedule_weekdays — keeps the value stored when it does, so a caller that
+// weekly_schedule — keeps the value stored when it does, so a caller that
 // predates a field, or states only what it edits, does not reset the rest.
 // Stating one writes it, its default and a cleared override included.
 type UpdateSeriesRequest struct {
@@ -530,9 +530,9 @@ type UpdateSeriesRequest struct {
 	PublishedAt              string `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	// Unspecified, sent explicitly, stores the default the column carries:
 	// ongoing, all ages.
-	Status           *v1.SeriesStatus        `protobuf:"varint,13,opt,name=status,proto3,enum=publira.types.v1.SeriesStatus,oneof" json:"status,omitempty"`
-	ScheduleWeekdays *SeriesScheduleWeekdays `protobuf:"bytes,24,opt,name=schedule_weekdays,json=scheduleWeekdays,proto3" json:"schedule_weekdays,omitempty"`
-	AgeRating        *v1.SeriesAgeRating     `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating,oneof" json:"age_rating,omitempty"`
+	Status         *v1.SeriesStatus        `protobuf:"varint,13,opt,name=status,proto3,enum=publira.types.v1.SeriesStatus,oneof" json:"status,omitempty"`
+	WeeklySchedule *SeriesScheduleWeekdays `protobuf:"bytes,24,opt,name=weekly_schedule,json=weeklySchedule,proto3" json:"weekly_schedule,omitempty"`
+	AgeRating      *v1.SeriesAgeRating     `protobuf:"varint,15,opt,name=age_rating,json=ageRating,proto3,enum=publira.types.v1.SeriesAgeRating,oneof" json:"age_rating,omitempty"`
 	// The whole assignment: what this field holds is what the series carries
 	// afterwards, and an empty field clears it.
 	GenrePublicIds []string `protobuf:"bytes,16,rep,name=genre_public_ids,json=genrePublicIds,proto3" json:"genre_public_ids,omitempty"`
@@ -679,9 +679,9 @@ func (x *UpdateSeriesRequest) GetStatus() v1.SeriesStatus {
 	return v1.SeriesStatus(0)
 }
 
-func (x *UpdateSeriesRequest) GetScheduleWeekdays() *SeriesScheduleWeekdays {
+func (x *UpdateSeriesRequest) GetWeeklySchedule() *SeriesScheduleWeekdays {
 	if x != nil {
-		return x.ScheduleWeekdays
+		return x.WeeklySchedule
 	}
 	return nil
 }
@@ -3884,7 +3884,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x0fcreator_credits\x18\x05 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12Z\n" +
 	"\x15purchase_availability\x18\x06 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"4\n" +
 	"\x16SeriesScheduleWeekdays\x12\x1a\n" +
-	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\xa7\v\n" +
+	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\xb6\v\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -3898,8 +3898,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	" \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\x12!\n" +
 	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\x12;\n" +
-	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusH\x02R\x06status\x88\x01\x01\x12U\n" +
-	"\x11schedule_weekdays\x18\x18 \x01(\v2(.publira.admin.v1.SeriesScheduleWeekdaysR\x10scheduleWeekdays\x12E\n" +
+	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusH\x02R\x06status\x88\x01\x01\x12Q\n" +
+	"\x0fweekly_schedule\x18\x18 \x01(\v2(.publira.admin.v1.SeriesScheduleWeekdaysR\x0eweeklySchedule\x12E\n" +
 	"\n" +
 	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingH\x03R\tageRating\x88\x01\x01\x12(\n" +
 	"\x10genre_public_ids\x18\x10 \x03(\tR\x0egenrePublicIds\x12\x1b\n" +
@@ -3918,7 +3918,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x12_reading_directionB\x15\n" +
 	"\x13_spread_start_indexB\x0f\n" +
 	"\r_availabilityB\x18\n" +
-	"\x16_purchase_availabilityJ\x04\b\a\x10\bJ\x04\b\x0e\x10\x0fR\x12creator_public_ids\"\xb5\x03\n" +
+	"\x16_purchase_availabilityJ\x04\b\a\x10\bJ\x04\b\x0e\x10\x0fR\x12creator_public_idsR\x11schedule_weekdays\"\xb5\x03\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
 	"\fcomment_mode\x18\x02 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12O\n" +
@@ -4253,7 +4253,7 @@ var file_publira_admin_v1_series_proto_depIdxs = []int32{
 	60,  // 12: publira.admin.v1.CreateSeriesResponse.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
 	55,  // 13: publira.admin.v1.UpdateSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	56,  // 14: publira.admin.v1.UpdateSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	4,   // 15: publira.admin.v1.UpdateSeriesRequest.schedule_weekdays:type_name -> publira.admin.v1.SeriesScheduleWeekdays
+	4,   // 15: publira.admin.v1.UpdateSeriesRequest.weekly_schedule:type_name -> publira.admin.v1.SeriesScheduleWeekdays
 	57,  // 16: publira.admin.v1.UpdateSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
 	1,   // 17: publira.admin.v1.UpdateSeriesRequest.creator_credits:type_name -> publira.admin.v1.SeriesCreatorCredit
 	58,  // 18: publira.admin.v1.UpdateSeriesRequest.comment_mode:type_name -> publira.types.v1.CommentMode

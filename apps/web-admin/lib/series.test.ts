@@ -375,9 +375,9 @@ describe("the classification a series carries", () => {
       expect.objectContaining({
         ageRating: SeriesAgeRating.R15,
         genrePublicIds: ["GENRE001"],
-        scheduleWeekdays: { weekdays: [2] },
         status: SeriesStatus.COMPLETED,
         tagNames: ["seaside"],
+        weeklySchedule: { weekdays: [2] },
       }),
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -411,10 +411,10 @@ describe("the classification a series carries", () => {
         commentMode: undefined,
         readingDirection: undefined,
         readingPeriodHours: undefined,
-        scheduleWeekdays: undefined,
         spreadStartIndex: undefined,
         status: undefined,
         synopsis: undefined,
+        weeklySchedule: undefined,
       }),
       { headers: { Authorization: "Bearer session-token" } }
     );

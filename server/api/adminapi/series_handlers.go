@@ -804,7 +804,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	// An absent field normalizes to its default, which UpdateSeriesListing only
 	// writes into a series that has no listing row yet.
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.GetStatus(), req.Msg.GetScheduleWeekdays().GetWeekdays(), req.Msg.GetAgeRating(), req.Msg.GetCommentMode(), req.Msg.GetReadingDirection(), req.Msg.SpreadStartIndex)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.GetStatus(), req.Msg.GetWeeklySchedule().GetWeekdays(), req.Msg.GetAgeRating(), req.Msg.GetCommentMode(), req.Msg.GetReadingDirection(), req.Msg.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -901,7 +901,7 @@ func (s *adminServer) UpdateSeries(
 		WriteSynopsis:           req.Msg.Synopsis != nil,
 		WriteReadingPeriodHours: req.Msg.ReadingPeriodHours != nil,
 		WriteStatus:             req.Msg.Status != nil,
-		WriteScheduleWeekdays:   req.Msg.ScheduleWeekdays != nil,
+		WriteScheduleWeekdays:   req.Msg.WeeklySchedule != nil,
 		WriteAgeRating:          req.Msg.AgeRating != nil,
 		WriteCommentMode:        req.Msg.CommentMode != nil,
 		WriteReadingDirection:   req.Msg.ReadingDirection != nil,

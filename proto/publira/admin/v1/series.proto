@@ -99,7 +99,7 @@ message SeriesScheduleWeekdays {
 }
 
 // Each field this request can leave absent — the optional ones and
-// schedule_weekdays — keeps the value stored when it does, so a caller that
+// weekly_schedule — keeps the value stored when it does, so a caller that
 // predates a field, or states only what it edits, does not reset the rest.
 // Stating one writes it, its default and a cleared override included.
 message UpdateSeriesRequest {
@@ -107,7 +107,10 @@ message UpdateSeriesRequest {
   reserved 7;
   reserved "creator_public_ids";
   // 14 held the weekdays as a bare repeated field, which has no absent state.
+  // The name stays reserved so a caller still sending the list is ignored
+  // rather than refused for sending a list where an object is expected.
   reserved 14;
+  reserved "schedule_weekdays";
 
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
@@ -125,7 +128,7 @@ message UpdateSeriesRequest {
   // Unspecified, sent explicitly, stores the default the column carries:
   // ongoing, all ages.
   optional publira.types.v1.SeriesStatus status = 13;
-  SeriesScheduleWeekdays schedule_weekdays = 24;
+  SeriesScheduleWeekdays weekly_schedule = 24;
   optional publira.types.v1.SeriesAgeRating age_rating = 15;
   // The whole assignment: what this field holds is what the series carries
   // afterwards, and an empty field clears it.

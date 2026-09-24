@@ -871,10 +871,6 @@ export const updateSeries = async (
             ? undefined
             : READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
-        scheduleWeekdays:
-          input.scheduleWeekdays === undefined
-            ? undefined
-            : { weekdays: input.scheduleWeekdays },
         spreadStartIndex: input.spreadStartIndex,
         status:
           input.status === undefined
@@ -884,6 +880,10 @@ export const updateSeries = async (
         tagNames: input.tagNames,
         tenant: { tenantId: input.tenantId },
         title: input.title,
+        weeklySchedule:
+          input.scheduleWeekdays === undefined
+            ? undefined
+            : { weekdays: input.scheduleWeekdays },
       },
       withSessionHeaders(sessionId)
     );

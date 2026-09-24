@@ -184,13 +184,13 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 	}
 
 	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		PublicId:         publicID,
-		Title:            "Weekly Story",
-		IsPublished:      true,
-		Status:           publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED.Enum(),
-		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{},
-		AgeRating:        publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL.Enum(),
+		Tenant:         tenant.tenantContext(),
+		PublicId:       publicID,
+		Title:          "Weekly Story",
+		IsPublished:    true,
+		Status:         publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED.Enum(),
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{},
+		AgeRating:      publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL.Enum(),
 	})); err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestDBUpdateSeriesWritesTheDefaultsItStates(t *testing.T) {
 		Synopsis:           new(""),
 		ReadingPeriodHours: new(int32(0)),
 		Status:             publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED.Enum(),
-		ScheduleWeekdays:   &publiraadminv1.SeriesScheduleWeekdays{},
+		WeeklySchedule:     &publiraadminv1.SeriesScheduleWeekdays{},
 		AgeRating:          publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED.Enum(),
 		CommentMode:        publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED.Enum(),
 		ReadingDirection:   publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED.Enum(),
@@ -422,10 +422,10 @@ func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 	}
 
 	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
-		Tenant:           tenant.tenantContext(),
-		PublicId:         created.Msg.Series.PublicId,
-		Title:            "Weekly Story",
-		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{3, 9}},
+		Tenant:         tenant.tenantContext(),
+		PublicId:       created.Msg.Series.PublicId,
+		Title:          "Weekly Story",
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{3, 9}},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)

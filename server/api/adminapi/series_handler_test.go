@@ -803,14 +803,14 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "SERIES001",
-		Title:            "After",
-		Synopsis:         new("Synopsis"),
-		IsPublished:      true,
-		Status:           publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS.Enum(),
-		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{4, 1, 4}},
-		AgeRating:        publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18.Enum(),
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:       "SERIES001",
+		Title:          "After",
+		Synopsis:       new("Synopsis"),
+		IsPublished:    true,
+		Status:         publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS.Enum(),
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{4, 1, 4}},
+		AgeRating:      publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18.Enum(),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -844,10 +844,10 @@ func TestUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "SERIES001",
-		Title:            "After",
-		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{7}},
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:       "SERIES001",
+		Title:          "After",
+		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{7}},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
