@@ -1517,21 +1517,10 @@ WHERE s.tenant_id = $2
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = $2
-                AND p.user_id = $3
-                AND p.episode_id = e.id
-                AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = $2
-                AND at.user_id = $3
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+            FROM episode_content_grants g
+            WHERE g.tenant_id = $2
+                AND g.user_id = $3
+                AND g.episode_id = e.id
         )
     )
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE

@@ -50,22 +50,11 @@ WITH readable AS (
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = sqlc.arg('tenant_id')
+                FROM episode_content_grants g
+                WHERE g.tenant_id = sqlc.arg('tenant_id')
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = sqlc.arg('user_id')::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = sqlc.arg('tenant_id')
-                    AND at.user_id = sqlc.arg('user_id')
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = sqlc.arg('user_id')::uuid
+                    AND g.episode_id = e.id
             )
         )
     LIMIT 1
@@ -131,22 +120,11 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = sqlc.arg('tenant_id')
+            FROM episode_content_grants g
+            WHERE g.tenant_id = sqlc.arg('tenant_id')
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = sqlc.arg('user_id')::uuid
-                AND p.episode_id = e.id
-                AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = sqlc.arg('tenant_id')
-                AND at.user_id = sqlc.arg('user_id')
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                AND g.user_id = sqlc.arg('user_id')::uuid
+                AND g.episode_id = e.id
         )
     )
 LIMIT 1;
@@ -208,22 +186,11 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = sqlc.arg('tenant_id')
+            FROM episode_content_grants g
+            WHERE g.tenant_id = sqlc.arg('tenant_id')
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = sqlc.arg('user_id')::uuid
-                AND p.episode_id = e.id
-                AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = sqlc.arg('tenant_id')
-                AND at.user_id = sqlc.arg('user_id')
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                AND g.user_id = sqlc.arg('user_id')::uuid
+                AND g.episode_id = e.id
         )
     )
 ORDER BY rp.updated_at DESC,
@@ -383,22 +350,11 @@ FROM continue_from cf
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = sqlc.arg('tenant_id')
+                FROM episode_content_grants g
+                WHERE g.tenant_id = sqlc.arg('tenant_id')
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = sqlc.arg('user_id')::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = sqlc.arg('tenant_id')
-                    AND at.user_id = sqlc.arg('user_id')
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = sqlc.arg('user_id')::uuid
+                    AND g.episode_id = e.id
             )
         )
 WHERE (
@@ -545,22 +501,11 @@ FROM continue_from cf
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = sqlc.arg('tenant_id')
+                FROM episode_content_grants g
+                WHERE g.tenant_id = sqlc.arg('tenant_id')
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = sqlc.arg('user_id')::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = sqlc.arg('tenant_id')
-                    AND at.user_id = sqlc.arg('user_id')
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = sqlc.arg('user_id')::uuid
+                    AND g.episode_id = e.id
             )
         )
 WHERE (

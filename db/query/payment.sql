@@ -67,15 +67,15 @@ WHERE e.public_id = sqlc.arg('public_id')
 LIMIT 1;
 
 -- name: UserHasValidPurchaseForEpisode :one
+-- Only a purchase counts: an access ticket does not stop the reader buying.
 SELECT EXISTS (
     SELECT 1
-    FROM purchases
-    WHERE tenant_id = sqlc.arg('tenant_id')
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')
         -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-        AND user_id = sqlc.arg('user_id')::uuid
-        AND episode_id = sqlc.arg('episode_id')
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND refunded_at IS NULL
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')
+        AND g.kind = 'purchase'
 ) AS has_purchase;
 
 -- name: ListMyPurchasesDesc :many
@@ -211,12 +211,11 @@ SELECT
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
-    FROM purchases
-    WHERE tenant_id = sqlc.arg('tenant_id')::uuid
-        AND user_id = sqlc.arg('user_id')::uuid
-        AND episode_id = sqlc.arg('episode_id')::uuid
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND refunded_at IS NULL
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')::uuid
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')::uuid
+        AND g.kind = 'purchase'
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
 RETURNING *;

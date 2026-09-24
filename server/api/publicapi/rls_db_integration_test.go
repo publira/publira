@@ -93,6 +93,9 @@ var publicDataTables = []struct {
 	// Where an episode may be bought, which the episode reads and the checkout
 	// take from the tenant, the series, and the episode together.
 	{name: "episode_purchase_availability", count: "SELECT count(*) FROM episode_purchase_availability"},
+	// The purchases and access tickets that open a priced episode, which the
+	// viewer and image-server read before they hand over a page.
+	{name: "episode_content_grants", count: "SELECT count(*) FROM episode_content_grants"},
 	// Every series row the catalog returns carries its credits, joined from
 	// the creator, the credit, and the credit's role.
 	{name: "creators", count: "SELECT count(*) FROM creators"},

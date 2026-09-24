@@ -142,28 +142,11 @@ SELECT ei.id,
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = s.tenant_id
+            FROM episode_content_grants g
+            WHERE g.tenant_id = s.tenant_id
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = $1::uuid
-                AND p.episode_id = e.id
-                AND (
-                    p.expires_at IS NULL
-                    OR p.expires_at > NOW()
-                )
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = s.tenant_id
-                AND at.user_id = $1
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (
-                    at.expires_at IS NULL
-                    OR at.expires_at > NOW()
-                )
+                AND g.user_id = $1::uuid
+                AND g.episode_id = e.id
         )
     ) AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided

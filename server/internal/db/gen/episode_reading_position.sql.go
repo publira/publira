@@ -47,22 +47,11 @@ WHERE rp.tenant_id = $1
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = $1
+            FROM episode_content_grants g
+            WHERE g.tenant_id = $1
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = $2::uuid
-                AND p.episode_id = e.id
-                AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = $1
-                AND at.user_id = $2
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                AND g.user_id = $2::uuid
+                AND g.episode_id = e.id
         )
     )
 LIMIT 1
@@ -145,22 +134,11 @@ WHERE rp.tenant_id = $1
         )
         OR EXISTS (
             SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = $1
+            FROM episode_content_grants g
+            WHERE g.tenant_id = $1
                 -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = $2::uuid
-                AND p.episode_id = e.id
-                AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = $1
-                AND at.user_id = $2
-                AND at.episode_id = e.id
-                AND at.revoked_at IS NULL
-                AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                AND g.user_id = $2::uuid
+                AND g.episode_id = e.id
         )
     )
 ORDER BY rp.updated_at DESC,
@@ -345,22 +323,11 @@ FROM continue_from cf
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = $1
+                FROM episode_content_grants g
+                WHERE g.tenant_id = $1
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = $2::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = $1
-                    AND at.user_id = $2
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = $2::uuid
+                    AND g.episode_id = e.id
             )
         )
 WHERE (
@@ -579,22 +546,11 @@ FROM continue_from cf
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = $1
+                FROM episode_content_grants g
+                WHERE g.tenant_id = $1
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = $2::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = $1
-                    AND at.user_id = $2
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = $2::uuid
+                    AND g.episode_id = e.id
             )
         )
 WHERE (
@@ -757,22 +713,11 @@ WITH readable AS (
             )
             OR EXISTS (
                 SELECT 1
-                FROM purchases p
-                WHERE p.tenant_id = $1
+                FROM episode_content_grants g
+                WHERE g.tenant_id = $1
                     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND p.user_id = $4::uuid
-                    AND p.episode_id = e.id
-                    AND (p.expires_at IS NULL OR p.expires_at > NOW())
-                    AND p.refunded_at IS NULL
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM access_tickets at
-                WHERE at.tenant_id = $1
-                    AND at.user_id = $4
-                    AND at.episode_id = e.id
-                    AND at.revoked_at IS NULL
-                    AND (at.expires_at IS NULL OR at.expires_at > NOW())
+                    AND g.user_id = $4::uuid
+                    AND g.episode_id = e.id
             )
         )
     LIMIT 1

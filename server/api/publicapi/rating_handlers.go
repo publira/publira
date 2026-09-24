@@ -97,7 +97,7 @@ func (s *apiServer) readerMayReadEpisode(
 		return false, s.internalDBError(ctx, "failed to check episode content access for a rating", err,
 			"tenant_id", tenantID.String(), "user_id", userID.String())
 	}
-	return granted.Valid && granted.Bool, nil
+	return granted, nil
 }
 
 // episodeRatingMode reads the press mode governing one episode: its series' own
