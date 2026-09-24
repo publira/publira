@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -78,6 +79,33 @@ describe("ActionForm", () => {
 
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.queryByText("Saving...")).toBeNull();
+  });
+
+  it("closes the fields in its fieldset while the Action is in flight", async () => {
+    const save = Promise.withResolvers<FormActionState>();
+
+    render(
+      <ActionForm action={() => save.promise}>
+        <ActionFormFieldset>
+          <input aria-label="Name" name="name" />
+        </ActionFormFieldset>
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    expect(screen.getByLabelText("Name").matches(":disabled")).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name").matches(":disabled")).toBe(true);
+    });
+
+    // A transition left open would hold back every later test's Action.
+    save.resolve(null);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name").matches(":disabled")).toBe(false);
+    });
   });
 
   it("hides the success message when showSuccess is false", async () => {

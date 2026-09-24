@@ -4,8 +4,16 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { FormActionState } from "#components/action-form";
 
 import { EpisodeReadingLayoutForm } from "./episode-reading-layout-form";
 
@@ -48,6 +56,21 @@ const posted = (name: string) =>
       `input[type="hidden"][name="${name}"]`
     ),
   ].map((input) => input.value);
+
+/**
+ * Whether a control refuses input, whichever way it says so. A native control
+ * closed by its `<fieldset>` keeps `disabled` false and matches `:disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true" ||
+  Object.hasOwn(element.dataset, "disabled");
+
+const layoutFields = () => [
+  screen.getByRole("combobox", { name: "Reading direction" }),
+  screen.getByRole("combobox", { name: "Spreads start" }),
+  screen.getByRole("spinbutton", { name: /Spreads start at page/u }),
+];
 
 afterEach(() => {
   cleanup();
@@ -119,5 +142,39 @@ describe("EpisodeReadingLayoutForm", () => {
         "Add page images before setting where this episode's spreads start."
       )
     ).toBeDefined();
+  });
+
+  // The Action carries what the form held when it was submitted, so a change
+  // made while it is in flight would sit under the success message unsaved.
+  it("closes every field while the save is in flight", async () => {
+    const save = Promise.withResolvers<FormActionState>();
+    render(
+      <EpisodeReadingLayoutForm
+        action={() => save.promise}
+        episodePublicId="EP001"
+        initialLayout={{ readingDirection: "rtl", spreadStartIndex: 2 }}
+        pageCount={24}
+        seriesLayout={{ readingDirection: "ltr", spreadStartIndex: 1 }}
+        seriesPublicId="SERIES001"
+        tenantId="TENANT001"
+      />
+    );
+
+    for (const field of layoutFields()) {
+      expect(isClosed(field)).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Update page layout" }));
+
+    await waitFor(() => {
+      for (const field of layoutFields()) {
+        expect(isClosed(field)).toBe(true);
+      }
+    });
+
+    save.resolve(null);
+    await waitFor(() => {
+      expect(isClosed(layoutFields()[0])).toBe(false);
+    });
   });
 });

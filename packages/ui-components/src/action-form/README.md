@@ -33,6 +33,17 @@ export default function Example() {
 
 `ActionFormIdle` and `ActionFormPending` render only while the form is idle and only while its Action is in flight. A control whose wording does not change while submitting takes plain children instead.
 
+`ActionFormFieldset` is a `Fieldset` that is also closed while the Action is in flight. Wrap the fields the form submits in it; a control independent of the submission, such as one that opens an unrelated dialog, can stay outside.
+
+```tsx
+<ActionForm action={myAction} className="grid gap-4">
+  <ActionFormFieldset className="grid gap-4">
+    <Field>...</Field>
+  </ActionFormFieldset>
+  <ActionFormSubmit>Save</ActionFormSubmit>
+</ActionForm>
+```
+
 ### Render function mode
 
 Pass a function as `children` when you want to place the message yourself or read the state the Action returned.
@@ -100,4 +111,4 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 | `className` | `string` | — | className of the `<form>` |
 | `id` | `string` | — | id of the `<form>`, for a submit control outside it to name with `form` (such as `ConfirmDialogAction`) |
 
-`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, and `disabled`.
+`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, and `disabled`. `ActionFormFieldset` takes the props of `Fieldset`; its `disabled` closes the fields whether or not the Action is in flight.

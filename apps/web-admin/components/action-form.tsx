@@ -2,6 +2,7 @@
 
 export {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,

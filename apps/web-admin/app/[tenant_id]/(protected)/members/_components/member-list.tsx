@@ -20,7 +20,11 @@ import {
 import { formatDate } from "@publira/utils";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";
@@ -114,24 +118,26 @@ const MemberRoleForm = ({
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="user_public_id" type="hidden" value={member.userPublicId} />
     <div className="flex flex-wrap items-center gap-2">
-      <Field className="min-w-36">
-        <FieldLabel className="sr-only">
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message
-              message="admin.members.role_label"
-              values={{ name: member.name || member.email }}
-            />
-          </Suspense>
-        </FieldLabel>
-        {/* Keyed by the role so a change made elsewhere, such as an
+      <ActionFormFieldset>
+        <Field className="min-w-36">
+          <FieldLabel className="sr-only">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message
+                message="admin.members.role_label"
+                values={{ name: member.name || member.email }}
+              />
+            </Suspense>
+          </FieldLabel>
+          {/* Keyed by the role so a change made elsewhere, such as an
             invitation granting it on the spot, replaces the selection. */}
-        <Select
-          defaultValue={member.role}
-          items={roleItems}
-          key={member.role}
-          name="role"
-        />
-      </Field>
+          <Select
+            defaultValue={member.role}
+            items={roleItems}
+            key={member.role}
+            name="role"
+          />
+        </Field>
+      </ActionFormFieldset>
       <ActionFormSubmit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="admin.members.role_submit" />

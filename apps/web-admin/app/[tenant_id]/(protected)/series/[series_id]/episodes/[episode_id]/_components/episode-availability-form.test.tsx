@@ -4,8 +4,16 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { FormActionState } from "#components/action-form";
 
 import { EpisodeAvailabilityForm } from "./episode-availability-form";
 
@@ -58,6 +66,15 @@ const posted = (name: string) =>
     ),
   ].map((input) => input.value);
 
+/**
+ * Whether a control refuses input, whichever way it says so. A native control
+ * closed by its `<fieldset>` keeps `disabled` false and matches `:disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true" ||
+  Object.hasOwn(element.dataset, "disabled");
+
 afterEach(() => {
   cleanup();
 });
@@ -102,5 +119,37 @@ describe("EpisodeAvailabilityForm", () => {
     expect(screen.getByRole("combobox", { name: "Shown on" }).textContent).toBe(
       "Follow the series"
     );
+  });
+
+  // The Action carries what the form held when it was submitted, so a change
+  // made while it is in flight would sit under the success message unsaved.
+  it("closes the field while the save is in flight", async () => {
+    const save = Promise.withResolvers<FormActionState>();
+    render(
+      <EpisodeAvailabilityForm
+        action={() => save.promise}
+        episodePublicId="EP001"
+        initialAvailability="app"
+        seriesAvailability="all"
+        seriesPublicId="SERIES001"
+        tenantId="TENANT001"
+      />
+    );
+    const field = screen.getByRole("combobox", { name: "Shown on" });
+
+    expect(isClosed(field)).toBe(false);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Update where it is shown" })
+    );
+
+    await waitFor(() => {
+      expect(isClosed(field)).toBe(true);
+    });
+
+    save.resolve(null);
+    await waitFor(() => {
+      expect(isClosed(field)).toBe(false);
+    });
   });
 });

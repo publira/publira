@@ -9,10 +9,12 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { FormActionState } from "#components/action-form";
 import type { TenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
 import { AppLinksForm } from "./app-links-form";
@@ -51,6 +53,19 @@ const control = (label: string) =>
 
 // A control inside a disabled fieldset keeps its own `disabled` property false.
 const isDisabled = (element: Element) => element.matches(":disabled");
+
+const submittedControls = () => [
+  platform("Android").getByRole("checkbox"),
+  control("Application ID"),
+  control("SHA-256 signing certificate fingerprints"),
+  platform("iOS").getByRole("checkbox"),
+  control("Apple Team ID"),
+  control("Bundle identifier"),
+];
+
+/** A Base UI checkbox is a `<span>`, which says it is closed in ARIA instead. */
+const isClosed = (element: Element) =>
+  isDisabled(element) || element.getAttribute("aria-disabled") === "true";
 
 afterEach(() => {
   cleanup();
@@ -143,5 +158,38 @@ describe("AppLinksForm", () => {
         name: "Save the app links",
       }).disabled
     ).toBe(true);
+  });
+
+  // The Action carries what the form held when it was submitted, so an edit
+  // made while it is in flight would sit under the success message unsaved.
+  it("closes every control while the save is in flight", async () => {
+    const save = Promise.withResolvers<FormActionState>();
+    renderForm({
+      action: () => save.promise,
+      association: {
+        android: {
+          applicationId: "com.example.reader",
+          sha256CertFingerprints: [FINGERPRINT_A],
+        },
+        ios: { bundleIdentifier: "com.example.reader", teamId: "ABCDE12345" },
+      },
+    });
+
+    for (const element of submittedControls()) {
+      expect(isClosed(element)).toBe(false);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Save the app links" }));
+
+    await waitFor(() => {
+      for (const element of submittedControls()) {
+        expect(isClosed(element)).toBe(true);
+      }
+    });
+
+    save.resolve(null);
+    await waitFor(() => {
+      expect(isClosed(control("Apple Team ID"))).toBe(false);
+    });
   });
 });

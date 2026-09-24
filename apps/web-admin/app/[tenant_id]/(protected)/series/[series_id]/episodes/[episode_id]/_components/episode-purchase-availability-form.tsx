@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -66,10 +67,12 @@ export const EpisodePurchaseAvailabilityForm = ({
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-      <EpisodePurchaseAvailabilityField
-        initialValue={initialPurchaseAvailability}
-        seriesPurchaseAvailability={seriesPurchaseAvailability}
-      />
+      <ActionFormFieldset>
+        <EpisodePurchaseAvailabilityField
+          initialValue={initialPurchaseAvailability}
+          seriesPurchaseAvailability={seriesPurchaseAvailability}
+        />
+      </ActionFormFieldset>
 
       <div className="mt-2 flex justify-end gap-2">
         <ActionFormSubmit>

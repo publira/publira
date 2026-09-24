@@ -10,6 +10,7 @@ import { Suspense } from "react";
 
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -106,69 +107,73 @@ export const EpisodeReadingLayoutForm = ({
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-        <ReadingDirectionField
-          initialValue={initialLayout.readingDirection}
-          label={
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.layout.reading_direction" />
-            </Suspense>
-          }
-          seriesDirection={seriesLayout?.readingDirection}
-        />
+        <ActionFormFieldset className="grid gap-4">
+          <ReadingDirectionField
+            initialValue={initialLayout.readingDirection}
+            label={
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.layout.reading_direction" />
+              </Suspense>
+            }
+            seriesDirection={seriesLayout?.readingDirection}
+          />
 
-        <SpreadStartSourceField
-          description={
-            hasNoPages ? (
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                  <Message message="admin.series.episodes.layout.spread_start_no_pages" />
-                </Suspense>
-              </FieldDescription>
-            ) : null
-          }
-          hasNoPages={hasNoPages}
-          initialValue={
-            initialLayout.spreadStartIndex === undefined ? "series" : "episode"
-          }
-          label={
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.series.episodes.layout.spread_start" />
-            </Suspense>
-          }
-          pageField={
-            <Field>
-              <FieldLabel required>
-                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <Message message="admin.series.episodes.layout.spread_start_page" />
-                </Suspense>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  defaultValue={defaultSpreadStartPage}
-                  max={pageCount}
-                  min={1}
-                  name="spread_start_page"
-                  required
-                  step={1}
-                  type="number"
-                />
-                {pageCount === undefined ? null : (
-                  <FieldDescription>
-                    <Suspense
-                      fallback={<SkeletonLine className="h-4 w-full" />}
-                    >
-                      <Message
-                        message="admin.series.episodes.layout.spread_start_page_description"
-                        values={{ count: String(pageCount) }}
-                      />
-                    </Suspense>
-                  </FieldDescription>
-                )}
-              </FieldContent>
-            </Field>
-          }
-          seriesSpreadStartPage={seriesSpreadStartPage}
-        />
+          <SpreadStartSourceField
+            description={
+              hasNoPages ? (
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                    <Message message="admin.series.episodes.layout.spread_start_no_pages" />
+                  </Suspense>
+                </FieldDescription>
+              ) : null
+            }
+            hasNoPages={hasNoPages}
+            initialValue={
+              initialLayout.spreadStartIndex === undefined
+                ? "series"
+                : "episode"
+            }
+            label={
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.layout.spread_start" />
+              </Suspense>
+            }
+            pageField={
+              <Field>
+                <FieldLabel required>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message message="admin.series.episodes.layout.spread_start_page" />
+                  </Suspense>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={defaultSpreadStartPage}
+                    max={pageCount}
+                    min={1}
+                    name="spread_start_page"
+                    required
+                    step={1}
+                    type="number"
+                  />
+                  {pageCount === undefined ? null : (
+                    <FieldDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-full" />}
+                      >
+                        <Message
+                          message="admin.series.episodes.layout.spread_start_page_description"
+                          values={{ count: String(pageCount) }}
+                        />
+                      </Suspense>
+                    </FieldDescription>
+                  )}
+                </FieldContent>
+              </Field>
+            }
+            seriesSpreadStartPage={seriesSpreadStartPage}
+          />
+        </ActionFormFieldset>
 
         <div className="mt-2 flex justify-end gap-2">
           <ActionFormSubmit>

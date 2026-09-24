@@ -6,6 +6,8 @@ import { requestFormReset, useFormStatus } from "react-dom";
 
 import { Button } from "../button/button";
 import type { ButtonProps } from "../button/button";
+import { Fieldset } from "../fieldset/fieldset";
+import type { FieldsetProps } from "../fieldset/fieldset";
 import { FormMessage } from "../form-message";
 
 /**
@@ -63,6 +65,17 @@ export const ActionFormSubmit = ({
       {children}
     </Button>
   );
+};
+
+/**
+ * The fields the form submits, closed while its Action is in flight: the
+ * Action carries what they held when the form was submitted, so an edit made
+ * meanwhile would sit under the result unsaved.
+ */
+export const ActionFormFieldset = ({ disabled, ...props }: FieldsetProps) => {
+  const { pending } = useFormStatus();
+
+  return <Fieldset {...props} disabled={disabled || pending} />;
 };
 
 /** Renders its children only while the surrounding form is idle. */
