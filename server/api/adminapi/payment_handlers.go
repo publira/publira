@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storeproduct"
 )
 
@@ -44,7 +45,7 @@ func mapPaymentSettingsUpdateError(err error) error {
 	case errors.Is(err, paymentsettings.ErrInvalidProvider),
 		errors.Is(err, paymentsettings.ErrSecretRequired),
 		errors.Is(err, paymentsettings.ErrSecretsRequired),
-		errors.Is(err, paymentsettings.ErrInvalidSecretUpdateMode):
+		errors.Is(err, secretupdate.ErrInvalidMode):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, paymentsettings.ErrSecretManagerUnavailable):
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("payment secret encryption is not configured"))
@@ -91,9 +92,9 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		Provider:                req.Msg.Provider,
 		Enabled:                 req.Msg.Enabled,
 		SecretKey:               req.Msg.SecretKey,
-		SecretKeyUpdateMode:     int32(req.Msg.SecretKeyUpdateMode),
+		SecretKeyUpdateMode:     secretupdate.Mode(req.Msg.SecretKeyUpdateMode),
 		WebhookSecret:           req.Msg.WebhookSecret,
-		WebhookSecretUpdateMode: int32(req.Msg.WebhookSecretUpdateMode),
+		WebhookSecretUpdateMode: secretupdate.Mode(req.Msg.WebhookSecretUpdateMode),
 	}, paymentsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -217,12 +218,12 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 			IssuerID:             appStore.GetIssuerId(),
 			KeyID:                appStore.GetKeyId(),
 			PrivateKey:           appStore.GetPrivateKey(),
-			PrivateKeyUpdateMode: int32(appStore.GetPrivateKeyUpdateMode()),
+			PrivateKeyUpdateMode: secretupdate.Mode(appStore.GetPrivateKeyUpdateMode()),
 		},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     googlePlay.GetEnabled(),
 			ServiceAccountKey:           googlePlay.GetServiceAccountKey(),
-			ServiceAccountKeyUpdateMode: int32(googlePlay.GetServiceAccountKeyUpdateMode()),
+			ServiceAccountKeyUpdateMode: secretupdate.Mode(googlePlay.GetServiceAccountKeyUpdateMode()),
 		},
 	}
 

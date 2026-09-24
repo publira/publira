@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -37,18 +38,18 @@ func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 	if _, err := store.Upsert(ctx, tenantA.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert tenant A: %v", err)
 	}
 	if _, err := store.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               "sk_test_51TenantBLeakXXXX",
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testOtherWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert tenant B: %v", err)
 	}
@@ -99,9 +100,9 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Enabled:                 false,
 		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert disabled settings: %v", err)
 	}
@@ -152,9 +153,9 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
@@ -247,9 +248,9 @@ func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}

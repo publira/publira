@@ -11,6 +11,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storagesettings"
 )
 
@@ -158,7 +159,7 @@ func TestEncryptUpdatedSecretKeepsReplacesAndClearsTheStoredSecret(t *testing.T)
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	unchanged, err := storagesettings.EncryptUpdatedSecret(stored, storagesettings.SecretUpdateModeUnchanged, "", encryptor)
+	unchanged, err := storagesettings.EncryptUpdatedSecret(stored, secretupdate.Unchanged, "", encryptor)
 	if err != nil {
 		t.Fatalf("EncryptUpdatedSecret(unchanged): %v", err)
 	}
@@ -166,7 +167,7 @@ func TestEncryptUpdatedSecretKeepsReplacesAndClearsTheStoredSecret(t *testing.T)
 		t.Fatalf("EncryptUpdatedSecret(unchanged) = %q, want the stored ciphertext", unchanged)
 	}
 
-	replaced, err := storagesettings.EncryptUpdatedSecret(stored, storagesettings.SecretUpdateModeReplace, "new-secret", encryptor)
+	replaced, err := storagesettings.EncryptUpdatedSecret(stored, secretupdate.Replace, "new-secret", encryptor)
 	if err != nil {
 		t.Fatalf("EncryptUpdatedSecret(replace): %v", err)
 	}
@@ -181,7 +182,7 @@ func TestEncryptUpdatedSecretKeepsReplacesAndClearsTheStoredSecret(t *testing.T)
 		t.Fatalf("the replaced secret decrypts to %q, want %q", plaintext, "new-secret")
 	}
 
-	cleared, err := storagesettings.EncryptUpdatedSecret(stored, storagesettings.SecretUpdateModeClear, "", encryptor)
+	cleared, err := storagesettings.EncryptUpdatedSecret(stored, secretupdate.Clear, "", encryptor)
 	if err != nil {
 		t.Fatalf("EncryptUpdatedSecret(clear): %v", err)
 	}
@@ -193,11 +194,11 @@ func TestEncryptUpdatedSecretKeepsReplacesAndClearsTheStoredSecret(t *testing.T)
 func TestEncryptUpdatedSecretRefusesAReplacementWithNoSecret(t *testing.T) {
 	t.Parallel()
 
-	_, err := storagesettings.EncryptUpdatedSecret("", storagesettings.SecretUpdateModeReplace, "   ", testEncryptor(t))
+	_, err := storagesettings.EncryptUpdatedSecret("", secretupdate.Replace, "   ", testEncryptor(t))
 	if !errors.Is(err, storagesettings.ErrSecretAccessKeyRequired) {
 		t.Fatalf("EncryptUpdatedSecret(replace, blank) = %v, want ErrSecretAccessKeyRequired", err)
 	}
-	if _, err := storagesettings.EncryptUpdatedSecret("", storagesettings.SecretUpdateModeReplace, "secret", nil); !errors.Is(err, storagesettings.ErrSecretManagerUnavailable) {
+	if _, err := storagesettings.EncryptUpdatedSecret("", secretupdate.Replace, "secret", nil); !errors.Is(err, storagesettings.ErrSecretManagerUnavailable) {
 		t.Fatalf("EncryptUpdatedSecret(no manager) = %v, want ErrSecretManagerUnavailable", err)
 	}
 }
@@ -211,7 +212,7 @@ func TestResolveSecretForTestAnswersTheStoredSecretAndTheAmbientCredential(t *te
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	secret, err := storagesettings.ResolveSecretForTest(stored, storagesettings.SecretUpdateModeUnchanged, "", encryptor)
+	secret, err := storagesettings.ResolveSecretForTest(stored, secretupdate.Unchanged, "", encryptor)
 	if err != nil {
 		t.Fatalf("ResolveSecretForTest(unchanged): %v", err)
 	}
@@ -221,7 +222,7 @@ func TestResolveSecretForTestAnswersTheStoredSecretAndTheAmbientCredential(t *te
 
 	// Nothing stored is the ambient credential rather than a missing value:
 	// the test then signs the way every process does.
-	secret, err = storagesettings.ResolveSecretForTest("", storagesettings.SecretUpdateModeUnchanged, "", encryptor)
+	secret, err = storagesettings.ResolveSecretForTest("", secretupdate.Unchanged, "", encryptor)
 	if err != nil {
 		t.Fatalf("ResolveSecretForTest(nothing stored): %v", err)
 	}
@@ -229,7 +230,7 @@ func TestResolveSecretForTestAnswersTheStoredSecretAndTheAmbientCredential(t *te
 		t.Fatalf("ResolveSecretForTest(nothing stored) = %q, want no secret", secret)
 	}
 
-	secret, err = storagesettings.ResolveSecretForTest(stored, storagesettings.SecretUpdateModeReplace, "typed-secret", encryptor)
+	secret, err = storagesettings.ResolveSecretForTest(stored, secretupdate.Replace, "typed-secret", encryptor)
 	if err != nil {
 		t.Fatalf("ResolveSecretForTest(replace): %v", err)
 	}
@@ -311,16 +312,16 @@ func TestValidateKeptSecretRefusesTheStoredSecretUnderAnotherAccessKeyID(t *test
 		name            string
 		storedID        string
 		accessKeyID     string
-		mode            int32
+		mode            secretupdate.Mode
 		hasStoredSecret bool
 		wantErr         bool
 	}{
-		{name: "the same id kept", storedID: "AKIAOLD", accessKeyID: "AKIAOLD", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true},
-		{name: "a new id with the stored secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true, wantErr: true},
-		{name: "a new id with no mode stated", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnspecified, hasStoredSecret: true, wantErr: true},
-		{name: "a new id with a new secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeReplace, hasStoredSecret: true},
-		{name: "a new id with nothing stored", storedID: "", accessKeyID: "AKIANEW", mode: storagesettings.SecretUpdateModeUnchanged},
-		{name: "the id cleared", storedID: "AKIAOLD", accessKeyID: "", mode: storagesettings.SecretUpdateModeUnchanged, hasStoredSecret: true},
+		{name: "the same id kept", storedID: "AKIAOLD", accessKeyID: "AKIAOLD", mode: secretupdate.Unchanged, hasStoredSecret: true},
+		{name: "a new id with the stored secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: secretupdate.Unchanged, hasStoredSecret: true, wantErr: true},
+		{name: "a new id with no mode stated", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: secretupdate.Unspecified, hasStoredSecret: true, wantErr: true},
+		{name: "a new id with a new secret", storedID: "AKIAOLD", accessKeyID: "AKIANEW", mode: secretupdate.Replace, hasStoredSecret: true},
+		{name: "a new id with nothing stored", storedID: "", accessKeyID: "AKIANEW", mode: secretupdate.Unchanged},
+		{name: "the id cleared", storedID: "AKIAOLD", accessKeyID: "", mode: secretupdate.Unchanged, hasStoredSecret: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

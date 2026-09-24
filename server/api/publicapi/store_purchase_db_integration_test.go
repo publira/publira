@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -91,12 +92,12 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 			IssuerID:             "57246542-96fe-1a63-e053-0824d011072a",
 			KeyID:                "2X9R4HXF34",
 			PrivateKey:           appstoretest.PrivateKeyPEM(t),
-			PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			PrivateKeyUpdateMode: secretupdate.Replace,
 		},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     true,
 			ServiceAccountKey:           testutil.ServiceAccountJSON(t, "reader-app", "publira@reader-app.iam.gserviceaccount.com"),
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			ServiceAccountKeyUpdateMode: secretupdate.Replace,
 		},
 	}); err != nil {
 		t.Fatalf("save store settings: %v", err)

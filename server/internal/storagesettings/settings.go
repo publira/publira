@@ -18,15 +18,7 @@ import (
 	"strings"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-)
-
-// The modes a save states its secret access key in, matching
-// publira.platform.v1.SecretUpdateMode.
-const (
-	SecretUpdateModeUnspecified int32 = 0
-	SecretUpdateModeUnchanged   int32 = 1
-	SecretUpdateModeReplace     int32 = 2
-	SecretUpdateModeClear       int32 = 3
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
@@ -157,8 +149,8 @@ func ValidateCredentialPair(accessKeyID string, hasSecretAccessKey bool) error {
 // ValidateKeptSecret refuses to keep the stored secret under an access key id
 // other than the one it was stored with, which would pair a new id with a key
 // that was never issued for it.
-func ValidateKeptSecret(storedAccessKeyID, accessKeyID string, mode int32, hasStoredSecret bool) error {
-	if mode != SecretUpdateModeUnspecified && mode != SecretUpdateModeUnchanged {
+func ValidateKeptSecret(storedAccessKeyID, accessKeyID string, mode secretupdate.Mode, hasStoredSecret bool) error {
+	if !mode.Keeps() {
 		return nil
 	}
 	accessKeyID = strings.TrimSpace(accessKeyID)
@@ -206,36 +198,42 @@ func ConfigParams(settings Settings, accessKeyID, secretAccessKeyEncrypted strin
 // EncryptUpdatedSecret answers what the secret column holds after a save:
 // the ciphertext already there, a newly encrypted one, or nothing at all when
 // the operator chose the ambient credential.
-func EncryptUpdatedSecret(existingEncrypted string, mode int32, newSecret string, mgr SecretManager) (string, error) {
-	switch mode {
-	case SecretUpdateModeUnspecified, SecretUpdateModeUnchanged:
-		return existingEncrypted, nil
-	case SecretUpdateModeReplace:
-		newSecret = strings.TrimSpace(newSecret)
-		if newSecret == "" {
-			return "", ErrSecretAccessKeyRequired
-		}
+func EncryptUpdatedSecret(existingEncrypted string, mode secretupdate.Mode, newSecret string, mgr SecretManager) (string, error) {
+	resolved, err := secretupdate.Resolve(mode, newSecret, ErrSecretAccessKeyRequired)
+	if err != nil {
+		return "", err
+	}
+	switch resolved {
+	case secretupdate.Replace:
 		if mgr == nil {
 			return "", ErrSecretManagerUnavailable
 		}
-		encrypted, err := mgr.EncryptString(newSecret)
+		encrypted, err := mgr.EncryptString(strings.TrimSpace(newSecret))
 		if err != nil {
 			return "", fmt.Errorf("encrypt secret access key: %w", err)
 		}
 		return encrypted, nil
-	case SecretUpdateModeClear:
+	case secretupdate.Clear:
 		return "", nil
 	default:
-		return "", fmt.Errorf("invalid secret update mode: %d", mode)
+		return existingEncrypted, nil
 	}
 }
 
 // ResolveSecretForTest answers the secret access key a connection test signs
 // with. It is the one path that returns stored key material in the clear, and
 // it hands it straight to the test.
-func ResolveSecretForTest(existingEncrypted string, mode int32, newSecret string, mgr SecretManager) (string, error) {
-	switch mode {
-	case SecretUpdateModeUnspecified, SecretUpdateModeUnchanged:
+func ResolveSecretForTest(existingEncrypted string, mode secretupdate.Mode, newSecret string, mgr SecretManager) (string, error) {
+	resolved, err := secretupdate.Resolve(mode, newSecret, ErrSecretAccessKeyRequired)
+	if err != nil {
+		return "", err
+	}
+	switch resolved {
+	case secretupdate.Replace:
+		return strings.TrimSpace(newSecret), nil
+	case secretupdate.Clear:
+		return "", nil
+	default:
 		existingEncrypted = strings.TrimSpace(existingEncrypted)
 		if existingEncrypted == "" {
 			return "", nil
@@ -248,16 +246,6 @@ func ResolveSecretForTest(existingEncrypted string, mode int32, newSecret string
 			return "", fmt.Errorf("decrypt secret access key: %w", err)
 		}
 		return secret, nil
-	case SecretUpdateModeReplace:
-		newSecret = strings.TrimSpace(newSecret)
-		if newSecret == "" {
-			return "", ErrSecretAccessKeyRequired
-		}
-		return newSecret, nil
-	case SecretUpdateModeClear:
-		return "", nil
-	default:
-		return "", fmt.Errorf("invalid secret update mode: %d", mode)
 	}
 }
 

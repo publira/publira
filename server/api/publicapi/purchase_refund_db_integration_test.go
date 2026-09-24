@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -58,9 +59,9 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -63,7 +64,7 @@ func seedGooglePlayTenant(t *testing.T, pg *testutil.PostgresEnv, encryptor *sec
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     enabled,
 			ServiceAccountKey:           testutil.ServiceAccountJSON(t, "reader-app", "publira@reader-app.iam.gserviceaccount.com"),
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			ServiceAccountKeyUpdateMode: secretupdate.Replace,
 		},
 	}); err != nil {
 		t.Fatalf("save google play settings: %v", err)

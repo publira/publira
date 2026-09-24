@@ -2,17 +2,13 @@ package emailsettings
 
 import (
 	"errors"
-	"fmt"
 	"net/mail"
 	"strings"
+
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
-	SecretUpdateModeUnspecified int32 = 0
-	SecretUpdateModeUnchanged   int32 = 1
-	SecretUpdateModeReplace     int32 = 2
-	SecretUpdateModeClear       int32 = 3
-
 	TestRecipientTypeUnspecified int32 = 0
 	TestRecipientTypeSelf        int32 = 1
 	TestRecipientTypeCustom      int32 = 2
@@ -114,14 +110,13 @@ func HasAnyValue(settings SMTPSettings, hasPassword bool) bool {
 		hasPassword
 }
 
-func EncryptUpdatedPassword(existingEncrypted string, mode int32, newPassword string, mgr SecretManager) (string, bool, error) {
-	switch mode {
-	case SecretUpdateModeUnspecified, SecretUpdateModeUnchanged:
-		return existingEncrypted, existingEncrypted != "", nil
-	case SecretUpdateModeReplace:
-		if strings.TrimSpace(newPassword) == "" {
-			return "", false, ErrPasswordRequired
-		}
+func EncryptUpdatedPassword(existingEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, bool, error) {
+	resolved, err := secretupdate.Resolve(mode, newPassword, ErrPasswordRequired)
+	if err != nil {
+		return "", false, err
+	}
+	switch resolved {
+	case secretupdate.Replace:
 		if mgr == nil {
 			return "", false, ErrSecretManagerUnavailable
 		}
@@ -130,26 +125,25 @@ func EncryptUpdatedPassword(existingEncrypted string, mode int32, newPassword st
 			return "", false, err
 		}
 		return encrypted, true, nil
-	case SecretUpdateModeClear:
+	case secretupdate.Clear:
 		return "", false, nil
 	default:
-		return "", false, fmt.Errorf("invalid secret update mode: %d", mode)
+		return existingEncrypted, existingEncrypted != "", nil
 	}
 }
 
-func ResolvePasswordForTest(existingEncrypted string, mode int32, newPassword string, mgr SecretManager) (string, error) {
-	switch mode {
-	case SecretUpdateModeUnspecified, SecretUpdateModeUnchanged:
-		return DecryptPassword(existingEncrypted, mgr)
-	case SecretUpdateModeReplace:
-		if strings.TrimSpace(newPassword) == "" {
-			return "", ErrPasswordRequired
-		}
+func ResolvePasswordForTest(existingEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, error) {
+	resolved, err := secretupdate.Resolve(mode, newPassword, ErrPasswordRequired)
+	if err != nil {
+		return "", err
+	}
+	switch resolved {
+	case secretupdate.Replace:
 		return newPassword, nil
-	case SecretUpdateModeClear:
+	case secretupdate.Clear:
 		return "", ErrPasswordRequired
 	default:
-		return "", fmt.Errorf("invalid secret update mode: %d", mode)
+		return DecryptPassword(existingEncrypted, mgr)
 	}
 }
 
