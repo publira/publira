@@ -46,9 +46,10 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
     episode_rating_limit_per_minute, episode_rating_limit_per_day,
     contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day,
     contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day,
-    viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day
+    viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day,
+    store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day
   )
-  VALUES (TRUE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300)
+  VALUES (TRUE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300, 10, 100)
   ON CONFLICT (singleton) DO UPDATE
   SET mail_request_limit_per_address_per_hour = EXCLUDED.mail_request_limit_per_address_per_hour,
       mail_request_limit_per_address_per_day = EXCLUDED.mail_request_limit_per_address_per_day,
