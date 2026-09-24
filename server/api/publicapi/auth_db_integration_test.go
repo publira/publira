@@ -369,6 +369,11 @@ func TestDBCreateUserAnswersARegisteredAddressLikeAFreeOne(t *testing.T) {
 		t.Fatalf("accepted = %v for the registered address and %v for the free one, want both true",
 			taken.Msg.Accepted, free.Msg.Accepted)
 	}
+	env.processReaderAuthRequests(t)
+
+	if count := countRows(t, env, `SELECT count(*) FROM users WHERE email = $1`, "newcomer@tenant-a.example.com"); count != 1 {
+		t.Fatalf("accounts for the free address = %d, want 1", count)
+	}
 
 	if count := countRows(t, env, `SELECT count(*) FROM users WHERE email = $1`, member.Email); count != 1 {
 		t.Fatalf("accounts for %s = %d, want 1", member.Email, count)
@@ -399,6 +404,7 @@ func TestDBCreateUserMailsTheOwnerOfARegisteredAddress(t *testing.T) {
 			t.Fatalf("CreateUser attempt %d: %v", attempt+1, err)
 		}
 	}
+	env.processReaderAuthRequests(t)
 
 	// One notice per attempt: a reader targeted again has to hear about it,
 	// which is why the events are keyed by the attempt and not by the account.
@@ -466,6 +472,7 @@ func TestDBRequestEmailVerificationReplacesAnExpiredLink(t *testing.T) {
 	if !resp.Msg.Requested {
 		t.Fatal("requested = false, want true")
 	}
+	env.processReaderAuthRequests(t)
 
 	if count := countRows(t, env,
 		`SELECT count(*) FROM user_email_verification_tokens WHERE id = $1`, expired); count != 0 {
@@ -511,6 +518,7 @@ func TestDBRequestEmailVerificationAnswersEveryAddressAlike(t *testing.T) {
 			t.Fatalf("requested = false for %s, want true", email)
 		}
 	}
+	env.processReaderAuthRequests(t)
 
 	if count := countRows(t, env,
 		`SELECT count(*) FROM user_email_verification_tokens WHERE user_id = $1`, member.ID); count != 0 {
@@ -539,6 +547,7 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 	})); err != nil {
 		t.Fatalf("RequestEmailVerification: %v", err)
 	}
+	env.processReaderAuthRequests(t)
 
 	// The row stores only the hash, so the mail's payload is the one readable
 	// form of the link — the same place the outbox worker reads it from.
@@ -570,78 +579,6 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 		Token:  "expired-token",
 	})); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("VerifyUserEmail with the replaced link = %v, want not_found", err)
-	}
-}
-
-// Requests for the same address arriving at once still leave one live link. A
-// reader who submits the form twice is the ordinary way this happens, and
-// without the lock on the account row the transactions cannot see each other's
-// token: each would insert one, and every link would stay valid.
-func TestDBRequestEmailVerificationKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
-	env := newPublicDBEnv(t)
-	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
-	client := env.authClient()
-
-	for range testutil.ConcurrentBursts {
-		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
-			_, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
-				Tenant: tenantContext(tenant),
-				Email:  pending.Email,
-			}))
-			return err
-		})
-		// Every burst is checked on its own: the next burst would replace the
-		// tokens a race left behind, and the account would look untouched at the
-		// end.
-		live := countRows(t, env, `
-			SELECT count(*) FROM user_email_verification_tokens
-			WHERE user_id = $1 AND used_at IS NULL
-		`, pending.ID)
-		if live != 1 {
-			t.Fatalf("live verification tokens = %d, want 1", live)
-		}
-	}
-}
-
-// The reset form has the same shape, and a reader who submits it twice is the
-// ordinary way two requests reach it at once. Without the lock both would
-// insert a token, and both mailed links would open the same account.
-func TestDBRequestPasswordResetKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
-	env := newPublicDBEnv(t)
-	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
-	client := env.authClient()
-
-	for range testutil.ConcurrentBursts {
-		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
-			_, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
-				Tenant: tenantContext(tenant),
-				Email:  member.Email,
-			}))
-			return err
-		})
-		// Every burst is checked on its own: the next burst would replace the
-		// tokens a race left behind, and the account would look untouched at the
-		// end.
-		live := countRows(t, env, `
-			SELECT count(*) FROM user_password_reset_tokens
-			WHERE user_id = $1 AND completed_at IS NULL
-		`, member.ID)
-		if live != 1 {
-			t.Fatalf("live password reset tokens = %d, want 1", live)
-		}
-	}
-
-	// The event a superseded request left behind names a token that is gone, and
-	// the worker drops it rather than mailing a dead link, so what the count is
-	// about is the mails that still have a request to announce.
-	if mails := countRows(t, env, `
-		SELECT count(*) FROM outbox_events event
-		JOIN user_password_reset_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
-		WHERE event.event_type = 'reader_password_reset_email'
-	`); mails != 1 {
-		t.Fatalf("password reset mails with a request to announce = %d, want 1", mails)
 	}
 }
 

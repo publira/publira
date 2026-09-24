@@ -155,7 +155,8 @@ test.describe("web-host sign-up consent", () => {
     await page.getByRole("button", { name: "Sign up" }).click();
 
     await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
-    expect(accountCount()).toBe("1");
+    // The worker opens the account, consents included, after the form answered.
+    await expect.poll(() => accountCount()).toBe("1");
     expect(agreedVersionIds()).toEqual([
       SIGNUP_CONSENT_TERMS_PAGE.versionId,
       SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
@@ -174,7 +175,9 @@ test.describe("web-host sign-up consent", () => {
     await page.getByRole("button", { name: "Sign up" }).click();
 
     await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
-    expect(accountCount(SIGNUP_CONSENT_SHARED_TENANT)).toBe("1");
+    await expect
+      .poll(() => accountCount(SIGNUP_CONSENT_SHARED_TENANT))
+      .toBe("1");
     expect(agreedVersionIds(SIGNUP_CONSENT_SHARED_TENANT)).toEqual([
       SIGNUP_CONSENT_SHARED_PAGE.versionId,
     ]);
@@ -206,10 +209,12 @@ test.describe("web-host sign-up consent", () => {
     await page.getByRole("button", { name: "Sign up" }).click();
 
     await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
-    expect(agreedVersionIds()).toEqual([
-      SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
-      REPUBLISHED_TERMS_VERSION_ID,
-    ]);
+    await expect
+      .poll(() => agreedVersionIds())
+      .toEqual([
+        SIGNUP_CONSENT_PRIVACY_PAGE.versionId,
+        REPUBLISHED_TERMS_VERSION_ID,
+      ]);
   });
 
   test("a tenant that names no page asks for no consent", async ({ page }) => {

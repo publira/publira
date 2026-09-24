@@ -160,13 +160,15 @@ type InsertOutboxEventParams struct {
 // runs the handler, and records done / retry / dead.
 //
 // Auth-mail payloads carry the raw token the token tables store only
-// as a hash. Terminal updates drop that key on the event types below
-// so a processed row does not keep a usable secret. Other event types
-// keep payload.token, if they have one. Keep this list in sync with
-// MarkOutboxEventDone, MarkOutboxEventDead, both halves of the stale
-// reclaim (RecoverStaleProcessingOutboxEvents excludes the list,
-// RecoverStaleProcessingAuthMailOutboxEvents selects it), and the
-// terminal-token data migration:
+// as a hash, and a reader sign-up request carries the password hash of
+// the account it may open. Terminal updates drop both keys on the event
+// types below so a processed row does not keep a usable secret. Other
+// event types keep payload.token, if they have one. Keep this list in
+// sync with MarkOutboxEventDone, MarkOutboxEventDead, and both halves
+// of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
+// list, RecoverStaleProcessingAuthMailOutboxEvents selects it). The
+// terminal-token data migration covers the types that existed when it
+// ran:
 //
 //	admin_email_change_confirmation_email
 //	admin_password_reset_email
@@ -175,6 +177,7 @@ type InsertOutboxEventParams struct {
 //	reader_email_change_confirmation_email
 //	reader_email_verification_email
 //	reader_password_reset_email
+//	reader_signup_request
 //	tenant_admin_invitation_email
 //
 // Expected plans (empty table may still seq-scan; SET enable_seqscan = off
@@ -230,8 +233,9 @@ SET
             'reader_email_change_confirmation_email',
             'reader_email_verification_email',
             'reader_password_reset_email',
+            'reader_signup_request',
             'tenant_admin_invitation_email'
-        ) THEN payload - 'token'
+        ) THEN payload - 'token' - 'password_hash'
         ELSE payload
     END,
     updated_at = NOW()
@@ -283,8 +287,9 @@ SET
             'reader_email_change_confirmation_email',
             'reader_email_verification_email',
             'reader_password_reset_email',
+            'reader_signup_request',
             'tenant_admin_invitation_email'
-        ) THEN payload - 'token'
+        ) THEN payload - 'token' - 'password_hash'
         ELSE payload
     END,
     updated_at = NOW()
@@ -297,7 +302,8 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // token tables store a hash, so the producing transaction writes the
 // secret into payload for the worker to render. Once an auth-mail
 // event is terminal the worker no longer needs it, so the key is
-// dropped and the rest of the payload stays for diagnosis. Other
+// dropped and the rest of the payload stays for diagnosis. A sign-up
+// request loses its password hash the same way. Other
 // event types are left alone. The plaintext window is the
 // pending/processing lifetime. Retries keep the token so a later
 // attempt can still send the mail, so that window is the retry budget
@@ -444,7 +450,7 @@ SET
     attempts = attempts + 1,
     last_error = $2,
     payload = CASE
-        WHEN attempts + 1 >= $1 THEN payload - 'token'
+        WHEN attempts + 1 >= $1 THEN payload - 'token' - 'password_hash'
         ELSE payload
     END,
     available_at = NOW(),
@@ -459,6 +465,7 @@ WHERE status = 'processing'
         'reader_email_change_confirmation_email',
         'reader_email_verification_email',
         'reader_password_reset_email',
+        'reader_signup_request',
         'tenant_admin_invitation_email'
     )
 RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
@@ -470,11 +477,11 @@ type RecoverStaleProcessingAuthMailOutboxEventsParams struct {
 	StaleBefore time.Time      `json:"stale_before"`
 }
 
-// The same reclaim for the events whose payload holds a raw token. A crash
+// The same reclaim for the events whose payload holds a secret. A crash
 // records no failure, so an event whose worker dies on every attempt would
 // be re-queued forever and never reach the terminal update that drops the
-// token. The reclaim therefore counts as a failed attempt, and the one that
-// exhausts max_attempts marks the row dead and strips the token exactly as
+// secret. The reclaim therefore counts as a failed attempt, and the one that
+// exhausts max_attempts marks the row dead and strips the secret exactly as
 // MarkOutboxEventDead does. The plaintext window is bounded by max_attempts
 // reclaims of the stale-processing grace period.
 func (q *Queries) RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context, arg RecoverStaleProcessingAuthMailOutboxEventsParams) ([]OutboxEvent, error) {
@@ -529,6 +536,7 @@ WHERE status = 'processing'
         'reader_email_change_confirmation_email',
         'reader_email_verification_email',
         'reader_password_reset_email',
+        'reader_signup_request',
         'tenant_admin_invitation_email'
     )
 RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor

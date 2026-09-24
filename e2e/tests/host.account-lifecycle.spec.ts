@@ -243,7 +243,10 @@ test.describe("web-host reader account lifecycle", () => {
     ).toBeVisible();
 
     expect(await sessionCookie(page)).toBeUndefined();
-    expect(accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe("inactive");
+    // The worker opens the account after the form has answered.
+    await expect
+      .poll(() => accountStatus(ACCOUNT_LIFECYCLE_SIGNUP.email))
+      .toBe("inactive");
     expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_SIGNUP.email)).toBe(false);
   });
 
@@ -314,6 +317,10 @@ test.describe("web-host reader account lifecycle", () => {
     ).toBeVisible();
     expect(await sessionCookie(page)).toBeUndefined();
 
+    // The worker queues the notice in the same transaction as anything else it
+    // does with the sign-up, so once the notice arrives the rows below are final.
+    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
+
     // No account was added under the address, and the registered one is as it
     // was: still its owner's, and still confirmed.
     expect(accountCount(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("1");
@@ -323,7 +330,6 @@ test.describe("web-host reader account lifecycle", () => {
     expect(accountStatus(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe("active");
     expect(isEmailConfirmed(ACCOUNT_LIFECYCLE_MEMBER.email)).toBe(true);
 
-    const message = await waitForMessageTo(ACCOUNT_LIFECYCLE_MEMBER.email);
     expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
     expect(message.text).toContain(RESET_PASSWORD_PATH);
     expect(message.text).not.toContain(RESEND_VERIFICATION_PATH);
@@ -363,6 +369,10 @@ test.describe("web-host reader account lifecycle", () => {
     await expect(page.getByText(SIGNUP_SENT_MESSAGE)).toBeVisible();
     expect(await sessionCookie(page)).toBeUndefined();
 
+    const message = await waitForMessageTo(
+      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email
+    );
+
     // The waiting account is as its first sign-up left it: one account, under
     // the name that created it, still inactive and still unconfirmed.
     expect(accountCount(ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email)).toBe("1");
@@ -376,9 +386,6 @@ test.describe("web-host reader account lifecycle", () => {
       false
     );
 
-    const message = await waitForMessageTo(
-      ACCOUNT_LIFECYCLE_UNCONFIRMED_SIGNUP.email
-    );
     expect(message.subject).toBe(SIGNUP_ATTEMPT_SUBJECT);
     expect(message.text).toContain(RESEND_VERIFICATION_PATH);
     expect(message.text).not.toContain(RESET_PASSWORD_PATH);
