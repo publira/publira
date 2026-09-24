@@ -207,6 +207,7 @@ jobs:
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
               - 'e2e/scripts/upload-episode-pages.sh'
+              - 'e2e/scripts/worker.sh'
               - 'scripts/storage-init.sh'
               # db-setup.sh uploads the images the seed's rows name, and the
               # reader this job drives draws them.
@@ -779,6 +780,7 @@ jobs:
           bash e2e/scripts/up.sh
           bash mobile/scripts/e2e-db-setup.sh
           bash e2e/scripts/server.sh start-wait
+          bash e2e/scripts/worker.sh start-wait
 
       - name: Enable KVM
         run: |
@@ -817,6 +819,7 @@ jobs:
       - name: Teardown / Server stack
         if: always()
         run: |
+          bash e2e/scripts/worker.sh stop || true
           bash e2e/scripts/server.sh stop || true
           bash e2e/scripts/down.sh || true
 

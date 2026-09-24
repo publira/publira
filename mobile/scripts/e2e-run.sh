@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Full mobile E2E lifecycle: e2e postgres + seed + the server + Flutter
-# integration tests, always tear down.
+# Full mobile E2E lifecycle: e2e postgres + seed + the server and the worker +
+# Flutter integration tests, always tear down.
 set -euo pipefail
 
 MOBILE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,6 +24,7 @@ cleanup() {
   fi
   cleanup_done=1
   e2e_log "teardown (always)"
+  bash "${PUBLIRA_E2E_SCRIPTS_DIR}/worker.sh" stop || true
   bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" stop || true
   bash "${PUBLIRA_E2E_SCRIPTS_DIR}/down.sh" || true
 }
@@ -39,6 +40,8 @@ bash "${MOBILE_DIR}/scripts/e2e-db-setup.sh"
 # carries a body, so the reader fetches its pages as soon as a test opens one,
 # and an unanswered fetch fails the run from outside the test that caused it.
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/server.sh" start-wait
+# A sign-up only records the request, and the worker is what opens the account.
+bash "${PUBLIRA_E2E_SCRIPTS_DIR}/worker.sh" start-wait
 
 e2e_log "=== Flutter integration_test phase ==="
 set +e
