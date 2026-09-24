@@ -1,5 +1,3 @@
-"use client";
-
 import { Button as BaseButton } from "@base-ui/react/button";
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";

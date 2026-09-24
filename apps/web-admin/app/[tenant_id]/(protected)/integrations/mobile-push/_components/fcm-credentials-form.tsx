@@ -1,5 +1,12 @@
 import type { Locale } from "@publira/i18n";
 import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -11,13 +18,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
 import {
   AdminSection,
   AdminSectionActions,

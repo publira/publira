@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";

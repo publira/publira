@@ -1,4 +1,8 @@
 import type { Locale } from "@publira/i18n";
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import {
   SectionError,
@@ -18,7 +22,6 @@ import {
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";

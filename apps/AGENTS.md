@@ -235,13 +235,9 @@ The generated message is the mapper's **input** type only. The app-facing result
 
 A value that is not a generated message in the first place — an already-mapped app type, or JSON parsed out of a string field such as the platform notification `payload` — is outside this rule. Type it against whatever schema actually validates it.
 
-## `"use client"` is dropped from `@publira/ui-components`
+## `"use client"` in `@publira/ui-components` and `@publira/layouts`
 
-`tsdown` strips the `"use client"` directive when it bundles the package, so a component imported straight from `@publira/ui-components` is evaluated in the **server graph** whatever its source file says. Most of the package survives that: the `@base-ui/react` primitives it renders keep their own directive and become the client boundary underneath it.
-
-A component that creates a client function of its own does not survive it. `LocaleSwitcher` hands `<form action={...}>` a callback that writes `document.documentElement.lang` once the Action resolves; created in the server graph, that function has to be serialized into the client primitive below it, and `next dev` logs `Functions cannot be passed directly to Client Components` once per request while the screen still renders.
-
-Such a component is imported through an app-side `"use client"` module that only re-exports it — `components/locale-switcher-control.tsx`, `components/action-form.tsx` — and the Server Component imports that module instead. Next.js compiles the app's own file from source, so the directive stands and the whole subtree moves into the client graph; only the Server Action and the copy the server already resolved cross the boundary. `SectionErrorCatch` is the same split applied to `catchError`.
+Both packages emit one file per source module, so each keeps its own `"use client"`, and `requireClientDirectives` from `@publira/tsdown-config` fails the build when one does not. A module there carries the directive only when it uses a client feature itself — a hook, a context it creates, or a function it hands to a child — and a Server Component imports it straight from the package rather than through an app-side re-export.
 
 ## Failure display: `SectionError` and `SectionErrorBoundary`
 
@@ -308,7 +304,7 @@ Two things follow from the list being gone rather than empty, and both are alrea
 
 Form components keep `FormMessage` for the row above: `creatorsErrorMessage`, `usersErrorMessage`, `loadErrorMessage` and friends stay where they are, next to the control they degrade.
 
-The `catchError` call itself stays in each app rather than in `@publira/ui-components`: `tsdown` drops the `"use client"` directive when it bundles the package, and `catchError` cannot run in the server graph. The fallback body is shared from the package; only the wiring is per app, the same split the route-level `error.tsx` bodies already use. Where the app's boundary resolves its own chrome (see **UI locale**) that wiring is a `"use client"` module of its own — `web-host`'s `components/section-error-catch.tsx` — and `components/section-error-boundary.tsx` is the Server Component the pages import.
+`SectionErrorCatch`, the `catchError` boundary, comes from `@publira/ui-components/section-error-fallback` together with the two slots. Each app's `components/section-error-boundary.tsx` is the Server Component the pages import: it resolves the copy from its own catalog (see **UI locale**) and hands the finished `fallback` tree to `SectionErrorCatch`.
 
 ## Live regions in a form: `<p role="status">`, never `<output>`
 

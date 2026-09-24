@@ -1,6 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -8,7 +9,6 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import type { FormActionState } from "#components/action-form";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";

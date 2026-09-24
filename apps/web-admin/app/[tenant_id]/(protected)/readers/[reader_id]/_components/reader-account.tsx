@@ -1,5 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
+import {
+  Identifier,
+  IdentifierCopy,
+  IdentifierValue,
+} from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   cn,
@@ -16,11 +21,6 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "#components/identifier";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 

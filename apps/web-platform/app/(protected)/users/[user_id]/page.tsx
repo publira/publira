@@ -2,6 +2,11 @@ import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
+  Identifier,
+  IdentifierCopy,
+  IdentifierValue,
+} from "@publira/ui-components/identifier";
+import {
   SectionError,
   SectionErrorActions,
   SectionErrorDescription,
@@ -20,11 +25,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "#components/identifier";
 import { Message } from "#components/message";
 import {
   PlatformPage,

@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -18,7 +19,6 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
-import type { FormActionState } from "#components/action-form";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 

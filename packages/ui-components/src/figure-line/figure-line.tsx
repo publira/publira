@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 

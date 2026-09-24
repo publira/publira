@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
@@ -7,7 +8,6 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState } from "react";
 
-import type { FormActionState } from "#components/action-form";
 import { ClientMessage } from "#components/client-message";
 import {
   PlatformSection,

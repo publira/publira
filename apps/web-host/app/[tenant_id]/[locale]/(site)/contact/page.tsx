@@ -1,4 +1,10 @@
 import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -8,12 +14,6 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";

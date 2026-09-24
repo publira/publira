@@ -1,4 +1,10 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
@@ -10,12 +16,6 @@ import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";

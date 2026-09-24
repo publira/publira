@@ -1,3 +1,9 @@
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldLabel } from "@publira/ui-components/field";
@@ -21,12 +27,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "#components/action-form";
 import { AdminDomainPreview } from "#components/admin-domain-preview";
 import { Message } from "#components/message";
 import {

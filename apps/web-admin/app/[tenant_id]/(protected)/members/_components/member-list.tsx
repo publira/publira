@@ -1,4 +1,9 @@
 import type { Locale } from "@publira/i18n";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
@@ -20,11 +25,6 @@ import {
 import { formatDate } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "#components/action-form";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import { PaginationFooter } from "#components/pagination-controls";

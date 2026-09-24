@@ -8,13 +8,7 @@ Its only child is the copy, resolved by the app that mounts it.
 
 ## Mounting it
 
-`tsdown` drops the `"use client"` directive when it bundles this package, and `useOffline()` cannot run in the server graph, so each app re-exports the component from a `"use client"` module of its own and mounts that once, in its root layout:
-
-```tsx
-"use client";
-
-export { OfflineNotice } from "@publira/ui-components/offline-notice";
-```
+Each app mounts it once, in its root layout:
 
 ```tsx
 <OfflineNotice>

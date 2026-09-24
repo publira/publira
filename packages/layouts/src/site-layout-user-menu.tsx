@@ -1,5 +1,3 @@
-"use client";
-
 import { Menu } from "@base-ui/react/menu";
 import { LogoutIcon, MegaphoneIcon, UserIcon } from "@publira/icons";
 import Link from "next/link";

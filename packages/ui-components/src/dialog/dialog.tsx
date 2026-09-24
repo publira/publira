@@ -1,5 +1,3 @@
-"use client";
-
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef } from "react";

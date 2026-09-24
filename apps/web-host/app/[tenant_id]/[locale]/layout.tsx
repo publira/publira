@@ -1,4 +1,5 @@
 import { getLocales, PATH_LOCALE_LANG_SCRIPT } from "@publira/i18n";
+import { OfflineNotice } from "@publira/ui-components/offline-notice";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { STATIC_PARAM_PLACEHOLDER } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -6,7 +7,6 @@ import { Suspense } from "react";
 
 import { HostMessagesProvider } from "#components/host-messages-provider";
 import { Message } from "#components/message";
-import { OfflineNotice } from "#components/offline-notice";
 import { getTenantPublicOrigin, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";

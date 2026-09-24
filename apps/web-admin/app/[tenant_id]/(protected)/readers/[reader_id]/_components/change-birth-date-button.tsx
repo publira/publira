@@ -1,3 +1,9 @@
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -15,12 +21,6 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "#components/action-form";
 import { Message } from "#components/message";
 
 import { setReaderBirthDateAction } from "../_lib/actions";

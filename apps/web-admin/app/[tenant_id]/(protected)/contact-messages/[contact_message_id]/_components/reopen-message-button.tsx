@@ -1,12 +1,12 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
-
 import {
   ActionForm,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
-} from "#components/action-form";
+} from "@publira/ui-components/action-form";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
 import { Message } from "#components/message";
 
 import { reopenContactMessageAction } from "../_lib/actions";
