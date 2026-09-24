@@ -6,17 +6,17 @@ import { normalizePlatformRole } from "./roles";
 
 export type OperatorRoleTone = "info";
 
-const operatorRoleKeys = {
-  platform_auditor: "platform.common.roles.platform_auditor",
-  platform_operator: "platform.common.roles.platform_operator",
-  platform_super_admin: "platform.common.roles.platform_super_admin",
-} as const satisfies Record<string, PlatformMessageKey>;
+const operatorRoleKeys = new Map<string, PlatformMessageKey>([
+  ["platform_auditor", "platform.common.roles.platform_auditor"],
+  ["platform_operator", "platform.common.roles.platform_operator"],
+  ["platform_super_admin", "platform.common.roles.platform_super_admin"],
+]);
 
-const accountStatusKeys = {
-  active: "platform.common.account_status.active",
-  inactive: "platform.common.account_status.inactive",
-  suspended: "platform.common.account_status.suspended",
-} as const satisfies Record<string, PlatformMessageKey>;
+const accountStatusKeys = new Map<string, PlatformMessageKey>([
+  ["active", "platform.common.account_status.active"],
+  ["inactive", "platform.common.account_status.inactive"],
+  ["suspended", "platform.common.account_status.suspended"],
+]);
 
 /**
  * Each label takes the `locale` and reads the catalog itself. The value has to
@@ -28,7 +28,7 @@ export const getOperatorRoleLabel = async (
   role: string,
   locale: Locale
 ): Promise<string> => {
-  const key = operatorRoleKeys[normalizePlatformRole(role)];
+  const key = operatorRoleKeys.get(normalizePlatformRole(role));
   if (!key) {
     return role;
   }
@@ -42,7 +42,7 @@ export const getOperatorStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = accountStatusKeys[status];
+  const key = accountStatusKeys.get(status);
   if (!key) {
     return status;
   }

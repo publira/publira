@@ -16,10 +16,14 @@ interface SelectItem {
 
 export type SelectProps = Omit<
   BaseSelect.Root.Props<string>,
-  "children" | "items" | "multiple"
+  "children" | "items" | "multiple" | "onValueChange"
 > & {
   className?: string;
   items: readonly SelectItem[];
+  onValueChange?: (
+    value: string,
+    eventDetails: BaseSelect.Root.ChangeEventDetails
+  ) => void;
   placeholder?: ReactNode;
 };
 
@@ -27,13 +31,34 @@ export const Select = ({
   className,
   id,
   items,
+  onValueChange,
   placeholder,
   ...props
 }: SelectProps) => {
   const safeItems = items ?? [];
 
+  // Base UI reports `null` only for an item whose value is `null`, which
+  // `items` cannot hold. Built only when a caller passes a handler: a Server
+  // Component renders this without the directive and cannot hand Base UI a
+  // function.
+  const handleValueChange = onValueChange
+    ? (
+        value: string | null,
+        eventDetails: BaseSelect.Root.ChangeEventDetails
+      ) => {
+        if (value !== null) {
+          onValueChange(value, eventDetails);
+        }
+      }
+    : undefined;
+
   return (
-    <BaseSelect.Root {...props} id={id} items={safeItems}>
+    <BaseSelect.Root
+      {...props}
+      id={id}
+      items={safeItems}
+      onValueChange={handleValueChange}
+    >
       <BaseSelect.Trigger
         className={cn(
           "flex h-10 w-full items-center justify-between rounded-control border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",

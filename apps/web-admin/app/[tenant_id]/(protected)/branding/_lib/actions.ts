@@ -220,7 +220,9 @@ const tenantThemeFormFieldMap = [
   ["warningForegroundColor", "warning_foreground_color"],
 ] as const;
 
-type TenantThemeSchemaInput = z.input<ReturnType<typeof tenantThemeSchema>>;
+type TenantThemeSchemaInput = z.input<
+  Awaited<ReturnType<typeof tenantThemeSchema>>
+>;
 
 const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
   Object.fromEntries(

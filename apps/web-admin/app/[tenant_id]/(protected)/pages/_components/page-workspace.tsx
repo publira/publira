@@ -271,11 +271,7 @@ export const PageWorkspace = ({
     },
     [initialVersions]
   );
-  const handleSelectedVersionChange = (nextValue: string | null) => {
-    if (!nextValue) {
-      return;
-    }
-
+  const handleSelectedVersionChange = (nextValue: string) => {
     setSelectedVersionId(nextValue);
     if (compareVersionId === nextValue) {
       const fallbackCompareId = availableCompareOptions.find(
@@ -284,8 +280,8 @@ export const PageWorkspace = ({
       setCompareVersionId(fallbackCompareId ?? "");
     }
   };
-  const handleCompareVersionChange = useCallback((nextValue: string | null) => {
-    setCompareVersionId(nextValue ?? "");
+  const handleCompareVersionChange = useCallback((nextValue: string) => {
+    setCompareVersionId(nextValue);
   }, []);
 
   return (

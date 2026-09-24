@@ -5,27 +5,27 @@ import { getMessagesFor } from "./messages";
 
 export type TenantStatusTone = "destructive" | "info" | "success";
 
-const tenantStatusKeys = {
-  active: "platform.common.tenant_status.active",
-  inactive: "platform.common.tenant_status.inactive",
-  suspended: "platform.common.tenant_status.suspended",
-  trial: "platform.common.tenant_status.trial",
-} as const satisfies Record<string, PlatformMessageKey>;
+const tenantStatusKeys = new Map<string, PlatformMessageKey>([
+  ["active", "platform.common.tenant_status.active"],
+  ["inactive", "platform.common.tenant_status.inactive"],
+  ["suspended", "platform.common.tenant_status.suspended"],
+  ["trial", "platform.common.tenant_status.trial"],
+]);
 
-const invitationStatusKeys = {
-  accepted: "platform.common.invitation_status.accepted",
-  canceled: "platform.common.invitation_status.canceled",
-  expired: "platform.common.invitation_status.expired",
-  pending: "platform.common.invitation_status.pending",
-} as const satisfies Record<string, PlatformMessageKey>;
+const invitationStatusKeys = new Map<string, PlatformMessageKey>([
+  ["accepted", "platform.common.invitation_status.accepted"],
+  ["canceled", "platform.common.invitation_status.canceled"],
+  ["expired", "platform.common.invitation_status.expired"],
+  ["pending", "platform.common.invitation_status.pending"],
+]);
 
-const tenantRoleKeys = {
-  tenant_admin: "platform.common.roles.tenant_admin",
-  tenant_auditor: "platform.common.roles.tenant_auditor",
-  tenant_editor: "platform.common.roles.tenant_editor",
-  tenant_member: "platform.common.roles.tenant_member",
-  tenant_owner: "platform.common.roles.tenant_owner",
-} as const satisfies Record<string, PlatformMessageKey>;
+const tenantRoleKeys = new Map<string, PlatformMessageKey>([
+  ["tenant_admin", "platform.common.roles.tenant_admin"],
+  ["tenant_auditor", "platform.common.roles.tenant_auditor"],
+  ["tenant_editor", "platform.common.roles.tenant_editor"],
+  ["tenant_member", "platform.common.roles.tenant_member"],
+  ["tenant_owner", "platform.common.roles.tenant_owner"],
+]);
 
 /**
  * Each label takes the `locale` and reads the catalog itself. The value has to
@@ -37,7 +37,7 @@ export const getTenantStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = tenantStatusKeys[status];
+  const key = tenantStatusKeys.get(status);
   if (!key) {
     return status;
   }
@@ -65,7 +65,7 @@ export const getTenantRoleLabel = async (
   role: string,
   locale: Locale
 ): Promise<string> => {
-  const key = tenantRoleKeys[role];
+  const key = tenantRoleKeys.get(role);
   if (!key) {
     return role;
   }
@@ -79,7 +79,7 @@ export const getInvitationStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = invitationStatusKeys[status];
+  const key = invitationStatusKeys.get(status);
   if (!key) {
     return status;
   }

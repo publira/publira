@@ -15,7 +15,7 @@ import {
 import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { formatShareBps, sharePercentToBps } from "#lib/credit-share";
-import type { AdminMessageAccessor } from "#lib/messages";
+import type { AdminClientMessageAccessor } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import {
@@ -119,7 +119,7 @@ const creditSelectionPreview = (input: {
   selectedCount: number;
   selectionTooMany: boolean;
   shareText: string;
-  t: AdminMessageAccessor;
+  t: AdminClientMessageAccessor;
   to: CreditPair;
 }): string => {
   if (

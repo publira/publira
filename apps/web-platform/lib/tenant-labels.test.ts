@@ -34,6 +34,12 @@ describe("getTenantStatusLabel", () => {
       "unknown_status"
     );
   });
+
+  it("returns a name Object.prototype carries unchanged", async () => {
+    await expect(getTenantStatusLabel("toString", en)).resolves.toBe(
+      "toString"
+    );
+  });
 });
 
 describe("getTenantStatusTone", () => {
@@ -84,6 +90,12 @@ describe("getTenantRoleLabel", () => {
   it("returns unknown values unchanged", async () => {
     await expect(getTenantRoleLabel("custom_role", en)).resolves.toBe(
       "custom_role"
+    );
+  });
+
+  it("returns a name Object.prototype carries unchanged", async () => {
+    await expect(getTenantRoleLabel("constructor", en)).resolves.toBe(
+      "constructor"
     );
   });
 });

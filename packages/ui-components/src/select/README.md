@@ -26,4 +26,10 @@ import { Select } from "@publira/ui-components/select";
 
 ## Props
 
-Follows the props of Base UI Select. See the [Base UI Select documentation](https://base-ui.com/r/components/select) for details.
+Follows the props of Base UI Select, except for:
+
+- `items`: the options, each a `{ label, value }` whose `value` is a string. The component renders them itself, so it takes no `children`.
+- `placeholder`: shown while nothing is selected.
+- `onValueChange`: called with the selected item's `value`, never `null`.
+
+See the [Base UI Select documentation](https://base-ui.com/r/components/select) for the rest.

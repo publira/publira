@@ -5,11 +5,11 @@ import { getMessagesFor } from "./messages";
 
 export type EndUserStatusTone = "destructive" | "info" | "success";
 
-const accountStatusKeys = {
-  active: "platform.common.account_status.active",
-  inactive: "platform.common.account_status.inactive",
-  suspended: "platform.common.account_status.suspended",
-} as const satisfies Record<string, PlatformMessageKey>;
+const accountStatusKeys = new Map<string, PlatformMessageKey>([
+  ["active", "platform.common.account_status.active"],
+  ["inactive", "platform.common.account_status.inactive"],
+  ["suspended", "platform.common.account_status.suspended"],
+]);
 
 /**
  * `locale` rather than a resolved accessor, so this reads the catalog itself:
@@ -20,7 +20,7 @@ export const getEndUserStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = accountStatusKeys[status];
+  const key = accountStatusKeys.get(status);
   if (!key) {
     return status;
   }

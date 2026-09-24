@@ -5,7 +5,6 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
     "noEmit": true,
     "incremental": true,
     "moduleResolution": "bundler",
@@ -16,7 +15,6 @@
       {
         "name": "next"
       }
-    ],
-    "strictNullChecks": true
+    ]
   }
 }

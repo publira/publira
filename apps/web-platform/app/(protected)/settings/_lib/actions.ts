@@ -2,6 +2,7 @@
 
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -52,11 +53,6 @@ export type PlatformEmailChangeActionState =
 
 export type PlatformDefaultTimezoneActionState =
   | { defaultTimezone: string; message: string; ok: true }
-  | { message: string; ok: false }
-  | null;
-
-export type PlatformDefaultLocaleActionState =
-  | { defaultLocale: Locale; message: string; ok: true }
   | { message: string; ok: false }
   | null;
 
@@ -248,9 +244,9 @@ export const updatePlatformDefaultTimezoneAction = async (
 };
 
 export const updatePlatformDefaultLocaleAction = async (
-  _prevState: PlatformDefaultLocaleActionState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<PlatformDefaultLocaleActionState> => {
+): Promise<FormActionState> => {
   await assertSameOrigin();
   const { locale, t } = await loadActionCatalog();
   const schema = await platformDefaultLocaleSchema(locale);
@@ -280,7 +276,6 @@ export const updatePlatformDefaultLocaleAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   return {
-    defaultLocale: result.defaultLocale,
     message: t("platform.settings.default_locale_saved"),
     ok: true,
   };

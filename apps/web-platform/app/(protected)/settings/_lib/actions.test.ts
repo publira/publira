@@ -253,7 +253,6 @@ describe("updatePlatformDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({
-      defaultLocale: "en",
       message: "Default language saved.",
       ok: true,
     });
