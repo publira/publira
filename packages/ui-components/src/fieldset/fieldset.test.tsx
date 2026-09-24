@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { Checkbox } from "../checkbox/checkbox";
@@ -11,6 +11,13 @@ import {
   ComboboxItems,
   ComboboxPopup,
 } from "../combobox/combobox";
+import {
+  ConfirmDialog,
+  ConfirmDialogAction,
+  ConfirmDialogContent,
+  ConfirmDialogTitle,
+  ConfirmDialogTrigger,
+} from "../dialog/confirm-dialog";
 import { Field, FieldContent, FieldLabel } from "../field/field";
 import { Input } from "../input/input";
 import { RadioGroup } from "../radio-group/radio-group";
@@ -116,6 +123,18 @@ const controls = () => [
   screen.getByRole("button", { name: "Add a credit" }),
 ];
 
+const DateDialog = ({ disabled }: { disabled: boolean }) => (
+  <Fieldset disabled={disabled}>
+    <ConfirmDialog>
+      <ConfirmDialogTrigger>Change</ConfirmDialogTrigger>
+      <ConfirmDialogContent>
+        <ConfirmDialogTitle>Change the date?</ConfirmDialogTitle>
+        <ConfirmDialogAction form="date-form">Save</ConfirmDialogAction>
+      </ConfirmDialogContent>
+    </ConfirmDialog>
+  </Fieldset>
+);
+
 describe("Fieldset", () => {
   it("leaves the controls inside it open", () => {
     render(<Controls disabled={false} />);
@@ -145,5 +164,19 @@ describe("Fieldset", () => {
     expect(isClosed(screen.getByRole("checkbox", { name: "Monday" }))).toBe(
       true
     );
+  });
+
+  // The popup is portaled out of the `<fieldset>`, and the dialog stays open
+  // when the form it confirms is submitted some other way, such as by Enter.
+  it("closes the confirm action of a dialog opened inside it", async () => {
+    const { rerender } = render(<DateDialog disabled={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    const action = await screen.findByRole("button", { name: "Save" });
+    expect(isClosed(action)).toBe(false);
+
+    rerender(<DateDialog disabled />);
+
+    expect(isClosed(action)).toBe(true);
   });
 });

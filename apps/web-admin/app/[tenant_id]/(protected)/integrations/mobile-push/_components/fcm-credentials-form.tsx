@@ -13,6 +13,7 @@ import { Suspense } from "react";
 
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -127,51 +128,53 @@ export const FcmCredentialsForm = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="admin.settings.mobile_push.project_id" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="off"
-            defaultValue={settings.projectId}
-            disabled={Boolean(loadErrorMessage)}
-            name="project_id"
-            required
-            spellCheck={false}
-            type="text"
-          />
-        </FieldContent>
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-            <Message message="admin.settings.mobile_push.project_id_description" />
-          </Suspense>
-        </FieldDescription>
-      </Field>
+      <ActionFormFieldset className="grid gap-5">
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.settings.mobile_push.project_id" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="off"
+              defaultValue={settings.projectId}
+              disabled={Boolean(loadErrorMessage)}
+              name="project_id"
+              required
+              spellCheck={false}
+              type="text"
+            />
+          </FieldContent>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+              <Message message="admin.settings.mobile_push.project_id_description" />
+            </Suspense>
+          </FieldDescription>
+        </Field>
 
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message message="admin.settings.mobile_push.key_file" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            accept="application/json,.json"
-            disabled={Boolean(loadErrorMessage)}
-            name="service_account_file"
-            required
-            type="file"
-          />
-        </FieldContent>
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-            <Message message="admin.settings.mobile_push.key_file_description" />
-          </Suspense>
-        </FieldDescription>
-      </Field>
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="admin.settings.mobile_push.key_file" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              accept="application/json,.json"
+              disabled={Boolean(loadErrorMessage)}
+              name="service_account_file"
+              required
+              type="file"
+            />
+          </FieldContent>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+              <Message message="admin.settings.mobile_push.key_file_description" />
+            </Suspense>
+          </FieldDescription>
+        </Field>
+      </ActionFormFieldset>
 
       <div className="flex justify-end">
         <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>

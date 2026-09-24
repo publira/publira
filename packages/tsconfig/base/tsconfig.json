@@ -5,12 +5,12 @@
     // `esnext.temporal` is what types `Temporal`, which this repository uses in
     // place of `Date`. It is types only: every runtime that executes this code
     // imports `temporal-polyfill/global` for the implementation.
-    "lib": ["dom", "es2022", "esnext.temporal"],
+    "lib": ["dom", "es2024", "esnext.temporal"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "ES2022"
+    "target": "ES2024"
   }
 }

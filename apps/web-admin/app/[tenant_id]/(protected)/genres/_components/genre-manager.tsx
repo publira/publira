@@ -5,8 +5,6 @@ import {
   EmptyStateHeading,
   EmptyStateTitle,
 } from "@publira/ui-components/empty-state";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { Input } from "@publira/ui-components/input";
 import {
   SectionError,
   SectionErrorDescription,
@@ -16,7 +14,6 @@ import {
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -26,11 +23,10 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { getMessagesFor } from "#lib/messages";
 
-import { createGenreAction } from "../_lib/actions";
 import type { GenreListItem } from "../genre-types";
+import { GenreCreateForm } from "./genre-create-form";
 import { GenreList } from "./genre-list";
 
 interface GenreManagerProps {
@@ -104,33 +100,10 @@ export const GenreManager = async ({
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
-        <ActionForm action={createGenreAction} className="grid gap-4">
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.genres.form.name" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                className="sm:max-w-sm"
-                maxLength={CATALOG_NAME_MAX_LENGTH}
-                name="name"
-                placeholder={t("admin.genres.form.name_placeholder")}
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
-          <div className="flex justify-end">
-            <ActionFormSubmit>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.genres.create_action" />
-              </Suspense>
-            </ActionFormSubmit>
-          </div>
-        </ActionForm>
+        <GenreCreateForm
+          namePlaceholder={t("admin.genres.form.name_placeholder")}
+          tenantId={tenantId}
+        />
       </AdminSection>
 
       <AdminSection>

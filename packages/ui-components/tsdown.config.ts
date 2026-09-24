@@ -14,6 +14,11 @@ export default defineConfig({
     "src/checkbox/checkbox.tsx",
     "src/combobox/index.ts",
     "src/dialog/index.ts",
+    // Its own entry for the reason `checkbox.tsx` has one: `ConfirmDialogAction`
+    // reads the fieldset context, and a Server Component renders it. `dialog.tsx`
+    // is one too, or the two would share a chunk that drops the directive.
+    "src/dialog/confirm-dialog.tsx",
+    "src/dialog/dialog.tsx",
     "src/empty-state/index.ts",
     "src/field/index.ts",
     // Its own entry, so the bundle keeps the `"use client"` directive: a

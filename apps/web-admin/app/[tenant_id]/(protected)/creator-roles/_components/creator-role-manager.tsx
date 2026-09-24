@@ -14,7 +14,11 @@ import {
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "#components/action-form";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -109,20 +113,22 @@ export const CreatorRoleManager = ({
       </AdminSectionHeader>
       <ActionForm action={createCreatorRoleAction} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <Message message="admin.creator_roles.form.name" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Suspense
-              fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
-            >
-              <CreatorRoleNameInput />
-            </Suspense>
-          </FieldContent>
-        </Field>
+        <ActionFormFieldset>
+          <Field>
+            <FieldLabel required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.creator_roles.form.name" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Suspense
+                fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
+              >
+                <CreatorRoleNameInput />
+              </Suspense>
+            </FieldContent>
+          </Field>
+        </ActionFormFieldset>
         <div className="flex justify-end">
           <ActionFormSubmit>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>

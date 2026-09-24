@@ -10,6 +10,7 @@ import { Suspense } from "react";
 
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -81,146 +82,148 @@ export const AppLinksForm = ({
       <ActionForm action={action} className="grid gap-5 sm:max-w-3xl">
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        {/* Keyed by what is stored, so a save the API normalized reseeds it. */}
-        <AppLinksPlatform
-          disabled={locked}
-          initialEnabled={android !== undefined}
-          key={`android:${JSON.stringify(android ?? null)}`}
-          legend={
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="admin.settings.app_links.android_legend" />
-            </Suspense>
-          }
-          name="android_enabled"
-          toggleLabel={
-            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-              <Message message="admin.settings.app_links.android_enabled" />
-            </Suspense>
-          }
-        >
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="admin.settings.app_links.application_id" />
+        <ActionFormFieldset className="grid gap-5">
+          {/* Keyed by what is stored, so a save the API normalized reseeds it. */}
+          <AppLinksPlatform
+            disabled={locked}
+            initialEnabled={android !== undefined}
+            key={`android:${JSON.stringify(android ?? null)}`}
+            legend={
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.settings.app_links.android_legend" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <RetainedInput
-                autoCapitalize="off"
-                autoComplete="off"
-                defaultValue={android?.applicationId ?? ""}
-                name="android_application_id"
-                placeholder="com.example.reader"
-                required
-                spellCheck={false}
-                type="text"
-              />
-            </FieldContent>
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
-                <Message message="admin.settings.app_links.application_id_description" />
+            }
+            name="android_enabled"
+            toggleLabel={
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <Message message="admin.settings.app_links.android_enabled" />
               </Suspense>
-            </FieldDescription>
-          </Field>
-
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                <Message message="admin.settings.app_links.fingerprints" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <RetainedTextarea
-                autoCapitalize="characters"
-                autoComplete="off"
-                className="tabular-nums"
-                defaultValue={(android?.sha256CertFingerprints ?? []).join(
-                  "\n"
-                )}
-                name="android_fingerprints"
-                required
-                rows={5}
-                spellCheck={false}
-              />
-            </FieldContent>
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                <Message
-                  message="admin.settings.app_links.fingerprints_description"
-                  values={{ max: String(MAX_ANDROID_CERT_FINGERPRINTS) }}
+            }
+          >
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                  <Message message="admin.settings.app_links.application_id" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <RetainedInput
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  defaultValue={android?.applicationId ?? ""}
+                  name="android_application_id"
+                  placeholder="com.example.reader"
+                  required
+                  spellCheck={false}
+                  type="text"
                 />
-              </Suspense>
-            </FieldDescription>
-          </Field>
-        </AppLinksPlatform>
+              </FieldContent>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+                  <Message message="admin.settings.app_links.application_id_description" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
 
-        <AppLinksPlatform
-          disabled={locked}
-          initialEnabled={ios !== undefined}
-          key={`ios:${JSON.stringify(ios ?? null)}`}
-          legend={
-            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <Message message="admin.settings.app_links.ios_legend" />
-            </Suspense>
-          }
-          name="ios_enabled"
-          toggleLabel={
-            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-              <Message message="admin.settings.app_links.ios_enabled" />
-            </Suspense>
-          }
-        >
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                <Message message="admin.settings.app_links.team_id" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <RetainedInput
-                autoCapitalize="characters"
-                autoComplete="off"
-                defaultValue={ios?.teamId ?? ""}
-                maxLength={10}
-                name="ios_team_id"
-                placeholder="ABCDE12345"
-                required
-                spellCheck={false}
-                type="text"
-              />
-            </FieldContent>
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
-                <Message message="admin.settings.app_links.team_id_description" />
-              </Suspense>
-            </FieldDescription>
-          </Field>
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                  <Message message="admin.settings.app_links.fingerprints" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <RetainedTextarea
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  className="tabular-nums"
+                  defaultValue={(android?.sha256CertFingerprints ?? []).join(
+                    "\n"
+                  )}
+                  name="android_fingerprints"
+                  required
+                  rows={5}
+                  spellCheck={false}
+                />
+              </FieldContent>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                  <Message
+                    message="admin.settings.app_links.fingerprints_description"
+                    values={{ max: String(MAX_ANDROID_CERT_FINGERPRINTS) }}
+                  />
+                </Suspense>
+              </FieldDescription>
+            </Field>
+          </AppLinksPlatform>
 
-          <Field>
-            <FieldLabel required>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.settings.app_links.bundle_identifier" />
+          <AppLinksPlatform
+            disabled={locked}
+            initialEnabled={ios !== undefined}
+            key={`ios:${JSON.stringify(ios ?? null)}`}
+            legend={
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.settings.app_links.ios_legend" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <RetainedInput
-                autoCapitalize="off"
-                autoComplete="off"
-                defaultValue={ios?.bundleIdentifier ?? ""}
-                name="ios_bundle_identifier"
-                placeholder="com.example.reader"
-                required
-                spellCheck={false}
-                type="text"
-              />
-            </FieldContent>
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
-                <Message message="admin.settings.app_links.bundle_identifier_description" />
+            }
+            name="ios_enabled"
+            toggleLabel={
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <Message message="admin.settings.app_links.ios_enabled" />
               </Suspense>
-            </FieldDescription>
-          </Field>
-        </AppLinksPlatform>
+            }
+          >
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                  <Message message="admin.settings.app_links.team_id" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <RetainedInput
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  defaultValue={ios?.teamId ?? ""}
+                  maxLength={10}
+                  name="ios_team_id"
+                  placeholder="ABCDE12345"
+                  required
+                  spellCheck={false}
+                  type="text"
+                />
+              </FieldContent>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+                  <Message message="admin.settings.app_links.team_id_description" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
+
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.settings.app_links.bundle_identifier" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <RetainedInput
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  defaultValue={ios?.bundleIdentifier ?? ""}
+                  name="ios_bundle_identifier"
+                  placeholder="com.example.reader"
+                  required
+                  spellCheck={false}
+                  type="text"
+                />
+              </FieldContent>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+                  <Message message="admin.settings.app_links.bundle_identifier_description" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
+          </AppLinksPlatform>
+        </ActionFormFieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">

@@ -9,39 +9,42 @@ import {
   ActionFormSubmit,
 } from "#components/action-form";
 import { Message } from "#components/message";
+import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 
-import { createTenantAdminInvitationAction } from "../_lib/actions";
+import { createGenreAction } from "../_lib/actions";
 
-/**
- * Invites one address to become a tenant admin. The Action words its own
- * result: a mailed invitation, or an address that already belonged to a user
- * of the tenant and was made an admin on the spot.
- */
-export const MemberInviteForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm action={createTenantAdminInvitationAction} className="grid gap-4">
+export const GenreCreateForm = ({
+  namePlaceholder,
+  tenantId,
+}: {
+  namePlaceholder: string;
+  tenantId: string;
+}) => (
+  <ActionForm action={createGenreAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <ActionFormFieldset>
       <Field>
         <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="admin.members.invite_email" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.genres.form.name" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
           <Input
-            autoComplete="off"
             className="sm:max-w-sm"
-            name="email"
+            maxLength={CATALOG_NAME_MAX_LENGTH}
+            name="name"
+            placeholder={namePlaceholder}
             required
-            type="email"
+            type="text"
           />
         </FieldContent>
       </Field>
     </ActionFormFieldset>
     <div className="flex justify-end">
       <ActionFormSubmit>
-        <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-          <Message message="admin.members.invite_action" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.genres.create_action" />
         </Suspense>
       </ActionFormSubmit>
     </div>

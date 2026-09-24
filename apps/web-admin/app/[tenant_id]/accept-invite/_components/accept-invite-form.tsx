@@ -4,39 +4,15 @@ import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import { ActionForm, ActionFormSubmit } from "#components/action-form";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormSubmit,
+} from "#components/action-form";
 import { Message } from "#components/message";
-import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
-import { getTenantId } from "#lib/tenant-id";
 
 import { acceptInviteAction } from "../_lib/actions";
-
-/** The only localized attribute in this form needs a string rather than a node. */
-const NameField = async () => {
-  const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
-  const t = await getMessagesFor(locale);
-
-  return (
-    <Field>
-      <FieldLabel htmlFor="name" required>
-        <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-          <Message message="admin.auth.accept_invite.name_label" />
-        </Suspense>
-      </FieldLabel>
-      <FieldContent>
-        <Input
-          id="name"
-          name="name"
-          placeholder={t("admin.auth.accept_invite.name_placeholder")}
-          required
-          type="text"
-        />
-      </FieldContent>
-    </Field>
-  );
-};
+import { NameField } from "./name-field";
 
 export const AcceptInviteForm = ({
   token,
@@ -62,7 +38,7 @@ export const AcceptInviteForm = ({
         </Suspense>
       </AuthScreenNote>
     ) : (
-      <>
+      <ActionFormFieldset className="grid gap-4">
         <Suspense fallback={<Skeleton className="h-11 w-full" />}>
           <NameField />
         </Suspense>
@@ -102,7 +78,7 @@ export const AcceptInviteForm = ({
             />
           </FieldContent>
         </Field>
-      </>
+      </ActionFormFieldset>
     )}
 
     <ActionFormSubmit className="justify-self-start">
