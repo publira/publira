@@ -165,6 +165,11 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
 	}
+	// A delayed method such as konbini completes the session before the money
+	// arrives; checkout.session.async_payment_succeeded reports the payment.
+	if event.Type == stripego.EventTypeCheckoutSessionCompleted && session.PaymentStatus == stripego.CheckoutSessionPaymentStatusUnpaid {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
 	if session.PaymentStatus != stripego.CheckoutSessionPaymentStatusPaid || session.Currency != stripego.CurrencyJPY {
 		return nil, errors.New("checkout session was not paid in JPY")
 	}
