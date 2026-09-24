@@ -36,22 +36,18 @@ export interface CreditPair {
 
 interface CreditPairFieldsProps {
   creatorItems: ComboboxItem[];
-  creatorLabel: string;
   onCreatorChange: (nextCreatorPublicId: string) => void;
   onRoleChange: (nextRolePublicId: string) => void;
   pair: CreditPair;
   roleItems: ComboboxItem[];
-  roleLabel: string;
 }
 
 const CreditPairFields = ({
   creatorItems,
-  creatorLabel,
   onCreatorChange,
   onRoleChange,
   pair,
   roleItems,
-  roleLabel,
 }: CreditPairFieldsProps) => {
   const t = useClientMessages();
   const creatorId = useId();
@@ -60,7 +56,9 @@ const CreditPairFields = ({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field>
-        <FieldLabel htmlFor={creatorId}>{creatorLabel}</FieldLabel>
+        <FieldLabel htmlFor={creatorId}>
+          {t("admin.series.episodes.credits.creator")}
+        </FieldLabel>
         <FieldContent>
           <Combobox
             id={creatorId}
@@ -81,7 +79,9 @@ const CreditPairFields = ({
         </FieldContent>
       </Field>
       <Field>
-        <FieldLabel htmlFor={roleId}>{roleLabel}</FieldLabel>
+        <FieldLabel htmlFor={roleId}>
+          {t("admin.series.episodes.credits.role")}
+        </FieldLabel>
         <FieldContent>
           <Combobox
             id={roleId}
@@ -168,15 +168,12 @@ const CreditTargetFields = ({
   to: CreditPair;
 }) => {
   const t = useClientMessages();
-  const creatorLabel = t("admin.series.episodes.credits.creator");
-  const roleLabel = t("admin.series.episodes.credits.role");
 
   if (operation === "set_share") {
     return (
       <div className="grid gap-3">
         <CreditPairFields
           creatorItems={creatorItems}
-          creatorLabel={creatorLabel}
           onCreatorChange={(creatorPublicId) =>
             onCreditChange({ ...credit, creatorPublicId })
           }
@@ -185,7 +182,6 @@ const CreditTargetFields = ({
           }
           pair={credit}
           roleItems={roleItems}
-          roleLabel={roleLabel}
         />
         <ShareField onShareChange={onShareChange} shareText={shareText} />
       </div>
@@ -196,7 +192,6 @@ const CreditTargetFields = ({
     return (
       <CreditPairFields
         creatorItems={creatorItems}
-        creatorLabel={creatorLabel}
         onCreatorChange={(creatorPublicId) =>
           onCreditChange({ ...credit, creatorPublicId })
         }
@@ -205,7 +200,6 @@ const CreditTargetFields = ({
         }
         pair={credit}
         roleItems={roleItems}
-        roleLabel={roleLabel}
       />
     );
   }
@@ -218,7 +212,6 @@ const CreditTargetFields = ({
         </legend>
         <CreditPairFields
           creatorItems={creatorItems}
-          creatorLabel={creatorLabel}
           onCreatorChange={(creatorPublicId) =>
             onFromChange({ ...from, creatorPublicId })
           }
@@ -227,7 +220,6 @@ const CreditTargetFields = ({
           }
           pair={from}
           roleItems={roleItems}
-          roleLabel={roleLabel}
         />
       </fieldset>
       <fieldset className="grid gap-3">
@@ -236,14 +228,12 @@ const CreditTargetFields = ({
         </legend>
         <CreditPairFields
           creatorItems={creatorItems}
-          creatorLabel={creatorLabel}
           onCreatorChange={(creatorPublicId) =>
             onToChange({ ...to, creatorPublicId })
           }
           onRoleChange={(rolePublicId) => onToChange({ ...to, rolePublicId })}
           pair={to}
           roleItems={roleItems}
-          roleLabel={roleLabel}
         />
       </fieldset>
     </div>

@@ -23,17 +23,13 @@ import { ImageCropFrame } from "./crop-frame";
 
 interface ImageCropDialogProps {
   aspect: CropAspect;
+  /** An `ImageCropDialogTitle` naming what is being framed. */
+  children: ReactNode;
   crop: CropRect | null;
   /** The picked file, as the blob URL the form field created for it. */
   imageUrl: string;
   open: boolean;
   source: CropSource | null;
-  /**
-   * What is being framed, in the words of the screen that opened this. The
-   * dialog covers that screen, so the image it is showing has to be named
-   * again here.
-   */
-  title: ReactNode;
   onCropChange: (crop: CropRect) => void;
   onImageLoad: ReactEventHandler<HTMLImageElement>;
   onOpenChange: (open: boolean) => void;
@@ -50,6 +46,7 @@ interface ImageCropDialogProps {
  */
 export const ImageCropDialog = ({
   aspect,
+  children,
   crop,
   imageUrl,
   onCropChange,
@@ -57,7 +54,6 @@ export const ImageCropDialog = ({
   onOpenChange,
   open,
   source,
-  title,
 }: ImageCropDialogProps) => {
   const t = useClientMessages();
 
@@ -68,9 +64,7 @@ export const ImageCropDialog = ({
         <DialogViewport>
           <DialogPopup className="w-[min(92vw,48rem)]">
             <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
-                {title}
-              </DialogTitle>
+              {children}
               <DialogDescription className="text-sm text-muted-foreground">
                 {t("admin.image_crop.description")}
               </DialogDescription>
@@ -98,3 +92,11 @@ export const ImageCropDialog = ({
     </Dialog>
   );
 };
+
+/**
+ * What is being framed, in the words of the screen that opened the dialog. The
+ * dialog covers that screen, so the image it is showing has to be named again.
+ */
+export const ImageCropDialogTitle = ({ children }: { children: ReactNode }) => (
+  <DialogTitle className="text-lg font-semibold">{children}</DialogTitle>
+);
