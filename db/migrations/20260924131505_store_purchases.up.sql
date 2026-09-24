@@ -50,6 +50,10 @@ CREATE TABLE store_purchase_intents (
     -- The store product the price maps to; a transaction for another product
     -- does not consume this intent.
     product_id text NOT NULL,
+    -- The episode's reading period when the intent was opened, which the
+    -- purchase's expires_at is counted from: the reader pays for the terms the
+    -- payment sheet was opened on. NULL or zero never expires.
+    reading_period_hours integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     -- Set when a verified transaction consumed the intent, which cannot be
     -- consumed again.

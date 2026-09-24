@@ -18,7 +18,8 @@ func TestDefaultsAreAValidPolicy(t *testing.T) {
 
 // The built-in defaults are what a deployment got from the environment before
 // the policy moved into the database, so an installation that has saved
-// nothing keeps behaving as it did.
+// nothing keeps behaving as it did. The store confirmation limit came later,
+// and its default is the value the migration that added it saved.
 func TestDefaultsKeepThePreviousDeploymentDefaults(t *testing.T) {
 	want := Policy{
 		MFARequiredForTenantAdmin: false,
@@ -34,6 +35,7 @@ func TestDefaultsKeepThePreviousDeploymentDefaults(t *testing.T) {
 			ContactMessagePerClient:  HourDay{PerHour: 10, PerDay: 30},
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: 30, PerDay: 300},
 		},
+		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
 	}
 	if got := Defaults(); got != want {
 		t.Fatalf("Defaults() = %+v, want %+v", got, want)
@@ -47,6 +49,7 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 		"day below minute":            func(p *Policy) { p.PasswordVerification = MinuteDay{PerMinute: 10, PerDay: 9} },
 		"day below hour":              func(p *Policy) { p.Community.ContactMessagePerClient = HourDay{PerHour: 5, PerDay: 4} },
 		"zero viewer preferences day": func(p *Policy) { p.Community.ViewerPreferencesUpdate.PerDay = 0 },
+		"zero store confirmations":    func(p *Policy) { p.StorePurchaseConfirmation.PerMinute = 0 },
 		"no duplicate window":         func(p *Policy) { p.Community.DuplicateCommentWindow = 0 },
 		"duplicate window over a week": func(p *Policy) {
 			p.Community.DuplicateCommentWindow = MaxDuplicateCommentWindow + time.Minute
@@ -121,6 +124,8 @@ func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.Pl
 		ContactMessageLimitPerClientPerDay:   params.ContactMessageLimitPerClientPerDay,
 		ViewerPreferencesLimitPerMinute:      params.ViewerPreferencesLimitPerMinute,
 		ViewerPreferencesLimitPerDay:         params.ViewerPreferencesLimitPerDay,
+		StorePurchaseConfirmLimitPerMinute:   params.StorePurchaseConfirmLimitPerMinute,
+		StorePurchaseConfirmLimitPerDay:      params.StorePurchaseConfirmLimitPerDay,
 	}
 }
 

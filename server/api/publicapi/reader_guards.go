@@ -60,6 +60,10 @@ const (
 	// who never signs in would have no allowance at all.
 	actionSubmitContactMessage           readerAction = "contact.submit"
 	actionSubmitContactMessageFromClient readerAction = "contact.submit.client"
+	// A store transaction handed to ConfirmStorePurchase. Charged before the
+	// transaction is verified, because a transaction the server has not seen is
+	// verified with the store on the tenant's credentials and API quota.
+	actionConfirmStorePurchase readerAction = "store_purchase.confirm"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -92,6 +96,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionUpdateViewerPreferences:        minuteDayRules(community.ViewerPreferencesUpdate),
 		actionSubmitContactMessage:           hourDayRules(community.ContactMessagePerAccount),
 		actionSubmitContactMessageFromClient: hourDayRules(community.ContactMessagePerClient),
+		actionConfirmStorePurchase:           minuteDayRules(policy.StorePurchaseConfirmation),
 	}
 }
 

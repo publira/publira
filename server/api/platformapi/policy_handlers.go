@@ -32,6 +32,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 	return &publirasplatformv1.PlatformPolicy{
 		MfaRequiredForTenantAdmin: policy.MFARequiredForTenantAdmin,
 		PasswordVerification:      minuteDayToProto(policy.PasswordVerification),
+		StorePurchaseConfirmation: minuteDayToProto(policy.StorePurchaseConfirmation),
 		MailRequestsPerAddress:    hourDayToProto(policy.MailRequestsPerAddress),
 		MailRequestsPerSource:     hourDayToProto(policy.MailRequestsPerSource),
 		CommunityLimitDefaults: &publirasplatformv1.CommunityLimitDefaults{
@@ -61,6 +62,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 	return platformpolicy.Policy{
 		MFARequiredForTenantAdmin: policy.GetMfaRequiredForTenantAdmin(),
 		PasswordVerification:      minuteDayFromProto(policy.GetPasswordVerification()),
+		StorePurchaseConfirmation: minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
 		MailRequestsPerAddress:    hourDayFromProto(policy.GetMailRequestsPerAddress()),
 		MailRequestsPerSource:     hourDayFromProto(policy.GetMailRequestsPerSource()),
 		Community: platformpolicy.CommunityLimits{

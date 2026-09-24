@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -65,6 +66,11 @@ type storePurchaseEnv struct {
 // one paid episode at 300 yen, and signs in a reader.
 func newStorePurchaseEnv(t *testing.T) *storePurchaseEnv {
 	t.Helper()
+	return newStorePurchaseEnvWithGuards(t, openReaderGuards())
+}
+
+func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurchaseEnv {
+	t.Helper()
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -110,7 +116,7 @@ func newStorePurchaseEnv(t *testing.T) *storePurchaseEnv {
 	play := googleplaytest.NewServer(t)
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), openReaderGuards(), openMailGuard())
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), guards, openMailGuard())
 	server.stores = storeClients{appStoreVerifier: signer.Verifier(), appStore: fake, googlePlay: play.Client()}
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
@@ -133,6 +139,7 @@ func (e *storePurchaseEnv) start(t *testing.T, token string) *publirav1.StartSto
 	res, err := e.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
 		Tenant:          tenantContext(e.tenant),
 		EpisodePublicId: e.episode.PublicID,
+		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 	}, token))
 	if err != nil {
 		t.Fatalf("StartStorePurchase: %v", err)
@@ -160,7 +167,7 @@ func (e *storePurchaseEnv) confirmAppStore(t *testing.T, token string, transacti
 	t.Helper()
 	res, err := e.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
 		Tenant:      tenantContext(e.tenant),
-		Store:       publirav1.ConfirmStorePurchaseRequest_STORE_APP_STORE,
+		Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 		Transaction: e.signer.Sign(t, transaction),
 	}, token))
 	if err != nil {
@@ -173,7 +180,7 @@ func (e *storePurchaseEnv) confirmGooglePlay(t *testing.T, productID, purchaseTo
 	t.Helper()
 	res, err := e.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
 		Tenant:      tenantContext(e.tenant),
-		Store:       publirav1.ConfirmStorePurchaseRequest_STORE_GOOGLE_PLAY,
+		Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
 		Transaction: purchaseToken,
 		ProductId:   productID,
 	}, e.token))
@@ -220,6 +227,7 @@ func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testin
 	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
 		Tenant:          tenantContext(env.tenant),
 		EpisodePublicId: env.episode.PublicID,
+		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 	}, env.token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase code = %v, want failed_precondition", connect.CodeOf(err))
@@ -307,7 +315,7 @@ func TestDBConfirmStorePurchaseRefusesAnAppStoreTransactionItCannotMatch(t *test
 		transaction := env.appStoreTransaction("2000000000000007", intent)
 		_, err := env.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
 			Tenant:      tenantContext(env.tenant),
-			Store:       publirav1.ConfirmStorePurchaseRequest_STORE_APP_STORE,
+			Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 			Transaction: appstoretest.NewUnmarkedSigner(t).Sign(t, transaction),
 		}, env.token))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -476,5 +484,69 @@ func TestDBConfirmStorePurchaseRefusesAGooglePlayPurchaseItCannotRecord(t *testi
 	}
 	if got := env.count(t, "SELECT count(*) FROM outbox_events WHERE event_type = $1", outbox.EventTypeGooglePlayPurchaseConsume); got != 0 {
 		t.Fatalf("consume events = %d, want 0", got)
+	}
+}
+
+func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		"UPDATE tenant_google_play_config SET enabled = false WHERE tenant_id = $1", env.tenant.ID); err != nil {
+		t.Fatalf("switch Google Play off: %v", err)
+	}
+	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+		Tenant:          tenantContext(env.tenant),
+		EpisodePublicId: env.episode.PublicID,
+		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+	}, env.token))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("StartStorePurchase through a store that is off: code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	// The App Store is still ready, so the app on iOS keeps selling.
+	env.start(t, env.token)
+}
+
+func TestDBConfirmStorePurchaseKeepsTheReadingPeriodTheIntentWasOpenedOn(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		"UPDATE episode_listings SET reading_period_hours = 48 WHERE episode_id = $1", env.episode.ID); err != nil {
+		t.Fatalf("set reading period: %v", err)
+	}
+	intent := env.start(t, env.token)
+	// Changed while the payment sheet was open.
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		"UPDATE episode_listings SET reading_period_hours = NULL WHERE episode_id = $1", env.episode.ID); err != nil {
+		t.Fatalf("clear reading period: %v", err)
+	}
+	transaction := env.appStoreTransaction("2000000000000040", intent)
+	env.appStore.transactions[transaction.TransactionID] = transaction
+
+	purchase, err := env.confirmAppStore(t, env.token, transaction)
+	if err != nil {
+		t.Fatalf("ConfirmStorePurchase: %v", err)
+	}
+	expiresAt, err := time.Parse(time.RFC3339, purchase.ExpiresAt)
+	if err != nil {
+		t.Fatalf("expires_at = %q, want the 48 hours the intent was opened on", purchase.ExpiresAt)
+	}
+	if remaining := time.Until(expiresAt); remaining < 47*time.Hour || remaining > 49*time.Hour {
+		t.Fatalf("expires in %s, want about 48 hours", remaining)
+	}
+}
+
+func TestDBConfirmStorePurchaseChargesTheReaderBeforeAskingTheStore(t *testing.T) {
+	env := newStorePurchaseEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	intent := env.start(t, env.token)
+	unknown := env.appStoreTransaction("2000000000000050", intent)
+
+	if _, err := env.confirmAppStore(t, env.token, unknown); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("first confirmation code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	if _, err := env.confirmAppStore(t, env.token, unknown); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("confirmation past the allowance: code = %v, want resource_exhausted", connect.CodeOf(err))
+	}
+	if env.appStore.calls != 1 {
+		t.Fatalf("the App Store was asked %d times, want only by the confirmation within the allowance", env.appStore.calls)
 	}
 }

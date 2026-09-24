@@ -93,6 +93,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerAccount = openHourly
 	policy.Community.ContactMessagePerClient = openHourly
 	policy.Community.ViewerPreferencesUpdate = open
+	policy.StorePurchaseConfirmation = open
 	return policy
 }
 

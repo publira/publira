@@ -1,14 +1,16 @@
 -- name: OpenStorePurchaseIntent :one
 -- Opens the reader's intent to buy an episode as a store product, or answers
 -- the one already open for the same episode and product, so asking again adds
--- no row. The no-op update is what makes the existing row come back.
+-- no row. The no-op update is what makes the existing row come back, with the
+-- terms it was first opened on.
 INSERT INTO store_purchase_intents (
     id,
     tenant_id,
     user_id,
     episode_id,
     price,
-    product_id
+    product_id,
+    reading_period_hours
 )
 VALUES (
     sqlc.arg('id'),
@@ -16,7 +18,8 @@ VALUES (
     sqlc.arg('user_id'),
     sqlc.arg('episode_id'),
     sqlc.arg('price'),
-    sqlc.arg('product_id')
+    sqlc.arg('product_id'),
+    sqlc.narg('reading_period_hours')
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
@@ -46,14 +49,6 @@ FROM purchases
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND store = sqlc.arg('store')::text
     AND store_transaction_id = sqlc.arg('store_transaction_id')::text;
-
--- name: GetEpisodeReadingPeriodHours :one
--- The reading period a purchase of the episode is granted for, read from the
--- listing the Stripe checkout reads it from.
-SELECT reading_period_hours
-FROM episode_listings
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND episode_id = sqlc.arg('episode_id');
 
 -- name: CreateStorePurchase :one
 -- Records a verified store transaction. A transaction is sold once, so a

@@ -68,16 +68,16 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, err
 	}
+	store := req.Msg.Store
+	if store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE && store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("store is required"))
+	}
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	route, err := s.appPurchaseRoute(ctx, tenant.ID)
-	if err != nil {
+	if err := s.requireStoreSelling(ctx, tenant.ID, store); err != nil {
 		return nil, err
-	}
-	if route != paymentsettings.RouteStore {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the app does not sell through the store"))
 	}
 
 	queries := s.queriesFor(ctx)
@@ -121,6 +121,9 @@ func (s *apiServer) StartStorePurchase(
 		EpisodeID: episode.ID,
 		Price:     episode.Price,
 		ProductID: storeproduct.ProductID(episode.Price),
+		// The terms the payment sheet opens on, which the purchase keeps however
+		// long the confirmation takes to arrive.
+		ReadingPeriodHours: episode.ReadingPeriodHours,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to open a store purchase intent", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
@@ -129,6 +132,28 @@ func (s *apiServer) StartStorePurchase(
 		IntentId:  intent.ID.String(),
 		ProductId: intent.ProductID,
 	}), nil
+}
+
+// requireStoreSelling answers failed_precondition unless the tenant's app sells
+// through the store and the store the app is about to charge through is ready:
+// the route needs only one of the two stores, and a charge through the other
+// could not be confirmed.
+func (s *apiServer) requireStoreSelling(ctx context.Context, tenantID uuid.UUID, store publirav1.InAppPurchaseStore) error {
+	config, err := s.appStores(ctx).Get(ctx, tenantID)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to get tenant store settings", err, "tenant_id", tenantID.String())
+	}
+	if config.Route != paymentsettings.RouteStore {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app does not sell through the store"))
+	}
+	ready := config.AppStore.Ready
+	if store == publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
+		ready = config.GooglePlay.Ready
+	}
+	if !ready {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+	}
+	return nil
 }
 
 // storeTransaction is a transaction the store has vouched for.
@@ -153,10 +178,13 @@ func (s *apiServer) ConfirmStorePurchase(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionConfirmStorePurchase, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 
 	var transaction storeTransaction
 	switch req.Msg.Store {
-	case publirav1.ConfirmStorePurchaseRequest_STORE_APP_STORE:
+	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE:
 		// The app's copy is verified before anything else, so a transaction
 		// already recorded is answered without asking Apple again.
 		claimed, err := s.stores.appStoreVerifier.VerifyTransaction(signed)
@@ -171,7 +199,7 @@ func (s *apiServer) ConfirmStorePurchase(
 		if err != nil {
 			return nil, err
 		}
-	case publirav1.ConfirmStorePurchaseRequest_STORE_GOOGLE_PLAY:
+	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY:
 		productID := strings.TrimSpace(req.Msg.ProductId)
 		if productID == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("product_id is required for Google Play"))
@@ -397,12 +425,8 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction bought another product than the intent"))
 	}
 
-	readingPeriod, err := txq.GetEpisodeReadingPeriodHours(ctx, dbmodels.GetEpisodeReadingPeriodHoursParams{TenantID: tenantID, EpisodeID: intent.EpisodeID})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to read the episode's reading period", err, "tenant_id", tenantID.String())
-	}
 	var expiresAt sql.NullTime
-	if hours := readingPeriod.Int32; readingPeriod.Valid && hours > 0 {
+	if hours := intent.ReadingPeriodHours.Int32; intent.ReadingPeriodHours.Valid && hours > 0 {
 		now := time.Now().UTC()
 		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 	}

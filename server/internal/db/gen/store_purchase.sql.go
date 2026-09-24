@@ -104,27 +104,6 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 	return i, err
 }
 
-const GetEpisodeReadingPeriodHours = `-- name: GetEpisodeReadingPeriodHours :one
-SELECT reading_period_hours
-FROM episode_listings
-WHERE tenant_id = $1
-    AND episode_id = $2
-`
-
-type GetEpisodeReadingPeriodHoursParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-}
-
-// The reading period a purchase of the episode is granted for, read from the
-// listing the Stripe checkout reads it from.
-func (q *Queries) GetEpisodeReadingPeriodHours(ctx context.Context, arg GetEpisodeReadingPeriodHoursParams) (sql.NullInt32, error) {
-	row := q.db.QueryRowContext(ctx, GetEpisodeReadingPeriodHours, arg.TenantID, arg.EpisodeID)
-	var reading_period_hours sql.NullInt32
-	err := row.Scan(&reading_period_hours)
-	return reading_period_hours, err
-}
-
 const GetMyPurchase = `-- name: GetMyPurchase :one
 SELECT p.id,
     p.price_at_purchase,
@@ -219,7 +198,7 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 }
 
 const LockStorePurchaseIntent = `-- name: LockStorePurchaseIntent :one
-SELECT id, tenant_id, user_id, episode_id, price, product_id, created_at, consumed_at
+SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at
 FROM store_purchase_intents
 WHERE tenant_id = $1
     AND id = $2
@@ -244,6 +223,7 @@ func (q *Queries) LockStorePurchaseIntent(ctx context.Context, arg LockStorePurc
 		&i.EpisodeID,
 		&i.Price,
 		&i.ProductID,
+		&i.ReadingPeriodHours,
 		&i.CreatedAt,
 		&i.ConsumedAt,
 	)
@@ -257,7 +237,8 @@ INSERT INTO store_purchase_intents (
     user_id,
     episode_id,
     price,
-    product_id
+    product_id,
+    reading_period_hours
 )
 VALUES (
     $1,
@@ -265,26 +246,29 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
-RETURNING id, tenant_id, user_id, episode_id, price, product_id, created_at, consumed_at
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at
 `
 
 type OpenStorePurchaseIntentParams struct {
-	ID        uuid.UUID `json:"id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-	Price     int32     `json:"price"`
-	ProductID string    `json:"product_id"`
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	UserID             uuid.UUID     `json:"user_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Price              int32         `json:"price"`
+	ProductID          string        `json:"product_id"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
 }
 
 // Opens the reader's intent to buy an episode as a store product, or answers
 // the one already open for the same episode and product, so asking again adds
-// no row. The no-op update is what makes the existing row come back.
+// no row. The no-op update is what makes the existing row come back, with the
+// terms it was first opened on.
 func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error) {
 	row := q.db.QueryRowContext(ctx, OpenStorePurchaseIntent,
 		arg.ID,
@@ -293,6 +277,7 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		arg.EpisodeID,
 		arg.Price,
 		arg.ProductID,
+		arg.ReadingPeriodHours,
 	)
 	var i StorePurchaseIntent
 	err := row.Scan(
@@ -302,6 +287,7 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		&i.EpisodeID,
 		&i.Price,
 		&i.ProductID,
+		&i.ReadingPeriodHours,
 		&i.CreatedAt,
 		&i.ConsumedAt,
 	)

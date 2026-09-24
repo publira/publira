@@ -389,9 +389,6 @@ type Querier interface {
 	// rate assembled from one page's rows would describe that page instead of the
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
-	// The reading period a purchase of the episode is granted for, read from the
-	// listing the Stripe checkout reads it from.
-	GetEpisodeReadingPeriodHours(ctx context.Context, arg GetEpisodeReadingPeriodHoursParams) (sql.NullInt32, error)
 	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -1819,7 +1816,8 @@ type Querier interface {
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// Opens the reader's intent to buy an episode as a store product, or answers
 	// the one already open for the same episode and product, so asking again adds
-	// no row. The no-op update is what makes the existing row come back.
+	// no row. The no-op update is what makes the existing row come back, with the
+	// terms it was first opened on.
 	OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error)
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the

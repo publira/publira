@@ -58,6 +58,10 @@ message PlatformPolicy {
   // Mail such forms may cause for one origin, across every address and tenant.
   HourDayLimit mail_requests_per_source = 4;
   CommunityLimitDefaults community_limit_defaults = 5;
+  // How often one reader may hand a store transaction to
+  // ConfirmStorePurchase, each of which the server verifies with the App Store
+  // or Google Play on the tenant's credentials and quota.
+  MinuteDayLimit store_purchase_confirmation = 6;
 }
 
 message GetPlatformPolicyRequest {}

@@ -513,6 +513,8 @@ type PlatformPolicyConfig struct {
 	Revision                             int64     `json:"revision"`
 	CreatedAt                            time.Time `json:"created_at"`
 	UpdatedAt                            time.Time `json:"updated_at"`
+	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
+	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -755,14 +757,15 @@ type SeriesTag struct {
 }
 
 type StorePurchaseIntent struct {
-	ID         uuid.UUID    `json:"id"`
-	TenantID   uuid.UUID    `json:"tenant_id"`
-	UserID     uuid.UUID    `json:"user_id"`
-	EpisodeID  uuid.UUID    `json:"episode_id"`
-	Price      int32        `json:"price"`
-	ProductID  string       `json:"product_id"`
-	CreatedAt  time.Time    `json:"created_at"`
-	ConsumedAt sql.NullTime `json:"consumed_at"`
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	UserID             uuid.UUID     `json:"user_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Price              int32         `json:"price"`
+	ProductID          string        `json:"product_id"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	CreatedAt          time.Time     `json:"created_at"`
+	ConsumedAt         sql.NullTime  `json:"consumed_at"`
 }
 
 type Tag struct {
