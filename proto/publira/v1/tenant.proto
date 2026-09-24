@@ -66,6 +66,14 @@ message GetTenantResponse {
   // APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
   // through the external checkout.
   publira.types.v1.AppPurchaseRoute app_purchase_route = 18;
+  // Whether the tenant's app can sell an episode through the App Store's and
+  // Google Play's in-app purchase right now: the route is
+  // APP_PURCHASE_ROUTE_STORE and that store is ready, which is what
+  // PurchaseService.StartStorePurchase requires. The route needs only one
+  // ready store, so the app on the other platform offers no purchase. Like
+  // accepts_payments, this exposes nothing of the credentials.
+  bool accepts_app_store_payments = 19;
+  bool accepts_google_play_payments = 20;
 }
 
 message GetTenantMobileAppAssociationRequest {

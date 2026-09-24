@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
@@ -698,6 +699,9 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 				expectNoTenantLegalPages(mock, tenantID)
 			}
 			expectPaymentsUnavailable(mock, tenantID)
+			if tc.want == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
+				expectStoreReadinessUnavailable(mock, tenantID, now)
+			}
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -709,6 +713,11 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 			}))
 			if err != nil {
 				t.Fatalf("GetTenant: %v", err)
+			}
+			// A store read that fails answers no store rather than failing the
+			// read, as accepts_payments does.
+			if resp.Msg.AcceptsAppStorePayments || resp.Msg.AcceptsGooglePlayPayments {
+				t.Fatalf("store payments = %v / %v, want false / false", resp.Msg.AcceptsAppStorePayments, resp.Msg.AcceptsGooglePlayPayments)
 			}
 			if resp.Msg.AppPurchaseRoute != tc.want {
 				t.Fatalf("app_purchase_route = %v, want %v", resp.Msg.AppPurchaseRoute, tc.want)
@@ -733,6 +742,15 @@ func TestGetTenantFailsOnAnUnsupportedAppPurchaseRoute(t *testing.T) {
 		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 	}
 	assertPublicExpectations(t, mock)
+}
+
+// expectStoreReadinessUnavailable stands in for a store read that fails
+// after the route was read as store.
+func expectStoreReadinessUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+	expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, "store")
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantAppStoreConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(errors.New("connection reset"))
 }
 
 func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, route string) {
