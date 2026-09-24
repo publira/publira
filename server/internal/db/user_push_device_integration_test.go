@@ -15,9 +15,9 @@ import (
 )
 
 // Walking the pages from an empty cursor reaches every device of every notified
-// member once, in token order, and nothing of a member who was not notified or
-// of another tenant.
-func TestListPushDevicesForNotificationPagesInTokenOrder(t *testing.T) {
+// member once, in recipient and token order, and nothing of a member who was
+// not notified or of another tenant.
+func TestListPushDevicesForNotificationPagesInRecipientOrder(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -72,14 +72,16 @@ func TestListPushDevicesForNotificationPagesInTokenOrder(t *testing.T) {
 		}
 	}
 
-	var pages [][]string
-	cursor := ""
+	var got []string
+	var pageSizes []int
+	afterUser, afterToken := uuid.Nil, ""
 	for range 5 {
 		rows, err := queries.ListPushDevicesForNotification(ctx, dbmodels.ListPushDevicesForNotificationParams{
 			TenantID:         tenant.ID,
-			AfterToken:       cursor,
 			NotificationType: "episode_published",
 			SubjectKey:       subjectKey,
+			AfterUserID:      afterUser,
+			AfterToken:       afterToken,
 			PageSize:         2,
 		})
 		if err != nil {
@@ -88,26 +90,32 @@ func TestListPushDevicesForNotificationPagesInTokenOrder(t *testing.T) {
 		if len(rows) == 0 {
 			break
 		}
-		var page []string
 		for _, row := range rows {
 			if row.NotificationID != notificationOf[row.UserID] {
 				t.Fatalf("device %s mirrors %s, want its owner's notification %s", row.Token, row.NotificationID, notificationOf[row.UserID])
 			}
-			page = append(page, row.Token)
+			got = append(got, row.Token)
 		}
-		pages = append(pages, page)
-		cursor = rows[len(rows)-1].Token
+		pageSizes = append(pageSizes, len(rows))
+		afterUser, afterToken = rows[len(rows)-1].UserID, rows[len(rows)-1].Token
 	}
 
-	want := [][]string{{"device-a", "device-b"}, {"device-c", "device-d"}, {"device-e"}}
-	if !slices.EqualFunc(pages, want, slices.Equal[[]string]) {
-		t.Fatalf("pages = %v, want %v", pages, want)
+	firstTokens, secondTokens := []string{"device-b", "device-e"}, []string{"device-a", "device-c", "device-d"}
+	want := slices.Concat(firstTokens, secondTokens)
+	if slices.Compare(second.ID[:], first.ID[:]) < 0 {
+		want = slices.Concat(secondTokens, firstTokens)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("devices = %v, want %v", got, want)
+	}
+	if !slices.Equal(pageSizes, []int{2, 2, 1}) {
+		t.Fatalf("page sizes = %v, want [2 2 1]", pageSizes)
 	}
 }
 
-// A page is read along the tenant's devices in token order rather than by
-// reading every notification the event wrote and sorting the lot.
-func TestListPushDevicesForNotificationWalksTheTenantTokenIndex(t *testing.T) {
+// A page is read along the notification's recipients rather than along every
+// device the tenant has.
+func TestListPushDevicesForNotificationWalksTheRecipientIndex(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -124,7 +132,7 @@ func TestListPushDevicesForNotificationWalksTheTenantTokenIndex(t *testing.T) {
 	}
 
 	rows, err := tx.QueryContext(ctx, "EXPLAIN "+dbmodels.ListPushDevicesForNotification,
-		uuid.New(), "device-a", "episode_published", "episode:EPISODE0001", 50)
+		uuid.New(), "episode_published", "episode:EPISODE0001", uuid.New(), "device-a", 50)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -143,7 +151,7 @@ func TestListPushDevicesForNotificationWalksTheTenantTokenIndex(t *testing.T) {
 	if err := rows.Close(); err != nil {
 		t.Fatalf("close explain: %v", err)
 	}
-	if !strings.Contains(plan.String(), "idx_user_push_devices_tenant_token") {
-		t.Fatalf("plan did not use idx_user_push_devices_tenant_token:\n%s", plan.String())
+	if !strings.Contains(plan.String(), "idx_notifications_tenant_subject_user") {
+		t.Fatalf("plan did not use idx_notifications_tenant_subject_user:\n%s", plan.String())
 	}
 }

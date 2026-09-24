@@ -1383,10 +1383,12 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
-	// One page of the devices to push one notification to, in token order after
-	// the previous page's last token (empty for the first page). The walk runs over
-	// idx_user_push_devices_tenant_token, so a page reads only the devices after
-	// the cursor; the notification id travels along because the app routes from it.
+	// One page of the devices to push one notification to, ordered by recipient
+	// and token after the previous page's last pair (the nil UUID and an empty
+	// token for the first page). The walk runs over the notification's recipients
+	// in idx_notifications_tenant_subject_user, so a page costs the recipients it
+	// passes rather than every device the tenant has. The separate user_id bound is
+	// what the index can start from, since the pair spans both tables.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published.

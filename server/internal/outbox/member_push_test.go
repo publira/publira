@@ -1,6 +1,7 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -261,8 +262,8 @@ func TestMemberPushNotificationPagesThroughEveryDevice(t *testing.T) {
 	if queries.listCalls != 3 {
 		t.Fatalf("pages listed = %d, want 3", queries.listCalls)
 	}
-	if want := []string{"token-2", "token-4"}; !slices.Equal(queries.progress, want) {
-		t.Fatalf("recorded cursors = %v, want %v", queries.progress, want)
+	if got, want := queries.progressTokens(t), []string{"token-2", "token-4"}; !slices.Equal(got, want) {
+		t.Fatalf("recorded cursors = %v, want %v", got, want)
 	}
 }
 
@@ -315,7 +316,7 @@ func TestMemberPushNotificationRetryStartsAfterTheDevicesAlreadyReached(t *testi
 	if err := handler(ctx, event); !errors.Is(err, ErrResume) {
 		t.Fatalf("first run error = %v, want ErrResume", err)
 	}
-	event.ProgressCursor = sql.NullString{String: "token-2", Valid: true}
+	event.ProgressCursor = sql.NullString{String: queries.progress[0], Valid: true}
 
 	outage := errors.New("fcm is unavailable")
 	sender.errs = map[string]error{"token-3": outage, "token-4": outage}
@@ -323,8 +324,8 @@ func TestMemberPushNotificationRetryStartsAfterTheDevicesAlreadyReached(t *testi
 	if err == nil || errors.Is(err, ErrResume) || IsPermanent(err) {
 		t.Fatalf("second run error = %v, want a retriable error", err)
 	}
-	if want := []string{"token-2"}; !slices.Equal(queries.progress, want) {
-		t.Fatalf("recorded cursors = %v, want %v: a run that settled nothing moved the cursor", queries.progress, want)
+	if got, want := queries.progressTokens(t), []string{"token-2"}; !slices.Equal(got, want) {
+		t.Fatalf("recorded cursors = %v, want %v: a run that settled nothing moved the cursor", got, want)
 	}
 
 	sender.errs = nil
@@ -350,6 +351,37 @@ func TestMemberPushNotificationSendsAPageConcurrently(t *testing.T) {
 
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
+	}
+}
+
+// Two devices of one reader can fall either side of a page boundary: the cursor
+// names the device as well as the reader, so the next page starts between them.
+func TestMemberPushNotificationSplitsOneReadersDevicesAcrossPages(t *testing.T) {
+	reader := uuid.UUID{15: 1}
+	queries := &stubPushDeviceQuerier{devices: []dbmodels.ListPushDevicesForNotificationRow{
+		{NotificationID: uuid.New(), UserID: reader, Token: "token-a", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: reader, Token: "token-b", Platform: "android"},
+		{NotificationID: uuid.New(), UserID: reader, Token: "token-c", Platform: "android"},
+	}}
+	sender := &stubPushSender{}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: sender}, queries, testMemberPushPaging(2))
+
+	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	for _, token := range []string{"token-a", "token-b", "token-c"} {
+		sender.sentTo(t, token)
+	}
+}
+
+func TestMemberPushNotificationRejectsAnUnreadableCursor(t *testing.T) {
+	queries := &stubPushDeviceQuerier{devices: androidDevices("token-1")}
+	handler := newMemberPushNotificationHandler(PushHandlerConfig{Sender: &stubPushSender{}}, queries, defaultMemberPushPaging)
+
+	event := memberPushEvent(t, uuid.New(), "episode_published")
+	event.ProgressCursor = sql.NullString{String: "token-1", Valid: true}
+	if err := handler(context.Background(), event); !IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent error", err)
 	}
 }
 
@@ -398,8 +430,8 @@ type stubPushDeviceQuerier struct {
 	progress  []string
 }
 
-// ListPushDevicesForNotification pages the way the statement does: in token
-// order, after the cursor, at most one page.
+// ListPushDevicesForNotification pages the way the statement does: by recipient
+// and token, after the cursor, at most one page.
 func (s *stubPushDeviceQuerier) ListPushDevicesForNotification(
 	_ context.Context,
 	arg dbmodels.ListPushDevicesForNotificationParams,
@@ -409,16 +441,38 @@ func (s *stubPushDeviceQuerier) ListPushDevicesForNotification(
 	s.listCalls++
 	s.listed = arg
 	devices := slices.Clone(s.devices)
-	slices.SortFunc(devices, func(a, b dbmodels.ListPushDevicesForNotificationRow) int {
-		return strings.Compare(a.Token, b.Token)
-	})
+	slices.SortFunc(devices, compareRecipientAndToken)
+	after := dbmodels.ListPushDevicesForNotificationRow{UserID: arg.AfterUserID, Token: arg.AfterToken}
 	var page []dbmodels.ListPushDevicesForNotificationRow
 	for _, device := range devices {
-		if device.Token > arg.AfterToken && len(page) < int(arg.PageSize) {
+		if compareRecipientAndToken(device, after) > 0 && len(page) < int(arg.PageSize) {
 			page = append(page, device)
 		}
 	}
 	return page, nil
+}
+
+func compareRecipientAndToken(a, b dbmodels.ListPushDevicesForNotificationRow) int {
+	if byUser := bytes.Compare(a.UserID[:], b.UserID[:]); byUser != 0 {
+		return byUser
+	}
+	return strings.Compare(a.Token, b.Token)
+}
+
+// progressTokens is the token of every cursor the handler recorded.
+func (s *stubPushDeviceQuerier) progressTokens(t *testing.T) []string {
+	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tokens := make([]string, 0, len(s.progress))
+	for _, recorded := range s.progress {
+		var cursor memberPushCursor
+		if err := json.Unmarshal([]byte(recorded), &cursor); err != nil {
+			t.Fatalf("decode recorded cursor %q: %v", recorded, err)
+		}
+		tokens = append(tokens, cursor.Token)
+	}
+	return tokens
 }
 
 func (s *stubPushDeviceQuerier) DeleteUserPushDeviceByToken(_ context.Context, token string) (int64, error) {
@@ -471,11 +525,13 @@ func (s *stubPushSender) sentTo(t *testing.T, token string) push.Message {
 	return found[0]
 }
 
+// androidDevices gives each token a recipient of its own, numbered in the order
+// given, so the pages follow that order.
 func androidDevices(tokens ...string) []dbmodels.ListPushDevicesForNotificationRow {
 	devices := make([]dbmodels.ListPushDevicesForNotificationRow, 0, len(tokens))
-	for _, token := range tokens {
+	for i, token := range tokens {
 		devices = append(devices, dbmodels.ListPushDevicesForNotificationRow{
-			NotificationID: uuid.New(), UserID: uuid.New(), Token: token, Platform: "android",
+			NotificationID: uuid.New(), UserID: uuid.UUID{15: byte(i + 1)}, Token: token, Platform: "android",
 		})
 	}
 	return devices

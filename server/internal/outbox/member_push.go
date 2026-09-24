@@ -168,16 +168,20 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 		// has settled nothing and failed somewhere, as in an outage, so a retry
 		// resends only what nobody received; the devices a partly successful run
 		// could not reach lose this alert, which the bell still shows.
-		cursor := event.ProgressCursor.String
+		cursor, err := parseMemberPushCursor(event.ProgressCursor)
+		if err != nil {
+			return Permanent(err)
+		}
 		var failures []error
 		attempted, settled, skipped := 0, 0, 0
 		finished := false
 		for first := true; first || memberPushHasRoomForPage(ctx, paging); first = false {
 			devices, err := queries.ListPushDevicesForNotification(ctx, dbmodels.ListPushDevicesForNotificationParams{
 				TenantID:         tenantID,
-				AfterToken:       cursor,
 				NotificationType: notificationType,
 				SubjectKey:       subjectKey,
+				AfterUserID:      cursor.UserID,
+				AfterToken:       cursor.Token,
 				PageSize:         paging.pageSize,
 			})
 			if err != nil {
@@ -198,13 +202,18 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 				finished = true
 				break
 			}
-			cursor = devices[len(devices)-1].Token
+			last := devices[len(devices)-1]
+			cursor = memberPushCursor{UserID: last.UserID, Token: last.Token}
 			if settled == 0 && len(failures) > 0 {
 				continue
 			}
+			encoded, err := json.Marshal(cursor)
+			if err != nil {
+				return fmt.Errorf("encode member push progress: %w", err)
+			}
 			recorded, err := queries.RecordOutboxEventProgress(ctx, dbmodels.RecordOutboxEventProgressParams{
 				ID:             event.ID,
-				ProgressCursor: sql.NullString{String: cursor, Valid: true},
+				ProgressCursor: sql.NullString{String: string(encoded), Valid: true},
 			})
 			if err != nil {
 				return fmt.Errorf("record member push progress: %w", err)
@@ -241,6 +250,26 @@ func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQ
 		}
 		return nil
 	}
+}
+
+// memberPushCursor is the last device a page reached, in the order the device
+// query walks: by recipient, then by token.
+type memberPushCursor struct {
+	UserID uuid.UUID `json:"user_id"`
+	Token  string    `json:"token"`
+}
+
+// parseMemberPushCursor reads the recorded cursor; an event with none starts
+// before every recipient.
+func parseMemberPushCursor(recorded sql.NullString) (memberPushCursor, error) {
+	var cursor memberPushCursor
+	if !recorded.Valid {
+		return cursor, nil
+	}
+	if err := json.Unmarshal([]byte(recorded.String), &cursor); err != nil {
+		return cursor, fmt.Errorf("decode member push progress cursor: %w", err)
+	}
+	return cursor, nil
 }
 
 // memberPushHasRoomForPage reports whether the job has time for one more page
