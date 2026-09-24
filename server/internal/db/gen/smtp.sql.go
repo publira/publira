@@ -13,7 +13,7 @@ import (
 )
 
 const GetPlatformSMTPConfig = `-- name: GetPlatformSMTPConfig :one
-SELECT singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at
+SELECT singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at, revision
 FROM platform_smtp_config
 WHERE singleton = TRUE
 LIMIT 1
@@ -33,6 +33,7 @@ func (q *Queries) GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig
 		&i.ReplyTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Revision,
 	)
 	return i, err
 }
@@ -64,7 +65,7 @@ func (q *Queries) GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uu
 	return i, err
 }
 
-const UpsertPlatformSMTPConfig = `-- name: UpsertPlatformSMTPConfig :one
+const InsertPlatformSMTPConfig = `-- name: InsertPlatformSMTPConfig :one
 INSERT INTO platform_smtp_config (
         singleton,
         host,
@@ -76,20 +77,11 @@ INSERT INTO platform_smtp_config (
         reply_to,
         updated_at
     )
-VALUES (TRUE, $1, $2, $3, $4, $5, $6, $7, NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET host = EXCLUDED.host,
-    port = EXCLUDED.port,
-    username = EXCLUDED.username,
-    password_encrypted = EXCLUDED.password_encrypted,
-    encryption = EXCLUDED.encryption,
-    from_address = EXCLUDED.from_address,
-    reply_to = EXCLUDED.reply_to,
-    updated_at = NOW()
-RETURNING singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at
+VALUES (TRUE, $1, $2, $3, $4, $5, $6, $7, NOW())
+RETURNING singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at, revision
 `
 
-type UpsertPlatformSMTPConfigParams struct {
+type InsertPlatformSMTPConfigParams struct {
 	Host              string         `json:"host"`
 	Port              int32          `json:"port"`
 	Username          string         `json:"username"`
@@ -99,8 +91,11 @@ type UpsertPlatformSMTPConfigParams struct {
 	ReplyTo           sql.NullString `json:"reply_to"`
 }
 
-func (q *Queries) UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error) {
-	row := q.db.QueryRowContext(ctx, UpsertPlatformSMTPConfig,
+// No ON CONFLICT clause: an absent row leaves LockPlatformSMTPConfig nothing
+// to lock, so a losing racer must fail on the primary key rather than
+// overwrite the row the winner just created.
+func (q *Queries) InsertPlatformSMTPConfig(ctx context.Context, arg InsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error) {
+	row := q.db.QueryRowContext(ctx, InsertPlatformSMTPConfig,
 		arg.Host,
 		arg.Port,
 		arg.Username,
@@ -121,6 +116,89 @@ func (q *Queries) UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatfo
 		&i.ReplyTo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const LockPlatformSMTPConfig = `-- name: LockPlatformSMTPConfig :one
+SELECT singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at, revision
+FROM platform_smtp_config
+WHERE singleton = TRUE
+FOR UPDATE
+`
+
+// Reads the row for update, so the revision a save compares against, and the
+// stored password it carries forward, cannot change before the write.
+func (q *Queries) LockPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error) {
+	row := q.db.QueryRowContext(ctx, LockPlatformSMTPConfig)
+	var i PlatformSmtpConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.Host,
+		&i.Port,
+		&i.Username,
+		&i.PasswordEncrypted,
+		&i.Encryption,
+		&i.FromAddress,
+		&i.ReplyTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const UpdatePlatformSMTPConfig = `-- name: UpdatePlatformSMTPConfig :one
+UPDATE platform_smtp_config
+SET host = $1,
+    port = $2,
+    username = $3,
+    password_encrypted = $4,
+    encryption = $5,
+    from_address = $6,
+    reply_to = $7,
+    revision = revision + 1,
+    updated_at = NOW()
+WHERE singleton = TRUE
+RETURNING singleton, host, port, username, password_encrypted, encryption, from_address, reply_to, created_at, updated_at, revision
+`
+
+type UpdatePlatformSMTPConfigParams struct {
+	Host              string         `json:"host"`
+	Port              int32          `json:"port"`
+	Username          string         `json:"username"`
+	PasswordEncrypted string         `json:"password_encrypted"`
+	Encryption        string         `json:"encryption"`
+	FromAddress       string         `json:"from_address"`
+	ReplyTo           sql.NullString `json:"reply_to"`
+}
+
+// Writes every value over the existing row. The revision moves with every
+// write, which is what makes a save based on an earlier read detectable.
+func (q *Queries) UpdatePlatformSMTPConfig(ctx context.Context, arg UpdatePlatformSMTPConfigParams) (PlatformSmtpConfig, error) {
+	row := q.db.QueryRowContext(ctx, UpdatePlatformSMTPConfig,
+		arg.Host,
+		arg.Port,
+		arg.Username,
+		arg.PasswordEncrypted,
+		arg.Encryption,
+		arg.FromAddress,
+		arg.ReplyTo,
+	)
+	var i PlatformSmtpConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.Host,
+		&i.Port,
+		&i.Username,
+		&i.PasswordEncrypted,
+		&i.Encryption,
+		&i.FromAddress,
+		&i.ReplyTo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Revision,
 	)
 	return i, err
 }

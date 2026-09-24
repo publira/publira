@@ -39,6 +39,9 @@ const FAILED_MESSAGE =
 const WRONG_PASSWORD_MESSAGE =
   "The password is incorrect. Check it and try again.";
 const SMTP_SAVED_MESSAGE = "Email settings saved.";
+const SMTP_SAVE_CONFLICT_MESSAGE =
+  "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.";
+const CONFLICTING_REPLY_TO = "conflict@platform.local";
 
 const signIn = (page: Page, nextPath: string): Promise<void> =>
   signInAsPlatformOperator(page, PLATFORM_OPERATOR_SETTINGS_OPERATOR, nextPath);
@@ -311,5 +314,36 @@ test.describe("web-platform operator settings", () => {
     await expect(page.getByLabel("Reply-to address (optional)")).toHaveValue(
       PLATFORM_OPERATOR_SETTINGS_REPLY_TO
     );
+  });
+
+  test("the email settings screen refuses a save once another session has saved", async ({
+    page,
+  }) => {
+    await signInAsPlatformOperator(
+      page,
+      {
+        email: PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL,
+        password: PLATFORM_OPERATOR_SETTINGS_OPERATOR.password,
+      },
+      "/settings/email"
+    );
+
+    const replyTo = page.getByLabel("Reply-to address (optional)");
+    const stored = smtpReplyTo();
+    await expect(replyTo).toHaveValue(stored);
+
+    // Another session saves while this screen is open.
+    runSql(`
+      UPDATE platform_smtp_config
+      SET revision = revision + 1, updated_at = NOW();
+    `);
+
+    await replyTo.fill(CONFLICTING_REPLY_TO);
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expect(page.getByRole("status")).toContainText(
+      SMTP_SAVE_CONFLICT_MESSAGE
+    );
+    expect(smtpReplyTo()).toBe(stored);
   });
 });

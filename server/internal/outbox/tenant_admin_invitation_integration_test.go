@@ -53,11 +53,11 @@ func TestWorkerRetriesTenantAdminInvitationEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)
 	}
-	if _, err := queries.UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
+	if _, err := queries.InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams{
 		Host: "smtp.example.com", Port: 587, Username: "mailer", PasswordEncrypted: password,
 		Encryption: "starttls", FromAddress: "no-reply@example.com",
 	}); err != nil {
-		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
+		t.Fatalf("InsertPlatformSMTPConfig: %v", err)
 	}
 
 	token := "invite-token"
@@ -180,11 +180,11 @@ func seedPlatformSMTPConfig(t *testing.T, pg *testutil.PostgresEnv, encryptor em
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)
 	}
-	if _, err := dbmodels.New(pg.DB).UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
+	if _, err := dbmodels.New(pg.DB).InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams{
 		Host: "smtp.example.com", Port: 587, Username: "mailer", PasswordEncrypted: password,
 		Encryption: "starttls", FromAddress: "no-reply@example.com",
 	}); err != nil {
-		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
+		t.Fatalf("InsertPlatformSMTPConfig: %v", err)
 	}
 }
 

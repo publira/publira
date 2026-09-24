@@ -537,6 +537,7 @@ type PlatformSmtpConfig struct {
 	ReplyTo           sql.NullString `json:"reply_to"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
+	Revision          int64          `json:"revision"`
 }
 
 type PlatformStorageConfig struct {

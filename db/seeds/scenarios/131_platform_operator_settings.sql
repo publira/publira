@@ -44,6 +44,7 @@ ON CONFLICT (platform_user_id, role) DO NOTHING;
 -- write those columns.
 UPDATE platform_smtp_config
 SET reply_to = 'support@platform.local',
+    revision = revision + 1,
     updated_at = NOW()
 WHERE singleton;
 

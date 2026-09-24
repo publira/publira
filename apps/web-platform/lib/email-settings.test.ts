@@ -77,6 +77,7 @@ describe("getPlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 587,
         replyTo: "support@example.com",
+        revision: 4n,
         username: "mailer",
       },
     });
@@ -90,9 +91,18 @@ describe("getPlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 587,
         replyTo: "support@example.com",
+        revision: "4",
         username: "mailer",
       },
     });
+  });
+
+  it("answers revision 0 when nothing has been saved yet", async () => {
+    mockGetPlatformEmailSettings.mockResolvedValueOnce({ settings: {} });
+
+    const result = await getPlatformEmailSettings("en");
+
+    expect(result.ok && result.settings.revision).toBe("0");
   });
 
   it("returns a failure without calling the API when sessionId is empty", async () => {
@@ -119,7 +129,20 @@ describe("getPlatformEmailSettings", () => {
 });
 
 describe("updatePlatformEmailSettings", () => {
-  it("calls the save API and returns updated settings", async () => {
+  const input = {
+    encryption: "tls",
+    expectedRevision: 3n,
+    fromAddress: "noreply@example.com",
+    host: "smtp.example.com",
+    locale: "en",
+    password: "secret",
+    passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+    port: 465,
+    replyTo: "",
+    username: "mailer",
+  } as const;
+
+  it("calls the save API with the revision it was rendered at and returns updated settings", async () => {
     mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
       settings: {
         encryption: "tls",
@@ -128,21 +151,12 @@ describe("updatePlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 465,
         replyTo: "",
+        revision: 4n,
         username: "mailer",
       },
     });
 
-    const result = await updatePlatformEmailSettings({
-      encryption: "tls",
-      fromAddress: "noreply@example.com",
-      host: "smtp.example.com",
-      locale: "en",
-      password: "secret",
-      passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
-      port: 465,
-      replyTo: "",
-      username: "mailer",
-    });
+    const result = await updatePlatformEmailSettings(input);
 
     expect(result).toEqual({
       ok: true,
@@ -153,6 +167,7 @@ describe("updatePlatformEmailSettings", () => {
         host: "smtp.example.com",
         port: 465,
         replyTo: "",
+        revision: "4",
         username: "mailer",
       },
     });
@@ -160,6 +175,7 @@ describe("updatePlatformEmailSettings", () => {
     expect(mockUpdatePlatformEmailSettings).toHaveBeenCalledWith(
       {
         encryption: "tls",
+        expectedRevision: 3n,
         fromAddress: "noreply@example.com",
         host: "smtp.example.com",
         password: "secret",
@@ -170,6 +186,32 @@ describe("updatePlatformEmailSettings", () => {
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
+  });
+
+  it("tells the operator to reload when another session saved first", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError(
+        "platform email settings have changed since they were read",
+        Code.FailedPrecondition
+      )
+    );
+
+    await expect(updatePlatformEmailSettings(input)).resolves.toEqual({
+      message:
+        "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.",
+      ok: false,
+    });
+  });
+
+  it("passes the server's validation detail through", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      new ConnectError("from_address is required", Code.InvalidArgument)
+    );
+
+    await expect(updatePlatformEmailSettings(input)).resolves.toEqual({
+      message: "from_address is required",
+      ok: false,
+    });
   });
 });
 

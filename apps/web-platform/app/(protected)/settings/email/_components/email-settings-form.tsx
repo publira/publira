@@ -73,10 +73,12 @@ export const EmailSettingsForm = ({
   const formId = useId();
   // Seeded once per mount; saving is what replaces it, with the settings the
   // server confirmed. A stored password is shown masked until the operator asks
-  // to change it, and saving puts it back behind that mask.
+  // to change it, and saving puts it back behind that mask. The revision moves
+  // with the same save, so the next one is compared against the row it wrote.
   const [hasStoredPassword, setHasStoredPassword] = useState(
     initialSettings.hasPassword
   );
+  const [revision, setRevision] = useState(initialSettings.revision);
   const [isPasswordEditing, setIsPasswordEditing] = useState(
     !initialSettings.hasPassword
   );
@@ -90,6 +92,7 @@ export const EmailSettingsForm = ({
     ): Promise<PlatformEmailSettingsFormState> => {
       const nextState = await saveAction(previousState, formData);
       if (nextState?.ok) {
+        setRevision(nextState.settings.revision);
         setHasStoredPassword(nextState.settings.hasPassword);
         setIsPasswordEditing(!nextState.settings.hasPassword);
       }
@@ -134,6 +137,8 @@ export const EmailSettingsForm = ({
         className="grid gap-5 sm:max-w-3xl"
         id={formId}
       >
+        <input name="revision" type="hidden" value={revision} />
+
         <Field>
           <FieldLabel required>
             <ClientMessage message="platform.settings.host" />

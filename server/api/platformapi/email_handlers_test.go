@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -42,7 +43,30 @@ func newTestEncryptor(t *testing.T) *secretcrypto.Manager {
 }
 
 func platformSMTPColumns() []string {
-	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at"}
+	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at", "revision"}
+}
+
+func newEmailSettingsActorContext() context.Context {
+	return context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
+		UserID: uuid.Must(uuid.NewV7()),
+		Role:   "platform_operator",
+		Email:  "platform@example.com",
+	})
+}
+
+// emailUpdateRequest keeps the stored password, which is the save a form that
+// was opened before another session's password change would send.
+func emailUpdateRequest(revision int64) *publirasplatformv1.UpdatePlatformEmailSettingsRequest {
+	return &publirasplatformv1.UpdatePlatformEmailSettingsRequest{
+		Host:               "smtp.example.com",
+		Port:               587,
+		Username:           "mailer",
+		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+		Encryption:         "starttls",
+		FromAddress:        "no-reply@example.com",
+		ReplyTo:            "reply@example.com",
+		ExpectedRevision:   revision,
+	}
 }
 
 func TestGetPlatformEmailSettingsDatabaseErrorIsHidden(t *testing.T) {
@@ -64,35 +88,23 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	server.encryptor = newTestEncryptor(t)
 	now := time.Now()
-	actorID := uuid.Must(uuid.NewV7())
 	existingEncrypted, err := server.encryptor.EncryptString("existing-secret")
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
-			AddRow(true, "smtp.old.example", 587, "old-user", existingEncrypted, "starttls", "old@example.com", "reply-old@example.com", now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertPlatformSMTPConfig)).
+			AddRow(true, "smtp.old.example", 587, "old-user", existingEncrypted, "starttls", "old@example.com", "reply-old@example.com", now, now, 3))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSMTPConfig)).
 		WithArgs("smtp.example.com", int32(587), "mailer", existingEncrypted, "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
-			AddRow(true, "smtp.example.com", 587, "mailer", existingEncrypted, "starttls", "no-reply@example.com", "reply@example.com", now, now))
+			AddRow(true, "smtp.example.com", 587, "mailer", existingEncrypted, "starttls", "no-reply@example.com", "reply@example.com", now, now, 4))
+	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
-		UserID: actorID,
-		Role:   "platform_operator",
-		Email:  "platform@example.com",
-	})
-	resp, err := server.UpdatePlatformEmailSettings(ctx, connect.NewRequest(&publirasplatformv1.UpdatePlatformEmailSettingsRequest{
-		Host:               "smtp.example.com",
-		Port:               587,
-		Username:           "mailer",
-		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
-		Encryption:         "starttls",
-		FromAddress:        "no-reply@example.com",
-		ReplyTo:            "reply@example.com",
-	}))
+	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(3)))
 	if err != nil {
 		t.Fatalf("UpdatePlatformEmailSettings: %v", err)
 	}
@@ -102,6 +114,105 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 	if resp.Msg.Settings.ReplyTo != "reply@example.com" {
 		t.Fatalf("settings.reply_to = %q, want reply@example.com", resp.Msg.Settings.ReplyTo)
 	}
+	if resp.Msg.Settings.Revision != 4 {
+		t.Fatalf("settings.revision = %d, want 4", resp.Msg.Settings.Revision)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestUpdatePlatformEmailSettingsRejectsAStaleRevision(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.encryptor = newTestEncryptor(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).
+		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
+			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:replaced", "starttls", "no-reply@example.com", "reply@example.com", now, now, 4))
+	mock.ExpectRollback()
+
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(3)))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	// No update and no audit entry: the conflict is refused before anything is
+	// written.
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// Revision zero states that no settings row is expected yet, which is the only
+// way one gets created here.
+func TestUpdatePlatformEmailSettingsCreatesTheRowForRevisionZero(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.encryptor = newTestEncryptor(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSMTPConfig)).
+		WithArgs("smtp.example.com", int32(587), "mailer", sqlmock.AnyArg(), "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
+		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
+			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now, 1))
+	mock.ExpectCommit()
+	expectOperatorAuditLogInsert(mock)
+
+	req := emailUpdateRequest(0)
+	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
+	req.Password = "new-secret"
+	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("UpdatePlatformEmailSettings: %v", err)
+	}
+	if resp.Msg.Settings.Revision != 1 {
+		t.Fatalf("settings.revision = %d, want 1", resp.Msg.Settings.Revision)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A revision other than zero was read from a row, so finding none means it was
+// deleted, and recreating it would bring back values nobody confirmed.
+func TestUpdatePlatformEmailSettingsRejectsARevisionWhenNoRowExists(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.encryptor = newTestEncryptor(t)
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
+
+	req := emailUpdateRequest(2)
+	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
+	req.Password = "new-secret"
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestUpdatePlatformEmailSettingsReportsALostInsertRaceAsAConflict(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.encryptor = newTestEncryptor(t)
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSMTPConfig)).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "platform_smtp_config_pkey"})
+	mock.ExpectRollback()
+
+	req := emailUpdateRequest(0)
+	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
+	req.Password = "new-secret"
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestUpdatePlatformEmailSettingsRejectsANegativeRevision(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(-1)))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePlatformEmailSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	// Rejected before the transaction is opened at all.
 	assertOperatorHandlerExpectations(t, mock)
 }
 
@@ -113,7 +224,7 @@ func TestSendPlatformSmtpTestEmailWithoutSecretManagerReportsUnavailable(t *test
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
-			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now))
+			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now, 1))
 
 	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
 		UserID: actorID,
