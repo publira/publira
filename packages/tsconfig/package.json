@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./base.json": "./base.json",
-    "./next.json": "./next.json"
+    "./base.json": "./base/tsconfig.json",
+    "./next.json": "./next/tsconfig.json"
   }
 }
