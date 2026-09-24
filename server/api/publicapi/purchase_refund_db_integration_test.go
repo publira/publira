@@ -147,7 +147,7 @@ func (e refundWebhookEnv) hasContentAccess(t *testing.T) bool {
 	if err != nil {
 		t.Fatalf("UserHasEpisodeContentAccess: %v", err)
 	}
-	return access.Valid && access.Bool
+	return access
 }
 
 func refundedCharge(paymentIntentID string, amount, amountRefunded int64) map[string]any {

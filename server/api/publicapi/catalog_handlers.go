@@ -1211,7 +1211,7 @@ func (s *apiServer) GetEpisodeDetail(
 		if accessErr != nil {
 			return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 		}
-		if hasAccess.Valid && hasAccess.Bool {
+		if hasAccess {
 			access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
 			includeImages = true
 			// The reader fetches these images from image-server with an

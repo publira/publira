@@ -203,58 +203,15 @@ ORDER BY created_at DESC,
     id DESC
 LIMIT 1;
 
--- name: GetActiveAccessTicketForUserEpisode :one
-SELECT id,
-    tenant_id,
-    public_id,
-    episode_id,
-    user_id,
-    expires_at,
-    revoked_at,
-    note,
-    created_by_user_id,
-    created_at
-FROM access_tickets
-WHERE tenant_id = $1
-    AND user_id = $2
-    AND episode_id = $3
-    AND revoked_at IS NULL
-    AND (
-        expires_at IS NULL
-        OR expires_at > NOW()
-    )
-ORDER BY created_at DESC,
-    id DESC
-LIMIT 1;
-
 -- name: UserHasEpisodeContentAccess :one
--- True when the user may view paid body content for the episode via purchase or active access ticket.
+-- True when the user holds a grant in episode_content_grants for the episode.
 -- Whether the body is free to everyone — price = 0, or an open free window —
 -- is evaluated by the caller; this query only covers grants.
-SELECT (
-        EXISTS (
-            SELECT 1
-            FROM purchases p
-            WHERE p.tenant_id = sqlc.arg('tenant_id')
-                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND p.user_id = sqlc.arg('user_id')::uuid
-                AND p.episode_id = sqlc.arg('episode_id')
-                AND (
-                    p.expires_at IS NULL
-                    OR p.expires_at > NOW()
-                )
-                AND p.refunded_at IS NULL
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM access_tickets at
-            WHERE at.tenant_id = sqlc.arg('tenant_id')
-                AND at.user_id = sqlc.arg('user_id')
-                AND at.episode_id = sqlc.arg('episode_id')
-                AND at.revoked_at IS NULL
-                AND (
-                    at.expires_at IS NULL
-                    OR at.expires_at > NOW()
-                )
-        )
-    ) AS has_access;
+SELECT EXISTS (
+    SELECT 1
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')
+        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')
+) AS has_access;

@@ -107,12 +107,11 @@ SELECT
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
-    FROM purchases
-    WHERE tenant_id = $2::uuid
-        AND user_id = $3::uuid
-        AND episode_id = $4::uuid
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND refunded_at IS NULL
+    FROM episode_content_grants g
+    WHERE g.tenant_id = $2::uuid
+        AND g.user_id = $3::uuid
+        AND g.episode_id = $4::uuid
+        AND g.kind = 'purchase'
 )
 ON CONFLICT (stripe_checkout_session_id) DO NOTHING
 RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at
@@ -678,13 +677,12 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 const UserHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
 SELECT EXISTS (
     SELECT 1
-    FROM purchases
-    WHERE tenant_id = $1
+    FROM episode_content_grants g
+    WHERE g.tenant_id = $1
         -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-        AND user_id = $2::uuid
-        AND episode_id = $3
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND refunded_at IS NULL
+        AND g.user_id = $2::uuid
+        AND g.episode_id = $3
+        AND g.kind = 'purchase'
 ) AS has_purchase
 `
 
@@ -694,6 +692,7 @@ type UserHasValidPurchaseForEpisodeParams struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 }
 
+// Only a purchase counts: an access ticket does not stop the reader buying.
 func (q *Queries) UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var has_purchase bool

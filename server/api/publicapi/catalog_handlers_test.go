@@ -1266,22 +1266,6 @@ func TestGetPublishedEpisodeQueryHasPublicationGuards(t *testing.T) {
 	}
 }
 
-func TestUserHasEpisodeContentAccessQueryCoversPurchasesAndTickets(t *testing.T) {
-	requiredSnippets := []string{
-		"FROM purchases p",
-		"FROM access_tickets at",
-		"at.revoked_at IS NULL",
-		"at.expires_at > NOW()",
-		"p.expires_at > NOW()",
-		"p.refunded_at IS NULL",
-	}
-	for _, snippet := range requiredSnippets {
-		if !strings.Contains(dbmodels.UserHasEpisodeContentAccess, snippet) {
-			t.Fatalf("dbmodels.UserHasEpisodeContentAccess does not contain %q", snippet)
-		}
-	}
-}
-
 // The detail carries the episodes either side of the one being read, so a
 // viewer draws its own navigation from the response it already has. The fields
 // restate the neighbour's price rather than the reader's standing in it, which

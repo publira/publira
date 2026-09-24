@@ -100,7 +100,7 @@ func (s *apiServer) readerCanReadEpisodeBody(
 	if err != nil {
 		return false, s.internalDBError(ctx, "failed to check episode content access for comment", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
-	return access.Valid && access.Bool, nil
+	return access, nil
 }
 
 // commentCursor decodes the shared (created_at, id) keyset token every comment

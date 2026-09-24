@@ -6,7 +6,6 @@ package dbmodels
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -317,7 +316,6 @@ type Querier interface {
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error)
-	GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -1243,9 +1241,8 @@ type Querier interface {
 	ListPublishedCreatorsByIDs(ctx context.Context, arg ListPublishedCreatorsByIDsParams) ([]ListPublishedCreatorsByIDsRow, error)
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
-	// right now, and whether the reader holds a grant for it. The grant is the
-	// predicate UserHasEpisodeContentAccess answers one episode at a time, and a
-	// guest passes a NULL user_id, which no grant matches. The order is the one
+	// right now, and whether episode_content_grants holds a grant for the reader.
+	// A guest passes a NULL user_id, which no grant matches. The order is the one
 	// GetSeriesDetail lists the episodes in.
 	ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
@@ -2163,10 +2160,11 @@ type Querier interface {
 	// Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
 	// indistinguishable from an unfollowed one.
 	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
-	// True when the user may view paid body content for the episode via purchase or active access ticket.
+	// True when the user holds a grant in episode_content_grants for the episode.
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
-	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)
+	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
+	// Only a purchase counts: an access ticket does not stop the reader buying.
 	UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns

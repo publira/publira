@@ -98,11 +98,8 @@ func assertContentAccess(
 	if err != nil {
 		t.Fatalf("UserHasEpisodeContentAccess: %v", err)
 	}
-	if !got.Valid {
-		t.Fatalf("has_access is NULL")
-	}
-	if got.Bool != want {
-		t.Fatalf("has_access = %v, want %v (tenant=%s user=%s episode=%s)", got.Bool, want, tenantID, userID, episodeID)
+	if got != want {
+		t.Fatalf("has_access = %v, want %v (tenant=%s user=%s episode=%s)", got, want, tenantID, userID, episodeID)
 	}
 }
 
