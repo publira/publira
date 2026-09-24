@@ -61,7 +61,6 @@
       // values would couple them to ambient Redis, secrets, and API origins.
       // @publira/next-cache-handlers declares PUBLIRA_REDIS_URL on its own
       // test task so the Redis integration cases can see a configured URL.
-      "inputs": ["**/*.test.{ts,tsx}"],
     },
     "typegen": {
       "dependsOn": ["^build"],
