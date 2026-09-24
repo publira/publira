@@ -2110,6 +2110,7 @@
         "secret_description": "入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "Stripe ダッシュボードにこの URL を登録してください。署名シークレットは上の欄で保存します。",
+        "webhook_url_legacy_description": "以前に登録した /api/v1/webhook/stripe のエンドポイントも引き続き動きますが、この URL は非推奨で、今後のリリースで削除されます。上の URL に置き換えてください。",
         "saved": "決済設定を保存しました。",
         "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",
         "save_failed": "決済設定の保存に失敗しました。時間をおいて再試行してください。",

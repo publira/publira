@@ -2110,6 +2110,7 @@
         "secret_description": "입력한 값은 저장 후 다시 표시되지 않습니다. 저장된 값은 처음과 끝 글자를 빼고 마스킹되어 보입니다.",
         "webhook_url": "웹훅 URL",
         "webhook_url_description": "Stripe 대시보드에 이 URL을 등록해 주세요. 서명 시크릿은 위 항목에서 저장합니다.",
+        "webhook_url_legacy_description": "이전에 등록한 /api/v1/webhook/stripe 엔드포인트도 계속 작동하지만, 이 URL은 더 이상 권장되지 않으며 이후 릴리스에서 삭제됩니다. 위의 URL로 바꿔 주세요.",
         "saved": "결제 설정을 저장했습니다.",
         "load_failed": "결제 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "save_failed": "결제 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",

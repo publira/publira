@@ -77,7 +77,7 @@ Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernet
 
 ## Stripe Checkout (episode purchases)
 
-Paid episodes are sold as a one-time payment through Stripe Checkout. The URL the browser returns to does not confirm the purchase. `POST /api/v1/webhook/stripe` on `web-host` receives the request on the tenant's public domain and does nothing but forward Stripe's raw body and signature to PurchaseService. The API server verifies the signature with the target tenant's enabled payment configuration and creates a row in `purchases` only when it receives `checkout.session.completed` (or `checkout.session.async_payment_succeeded` for asynchronous payments).
+Paid episodes are sold as a one-time payment through Stripe Checkout. The URL the browser returns to does not confirm the purchase. `POST /api/v1/webhook/payment/stripe` on `web-host` receives the request on the tenant's public domain and does nothing but forward Stripe's raw body and headers to PurchaseService. The API server verifies the signature with the target tenant's enabled payment configuration and creates a row in `purchases` only when it receives `checkout.session.completed` (or `checkout.session.async_payment_succeeded` for asynchronous payments).
 
 `charge.refunded` is handled on the same endpoint and records the refund on the purchase it reverses. The event names the payment intent rather than the Checkout Session, which is why a purchase stores `stripe_payment_intent_id` when it is created. `refunded_amount` holds the amount Stripe has refunded so far, and `refunded_at` is set once that reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone. A refund whose purchase is not here yet — Stripe orders neither its events nor its retries — is kept in `unapplied_stripe_refunds` and written onto the purchase by the Checkout event that finally creates it.
 
@@ -87,10 +87,10 @@ Tenant administrators register the Stripe secret key and the webhook signing sec
 
 The same service stores the App Store Connect API key (issuer ID, key ID, and the `.p8` private key) and the Google Play service account's JSON key, in `tenant_app_store_config` and `tenant_google_play_config`, and the tenant's app purchase route (`tenant_config.app_purchase_route`): `external_checkout`, the Stripe Checkout above, or `store`, the store's in-app purchase. The app each store sells in is the one the tenant's mobile app association names. `TenantService.GetTenant` answers the route, and while it is `store`, `StartEpisodeCheckout` refuses `CLIENT_MOBILE` with `FailedPrecondition`.
 
-In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/stripe` as the webhook endpoint and enable the three events above. For local development, forward with the Stripe CLI:
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the three events above. `/api/v1/webhook/stripe` still answers as a deprecated alias for the endpoints registered before, and will be removed in a later release. For local development, forward with the Stripe CLI:
 
 ```bash
-stripe listen --forward-to localhost:3000/api/v1/webhook/stripe
+stripe listen --forward-to localhost:3000/api/v1/webhook/payment/stripe
 ```
 
 Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works. A redelivered webhook does not create a duplicate purchase, thanks to the uniqueness constraint on `stripe_checkout_session_id`. An episode that already has a valid purchase does not start Checkout, and can be bought again once that purchase has expired.

@@ -356,17 +356,34 @@ describe("web-host proxy locale routing", () => {
     const { proxy } = await import("./proxy");
 
     const theme = await proxy(request("https://shop.example.com/theme.css"));
-    const route = await proxy(
-      request("https://shop.example.com/api/v1/webhook/stripe")
-    );
+    const route = await proxy(request("https://shop.example.com/api/v1/views"));
 
     expect(theme.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/theme.css`
     );
     expect(route.headers.get("x-middleware-rewrite")).toContain(
-      `/${TENANT_ID}/api/v1/webhook/stripe`
+      `/${TENANT_ID}/api/v1/views`
     );
   });
+
+  it.each([
+    "/api/v1/webhook/payment/stripe",
+    "/api/v1/webhook/payment/pay_jp",
+    "/api/v1/webhook/stripe",
+  ])(
+    "rewrites the webhook %s to the tenant without a locale",
+    async (pathname) => {
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        request(`https://shop.example.com${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        `/${TENANT_ID}${pathname}`
+      );
+    }
+  );
 
   it("serves the association documents on the tenant without a locale or a redirect", async () => {
     const { proxy } = await import("./proxy");

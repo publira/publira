@@ -2110,6 +2110,7 @@
         "secret_description": "您輸入的值不會再次顯示。已儲存的值除首尾字元外都會以遮罩顯示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "請在 Stripe 主控台中設定此 URL。簽章密鑰儲存在上方的欄位中。",
+        "webhook_url_legacy_description": "先前設定的 /api/v1/webhook/stripe 端點仍可使用，但該 URL 已棄用，將在後續版本中移除。請改用上方的 URL。",
         "saved": "付款設定已儲存。",
         "load_failed": "無法載入付款設定。請稍後再試。",
         "save_failed": "無法儲存付款設定。請稍後再試。",

@@ -63,13 +63,16 @@ const SettingsPaymentFormSkeleton = () => (
   </div>
 );
 
-const tenantWebhookUrl = (domain: string): string | undefined => {
+const tenantWebhookUrl = (
+  domain: string,
+  provider: string
+): string | undefined => {
   const host = domain.trim();
   if (!host) {
     return undefined;
   }
 
-  return `https://${host}/api/v1/webhook/stripe`;
+  return `https://${host}/api/v1/webhook/payment/${provider}`;
 };
 
 const SettingsPaymentForm = async () => {
@@ -89,23 +92,23 @@ const SettingsPaymentForm = async () => {
     tenantResult
   );
 
+  const settings = paymentSettingsResult.ok
+    ? paymentSettingsResult.settings
+    : emptyTenantPaymentSettings;
+
   return (
     <TenantPaymentSettingsForm
       action={updateTenantPaymentSettingsAction}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
-      initialSettings={
-        paymentSettingsResult.ok
-          ? paymentSettingsResult.settings
-          : emptyTenantPaymentSettings
-      }
+      initialSettings={settings}
       loadErrorMessage={
         paymentSettingsResult.ok ? undefined : paymentSettingsResult.message
       }
       webhookUrl={
         tenantResult.ok
-          ? tenantWebhookUrl(tenantResult.tenant.domain)
+          ? tenantWebhookUrl(tenantResult.tenant.domain, settings.provider)
           : undefined
       }
     />
