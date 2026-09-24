@@ -13,24 +13,12 @@ import type { ChangeEventHandler } from "react";
 
 import { useClientMessages } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
-import { spreadStartPageOf } from "#lib/reading-layout";
-import type { ReadingLayout } from "#lib/reading-layout";
-import type { SeriesCommentMode } from "#lib/series-comment-mode";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 
 interface SeriesEyeCatchFormProps {
   initialSeries: SeriesListItem;
-  /**
-   * The mode the series states of its own, empty while it follows its
-   * tenant's. This form edits the eye-catch alone, but the Action behind it is
-   * `UpdateSeries`, which writes the whole listing row — so the mode rides
-   * along untouched rather than being reset by an image upload.
-   */
-  commentMode: SeriesCommentMode;
-  /** Carried untouched, for the reason {@link commentMode} is. */
-  readingLayout: ReadingLayout;
   action: (
     prevState: SeriesActionState,
     formData: FormData
@@ -39,8 +27,6 @@ interface SeriesEyeCatchFormProps {
 
 export const SeriesEyeCatchForm = ({
   initialSeries,
-  commentMode,
-  readingLayout,
   action,
 }: SeriesEyeCatchFormProps) => {
   const t = useClientMessages();
@@ -94,12 +80,6 @@ export const SeriesEyeCatchForm = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={initialSeries.publicId} />
       <input name="title" type="hidden" value={initialSeries.title} />
-      <input name="synopsis" type="hidden" value={initialSeries.synopsis} />
-      <input
-        name="reading_period_hours"
-        type="hidden"
-        value={String(initialSeries.readingPeriodHours)}
-      />
       <input
         name="label_public_id"
         type="hidden"
@@ -115,27 +95,6 @@ export const SeriesEyeCatchForm = ({
         type="hidden"
         value={effectiveSeries.eyeCatchImageUpdatedAt}
       />
-      <input name="status" type="hidden" value={initialSeries.status} />
-      <input name="age_rating" type="hidden" value={initialSeries.ageRating} />
-      <input name="comment_mode" type="hidden" value={commentMode} />
-      <input
-        name="reading_direction"
-        type="hidden"
-        value={readingLayout.readingDirection}
-      />
-      <input
-        name="spread_start_page"
-        type="hidden"
-        value={String(spreadStartPageOf(readingLayout.spreadStartIndex))}
-      />
-      {initialSeries.scheduleWeekdays.map((weekday) => (
-        <input
-          key={weekday}
-          name="schedule_weekdays"
-          type="hidden"
-          value={String(weekday)}
-        />
-      ))}
       {initialSeries.genrePublicIds.map((publicId) => (
         <input
           key={publicId}

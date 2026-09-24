@@ -343,9 +343,7 @@ describe("the classification a series carries", () => {
     });
   });
 
-  // `UpdateSeries` writes the whole listing row, so every save has to carry the
-  // classification back or it resets to the column defaults.
-  it("sends the classification on every update", async () => {
+  it("sends the classification the save states", async () => {
     mockUpdateSeries.mockResolvedValue({
       series: { publicId: "SERIES001", synopsis: "", title: "" },
     });
@@ -377,9 +375,46 @@ describe("the classification a series carries", () => {
       expect.objectContaining({
         ageRating: SeriesAgeRating.R15,
         genrePublicIds: ["GENRE001"],
-        scheduleWeekdays: [2],
+        scheduleWeekdays: { weekdays: [2] },
         status: SeriesStatus.COMPLETED,
         tagNames: ["seaside"],
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // A save that states none of the listing fields leaves each one absent, which
+  // is what keeps the values stored.
+  it("sends no listing field the save leaves out", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        creatorCredits: [],
+        genrePublicIds: [],
+        isPublished: true,
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Series title",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ageRating: undefined,
+        commentMode: undefined,
+        readingDirection: undefined,
+        readingPeriodHours: undefined,
+        scheduleWeekdays: undefined,
+        spreadStartIndex: undefined,
+        status: undefined,
+        synopsis: undefined,
       }),
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -451,9 +486,7 @@ describe("the comment mode a series states", () => {
     expect(result.ok).toBe(false);
   });
 
-  // `UpdateSeries` writes the whole listing row, so a save that left the mode
-  // out would put the series back on its tenant's setting.
-  it("sends the mode on every update", async () => {
+  it("sends the mode the save states", async () => {
     mockUpdateSeries.mockResolvedValue({
       series: { publicId: "SERIES001", synopsis: "", title: "" },
     });
@@ -587,7 +620,7 @@ describe("the layout a series states", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("sends the layout on every update", async () => {
+  it("sends the layout the save states", async () => {
     mockUpdateSeries.mockResolvedValue({
       series: { publicId: "SERIES001", synopsis: "", title: "" },
     });

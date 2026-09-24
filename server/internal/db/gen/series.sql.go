@@ -82,6 +82,79 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 	return i, err
 }
 
+const CreateSeriesListing = `-- name: CreateSeriesListing :one
+INSERT INTO series_listings (
+        tenant_id,
+        series_id,
+        synopsis,
+        reading_period_hours,
+        status,
+        schedule_weekdays,
+        age_rating,
+        comment_mode,
+        reading_direction,
+        spread_start_index
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10
+    )
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
+`
+
+type CreateSeriesListingParams struct {
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	SeriesID           uuid.UUID      `json:"series_id"`
+	Synopsis           sql.NullString `json:"synopsis"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	Status             string         `json:"status"`
+	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
+	AgeRating          string         `json:"age_rating"`
+	CommentMode        sql.NullString `json:"comment_mode"`
+	ReadingDirection   string         `json:"reading_direction"`
+	SpreadStartIndex   int32          `json:"spread_start_index"`
+}
+
+func (q *Queries) CreateSeriesListing(ctx context.Context, arg CreateSeriesListingParams) (SeriesListing, error) {
+	row := q.db.QueryRowContext(ctx, CreateSeriesListing,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.Synopsis,
+		arg.ReadingPeriodHours,
+		arg.Status,
+		pq.Array(arg.ScheduleWeekdays),
+		arg.AgeRating,
+		arg.CommentMode,
+		arg.ReadingDirection,
+		arg.SpreadStartIndex,
+	)
+	var i SeriesListing
+	err := row.Scan(
+		&i.SeriesID,
+		&i.Synopsis,
+		&i.ReadingPeriodHours,
+		&i.IsPublished,
+		&i.PublishedAt,
+		&i.TenantID,
+		&i.Status,
+		pq.Array(&i.ScheduleWeekdays),
+		&i.AgeRating,
+		&i.EpisodeRatingMode,
+		&i.CommentMode,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+	)
+	return i, err
+}
+
 const GetPublishedSeriesAgeRatingByPublicID = `-- name: GetPublishedSeriesAgeRatingByPublicID :one
 SELECT s.id,
     sl.age_rating
@@ -803,28 +876,7 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 	return err
 }
 
-const UpdateSeriesPublication = `-- name: UpdateSeriesPublication :exec
-UPDATE series
-SET published_at = $2::timestamptz,
-    is_published = CASE
-        WHEN $2::timestamptz IS NULL THEN false
-        ELSE true
-    END,
-    updated_at = NOW()
-WHERE id = $1
-`
-
-type UpdateSeriesPublicationParams struct {
-	ID          uuid.UUID    `json:"id"`
-	PublishedAt sql.NullTime `json:"published_at"`
-}
-
-func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateSeriesPublication, arg.ID, arg.PublishedAt)
-	return err
-}
-
-const UpsertSeriesListing = `-- name: UpsertSeriesListing :one
+const UpdateSeriesListing = `-- name: UpdateSeriesListing :one
 INSERT INTO series_listings (
         tenant_id,
         series_id,
@@ -850,35 +902,67 @@ VALUES (
         $10
     ) ON CONFLICT (series_id) DO
 UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
-    status = EXCLUDED.status,
-    schedule_weekdays = EXCLUDED.schedule_weekdays,
-    age_rating = EXCLUDED.age_rating,
-    comment_mode = EXCLUDED.comment_mode,
-    reading_direction = EXCLUDED.reading_direction,
-    spread_start_index = EXCLUDED.spread_start_index
+SET synopsis = CASE
+        WHEN $11::boolean THEN EXCLUDED.synopsis
+        ELSE series_listings.synopsis
+    END,
+    reading_period_hours = CASE
+        WHEN $12::boolean THEN EXCLUDED.reading_period_hours
+        ELSE series_listings.reading_period_hours
+    END,
+    status = CASE
+        WHEN $13::boolean THEN EXCLUDED.status
+        ELSE series_listings.status
+    END,
+    schedule_weekdays = CASE
+        WHEN $14::boolean THEN EXCLUDED.schedule_weekdays
+        ELSE series_listings.schedule_weekdays
+    END,
+    age_rating = CASE
+        WHEN $15::boolean THEN EXCLUDED.age_rating
+        ELSE series_listings.age_rating
+    END,
+    comment_mode = CASE
+        WHEN $16::boolean THEN EXCLUDED.comment_mode
+        ELSE series_listings.comment_mode
+    END,
+    reading_direction = CASE
+        WHEN $17::boolean THEN EXCLUDED.reading_direction
+        ELSE series_listings.reading_direction
+    END,
+    spread_start_index = CASE
+        WHEN $18::boolean THEN EXCLUDED.spread_start_index
+        ELSE series_listings.spread_start_index
+    END
 RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
 `
 
-type UpsertSeriesListingParams struct {
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	SeriesID           uuid.UUID      `json:"series_id"`
-	Synopsis           sql.NullString `json:"synopsis"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	Status             string         `json:"status"`
-	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
-	AgeRating          string         `json:"age_rating"`
-	CommentMode        sql.NullString `json:"comment_mode"`
-	ReadingDirection   string         `json:"reading_direction"`
-	SpreadStartIndex   int32          `json:"spread_start_index"`
+type UpdateSeriesListingParams struct {
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	SeriesID                uuid.UUID      `json:"series_id"`
+	Synopsis                sql.NullString `json:"synopsis"`
+	ReadingPeriodHours      sql.NullInt32  `json:"reading_period_hours"`
+	Status                  string         `json:"status"`
+	ScheduleWeekdays        []int32        `json:"schedule_weekdays"`
+	AgeRating               string         `json:"age_rating"`
+	CommentMode             sql.NullString `json:"comment_mode"`
+	ReadingDirection        string         `json:"reading_direction"`
+	SpreadStartIndex        int32          `json:"spread_start_index"`
+	WriteSynopsis           bool           `json:"write_synopsis"`
+	WriteReadingPeriodHours bool           `json:"write_reading_period_hours"`
+	WriteStatus             bool           `json:"write_status"`
+	WriteScheduleWeekdays   bool           `json:"write_schedule_weekdays"`
+	WriteAgeRating          bool           `json:"write_age_rating"`
+	WriteCommentMode        bool           `json:"write_comment_mode"`
+	WriteReadingDirection   bool           `json:"write_reading_direction"`
+	WriteSpreadStartIndex   bool           `json:"write_spread_start_index"`
 }
 
-// The whole listing row is written on every admin save, so a field the
-// request leaves empty is stored as empty rather than kept from the row that
-// was there.
-func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error) {
-	row := q.db.QueryRowContext(ctx, UpsertSeriesListing,
+// Each write_* flag says whether the admin save stated that field. A column it
+// did not state keeps the value the row holds, and the INSERT only runs for a
+// series that has no row yet, where the caller passes the column defaults.
+func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListingParams) (SeriesListing, error) {
+	row := q.db.QueryRowContext(ctx, UpdateSeriesListing,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.Synopsis,
@@ -889,6 +973,14 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		arg.CommentMode,
 		arg.ReadingDirection,
 		arg.SpreadStartIndex,
+		arg.WriteSynopsis,
+		arg.WriteReadingPeriodHours,
+		arg.WriteStatus,
+		arg.WriteScheduleWeekdays,
+		arg.WriteAgeRating,
+		arg.WriteCommentMode,
+		arg.WriteReadingDirection,
+		arg.WriteSpreadStartIndex,
 	)
 	var i SeriesListing
 	err := row.Scan(
@@ -907,4 +999,25 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		&i.SpreadStartIndex,
 	)
 	return i, err
+}
+
+const UpdateSeriesPublication = `-- name: UpdateSeriesPublication :exec
+UPDATE series
+SET published_at = $2::timestamptz,
+    is_published = CASE
+        WHEN $2::timestamptz IS NULL THEN false
+        ELSE true
+    END,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateSeriesPublicationParams struct {
+	ID          uuid.UUID    `json:"id"`
+	PublishedAt sql.NullTime `json:"published_at"`
+}
+
+func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateSeriesPublication, arg.ID, arg.PublishedAt)
+	return err
 }

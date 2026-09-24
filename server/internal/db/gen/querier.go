@@ -242,6 +242,7 @@ type Querier interface {
 	CreateSeriesGenre(ctx context.Context, arg CreateSeriesGenreParams) error
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
+	CreateSeriesListing(ctx context.Context, arg CreateSeriesListingParams) (SeriesListing, error)
 	CreateSeriesTag(ctx context.Context, arg CreateSeriesTagParams) error
 	// Records a verified store transaction. A transaction is sold once, so a
 	// second insert of the same one is no row and the caller reads the first.
@@ -2111,6 +2112,10 @@ type Querier interface {
 	UpdatePlatformWebPushSubject(ctx context.Context, subject string) (PlatformWebpushConfig, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
+	// Each write_* flag says whether the admin save stated that field. A column it
+	// did not state keeps the value the row holds, and the INSERT only runs for a
+	// series that has no row yet, where the caller passes the column defaults.
+	UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListingParams) (SeriesListing, error)
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
@@ -2146,10 +2151,6 @@ type Querier interface {
 	// setup finish on a platform whose settings row outlived its operators;
 	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
-	// The whole listing row is written on every admin save, so a field the
-	// request leaves empty is stored as empty rather than kept from the row that
-	// was there.
-	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	// Resolves one tag name the series form carried, creating the tag when this is
 	// its first use.
 	//

@@ -90,30 +90,43 @@ message CreateSeriesResponse {
   publira.types.v1.SurfaceAvailability purchase_availability = 6;
 }
 
+// The weekdays a series expects a new episode on. It wraps the list so an
+// update can tell an empty schedule from a schedule it does not state.
+message SeriesScheduleWeekdays {
+  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
+  // before it is stored; empty keeps no weekly schedule.
+  repeated int32 weekdays = 1;
+}
+
+// Each field this request can leave absent — the optional ones and
+// schedule_weekdays — keeps the value stored when it does, so a caller that
+// predates a field, or states only what it edits, does not reset the rest.
+// Stating one writes it, its default and a cleared override included.
 message UpdateSeriesRequest {
   // 7 held `creator_public_ids`, a creator list with no way to state a role.
   reserved 7;
   reserved "creator_public_ids";
+  // 14 held the weekdays as a bare repeated field, which has no absent state.
+  reserved 14;
 
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
   string title = 3;
-  string synopsis = 4;
+  // Empty, sent explicitly, clears the synopsis.
+  optional string synopsis = 4;
   bool is_published = 5;
-  int32 reading_period_hours = 6;
+  // Zero, sent explicitly, returns the series to the tenant's default.
+  optional int32 reading_period_hours = 6;
   string label_public_id = 8;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
   bool clear_eye_catch_image = 11;
   string published_at = 12;
-  // Unspecified stores the default the column carries: ongoing, all ages.
-  // Every update writes the whole listing row, so an omitted field resets to
-  // that default the way an omitted synopsis clears the synopsis.
-  publira.types.v1.SeriesStatus status = 13;
-  // EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
-  // before it is stored; empty keeps no weekly schedule.
-  repeated int32 schedule_weekdays = 14;
-  publira.types.v1.SeriesAgeRating age_rating = 15;
+  // Unspecified, sent explicitly, stores the default the column carries:
+  // ongoing, all ages.
+  optional publira.types.v1.SeriesStatus status = 13;
+  SeriesScheduleWeekdays schedule_weekdays = 24;
+  optional publira.types.v1.SeriesAgeRating age_rating = 15;
   // The whole assignment: what this field holds is what the series carries
   // afterwards, and an empty field clears it.
   repeated string genre_public_ids = 16;
@@ -123,26 +136,23 @@ message UpdateSeriesRequest {
   // Likewise the whole credit list, replacing every credit the series had.
   repeated SeriesCreatorCredit creator_credits = 18;
   // The mode this series publishes comments under, overriding the tenant's.
-  // COMMENT_MODE_UNSPECIFIED is the series stating nothing of its own, which
-  // is what leaves it following the tenant setting — including afterwards,
-  // when that setting changes.
-  publira.types.v1.CommentMode comment_mode = 19;
-  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED
-  // stores the default the column carries, right to left.
-  publira.types.v1.ReadingDirection reading_direction = 20;
+  // COMMENT_MODE_UNSPECIFIED, sent explicitly, clears the override and leaves
+  // the series following the tenant setting — including afterwards, when that
+  // setting changes.
+  optional publira.types.v1.CommentMode comment_mode = 19;
+  // Which way this series' episodes are turned. READING_DIRECTION_UNSPECIFIED,
+  // sent explicitly, stores the default the column carries, right to left.
+  optional publira.types.v1.ReadingDirection reading_direction = 20;
   // The zero-based page index from which this series' episodes pair their
-  // pages. Absent stores the default the column carries, 1: the cover stands
-  // alone. Negative is invalid_argument.
+  // pages. The default the column carries is 1: the cover stands alone.
+  // Negative is invalid_argument.
   optional int32 spread_start_index = 21;
-  // Which surfaces this series may be shown on. Unlike the listing fields
-  // above, an absent value keeps the one stored: a caller that predates the
-  // field would otherwise put a series kept to one surface back on both.
+  // Which surfaces this series may be shown on.
   // SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly, stores both surfaces.
   // The stored value comes back as Series.availability.
   optional publira.types.v1.SurfaceAvailability availability = 22;
   // Which surfaces this series' episodes may be bought on, replacing the
-  // tenant's default. An absent value keeps the one stored, for the reason
-  // availability gives; SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
+  // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
   // returns the series to following the tenant.
   optional publira.types.v1.SurfaceAvailability purchase_availability = 23;
 }

@@ -182,12 +182,26 @@ const seriesUpdateSchema = async (locale: Locale) => {
 const seriesEyeCatchSchema = async (locale: Locale) => {
   const base = await seriesUpdateSchema(locale);
 
-  // The cover image tab offers neither where the series is shown nor where it
-  // is sold, and a save that names neither keeps the values stored.
-  return base.omit({ availability: true, purchaseAvailability: true }).extend({
-    clearEyeCatchImage: flagOneFormSchema,
-    currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-  });
+  // The cover image tab offers none of the listing fields, nor where the
+  // series is shown or sold, and a save that names none of them keeps the
+  // values stored.
+  return base
+    .omit({
+      ageRating: true,
+      availability: true,
+      commentMode: true,
+      purchaseAvailability: true,
+      readingDirection: true,
+      readingPeriodHours: true,
+      scheduleWeekdays: true,
+      spreadStartIndex: true,
+      status: true,
+      synopsis: true,
+    })
+    .extend({
+      clearEyeCatchImage: flagOneFormSchema,
+      currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
+    });
 };
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
@@ -439,9 +453,7 @@ export const updateSeriesEyeCatchAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSeries(
       {
-        ageRating: parsed.data.ageRating,
         clearEyeCatchImage: parsed.data.clearEyeCatchImage,
-        commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
@@ -450,12 +462,6 @@ export const updateSeriesEyeCatchAction = async (
         labelPublicId: parsed.data.labelPublicId,
         publicId: parsed.data.publicId,
         publishedAt: schedule.publishedAt,
-        readingDirection: parsed.data.readingDirection,
-        readingPeriodHours: parsed.data.readingPeriodHours,
-        scheduleWeekdays: parsed.data.scheduleWeekdays,
-        spreadStartIndex: parsed.data.spreadStartIndex,
-        status: parsed.data.status,
-        synopsis: parsed.data.synopsis,
         tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,

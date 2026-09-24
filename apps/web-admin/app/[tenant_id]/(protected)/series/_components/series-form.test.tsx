@@ -206,7 +206,7 @@ it("finds each input by its role and label", async () => {
 
 // The classification the API stored is what the form opens on. Without this a
 // save that only fixed a typo would post the column defaults back over it —
-// `UpdateSeries` writes the whole listing row.
+// the form states every listing field it offers.
 it("opens on the classification the series carries", () => {
   render(
     <SeriesForm
@@ -242,8 +242,8 @@ it("opens on the classification the series carries", () => {
 });
 
 // The mode the series states is what the form opens on, for the reason the
-// classification is: `UpdateSeries` writes the whole listing row, so a save
-// that carried the default back would reopen commenting on a title that had it
+// classification is: the form states the mode on every save, so a save that
+// carried the default back would reopen commenting on a title that had it
 // turned off.
 it("opens on the comment mode the series states", () => {
   render(
@@ -532,9 +532,9 @@ const submittedControls = async () => [
   await screen.findByRole("combobox", { name: /Comments/u }),
 ];
 
-// The Action carries what the form held when it was submitted, and an update
-// writes the whole listing row, so any change made while it is in flight would
-// sit in the form under the success message unsaved.
+// The Action carries what the form held when it was submitted, so any change
+// made while it is in flight would sit in the form under the success message
+// unsaved.
 it("closes every field while the save is in flight", async () => {
   // Never resolved: the assertions are about the window the save is open in.
   const save = Promise.withResolvers<SeriesActionState>();

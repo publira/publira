@@ -111,8 +111,8 @@ func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
 		Tenant:             tenant.tenantContext(),
 		PublicId:           publicID,
 		Title:              "Published Title",
-		Synopsis:           "Published synopsis",
-		ReadingPeriodHours: 24,
+		Synopsis:           new("Published synopsis"),
+		ReadingPeriodHours: new(int32(24)),
 		IsPublished:        true,
 	}))
 	if err != nil {
@@ -145,7 +145,7 @@ func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
 
 // The three listing fields survive a real write and read: the schedule is
 // stored ascending and distinct whatever order it arrived in, and an update
-// replaces the whole set rather than merging into it.
+// that states it replaces the whole set rather than merging into it.
 func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -184,12 +184,13 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 	}
 
 	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
-		Tenant:      tenant.tenantContext(),
-		PublicId:    publicID,
-		Title:       "Weekly Story",
-		IsPublished: true,
-		Status:      publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED,
-		AgeRating:   publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL,
+		Tenant:           tenant.tenantContext(),
+		PublicId:         publicID,
+		Title:            "Weekly Story",
+		IsPublished:      true,
+		Status:           publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED.Enum(),
+		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{},
+		AgeRating:        publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL.Enum(),
 	})); err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
@@ -212,10 +213,9 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 	}
 }
 
-// The comment mode is the one listing field a save may leave unstated on
-// purpose: unspecified is the series following its tenant, and it has to be
-// storable both ways round, because a series that overrode the tenant must be
-// able to go back.
+// Unspecified is the series following its tenant, and it has to be storable
+// both ways round, because a series that overrode the tenant must be able to
+// go back.
 func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTC", "tenant-c.example.com", "Tenant C", "TCUSER01", "admin@tenant-c.example.com")
@@ -239,7 +239,7 @@ func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 		PublicId:    publicID,
 		Title:       "Quiet Story",
 		IsPublished: true,
-		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED.Enum(),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
@@ -259,18 +259,149 @@ func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 		t.Fatalf("reloaded comment_mode = %s, want DISABLED", got.Msg.CommentMode)
 	}
 
-	// Back to following the tenant, which is the same field left unstated.
 	cleared, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:      tenant.tenantContext(),
 		PublicId:    publicID,
 		Title:       "Quiet Story",
 		IsPublished: true,
+		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED.Enum(),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateSeries clearing the override: %v", err)
 	}
 	if cleared.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED {
 		t.Fatalf("cleared comment_mode = %s, want UNSPECIFIED", cleared.Msg.CommentMode)
+	}
+}
+
+// A save that states only the title leaves every listing field as it was,
+// including the ones whose stored value is not their default.
+func TestDBUpdateSeriesKeepsTheListingFieldsItLeavesUnset(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:             tenant.tenantContext(),
+		Title:              "Kept Story",
+		Synopsis:           "Kept synopsis",
+		ReadingPeriodHours: 48,
+		IsPublished:        true,
+		Status:             publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS,
+		ScheduleWeekdays:   []int32{1, 4},
+		AgeRating:          publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15,
+		CommentMode:        publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+		ReadingDirection:   publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT,
+		SpreadStartIndex:   new(int32),
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	publicID := created.Msg.Series.PublicId
+
+	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:      tenant.tenantContext(),
+		PublicId:    publicID,
+		Title:       "Renamed Story",
+		IsPublished: true,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+	if updated.Msg.Series.Title != "Renamed Story" {
+		t.Fatalf("updated title = %q, want Renamed Story", updated.Msg.Series.Title)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: publicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	series := got.Msg.Series
+	if series.Synopsis != "Kept synopsis" || series.ReadingPeriodHours != 48 {
+		t.Fatalf("reloaded synopsis, reading_period_hours = %q, %d, want Kept synopsis, 48", series.Synopsis, series.ReadingPeriodHours)
+	}
+	if series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS || series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("reloaded status, age_rating = %s, %s, want HIATUS, R15", series.Status, series.AgeRating)
+	}
+	if want := []int32{1, 4}; !slices.Equal(series.ScheduleWeekdays, want) {
+		t.Fatalf("reloaded schedule_weekdays = %v, want %v", series.ScheduleWeekdays, want)
+	}
+	if got.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("reloaded comment_mode = %s, want DISABLED", got.Msg.CommentMode)
+	}
+	if got.Msg.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT || got.Msg.SpreadStartIndex != 0 {
+		t.Fatalf("reloaded layout = %s from %d, want LEFT_TO_RIGHT from 0", got.Msg.ReadingDirection, got.Msg.SpreadStartIndex)
+	}
+}
+
+// Stating a field writes it even when the value is its default: each listing
+// field goes back to what a new series carries.
+func TestDBUpdateSeriesWritesTheDefaultsItStates(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:             tenant.tenantContext(),
+		Title:              "Reset Story",
+		Synopsis:           "Old synopsis",
+		ReadingPeriodHours: 48,
+		IsPublished:        true,
+		Status:             publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED,
+		ScheduleWeekdays:   []int32{2},
+		AgeRating:          publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+		CommentMode:        publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
+		ReadingDirection:   publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT,
+		SpreadStartIndex:   new(int32),
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	publicID := created.Msg.Series.PublicId
+
+	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:             tenant.tenantContext(),
+		PublicId:           publicID,
+		Title:              "Reset Story",
+		IsPublished:        true,
+		Synopsis:           new(""),
+		ReadingPeriodHours: new(int32(0)),
+		Status:             publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED.Enum(),
+		ScheduleWeekdays:   &publiraadminv1.SeriesScheduleWeekdays{},
+		AgeRating:          publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED.Enum(),
+		CommentMode:        publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED.Enum(),
+		ReadingDirection:   publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED.Enum(),
+		SpreadStartIndex:   new(int32(1)),
+	}))
+	if err != nil {
+		t.Fatalf("UpdateSeries: %v", err)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: updated.Msg.Series.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries: %v", err)
+	}
+	series := got.Msg.Series
+	if series.Synopsis != "" || series.ReadingPeriodHours != 0 {
+		t.Fatalf("reloaded synopsis, reading_period_hours = %q, %d, want both cleared", series.Synopsis, series.ReadingPeriodHours)
+	}
+	if series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING || series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL {
+		t.Fatalf("reloaded status, age_rating = %s, %s, want ONGOING, ALL", series.Status, series.AgeRating)
+	}
+	if len(series.ScheduleWeekdays) != 0 {
+		t.Fatalf("reloaded schedule_weekdays = %v, want empty", series.ScheduleWeekdays)
+	}
+	if got.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED {
+		t.Fatalf("reloaded comment_mode = %s, want UNSPECIFIED", got.Msg.CommentMode)
+	}
+	if got.Msg.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT || got.Msg.SpreadStartIndex != 1 {
+		t.Fatalf("reloaded layout = %s from %d, want RIGHT_TO_LEFT from 1", got.Msg.ReadingDirection, got.Msg.SpreadStartIndex)
 	}
 }
 
@@ -294,7 +425,7 @@ func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 		Tenant:           tenant.tenantContext(),
 		PublicId:         created.Msg.Series.PublicId,
 		Title:            "Weekly Story",
-		ScheduleWeekdays: []int32{3, 9},
+		ScheduleWeekdays: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{3, 9}},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
@@ -477,7 +608,7 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 		Tenant:         tenant.tenantContext(),
 		PublicId:       publicID,
 		Title:          "Hijacked Title",
-		Synopsis:       "Hijacked synopsis",
+		Synopsis:       new("Hijacked synopsis"),
 		CreatorCredits: env.creatorCredits(t, tenant, "NOSUCHCREATOR"),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

@@ -80,9 +80,7 @@ describe("SeriesEyeCatchForm", () => {
       render(
         <SeriesEyeCatchForm
           action={() => save.promise}
-          commentMode=""
           initialSeries={series}
-          readingLayout={{ readingDirection: "rtl", spreadStartIndex: 1 }}
         />,
         { wrapper: EnglishConsole }
       );
@@ -99,5 +97,41 @@ describe("SeriesEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
+  });
+
+  // The tab edits the image alone, so it states none of the listing fields
+  // and the save keeps whatever the series holds for them.
+  it("posts none of the listing fields", async () => {
+    const submitted = Promise.withResolvers<FormData>();
+
+    await act(() => {
+      render(
+        <SeriesEyeCatchForm
+          action={(_state, formData) => {
+            submitted.resolve(formData);
+            return Promise.resolve(null);
+          }}
+          initialSeries={series}
+        />,
+        { wrapper: EnglishConsole }
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update cover image" }));
+
+    const formData = await submitted.promise;
+    expect(formData.get("title")).toBe("Existing Series");
+    for (const name of [
+      "synopsis",
+      "reading_period_hours",
+      "status",
+      "schedule_weekdays",
+      "age_rating",
+      "comment_mode",
+      "reading_direction",
+      "spread_start_page",
+    ]) {
+      expect(formData.has(name)).toBe(false);
+    }
   });
 });

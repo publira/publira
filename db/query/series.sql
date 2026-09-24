@@ -208,10 +208,37 @@ SET title = $2,
     updated_at = NOW()
 WHERE id = $1;
 
--- name: UpsertSeriesListing :one
--- The whole listing row is written on every admin save, so a field the
--- request leaves empty is stored as empty rather than kept from the row that
--- was there.
+-- name: CreateSeriesListing :one
+INSERT INTO series_listings (
+        tenant_id,
+        series_id,
+        synopsis,
+        reading_period_hours,
+        status,
+        schedule_weekdays,
+        age_rating,
+        comment_mode,
+        reading_direction,
+        spread_start_index
+    )
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('series_id'),
+        sqlc.arg('synopsis'),
+        sqlc.arg('reading_period_hours'),
+        sqlc.arg('status'),
+        sqlc.arg('schedule_weekdays'),
+        sqlc.arg('age_rating'),
+        sqlc.narg('comment_mode'),
+        sqlc.arg('reading_direction'),
+        sqlc.arg('spread_start_index')
+    )
+RETURNING *;
+
+-- name: UpdateSeriesListing :one
+-- Each write_* flag says whether the admin save stated that field. A column it
+-- did not state keeps the value the row holds, and the INSERT only runs for a
+-- series that has no row yet, where the caller passes the column defaults.
 INSERT INTO series_listings (
         tenant_id,
         series_id,
@@ -237,14 +264,38 @@ VALUES (
         sqlc.arg('spread_start_index')
     ) ON CONFLICT (series_id) DO
 UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
-    status = EXCLUDED.status,
-    schedule_weekdays = EXCLUDED.schedule_weekdays,
-    age_rating = EXCLUDED.age_rating,
-    comment_mode = EXCLUDED.comment_mode,
-    reading_direction = EXCLUDED.reading_direction,
-    spread_start_index = EXCLUDED.spread_start_index
+SET synopsis = CASE
+        WHEN sqlc.arg('write_synopsis')::boolean THEN EXCLUDED.synopsis
+        ELSE series_listings.synopsis
+    END,
+    reading_period_hours = CASE
+        WHEN sqlc.arg('write_reading_period_hours')::boolean THEN EXCLUDED.reading_period_hours
+        ELSE series_listings.reading_period_hours
+    END,
+    status = CASE
+        WHEN sqlc.arg('write_status')::boolean THEN EXCLUDED.status
+        ELSE series_listings.status
+    END,
+    schedule_weekdays = CASE
+        WHEN sqlc.arg('write_schedule_weekdays')::boolean THEN EXCLUDED.schedule_weekdays
+        ELSE series_listings.schedule_weekdays
+    END,
+    age_rating = CASE
+        WHEN sqlc.arg('write_age_rating')::boolean THEN EXCLUDED.age_rating
+        ELSE series_listings.age_rating
+    END,
+    comment_mode = CASE
+        WHEN sqlc.arg('write_comment_mode')::boolean THEN EXCLUDED.comment_mode
+        ELSE series_listings.comment_mode
+    END,
+    reading_direction = CASE
+        WHEN sqlc.arg('write_reading_direction')::boolean THEN EXCLUDED.reading_direction
+        ELSE series_listings.reading_direction
+    END,
+    spread_start_index = CASE
+        WHEN sqlc.arg('write_spread_start_index')::boolean THEN EXCLUDED.spread_start_index
+        ELSE series_listings.spread_start_index
+    END
 RETURNING *;
 
 -- name: UpdateSeriesPublication :exec
