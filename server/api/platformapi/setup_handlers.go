@@ -84,7 +84,8 @@ func (s *platformServer) CreateInitialUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Fast path: check whether setup has already run.
+	// Fast path: refuse a finished setup before paying for the password hash.
+	// The authoritative check is repeated under the lock below.
 	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count platform users", err)
@@ -107,6 +108,20 @@ func (s *platformServer) CreateInitialUser(
 	defer tx.Rollback() //nolint:errcheck
 
 	txq := dbmodels.New(tx)
+
+	// Two setups that both passed the fast path would otherwise both create an
+	// operator, so the loser waits here and then sees the winner's commit.
+	if err := txq.LockPlatformInitialSetup(ctx); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock initial setup", err)
+	}
+	count, err = txq.CountPlatformUsers(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count platform users", err)
+	}
+	if count > 0 {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
+	}
 
 	userID, err := uuid.NewV7()
 	if err != nil {

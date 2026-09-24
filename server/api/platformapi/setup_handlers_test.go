@@ -149,6 +149,10 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
 	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockPlatformInitialSetup)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUser)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "Admin User").
@@ -181,6 +185,32 @@ func TestCreateInitialUserAlreadySetup(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+
+	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Admin User",
+		Email:         "admin@example.com",
+		Password:      "secure-password-123",
+		DefaultLocale: "ja",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateInitialUser code = %v, want already_exists", connect.CodeOf(err))
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A setup that passed the fast path while another was still running finds the
+// winner's operator once it holds the lock, and writes nothing.
+func TestCreateInitialUserLosesToAConcurrentSetup(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockPlatformInitialSetup)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectRollback()
 
 	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Admin User",

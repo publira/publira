@@ -28,6 +28,11 @@ LIMIT 1;
 SELECT COUNT(*)::int
 FROM platform_users;
 
+-- name: LockPlatformInitialSetup :exec
+-- Serializes initial setup for the rest of the transaction. A second setup
+-- waits here until the first commits, then counts its operator and stops.
+SELECT pg_advisory_xact_lock(hashtextextended('platform_initial_setup', 0));
+
 -- name: CreatePlatformUser :one
 INSERT INTO platform_users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
