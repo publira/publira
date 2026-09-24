@@ -71,8 +71,9 @@ describe("ChangeBirthDateButton", () => {
   });
 
   // Enter in the date field submits the form without closing the dialog, so
-  // the field itself stays in front of the operator.
-  it("closes the date field while a save submitted from it is in flight", async () => {
+  // the field and its Save button stay in front of the operator. A second Save
+  // would post without the closed field, which clears the date.
+  it("closes the date field and Save while a save submitted from the field is in flight", async () => {
     render(
       <ChangeBirthDateButton
         birthDate="2000-01-01"
@@ -94,6 +95,9 @@ describe("ChangeBirthDateButton", () => {
     await waitFor(() => {
       expect(field.disabled).toBe(true);
     });
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
+    ).toBe(true);
 
     save.current.resolve({ message: "Could not save.", ok: false });
     await waitFor(() => {

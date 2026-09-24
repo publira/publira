@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { buttonVariants } from "../button/button";
 import type { ButtonProps } from "../button/button";
+import { useFieldsetDisabled } from "../fieldset/fieldset";
 import {
   DialogBackdrop,
   DialogDescription,
@@ -87,7 +88,8 @@ export const ConfirmDialogCancel = ({ children }: { children: ReactNode }) => (
 /**
  * Dismisses the dialog and runs the thing it asked about: `onClick`, or the
  * submission of the form whose id `form` names. The popup is portaled out of
- * any surrounding form, so `form` is how it reaches one.
+ * any surrounding form, so `form` is how it reaches one, and an enclosing
+ * `Fieldset` reaches it only through context.
  */
 export const ConfirmDialogAction = ({
   children,
@@ -99,13 +101,18 @@ export const ConfirmDialogAction = ({
   form?: string;
   onClick?: () => void;
   variant?: NonNullable<ButtonProps["variant"]>;
-}) => (
-  <AlertDialog.Close
-    className={cn(buttonVariants({ variant }))}
-    form={form}
-    onClick={onClick}
-    type={form ? "submit" : "button"}
-  >
-    {children}
-  </AlertDialog.Close>
-);
+}) => {
+  const disabled = useFieldsetDisabled();
+
+  return (
+    <AlertDialog.Close
+      className={cn(buttonVariants({ variant }))}
+      disabled={disabled}
+      form={form}
+      onClick={onClick}
+      type={form ? "submit" : "button"}
+    >
+      {children}
+    </AlertDialog.Close>
+  );
+};
