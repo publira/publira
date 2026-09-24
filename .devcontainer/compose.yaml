@@ -50,6 +50,12 @@ services:
       # Reuse downloaded pnpm packages after rebuilding the container.
       - pnpm-store:/home/vscode/.local/share/pnpm/store
       - ..:/workspaces:cached
+      # The whole configuration of the inner Docker daemon: the
+      # docker-in-docker feature starts `dockerd` with flags only and never
+      # writes this file, so a new daemon option goes into daemon.json here.
+      # The mirror lets Docker Hub pulls avoid the anonymous rate limit
+      # without a `docker login`.
+      - ./.devcontainer/daemon.json:/etc/docker/daemon.json:ro
     depends_on:
       - db
       - jaeger
