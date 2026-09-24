@@ -22,7 +22,7 @@ export const Switch = ({
       {...props}
       disabled={fieldsetDisabled || disabled}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-control border border-input bg-muted transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-primary data-[checked]:bg-primary",
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-control border border-input bg-muted transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-disabled:cursor-not-allowed data-disabled:opacity-50 data-[checked]:border-primary data-[checked]:bg-primary",
         className
       )}
     >
