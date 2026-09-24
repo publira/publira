@@ -1722,6 +1722,12 @@ type Querier interface {
 	// it becomes is written, so two confirmations of different transactions
 	// cannot both consume it.
 	LockStorePurchaseIntent(ctx context.Context, arg LockStorePurchaseIntentParams) (StorePurchaseIntent, error)
+	// Serializes, for the rest of the caller's transaction, everything that writes
+	// about one store transaction: its confirmation and its refund. Without it a
+	// refund could find no purchase and be held just after the confirmation that
+	// records the purchase looked for a held refund, and the purchase would keep
+	// opening the episode.
+	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant

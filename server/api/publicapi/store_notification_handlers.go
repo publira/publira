@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/publira/publira/server/internal/appstore"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/storepurchase"
 )
@@ -66,9 +67,17 @@ func (s *apiServer) ProcessAppStoreNotification(
 	if transaction.BundleID != bundleIdentifier {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store notification names another app"))
 	}
-	applied, err := storepurchase.RecordRefund(ctx, s.queriesFor(ctx), tenant.ID, storepurchase.StoreAppStore, transaction.TransactionID)
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin App Store refund transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	applied, err := storepurchase.RecordRefund(ctx, dbmodels.New(tx), tenant.ID, storepurchase.StoreAppStore, transaction.TransactionID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record an App Store refund", err, "tenant_id", tenant.ID.String(), "notification_uuid", notification.NotificationUUID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit an App Store refund", err, "tenant_id", tenant.ID.String(), "notification_uuid", notification.NotificationUUID)
 	}
 	s.logger.InfoContext(ctx, "recorded an App Store refund",
 		"tenant_id", tenant.ID,

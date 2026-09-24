@@ -300,6 +300,32 @@ func (q *Queries) LockStorePurchaseIntent(ctx context.Context, arg LockStorePurc
 	return i, err
 }
 
+const LockStoreTransaction = `-- name: LockStoreTransaction :exec
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'store-transaction:' || $1::uuid::text || ':' ||
+            $2::text || ':' || $3::text,
+        0
+    )
+)
+`
+
+type LockStoreTransactionParams struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	Store              string    `json:"store"`
+	StoreTransactionID string    `json:"store_transaction_id"`
+}
+
+// Serializes, for the rest of the caller's transaction, everything that writes
+// about one store transaction: its confirmation and its refund. Without it a
+// refund could find no purchase and be held just after the confirmation that
+// records the purchase looked for a held refund, and the purchase would keep
+// opening the episode.
+func (q *Queries) LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, LockStoreTransaction, arg.TenantID, arg.Store, arg.StoreTransactionID)
+	return err
+}
+
 const OpenStorePurchaseIntent = `-- name: OpenStorePurchaseIntent :one
 INSERT INTO store_purchase_intents (
     id,

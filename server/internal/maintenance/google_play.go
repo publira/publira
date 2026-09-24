@@ -108,7 +108,7 @@ func syncVoidedPurchases(ctx context.Context, deps Deps, queries *dbmodels.Queri
 		if purchase.PurchaseToken == "" {
 			continue
 		}
-		applied, err := storepurchase.RecordRefund(ctx, queries, tenantID, storepurchase.StoreGooglePlay, purchase.PurchaseToken)
+		applied, err := recordVoidedPurchase(ctx, deps, tenantID, purchase.PurchaseToken)
 		if err != nil {
 			return len(voided), held, err
 		}
@@ -117,4 +117,22 @@ func syncVoidedPurchases(ctx context.Context, deps Deps, queries *dbmodels.Queri
 		}
 	}
 	return len(voided), held, nil
+}
+
+// recordVoidedPurchase records one refund in a transaction of its own, which
+// is what the lock serializing it with the purchase's confirmation lasts for.
+func recordVoidedPurchase(ctx context.Context, deps Deps, tenantID uuid.UUID, token string) (bool, error) {
+	tx, err := deps.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("begin refund transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	applied, err := storepurchase.RecordRefund(ctx, dbmodels.New(tx), tenantID, storepurchase.StoreGooglePlay, token)
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit refund: %w", err)
+	}
+	return applied, nil
 }

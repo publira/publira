@@ -410,6 +410,11 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock a store purchase intent", err, "tenant_id", tenantID.String())
 	}
+	// Held until this commits, so a refund of the same transaction lands either
+	// before the purchase, as a held refund applied below, or after it.
+	if err := storepurchase.LockTransaction(ctx, txq, tenantID, transaction.store, transaction.transactionID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock a store transaction", err, "tenant_id", tenantID.String())
+	}
 	// Checked under the intent's lock: a concurrent confirmation of the same
 	// transaction has committed its purchase by the time this one holds it.
 	if purchase, found, err := s.recordedStorePurchase(ctx, txq, tenantID, userID, transaction.store, transaction.transactionID); err != nil || found {
