@@ -212,11 +212,13 @@ func TestRunGroupHelpListsTheSecretFlag(t *testing.T) {
 	}
 }
 
-// Every server role's variable is set throughout, and none of them may be
-// picked up: the settings commands write as publira_platform, else as the
-// connection PUBLIRA_DB_URL names.
-func TestPlatformDBURLResolvesThePlatformRoleThenTheSharedConnection(t *testing.T) {
+// Every other role's variable and PUBLIRA_DB_URL are set throughout, and none
+// of them may be picked up: the settings commands write as publira_platform,
+// and a forgotten variable leaves them on its development URL rather than on
+// the superuser.
+func TestPlatformDBURLResolvesThePlatformRoleAlone(t *testing.T) {
 	for _, name := range []string{
+		"PUBLIRA_DB_URL",
 		"PUBLIRA_PUBLIC_DB_URL",
 		"PUBLIRA_ADMIN_DB_URL",
 		"PUBLIRA_WORKER_DB_URL",
@@ -225,34 +227,22 @@ func TestPlatformDBURLResolvesThePlatformRoleThenTheSharedConnection(t *testing.
 	} {
 		t.Setenv(name, name+"-value")
 	}
-	t.Setenv("PUBLIRA_DB_URL", "shared-url")
-
-	cfg, err := config.New()
-	if err != nil {
-		t.Fatalf("config.New: %v", err)
-	}
-	env := &commandEnv{cfg: cfg}
 
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", "  platform-url  ")
-	if got := env.platformDBURL(); got != "platform-url" {
+	if got := platformDBURL(); got != "platform-url" {
 		t.Fatalf("URL = %q, want platform-url", got)
 	}
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", "")
-	if got := env.platformDBURL(); got != "shared-url" {
-		t.Fatalf("URL without PUBLIRA_PLATFORM_DB_URL = %q, want shared-url", got)
+	if got := platformDBURL(); got != defaultPlatformDBURL {
+		t.Fatalf("URL without PUBLIRA_PLATFORM_DB_URL = %q, want %q", got, defaultPlatformDBURL)
 	}
 }
 
 func TestOpenPlatformDBConnectsAsThePlatformRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
-	t.Setenv("PUBLIRA_DB_URL", pg.URL)
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
-	cfg, err := config.New()
-	if err != nil {
-		t.Fatalf("config.New: %v", err)
-	}
 
-	db, err := (&commandEnv{cfg: cfg}).openPlatformDB()
+	db, err := (&commandEnv{}).openPlatformDB()
 	if err != nil {
 		t.Fatalf("openPlatformDB: %v", err)
 	}

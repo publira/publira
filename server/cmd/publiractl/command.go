@@ -61,16 +61,21 @@ type commandEnv struct {
 	logger  *slog.Logger
 }
 
+// defaultPlatformDBURL is publira_platform in the development database, the
+// same fallback publira server uses for PUBLIRA_PLATFORM_DB_URL.
+const defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
+
 // platformDBURL is the connection every settings and provisioning command
 // opens: they write the platform_* tables and the tenant rows, which is what
-// publira_platform and its BYPASSRLS exist for. Like the job group's chains, it
-// ends at PUBLIRA_DB_URL and reads no other role's variable.
-func (e *commandEnv) platformDBURL() string {
-	return resolveDBURL(e.cfg.DB.URL, "PUBLIRA_PLATFORM_DB_URL")
+// publira_platform and its BYPASSRLS exist for. Unlike the job group's chains
+// it never ends at PUBLIRA_DB_URL, so a forgotten variable fails to
+// authenticate instead of writing as the superuser.
+func platformDBURL() string {
+	return resolveDBURL(defaultPlatformDBURL, "PUBLIRA_PLATFORM_DB_URL")
 }
 
 func (e *commandEnv) openPlatformDB() (*sql.DB, error) {
-	return sqldb.Open(e.platformDBURL())
+	return sqldb.Open(platformDBURL())
 }
 
 // errNoEncryptionKeys stops a command that has a secret to store on an install
