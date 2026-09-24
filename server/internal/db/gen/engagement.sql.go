@@ -88,7 +88,7 @@ func (q *Queries) GetContentEventByID(ctx context.Context, id uuid.UUID) (Conten
 }
 
 const GetContentRankingSnapshot = `-- name: GetContentRankingSnapshot :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND ranking_key = $2
@@ -96,6 +96,7 @@ WHERE tenant_id = $1
     AND period_end = $4
     AND entity_type = $5
     AND algorithm_version = $6
+    AND genre_id IS NULL
 `
 
 type GetContentRankingSnapshotParams struct {
@@ -127,15 +128,17 @@ func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentR
 		&i.Items,
 		&i.AlgorithmVersion,
 		&i.ComputedAt,
+		&i.GenreID,
 	)
 	return i, err
 }
 
 const GetContentRankingSnapshotByID = `-- name: GetContentRankingSnapshotByID :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND id = $2
+    AND genre_id IS NULL
     AND ranking_key = $3
     AND entity_type = $4
 `
@@ -154,12 +157,12 @@ type GetContentRankingSnapshotByIDParams struct {
 // from, so a numbered chart cannot take its positions from two different runs
 // when the batch lands mid-pagination. This is the read that pins it.
 //
-// ranking_key and entity_type are checked here rather than after the row comes
-// back: an id is the only part of a token a client could put there on purpose,
-// and a snapshot of another ranking has to be no answer rather than a chart
-// served under the wrong heading. A snapshot the retention purge has already
-// dropped is the same no answer, and the caller rejects the token instead of
-// silently continuing in a newer ranking.
+// ranking_key, entity_type, and the genre are checked here rather than after
+// the row comes back: an id is the only part of a token a client could put
+// there on purpose, and a snapshot of another ranking has to be no answer
+// rather than a chart served under the wrong heading. A snapshot the retention
+// purge has already dropped is the same no answer, and the caller rejects the
+// token instead of silently continuing in a newer ranking.
 func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error) {
 	row := q.db.QueryRowContext(ctx, GetContentRankingSnapshotByID,
 		arg.TenantID,
@@ -178,6 +181,7 @@ func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetCont
 		&i.Items,
 		&i.AlgorithmVersion,
 		&i.ComputedAt,
+		&i.GenreID,
 	)
 	return i, err
 }
@@ -244,9 +248,10 @@ func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecom
 }
 
 const GetLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
+    AND genre_id IS NULL
     AND ranking_key = $2
     AND entity_type = $3
 ORDER BY computed_at DESC
@@ -278,6 +283,7 @@ func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLa
 		&i.Items,
 		&i.AlgorithmVersion,
 		&i.ComputedAt,
+		&i.GenreID,
 	)
 	return i, err
 }
@@ -373,12 +379,12 @@ type InsertContentEventParams struct {
 //	GetContentRankingSnapshot
 //	  -> idx_content_ranking_snapshots_unique
 //	GetLatestContentRankingSnapshot
-//	  -> idx_content_ranking_snapshots_tenant_key_computed
+//	  -> idx_content_ranking_snapshots_tenant_genre_key_computed
 //	GetContentRankingSnapshotByID
 //	  -> content_ranking_snapshots_pkey
 //	ListLatestContentRankingSnapshots
-//	  -> idx_content_ranking_snapshots_tenant_key_computed for the scan, then a
-//	     sort by period (see the note there)
+//	  -> idx_content_ranking_snapshots_tenant_genre_key_computed for the scan,
+//	     then a sort by period (see the note there)
 //	ListRankedSeriesIDs / ListRankedSeriesIDsReversed
 //	  -> no index; expands one snapshot's items (see the note there)
 //	InsertDebouncedEpisodeViewEvent
@@ -1120,9 +1126,10 @@ func (q *Queries) ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisod
 }
 
 const ListLatestContentRankingSnapshots = `-- name: ListLatestContentRankingSnapshots :many
-SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
+    AND genre_id IS NULL
     AND ranking_key = $2
     AND entity_type = $3
     AND (
@@ -1162,8 +1169,9 @@ type ListLatestContentRankingSnapshotsParams struct {
 // markers compare against, without assuming the run before it was yesterday's.
 // NULL asks for the newest periods.
 //
-// No index serves the order. idx_content_ranking_snapshots_tenant_key_computed
-// narrows the scan to one tenant's ranking key, and what is left is the periods
+// No index serves the order.
+// idx_content_ranking_snapshots_tenant_genre_key_computed narrows the scan to
+// one tenant's ranking key, and what is left is the periods
 // purge-content-rankings has not yet dropped — a sort over days, not over rows.
 func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error) {
 	rows, err := q.db.QueryContext(ctx, ListLatestContentRankingSnapshots,
@@ -1190,6 +1198,7 @@ func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg Lis
 			&i.Items,
 			&i.AlgorithmVersion,
 			&i.ComputedAt,
+			&i.GenreID,
 		); err != nil {
 			return nil, err
 		}
@@ -2518,10 +2527,10 @@ INSERT INTO content_ranking_snapshots (
     $8,
     $9
 )
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version) DO UPDATE
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at
-RETURNING id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at
+RETURNING id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id
 `
 
 type UpsertContentRankingSnapshotParams struct {
@@ -2559,6 +2568,7 @@ func (q *Queries) UpsertContentRankingSnapshot(ctx context.Context, arg UpsertCo
 		&i.Items,
 		&i.AlgorithmVersion,
 		&i.ComputedAt,
+		&i.GenreID,
 	)
 	return i, err
 }

@@ -66,7 +66,7 @@ func expectRankingSnapshotLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, now t
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLatestContentRankingSnapshot)).
 		WithArgs(tenantID, "weekly", "series").
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "weekly", now, now, "series", items, int32(1), now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "weekly", now, now, "series", items, int32(1), now, nil))
 }
 
 func TestCatalogListRecommendedSeriesLeadsWithTheRanking(t *testing.T) {

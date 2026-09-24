@@ -130,7 +130,7 @@ SELECT
     ss.computed_at
 FROM snapshot_seed ss
 CROSS JOIN tenant_scope ts
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version) DO UPDATE
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 

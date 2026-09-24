@@ -13,12 +13,12 @@
 --   GetContentRankingSnapshot
 --     -> idx_content_ranking_snapshots_unique
 --   GetLatestContentRankingSnapshot
---     -> idx_content_ranking_snapshots_tenant_key_computed
+--     -> idx_content_ranking_snapshots_tenant_genre_key_computed
 --   GetContentRankingSnapshotByID
 --     -> content_ranking_snapshots_pkey
 --   ListLatestContentRankingSnapshots
---     -> idx_content_ranking_snapshots_tenant_key_computed for the scan, then a
---        sort by period (see the note there)
+--     -> idx_content_ranking_snapshots_tenant_genre_key_computed for the scan,
+--        then a sort by period (see the note there)
 --   ListRankedSeriesIDs / ListRankedSeriesIDsReversed
 --     -> no index; expands one snapshot's items (see the note there)
 --   InsertDebouncedEpisodeViewEvent
@@ -728,7 +728,7 @@ INSERT INTO content_ranking_snapshots (
     sqlc.arg('algorithm_version'),
     sqlc.arg('computed_at')
 )
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version) DO UPDATE
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at
 RETURNING *;
@@ -741,7 +741,8 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND period_start = sqlc.arg('period_start')
     AND period_end = sqlc.arg('period_end')
     AND entity_type = sqlc.arg('entity_type')
-    AND algorithm_version = sqlc.arg('algorithm_version');
+    AND algorithm_version = sqlc.arg('algorithm_version')
+    AND genre_id IS NULL;
 
 -- The newest snapshot for one ranking key and entity type, whichever period
 -- and algorithm version produced it. A reader on a request path cannot know
@@ -753,6 +754,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 SELECT *
 FROM content_ranking_snapshots
 WHERE tenant_id = sqlc.arg('tenant_id')
+    AND genre_id IS NULL
     AND ranking_key = sqlc.arg('ranking_key')
     AND entity_type = sqlc.arg('entity_type')
 ORDER BY computed_at DESC
@@ -779,13 +781,15 @@ LIMIT 1;
 -- markers compare against, without assuming the run before it was yesterday's.
 -- NULL asks for the newest periods.
 --
--- No index serves the order. idx_content_ranking_snapshots_tenant_key_computed
--- narrows the scan to one tenant's ranking key, and what is left is the periods
+-- No index serves the order.
+-- idx_content_ranking_snapshots_tenant_genre_key_computed narrows the scan to
+-- one tenant's ranking key, and what is left is the periods
 -- purge-content-rankings has not yet dropped — a sort over days, not over rows.
 -- name: ListLatestContentRankingSnapshots :many
 SELECT DISTINCT ON (period_start, period_end) *
 FROM content_ranking_snapshots
 WHERE tenant_id = sqlc.arg('tenant_id')
+    AND genre_id IS NULL
     AND ranking_key = sqlc.arg('ranking_key')
     AND entity_type = sqlc.arg('entity_type')
     AND (
@@ -802,17 +806,18 @@ LIMIT sqlc.arg('limit');
 -- from, so a numbered chart cannot take its positions from two different runs
 -- when the batch lands mid-pagination. This is the read that pins it.
 --
--- ranking_key and entity_type are checked here rather than after the row comes
--- back: an id is the only part of a token a client could put there on purpose,
--- and a snapshot of another ranking has to be no answer rather than a chart
--- served under the wrong heading. A snapshot the retention purge has already
--- dropped is the same no answer, and the caller rejects the token instead of
--- silently continuing in a newer ranking.
+-- ranking_key, entity_type, and the genre are checked here rather than after
+-- the row comes back: an id is the only part of a token a client could put
+-- there on purpose, and a snapshot of another ranking has to be no answer
+-- rather than a chart served under the wrong heading. A snapshot the retention
+-- purge has already dropped is the same no answer, and the caller rejects the
+-- token instead of silently continuing in a newer ranking.
 -- name: GetContentRankingSnapshotByID :one
 SELECT *
 FROM content_ranking_snapshots
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
+    AND genre_id IS NULL
     AND ranking_key = sqlc.arg('ranking_key')
     AND entity_type = sqlc.arg('entity_type');
 

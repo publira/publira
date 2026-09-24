@@ -119,6 +119,7 @@ type ContentRankingSnapshot struct {
 	Items            json.RawMessage `json:"items"`
 	AlgorithmVersion int32           `json:"algorithm_version"`
 	ComputedAt       time.Time       `json:"computed_at"`
+	GenreID          uuid.NullUUID   `json:"genre_id"`
 }
 
 type Creator struct {

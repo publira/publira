@@ -41,7 +41,7 @@ func rankingSnapshotRow(
 ) *sqlmock.Rows {
 	return rows.AddRow(
 		snapshotID, tenantID, rankingKey,
-		periodStart, periodEnd, "series", items, int32(1), computedAt,
+		periodStart, periodEnd, "series", items, int32(1), computedAt, nil,
 	)
 }
 

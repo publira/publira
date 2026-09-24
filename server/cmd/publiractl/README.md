@@ -51,7 +51,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | --- | --- |
 | `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |
 | `aggregate-content-stats` | Rebuilds one calendar day of `content_daily_stats` per tenant |
-| `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots` |
+| `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre |
 | `purge-content-events` | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
 | `purge-mfa-challenges` | Deletes the spent admin MFA challenges whose tokens have expired |
@@ -103,7 +103,7 @@ The structured log records the target date, how many tenants the run finished, t
 
 ## aggregate-rankings
 
-Rebuilds every tenant's ranking snapshots from the `content_daily_stats` rows `aggregate-content-stats` produces. One run writes four snapshots per tenant — a daily and a weekly leaderboard, each for series and for episodes — so run it after `aggregate-content-stats` for the same day.
+Rebuilds every tenant's ranking snapshots from the `content_daily_stats` rows `aggregate-content-stats` produces. One run writes four tenant-wide snapshots per tenant — a daily and a weekly leaderboard, each for series and for episodes — plus a daily and a weekly series leaderboard for each of the tenant's genres, so run it after `aggregate-content-stats` for the same day. A genre's leaderboard ranks only its series that are published and rated all-ages at the time of the run, with the same score formula and item limit as the tenant-wide one.
 
 For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
 
@@ -137,13 +137,14 @@ faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's s
 
 ### Snapshot contract
 
-Each row is one leaderboard, identified by `(tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version)`. A re-run replaces the row with that key in place; a run with a different `algorithm_version` writes alongside it.
+Each row is one leaderboard, identified by `(tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id)`. A re-run replaces the row with that key in place; a run with a different `algorithm_version` writes alongside it.
 
 | Column | Meaning |
 | --- | --- |
 | `ranking_key` | `daily` for a single day, `weekly` for the seven days ending on it |
 | `period_start`, `period_end` | Inclusive calendar dates in the tenant's time zone. Equal for a daily ranking |
 | `entity_type` | `series` or `episode`. A run writes both, and never mixes them in one row |
+| `genre_id` | The genre this leaderboard ranks, always with `entity_type` `series`. `NULL` for the tenant-wide leaderboard. Deleting the genre deletes its rows |
 | `algorithm_version` | The score formula this row was built with. Read it rather than assuming it |
 | `items` | The leaderboard, best first. Never null — an empty array when there is nothing to rank |
 | `computed_at` | When this row was last written |
@@ -165,7 +166,7 @@ Each entry of `items`:
 - **An empty leaderboard is the normal case, not an error.** A tenant with no traffic in the period, and every tenant before the first run, has nothing to show. Fall back to new releases.
 - **A snapshot only holds the top `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT` entities.** An entity's absence means it did not place, not that it saw no engagement.
 - **The entity may be gone.** `items` stores ids, and nothing keeps a snapshot in step with an unpublished or deleted series. Resolve the ids and drop what no longer exists.
-- **A past period may be gone.** Retention keeps a bounded history — 90 days of daily snapshots and 400 of weekly ones unless the platform or the tenant sets otherwise — so a period further back than that has been purged. Only the newest period of a ranking key is guaranteed to be there.
+- **A past period may be gone.** Retention keeps a bounded history — 90 days of daily snapshots and 400 of weekly ones unless the platform or the tenant sets otherwise — so a period further back than that has been purged. Only the newest period of a ranking key, per entity type and genre, is guaranteed to be there.
 - **The snapshot is up to a day stale**, and only as good as its input: a period whose `aggregate-content-stats` run never happened ranks the days that did run.
 - **`algorithm_version` may not be the one you compiled against.** Scores are only comparable inside one row, so never compare a score across two snapshots or two versions.
 
@@ -207,7 +208,7 @@ A tenant's cutoff is the run's UTC timestamp minus its content-event retention p
 
 Deletes `content_ranking_snapshots` rows whose period fell out of its tenant's retention period, one tenant at a time, in chunked `DELETE`s.
 
-`aggregate-rankings` files a new period rather than replacing the last one, so the table grows by four rows per tenant per day. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention periods are sized for.
+`aggregate-rankings` files a new period rather than replacing the last one, so the table grows by four rows per tenant per day, plus two per genre. Only the newest period is ever rendered; the rest exist for trend analysis, which is what the retention periods are sized for.
 
 Retention is per `ranking_key` (see [Retention periods](#retention-periods)). A weekly snapshot compresses seven days into one row, so it earns a much longer period than a daily one:
 
@@ -216,7 +217,7 @@ Retention is per `ranking_key` (see [Retention periods](#retention-periods)). A 
 | `daily` | 90 days | A quarter of day-over-day movement |
 | `weekly` | 400 days | A year, plus the margin to compare a week against the same week a year earlier |
 
-A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus the tenant's period for that key, compared exclusively. **The newest period a tenant holds always survives, whatever the retention says**, and a `ranking_key` this build does not configure is never deleted at all.
+A snapshot expires when its `period_end` is before the cutoff for its `ranking_key` — the run's UTC date minus the tenant's period for that key, compared exclusively. Genre leaderboards expire on the same cutoffs as the tenant-wide ones. **The newest period a tenant holds for each ranking key, entity type, and genre always survives, whatever the retention says**, and a `ranking_key` this build does not configure is never deleted at all.
 
 For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
