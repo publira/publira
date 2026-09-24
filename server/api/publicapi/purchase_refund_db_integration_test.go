@@ -8,13 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
-	"github.com/stripe/stripe-go/v86"
-
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -85,7 +82,7 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 
 func (e refundWebhookEnv) deliverCheckout(t *testing.T, paymentIntentID string) {
 	t.Helper()
-	e.deliver(t, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+	e.deliver(t, "checkout.session.completed", map[string]any{
 		"id":             "cs_" + paymentIntentID,
 		"object":         "checkout.session",
 		"amount_total":   500,
@@ -93,10 +90,10 @@ func (e refundWebhookEnv) deliverCheckout(t *testing.T, paymentIntentID string) 
 		"payment_status": "paid",
 		"payment_intent": paymentIntentID,
 		"metadata": map[string]string{
-			stripeMetadataTenantID:  e.tenant.ID.String(),
-			stripeMetadataUserID:    e.user.ID.String(),
-			stripeMetadataEpisodeID: e.episode.ID.String(),
-			stripeMetadataPrice:     "500",
+			stripe.MetadataTenantID:  e.tenant.ID.String(),
+			stripe.MetadataUserID:    e.user.ID.String(),
+			stripe.MetadataEpisodeID: e.episode.ID.String(),
+			stripe.MetadataPrice:     "500",
 		},
 	})
 }
@@ -117,13 +114,9 @@ func (e refundWebhookEnv) heldRefundCount(t *testing.T) int {
 
 func (e refundWebhookEnv) deliver(t *testing.T, eventType string, object map[string]any) {
 	t.Helper()
-	payload, signature := signedStripeEvent(t, testCheckoutWebhookSecret, eventType, object)
-	if _, err := e.client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: signature,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: e.tenant.ID.String()},
-	})); err != nil {
-		t.Fatalf("ProcessStripeWebhook(%s): %v", eventType, err)
+	payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, eventType, object)
+	if _, err := e.client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(e.tenant.ID.String(), payload, signature)); err != nil {
+		t.Fatalf("ProcessPaymentWebhook(%s): %v", eventType, err)
 	}
 }
 
@@ -169,14 +162,14 @@ func refundedCharge(paymentIntentID string, amount, amountRefunded int64) map[st
 	}
 }
 
-func TestDBProcessStripeWebhookRecordsFullRefundIdempotently(t *testing.T) {
+func TestDBProcessPaymentWebhookRecordsFullRefundIdempotently(t *testing.T) {
 	env := newRefundWebhookEnv(t, "REFUNDFUL", "refund-full.example.com", "pi_refund_full")
 	if !env.hasContentAccess(t) {
 		t.Fatal("the purchase does not open the episode before the refund")
 	}
 
 	charge := refundedCharge("pi_refund_full", 500, 500)
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), charge)
+	env.deliver(t, "charge.refunded", charge)
 	amount, at := env.refundState(t)
 	if amount.Int32 != 500 {
 		t.Fatalf("refunded_amount = %v, want 500", amount)
@@ -188,7 +181,7 @@ func TestDBProcessStripeWebhookRecordsFullRefundIdempotently(t *testing.T) {
 		t.Fatal("a refunded purchase still opens the episode")
 	}
 
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), charge)
+	env.deliver(t, "charge.refunded", charge)
 	repeatAmount, repeatAt := env.refundState(t)
 	if repeatAmount != amount || !repeatAt.Time.Equal(at.Time) {
 		t.Fatalf("a repeated delivery changed the refund: amount %v -> %v, at %v -> %v",
@@ -196,10 +189,10 @@ func TestDBProcessStripeWebhookRecordsFullRefundIdempotently(t *testing.T) {
 	}
 }
 
-func TestDBProcessStripeWebhookKeepsAccessOnPartialRefund(t *testing.T) {
+func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 	env := newRefundWebhookEnv(t, "REFUNDPAR", "refund-partial.example.com", "pi_refund_partial")
 
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_partial", 500, 200))
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_partial", 500, 200))
 	amount, at := env.refundState(t)
 	if amount.Int32 != 200 {
 		t.Fatalf("refunded_amount = %v, want 200", amount)
@@ -213,7 +206,7 @@ func TestDBProcessStripeWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 
 	// Stripe reports the amount refunded so far, so the delivery that completes
 	// the price carries the whole of it.
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_partial", 500, 500))
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_partial", 500, 500))
 	amount, at = env.refundState(t)
 	if amount.Int32 != 500 || !at.Valid {
 		t.Fatalf("after the completing refund amount = %v at = %v, want 500 and a set instant", amount, at)
@@ -223,12 +216,12 @@ func TestDBProcessStripeWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 	}
 }
 
-func TestDBProcessStripeWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
+func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 	env := newRefundWebhookEnv(t, "REFUNDAMT", "refund-amountless.example.com", "pi_refund_amountless")
 
 	charge := refundedCharge("pi_refund_amountless", 500, 0)
 	charge["refunded"] = true
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), charge)
+	env.deliver(t, "charge.refunded", charge)
 
 	amount, at := env.refundState(t)
 	if amount.Int32 != 500 || !at.Valid {
@@ -239,10 +232,10 @@ func TestDBProcessStripeWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 	}
 }
 
-func TestDBProcessStripeWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
+func TestDBProcessPaymentWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
 	env := newRefundWebhookEnv(t, "REFUNDUNK", "refund-unknown.example.com", "pi_refund_known")
 
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_stranger", 500, 500))
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_stranger", 500, 500))
 	amount, at := env.refundState(t)
 	if amount.Valid || at.Valid {
 		t.Fatalf("a refund naming another charge wrote amount = %v at = %v on this purchase", amount, at)
@@ -259,10 +252,10 @@ func TestDBProcessStripeWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
 // whose Checkout event is still being retried can arrive first. It has to
 // survive until that event lands, or the purchase it creates would open the
 // episode for money the reader already has back.
-func TestDBProcessStripeWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *testing.T) {
+func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *testing.T) {
 	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRE", "refund-early.example.com")
 
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_early", 500, 500))
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_early", 500, 500))
 	if held := env.heldRefundCount(t); held != 1 {
 		t.Fatalf("held refunds = %d, want the early refund kept", held)
 	}
@@ -294,10 +287,10 @@ func TestDBProcessStripeWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *tes
 
 // A partial refund that arrives first leaves the purchase readable, the same
 // as one that arrives after.
-func TestDBProcessStripeWebhookAppliesAnEarlyPartialRefundWithoutRevokingAccess(t *testing.T) {
+func TestDBProcessPaymentWebhookAppliesAnEarlyPartialRefundWithoutRevokingAccess(t *testing.T) {
 	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRP", "refund-early-partial.example.com")
 
-	env.deliver(t, string(stripe.EventTypeChargeRefunded), refundedCharge("pi_refund_early_partial", 500, 200))
+	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_early_partial", 500, 200))
 	env.deliverCheckout(t, "pi_refund_early_partial")
 
 	amount, at := env.refundState(t)

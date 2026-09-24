@@ -18,6 +18,8 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -32,10 +34,6 @@ type Querier interface {
 	dbmodels.Querier
 }
 
-type stripeSessionCreator interface {
-	create(ctx context.Context, input stripeCheckoutInput) (string, error)
-}
-
 type apiServer struct {
 	db        *sql.DB
 	queries   Querier
@@ -47,8 +45,9 @@ type apiServer struct {
 	reval     *revalidate.Requester
 	// webPushKeys answers the VAPID public key browsers subscribe with, empty
 	// while Web Push is not configured.
-	webPushKeys       webPushPublicKeySource
-	newStripeProvider func(secretKey string) stripeSessionCreator
+	webPushKeys webPushPublicKeySource
+	// paymentProviders are the providers a tenant's payment settings may name.
+	paymentProviders *paymentprovider.Registry
 }
 
 type webPushPublicKeySource interface {
@@ -215,18 +214,16 @@ func newAPIServer(
 		Logger:  logger,
 	})
 	return &apiServer{
-		db:          db,
-		queries:     queries,
-		encryptor:   encryptor,
-		tokens:      tokens,
-		logger:      logger,
-		guards:      guards.withDefaults(),
-		mail:        mail,
-		reval:       revalidator,
-		webPushKeys: webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
-		newStripeProvider: func(secretKey string) stripeSessionCreator {
-			return newStripeCheckoutProvider(secretKey)
-		},
+		db:               db,
+		queries:          queries,
+		encryptor:        encryptor,
+		tokens:           tokens,
+		logger:           logger,
+		guards:           guards.withDefaults(),
+		mail:             mail,
+		reval:            revalidator,
+		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
+		paymentProviders: providers.Registry(),
 	}
 }
 

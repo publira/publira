@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strings"
@@ -15,10 +15,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
-	"github.com/stripe/stripe-go/v86"
-	"github.com/stripe/stripe-go/v86/webhook"
-
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -33,15 +33,42 @@ const (
 	testOtherWebhookSecret    = "whsec_TenantBLeakZZZZ"
 )
 
+// capturingCheckoutProvider is the Stripe provider with its checkout captured
+// instead of created.
 type capturingCheckoutProvider struct {
+	*stripe.Provider
 	secretKey string
-	input     stripeCheckoutInput
+	input     paymentprovider.CheckoutRequest
 	url       string
 }
 
-func (p *capturingCheckoutProvider) create(_ context.Context, input stripeCheckoutInput) (string, error) {
+func (p *capturingCheckoutProvider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, input paymentprovider.CheckoutRequest) (string, error) {
+	p.secretKey = credentials[stripe.FieldSecretKey]
 	p.input = input
 	return p.url, nil
+}
+
+func newCapturingCheckoutProvider() *capturingCheckoutProvider {
+	return &capturingCheckoutProvider{Provider: stripe.New(), url: "https://checkout.stripe.test/cs_test"}
+}
+
+// paymentWebhookRequest is the request web-host makes for a provider's
+// delivery.
+func paymentWebhookRequest(tenantID, provider string, payload []byte, headers http.Header) *connect.Request[publirav1.ProcessPaymentWebhookRequest] {
+	forwarded := make(map[string]string, len(headers))
+	for name := range headers {
+		forwarded[strings.ToLower(name)] = headers.Get(name)
+	}
+	return connect.NewRequest(&publirav1.ProcessPaymentWebhookRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID},
+		Provider: provider,
+		Payload:  payload,
+		Headers:  forwarded,
+	})
+}
+
+func stripeWebhookRequest(tenantID string, payload []byte, headers http.Header) *connect.Request[publirav1.ProcessPaymentWebhookRequest] {
+	return paymentWebhookRequest(tenantID, stripe.ID, payload, headers)
 }
 
 func newPublicTestEncryptor(t *testing.T) *secretcrypto.Manager {
@@ -82,12 +109,9 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 	t.Cleanup(func() { _ = db.Close() })
 
 	var logs bytes.Buffer
-	checkout := &capturingCheckoutProvider{url: "https://checkout.stripe.test/cs_test"}
+	checkout := newCapturingCheckoutProvider()
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil)
-	server.newStripeProvider = func(secretKey string) stripeSessionCreator {
-		checkout.secretKey = secretKey
-		return checkout
-	}
+	server.paymentProviders = paymentprovider.NewRegistry(checkout)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	return publicPaymentServer{ts: ts, mock: mock, logs: &logs, checkout: checkout}
@@ -223,8 +247,8 @@ func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.
 			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 				t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 			}
-			if env.checkout.input.successURL != "" {
-				t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.successURL)
+			if env.checkout.input.SuccessURL != "" {
+				t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.SuccessURL)
 			}
 			assertPublicExpectations(t, env.mock)
 		})
@@ -283,8 +307,8 @@ func TestStartEpisodeCheckoutRefusesTheAppOfATenantSellingThroughTheStore(t *tes
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 	}
-	if env.checkout.input.successURL != "" {
-		t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.successURL)
+	if env.checkout.input.SuccessURL != "" {
+		t.Fatalf("checkout created a Stripe session returning to %q, want none", env.checkout.input.SuccessURL)
 	}
 	assertPublicExpectations(t, env.mock)
 }
@@ -348,11 +372,11 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
 	}
-	if env.checkout.input.successURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success&session_id=%7BCHECKOUT_SESSION_ID%7D" {
-		t.Fatalf("successURL = %q, want web return URL", env.checkout.input.successURL)
+	if env.checkout.input.SuccessURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success" {
+		t.Fatalf("successURL = %q, want web return URL", env.checkout.input.SuccessURL)
 	}
-	if env.checkout.input.cancelURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled" {
-		t.Fatalf("cancelURL = %q, want web return URL", env.checkout.input.cancelURL)
+	if env.checkout.input.CancelURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled" {
+		t.Fatalf("cancelURL = %q, want web return URL", env.checkout.input.CancelURL)
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)
@@ -384,17 +408,17 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
-	if env.checkout.input.successURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=success" {
-		t.Fatalf("successURL = %q, want mobile success return URL", env.checkout.input.successURL)
+	if env.checkout.input.SuccessURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=success" {
+		t.Fatalf("successURL = %q, want mobile success return URL", env.checkout.input.SuccessURL)
 	}
-	if env.checkout.input.cancelURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=cancelled" {
-		t.Fatalf("cancelURL = %q, want mobile cancellation return URL", env.checkout.input.cancelURL)
+	if env.checkout.input.CancelURL != "https://tenant.example/en/checkout/return?episode=EPISODE001&status=cancelled" {
+		t.Fatalf("cancelURL = %q, want mobile cancellation return URL", env.checkout.input.CancelURL)
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
+func TestProcessPaymentWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 	env := newPublicPaymentServer(t, nil)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -403,21 +427,17 @@ func TestProcessStripeWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	payload, header := signedStripeEvent(t, testOtherWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
+	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: header,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("ProcessStripeWebhook code = %v, want failed_precondition", connect.CodeOf(err))
+		t.Fatalf("ProcessPaymentWebhook code = %v, want failed_precondition", connect.CodeOf(err))
 	}
 	assertNoSecretLeak(t, err.Error()+"\n"+env.logs.String())
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
+func TestProcessPaymentWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
 
@@ -426,15 +446,11 @@ func TestProcessStripeWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
-	payload, header := signedStripeEvent(t, testOtherWebhookSecret, "ping", map[string]any{"id": "cs_other"})
+	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"id": "cs_other"})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: header,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("ProcessStripeWebhook code = %v, want invalid_argument", connect.CodeOf(err))
+		t.Fatalf("ProcessPaymentWebhook code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	if strings.Contains(err.Error(), testCheckoutWebhookSecret) || strings.Contains(err.Error(), testOtherWebhookSecret) {
 		t.Fatalf("error leaked a webhook secret: %v", err)
@@ -443,7 +459,7 @@ func TestProcessStripeWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookAcceptsTenantSigningSecret(t *testing.T) {
+func TestProcessPaymentWebhookAcceptsTenantSigningSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
 
@@ -452,21 +468,49 @@ func TestProcessStripeWebhookAcceptsTenantSigningSecret(t *testing.T) {
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
-	payload, header := signedStripeEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_ok"})
+	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_ok"})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: header,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if err != nil {
-		t.Fatalf("ProcessStripeWebhook: %v", err)
+		t.Fatalf("ProcessPaymentWebhook: %v", err)
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T) {
+func TestProcessPaymentWebhookAnswersNotFoundForAnUnregisteredProvider(t *testing.T) {
+	env := newPublicPaymentServer(t, nil)
+	tenantID := uuid.Must(uuid.NewV7())
+
+	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_unknown"})
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	_, err := client.ProcessPaymentWebhook(context.Background(), paymentWebhookRequest(tenantID.String(), "unknown", payload, header))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("ProcessPaymentWebhook code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestProcessPaymentWebhookReadsTheSignatureHeaderWhateverItsCase(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(env.mock, tenantID, "TENANT", now)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+
+	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_case"})
+	req := stripeWebhookRequest(tenantID.String(), payload, nil)
+	req.Msg.Headers = map[string]string{"STRIPE-SIGNATURE": header.Get(stripe.SignatureHeader)}
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	if _, err := client.ProcessPaymentWebhook(context.Background(), req); err != nil {
+		t.Fatalf("ProcessPaymentWebhook: %v", err)
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestProcessPaymentWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T) {
 	env := newPublicPaymentServer(t, nil)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -485,7 +529,7 @@ func TestProcessStripeWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T) 
 			now,
 		))
 
-	payload, header := signedStripeEvent(t, testCheckoutWebhookSecret, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_decrypt",
 		"object":         "checkout.session",
 		"amount_total":   500,
@@ -493,19 +537,15 @@ func TestProcessStripeWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T) 
 		"payment_status": "paid",
 	})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: header,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("ProcessStripeWebhook code = %v, want failed_precondition", connect.CodeOf(err))
+		t.Fatalf("ProcessPaymentWebhook code = %v, want failed_precondition", connect.CodeOf(err))
 	}
 	assertNoSecretLeak(t, err.Error()+"\n"+env.logs.String())
 	assertPublicExpectations(t, env.mock)
 }
 
-func TestProcessStripeWebhookRejectsCheckoutTenantMismatch(t *testing.T) {
+func TestProcessPaymentWebhookRejectsCheckoutTenantMismatch(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
 
@@ -515,46 +555,26 @@ func TestProcessStripeWebhookRejectsCheckoutTenantMismatch(t *testing.T) {
 	expectTenantLookup(env.mock, pathTenantID, "TENANT", now)
 	expectEnabledPaymentConfig(t, env.mock, pathTenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
-	payload, header := signedStripeEvent(t, testCheckoutWebhookSecret, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_mismatch",
 		"object":         "checkout.session",
 		"amount_total":   500,
 		"currency":       "jpy",
 		"payment_status": "paid",
 		"metadata": map[string]string{
-			stripeMetadataTenantID:  metadataTenantID.String(),
-			stripeMetadataUserID:    uuid.Must(uuid.NewV7()).String(),
-			stripeMetadataEpisodeID: uuid.Must(uuid.NewV7()).String(),
-			stripeMetadataPrice:     "500",
+			stripe.MetadataTenantID:  metadataTenantID.String(),
+			stripe.MetadataUserID:    uuid.Must(uuid.NewV7()).String(),
+			stripe.MetadataEpisodeID: uuid.Must(uuid.NewV7()).String(),
+			stripe.MetadataPrice:     "500",
 		},
 	})
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: header,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: pathTenantID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(pathTenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("ProcessStripeWebhook code = %v, want invalid_argument", connect.CodeOf(err))
+		t.Fatalf("ProcessPaymentWebhook code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	assertNoSecretLeak(t, err.Error()+"\n"+env.logs.String())
 	assertPublicExpectations(t, env.mock)
-}
-
-func signedStripeEvent(t *testing.T, secret, eventType string, session map[string]any) ([]byte, string) {
-	t.Helper()
-	payload, err := json.Marshal(map[string]any{
-		"id":          "evt_test",
-		"object":      "event",
-		"api_version": stripe.APIVersion,
-		"type":        eventType,
-		"data":        map[string]any{"object": session},
-	})
-	if err != nil {
-		t.Fatalf("marshal event: %v", err)
-	}
-	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret})
-	return payload, signed.Header
 }
 
 func assertNoSecretLeak(t *testing.T, haystack string) {

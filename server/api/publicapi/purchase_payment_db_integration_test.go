@@ -11,18 +11,18 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/stripe/stripe-go/v86"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
+func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -60,29 +60,17 @@ func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
 
-	payload, headerA := signedStripeEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_a"})
-	if _, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: headerA,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantA.ID.String()},
-	})); err != nil {
+	payload, headerA := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_a"})
+	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantA.ID.String(), payload, headerA)); err != nil {
 		t.Fatalf("tenant A with own secret: %v", err)
 	}
 
-	_, err := client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: headerA,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantB.ID.String()},
-	}))
+	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantB.ID.String(), payload, headerA))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("tenant B with tenant A secret code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 
-	_, err = client.ProcessStripeWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-		Payload:         payload,
-		StripeSignature: headerA,
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantC.ID.String()},
-	}))
+	_, err = client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantC.ID.String(), payload, headerA))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("tenant C without settings code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -144,7 +132,7 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 	}
 }
 
-func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
+func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -177,7 +165,7 @@ func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
 
-	payload, signature := signedStripeEvent(t, testCheckoutWebhookSecret, string(stripe.EventTypeCheckoutSessionCompleted), map[string]any{
+	payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_purchase_projection",
 		"object":         "checkout.session",
 		"amount_total":   500,
@@ -188,24 +176,17 @@ func TestDBProcessStripeWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
 		// second insert conflicts on the session rather than on that index.
 		"payment_intent": "pi_purchase_projection",
 		"metadata": map[string]string{
-			stripeMetadataTenantID:  tenant.ID.String(),
-			stripeMetadataUserID:    user.ID.String(),
-			stripeMetadataEpisodeID: episode.ID.String(),
-			stripeMetadataPrice:     "500",
+			stripe.MetadataTenantID:  tenant.ID.String(),
+			stripe.MetadataUserID:    user.ID.String(),
+			stripe.MetadataEpisodeID: episode.ID.String(),
+			stripe.MetadataPrice:     "500",
 		},
 	})
-	req := func() *connect.Request[publirav1.ProcessStripeWebhookRequest] {
-		return connect.NewRequest(&publirav1.ProcessStripeWebhookRequest{
-			Payload:         payload,
-			StripeSignature: signature,
-			Tenant:          &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-		})
+	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+		t.Fatalf("first ProcessPaymentWebhook: %v", err)
 	}
-	if _, err := client.ProcessStripeWebhook(context.Background(), req()); err != nil {
-		t.Fatalf("first ProcessStripeWebhook: %v", err)
-	}
-	if _, err := client.ProcessStripeWebhook(context.Background(), req()); err != nil {
-		t.Fatalf("retry ProcessStripeWebhook: %v", err)
+	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+		t.Fatalf("retry ProcessPaymentWebhook: %v", err)
 	}
 
 	var (

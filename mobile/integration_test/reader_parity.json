@@ -491,7 +491,7 @@
       "name": "Stripe's payment webhook",
       "web": {
         "routes": ["api/v1/webhook/stripe"],
-        "rpcs": ["ProcessStripeWebhook"]
+        "rpcs": ["ProcessPaymentWebhook"]
       },
       "exception": "Stripe's servers call it; no reader reaches it. A purchase made from the app lands here too."
     },

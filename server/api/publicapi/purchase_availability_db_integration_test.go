@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -19,8 +20,8 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// purchaseSurfaceEnv is a public API on the test database whose Stripe sessions
-// are captured instead of created, for a tenant that accepts payments.
+// purchaseSurfaceEnv is a public API on the test database whose checkouts are
+// captured instead of created, for a tenant that accepts payments.
 type purchaseSurfaceEnv struct {
 	pg       *testutil.PostgresEnv
 	ts       *httptest.Server
@@ -51,9 +52,9 @@ func newPurchaseSurfaceEnv(t *testing.T) purchaseSurfaceEnv {
 	}
 
 	db := pg.OpenPublicDB(t)
-	checkout := &capturingCheckoutProvider{url: "https://checkout.stripe.test/cs_test"}
+	checkout := newCapturingCheckoutProvider()
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), openReaderGuards(), openMailGuard())
-	server.newStripeProvider = func(string) stripeSessionCreator { return checkout }
+	server.paymentProviders = paymentprovider.NewRegistry(checkout)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 
@@ -88,11 +89,11 @@ func (e purchaseSurfaceEnv) setEpisodePurchase(t *testing.T, episodeID uuid.UUID
 }
 
 // startCheckout answers the code a checkout from client ends with, and whether
-// it created a Stripe session.
+// it started a checkout with the provider.
 func (e purchaseSurfaceEnv) startCheckout(t *testing.T, episodePublicID string, client publirav1.StartEpisodeCheckoutRequest_Client) (connect.Code, bool) {
 	t.Helper()
 
-	e.checkout.input = stripeCheckoutInput{}
+	e.checkout.input = paymentprovider.CheckoutRequest{}
 	_, err := publirav1connect.NewPurchaseServiceClient(e.ts.Client(), e.ts.URL).StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
 		EpisodePublicId: episodePublicID,
 		Tenant:          tenantContext(e.tenant),
@@ -102,7 +103,7 @@ func (e purchaseSurfaceEnv) startCheckout(t *testing.T, episodePublicID string, 
 	if err != nil {
 		code = connect.CodeOf(err)
 	}
-	return code, e.checkout.input.successURL != ""
+	return code, e.checkout.input.SuccessURL != ""
 }
 
 const (
@@ -146,7 +147,7 @@ func TestDBStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testin
 			t.Fatalf("%s: code = %v, want %v", step.name, code, step.want)
 		}
 		if created != (step.want == checkoutSucceeded) {
-			t.Fatalf("%s: created a Stripe session = %v", step.name, created)
+			t.Fatalf("%s: started a checkout = %v", step.name, created)
 		}
 	}
 }
