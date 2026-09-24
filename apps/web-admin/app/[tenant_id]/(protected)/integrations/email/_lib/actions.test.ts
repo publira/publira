@@ -46,6 +46,18 @@ const textFormData = (values: Record<string, string>): FormData => {
   return formData;
 };
 
+const smtpFormData = (): FormData =>
+  textFormData({
+    encryption: "starttls",
+    from_address: "noreply@example.com",
+    from_name: "Publira",
+    host: "smtp.example.com",
+    port: "587",
+    smtp_override_enabled: "on",
+    tenant_id: "TENANT001",
+    username: "mailer",
+  });
+
 describe("updateTenantEmailSettingsAction", () => {
   const savedSmtpSettings = {
     encryption: "starttls",
@@ -58,18 +70,6 @@ describe("updateTenantEmailSettingsAction", () => {
     smtpOverrideEnabled: true,
     username: "mailer",
   };
-
-  const smtpFormData = (): FormData =>
-    textFormData({
-      encryption: "starttls",
-      from_address: "noreply@example.com",
-      from_name: "Publira",
-      host: "smtp.example.com",
-      port: "587",
-      smtp_override_enabled: "on",
-      tenant_id: "TENANT001",
-      username: "mailer",
-    });
 
   beforeEach(() => {
     vi.clearAllMocks();

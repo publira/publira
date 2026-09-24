@@ -82,6 +82,19 @@ const overrideCheckbox = () =>
     name: /Enable the override/u,
   });
 
+const settingsControls = () => [
+  overrideCheckbox(),
+  screen.getByRole("textbox", { name: /Host/u }),
+  screen.getByRole("spinbutton", { name: /Port/u }),
+  screen.getByRole("textbox", { name: /Username/u }),
+  screen.getByRole("button", { name: "Change" }),
+  screen.getByRole("combobox", { name: /Encryption/u }),
+  screen.getByRole("textbox", { name: /Sender name/u }),
+  screen.getByRole("textbox", { name: /Sender email address/u }),
+  screen.getByRole("textbox", { name: /Reply-to address/u }),
+  testButton(),
+];
+
 afterEach(() => {
   cleanup();
 });
@@ -120,27 +133,14 @@ describe("TenantEmailSettingsForm", () => {
 
     // A control its `<fieldset>` closes keeps `disabled` false and matches
     // `:disabled` instead.
-    const controls = () => [
-      overrideCheckbox(),
-      screen.getByRole("textbox", { name: /Host/u }),
-      screen.getByRole("spinbutton", { name: /Port/u }),
-      screen.getByRole("textbox", { name: /Username/u }),
-      screen.getByRole("button", { name: "Change" }),
-      screen.getByRole("combobox", { name: /Encryption/u }),
-      screen.getByRole("textbox", { name: /Sender name/u }),
-      screen.getByRole("textbox", { name: /Sender email address/u }),
-      screen.getByRole("textbox", { name: /Reply-to address/u }),
-      testButton(),
-    ];
-
-    for (const control of controls()) {
+    for (const control of settingsControls()) {
       expect(control.matches(":disabled")).toBe(false);
     }
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
-      for (const control of controls()) {
+      for (const control of settingsControls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
     });
