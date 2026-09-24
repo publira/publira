@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	connectrpc.com/connect v1.21.0
-	connectrpc.com/otelconnect v0.9.0
+	connectrpc.com/otelconnect v0.10.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/XSAM/otelsql v0.44.0
