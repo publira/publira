@@ -51,6 +51,16 @@ export const SecurityPolicyForm = ({
         label: "platform.policy.security.mail_source_per_day",
         name: "mail_requests_per_source_per_day",
       },
+      {
+        defaultValue: values.storePurchaseConfirmation.perMinute,
+        label: "platform.policy.security.store_purchase_per_minute",
+        name: "store_purchase_confirmation_per_minute",
+      },
+      {
+        defaultValue: values.storePurchaseConfirmation.perDay,
+        label: "platform.policy.security.store_purchase_per_day",
+        name: "store_purchase_confirmation_per_day",
+      },
     ]}
     loadErrorMessage={loadErrorMessage}
     revision={revision}

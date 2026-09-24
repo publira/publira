@@ -3960,6 +3960,9 @@
         "mail_per_source_legend": "Email requests per source",
         "mail_source_per_hour": "Email requests per source per hour",
         "mail_source_per_day": "Email requests per source per day",
+        "store_purchase_title": "In-app purchase confirmations",
+        "store_purchase_per_minute": "In-app purchase confirmations per reader per minute",
+        "store_purchase_per_day": "In-app purchase confirmations per reader per day",
         "mfa_required": "Require multi-factor authentication for tenant administrators",
         "save": "Save security policy",
         "saved": "Security policy saved."

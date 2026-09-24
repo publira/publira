@@ -37,6 +37,7 @@ export interface PlatformSecurityPolicy {
   mailRequestsPerSource: HourDay;
   mfaRequiredForTenantAdmin: boolean;
   passwordVerification: MinuteDay;
+  storePurchaseConfirmation: MinuteDay;
 }
 
 export interface PlatformCommunityLimits {
@@ -101,6 +102,7 @@ type RawPlatformPolicy = Pick<
   | "mailRequestsPerSource"
   | "mfaRequiredForTenantAdmin"
   | "passwordVerification"
+  | "storePurchaseConfirmation"
 >;
 type RawRetentionPeriods = Pick<
   RetentionPeriods,
@@ -141,6 +143,7 @@ export const toPlatformPolicy = (
     mailRequestsPerSource: toHourDay(policy?.mailRequestsPerSource),
     mfaRequiredForTenantAdmin: policy?.mfaRequiredForTenantAdmin ?? false,
     passwordVerification: toMinuteDay(policy?.passwordVerification),
+    storePurchaseConfirmation: toMinuteDay(policy?.storePurchaseConfirmation),
   },
 });
 
