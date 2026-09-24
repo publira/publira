@@ -66,13 +66,19 @@ FROM notifications n
 WHERE n.tenant_id = $1
     AND n.notification_type = $2
     AND n.subject_key = $3
-ORDER BY d.token
+    AND n.user_id >= $4::uuid
+    AND (n.user_id, d.token) > ($4::uuid, $5::text)
+ORDER BY n.user_id, d.token
+LIMIT $6
 `
 
 type ListPushDevicesForNotificationParams struct {
 	TenantID         uuid.UUID `json:"tenant_id"`
 	NotificationType string    `json:"notification_type"`
 	SubjectKey       string    `json:"subject_key"`
+	AfterUserID      uuid.UUID `json:"after_user_id"`
+	AfterToken       string    `json:"after_token"`
+	PageSize         int32     `json:"page_size"`
 }
 
 type ListPushDevicesForNotificationRow struct {
@@ -85,11 +91,21 @@ type ListPushDevicesForNotificationRow struct {
 	Auth           sql.NullString `json:"auth"`
 }
 
-// Every device to push one notification to, one row per recipient device. The
-// notification id travels with the token because the push mirrors that row and
-// the app routes from it.
+// One page of the devices to push one notification to, ordered by recipient
+// and token after the previous page's last pair (the nil UUID and an empty
+// token for the first page). The walk runs over the notification's recipients
+// in idx_notifications_tenant_subject_user, so a page costs the recipients it
+// passes rather than every device the tenant has. The separate user_id bound is
+// what the index can start from, since the pair spans both tables.
 func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification, arg.TenantID, arg.NotificationType, arg.SubjectKey)
+	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification,
+		arg.TenantID,
+		arg.NotificationType,
+		arg.SubjectKey,
+		arg.AfterUserID,
+		arg.AfterToken,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

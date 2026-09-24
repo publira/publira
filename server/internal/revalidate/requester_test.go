@@ -212,10 +212,10 @@ func TestSendMarksTheInvalidationDoneOnceEveryAppAnswered(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPendingOutboxEventDone)).WithArgs(eventID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "event_type", "payload", "idempotency_key",
-			"status", "attempts", "available_at", "last_error", "created_at", "updated_at",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
 		}).AddRow(
 			eventID, uuid.NullUUID{UUID: tenantID, Valid: true}, outbox.EventTypeNextCacheRevalidation,
-			json.RawMessage("{}"), "key", "done", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(),
+			json.RawMessage("{}"), "key", "done", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
 		))
 	// The connection is reset before it goes back to the pool.
 	mock.ExpectExec("app.current_user_id").WillReturnResult(sqlmock.NewResult(0, 1))

@@ -30,7 +30,7 @@ SET
     updated_at = NOW()
 FROM claim
 WHERE o.id = claim.id
-RETURNING o.id, o.tenant_id, o.event_type, o.payload, o.idempotency_key, o.status, o.attempts, o.available_at, o.last_error, o.created_at, o.updated_at
+RETURNING o.id, o.tenant_id, o.event_type, o.payload, o.idempotency_key, o.status, o.attempts, o.available_at, o.last_error, o.created_at, o.updated_at, o.progress_cursor
 `
 
 // Claim the next due pending rows. SKIP LOCKED lets concurrent workers
@@ -57,6 +57,7 @@ func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]
 			&i.LastError,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProgressCursor,
 		); err != nil {
 			return nil, err
 		}
@@ -72,7 +73,7 @@ func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]
 }
 
 const GetOutboxEvent = `-- name: GetOutboxEvent :one
-SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 FROM outbox_events
 WHERE id = $1
 `
@@ -92,12 +93,13 @@ func (q *Queries) GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
 
 const GetOutboxEventByIdempotencyKey = `-- name: GetOutboxEventByIdempotencyKey :one
-SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 FROM outbox_events
 WHERE idempotency_key = $1
 `
@@ -117,6 +119,7 @@ func (q *Queries) GetOutboxEventByIdempotencyKey(ctx context.Context, idempotenc
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
@@ -140,7 +143,7 @@ VALUES (
     $6
 )
 ON CONFLICT (idempotency_key) DO NOTHING
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 type InsertOutboxEventParams struct {
@@ -207,6 +210,7 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
@@ -233,7 +237,7 @@ SET
     updated_at = NOW()
 WHERE id = $2
     AND status = 'processing'
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 type MarkOutboxEventDeadParams struct {
@@ -259,6 +263,7 @@ func (q *Queries) MarkOutboxEventDead(ctx context.Context, arg MarkOutboxEventDe
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
@@ -268,6 +273,7 @@ UPDATE outbox_events
 SET
     status = 'done',
     last_error = NULL,
+    progress_cursor = NULL,
     payload = CASE
         WHEN event_type IN (
             'admin_email_change_confirmation_email',
@@ -284,7 +290,7 @@ SET
     updated_at = NOW()
 WHERE id = $1
     AND status = 'processing'
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 // Auth mail is the one place the raw token still has to appear: the
@@ -299,6 +305,10 @@ RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts,
 // that dies mid-attempt records no failure, so
 // RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 // the same budget and every window ends here.
+//
+// A finished event has nowhere left to resume from, so its progress
+// cursor goes too: a paged handler's cursor names one of the rows it
+// walked, which the event has no reason to keep once it is done.
 func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
 	row := q.db.QueryRowContext(ctx, MarkOutboxEventDone, id)
 	var i OutboxEvent
@@ -314,6 +324,7 @@ func (q *Queries) MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (Outbox
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
@@ -328,7 +339,7 @@ SET
     updated_at = NOW()
 WHERE id = $3
     AND status = 'processing'
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 type MarkOutboxEventRetryParams struct {
@@ -352,6 +363,7 @@ func (q *Queries) MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventR
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }
@@ -364,7 +376,7 @@ SET
     updated_at = NOW()
 WHERE id = $1
     AND status = 'pending'
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 // Complete an event whose producer did the work itself before the
@@ -392,8 +404,34 @@ func (q *Queries) MarkPendingOutboxEventDone(ctx context.Context, id uuid.UUID) 
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
+}
+
+const RecordOutboxEventProgress = `-- name: RecordOutboxEventProgress :execrows
+UPDATE outbox_events
+SET
+    progress_cursor = $1,
+    updated_at = NOW()
+WHERE id = $2
+    AND status = 'processing'
+`
+
+type RecordOutboxEventProgressParams struct {
+	ProgressCursor sql.NullString `json:"progress_cursor"`
+	ID             uuid.UUID      `json:"id"`
+}
+
+// A paged handler records how far it has got after each page, so a run
+// that ends before the event is finished leaves the next one a place to
+// resume from. Only the run that holds the claim may move it.
+func (q *Queries) RecordOutboxEventProgress(ctx context.Context, arg RecordOutboxEventProgressParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, RecordOutboxEventProgress, arg.ProgressCursor, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const RecoverStaleProcessingAuthMailOutboxEvents = `-- name: RecoverStaleProcessingAuthMailOutboxEvents :many
@@ -423,7 +461,7 @@ WHERE status = 'processing'
         'reader_password_reset_email',
         'tenant_admin_invitation_email'
     )
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 type RecoverStaleProcessingAuthMailOutboxEventsParams struct {
@@ -460,6 +498,7 @@ func (q *Queries) RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context
 			&i.LastError,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProgressCursor,
 		); err != nil {
 			return nil, err
 		}
@@ -492,7 +531,7 @@ WHERE status = 'processing'
         'reader_password_reset_email',
         'tenant_admin_invitation_email'
     )
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 // Re-queue rows left in processing after a worker crash. updated_at is the
@@ -522,6 +561,7 @@ func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleB
 			&i.LastError,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProgressCursor,
 		); err != nil {
 			return nil, err
 		}
@@ -536,6 +576,40 @@ func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleB
 	return items, nil
 }
 
+const ResumeOutboxEvent = `-- name: ResumeOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+    AND status = 'processing'
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
+`
+
+// Hand an event back after a run that made progress and has more to do.
+// It is due at once and charges no attempt: the retry budget is for
+// failures, and an event large enough to need many runs is not failing.
+func (q *Queries) ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, ResumeOutboxEvent, id)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProgressCursor,
+	)
+	return i, err
+}
+
 const UnclaimOutboxEvent = `-- name: UnclaimOutboxEvent :one
 UPDATE outbox_events
 SET
@@ -543,7 +617,7 @@ SET
     updated_at = NOW()
 WHERE id = $1
     AND status = 'processing'
-RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 `
 
 // Release a claim when River already has an in-flight process job for
@@ -563,6 +637,7 @@ func (q *Queries) UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxE
 		&i.LastError,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProgressCursor,
 	)
 	return i, err
 }

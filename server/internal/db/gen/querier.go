@@ -1383,9 +1383,12 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
-	// Every device to push one notification to, one row per recipient device. The
-	// notification id travels with the token because the push mirrors that row and
-	// the app routes from it.
+	// One page of the devices to push one notification to, ordered by recipient
+	// and token after the previous page's last pair (the nil UUID and an empty
+	// token for the first page). The walk runs over the notification's recipients
+	// in idx_notifications_tenant_subject_user, so a page costs the recipients it
+	// passes rather than every device the tenant has. The separate user_id bound is
+	// what the index can start from, since the pair spans both tables.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published.
@@ -1796,6 +1799,10 @@ type Querier interface {
 	// that dies mid-attempt records no failure, so
 	// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
 	// the same budget and every window ends here.
+	//
+	// A finished event has nowhere left to resume from, so its progress
+	// cursor goes too: a paged handler's cursor names one of the rows it
+	// walked, which the event has no reason to keep once it is done.
 	MarkOutboxEventDone(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	MarkOutboxEventRetry(ctx context.Context, arg MarkOutboxEventRetryParams) (OutboxEvent, error)
 	// Complete an event whose producer did the work itself before the
@@ -1927,6 +1934,10 @@ type Querier interface {
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.
 	RecordEpisodeReadProjection(ctx context.Context, arg RecordEpisodeReadProjectionParams) error
+	// A paged handler records how far it has got after each page, so a run
+	// that ends before the event is finished leaves the next one a place to
+	// resume from. Only the run that holds the claim may move it.
+	RecordOutboxEventProgress(ctx context.Context, arg RecordOutboxEventProgressParams) (int64, error)
 	// Records a store's refund on the purchase of the transaction it names. A
 	// store refunds a consumable in full, so the purchase is refunded its whole
 	// price; a repeated notification or poll leaves the instant already stored.
@@ -1993,6 +2004,10 @@ type Querier interface {
 	// published_at records: one that was already public becomes public again, and
 	// one removed while still awaiting approval goes back into that queue.
 	RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	// Hand an event back after a run that made progress and has more to do.
+	// It is due at once and charges no attempt: the retry budget is for
+	// failures, and an event large enough to need many runs is not failing.
+	ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a

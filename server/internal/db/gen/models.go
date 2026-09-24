@@ -425,6 +425,7 @@ type OutboxEvent struct {
 	LastError      sql.NullString  `json:"last_error"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
+	ProgressCursor sql.NullString  `json:"progress_cursor"`
 }
 
 type Page struct {

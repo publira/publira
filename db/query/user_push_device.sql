@@ -55,9 +55,12 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 DELETE FROM user_push_devices
 WHERE token = sqlc.arg('token');
 
--- Every device to push one notification to, one row per recipient device. The
--- notification id travels with the token because the push mirrors that row and
--- the app routes from it.
+-- One page of the devices to push one notification to, ordered by recipient
+-- and token after the previous page's last pair (the nil UUID and an empty
+-- token for the first page). The walk runs over the notification's recipients
+-- in idx_notifications_tenant_subject_user, so a page costs the recipients it
+-- passes rather than every device the tenant has. The separate user_id bound is
+-- what the index can start from, since the pair spans both tables.
 -- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
@@ -74,4 +77,7 @@ FROM notifications n
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.notification_type = sqlc.arg('notification_type')
     AND n.subject_key = sqlc.arg('subject_key')
-ORDER BY d.token;
+    AND n.user_id >= sqlc.arg('after_user_id')::uuid
+    AND (n.user_id, d.token) > (sqlc.arg('after_user_id')::uuid, sqlc.arg('after_token')::text)
+ORDER BY n.user_id, d.token
+LIMIT sqlc.arg('page_size');

@@ -30,6 +30,12 @@ func Permanent(err error) error {
 	return &permanentError{err: err}
 }
 
+// ErrResume is returned by a handler that has recorded its progress
+// (RecordOutboxEventProgress) and has work left: the worker hands the event back
+// as due without charging an attempt. Return it only after the cursor has moved,
+// since nothing bounds how many times an event resumes.
+var ErrResume = errors.New("outbox event has more work")
+
 // IsPermanent reports whether err (or a value it unwraps to) was produced
 // by [Permanent].
 func IsPermanent(err error) bool {

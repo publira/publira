@@ -16,6 +16,7 @@ type otelInstruments struct {
 	claimed          metric.Int64Counter
 	done             metric.Int64Counter
 	retry            metric.Int64Counter
+	resumed          metric.Int64Counter
 	dead             metric.Int64Counter
 	handlerDuration  metric.Float64Histogram
 	eventTypeAttrKey attribute.Key
@@ -35,6 +36,10 @@ func newOTELInstruments() otelInstruments {
 		metric.WithDescription("Outbox rows returned to pending after a handler failure"),
 		metric.WithUnit("{event}"),
 	)
+	resumed, _ := meter.Int64Counter("publira.outbox.events.resumed",
+		metric.WithDescription("Outbox rows returned to pending by a handler that made progress and has more work"),
+		metric.WithUnit("{event}"),
+	)
 	dead, _ := meter.Int64Counter("publira.outbox.events.dead",
 		metric.WithDescription("Outbox rows marked dead after exhausting retries or a permanent error"),
 		metric.WithUnit("{event}"),
@@ -47,6 +52,7 @@ func newOTELInstruments() otelInstruments {
 		claimed:          claimed,
 		done:             done,
 		retry:            retry,
+		resumed:          resumed,
 		dead:             dead,
 		handlerDuration:  handlerDuration,
 		eventTypeAttrKey: attribute.Key("outbox.event_type"),
@@ -60,6 +66,7 @@ type Metrics struct {
 	Claimed atomic.Int64
 	Done    atomic.Int64
 	Retry   atomic.Int64
+	Resumed atomic.Int64
 	Dead    atomic.Int64
 
 	otel otelInstruments
@@ -91,6 +98,14 @@ func (m *Metrics) recordRetry(ctx context.Context, eventType string) {
 	}
 	m.Retry.Add(1)
 	m.otel.retry.Add(ctx, 1, metric.WithAttributes(m.otel.eventTypeAttrKey.String(eventType)))
+}
+
+func (m *Metrics) recordResumed(ctx context.Context, eventType string) {
+	if m == nil {
+		return
+	}
+	m.Resumed.Add(1)
+	m.otel.resumed.Add(ctx, 1, metric.WithAttributes(m.otel.eventTypeAttrKey.String(eventType)))
 }
 
 func (m *Metrics) recordDead(ctx context.Context, eventType string) {
