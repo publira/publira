@@ -812,6 +812,43 @@ func TestListAccessTicketsInvalidToken(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestListAccessTicketsRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	activeForUser := pagination.NewListKey("created_at_desc").Value("user_public_id", "USER000001").Flag("active_only", true)
+	boundary := activeForUser.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+
+	tests := map[string]struct {
+		token      string
+		user       string
+		episode    string
+		activeOnly bool
+	}{
+		"another user":           {token: boundary, user: "USER000002", activeOnly: true},
+		"an episode added":       {token: boundary, user: "USER000001", episode: "EP001", activeOnly: true},
+		"active_only turned off": {token: boundary, user: "USER000001"},
+		"no filter":              {token: boundary},
+		"a recovery token":       {token: activeForUser.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID), user: "USER000002", activeOnly: true},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newAccessTicketClient(t, tenantID, uuid.Must(uuid.NewV7()), boundaryAt)
+
+			req := newListAccessTicketsRequest(tenantID, sessionToken)
+			req.Msg.UserPublicId = tt.user
+			req.Msg.EpisodePublicId = tt.episode
+			req.Msg.ActiveOnly = tt.activeOnly
+			req.Msg.Token = tt.token
+			_, err := client.ListAccessTickets(context.Background(), req)
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListAccessTickets error = %v, want invalid_argument for another filter", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 func TestListAccessTicketsDatabaseErrorIsHidden(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())

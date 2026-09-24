@@ -102,7 +102,7 @@ func TestListTenantsFirstPageReportsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
-	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	wantKeys := []string{"created_at_desc+name:Acme+public_id:TENANT+status:active", now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
 	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
 	}
@@ -249,6 +249,49 @@ func TestListTenantsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+func TestListTenantsRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	active := pagination.NewListKey("created_at_desc").Value("status", tenantStatusActive)
+
+	tests := map[string]struct {
+		token string
+		req   *publirasplatformv1.ListTenantsRequest
+	}{
+		"another status": {
+			token: active.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListTenantsRequest{Status: "suspended"},
+		},
+		"a filter added": {
+			token: active.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListTenantsRequest{Name: "Acme", Status: tenantStatusActive},
+		},
+		"a filter removed": {
+			token: active.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListTenantsRequest{},
+		},
+		"an unfiltered token": {
+			token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListTenantsRequest{Status: tenantStatusActive},
+		},
+		"a recovery token": {
+			token: active.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID),
+			req:   &publirasplatformv1.ListTenantsRequest{Status: "suspended"},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			tt.req.Token = tt.token
+			_, err := server.ListTenants(context.Background(), connect.NewRequest(tt.req))
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListTenants error = %v, want invalid_argument for another filter", err)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}
+
 func TestListTenantsRejectsInvalidToken(t *testing.T) {
 	tests := []string{
 		"not-base64",
@@ -319,6 +362,29 @@ func TestListTenantMembersSuccess(t *testing.T) {
 		t.Fatalf("members[0].role = %q, want tenant_admin", resp.Msg.Members[0].Role)
 	}
 	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListTenantMembersRejectsAnotherTenantsToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	otherTenant := pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT002")
+
+	for name, token := range map[string]string{
+		"boundary": otherTenant.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+		"recovery": otherTenant.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID),
+	} {
+		t.Run(name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			_, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{
+				TenantPublicId: "TENANT001",
+				Token:          token,
+			}))
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListTenantMembers with another tenant's token error = %v, want invalid_argument", err)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
 }
 
 // TestListTenantMembersEmptyList asserts that a tenant with no members yields

@@ -254,11 +254,17 @@ func (s *adminServer) ListAccessTickets(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	listKey := pagination.NewListKey("created_at_desc").
+		Value("user_public_id", userPublicID).
+		Value("episode_public_id", episodePublicID).
+		Flag("active_only", req.Msg.ActiveOnly)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
@@ -267,7 +273,7 @@ func (s *adminServer) ListAccessTickets(
 		activeOnly: req.Msg.ActiveOnly,
 	}
 
-	if userPublicID := strings.TrimSpace(req.Msg.UserPublicId); userPublicID != "" {
+	if userPublicID != "" {
 		userRow, getUserErr := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			PublicID: userPublicID,
@@ -283,7 +289,7 @@ func (s *adminServer) ListAccessTickets(
 		filter.userID = uuid.NullUUID{UUID: userRow.ID, Valid: true}
 	}
 
-	if episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId); episodePublicID != "" {
+	if episodePublicID != "" {
 		episode, getEpisodeErr := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
 			TenantID: tenant.ID,
 			PublicID: episodePublicID,
@@ -317,11 +323,11 @@ func (s *adminServer) ListAccessTickets(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].fields.createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].fields.createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.fields.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.fields.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -329,9 +335,9 @@ func (s *adminServer) ListAccessTickets(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

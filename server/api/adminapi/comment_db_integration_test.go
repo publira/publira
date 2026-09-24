@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
@@ -618,6 +619,42 @@ func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
 	back := fixture.list(t, &publiraadminv1.ListCommentsRequest{Limit: 1, Token: next.PreviousToken})
 	if got := adminCommentPublicIDs(back.Comments); !slices.Equal(got, []string{elsewhere.PublicID}) {
 		t.Fatalf("page back = %v, want %s", got, elsewhere.PublicID)
+	}
+
+	// A filtered list pages within itself, and its tokens name that list alone.
+	episodePage := fixture.list(t, &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, Limit: 1})
+	if got := adminCommentPublicIDs(episodePage.Comments); !slices.Equal(got, []string{second.PublicID}) {
+		t.Fatalf("first episode page = %v, want %s", got, second.PublicID)
+	}
+	episodeNext := fixture.list(t, &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, Limit: 1, Token: episodePage.NextToken})
+	if got := adminCommentPublicIDs(episodeNext.Comments); !slices.Equal(got, []string{first.PublicID}) {
+		t.Fatalf("second episode page = %v, want %s", got, first.PublicID)
+	}
+	episodeBack := fixture.list(t, &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, Limit: 1, Token: episodeNext.PreviousToken})
+	if got := adminCommentPublicIDs(episodeBack.Comments); !slices.Equal(got, []string{second.PublicID}) {
+		t.Fatalf("episode page back = %v, want %s", got, second.PublicID)
+	}
+
+	recovery := pagination.NewListKey("created_at_desc").
+		Value("episode_public_id", fixture.episode.PublicID).
+		EncodeTimeUUIDRecovery(pagination.Backward, time.Now().UTC(), uuid.Must(uuid.NewV7()))
+	for _, test := range []struct {
+		token string
+		req   *publiraadminv1.ListCommentsRequest
+	}{
+		{token: episodePage.NextToken, req: &publiraadminv1.ListCommentsRequest{}},
+		{token: episodePage.NextToken, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: otherEpisode.PublicID}},
+		{token: episodePage.NextToken, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, Status: "pending"}},
+		{token: episodePage.NextToken, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, SeriesPublicId: fixture.series.PublicID}},
+		{token: episodePage.NextToken, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID, AuthorPublicId: "FLTAUTHOR01"}},
+		{token: page.NextToken, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: fixture.episode.PublicID}},
+		{token: recovery, req: &publiraadminv1.ListCommentsRequest{EpisodePublicId: otherEpisode.PublicID}},
+	} {
+		test.req.Tenant = fixture.admin.tenantContext()
+		test.req.Token = test.token
+		if _, err := env.commentClient().ListComments(context.Background(), newAdminDBRequest(fixture.admin, test.req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListComments %+v with another filter's token error = %v, want invalid_argument", test.req, err)
+		}
 	}
 }
 

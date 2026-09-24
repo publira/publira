@@ -13,6 +13,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -113,15 +114,15 @@ func (s *adminServer) ListTenantUsers(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	keyword := strings.TrimSpace(req.Msg.Query)
+	listKey := pagination.NewListKey("created_at_desc").Value("query", keyword)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
-
-	keyword := strings.TrimSpace(req.Msg.Query)
 
 	rows, err := s.tenantUserPage(ctx, tenant.ID, keyword, keys, cursor.Direction, limit+1)
 	if err != nil {
@@ -143,11 +144,11 @@ func (s *adminServer) ListTenantUsers(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -155,9 +156,9 @@ func (s *adminServer) ListTenantUsers(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

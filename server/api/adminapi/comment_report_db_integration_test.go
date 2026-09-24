@@ -12,6 +12,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
@@ -373,6 +374,42 @@ func TestDBAdminListCommentReportsFiltersAndPages(t *testing.T) {
 	back := fixture.listReports(t, &publiraadminv1.ListCommentReportsRequest{Limit: 1, Token: next.PreviousToken})
 	if got := commentReportIDs(back.Reports); !slices.Equal(got, []string{third.String()}) {
 		t.Fatalf("page back = %v, want %s", got, third)
+	}
+
+	// A filtered queue pages within itself, and its tokens name that queue alone.
+	openPage := fixture.listReports(t, &publiraadminv1.ListCommentReportsRequest{Status: "open", Limit: 1})
+	if got := commentReportIDs(openPage.Reports); !slices.Equal(got, []string{third.String()}) {
+		t.Fatalf("first open page = %v, want %s", got, third)
+	}
+	openNext := fixture.listReports(t, &publiraadminv1.ListCommentReportsRequest{Status: "open", Limit: 1, Token: openPage.NextToken})
+	if got := commentReportIDs(openNext.Reports); !slices.Equal(got, []string{second.String()}) {
+		t.Fatalf("second open page = %v, want %s", got, second)
+	}
+	openBack := fixture.listReports(t, &publiraadminv1.ListCommentReportsRequest{Status: "open", Limit: 1, Token: openNext.PreviousToken})
+	if got := commentReportIDs(openBack.Reports); !slices.Equal(got, []string{third.String()}) {
+		t.Fatalf("open page back = %v, want %s", got, third)
+	}
+
+	recovery := pagination.NewListKey("created_at_desc").
+		Value("status", "open").
+		EncodeTimeUUIDRecovery(pagination.Backward, time.Now().UTC(), uuid.Must(uuid.NewV7()))
+	for _, test := range []struct {
+		token  string
+		status string
+	}{
+		{token: openPage.NextToken, status: ""},
+		{token: openPage.NextToken, status: "resolved"},
+		{token: page.NextToken, status: "open"},
+		{token: recovery, status: "rejected"},
+	} {
+		_, err := env.commentClient().ListCommentReports(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ListCommentReportsRequest{
+			Tenant: fixture.admin.tenantContext(),
+			Status: test.status,
+			Token:  test.token,
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListCommentReports status=%q with another filter's token error = %v, want invalid_argument", test.status, err)
+		}
 	}
 }
 

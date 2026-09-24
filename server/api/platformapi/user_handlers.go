@@ -14,6 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -206,15 +207,7 @@ func (s *platformServer) ListEndUsers(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys pagination.TimeUUIDKeys
-	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-		}
-	}
 
-	// Build the filter parameters.
 	var createdAfterFilter sql.NullTime
 	if req.Msg.CreatedAfter != "" {
 		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedAfter)
@@ -241,6 +234,19 @@ func (s *platformServer) ListEndUsers(
 		status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 		tenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
 	}
+	listKey := pagination.NewListKey("created_at_desc").
+		Time("created_after", createdAfterFilter.Time, createdAfterFilter.Valid).
+		Time("created_before", createdBeforeFilter.Time, createdBeforeFilter.Valid).
+		Value("status", filterStatus).
+		Values("public_ids", filters.publicIDs).
+		Value("tenant_public_id", filterTenantPublicID)
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, rpcerrors.NewPageTokenError(err)
+		}
+	}
 
 	users, err := s.endUserPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
@@ -258,11 +264,11 @@ func (s *platformServer) ListEndUsers(
 	case len(users) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, users[0].createdAt, users[0].id)
+			resp.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, users[0].createdAt, users[0].id)
 		}
 		if hasNext {
 			last := users[len(users)-1]
-			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			resp.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -270,9 +276,9 @@ func (s *platformServer) ListEndUsers(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		resp.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(resp), nil

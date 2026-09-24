@@ -10,6 +10,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const (
@@ -93,6 +95,15 @@ func NewErrorInfoErrorWithMetadata(code connect.Code, err error, reason string, 
 		Reason:   reason,
 		Metadata: metadata,
 	})
+}
+
+// NewPageTokenError maps a pagination decoding error to invalid_argument
+// without echoing the token back.
+func NewPageTokenError(err error) *connect.Error {
+	if errors.Is(err, pagination.ErrListMismatch) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another filter"))
+	}
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 }
 
 // NewRateLimitedError is the one answer every exhausted allowance gives. It

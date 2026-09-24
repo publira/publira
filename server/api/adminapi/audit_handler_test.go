@@ -393,6 +393,45 @@ func TestListAuditLogsInvalidToken(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestListAuditLogsRejectsAnotherFiltersToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	since := pagination.NewListKey("created_at_desc").
+		Value("action", "series_created").
+		Time("created_from", time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC), true)
+	boundary := since.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+
+	tests := map[string]struct {
+		token                                 string
+		actor, action, createdFrom, createdTo string
+	}{
+		"another action":       {token: boundary, action: "series_deleted", createdFrom: "2026-03-01T00:00:00Z"},
+		"another created_from": {token: boundary, action: "series_created", createdFrom: "2026-03-02T00:00:00Z"},
+		"a created_to added":   {token: boundary, action: "series_created", createdFrom: "2026-03-01T00:00:00Z", createdTo: "2026-04-01T00:00:00Z"},
+		"an actor added":       {token: boundary, actor: "USER000001", action: "series_created", createdFrom: "2026-03-01T00:00:00Z"},
+		"no filter":            {token: boundary},
+		"a recovery token":     {token: since.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID), action: "series_deleted", createdFrom: "2026-03-01T00:00:00Z"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newAuditLogClient(t, tenantID, uuid.Must(uuid.NewV7()), boundaryAt)
+
+			req := newAuditLogRequest(tenantID, sessionToken)
+			req.Msg.ActorUserPublicId = tt.actor
+			req.Msg.Action = tt.action
+			req.Msg.CreatedFrom = tt.createdFrom
+			req.Msg.CreatedTo = tt.createdTo
+			req.Msg.Token = tt.token
+			_, err := client.ListAuditLogs(context.Background(), req)
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListAuditLogs error = %v, want invalid_argument for another filter", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())

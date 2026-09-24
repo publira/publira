@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -604,6 +605,96 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 	back := env.listComments(t, tenant, episode.PublicID, 2, page.PreviousToken)
 	if got := commentPublicIDs(back.Comments); len(got) != 2 || got[0] != newestFirst[2] {
 		t.Fatalf("previous page = %v, want the page before the last", got)
+	}
+}
+
+// A comment token names one list of one episode.
+func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
+	fixture := newCommentFixture(t, "TOK")
+	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
+	other := env.PG.SeedEpisode(t, tenant.ID, fixture.series.ID, testutil.EpisodeSeed{
+		PublicID: "TOKEPISODE2",
+		Title:    "Another episode",
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	env.setCommentMode(t, tenant.ID, "immediate")
+	env.mustPostComment(t, tenant, member, episode.PublicID, "The first published comment.")
+	env.mustPostComment(t, tenant, member, episode.PublicID, "The second published comment.")
+	env.setCommentMode(t, tenant.ID, "approval_required")
+	env.mustPostComment(t, tenant, member, episode.PublicID, "The first pending comment.")
+	env.mustPostComment(t, tenant, member, episode.PublicID, "The second pending comment.")
+
+	public := env.listComments(t, tenant, episode.PublicID, 1, "")
+	if public.NextToken == "" {
+		t.Fatal("public list has no next_token, want a second page")
+	}
+	mine, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Limit:           1,
+	}, tokenFor(t, tenant, member)))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeComments: %v", err)
+	}
+	if mine.Msg.NextToken == "" {
+		t.Fatal("own list has no next_token, want a second page")
+	}
+	mineNext, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Limit:           1,
+		Token:           mine.Msg.NextToken,
+	}, tokenFor(t, tenant, member)))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeComments next page: %v", err)
+	}
+	if len(mineNext.Msg.Comments) != 1 || mineNext.Msg.Comments[0].PublicId == mine.Msg.Comments[0].PublicId {
+		t.Fatalf("own second page = %v, want the other pending comment", myCommentPublicIDs(mineNext.Msg.Comments))
+	}
+
+	recovery := pagination.NewListKey("created_at_desc").
+		Value("episode_public_id", episode.PublicID).
+		EncodeTimeUUIDRecovery(pagination.Backward, time.Now().UTC(), uuid.Must(uuid.NewV7()))
+	// The two lists of one episode hold different rows, so neither takes the
+	// other's token.
+	if _, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Token:           mine.Msg.NextToken,
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListEpisodeComments with the own list's token error = %v, want invalid_argument", err)
+	}
+	if _, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+		Tenant:          tenantContext(tenant),
+		EpisodePublicId: episode.PublicID,
+		Token:           public.NextToken,
+	}, tokenFor(t, tenant, member))); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListMyEpisodeComments with the public list's token error = %v, want invalid_argument", err)
+	}
+
+	for name, token := range map[string]string{
+		"public boundary": public.NextToken,
+		"own boundary":    mine.Msg.NextToken,
+		"recovery":        recovery,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+				Tenant:          tenantContext(tenant),
+				EpisodePublicId: other.PublicID,
+				Token:           token,
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("ListEpisodeComments on another episode error = %v, want invalid_argument", err)
+			}
+			_, err = env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+				Tenant:          tenantContext(tenant),
+				EpisodePublicId: other.PublicID,
+				Token:           token,
+			}, tokenFor(t, tenant, member)))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("ListMyEpisodeComments on another episode error = %v, want invalid_argument", err)
+			}
+		})
 	}
 }
 

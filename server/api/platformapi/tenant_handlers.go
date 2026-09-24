@@ -84,18 +84,20 @@ func (s *platformServer) ListTenants(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys pagination.TimeUUIDKeys
-	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-		}
-	}
-
-	// Build the filter parameters.
 	filterName := strings.TrimSpace(req.Msg.Name)
 	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
 	filterStatus := strings.TrimSpace(req.Msg.Status)
+	listKey := pagination.NewListKey("created_at_desc").
+		Value("name", filterName).
+		Value("public_id", filterPublicID).
+		Value("status", filterStatus)
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, rpcerrors.NewPageTokenError(err)
+		}
+	}
 
 	tenants, err := s.tenantPage(ctx, filterName, filterPublicID, filterStatus, keys, cursor.Direction, limit+1)
 	if err != nil {
@@ -114,16 +116,16 @@ func (s *platformServer) ListTenants(
 	case len(tenants) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, tenants[0].CreatedAt, tenants[0].ID)
+			resp.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, tenants[0].CreatedAt, tenants[0].ID)
 		}
 		if hasNext {
 			last := tenants[len(tenants)-1]
-			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+			resp.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
 		}
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		resp.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -497,11 +499,12 @@ func (s *platformServer) ListTenantMembers(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	listKey := pagination.NewListKey("created_at_desc").Value("tenant_public_id", tenantPublicID)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = pagination.DecodeTimeUUID(cursor)
+		keys, err = listKey.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, rpcerrors.NewPageTokenError(err)
 		}
 	}
 
@@ -531,11 +534,11 @@ func (s *platformServer) ListTenantMembers(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].UserID)
+			resp.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].UserID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.UserID)
+			resp.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.UserID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -543,9 +546,9 @@ func (s *platformServer) ListTenantMembers(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		resp.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return connect.NewResponse(resp), nil
 }

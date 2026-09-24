@@ -297,3 +297,35 @@ func TestListTenantUsersRejectsBrokenToken(t *testing.T) {
 
 	assertExpectations(t, mock)
 }
+
+func TestListTenantUsersRejectsAnotherQueryToken(t *testing.T) {
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	alice := pagination.NewListKey("created_at_desc").Value("query", "alice")
+
+	tests := map[string]struct {
+		token string
+		query string
+	}{
+		"another query":                {token: alice.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID), query: "bob"},
+		"no query":                     {token: alice.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)},
+		"an unfiltered token":          {token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID), query: "alice"},
+		"a query that spells a filter": {token: alice.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID), query: "alice+status:active"},
+		"a recovery token":             {token: alice.EncodeTimeUUIDRecovery(pagination.Backward, boundaryAt, boundaryID), query: "bob"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newTenantUserClient(t, tenantID, uuid.Must(uuid.NewV7()), boundaryAt)
+
+			req := newTenantUserRequest(tenantID, sessionToken)
+			req.Msg.Query = tt.query
+			req.Msg.Token = tt.token
+			_, err := client.ListTenantUsers(context.Background(), req)
+			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
+				t.Fatalf("ListTenantUsers error = %v, want invalid_argument for another filter", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
