@@ -8,6 +8,7 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
@@ -62,23 +63,18 @@ const SeriesStatusFilter = async ({
 
   return (
     <Field className="w-52">
-      <FieldLabel htmlFor="series-status-filter">
-        {t("admin.series.filter.status")}
-      </FieldLabel>
+      <FieldLabel>{t("admin.series.filter.status")}</FieldLabel>
       <FieldContent>
-        <select
-          className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
+        <Select
           defaultValue={filters.status}
-          id="series-status-filter"
+          items={[
+            { label: t("admin.series.filter.status_all"), value: "" },
+            { label: t("admin.series.status.ongoing"), value: "ongoing" },
+            { label: t("admin.series.status.completed"), value: "completed" },
+            { label: t("admin.series.status.hiatus"), value: "hiatus" },
+          ]}
           name="status"
-        >
-          <option value="">{t("admin.series.filter.status_all")}</option>
-          <option value="ongoing">{t("admin.series.status.ongoing")}</option>
-          <option value="completed">
-            {t("admin.series.status.completed")}
-          </option>
-          <option value="hiatus">{t("admin.series.status.hiatus")}</option>
-        </select>
+        />
       </FieldContent>
     </Field>
   );
@@ -95,21 +91,18 @@ const SeriesAgeRatingFilter = async ({
 
   return (
     <Field className="w-52">
-      <FieldLabel htmlFor="series-age-rating-filter">
-        {t("admin.series.filter.age_rating")}
-      </FieldLabel>
+      <FieldLabel>{t("admin.series.filter.age_rating")}</FieldLabel>
       <FieldContent>
-        <select
-          className="flex h-10 w-full rounded-control border border-input bg-background px-3 py-2 text-sm text-foreground"
+        <Select
           defaultValue={filters.ageRating}
-          id="series-age-rating-filter"
+          items={[
+            { label: t("admin.series.filter.age_rating_all"), value: "" },
+            { label: t("admin.series.age_rating.all"), value: "all" },
+            { label: t("admin.series.age_rating.r15"), value: "r15" },
+            { label: t("admin.series.age_rating.r18"), value: "r18" },
+          ]}
           name="age_rating"
-        >
-          <option value="">{t("admin.series.filter.age_rating_all")}</option>
-          <option value="all">{t("admin.series.age_rating.all")}</option>
-          <option value="r15">{t("admin.series.age_rating.r15")}</option>
-          <option value="r18">{t("admin.series.age_rating.r18")}</option>
-        </select>
+        />
       </FieldContent>
     </Field>
   );

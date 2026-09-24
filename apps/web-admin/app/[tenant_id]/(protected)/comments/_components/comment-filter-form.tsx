@@ -2,6 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -11,7 +12,6 @@ import { getMessagesFor } from "#lib/messages";
 import type { CommentFilters } from "../_lib/search-params";
 import { COMMENT_STATUSES } from "../comment-types";
 import { commentStatusLabel } from "./comment-status-label";
-import { CommentStatusSelect } from "./comment-status-select";
 
 interface CommentFilterFormProps {
   filters: CommentFilters;
@@ -79,10 +79,20 @@ export const CommentFilterForm = async ({
         />
         <input name="report_token" type="hidden" value={filters.reportToken} />
 
-        <CommentStatusSelect
-          defaultValue={filters.status}
-          options={await statusOptions(locale)}
-        />
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.comments.filter.status" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              defaultValue={filters.status}
+              items={await statusOptions(locale)}
+              name="status"
+            />
+          </FieldContent>
+        </Field>
 
         <Field>
           <FieldLabel>

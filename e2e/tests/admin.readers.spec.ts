@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { signInAsSeedAdmin } from "../src/admin";
+import { selectOption, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import {
   READER_MODERATION_DELETE,
@@ -55,9 +55,11 @@ test.describe("web-admin readers", () => {
     );
 
     // The search box keeps what was typed, so narrowing by state keeps it too.
-    await page
-      .getByRole("combobox", { name: "Status" })
-      .selectOption("suspended");
+    await selectOption(
+      page,
+      page.getByRole("combobox", { name: "Status" }),
+      "Suspended"
+    );
     await page.getByRole("button", { name: "Apply" }).click();
 
     await expect(page).toHaveURL(/[?&]status=suspended/u);

@@ -5,6 +5,7 @@ import { expect, test } from "@playwright/test";
 import {
   createLabelViaUi,
   selectComboboxOption,
+  selectOption,
   signInAsAdmin,
   signInAsSeedAdmin,
 } from "../src/admin";
@@ -70,7 +71,7 @@ const auditTargetIds = async (page: Page): Promise<string[]> => {
 };
 
 const auditFilterForm = (page: Page) => ({
-  action: page.getByLabel("Action", { exact: true }),
+  action: page.getByRole("combobox", { name: "Action" }),
   actor: page.getByRole("combobox", { name: "Actor" }),
   apply: page.getByRole("button", { name: "Apply" }),
   from: page.getByLabel("From", { exact: true }),
@@ -252,7 +253,7 @@ test.describe("admin reporting screens", () => {
     ]);
 
     // Narrowed again by action.
-    await form.action.selectOption("label_updated");
+    await selectOption(page, form.action, "Label updated");
     await form.apply.click();
     await page.waitForURL(/[?&]action=label_updated/u);
 
@@ -270,7 +271,7 @@ test.describe("admin reporting screens", () => {
     ).toBeVisible();
     await expect(form.from).toHaveValue(REPORTING_AUDIT.singleDay);
     await expect(form.to).toHaveValue(REPORTING_AUDIT.singleDay);
-    await expect(form.action).toHaveValue("label_updated");
+    await expect(form.action).toHaveText("Label updated");
 
     // The actor filter, picked from the combobox: the same day without the
     // one entry the member made on it.
@@ -336,7 +337,7 @@ test.describe("admin reporting screens", () => {
 
     const form = auditFilterForm(page);
     const actorChipRemove = page.getByRole("button", { name: "Remove actor" });
-    await expect(form.action).toHaveValue("label_updated");
+    await expect(form.action).toHaveText("Label updated");
     await expect(actorChipRemove).toBeVisible();
 
     // Reset is a link rather than a submit button. A GET form serializes its
@@ -347,7 +348,7 @@ test.describe("admin reporting screens", () => {
     await expect(page).toHaveURL(auditLogsUrl());
     await expect(form.from).toHaveValue("");
     await expect(form.to).toHaveValue("");
-    await expect(form.action).toHaveValue("");
+    await expect(form.action).toHaveText("All");
     // The actor goes through the chip rather than the combobox input, which
     // holds the search text and is empty either way.
     await expect(actorChipRemove).toHaveCount(0);
@@ -384,7 +385,7 @@ test.describe("admin reporting screens", () => {
     );
 
     const form = auditFilterForm(page);
-    await expect(form.action).toHaveValue("");
+    await expect(form.action).toHaveText("All");
     await expect(form.from).toHaveValue("");
     await expect(form.to).toHaveValue("");
 

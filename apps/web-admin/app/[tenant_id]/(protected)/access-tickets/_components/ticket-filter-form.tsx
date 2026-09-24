@@ -2,6 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -9,7 +10,6 @@ import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 
 import type { AccessTicketFilters } from "../_lib/search-params";
-import { TicketFilterActiveSelect } from "./ticket-filter-active-select";
 
 interface TicketFilterFormProps {
   filters: AccessTicketFilters;
@@ -62,7 +62,29 @@ export const TicketFilterForm = async ({
           </FieldContent>
         </Field>
 
-        <TicketFilterActiveSelect defaultValue={filters.active ? "1" : ""} />
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.access_tickets.filter.status" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              defaultValue={filters.active ? "1" : ""}
+              items={[
+                {
+                  label: t("admin.access_tickets.filter.status_all"),
+                  value: "",
+                },
+                {
+                  label: t("admin.access_tickets.filter.status_active_only"),
+                  value: "1",
+                },
+              ]}
+              name="active"
+            />
+          </FieldContent>
+        </Field>
 
         <div className="flex items-end gap-2">
           <Button type="submit">

@@ -2,6 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -11,7 +12,6 @@ import { getMessagesFor } from "#lib/messages";
 import type { ReaderFilters } from "../_lib/search-params";
 import { READER_STATUSES } from "../reader-types";
 import { readerStatusLabel } from "./reader-status-label";
-import { ReaderStatusSelect } from "./reader-status-select";
 
 interface ReaderFilterFormProps {
   filters: ReaderFilters;
@@ -59,10 +59,20 @@ export const ReaderFilterForm = async ({
         </FieldContent>
       </Field>
 
-      <ReaderStatusSelect
-        defaultValue={filters.status}
-        options={await statusOptions(locale)}
-      />
+      <Field>
+        <FieldLabel>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.readers.filter.status" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Select
+            defaultValue={filters.status}
+            items={await statusOptions(locale)}
+            name="status"
+          />
+        </FieldContent>
+      </Field>
 
       <div className="flex items-end gap-2">
         <Button type="submit">

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { signInAsSeedAdmin } from "../src/admin";
+import { selectOption, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import {
   CONTACT_INBOX_FROM_GUEST,
@@ -76,9 +76,11 @@ test.describe("web-admin contact inbox", () => {
       fromGuest.getByRole("link", { exact: true, name: "No subject" })
     ).toBeVisible();
 
-    await page
-      .getByRole("combobox", { name: "Status" })
-      .selectOption("handled");
+    await selectOption(
+      page,
+      page.getByRole("combobox", { name: "Status" }),
+      "Handled"
+    );
     await page.getByRole("button", { name: "Apply" }).click();
 
     await expect(page).toHaveURL(/[?&]status=handled/u);
