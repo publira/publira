@@ -513,6 +513,8 @@ type PlatformPolicyConfig struct {
 	Revision                             int64     `json:"revision"`
 	CreatedAt                            time.Time `json:"created_at"`
 	UpdatedAt                            time.Time `json:"updated_at"`
+	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
+	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -622,6 +624,9 @@ type Purchase struct {
 	StripePaymentIntentID   sql.NullString `json:"stripe_payment_intent_id"`
 	RefundedAmount          sql.NullInt32  `json:"refunded_amount"`
 	RefundedAt              sql.NullTime   `json:"refunded_at"`
+	Store                   sql.NullString `json:"store"`
+	StoreTransactionID      sql.NullString `json:"store_transaction_id"`
+	IsTest                  bool           `json:"is_test"`
 }
 
 type RoyaltyStatement struct {
@@ -749,6 +754,18 @@ type SeriesTag struct {
 	SeriesID  uuid.UUID `json:"series_id"`
 	TagID     uuid.UUID `json:"tag_id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type StorePurchaseIntent struct {
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	UserID             uuid.UUID     `json:"user_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Price              int32         `json:"price"`
+	ProductID          string        `json:"product_id"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	CreatedAt          time.Time     `json:"created_at"`
+	ConsumedAt         sql.NullTime  `json:"consumed_at"`
 }
 
 type Tag struct {

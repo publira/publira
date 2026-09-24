@@ -2320,6 +2320,74 @@ func (q *Queries) ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPu
 	return i, err
 }
 
+const ProjectPurchaseContentEventByID = `-- name: ProjectPurchaseContentEventByID :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    $1,
+    p.tenant_id,
+    'purchase',
+    p.user_id,
+    e.series_id,
+    p.episode_id,
+    'purchases',
+    p.id,
+    '{}'::jsonb,
+    p.purchased_at
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+WHERE p.tenant_id = $2
+    AND p.id = $3
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id, episode_id, debounce_bucket, rating_score, source_table, source_id, payload, occurred_at, created_at
+`
+
+type ProjectPurchaseContentEventByIDParams struct {
+	ID         uuid.UUID `json:"id"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PurchaseID uuid.UUID `json:"purchase_id"`
+}
+
+// Projects a store purchase the way ProjectPurchaseContentEvent projects a
+// Stripe one, found by the purchase's own ID since a store purchase has no
+// Checkout Session.
+func (q *Queries) ProjectPurchaseContentEventByID(ctx context.Context, arg ProjectPurchaseContentEventByIDParams) (ContentEvent, error) {
+	row := q.db.QueryRowContext(ctx, ProjectPurchaseContentEventByID, arg.ID, arg.TenantID, arg.PurchaseID)
+	var i ContentEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.UserID,
+		&i.AnonymousID,
+		&i.ActorKey,
+		&i.SeriesID,
+		&i.EpisodeID,
+		&i.DebounceBucket,
+		&i.RatingScore,
+		&i.SourceTable,
+		&i.SourceID,
+		&i.Payload,
+		&i.OccurredAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const UpsertContentDailyStats = `-- name: UpsertContentDailyStats :one
 INSERT INTO content_daily_stats (
     id,

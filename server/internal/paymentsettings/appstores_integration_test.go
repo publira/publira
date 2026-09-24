@@ -474,3 +474,60 @@ func pkcs8PEM(t *testing.T, key any) string {
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
 }
+
+func TestAppStoresLoadTheCredentialsOfAReadyStoreOnly(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "STRTNT000001", "store-a.example.com", "Store Tenant A")
+	setAppIdentities(t, ctx, pg, tenant.ID)
+	stores := newIntegrationAppStores(t, pg.DB)
+
+	if _, err := stores.LoadAppStoreCredentials(ctx, tenant.ID); !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		t.Fatalf("LoadAppStoreCredentials before saving = %v, want ErrStoreNotReady", err)
+	}
+	if _, err := stores.LoadGooglePlayCredentials(ctx, tenant.ID); !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		t.Fatalf("LoadGooglePlayCredentials before saving = %v, want ErrStoreNotReady", err)
+	}
+
+	appStoreKey := appStorePrivateKeyPEM(t)
+	serviceAccountKey := googlePlayServiceAccountKey(t)
+	if _, err := stores.Update(ctx, tenant.ID, paymentsettings.StoreUpdateInput{
+		Route: paymentsettings.RouteStore,
+		AppStore: paymentsettings.AppStoreUpdate{
+			Enabled:              true,
+			IssuerID:             integrationIssuerID,
+			KeyID:                integrationKeyID,
+			PrivateKey:           appStoreKey,
+			PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		},
+		GooglePlay: paymentsettings.GooglePlayUpdate{
+			Enabled:                     false,
+			ServiceAccountKey:           serviceAccountKey,
+			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		},
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	appStore, err := stores.LoadAppStoreCredentials(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("LoadAppStoreCredentials: %v", err)
+	}
+	want := paymentsettings.AppStoreCredentials{
+		IssuerID:         integrationIssuerID,
+		KeyID:            integrationKeyID,
+		PrivateKey:       appStoreKey,
+		BundleIdentifier: integrationBundleIdentifier,
+	}
+	if appStore != want {
+		t.Fatal("LoadAppStoreCredentials did not answer the saved key and the app's bundle identifier")
+	}
+	// Stored but switched off: a disabled store verifies nothing.
+	if _, err := stores.LoadGooglePlayCredentials(ctx, tenant.ID); !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		t.Fatalf("LoadGooglePlayCredentials of a disabled store = %v, want ErrStoreNotReady", err)
+	}
+}

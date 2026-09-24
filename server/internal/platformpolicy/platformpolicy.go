@@ -47,6 +47,9 @@ type Policy struct {
 	MailRequestsPerAddress    HourDay
 	MailRequestsPerSource     HourDay
 	Community                 CommunityLimits
+	// StorePurchaseConfirmation bounds the store transactions one reader may
+	// hand the server, each of which it verifies with the store.
+	StorePurchaseConfirmation MinuteDay
 }
 
 // MaxDuplicateCommentWindow bounds the duplicate-comment window. Past a week
@@ -70,6 +73,7 @@ func Defaults() Policy {
 			ContactMessagePerClient:  HourDay{PerHour: 10, PerDay: 30},
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: 30, PerDay: 300},
 		},
+		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
 	}
 }
 
@@ -91,6 +95,7 @@ func (p Policy) Validate() error {
 		{"community_limit_defaults.contact_message_per_account", p.Community.ContactMessagePerAccount.PerHour, p.Community.ContactMessagePerAccount.PerDay},
 		{"community_limit_defaults.contact_message_per_client", p.Community.ContactMessagePerClient.PerHour, p.Community.ContactMessagePerClient.PerDay},
 		{"community_limit_defaults.viewer_preferences", p.Community.ViewerPreferencesUpdate.PerMinute, p.Community.ViewerPreferencesUpdate.PerDay},
+		{"store_purchase_confirmation", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
 	} {
 		if limit.short < 1 {
 			return fmt.Errorf("%s must allow at least 1 in its shorter window, got %d", limit.name, limit.short)
@@ -122,6 +127,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 			ContactMessagePerClient:  HourDay{PerHour: int(config.ContactMessageLimitPerClientPerHour), PerDay: int(config.ContactMessageLimitPerClientPerDay)},
 			ViewerPreferencesUpdate:  MinuteDay{PerMinute: int(config.ViewerPreferencesLimitPerMinute), PerDay: int(config.ViewerPreferencesLimitPerDay)},
 		},
+		StorePurchaseConfirmation: MinuteDay{PerMinute: int(config.StorePurchaseConfirmLimitPerMinute), PerDay: int(config.StorePurchaseConfirmLimitPerDay)},
 	}
 }
 
@@ -151,6 +157,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ContactMessageLimitPerClientPerDay:   int32(community.ContactMessagePerClient.PerDay),
 		ViewerPreferencesLimitPerMinute:      int32(community.ViewerPreferencesUpdate.PerMinute),
 		ViewerPreferencesLimitPerDay:         int32(community.ViewerPreferencesUpdate.PerDay),
+		StorePurchaseConfirmLimitPerMinute:   int32(policy.StorePurchaseConfirmation.PerMinute),
+		StorePurchaseConfirmLimitPerDay:      int32(policy.StorePurchaseConfirmation.PerDay),
 	}
 }
 

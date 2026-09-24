@@ -39,6 +39,8 @@ INSERT INTO platform_policy_config (
         contact_message_limit_per_client_per_day,
         viewer_preferences_limit_per_minute,
         viewer_preferences_limit_per_day,
+        store_purchase_confirm_limit_per_minute,
+        store_purchase_confirm_limit_per_day,
         updated_at
     )
 VALUES (
@@ -63,6 +65,8 @@ VALUES (
         sqlc.arg('contact_message_limit_per_client_per_day'),
         sqlc.arg('viewer_preferences_limit_per_minute'),
         sqlc.arg('viewer_preferences_limit_per_day'),
+        sqlc.arg('store_purchase_confirm_limit_per_minute'),
+        sqlc.arg('store_purchase_confirm_limit_per_day'),
         NOW()
     )
 RETURNING *;
@@ -91,6 +95,8 @@ SET mfa_required_for_tenant_admin = sqlc.arg('mfa_required_for_tenant_admin'),
     contact_message_limit_per_client_per_day = sqlc.arg('contact_message_limit_per_client_per_day'),
     viewer_preferences_limit_per_minute = sqlc.arg('viewer_preferences_limit_per_minute'),
     viewer_preferences_limit_per_day = sqlc.arg('viewer_preferences_limit_per_day'),
+    store_purchase_confirm_limit_per_minute = sqlc.arg('store_purchase_confirm_limit_per_minute'),
+    store_purchase_confirm_limit_per_day = sqlc.arg('store_purchase_confirm_limit_per_day'),
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE

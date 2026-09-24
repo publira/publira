@@ -1241,9 +1241,72 @@ message ProcessPaymentWebhookRequest {
 
 message ProcessPaymentWebhookResponse {}
 
+// The store an app buys through with the store's own in-app purchase.
+enum InAppPurchaseStore {
+  IN_APP_PURCHASE_STORE_UNSPECIFIED = 0;
+  IN_APP_PURCHASE_STORE_APP_STORE = 1;
+  IN_APP_PURCHASE_STORE_GOOGLE_PLAY = 2;
+}
+
+// Opens a purchase through the App Store's or Google Play's in-app purchase,
+// for a tenant whose app sells through the store. The app buys `product_id`
+// with `intent_id` as the transaction's account token (`appAccountToken` on
+// iOS, `obfuscatedAccountId` on Android), which is how ConfirmStorePurchase
+// learns which episode the transaction pays for. The intent keeps the price and
+// the reading period the episode is sold with at this moment, and the purchase
+// is recorded on those terms.
+//
+// Signed-in readers only. An episode the app may not show is not_found; one it
+// may not sell, a free one, a tenant whose app does not sell through the
+// store, and a `store` that is not ready are failed_precondition, and an
+// episode the reader already holds is already_exists. Asking again for the
+// same episode at the same price answers the same intent.
+message StartStorePurchaseRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  // The store the app is about to charge through. Required.
+  InAppPurchaseStore store = 3;
+}
+
+message StartStorePurchaseResponse {
+  string intent_id = 1;
+  // The store product the episode's price is sold as, such as `episode_300`.
+  string product_id = 2;
+}
+
+// Hands a transaction the store charged to the server, which verifies it with
+// the store and records it as a purchase.
+//
+// The transaction's account token has to name an open intent the caller
+// opened, for the product the transaction bought, in the tenant's own app:
+// anything else is invalid_argument, or permission_denied for another reader's
+// intent, and creates nothing. A transaction the store has not settled (Ask to
+// Buy, a Play pending purchase) is failed_precondition, and a store the server
+// cannot reach is unavailable; the app confirms again later either way.
+// Confirming a recorded transaction again answers the same purchase. Each
+// call spends the reader's allowance for store confirmations, and a reader past
+// it is resource_exhausted before the store is asked.
+message ConfirmStorePurchaseRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  InAppPurchaseStore store = 2;
+  // IN_APP_PURCHASE_STORE_APP_STORE: the JWS signed transaction StoreKit 2
+  // reports. IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the purchase token.
+  string transaction = 3;
+  // IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as,
+  // which the Google Play Developer API looks a purchase up by. Unused for the
+  // App Store, whose signed transaction names its product.
+  string product_id = 4;
+}
+
+message ConfirmStorePurchaseResponse {
+  MyPurchase purchase = 1;
+}
+
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
   // Lists only the authenticated reader's purchases in the requested tenant.
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}
+  rpc StartStorePurchase(StartStorePurchaseRequest) returns (StartStorePurchaseResponse) {}
+  rpc ConfirmStorePurchase(ConfirmStorePurchaseRequest) returns (ConfirmStorePurchaseResponse) {}
 }

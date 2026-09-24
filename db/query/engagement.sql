@@ -196,6 +196,44 @@ WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
+-- Projects a store purchase the way ProjectPurchaseContentEvent projects a
+-- Stripe one, found by the purchase's own ID since a store purchase has no
+-- Checkout Session.
+-- name: ProjectPurchaseContentEventByID :one
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    payload,
+    occurred_at
+)
+SELECT
+    sqlc.arg('id'),
+    p.tenant_id,
+    'purchase',
+    p.user_id,
+    e.series_id,
+    p.episode_id,
+    'purchases',
+    p.id,
+    '{}'::jsonb,
+    p.purchased_at
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = sqlc.arg('purchase_id')
+ON CONFLICT (tenant_id, source_table, source_id)
+WHERE source_id IS NOT NULL
+DO NOTHING
+RETURNING *;
+
 -- Projects one member's first completed read as the analytics event for that
 -- read. episode_reads stays the source of truth for the business state: its
 -- user, episode, and first read time are copied, and the owning series is

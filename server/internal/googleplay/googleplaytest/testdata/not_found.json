@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": 400,
+    "message": "The purchase token does not match the product ID.",
+    "errors": [
+      {
+        "message": "The purchase token does not match the product ID.",
+        "domain": "androidpublisher",
+        "reason": "purchaseTokenDoesNotMatchProductId",
+        "location": "token",
+        "locationType": "parameter"
+      }
+    ],
+    "status": "INVALID_ARGUMENT"
+  }
+}

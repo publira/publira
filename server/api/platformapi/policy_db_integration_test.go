@@ -40,6 +40,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerAccount = platformpolicy.HourDay{PerHour: 1, PerDay: 5}
 	policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 4, PerDay: 12}
 	policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 7, PerDay: 70}
+	policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 8, PerDay: 80}
 	return policy
 }
 

@@ -251,8 +251,12 @@ type PlatformPolicy struct {
 	// Mail such forms may cause for one origin, across every address and tenant.
 	MailRequestsPerSource  *HourDayLimit           `protobuf:"bytes,4,opt,name=mail_requests_per_source,json=mailRequestsPerSource,proto3" json:"mail_requests_per_source,omitempty"`
 	CommunityLimitDefaults *CommunityLimitDefaults `protobuf:"bytes,5,opt,name=community_limit_defaults,json=communityLimitDefaults,proto3" json:"community_limit_defaults,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// How often one reader may hand a store transaction to
+	// ConfirmStorePurchase, each of which the server verifies with the App Store
+	// or Google Play on the tenant's credentials and quota.
+	StorePurchaseConfirmation *MinuteDayLimit `protobuf:"bytes,6,opt,name=store_purchase_confirmation,json=storePurchaseConfirmation,proto3" json:"store_purchase_confirmation,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *PlatformPolicy) Reset() {
@@ -316,6 +320,13 @@ func (x *PlatformPolicy) GetMailRequestsPerSource() *HourDayLimit {
 func (x *PlatformPolicy) GetCommunityLimitDefaults() *CommunityLimitDefaults {
 	if x != nil {
 		return x.CommunityLimitDefaults
+	}
+	return nil
+}
+
+func (x *PlatformPolicy) GetStorePurchaseConfirmation() *MinuteDayLimit {
+	if x != nil {
+		return x.StorePurchaseConfirmation
 	}
 	return nil
 }
@@ -743,13 +754,14 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x0eepisode_rating\x18\x04 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\repisodeRating\x12`\n" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
-	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\xcd\x03\n" +
+	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\xb2\x04\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
 	"\x19mail_requests_per_address\x18\x03 \x01(\v2!.publira.platform.v1.HourDayLimitR\x16mailRequestsPerAddress\x12Z\n" +
 	"\x18mail_requests_per_source\x18\x04 \x01(\v2!.publira.platform.v1.HourDayLimitR\x15mailRequestsPerSource\x12e\n" +
-	"\x18community_limit_defaults\x18\x05 \x01(\v2+.publira.platform.v1.CommunityLimitDefaultsR\x16communityLimitDefaults\"\x1a\n" +
+	"\x18community_limit_defaults\x18\x05 \x01(\v2+.publira.platform.v1.CommunityLimitDefaultsR\x16communityLimitDefaults\x12c\n" +
+	"\x1bstore_purchase_confirmation\x18\x06 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x19storePurchaseConfirmation\"\x1a\n" +
 	"\x18GetPlatformPolicyRequest\"t\n" +
 	"\x19GetPlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +
@@ -815,25 +827,26 @@ var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	1,  // 7: publira.platform.v1.PlatformPolicy.mail_requests_per_address:type_name -> publira.platform.v1.HourDayLimit
 	1,  // 8: publira.platform.v1.PlatformPolicy.mail_requests_per_source:type_name -> publira.platform.v1.HourDayLimit
 	2,  // 9: publira.platform.v1.PlatformPolicy.community_limit_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
-	3,  // 10: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 11: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 12: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	12, // 13: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	12, // 14: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
-	12, // 15: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	4,  // 16: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
-	6,  // 17: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
-	8,  // 18: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
-	10, // 19: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
-	5,  // 20: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
-	7,  // 21: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
-	9,  // 22: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
-	11, // 23: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
-	20, // [20:24] is the sub-list for method output_type
-	16, // [16:20] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	0,  // 10: publira.platform.v1.PlatformPolicy.store_purchase_confirmation:type_name -> publira.platform.v1.MinuteDayLimit
+	3,  // 11: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 12: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 13: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	12, // 14: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	12, // 15: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
+	12, // 16: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	4,  // 17: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
+	6,  // 18: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
+	8,  // 19: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	10, // 20: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	5,  // 21: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
+	7,  // 22: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
+	9,  // 23: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	11, // 24: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	21, // [21:25] is the sub-list for method output_type
+	17, // [17:21] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_policy_proto_init() }

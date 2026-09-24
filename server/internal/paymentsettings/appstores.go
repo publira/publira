@@ -37,6 +37,9 @@ var (
 	ErrAppStoreCredentialsRequired   = errors.New("issuer ID, key ID, and private key are required when the App Store is enabled")
 	ErrInvalidServiceAccountKey      = errors.New("service account key must be the JSON key file of a service account")
 	ErrGooglePlayCredentialsRequired = errors.New("a service account key is required when Google Play is enabled")
+	// ErrStoreNotReady reports a store that is off, lacks its key, or has no
+	// app to sell in. Nothing is bought or verified through it.
+	ErrStoreNotReady = errors.New("the store is not ready")
 )
 
 var keyIDPattern = regexp.MustCompile(`^[A-Z0-9]{10}$`)
@@ -212,6 +215,62 @@ func (a *AppStores) RequireReadyStoreForRoute(ctx context.Context, tenantID uuid
 		return ErrStoreRouteRequiresReadyStore
 	}
 	return nil
+}
+
+// AppStoreCredentials are what the App Store Server API is called with on the
+// tenant's behalf. They are secret and are never logged or returned.
+type AppStoreCredentials struct {
+	IssuerID         string
+	KeyID            string
+	PrivateKey       string
+	BundleIdentifier string
+}
+
+// GooglePlayCredentials are what the Google Play Developer API is called with
+// on the tenant's behalf. They are secret and are never logged or returned.
+type GooglePlayCredentials struct {
+	ServiceAccountKey string
+	PackageName       string
+}
+
+// LoadAppStoreCredentials decrypts the tenant's App Store Connect API key. A
+// store that is not ready answers [ErrStoreNotReady], and a key that does not
+// decrypt the sentinel errors [IsUnavailable] recognizes.
+func (a *AppStores) LoadAppStoreCredentials(ctx context.Context, tenantID uuid.UUID) (AppStoreCredentials, error) {
+	current, err := a.load(ctx, tenantID, a.queries.GetTenantConfigByTenantID)
+	if err != nil {
+		return AppStoreCredentials{}, err
+	}
+	if !appStoreConfigFromRow(current.appStore, current.bundleIdentifier).Ready {
+		return AppStoreCredentials{}, ErrStoreNotReady
+	}
+	privateKey, err := decryptEnvelope(nullStringValue(current.appStore.PrivateKeyEncrypted), a.encryptor)
+	if err != nil {
+		return AppStoreCredentials{}, err
+	}
+	return AppStoreCredentials{
+		IssuerID:         nullStringValue(current.appStore.IssuerID),
+		KeyID:            nullStringValue(current.appStore.KeyID),
+		PrivateKey:       privateKey,
+		BundleIdentifier: current.bundleIdentifier,
+	}, nil
+}
+
+// LoadGooglePlayCredentials decrypts the tenant's Google Play service account
+// key, answering errors as [AppStores.LoadAppStoreCredentials] does.
+func (a *AppStores) LoadGooglePlayCredentials(ctx context.Context, tenantID uuid.UUID) (GooglePlayCredentials, error) {
+	current, err := a.load(ctx, tenantID, a.queries.GetTenantConfigByTenantID)
+	if err != nil {
+		return GooglePlayCredentials{}, err
+	}
+	if !googlePlayConfigFromRow(current.googlePlay, current.packageName).Ready {
+		return GooglePlayCredentials{}, ErrStoreNotReady
+	}
+	key, err := decryptEnvelope(nullStringValue(current.googlePlay.ServiceAccountKeyEncrypted), a.encryptor)
+	if err != nil {
+		return GooglePlayCredentials{}, err
+	}
+	return GooglePlayCredentials{ServiceAccountKey: key, PackageName: current.packageName}, nil
 }
 
 func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantAppStoreConfig, update AppStoreUpdate) (dbmodels.UpsertTenantAppStoreConfigParams, error) {

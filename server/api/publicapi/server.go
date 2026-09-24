@@ -48,6 +48,9 @@ type apiServer struct {
 	webPushKeys webPushPublicKeySource
 	// paymentProviders are the providers a tenant's payment settings may name.
 	paymentProviders *paymentprovider.Registry
+	// stores verify the transactions the app buys through the App Store and
+	// Google Play.
+	stores storeClients
 }
 
 type webPushPublicKeySource interface {
@@ -224,6 +227,7 @@ func newAPIServer(
 		reval:            revalidator,
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
 		paymentProviders: providers.Registry(),
+		stores:           defaultStoreClients(),
 	}
 }
 

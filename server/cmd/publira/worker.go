@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/fcmsettings"
+	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/logging"
@@ -177,7 +178,9 @@ func runWorker() int {
 		Mailer:    internalsmtp.NewClient(),
 		Renderer:  resolveEmailRenderer(logger),
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
-		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger}, invalidator))
+		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
+		invalidator))
 	if err != nil {
 		logger.Error("failed to start the outbox drain", "error", err)
 		return 1
@@ -233,6 +236,7 @@ func workerConfig(
 	pushHandlers outbox.PushHandlerConfig,
 	staffHandlers outbox.StaffNotificationHandlerConfig,
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
+	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	invalidator outbox.CacheInvalidator,
 ) outbox.Config {
 	emailHandlers.Logger = logger
@@ -256,6 +260,8 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
+	googlePlayHandlers.Logger = logger
+	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,
