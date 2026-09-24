@@ -41,15 +41,18 @@ const sealedCookie = (expiresAt: string): Promise<string> =>
  * The proxy only reads `nextUrl`, `url`, `headers`, and `cookies.get`, so a
  * `NextRequest` is more machinery than these cases need.
  */
-const request = (url: string, cookie?: string): NextRequest => {
+const request = (
+  url: string,
+  cookies: Readonly<Record<string, string>> = {}
+): NextRequest => {
   const nextUrl = Object.assign(new URL(url), {
     clone: () => new URL(url),
   });
   return {
     cookies: {
       get: (name: string) =>
-        name === COOKIE_NAME && cookie !== undefined
-          ? { name, value: cookie }
+        Object.hasOwn(cookies, name)
+          ? { name, value: cookies[name] }
           : undefined,
     },
     headers: new Headers({ host: new URL(url).host }),
@@ -124,7 +127,9 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/settings", "not-a-session")
+      request("https://shop.example.com/settings", {
+        [COOKIE_NAME]: "not-a-session",
+      })
     );
 
     expect(response.headers.get("location")).toContain("/login");
@@ -138,7 +143,7 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request("https://shop.example.com/login", cookie)
+      request("https://shop.example.com/login", { [COOKIE_NAME]: cookie })
     );
 
     expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
@@ -161,7 +166,7 @@ describe("web-host proxy session handling", () => {
     const response = await proxy(
       request(
         "https://shop.example.com/login?returnTo=%2Fmy&reason=session_revoked",
-        cookie
+        { [COOKIE_NAME]: cookie }
       )
     );
 
@@ -176,10 +181,9 @@ describe("web-host proxy session handling", () => {
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
-      request(
-        "https://shop.example.com/settings?reason=session_revoked",
-        cookie
-      )
+      request("https://shop.example.com/settings?reason=session_revoked", {
+        [COOKIE_NAME]: cookie,
+      })
     );
 
     expect(response.headers.get("location")).toBeNull();
@@ -617,12 +621,11 @@ describe("web-host proxy resolved locale cookie", () => {
   it("Leave the response alone when the browser already carries the default", async () => {
     const { proxy } = await import("./proxy");
 
-    const carrying = request("https://shop.example.com/series");
-    vi.spyOn(carrying.cookies, "get").mockImplementation((name: string) =>
-      name === RESOLVED_LOCALE_COOKIE ? { name, value: "en" } : undefined
+    const response = await proxy(
+      request("https://shop.example.com/series", {
+        [RESOLVED_LOCALE_COOKIE]: "en",
+      })
     );
-
-    const response = await proxy(carrying);
 
     expect(resolvedLocaleCookie(response)).toBeUndefined();
   });

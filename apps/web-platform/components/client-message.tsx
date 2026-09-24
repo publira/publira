@@ -27,7 +27,8 @@ export const useClientMessages = (): PlatformClientMessageAccessor => {
     throw new Error("PlatformMessagesProvider is required.");
   }
 
-  return bindMessages(use(messages));
+  const catalog = use(messages);
+  return bindMessages(catalog);
 };
 
 /** One catalog string rendered by a Client Component. */

@@ -28,7 +28,8 @@ export const useClientMessages = (): HostClientMessageAccessor => {
     throw new Error("HostMessagesProvider is required.");
   }
 
-  return bindMessages(use(messages));
+  const catalog = use(messages);
+  return bindMessages(catalog);
 };
 
 /** One catalog string rendered by a Client Component. */

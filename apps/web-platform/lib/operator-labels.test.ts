@@ -34,6 +34,12 @@ describe("platform-operator-labels", () => {
         "unknown_role"
       );
     });
+
+    it("should return original role for a name Object.prototype carries", async () => {
+      await expect(getOperatorRoleLabel("constructor", en)).resolves.toBe(
+        "constructor"
+      );
+    });
   });
 
   describe("getOperatorStatusLabel", () => {
@@ -58,6 +64,12 @@ describe("platform-operator-labels", () => {
     it("should return original status for unknown status", async () => {
       await expect(getOperatorStatusLabel("unknown_status", en)).resolves.toBe(
         "unknown_status"
+      );
+    });
+
+    it("should return original status for a name Object.prototype carries", async () => {
+      await expect(getOperatorStatusLabel("toString", en)).resolves.toBe(
+        "toString"
       );
     });
   });

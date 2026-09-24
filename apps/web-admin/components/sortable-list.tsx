@@ -4,7 +4,11 @@ import { Accessibility } from "@dnd-kit/dom";
 import type { Draggable } from "@dnd-kit/dom";
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
-import type { DragEndEvent } from "@dnd-kit/react";
+import type {
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+} from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import { GripVerticalIcon } from "@publira/icons";
 import { cn } from "@publira/utils";
@@ -68,7 +72,7 @@ const localizedPlugins =
       plugin === Accessibility
         ? Accessibility.configure({
             announcements: {
-              dragend: ({ canceled, operation: { source } }) => {
+              dragend: ({ canceled, operation: { source } }: DragEndEvent) => {
                 if (!source) {
                   return;
                 }
@@ -85,7 +89,7 @@ const localizedPlugins =
               // A row's index moves after the dragover that carries it over
               // another row, and the sorting then makes the row its own target
               // again — which is the dragover its new position is read from.
-              dragover: ({ operation: { source, target } }) => {
+              dragover: ({ operation: { source, target } }: DragOverEvent) => {
                 if (!source || source.id !== target?.id) {
                   return;
                 }
@@ -99,7 +103,7 @@ const localizedPlugins =
                   position,
                 });
               },
-              dragstart: ({ operation: { source } }) => {
+              dragstart: ({ operation: { source } }: DragStartEvent) => {
                 if (!source) {
                   return;
                 }

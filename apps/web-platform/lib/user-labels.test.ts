@@ -27,6 +27,12 @@ describe("platform-end-user-labels", () => {
         "unknown_status"
       );
     });
+
+    it("should return original status for a name Object.prototype carries", async () => {
+      await expect(getEndUserStatusLabel("toString", en)).resolves.toBe(
+        "toString"
+      );
+    });
   });
 
   describe("getEndUserStatusTone", () => {
