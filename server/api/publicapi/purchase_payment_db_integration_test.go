@@ -226,3 +226,78 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 		t.Fatalf("projected purchase events = %d, want 1", eventCount)
 	}
 }
+
+func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	encryptor := newPublicTestEncryptor(t)
+	tenant := pg.SeedTenant(t, "PAYDELAY", "pay-delayed.example.com", "Pay Delayed")
+	user := pg.SeedEndUser(t, tenant.ID, "PAYDELAYUSER", "delayed@example.com", "Delayed buyer")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		Price:       500,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
+		Enabled:                 true,
+		SecretKey:               testCheckoutSecretKey,
+		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		WebhookSecret:           testCheckoutWebhookSecret,
+		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+	}, paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+
+	db := pg.OpenPublicDB(t)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), readerGuards{}, nil)
+	ts := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(ts.Close)
+	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
+
+	session := func(paymentStatus string) map[string]any {
+		return map[string]any{
+			"id":             "cs_delayed_payment",
+			"object":         "checkout.session",
+			"amount_total":   500,
+			"currency":       "jpy",
+			"payment_status": paymentStatus,
+			"payment_intent": "pi_delayed_payment",
+			"metadata": map[string]string{
+				stripe.MetadataTenantID:  tenant.ID.String(),
+				stripe.MetadataUserID:    user.ID.String(),
+				stripe.MetadataEpisodeID: episode.ID.String(),
+				stripe.MetadataPrice:     "500",
+			},
+		}
+	}
+	countPurchases := func() int {
+		t.Helper()
+		var count int
+		if err := pg.DB.QueryRowContext(ctx, `SELECT count(*) FROM purchases WHERE tenant_id = $1`, tenant.ID).Scan(&count); err != nil {
+			t.Fatalf("count purchases: %v", err)
+		}
+		return count
+	}
+
+	payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", session("unpaid"))
+	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+		t.Fatalf("unpaid checkout.session.completed: %v", err)
+	}
+	if got := countPurchases(); got != 0 {
+		t.Fatalf("purchases after the unpaid session = %d, want 0", got)
+	}
+
+	payload, signature = stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.async_payment_succeeded", session("paid"))
+	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+		t.Fatalf("checkout.session.async_payment_succeeded: %v", err)
+	}
+	if got := countPurchases(); got != 1 {
+		t.Fatalf("purchases after the payment succeeded = %d, want 1", got)
+	}
+}
