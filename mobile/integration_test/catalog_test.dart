@@ -1967,10 +1967,12 @@ void main() {
           find.text(ConnectFixtureServer.seedTenantName),
           timeout: const Duration(seconds: 20),
         );
-        // The shelves above the list fill a phone's screen, so the list is
-        // reached the way a reader reaches it.
+        // The shelves above the list fill a phone's screen, so its first row,
+        // the seed's first series by title, is scrolled to as a reader would.
         await tester.scrollUntilVisible(
-          find.byType(ListTile).first,
+          find.byKey(
+            const ValueKey('series-tile-${ConnectFixtureServer.seedSeriesId}'),
+          ),
           300,
           scrollable: find
               .byWidgetPredicate(
