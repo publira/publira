@@ -3413,6 +3413,9 @@
       "continue_failed": "无法显示您正在阅读的作品。",
       "continue_heading": "继续阅读",
       "empty": "还没有发布任何系列。",
+      "genres_failed": "无法显示类型。请重试。",
+      "genres_heading": "按类型浏览",
+      "genres_view_all": "查看全部",
       "load_failed": "无法显示作品目录。",
       "new_arrivals_failed": "无法显示最新上架的系列。",
       "new_arrivals_heading": "最新上架",
@@ -3555,6 +3558,34 @@
       "series_empty": "暂无已发布的系列。",
       "series_heading": "该品牌的系列",
       "title": "品牌"
+    },
+    "genres": {
+      "empty": "尚未登记任何类型。",
+      "load_failed": "无法显示类型。请重试。",
+      "title": "类型"
+    },
+    "genre": {
+      "load_failed": "无法显示该类型。请重试。",
+      "not_found": "找不到该类型（{$id}）",
+      "series_empty": "尚无属于该类型的已发布系列。",
+      "title": "类型"
+    },
+    "tag": {
+      "load_failed": "无法显示该标签。请重试。",
+      "not_found": "找不到该标签（{$slug}）",
+      "series_empty": "尚无带有该标签的已发布系列。",
+      "title": "标签"
+    },
+    "series_filter": {
+      "clear": "清除条件",
+      "empty": "没有符合这些条件的系列。",
+      "free": "可免费阅读",
+      "order": "排序",
+      "order_newest": "最新发布",
+      "order_title": "按标题",
+      "order_updated": "最近更新",
+      "status": "连载状态",
+      "status_all": "全部状态"
     },
     "library": {
       "continue_empty": "您还没有正在阅读的作品。开始阅读剧集后，会显示在这里。",

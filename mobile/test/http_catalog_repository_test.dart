@@ -9,6 +9,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 import 'support/connect_fixture_server.dart';
@@ -379,6 +380,31 @@ void main() {
     expect(items.last.genres, isEmpty);
   });
 
+  test('listSeries carries the tags of a series', () async {
+    final items = (await catalog.listSeries()).series;
+
+    expect(items.first.tags.single.slug, 'time-travel');
+    expect(items.first.tags.single.name, 'Time travel');
+    expect(items.last.tags, isEmpty);
+  });
+
+  test('listSeries drops a tag with no slug or no name', () async {
+    server.series = [
+      {
+        ...ConnectFixtureServer.populatedSeries().first,
+        'tags': [
+          {'name': 'Nameless slug', 'slug': ''},
+          {'name': '', 'slug': 'no-name'},
+          {'name': 'Slow burn', 'slug': 'slow-burn'},
+        ],
+      },
+    ];
+
+    final tags = (await catalog.listSeries()).series.single.tags;
+
+    expect(tags.single.slug, 'slow-burn');
+  });
+
   test('getSeries carries the classification of the series', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -724,6 +750,122 @@ void main() {
       expect(await catalog.getLabelDetail('ZZZZZZZZZZZZ'), isNull);
     },
   );
+
+  test('listGenres reads every page of genres, counted', () async {
+    server
+      ..genres = ConnectFixtureServer.populatedGenres()
+      ..seriesPageSize = 1;
+
+    final genres = await catalog.listGenres();
+
+    expect(
+      [for (final genre in genres) genre.id],
+      ['SeedGENRAAA1', 'SeedGENRAAA2'],
+    );
+    expect(genres.first.name, 'Fantasy');
+    expect(genres.first.seriesCount, 1);
+    // A genre nothing published carries is listed at zero.
+    expect(genres.last.seriesCount, 0);
+    final requests = server.requestsTo('ListPublishedGenres');
+    expect(requests, hasLength(2));
+    expect(requests.first.body['limit'], 100);
+    expect(requests.first.body['surface'], 'CLIENT_SURFACE_APP');
+    expect(requests.last.body['token'], '1');
+  });
+
+  test('listGenres reads a tenant with no genre as empty', () async {
+    expect(await catalog.listGenres(), isEmpty);
+  });
+
+  test('getTag walks the tags until the slug turns up', () async {
+    server
+      ..seriesPageSize = 1
+      ..series = [
+        {
+          ...ConnectFixtureServer.populatedSeries().first,
+          'tags': [
+            {'name': 'Found family', 'slug': 'found-family'},
+            {'name': 'Time travel', 'slug': 'time-travel'},
+          ],
+        },
+      ];
+
+    final tag = await catalog.getTag('time-travel');
+
+    expect(tag!.name, 'Time travel');
+    expect(tag.seriesCount, 1);
+    expect(server.requestsTo('ListPublishedTags'), hasLength(2));
+  });
+
+  test('getTag returns null for a tag nothing published carries', () async {
+    expect(await catalog.getTag('missing'), isNull);
+  });
+
+  test('listGenreSeries asks for one genre under the filter', () async {
+    server.genres = ConnectFixtureServer.populatedGenres();
+
+    final page = await catalog.listGenreSeries(
+      'SeedGENRAAA1',
+      filter: const SeriesListFilter(
+        order: SeriesListOrder.updated,
+        status: SeriesStatus.ongoing,
+        freeOnly: true,
+      ),
+    );
+
+    expect(page!.series.single.id, ConnectFixtureServer.seedSeriesId);
+    final body = server.requestsTo('ListPublishedSeries').single.body;
+    expect(body['genrePublicId'], 'SeedGENRAAA1');
+    expect(body['order'], 'SERIES_ORDER_LATEST_EPISODE_AT_DESC');
+    expect(body['status'], 'SERIES_STATUS_ONGOING');
+    expect(body['hasFreeEpisodes'], isTrue);
+    expect(body['surface'], 'CLIENT_SURFACE_APP');
+    expect(body.containsKey('tagSlug'), isFalse);
+  });
+
+  test('listGenreSeries leaves an unnarrowed list to the newest', () async {
+    server.genres = ConnectFixtureServer.populatedGenres();
+
+    await catalog.listGenreSeries('SeedGENRAAA1');
+
+    final body = server.requestsTo('ListPublishedSeries').single.body;
+    expect(body['order'], 'SERIES_ORDER_PUBLISHED_AT_DESC');
+    // protojson omits a default, and an omitted filter keeps everything.
+    expect(body.containsKey('status'), isFalse);
+    expect(body.containsKey('hasFreeEpisodes'), isFalse);
+    expect(body.containsKey('token'), isFalse);
+  });
+
+  test(
+    'listGenreSeries returns null for a genre the API does not know',
+    () async {
+      expect(await catalog.listGenreSeries('ZZZZZZZZZZZZ'), isNull);
+    },
+  );
+
+  test('listTagSeries asks for the page its token names', () async {
+    server
+      ..seriesPageSize = 1
+      ..series = [
+        for (final item in ConnectFixtureServer.populatedSeries())
+          {...item, 'tags': ConnectFixtureServer.seedTags()},
+      ];
+    final first = await catalog.listTagSeries('time-travel');
+
+    final second = await catalog.listTagSeries(
+      'time-travel',
+      token: first!.nextToken,
+    );
+
+    expect(second!.series.single.id, 'series-kitchen');
+    final body = server.requestsTo('ListPublishedSeries').last.body;
+    expect(body['tagSlug'], 'time-travel');
+    expect(body['token'], first.nextToken);
+  });
+
+  test('listTagSeries returns null for a tag the API does not know', () async {
+    expect(await catalog.listTagSeries('missing'), isNull);
+  });
 
   test('listSeries carries the public id of the label', () async {
     final page = await catalog.listSeries();

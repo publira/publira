@@ -475,19 +475,32 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ],
           ),
         ],
-        if (series.genres.isNotEmpty) ...[
+        // Where a reader goes next when this work is not the one: the
+        // tenant's own genres first, then the words an editor wrote on the
+        // series, told apart by the mark in front of a tag.
+        if (series.genres.isNotEmpty || series.tags.isNotEmpty) ...[
           const SizedBox(height: 8),
           Wrap(
-            key: const ValueKey('series-genres'),
+            key: const ValueKey('series-genres-tags'),
             spacing: 8,
             runSpacing: 8,
             children: [
               for (final genre in series.genres)
-                Chip(
+                ActionChip(
                   key: ValueKey('series-genre-${genre.id}'),
                   label: Text(genre.name),
                   visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onPressed: () =>
+                      context.pushInTab(AppRoutes.genreDetailPath(genre.id)),
+                ),
+              for (final tag in series.tags)
+                ActionChip(
+                  key: ValueKey('series-tag-${tag.slug}'),
+                  avatar: const Icon(Icons.tag),
+                  label: Text(tag.name),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () =>
+                      context.pushInTab(AppRoutes.tagDetailPath(tag.slug)),
                 ),
             ],
           ),

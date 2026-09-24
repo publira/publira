@@ -3413,6 +3413,9 @@
       "continue_failed": "Could not show what you were reading. Try again.",
       "continue_heading": "Continue reading",
       "empty": "No series have been published yet.",
+      "genres_failed": "Could not show the genres. Try again.",
+      "genres_heading": "Browse by genre",
+      "genres_view_all": "View all",
       "load_failed": "Could not show the catalog. Try again.",
       "new_arrivals_failed": "Could not show the new arrivals. Try again.",
       "new_arrivals_heading": "New arrivals",
@@ -3555,6 +3558,34 @@
       "series_empty": "No published series yet.",
       "series_heading": "Series in this label",
       "title": "Label"
+    },
+    "genres": {
+      "empty": "No genres have been registered yet.",
+      "load_failed": "Could not show the genres. Try again.",
+      "title": "Genres"
+    },
+    "genre": {
+      "load_failed": "Could not show the genre. Try again.",
+      "not_found": "Genre not found ({$id})",
+      "series_empty": "No published series carry this genre yet.",
+      "title": "Genre"
+    },
+    "tag": {
+      "load_failed": "Could not show the tag. Try again.",
+      "not_found": "Tag not found ({$slug})",
+      "series_empty": "No published series carry this tag yet.",
+      "title": "Tag"
+    },
+    "series_filter": {
+      "clear": "Clear filters",
+      "empty": "No series match these filters.",
+      "free": "Free to start",
+      "order": "Sort",
+      "order_newest": "Newest",
+      "order_title": "Title",
+      "order_updated": "Recently updated",
+      "status": "Status",
+      "status_all": "All statuses"
     },
     "library": {
       "continue_empty": "Nothing to continue yet. Start reading an episode, and it appears here.",

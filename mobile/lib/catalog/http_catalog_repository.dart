@@ -8,6 +8,7 @@ import 'package:publira/config.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 /// [CatalogRepository] backed by the public Connect API.
@@ -47,6 +48,9 @@ class HttpCatalogRepository implements CatalogRepository {
       '/publira.v1.CatalogService/GetPublishedCreatorDetail';
   static const _labelProcedure =
       '/publira.v1.CatalogService/GetPublishedLabelDetail';
+  static const _genresProcedure =
+      '/publira.v1.CatalogService/ListPublishedGenres';
+  static const _tagsProcedure = '/publira.v1.CatalogService/ListPublishedTags';
   static const _episodeProcedure =
       '/publira.v1.CatalogService/GetEpisodeDetail';
   static const _readingPositionProcedure =
@@ -395,6 +399,136 @@ class HttpCatalogRepository implements CatalogRepository {
           : null,
     );
   }
+
+  /// How many genres or tags one page of their lists holds: the API's
+  /// largest, since a whole list is walked to answer one read.
+  static const classificationPageLimit = 100;
+
+  @override
+  Future<List<PublishedGenre>> listGenres() async {
+    try {
+      final genres = <PublishedGenre>[];
+      await _walkClassification(_genresProcedure, 'genres', (json) {
+        genres.add(
+          PublishedGenre(
+            id: _readString(
+              json,
+              'publicId',
+              'genres[]',
+              requiredNonEmpty: true,
+            ),
+            name: _readString(json, 'name', 'genres[]'),
+            seriesCount: _readCount(json, 'publishedSeriesCount', 'genres[]'),
+          ),
+        );
+        return false;
+      });
+      return List<PublishedGenre>.unmodifiable(genres);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<PublishedTag?> getTag(String slug) async {
+    try {
+      PublishedTag? match;
+      // `ListPublishedTags` is the only read that names a tag, so the list is
+      // walked until the slug turns up, the way the storefront finds one.
+      await _walkClassification(_tagsProcedure, 'tags', (json) {
+        if (_readString(json, 'slug', 'tags[]') != slug) {
+          return false;
+        }
+        match = PublishedTag(
+          slug: slug,
+          name: _readString(json, 'name', 'tags[]'),
+          seriesCount: _readCount(json, 'publishedSeriesCount', 'tags[]'),
+        );
+        return true;
+      });
+      return match;
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  /// Reads every page of the classification list [procedure] names, handing
+  /// each row of [field] to [visit] until it answers `true`.
+  Future<void> _walkClassification(
+    String procedure,
+    String field,
+    bool Function(Map<String, Object?> json) visit,
+  ) async {
+    final tenantId = await _tenants.resolve();
+    var token = '';
+    do {
+      final body = await _client.unary(procedure, {
+        'limit': classificationPageLimit,
+        'surface': appClientSurface,
+        if (token.isNotEmpty) 'token': token,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      final raw = body[field];
+      // protojson omits an empty repeated field, which is a tenant with none.
+      for (final item in raw == null ? const [] : _expectList(raw, field)) {
+        if (visit(_expectMap(item, '$field[]'))) {
+          return;
+        }
+      }
+      token = _readString(body, 'nextToken', 'response');
+    } while (token.isNotEmpty);
+  }
+
+  @override
+  Future<SeriesPage?> listGenreSeries(
+    String genreId, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _listClassifiedSeries({'genrePublicId': genreId}, filter, token);
+
+  @override
+  Future<SeriesPage?> listTagSeries(
+    String slug, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _listClassifiedSeries({'tagSlug': slug}, filter, token);
+
+  /// One page of `ListPublishedSeries` narrowed to one genre or one tag, which
+  /// the API answers `not_found` for when the tenant has no such one.
+  Future<SeriesPage?> _listClassifiedSeries(
+    Map<String, Object?> classification,
+    SeriesListFilter filter,
+    String token,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(_listProcedure, {
+        ...classification,
+        if (filter.freeOnly) 'hasFreeEpisodes': true,
+        'limit': detailSeriesPageLimit,
+        'order': filter.order.wireName,
+        if (filter.status case final status?) 'status': _statusWireName(status),
+        'surface': appClientSurface,
+        if (token.isNotEmpty) 'token': token,
+        'tenant': {'tenantId': tenantId},
+      }, tenantId: tenantId);
+      return SeriesPage(
+        series: _parseSeriesList(body['series']),
+        nextToken: _readString(body, 'nextToken', 'response'),
+      );
+    } on ConnectException catch (error) {
+      if (error.isNotFound) {
+        return null;
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  static String _statusWireName(SeriesStatus status) => switch (status) {
+    SeriesStatus.ongoing => 'SERIES_STATUS_ONGOING',
+    SeriesStatus.completed => 'SERIES_STATUS_COMPLETED',
+    SeriesStatus.hiatus => 'SERIES_STATUS_HIATUS',
+  };
 
   @override
   Future<EpisodeDetail?> getEpisode(
@@ -802,6 +936,7 @@ class HttpCatalogRepository implements CatalogRepository {
       scheduleWeekdays: _parseScheduleWeekdays(json['scheduleWeekdays'], path),
       ageRating: _parseAgeRating(json['ageRating']),
       genres: _parseGenres(json['genres'], path),
+      tags: _parseTags(json['tags'], path),
       ratingAverage: _readDouble(json, 'ratingAverage', path),
       ratingCount: _readCount(json, 'ratingCount', path),
     );
@@ -872,6 +1007,28 @@ class HttpCatalogRepository implements CatalogRepository {
         .where((genre) => genre.id.isNotEmpty && genre.name.isNotEmpty)
         .toList();
     return List<SeriesGenre>.unmodifiable(genres);
+  }
+
+  List<SeriesTag> _parseTags(Object? raw, String path) {
+    // protojson omits an empty repeated field, so a series with no tag
+    // arrives without the key at all.
+    if (raw == null) {
+      return const [];
+    }
+    final tagPath = '$path.tags[]';
+    final tags = _expectList(raw, '$path.tags')
+        .map((item) => _expectMap(item, tagPath))
+        .map((json) {
+          return SeriesTag(
+            slug: _readString(json, 'slug', tagPath),
+            name: _readString(json, 'name', tagPath),
+          );
+        })
+        // A tag without a slug leads nowhere, for the reason a genre without
+        // a public id does.
+        .where((tag) => tag.slug.isNotEmpty && tag.name.isNotEmpty)
+        .toList();
+    return List<SeriesTag>.unmodifiable(tags);
   }
 
   List<SeriesCreator> _parseCreators(Object? raw, String path) {

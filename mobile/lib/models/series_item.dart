@@ -154,6 +154,15 @@ class SeriesGenre {
   final String name;
 }
 
+/// One tag a series carries, as `publira.types.v1.Tag` describes it.
+class SeriesTag {
+  const SeriesTag({required this.slug, required this.name});
+
+  /// What addresses the tag, since a tag has no public id of its own.
+  final String slug;
+  final String name;
+}
+
 /// A published series as shown on the catalog list and detail screens.
 class SeriesItem {
   const SeriesItem({
@@ -170,6 +179,7 @@ class SeriesItem {
     this.scheduleWeekdays = const [],
     this.ageRating,
     this.genres = const [],
+    this.tags = const [],
     this.ratingAverage = 0,
     this.ratingCount = 0,
   });
@@ -218,6 +228,9 @@ class SeriesItem {
   /// Empty for a series in none of them.
   final List<SeriesGenre> genres;
 
+  /// The tags this series carries, by name. Empty for a series with none.
+  final List<SeriesTag> tags;
+
   /// The public mean of reactions to this series' episodes. A zero count
   /// means the aggregate has not produced a figure, so the screen leaves it
   /// out rather than presenting zero as a rating.
@@ -250,6 +263,7 @@ class SeriesItem {
       scheduleWeekdays: scheduleWeekdays,
       ageRating: ageRating,
       genres: genres,
+      tags: tags,
       ratingAverage: ratingAverage,
       ratingCount: ratingCount,
     );

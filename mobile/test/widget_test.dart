@@ -514,7 +514,7 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(find.text(first.title), findsWidgets);
-    expect(find.text(first.description), findsWidgets);
+    expect(find.text(first.description, skipOffstage: false), findsWidgets);
     expect(find.text('${first.episodeCount} episodes'), findsOneWidget);
     expect(find.text('Episodes', skipOffstage: false), findsOneWidget);
     expect(find.text('${first.title} #1', skipOffstage: false), findsOneWidget);

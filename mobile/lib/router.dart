@@ -19,6 +19,8 @@ import 'package:publira/screens/edit_name_screen.dart';
 import 'package:publira/screens/episode_comments_screen.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 import 'package:publira/screens/follow_updates_screen.dart';
+import 'package:publira/screens/genre_screen.dart';
+import 'package:publira/screens/genres_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
@@ -32,6 +34,7 @@ import 'package:publira/screens/search_screen.dart';
 import 'package:publira/screens/series_detail_screen.dart';
 import 'package:publira/screens/sign_in_screen.dart';
 import 'package:publira/screens/sign_up_screen.dart';
+import 'package:publira/screens/tag_screen.dart';
 import 'package:publira/screens/verify_email_screen.dart';
 
 /// Route path helpers for type-safe navigation.
@@ -78,6 +81,9 @@ abstract final class AppRoutes {
   static const seriesDetail = 'series/:seriesId';
   static const creatorDetail = 'creators/:creatorId';
   static const labelDetail = 'labels/:labelId';
+  static const genres = 'genres';
+  static const genreDetail = 'genres/:genreId';
+  static const tagDetail = 'tags/:tagSlug';
   static const episodeViewer = 'episodes/:episodeId';
   static const episodeComments = 'comments';
   static const checkoutReturn = '/checkout/return';
@@ -127,6 +133,14 @@ abstract final class AppRoutes {
   static String creatorDetailPath(String creatorId) => '/creators/$creatorId';
 
   static String labelDetailPath(String labelId) => '/labels/$labelId';
+
+  static const genresPath = '/$genres';
+
+  static String genreDetailPath(String genreId) => '/$genres/$genreId';
+
+  /// A tag's slug is whatever an editor typed, so it is one encoded segment.
+  static String tagDetailPath(String slug) =>
+      '/tags/${Uri.encodeComponent(slug)}';
 
   /// The viewer, told how a checkout of the episode ended when the browser
   /// has just handed one back.
@@ -210,6 +224,20 @@ List<RouteBase> _tabRoutes() => [
     path: AppRoutes.labelDetail,
     builder: (context, state) =>
         LabelScreen(labelId: state.pathParameters['labelId']!),
+  ),
+  GoRoute(
+    path: AppRoutes.genres,
+    builder: (context, state) => const GenresScreen(),
+  ),
+  GoRoute(
+    path: AppRoutes.genreDetail,
+    builder: (context, state) =>
+        GenreScreen(genreId: state.pathParameters['genreId']!),
+  ),
+  GoRoute(
+    path: AppRoutes.tagDetail,
+    builder: (context, state) =>
+        TagScreen(tagSlug: state.pathParameters['tagSlug']!),
   ),
   GoRoute(
     path: AppRoutes.seriesDetail,

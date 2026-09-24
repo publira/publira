@@ -6,6 +6,7 @@ import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 /// In-memory [CatalogRepository] for widget tests.
@@ -53,7 +54,29 @@ class FakeCatalogRepository implements CatalogRepository {
     this.followUpdatesMoreError,
     this.reactionError,
     this.reactions = const {},
+    this.genres = const [],
+    this.tags = const [],
+    this.genresError,
+    this.tagError,
+    this.classifiedSeriesError,
   });
+
+  /// What [listGenres] answers, and the genres [listGenreSeries] knows.
+  List<PublishedGenre> genres;
+
+  /// The tags [getTag] and [listTagSeries] know.
+  List<PublishedTag> tags;
+
+  CatalogFailure? genresError;
+  CatalogFailure? tagError;
+
+  /// What the first page of a genre's or a tag's series fails with.
+  CatalogFailure? classifiedSeriesError;
+
+  /// Every read of a genre's or a tag's series, in order: the genre id or the
+  /// tag slug, with the filter and token it was asked for.
+  final List<({String id, SeriesListFilter filter, String token})>
+  classifiedSeriesRequests = [];
 
   /// The whole catalog [listSeries] pages over.
   List<SeriesItem> series;
@@ -294,6 +317,73 @@ class FakeCatalogRepository implements CatalogRepository {
     final label = publishedLabels[publicId];
     final series = await _detailSeries(publicId, token, labelDetailError);
     return label == null ? null : LabelDetail(label: label, series: series);
+  }
+
+  @override
+  Future<List<PublishedGenre>> listGenres() async {
+    if (genresError case final error?) {
+      throw error;
+    }
+    return genres;
+  }
+
+  @override
+  Future<PublishedTag?> getTag(String slug) async {
+    if (tagError case final error?) {
+      throw error;
+    }
+    return tags.where((tag) => tag.slug == slug).firstOrNull;
+  }
+
+  @override
+  Future<SeriesPage?> listGenreSeries(
+    String genreId, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _classifiedSeries(
+    genreId,
+    genres.any((genre) => genre.id == genreId),
+    filter,
+    token,
+  );
+
+  @override
+  Future<SeriesPage?> listTagSeries(
+    String slug, {
+    SeriesListFilter filter = const SeriesListFilter(),
+    String token = '',
+  }) => _classifiedSeries(
+    slug,
+    tags.any((tag) => tag.slug == slug),
+    filter,
+    token,
+  );
+
+  /// Pages over [detailSeries] under [id], keeping the series in the status
+  /// the filter names. The sort and the free-to-start filter are the API's to
+  /// apply, so they are only recorded.
+  Future<SeriesPage?> _classifiedSeries(
+    String id,
+    bool exists,
+    SeriesListFilter filter,
+    String token,
+  ) async {
+    classifiedSeriesRequests.add((id: id, filter: filter, token: token));
+    final failure = token.isEmpty
+        ? classifiedSeriesError
+        : detailSeriesMoreError ?? classifiedSeriesError;
+    if (failure != null) {
+      throw failure;
+    }
+    if (!exists) {
+      return null;
+    }
+    final series = [
+      for (final item in detailSeries[id] ?? const <SeriesItem>[])
+        if (filter.status == null || item.status == filter.status) item,
+    ];
+    final (page, nextToken) = _page(series, token, detailSeriesPageSize);
+    return SeriesPage(series: page, nextToken: nextToken);
   }
 
   Future<SeriesPage> _detailSeries(

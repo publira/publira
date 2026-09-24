@@ -10,9 +10,11 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
+import 'package:publira/catalog/genre_chip.dart';
 import 'package:publira/catalog/series_tile.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
@@ -93,6 +95,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             SliverToBoxAdapter(
               child: _ContinueReadingShelf(refreshes: _refreshes),
             ),
+            SliverToBoxAdapter(child: _GenresShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _RankingShelf(refreshes: _refreshes)),
             SliverToBoxAdapter(child: _NewArrivalsShelf(refreshes: _refreshes)),
             _AllSeriesSection(refreshes: _refreshes, onLoaded: _refreshed),
@@ -260,6 +263,73 @@ class _NewArrivalsShelf extends StatelessWidget {
   }
 }
 
+/// Height of the row of genre chips: one chip and its tap target.
+const _genreRowHeight = 48.0;
+
+/// The tenant's own classification, as one row of genres to step into.
+///
+/// A tenant that curates no genre is shown no row, heading included, since a
+/// heading over nothing would announce a classification it does not have.
+class _GenresShelf extends StatelessWidget {
+  const _GenresShelf({required this.refreshes});
+
+  final int refreshes;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    return _CatalogShelf<PublishedGenre>(
+      sectionKey: 'catalog-genres',
+      heading: messages.catalogGenresHeading,
+      failureMessage: messages.catalogGenresFailed,
+      reloadToken: '$refreshes',
+      rowHeight: _genreRowHeight,
+      skeleton: const _GenreRowSkeleton(),
+      action: TextButton(
+        key: const ValueKey('catalog-genres-all'),
+        onPressed: () => context.pushInTab(AppRoutes.genresPath),
+        child: Text(messages.catalogGenresViewAll),
+      ),
+      load: (catalog) => catalog.listGenres(),
+      cardBuilder: (context, genre) => Center(child: GenreChip(genre: genre)),
+    );
+  }
+}
+
+/// What the genre row shows while it is read: chips the size the real ones
+/// come in.
+class _GenreRowSkeleton extends StatelessWidget {
+  const _GenreRowSkeleton();
+
+  static const _chipCount = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox(
+      key: const ValueKey('catalog-genres-loading'),
+      height: _genreRowHeight,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _chipCount,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) => Center(
+          child: Container(
+            width: 96,
+            height: 32,
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One horizontal shelf: a heading, and a row of cards under it.
 ///
 /// An empty answer takes the heading with it. A shelf is a way into part of
@@ -273,6 +343,9 @@ class _CatalogShelf<T> extends StatefulWidget {
     required this.load,
     required this.cardBuilder,
     required this.reloadToken,
+    this.rowHeight = _shelfHeight,
+    this.skeleton,
+    this.action,
   });
 
   /// Names this section on screen, and its loading, failure, and retry states.
@@ -291,6 +364,15 @@ class _CatalogShelf<T> extends StatefulWidget {
   /// Reloads the shelf whenever it changes: it names the reader the row is
   /// answered for and the pulls to refresh behind it.
   final String reloadToken;
+
+  /// How tall the row of cards stands, which its skeleton reserves as well.
+  final double rowHeight;
+
+  /// What stands in the row while it is read. Cover-sized cards when `null`.
+  final Widget? skeleton;
+
+  /// A way out of the shelf beside its heading, shown once it has cards.
+  final Widget? action;
 
   @override
   State<_CatalogShelf<T>> createState() => _CatalogShelfState<T>();
@@ -368,7 +450,7 @@ class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
     if (items == null) {
       return _ShelfFrame(
         heading: widget.heading,
-        child: _ShelfSkeleton(sectionKey: widget.sectionKey),
+        child: widget.skeleton ?? _ShelfSkeleton(sectionKey: widget.sectionKey),
       );
     }
     if (items.isEmpty) {
@@ -379,8 +461,9 @@ class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
     return _ShelfFrame(
       key: ValueKey(widget.sectionKey),
       heading: widget.heading,
+      action: widget.action,
       child: SizedBox(
-        height: _shelfHeight,
+        height: widget.rowHeight,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -396,16 +479,37 @@ class _CatalogShelfState<T> extends State<_CatalogShelf<T>> {
 
 /// The heading every state of a shelf stands under.
 class _ShelfFrame extends StatelessWidget {
-  const _ShelfFrame({super.key, required this.heading, required this.child});
+  const _ShelfFrame({
+    super.key,
+    required this.heading,
+    required this.child,
+    this.action,
+  });
 
   final String heading;
   final Widget child;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
+    final action = this.action;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_SectionHeading(heading), child],
+      children: [
+        if (action == null)
+          _SectionHeading(heading)
+        else
+          Row(
+            children: [
+              Expanded(child: _SectionHeading(heading)),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8, top: 8),
+                child: action,
+              ),
+            ],
+          ),
+        child,
+      ],
     );
   }
 }
