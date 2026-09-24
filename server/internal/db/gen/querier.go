@@ -1698,6 +1698,9 @@ type Querier interface {
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.
 	LockPlatformConfig(ctx context.Context) (PlatformConfig, error)
+	// Serializes initial setup for the rest of the transaction. A second setup
+	// waits here until the first commits, then counts its operator and stops.
+	LockPlatformInitialSetup(ctx context.Context) error
 	// Reads the policy row for update, so the revision a save compares against
 	// cannot change between the comparison and the write.
 	LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyConfig, error)
@@ -2114,7 +2117,9 @@ type Querier interface {
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	// Stores only the default locale chosen during initial setup. No time zone has
 	// been chosen at that point, so a new row leaves it to the column DEFAULT and
-	// an existing row keeps the value it already has.
+	// an existing row keeps the value it already has. The ON CONFLICT branch lets
+	// setup finish on a platform whose settings row outlived its operators;
+	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	// The whole listing row is written on every admin save, so a field the

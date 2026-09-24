@@ -132,7 +132,9 @@ RETURNING singleton, default_timezone, default_locale, created_at, updated_at, r
 
 // Stores only the default locale chosen during initial setup. No time zone has
 // been chosen at that point, so a new row leaves it to the column DEFAULT and
-// an existing row keeps the value it already has.
+// an existing row keeps the value it already has. The ON CONFLICT branch lets
+// setup finish on a platform whose settings row outlived its operators;
+// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
 	row := q.db.QueryRowContext(ctx, UpsertPlatformDefaultLocale, defaultLocale)
 	var i PlatformConfig

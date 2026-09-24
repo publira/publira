@@ -566,6 +566,17 @@ func (q *Queries) ListRecentPlatformEvents(ctx context.Context, limit int32) ([]
 	return items, nil
 }
 
+const LockPlatformInitialSetup = `-- name: LockPlatformInitialSetup :exec
+SELECT pg_advisory_xact_lock(hashtextextended('platform_initial_setup', 0))
+`
+
+// Serializes initial setup for the rest of the transaction. A second setup
+// waits here until the first commits, then counts its operator and stops.
+func (q *Queries) LockPlatformInitialSetup(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, LockPlatformInitialSetup)
+	return err
+}
+
 const UpdatePlatformUserEmailByID = `-- name: UpdatePlatformUserEmailByID :one
 UPDATE platform_users
 SET email = $2
