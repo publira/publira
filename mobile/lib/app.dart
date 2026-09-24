@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/announcements/http_announcement_repository.dart';
@@ -46,6 +47,7 @@ import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/push/http_push_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_device_store.dart';
@@ -77,6 +79,7 @@ class PubliraApp extends StatefulWidget {
     this.pages,
     this.purchases,
     this.checkoutLauncher,
+    this.storePurchaser,
     this.offline,
     this.downloader,
     this.progress,
@@ -155,6 +158,12 @@ class PubliraApp extends StatefulWidget {
       ),
       store: store,
     );
+    final purchaseStore = deviceInAppPurchaseStore();
+    final purchases = HttpPurchaseRepository(
+      client: client,
+      tenants: tenants,
+      store: purchaseStore,
+    );
     final catalog = OfflineCatalogRepository(
       origin: HttpCatalogRepository(
         config: resolved,
@@ -192,8 +201,15 @@ class PubliraApp extends StatefulWidget {
       ),
       contact: HttpContactRepository(client: client, tenants: tenants),
       pages: HttpPageRepository(client: client, tenants: tenants),
-      purchases: HttpPurchaseRepository(client: client, tenants: tenants),
+      purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
+      storePurchaser: purchaseStore == null
+          ? null
+          : StorePurchaser(
+              platform: InAppPurchasePlatform.instance,
+              store: purchaseStore,
+              repository: purchases,
+            ),
       offline: library,
       downloader: EpisodeDownloader(catalog: catalog, library: library),
       progress: catalog.outbox,
@@ -288,6 +304,13 @@ class PubliraApp extends StatefulWidget {
   /// purchase at all, and a locked episode then offers none.
   final PurchaseRepository? purchases;
   final CheckoutLauncher? checkoutLauncher;
+
+  /// The store's in-app purchase, for a tenant whose app sells through it.
+  ///
+  /// [PubliraApp.fromConfig] supplies one on iOS and Android, where there is a
+  /// store to buy through. The app starts it on launch and has it confirm what
+  /// the store still holds on every sign-in.
+  final StorePurchaser? storePurchaser;
 
   /// What the device holds for reading without a network.
   ///
@@ -422,6 +445,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
     unawaited(_restore());
+    unawaited(widget.storePurchaser?.start());
     unawaited(widget.tenantBrand?.start());
     unawaited(_readAnnouncements());
   }
@@ -580,6 +604,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       );
       if (signedIn) {
         unawaited(widget.notifications?.refresh());
+        // A transaction the store reported before there was a session could
+        // not be confirmed.
+        unawaited(widget.storePurchaser?.reconcile());
       } else {
         widget.notifications?.reset();
       }
@@ -706,6 +733,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                             child: PurchaseScope(
                               repository: widget.purchases,
                               launcher: widget.checkoutLauncher,
+                              storePurchaser: widget.storePurchaser,
                               child: AgeRatingConfirmationScope(
                                 controller: _ageRating,
                                 child: ScreenCaptureScope(

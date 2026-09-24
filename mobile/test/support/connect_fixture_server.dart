@@ -59,6 +59,9 @@ class ConnectFixtureServer {
     this.passwordResetRequestStatus = HttpStatus.ok,
     this.passwordResetRequestErrorCode = 'unavailable',
     this.acceptsPayments = false,
+    this.appPurchaseRoute = 'APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT',
+    this.acceptsAppStorePayments = false,
+    this.acceptsGooglePlayPayments = false,
     this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.memberBirthDate = '',
@@ -694,6 +697,25 @@ class ConnectFixtureServer {
   /// What `GetTenant` answers for `accepts_payments`.
   bool acceptsPayments;
 
+  /// What `GetTenant` answers for the app purchase route and whether each
+  /// store can take the app's payment.
+  String appPurchaseRoute;
+  bool acceptsAppStorePayments;
+  bool acceptsGooglePlayPayments;
+
+  /// The status and Connect code `StartStorePurchase` answers an intent it
+  /// would otherwise open with, so a test can refuse one.
+  int storeStartStatus = HttpStatus.ok;
+  String storeStartErrorCode = 'failed_precondition';
+
+  /// The status and Connect code `ConfirmStorePurchase` answers with.
+  int storeConfirmStatus = HttpStatus.ok;
+  String storeConfirmErrorCode = 'failed_precondition';
+
+  /// The intent `StartStorePurchase` opens and the product it names.
+  static const storeIntentId = '018f0e90-1000-7000-8000-000000000001';
+  static const storeProductId = 'episode_500';
+
   /// The status `StartEpisodeCheckout` answers a checkout it would otherwise
   /// start with, so a test can fail one.
   int checkoutStatus;
@@ -1127,6 +1149,11 @@ class ConnectFixtureServer {
         // protojson omits a false.
         if (tenantStatus == HttpStatus.ok && acceptsPayments)
           'acceptsPayments': true,
+        if (tenantStatus == HttpStatus.ok) 'appPurchaseRoute': appPurchaseRoute,
+        if (tenantStatus == HttpStatus.ok && acceptsAppStorePayments)
+          'acceptsAppStorePayments': true,
+        if (tenantStatus == HttpStatus.ok && acceptsGooglePlayPayments)
+          'acceptsGooglePlayPayments': true,
         if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
         if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
       });
@@ -1140,6 +1167,12 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/StartEpisodeCheckout')) {
       await _writeCheckout(request, body);
+      return;
+    }
+
+    if (path.endsWith('/StartStorePurchase') ||
+        path.endsWith('/ConfirmStorePurchase')) {
+      await _writeStorePurchase(request, path);
       return;
     }
 
@@ -1360,6 +1393,34 @@ class ConnectFixtureServer {
     await _write(request, HttpStatus.ok, {
       'checkoutUrl': checkoutUrlFor(episodeId).toString(),
     });
+  }
+
+  /// An intent, or the confirmation of a transaction, for the signed-in
+  /// member.
+  Future<void> _writeStorePurchase(HttpRequest request, String path) async {
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    final start = path.endsWith('/StartStorePurchase');
+    final status = start ? storeStartStatus : storeConfirmStatus;
+    if (status != HttpStatus.ok) {
+      await _write(request, status, {
+        'code': start ? storeStartErrorCode : storeConfirmErrorCode,
+        'message': 'refused',
+      });
+      return;
+    }
+    await _write(
+      request,
+      HttpStatus.ok,
+      start
+          ? {'intentId': storeIntentId, 'productId': storeProductId}
+          : {'purchase': <String, Object?>{}},
+    );
   }
 
   /// Whether the surface [body] names may show the series [seriesPublicId].

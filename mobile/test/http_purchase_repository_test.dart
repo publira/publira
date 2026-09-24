@@ -6,6 +6,7 @@ import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 
 import 'support/connect_fixture_server.dart';
 
@@ -17,8 +18,9 @@ void main() {
   late ConnectFixtureServer server;
   late String accessToken;
 
-  /// The repository as a reader holding [accessToken] — empty for a guest.
-  HttpPurchaseRepository repository() {
+  /// The repository as a reader holding [accessToken] — empty for a guest —
+  /// on a device that buys through [store].
+  HttpPurchaseRepository repository({InAppPurchaseStore? store}) {
     final client = ConnectClient(
       baseUrl: server.baseUrl,
       accessToken: () => accessToken,
@@ -26,6 +28,7 @@ void main() {
     return HttpPurchaseRepository(
       client: client,
       tenants: TenantResolver(client: client, tenantHost: 'localhost'),
+      store: store,
     );
   }
 
@@ -51,6 +54,111 @@ void main() {
 
     server.acceptsPayments = true;
     expect(await repository().acceptsPayments(), isTrue);
+  });
+
+  test('a tenant that has chosen nothing sells through the checkout', () async {
+    expect(
+      await repository().appPurchaseRoute(),
+      AppPurchaseRoute.externalCheckout,
+    );
+
+    server.appPurchaseRoute = 'APP_PURCHASE_ROUTE_STORE';
+    expect(await repository().appPurchaseRoute(), AppPurchaseRoute.store);
+  });
+
+  test('on the store route payments follow the store of the device', () async {
+    server
+      ..appPurchaseRoute = 'APP_PURCHASE_ROUTE_STORE'
+      // The web checkout is ready, which the store route does not use.
+      ..acceptsPayments = true
+      ..acceptsAppStorePayments = true;
+
+    expect(
+      await repository(store: InAppPurchaseStore.appStore).acceptsPayments(),
+      isTrue,
+    );
+    expect(
+      await repository(store: InAppPurchaseStore.googlePlay).acceptsPayments(),
+      isFalse,
+    );
+    expect(await repository().acceptsPayments(), isFalse);
+  });
+
+  test('a store purchase opens an intent for the device\'s store', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final intent = await repository().startStorePurchase(
+      paidEpisodeId,
+      InAppPurchaseStore.googlePlay,
+    );
+    expect(intent.intentId, ConnectFixtureServer.storeIntentId);
+    expect(intent.productId, ConnectFixtureServer.storeProductId);
+    final request = server.requestsTo('StartStorePurchase').single;
+    expect(request.body['episodePublicId'], paidEpisodeId);
+    expect(request.body['store'], 'IN_APP_PURCHASE_STORE_GOOGLE_PLAY');
+    expect(request.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('a store that is not ready does not sell the episode', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.storeStartStatus = HttpStatus.badRequest;
+
+    await expectLater(
+      repository().startStorePurchase(
+        paidEpisodeId,
+        InAppPurchaseStore.appStore,
+      ),
+      failsWith(PurchaseFailureKind.notSold),
+    );
+  });
+
+  test('a transaction is handed to the server with its product', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    await repository().confirmStorePurchase(
+      store: InAppPurchaseStore.appStore,
+      transaction: 'signed-transaction',
+      productId: 'episode_500',
+    );
+    final request = server.requestsTo('ConfirmStorePurchase').single;
+    expect(request.body['store'], 'IN_APP_PURCHASE_STORE_APP_STORE');
+    expect(request.body['transaction'], 'signed-transaction');
+    expect(request.body['productId'], 'episode_500');
+    expect(request.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('a transaction the store has not settled is confirmed later', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.storeConfirmStatus = HttpStatus.badRequest;
+
+    await expectLater(
+      repository().confirmStorePurchase(
+        store: InAppPurchaseStore.appStore,
+        transaction: 'signed-transaction',
+        productId: 'episode_500',
+      ),
+      failsWith(PurchaseFailureKind.notSettled),
+    );
+  });
+
+  test('a guest is not sent to the API for a store purchase', () async {
+    await expectLater(
+      repository().startStorePurchase(
+        paidEpisodeId,
+        InAppPurchaseStore.appStore,
+      ),
+      failsWith(PurchaseFailureKind.sessionExpired),
+    );
+    await expectLater(
+      repository().confirmStorePurchase(
+        store: InAppPurchaseStore.appStore,
+        transaction: 'signed-transaction',
+        productId: 'episode_500',
+      ),
+      failsWith(PurchaseFailureKind.sessionExpired),
+    );
+    expect(server.requestsTo('StartStorePurchase'), isEmpty);
+    expect(server.requestsTo('ConfirmStorePurchase'), isEmpty);
   });
 
   test('the access of each episode is the reader\'s own', () async {

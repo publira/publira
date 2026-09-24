@@ -490,6 +490,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             episodeId: widget.episodeId,
             price: detail.episode.price,
             onAlreadyPurchased: _reload,
+            onStorePurchase: () => context.pushReplacementInTab(
+              AppRoutes.episodeViewerPath(
+                widget.seriesId,
+                widget.episodeId,
+                checkout: CheckoutOutcome.success,
+              ),
+            ),
           )
         : null;
     final String message;

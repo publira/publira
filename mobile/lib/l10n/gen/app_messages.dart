@@ -996,11 +996,17 @@ abstract class AppMessages {
   /// `mobile.purchase.confirming`
   String get purchaseConfirming;
 
+  /// `mobile.purchase.not_sold_in_app`
+  String get purchaseNotSoldInApp;
+
   /// `mobile.purchase.sold_on_web`
   String get purchaseSoldOnWeb;
 
   /// `mobile.purchase.start_failed`
   String get purchaseStartFailed;
+
+  /// `mobile.purchase.store_unavailable`
+  String get purchaseStoreUnavailable;
 
   /// `mobile.purchases.account_description`
   String get purchasesAccountDescription;
@@ -2997,6 +3003,11 @@ class _AppMessagesJa extends AppMessages {
   }
 
   @override
+  String get purchaseNotSoldInApp {
+    return '現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。';
+  }
+
+  @override
   String get purchaseSoldOnWeb {
     return 'ウェブサイトで販売';
   }
@@ -3004,6 +3015,11 @@ class _AppMessagesJa extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '購入手続きを開始できませんでした。時間をおいて再試行してください。';
+  }
+
+  @override
+  String get purchaseStoreUnavailable {
+    return 'この端末では購入できません。ストアにサインインしているか、購入が制限されていないかを確認してください。';
   }
 
   @override
@@ -5315,6 +5331,11 @@ class _AppMessagesEn extends AppMessages {
   }
 
   @override
+  String get purchaseNotSoldInApp {
+    return 'This episode cannot be bought in the app right now. Try again later.';
+  }
+
+  @override
   String get purchaseSoldOnWeb {
     return 'Sold on the website';
   }
@@ -5322,6 +5343,11 @@ class _AppMessagesEn extends AppMessages {
   @override
   String get purchaseStartFailed {
     return 'Could not start the purchase. Try again later.';
+  }
+
+  @override
+  String get purchaseStoreUnavailable {
+    return 'Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed.';
   }
 
   @override
@@ -7633,6 +7659,11 @@ class _AppMessagesKo extends AppMessages {
   }
 
   @override
+  String get purchaseNotSoldInApp {
+    return '지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
   String get purchaseSoldOnWeb {
     return '웹사이트에서 판매';
   }
@@ -7640,6 +7671,11 @@ class _AppMessagesKo extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  @override
+  String get purchaseStoreUnavailable {
+    return '이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요.';
   }
 
   @override
@@ -9951,6 +9987,11 @@ class _AppMessagesZhHans extends AppMessages {
   }
 
   @override
+  String get purchaseNotSoldInApp {
+    return '目前无法在应用中购买该章节。请稍后再试。';
+  }
+
+  @override
   String get purchaseSoldOnWeb {
     return '在网站上销售';
   }
@@ -9958,6 +9999,11 @@ class _AppMessagesZhHans extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '无法开始购买。请稍后再试。';
+  }
+
+  @override
+  String get purchaseStoreUnavailable {
+    return '此设备无法进行购买。请确认已登录商店且未限制购买。';
   }
 
   @override
@@ -12269,6 +12315,11 @@ class _AppMessagesZhHant extends AppMessages {
   }
 
   @override
+  String get purchaseNotSoldInApp {
+    return '目前無法在應用程式中購買該章節。請稍後再試。';
+  }
+
+  @override
   String get purchaseSoldOnWeb {
     return '在網站上販售';
   }
@@ -12276,6 +12327,11 @@ class _AppMessagesZhHant extends AppMessages {
   @override
   String get purchaseStartFailed {
     return '無法開始購買。請稍後再試。';
+  }
+
+  @override
+  String get purchaseStoreUnavailable {
+    return '此裝置無法進行購買。請確認已登入商店且未限制購買。';
   }
 
   @override

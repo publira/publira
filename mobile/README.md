@@ -288,7 +288,7 @@ mobile/
 │   ├── pages/                    # PageRepository: the tenant's published pages
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
-│   ├── purchase/                 # Web checkout of a paid episode, and the browser it is opened in
+│   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
@@ -504,12 +504,14 @@ Nothing here fails a screen. A platform with no app-private directory, or with n
 
 ## Purchases
 
-A paid episode is bought through the public site's Stripe Checkout in the system browser, never in an in-app web view, and the app takes no store in-app purchase.
+A paid episode is bought the way the tenant's `app_purchase_route`, which `GetTenant` answers, says: through the public site's Stripe Checkout in the system browser, never in an in-app web view, or through the App Store's or Google Play's in-app purchase.
 
-- A locked episode, in the viewer and on its row of the series screen, offers "Buy for ¥N" when `GetTenant` answers `accepts_payments`. A row offers it only where `GetSeriesEpisodeAccess` answers the episode locked for the reader, so an episode they bought, hold a ticket for, or can read inside a free window is offered nothing
+- A locked episode, in the viewer and on its row of the series screen, offers "Buy for ¥N" when the tenant can take the payment: `accepts_payments` on the external-checkout route, and `accepts_app_store_payments` on iOS or `accepts_google_play_payments` on Android on the store route. A row offers it only where `GetSeriesEpisodeAccess` answers the episode locked for the reader, so an episode they bought, hold a ticket for, or can read inside a free window is offered nothing
 - A guest who takes the offer signs in first and lands on the episode
-- The button calls `StartEpisodeCheckout` with `client: CLIENT_MOBILE` and opens the page it answers with `url_launcher` in external application mode. A reader who already holds the episode is shown it instead
+- On the external-checkout route the button calls `StartEpisodeCheckout` with `client: CLIENT_MOBILE` and opens the page it answers with `url_launcher` in external application mode. A reader who already holds the episode is shown it instead
 - Checkout returns to `/{locale}/checkout/return?episode=…&status=success|cancelled` on the tenant host, which the app claims as a link. The app finds the episode's series and opens the viewer, which reads `GetEpisodeDetail` again. A body still locked after a success is read twice more, each after a longer wait, and then the viewer says the purchase is being confirmed and offers to check again
+- On the store route the button asks `StartStorePurchase` for an intent and the product the episode's price is sold as, and opens the store's payment sheet for that product with the intent as `appAccountToken` (iOS, StoreKit 2) or `obfuscatedAccountId` (Android). The transaction the store reports goes to `ConfirmStorePurchase`, and only once the server has recorded it is it finished — consumed on Google Play, so the same price can be bought again — and the viewer opens as it does after a checkout return. A purchase the store holds for approval is shown as being confirmed
+- A transaction the server has not recorded stays unfinished with the store, which reports it again on the next launch, and is confirmed again on sign-in. A device that cannot pay, and a tenant whose store has no product for the price, are told so
 
 ## Sign-in
 
@@ -629,7 +631,7 @@ The screens are taken on an attached device or emulator, which the app is built 
 - An unconfirmed address asking for a fresh confirmation link, and sign-in refusing it until then
 - A password reset requested from the sign-in form, the reset link arriving as an App Link, and the member signing in with the new password
 - An expired reset link leading back to a fresh request
-- A purchase completed in the browser, with a stubbed launcher, opening the paid episode
+- A purchase completed in the browser, with a stubbed launcher, opening the paid episode. The store's in-app purchase needs a store account, so its tests are the widget tests over a fake `InAppPurchasePlatform`
 - A session written to and read back from the platform keychain
 - A series that does not exist
 - An empty catalog

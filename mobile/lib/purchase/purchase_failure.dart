@@ -14,6 +14,18 @@ enum PurchaseFailureKind {
   /// The episode or its series is not public any more.
   gone,
 
+  /// The device's store cannot take a payment: no store account, purchases
+  /// restricted, or no store at all.
+  storeUnavailable,
+
+  /// The tenant does not sell the episode through the store right now: the
+  /// store is not ready, or has no product for the episode's price.
+  notSold,
+
+  /// The store has not settled the transaction yet (Ask to Buy, a Play
+  /// pending purchase), so it is confirmed again later.
+  notSettled,
+
   /// Anything else, including a tenant that has stopped taking payments.
   unexpected,
 }

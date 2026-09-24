@@ -10,7 +10,11 @@ import 'package:publira/purchase/purchase_repository.dart';
 /// [PurchaseRepository] backed by `publira.v1.PurchaseService` and the reads
 /// of `TenantService` and `CatalogService` a purchase is offered from.
 class HttpPurchaseRepository implements PurchaseRepository {
-  const HttpPurchaseRepository({required this._client, required this._tenants});
+  const HttpPurchaseRepository({
+    required this._client,
+    required this._tenants,
+    this.store,
+  });
 
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _accessProcedure =
@@ -20,6 +24,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
   static const _checkoutProcedure =
       '/publira.v1.PurchaseService/StartEpisodeCheckout';
   static const _listProcedure = '/publira.v1.PurchaseService/ListMyPurchases';
+  static const _startStoreProcedure =
+      '/publira.v1.PurchaseService/StartStorePurchase';
+  static const _confirmStoreProcedure =
+      '/publira.v1.PurchaseService/ConfirmStorePurchase';
 
   /// Rows one page asks for. The API caps this at 100 and falls back to 20.
   static const pageSize = 20;
@@ -27,19 +35,45 @@ class HttpPurchaseRepository implements PurchaseRepository {
   final ConnectClient _client;
   final TenantResolver _tenants;
 
+  /// The store this device buys through, or `null` where there is none.
+  final InAppPurchaseStore? store;
+
   @override
   Future<bool> acceptsPayments() async {
+    final tenant = await _tenant();
+    // protojson omits a false.
+    return switch (_route(tenant)) {
+      AppPurchaseRoute.externalCheckout => tenant['acceptsPayments'] == true,
+      AppPurchaseRoute.store => switch (store) {
+        InAppPurchaseStore.appStore =>
+          tenant['acceptsAppStorePayments'] == true,
+        InAppPurchaseStore.googlePlay =>
+          tenant['acceptsGooglePlayPayments'] == true,
+        null => false,
+      },
+    };
+  }
+
+  @override
+  Future<AppPurchaseRoute> appPurchaseRoute() async => _route(await _tenant());
+
+  Future<Map<String, Object?>> _tenant() async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_tenantProcedure, {
+      return await _client.unary(_tenantProcedure, {
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
-      // protojson omits a false.
-      return body['acceptsPayments'] == true;
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
+
+  /// A server that names no route predates the store route, and sells through
+  /// the external checkout like every tenant that has chosen nothing.
+  AppPurchaseRoute _route(Map<String, Object?> tenant) =>
+      tenant['appPurchaseRoute'] == 'APP_PURCHASE_ROUTE_STORE'
+      ? AppPurchaseRoute.store
+      : AppPurchaseRoute.externalCheckout;
 
   @override
   Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
@@ -136,6 +170,84 @@ class HttpPurchaseRepository implements PurchaseRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<StorePurchaseIntent> startStorePurchase(
+    String episodePublicId,
+    InAppPurchaseStore store,
+  ) async {
+    // Read once and sent explicitly, so the intent is opened for the reader
+    // who tapped and no one else.
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        _startStoreProcedure,
+        {
+          'episodePublicId': episodePublicId,
+          'store': store.wireName,
+          'tenant': {'tenantId': tenantId},
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+      final intentId = _readString(body, 'intentId');
+      final productId = _readString(body, 'productId');
+      if (intentId.isEmpty || productId.isEmpty) {
+        throw const PurchaseFailure(
+          PurchaseFailureKind.unexpected,
+          message: 'intentId and productId are required',
+        );
+      }
+      return StorePurchaseIntent(intentId: intentId, productId: productId);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<void> confirmStorePurchase({
+    required InAppPurchaseStore store,
+    required String transaction,
+    required String productId,
+  }) async {
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _confirmStoreProcedure,
+        {
+          'productId': productId,
+          'store': store.wireName,
+          'tenant': {'tenantId': tenantId},
+          'transaction': transaction,
+        },
+        tenantId: tenantId,
+        accessToken: accessToken,
+      );
+    } on ConnectException catch (error) {
+      // Here the store has not settled the charge, rather than the tenant
+      // not selling the episode.
+      if (error.code == 'failed_precondition') {
+        throw PurchaseFailure(
+          PurchaseFailureKind.notSettled,
+          message: error.message,
+        );
+      }
+      throw _toFailure(error);
+    }
+  }
+
+  String _requireAccessToken() {
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      throw const PurchaseFailure(
+        PurchaseFailureKind.sessionExpired,
+        message: 'the app holds no session',
+      );
+    }
+    return accessToken;
   }
 
   @override
@@ -252,6 +364,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
       ),
       'not_found' || 'permission_denied' => PurchaseFailure(
         PurchaseFailureKind.gone,
+        message: error.message,
+      ),
+      'failed_precondition' => PurchaseFailure(
+        PurchaseFailureKind.notSold,
         message: error.message,
       ),
       _ => PurchaseFailure(
