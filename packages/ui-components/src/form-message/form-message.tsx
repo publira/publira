@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";

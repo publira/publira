@@ -1,5 +1,3 @@
-"use client";
-
 import { Select as BaseSelect } from "@base-ui/react/select";
 import { CheckIcon } from "@publira/icons/check-icon";
 import { ChevronDownIcon } from "@publira/icons/chevron-down-icon";

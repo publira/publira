@@ -1,3 +1,4 @@
+import { requireClientDirectives } from "@publira/tsdown-config/require-client-directives";
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
@@ -9,26 +10,11 @@ export default defineConfig({
     "src/button/index.ts",
     "src/card/index.ts",
     "src/checkbox/index.ts",
-    // Its own entry for the reason `field.tsx` has one: it calls a hook, which a
-    // Server Component that renders it could not run without the directive.
-    "src/checkbox/checkbox.tsx",
     "src/combobox/index.ts",
     "src/dialog/index.ts",
-    // Its own entry for the reason `checkbox.tsx` has one: `ConfirmDialogAction`
-    // reads the fieldset context, and a Server Component renders it. `dialog.tsx`
-    // is one too, or the two would share a chunk that drops the directive.
-    "src/dialog/confirm-dialog.tsx",
-    "src/dialog/dialog.tsx",
     "src/empty-state/index.ts",
     "src/field/index.ts",
-    // Its own entry, so the bundle keeps the `"use client"` directive: a
-    // module tsdown merges into a shared chunk loses it, and `Field`'s
-    // `useState` then lands in the server graph.
-    "src/field/field.tsx",
     "src/fieldset/index.ts",
-    // Its own entry for the reason `field.tsx` has one: the controls import its
-    // context, and a shared chunk would drop the `"use client"` directive.
-    "src/fieldset/fieldset.tsx",
     "src/figure-line/index.ts",
     "src/form-actions/index.ts",
     "src/form-message/index.ts",
@@ -39,16 +25,18 @@ export default defineConfig({
     "src/popover/index.ts",
     "src/qr-code/index.ts",
     "src/radio-group/index.ts",
-    "src/radio-group/radio-group.tsx",
     "src/section-error/index.ts",
     "src/section-error-fallback/index.ts",
     "src/select/index.ts",
     "src/skeleton/index.ts",
     "src/switch/index.ts",
-    "src/switch/switch.tsx",
     "src/table/index.ts",
     "src/tabs/index.ts",
     "src/textarea/index.ts",
   ],
   format: "esm",
+  plugins: [requireClientDirectives()],
+  // One output file per source module: a module merged into a shared chunk
+  // loses its `"use client"`, and Next.js then runs its hooks in the server graph.
+  unbundle: true,
 });

@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "./badge";
 import type { BadgeProps, BadgeTone } from "./badge";
 

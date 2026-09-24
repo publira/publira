@@ -1,5 +1,3 @@
-"use client";
-
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";

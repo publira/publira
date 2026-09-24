@@ -1,5 +1,3 @@
-"use client";
-
 import { Field as BaseField } from "@base-ui/react/field";
 import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef } from "react";

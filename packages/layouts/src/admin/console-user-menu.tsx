@@ -1,5 +1,3 @@
-"use client";
-
 import { Menu } from "@base-ui/react/menu";
 import { LogoutIcon, SettingsIcon, UserIcon } from "@publira/icons";
 import { StatusChip } from "@publira/ui-components/badge";

@@ -1,3 +1,4 @@
+import { requireClientDirectives } from "@publira/tsdown-config/require-client-directives";
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
@@ -5,15 +6,13 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/site-layout.tsx",
-    // Its own entry, so the bundle keeps the `"use client"` directive: a
-    // module tsdown merges into a shared chunk loses it, and the drawer's
-    // `useState` then lands in the server graph.
-    "src/site-layout-client.tsx",
     "src/auth-screen.tsx",
     "src/admin/index.ts",
-    "src/admin/console-layout-client.tsx",
-    "src/admin/console-user-menu.tsx",
     "src/navigation.ts",
   ],
   format: "esm",
+  plugins: [requireClientDirectives()],
+  // One output file per source module: a module merged into a shared chunk
+  // loses its `"use client"`, and Next.js then runs its hooks in the server graph.
+  unbundle: true,
 });
