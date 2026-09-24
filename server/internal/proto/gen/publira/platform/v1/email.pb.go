@@ -123,14 +123,18 @@ func (TestEmailRecipientType) EnumDescriptor() ([]byte, []int) {
 }
 
 type PlatformEmailSettings struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Host          string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	Port          int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	Encryption    string                 `protobuf:"bytes,4,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromAddress   string                 `protobuf:"bytes,5,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo       string                 `protobuf:"bytes,6,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
-	HasPassword   bool                   `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Host        string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	Port        int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	Username    string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	Encryption  string                 `protobuf:"bytes,4,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromAddress string                 `protobuf:"bytes,5,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo     string                 `protobuf:"bytes,6,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	HasPassword bool                   `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	// Version of the settings row these values were read at. It moves with every
+	// write, so a caller can state which version its save is based on. Zero says
+	// no settings are saved yet; every other field is empty alongside it.
+	Revision      int64 `protobuf:"varint,8,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -212,6 +216,13 @@ func (x *PlatformEmailSettings) GetHasPassword() bool {
 		return x.HasPassword
 	}
 	return false
+}
+
+func (x *PlatformEmailSettings) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 type GetPlatformEmailSettingsRequest struct {
@@ -304,8 +315,14 @@ type UpdatePlatformEmailSettingsRequest struct {
 	Encryption         string                 `protobuf:"bytes,6,opt,name=encryption,proto3" json:"encryption,omitempty"`
 	FromAddress        string                 `protobuf:"bytes,7,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
 	ReplyTo            string                 `protobuf:"bytes,8,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Required: the revision the values in this request were derived from, as
+	// read from PlatformEmailSettings.revision. Zero states that no settings are
+	// expected to exist yet. The write is refused with FAILED_PRECONDITION when
+	// the stored row moved on, so a save that read the row before another
+	// session changed it cannot roll that change back, the password included.
+	ExpectedRevision int64 `protobuf:"varint,9,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdatePlatformEmailSettingsRequest) Reset() {
@@ -392,6 +409,13 @@ func (x *UpdatePlatformEmailSettingsRequest) GetReplyTo() string {
 		return x.ReplyTo
 	}
 	return ""
+}
+
+func (x *UpdatePlatformEmailSettingsRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
 }
 
 type UpdatePlatformEmailSettingsResponse struct {
@@ -602,7 +626,7 @@ var File_publira_platform_v1_email_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_email_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/platform/v1/email.proto\x12\x13publira.platform.v1\"\xdc\x01\n" +
+	"\x1fpublira/platform/v1/email.proto\x12\x13publira.platform.v1\"\xf8\x01\n" +
 	"\x15PlatformEmailSettings\x12\x12\n" +
 	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\x05R\x04port\x12\x1a\n" +
@@ -612,10 +636,11 @@ const file_publira_platform_v1_email_proto_rawDesc = "" +
 	"encryption\x12!\n" +
 	"\ffrom_address\x18\x05 \x01(\tR\vfromAddress\x12\x19\n" +
 	"\breply_to\x18\x06 \x01(\tR\areplyTo\x12!\n" +
-	"\fhas_password\x18\a \x01(\bR\vhasPassword\"!\n" +
+	"\fhas_password\x18\a \x01(\bR\vhasPassword\x12\x1a\n" +
+	"\brevision\x18\b \x01(\x03R\brevision\"!\n" +
 	"\x1fGetPlatformEmailSettingsRequest\"j\n" +
 	" GetPlatformEmailSettingsResponse\x12F\n" +
-	"\bsettings\x18\x01 \x01(\v2*.publira.platform.v1.PlatformEmailSettingsR\bsettings\"\xbb\x02\n" +
+	"\bsettings\x18\x01 \x01(\v2*.publira.platform.v1.PlatformEmailSettingsR\bsettings\"\xe8\x02\n" +
 	"\"UpdatePlatformEmailSettingsRequest\x12\x12\n" +
 	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\x05R\x04port\x12\x1a\n" +
@@ -626,7 +651,8 @@ const file_publira_platform_v1_email_proto_rawDesc = "" +
 	"encryption\x18\x06 \x01(\tR\n" +
 	"encryption\x12!\n" +
 	"\ffrom_address\x18\a \x01(\tR\vfromAddress\x12\x19\n" +
-	"\breply_to\x18\b \x01(\tR\areplyTo\"m\n" +
+	"\breply_to\x18\b \x01(\tR\areplyTo\x12+\n" +
+	"\x11expected_revision\x18\t \x01(\x03R\x10expectedRevision\"m\n" +
 	"#UpdatePlatformEmailSettingsResponse\x12F\n" +
 	"\bsettings\x18\x01 \x01(\v2*.publira.platform.v1.PlatformEmailSettingsR\bsettings\"\xb6\x03\n" +
 	" SendPlatformSmtpTestEmailRequest\x12R\n" +

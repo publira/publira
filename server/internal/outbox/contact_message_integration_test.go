@@ -81,11 +81,11 @@ func newContactMessageEnv(t *testing.T, ctx context.Context, tenantPublicID, dom
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)
 	}
-	if _, err := queries.UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
+	if _, err := queries.InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams{
 		Host: "smtp.example.com", Port: 587, Username: "mailer", PasswordEncrypted: password,
 		Encryption: "starttls", FromAddress: "no-reply@example.com",
 	}); err != nil {
-		t.Fatalf("UpsertPlatformSMTPConfig: %v", err)
+		t.Fatalf("InsertPlatformSMTPConfig: %v", err)
 	}
 
 	message.ID = uuid.Must(uuid.NewV7())

@@ -33,6 +33,11 @@ export type { PlatformSmtpSettings } from "./email-settings-shared";
 
 export interface UpdatePlatformSmtpSettingsInput {
   encryption: string;
+  /**
+   * The revision the form was rendered at, so a save based on values another
+   * session has since replaced is refused instead of rolling them back.
+   */
+  expectedRevision: bigint;
   fromAddress: string;
   host: string;
   locale: Locale;
@@ -75,11 +80,12 @@ export type PlatformSmtpTestResult =
   | { message: string; ok: false };
 
 /**
- * SMTP failures carry the detail an operator needs to fix the settings ("dial
- * tcp: connection refused", "from_address is required"), so validation and
- * precondition errors pass the server's own text through. Other categories take
- * the shared copy — a raw `[internal]` message is not something to show. Same
- * rule as `apps/web-admin/lib/email-settings.ts`.
+ * SMTP failures carry the detail an operator needs to fix the settings
+ * ("from_address is required"), so validation errors pass the server's own text
+ * through. A refused precondition is the save's revision check: the settings
+ * moved on since the form was rendered, and only a reload shows what they are
+ * now. Other categories take the shared copy — a raw `[internal]` message is
+ * not something to show.
  */
 const parseErrorMessage = async (
   error: unknown,
@@ -87,13 +93,12 @@ const parseErrorMessage = async (
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const genericErrorMessage = t("platform.common.generic_failed");
-  const serverMessage =
-    rpcErrorRawMessage(error)?.trim() || genericErrorMessage;
   return rpcErrorMessage(error, genericErrorMessage, {
     locale,
     overrides: {
-      "invalid-argument": serverMessage,
-      precondition: serverMessage,
+      "invalid-argument":
+        rpcErrorRawMessage(error)?.trim() || genericErrorMessage,
+      precondition: t("platform.settings.save_conflict"),
     },
   });
 };
@@ -128,6 +133,7 @@ type RawPlatformEmailSettings = Pick<
   | "host"
   | "port"
   | "replyTo"
+  | "revision"
   | "username"
 >;
 
@@ -140,6 +146,7 @@ const toPlatformSmtpSettings = (
   host: settings?.host ?? "",
   port: settings?.port ?? 587,
   replyTo: settings?.replyTo ?? "",
+  revision: String(settings?.revision ?? 0),
   username: settings?.username ?? "",
 });
 
@@ -201,6 +208,7 @@ export const updatePlatformEmailSettings = async (
     const response = await apiClient.emailSettings.updatePlatformEmailSettings(
       {
         encryption: input.encryption,
+        expectedRevision: input.expectedRevision,
         fromAddress: input.fromAddress,
         host: input.host,
         password: input.password,

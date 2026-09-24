@@ -73,6 +73,7 @@ const smtpFormData = (): FormData => {
   formData.set("encryption", "starttls");
   formData.set("host", "smtp.example.com");
   formData.set("port", "587");
+  formData.set("revision", "3");
   return formData;
 };
 
@@ -324,6 +325,33 @@ describe("SMTP settings actions", () => {
     ).resolves.toMatchObject({ ok: true });
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:email-settings");
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+  });
+
+  it("saves against the revision the form was rendered at", async () => {
+    mockUpdatePlatformEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {},
+    });
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await updatePlatformEmailSettingsAction(null, smtpFormData());
+
+    expect(mockUpdatePlatformEmailSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedRevision: 3n })
+    );
+  });
+
+  it("refuses a save that does not state a revision without calling the API", async () => {
+    const formData = smtpFormData();
+    formData.delete("revision");
+
+    const { updatePlatformEmailSettingsAction } = await import("./actions");
+
+    await expect(
+      updatePlatformEmailSettingsAction(null, formData)
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockUpdatePlatformEmailSettings).not.toHaveBeenCalled();
   });
 
   it("clears nothing when the save fails", async () => {

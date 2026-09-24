@@ -28,6 +28,7 @@ SET host = EXCLUDED.host,
     encryption = EXCLUDED.encryption,
     from_address = EXCLUDED.from_address,
     reply_to = EXCLUDED.reply_to,
+    revision = platform_smtp_config.revision + 1,
     updated_at = NOW();
 
 -- Tenant override (disabled, but the values are kept)

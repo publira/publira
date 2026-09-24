@@ -36,6 +36,8 @@ import {
 } from "#lib/platform-settings";
 import { platformSetupStatusCacheTag } from "#lib/setup-status";
 
+import { revisionSchema } from "./policy-form-schemas";
+
 export type PlatformEmailSettingsFormState =
   | { message: string; ok: false }
   | { message: string; ok: true; settings: PlatformSmtpSettings }
@@ -142,6 +144,19 @@ const smtpFormSchema = async (locale: Locale) => {
   });
 };
 
+/**
+ * A save also states the revision the form was rendered at. The connection test
+ * writes nothing, so it does not take one.
+ */
+const smtpSaveFormSchema = async (locale: Locale) => {
+  const [schema, t] = await Promise.all([
+    smtpFormSchema(locale),
+    getMessagesFor(locale),
+  ]);
+
+  return schema.extend({ revision: revisionSchema(t) });
+};
+
 const smtpFormFields = {
   encryption: "value",
   fromAddress: { kind: "value", name: "from_address" },
@@ -152,6 +167,7 @@ const smtpFormFields = {
   recipientEmail: { kind: "value", name: "recipient_email" },
   recipientType: { kind: "value", name: "recipient_type" },
   replyTo: { kind: "value", name: "reply_to" },
+  revision: "value",
   username: "value",
 } as const;
 
@@ -171,7 +187,7 @@ export const updatePlatformEmailSettingsAction = async (
 ): Promise<PlatformEmailSettingsFormState> => {
   await assertSameOrigin();
   const { locale, t } = await loadActionCatalog();
-  const schema = await smtpFormSchema(locale);
+  const schema = await smtpSaveFormSchema(locale);
 
   const parsed = schema.safeParse(toFormDataInput(formData, smtpFormFields));
   if (!parsed.success) {
@@ -181,6 +197,7 @@ export const updatePlatformEmailSettingsAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformEmailSettings({
       encryption: parsed.data.encryption,
+      expectedRevision: parsed.data.revision,
       fromAddress: parsed.data.fromAddress,
       host: parsed.data.host,
       locale,

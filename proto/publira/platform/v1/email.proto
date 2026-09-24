@@ -25,6 +25,10 @@ message PlatformEmailSettings {
   string from_address = 5;
   string reply_to = 6;
   bool has_password = 7;
+  // Version of the settings row these values were read at. It moves with every
+  // write, so a caller can state which version its save is based on. Zero says
+  // no settings are saved yet; every other field is empty alongside it.
+  int64 revision = 8;
 }
 
 message GetPlatformEmailSettingsRequest {}
@@ -42,6 +46,12 @@ message UpdatePlatformEmailSettingsRequest {
   string encryption = 6;
   string from_address = 7;
   string reply_to = 8;
+  // Required: the revision the values in this request were derived from, as
+  // read from PlatformEmailSettings.revision. Zero states that no settings are
+  // expected to exist yet. The write is refused with FAILED_PRECONDITION when
+  // the stored row moved on, so a save that read the row before another
+  // session changed it cannot roll that change back, the password included.
+  int64 expected_revision = 9;
 }
 
 message UpdatePlatformEmailSettingsResponse {

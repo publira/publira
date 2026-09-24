@@ -746,6 +746,10 @@ type Querier interface {
 	// nothing to lock, so a losing racer must fail on the primary key rather than
 	// overwrite the row the winner just created.
 	InsertPlatformRetentionConfig(ctx context.Context, arg InsertPlatformRetentionConfigParams) (PlatformRetentionConfig, error)
+	// No ON CONFLICT clause: an absent row leaves LockPlatformSMTPConfig nothing
+	// to lock, so a losing racer must fail on the primary key rather than
+	// overwrite the row the winner just created.
+	InsertPlatformSMTPConfig(ctx context.Context, arg InsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	// Creates the settings row with the platform default time zone and locale.
 	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 	// absent, so a losing racer must fail on the primary key rather than overwrite
@@ -1707,6 +1711,9 @@ type Querier interface {
 	// Reads the defaults row for update, so the revision a save compares against
 	// cannot change between the comparison and the write.
 	LockPlatformRetentionConfig(ctx context.Context) (PlatformRetentionConfig, error)
+	// Reads the row for update, so the revision a save compares against, and the
+	// stored password it carries forward, cannot change before the write.
+	LockPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
@@ -2073,6 +2080,9 @@ type Querier interface {
 	// write, which is what makes a save based on an earlier read detectable.
 	UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlatformPolicyConfigParams) (PlatformPolicyConfig, error)
 	UpdatePlatformRetentionConfig(ctx context.Context, arg UpdatePlatformRetentionConfigParams) (PlatformRetentionConfig, error)
+	// Writes every value over the existing row. The revision moves with every
+	// write, which is what makes a save based on an earlier read detectable.
+	UpdatePlatformSMTPConfig(ctx context.Context, arg UpdatePlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	// Writes the platform default time zone and locale over the existing row. The
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.
@@ -2121,7 +2131,6 @@ type Querier interface {
 	// setup finish on a platform whose settings row outlived its operators;
 	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
-	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	// The whole listing row is written on every admin save, so a field the
 	// request leaves empty is stored as empty rather than kept from the row that
 	// was there.
