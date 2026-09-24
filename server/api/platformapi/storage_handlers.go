@@ -12,6 +12,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storagesettings"
 )
 
@@ -115,7 +116,7 @@ func (s *platformServer) GetPlatformStorageSettings(
 type storageWrite struct {
 	settings         storagesettings.Settings
 	accessKeyID      string
-	secretUpdateMode int32
+	secretUpdateMode secretupdate.Mode
 	secretAccessKey  string
 	expectedRevision int64
 }
@@ -244,7 +245,7 @@ func (s *platformServer) UpdatePlatformStorageSettings(
 	updated, err := s.writePlatformStorageSettings(ctx, storageWrite{
 		settings:         settings,
 		accessKeyID:      strings.TrimSpace(req.Msg.GetAccessKeyId()),
-		secretUpdateMode: int32(req.Msg.GetSecretAccessKeyUpdateMode()),
+		secretUpdateMode: secretupdate.Mode(req.Msg.GetSecretAccessKeyUpdateMode()),
 		secretAccessKey:  req.Msg.GetSecretAccessKey(),
 		expectedRevision: req.Msg.GetExpectedRevision(),
 	}, audit)
@@ -285,14 +286,14 @@ func (s *platformServer) TestPlatformStorageConnection(
 	if err := storagesettings.ValidateKeptSecret(
 		existing.AccessKeyID.String,
 		req.Msg.GetAccessKeyId(),
-		int32(req.Msg.GetSecretAccessKeyUpdateMode()),
+		secretupdate.Mode(req.Msg.GetSecretAccessKeyUpdateMode()),
 		existingEncrypted != "",
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	secretAccessKey, err := storagesettings.ResolveSecretForTest(
 		existingEncrypted,
-		int32(req.Msg.GetSecretAccessKeyUpdateMode()),
+		secretupdate.Mode(req.Msg.GetSecretAccessKeyUpdateMode()),
 		req.Msg.GetSecretAccessKey(),
 		s.encryptor,
 	)

@@ -9,7 +9,6 @@ package paymentsettings
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -19,15 +18,11 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
 	ProviderStripe = "stripe"
-
-	SecretUpdateModeUnspecified int32 = 0
-	SecretUpdateModeUnchanged   int32 = 1
-	SecretUpdateModeReplace     int32 = 2
-	SecretUpdateModeClear       int32 = 3
 
 	ActionUpdated = "tenant_payment_settings_updated"
 	TargetType    = "payment_config"
@@ -41,7 +36,6 @@ var (
 	ErrSecretRequired           = errors.New("secret is required")
 	ErrSecretsRequired          = errors.New("secret key and webhook signing secret are required when payment is enabled")
 	ErrInvalidProvider          = errors.New("provider must be stripe")
-	ErrInvalidSecretUpdateMode  = errors.New("invalid secret update mode")
 	ErrEncryptFailed            = errors.New("failed to encrypt payment secret")
 	ErrDecryptFailed            = errors.New("failed to decrypt payment secret")
 	ErrInvalidCiphertext        = errors.New("payment secret is not an encrypted envelope")
@@ -113,9 +107,9 @@ type UpdateInput struct {
 	Provider                string
 	Enabled                 bool
 	SecretKey               string
-	SecretKeyUpdateMode     int32
+	SecretKeyUpdateMode     secretupdate.Mode
 	WebhookSecret           string
-	WebhookSecretUpdateMode int32
+	WebhookSecretUpdateMode secretupdate.Mode
 }
 
 type AuditMeta struct {
@@ -159,23 +153,22 @@ func splitSecretPrefix(value string) (string, string) {
 	return value[:i+1], value[i+1:]
 }
 
-func applySecretUpdate(existingEncrypted, existingHint string, mode int32, newPlaintext string, mgr SecretManager) (string, string, error) {
-	switch mode {
-	case SecretUpdateModeUnspecified, SecretUpdateModeUnchanged:
-		return existingEncrypted, existingHint, nil
-	case SecretUpdateModeReplace:
+func applySecretUpdate(existingEncrypted, existingHint string, mode secretupdate.Mode, newPlaintext string, mgr SecretManager) (string, string, error) {
+	resolved, err := secretupdate.Resolve(mode, newPlaintext, ErrSecretRequired)
+	if err != nil {
+		return "", "", err
+	}
+	switch resolved {
+	case secretupdate.Replace:
 		return encryptSecret(newPlaintext, mgr)
-	case SecretUpdateModeClear:
+	case secretupdate.Clear:
 		return "", "", nil
 	default:
-		return "", "", fmt.Errorf("%w: %d", ErrInvalidSecretUpdateMode, mode)
+		return existingEncrypted, existingHint, nil
 	}
 }
 
 func encryptSecret(plaintext string, mgr SecretManager) (string, string, error) {
-	if strings.TrimSpace(plaintext) == "" {
-		return "", "", ErrSecretRequired
-	}
 	if mgr == nil {
 		return "", "", ErrSecretManagerUnavailable
 	}

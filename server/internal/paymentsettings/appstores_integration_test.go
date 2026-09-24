@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -53,12 +54,12 @@ func TestAppStoresRoundTripBothStoresWithoutRevealingAKey(t *testing.T) {
 			IssuerID:             strings.ToUpper(integrationIssuerID),
 			KeyID:                strings.ToLower(integrationKeyID),
 			PrivateKey:           appStoreKey,
-			PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			PrivateKeyUpdateMode: secretupdate.Replace,
 		},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     true,
 			ServiceAccountKey:           serviceAccountKey,
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			ServiceAccountKeyUpdateMode: secretupdate.Replace,
 		},
 	})
 	if err != nil {
@@ -127,10 +128,10 @@ func TestAppStoresRoundTripBothStoresWithoutRevealingAKey(t *testing.T) {
 		AppStore: paymentsettings.AppStoreUpdate{
 			IssuerID:             integrationIssuerID,
 			KeyID:                integrationKeyID,
-			PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeUnchanged,
+			PrivateKeyUpdateMode: secretupdate.Unchanged,
 		},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeUnchanged,
+			ServiceAccountKeyUpdateMode: secretupdate.Unchanged,
 		},
 	})
 	if err != nil {
@@ -151,9 +152,9 @@ func TestAppStoresRoundTripBothStoresWithoutRevealingAKey(t *testing.T) {
 
 	cleared, err := stores.Update(ctx, tenant.ID, paymentsettings.StoreUpdateInput{
 		Route:    paymentsettings.RouteExternalCheckout,
-		AppStore: paymentsettings.AppStoreUpdate{PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeClear},
+		AppStore: paymentsettings.AppStoreUpdate{PrivateKeyUpdateMode: secretupdate.Clear},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeClear,
+			ServiceAccountKeyUpdateMode: secretupdate.Clear,
 		},
 	})
 	if err != nil {
@@ -198,7 +199,7 @@ func TestAppStoresRefuseTheStoreRouteWithoutAReadyStore(t *testing.T) {
 		IssuerID:             integrationIssuerID,
 		KeyID:                integrationKeyID,
 		PrivateKey:           appStorePrivateKeyPEM(t),
-		PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		PrivateKeyUpdateMode: secretupdate.Replace,
 	}
 
 	if _, err := stores.Update(ctx, tenant.ID, paymentsettings.StoreUpdateInput{
@@ -281,7 +282,7 @@ func TestAppStoresRejectCredentialsTheStoreWouldNotAccept(t *testing.T) {
 				Route: paymentsettings.RouteExternalCheckout,
 				AppStore: paymentsettings.AppStoreUpdate{
 					PrivateKey:           pkcs8PEM(t, rsaKey),
-					PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+					PrivateKeyUpdateMode: secretupdate.Replace,
 				},
 			},
 			want: paymentsettings.ErrInvalidAppStorePrivateKey,
@@ -304,7 +305,7 @@ func TestAppStoresRejectCredentialsTheStoreWouldNotAccept(t *testing.T) {
 				Route: paymentsettings.RouteExternalCheckout,
 				GooglePlay: paymentsettings.GooglePlayUpdate{
 					ServiceAccountKey:           `{"type":"authorized_user"}`,
-					ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+					ServiceAccountKeyUpdateMode: secretupdate.Replace,
 				},
 			},
 			want: paymentsettings.ErrInvalidServiceAccountKey,
@@ -382,7 +383,7 @@ func TestAppStoresRLSHidesOtherTenantStores(t *testing.T) {
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     true,
 			ServiceAccountKey:           googlePlayServiceAccountKey(t),
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			ServiceAccountKeyUpdateMode: secretupdate.Replace,
 		},
 	}); err != nil {
 		t.Fatalf("seed tenant B stores: %v", err)
@@ -502,12 +503,12 @@ func TestAppStoresLoadTheCredentialsOfAReadyStoreOnly(t *testing.T) {
 			IssuerID:             integrationIssuerID,
 			KeyID:                integrationKeyID,
 			PrivateKey:           appStoreKey,
-			PrivateKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			PrivateKeyUpdateMode: secretupdate.Replace,
 		},
 		GooglePlay: paymentsettings.GooglePlayUpdate{
 			Enabled:                     false,
 			ServiceAccountKey:           serviceAccountKey,
-			ServiceAccountKeyUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			ServiceAccountKeyUpdateMode: secretupdate.Replace,
 		},
 	}); err != nil {
 		t.Fatalf("Update: %v", err)

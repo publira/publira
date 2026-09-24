@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
@@ -92,13 +93,13 @@ type AppStoreUpdate struct {
 	IssuerID             string
 	KeyID                string
 	PrivateKey           string
-	PrivateKeyUpdateMode int32
+	PrivateKeyUpdateMode secretupdate.Mode
 }
 
 type GooglePlayUpdate struct {
 	Enabled                     bool
 	ServiceAccountKey           string
-	ServiceAccountKeyUpdateMode int32
+	ServiceAccountKeyUpdateMode secretupdate.Mode
 }
 
 type StoreUpdateInput struct {
@@ -282,7 +283,7 @@ func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantA
 	if err != nil {
 		return dbmodels.UpsertTenantAppStoreConfigParams{}, err
 	}
-	if update.PrivateKeyUpdateMode == SecretUpdateModeReplace && strings.TrimSpace(update.PrivateKey) != "" {
+	if update.PrivateKeyUpdateMode == secretupdate.Replace && strings.TrimSpace(update.PrivateKey) != "" {
 		if err := validateAppStorePrivateKey(update.PrivateKey); err != nil {
 			return dbmodels.UpsertTenantAppStoreConfigParams{}, err
 		}
@@ -297,7 +298,7 @@ func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantA
 	if err != nil {
 		return dbmodels.UpsertTenantAppStoreConfigParams{}, err
 	}
-	if update.PrivateKeyUpdateMode == SecretUpdateModeReplace {
+	if update.PrivateKeyUpdateMode == secretupdate.Replace {
 		hint = MaskSecret(pemBody(update.PrivateKey))
 	}
 	if update.Enabled && (issuerID == "" || keyID == "" || encrypted == "") {
@@ -315,7 +316,7 @@ func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantA
 
 func (a *AppStores) googlePlayParams(tenantID uuid.UUID, existing dbmodels.TenantGooglePlayConfig, update GooglePlayUpdate) (dbmodels.UpsertTenantGooglePlayConfigParams, error) {
 	var key serviceAccountKey
-	if update.ServiceAccountKeyUpdateMode == SecretUpdateModeReplace && strings.TrimSpace(update.ServiceAccountKey) != "" {
+	if update.ServiceAccountKeyUpdateMode == secretupdate.Replace && strings.TrimSpace(update.ServiceAccountKey) != "" {
 		parsed, err := parseServiceAccountKey(update.ServiceAccountKey)
 		if err != nil {
 			return dbmodels.UpsertTenantGooglePlayConfigParams{}, err
@@ -336,10 +337,10 @@ func (a *AppStores) googlePlayParams(tenantID uuid.UUID, existing dbmodels.Tenan
 	// gone with a cleared one.
 	email := nullStringValue(existing.ServiceAccountEmail)
 	switch update.ServiceAccountKeyUpdateMode {
-	case SecretUpdateModeReplace:
+	case secretupdate.Replace:
 		email = key.ClientEmail
 		hint = MaskSecret(key.PrivateKeyID)
-	case SecretUpdateModeClear:
+	case secretupdate.Clear:
 		email = ""
 	}
 	if update.Enabled && encrypted == "" {

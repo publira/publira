@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -78,9 +79,9 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 		Provider:                provider.Declaration().ID,
 		Enabled:                 true,
 		SecretKey:               credentials[stripe.FieldSecretKey],
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           credentials[stripe.FieldWebhookSecret],
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}

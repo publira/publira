@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
@@ -101,7 +102,7 @@ func (s *platformServer) GetPlatformEmailSettings(
 // password that goes with them, and the revision they were derived from.
 type smtpWrite struct {
 	settings         emailsettings.SMTPSettings
-	passwordMode     int32
+	passwordMode     secretupdate.Mode
 	password         string
 	expectedRevision int64
 }
@@ -203,7 +204,7 @@ func (s *platformServer) UpdatePlatformEmailSettings(
 
 	updated, err := s.writePlatformSMTPConfig(ctx, smtpWrite{
 		settings:         settings,
-		passwordMode:     int32(req.Msg.GetPasswordUpdateMode()),
+		passwordMode:     secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
 		password:         req.Msg.GetPassword(),
 		expectedRevision: req.Msg.GetExpectedRevision(),
 	})
@@ -249,7 +250,7 @@ func (s *platformServer) SendPlatformSmtpTestEmail(
 		existingPassword = existing.PasswordEncrypted
 	}
 
-	password, err := emailsettings.ResolvePasswordForTest(existingPassword, int32(req.Msg.PasswordUpdateMode), req.Msg.Password, s.encryptor)
+	password, err := emailsettings.ResolvePasswordForTest(existingPassword, secretupdate.Mode(req.Msg.PasswordUpdateMode), req.Msg.Password, s.encryptor)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

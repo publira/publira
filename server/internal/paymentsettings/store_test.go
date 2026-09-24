@@ -12,6 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
@@ -30,9 +31,9 @@ func TestStoreUpsertEncryptsAndMasks(t *testing.T) {
 	cfg, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{
 		ActorUserID: actorID,
 		ActorRole:   auth.RoleTenantAdmin,
@@ -103,9 +104,9 @@ func TestStoreGetPublicDoesNotDecrypt(t *testing.T) {
 	_, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)
@@ -169,9 +170,9 @@ func TestStoreRotateAndClearSecrets(t *testing.T) {
 	_, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("initial Upsert: %v", err)
@@ -185,8 +186,8 @@ func TestStoreRotateAndClearSecrets(t *testing.T) {
 	cfg, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               rotated,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
-		WebhookSecretUpdateMode: SecretUpdateModeUnchanged,
+		SecretKeyUpdateMode:     secretupdate.Replace,
+		WebhookSecretUpdateMode: secretupdate.Unchanged,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("rotate Upsert: %v", err)
@@ -207,8 +208,8 @@ func TestStoreRotateAndClearSecrets(t *testing.T) {
 
 	disabled, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 false,
-		SecretKeyUpdateMode:     SecretUpdateModeClear,
-		WebhookSecretUpdateMode: SecretUpdateModeClear,
+		SecretKeyUpdateMode:     secretupdate.Clear,
+		WebhookSecretUpdateMode: secretupdate.Clear,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("clear Upsert: %v", err)
@@ -230,9 +231,9 @@ func TestStoreLoadEnabledSecretsDecrypts(t *testing.T) {
 	_, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)
@@ -270,9 +271,9 @@ func TestStoreTenantIsolationOnQueries(t *testing.T) {
 	_, err := store.Upsert(context.Background(), tenantA, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("upsert A: %v", err)
@@ -301,9 +302,9 @@ func TestStoreDecryptFailureDoesNotLeakCiphertextOrPlaintext(t *testing.T) {
 	_, err := store.Upsert(context.Background(), tenantID, UpdateInput{
 		Enabled:                 true,
 		SecretKey:               testSecretKey,
-		SecretKeyUpdateMode:     SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           testWebhookSecret,
-		WebhookSecretUpdateMode: SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, AuditMeta{})
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)

@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 func TestMaskSecret(t *testing.T) {
@@ -120,15 +122,15 @@ func TestPublicConfigJSONOmitsSecrets(t *testing.T) {
 	}
 }
 
-func TestEncryptSecretRejectsEmptyAndMissingManager(t *testing.T) {
+func TestApplySecretUpdateRejectsEmptyAndMissingManager(t *testing.T) {
 	t.Parallel()
 
-	_, _, err := encryptSecret("  ", nil)
+	_, _, err := applySecretUpdate("", "", secretupdate.Replace, "  ", nil)
 	if !errors.Is(err, ErrSecretRequired) {
 		t.Fatalf("empty plaintext error = %v, want ErrSecretRequired", err)
 	}
 
-	_, _, err = encryptSecret("sk_test_value", nil)
+	_, _, err = applySecretUpdate("", "", secretupdate.Replace, "sk_test_value", nil)
 	if !errors.Is(err, ErrSecretManagerUnavailable) {
 		t.Fatalf("nil manager error = %v, want ErrSecretManagerUnavailable", err)
 	}
@@ -156,7 +158,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 		t.Fatalf("encrypt original: %v", err)
 	}
 
-	gotEnc, gotHint, err := applySecretUpdate(encrypted, hint, SecretUpdateModeUnchanged, "ignored", mgr)
+	gotEnc, gotHint, err := applySecretUpdate(encrypted, hint, secretupdate.Unchanged, "ignored", mgr)
 	if err != nil {
 		t.Fatalf("unchanged: %v", err)
 	}
@@ -164,7 +166,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 		t.Fatalf("unchanged mutated secret")
 	}
 
-	rotated, rotatedHint, err := applySecretUpdate(encrypted, hint, SecretUpdateModeReplace, "sk_test_rotatedYYYY", mgr)
+	rotated, rotatedHint, err := applySecretUpdate(encrypted, hint, secretupdate.Replace, "sk_test_rotatedYYYY", mgr)
 	if err != nil {
 		t.Fatalf("replace: %v", err)
 	}
@@ -178,7 +180,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 		t.Fatal("ciphertext contains plaintext")
 	}
 
-	clearedEnc, clearedHint, err := applySecretUpdate(encrypted, hint, SecretUpdateModeClear, "", mgr)
+	clearedEnc, clearedHint, err := applySecretUpdate(encrypted, hint, secretupdate.Clear, "", mgr)
 	if err != nil {
 		t.Fatalf("clear: %v", err)
 	}
@@ -187,8 +189,8 @@ func TestApplySecretUpdateModes(t *testing.T) {
 	}
 
 	_, _, err = applySecretUpdate(encrypted, hint, 99, "", mgr)
-	if !errors.Is(err, ErrInvalidSecretUpdateMode) {
-		t.Fatalf("invalid mode error = %v, want ErrInvalidSecretUpdateMode", err)
+	if !errors.Is(err, secretupdate.ErrInvalidMode) {
+		t.Fatalf("invalid mode error = %v, want secretupdate.ErrInvalidMode", err)
 	}
 }
 

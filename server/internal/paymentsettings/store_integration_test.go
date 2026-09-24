@@ -18,6 +18,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -42,9 +43,9 @@ func TestStorePersistsEncryptedSecretsAndAudit(t *testing.T) {
 	cfg, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               integrationSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           integrationWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{
 		ActorUserID: actor.ID,
 		ActorRole:   auth.RoleTenantAdmin,
@@ -127,9 +128,9 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 	if _, err := superStore.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
 		Enabled:                 true,
 		SecretKey:               integrationSecretKey,
-		SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+		SecretKeyUpdateMode:     secretupdate.Replace,
 		WebhookSecret:           integrationWebhookSecret,
-		WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+		WebhookSecretUpdateMode: secretupdate.Replace,
 	}, paymentsettings.AuditMeta{
 		ActorUserID: actorB.ID,
 		ActorRole:   auth.RoleTenantAdmin,
@@ -143,9 +144,9 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 		own, err := store.Upsert(ctx, tenantA.ID, paymentsettings.UpdateInput{
 			Enabled:                 true,
 			SecretKey:               "sk_test_51TenantAOwnKeyXXXX",
-			SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+			SecretKeyUpdateMode:     secretupdate.Replace,
 			WebhookSecret:           "whsec_TenantAOwnWebhookYYYY",
-			WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			WebhookSecretUpdateMode: secretupdate.Replace,
 		}, paymentsettings.AuditMeta{
 			ActorUserID: actorA.ID,
 			ActorRole:   auth.RoleTenantAdmin,
@@ -174,9 +175,9 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 		_, err = store.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
 			Enabled:                 true,
 			SecretKey:               "sk_test_51PlantedByTenantA",
-			SecretKeyUpdateMode:     paymentsettings.SecretUpdateModeReplace,
+			SecretKeyUpdateMode:     secretupdate.Replace,
 			WebhookSecret:           "whsec_PlantedByTenantAXXXX",
-			WebhookSecretUpdateMode: paymentsettings.SecretUpdateModeReplace,
+			WebhookSecretUpdateMode: secretupdate.Replace,
 		}, paymentsettings.AuditMeta{
 			ActorUserID: actorA.ID,
 			ActorRole:   auth.RoleTenantAdmin,

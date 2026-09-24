@@ -16,6 +16,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
@@ -162,7 +163,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	if found && existing.PasswordEncrypted.Valid {
 		existingPassword = existing.PasswordEncrypted.String
 	}
-	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, int32(req.Msg.PasswordUpdateMode), req.Msg.Password, s.encryptor)
+	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, secretupdate.Mode(req.Msg.PasswordUpdateMode), req.Msg.Password, s.encryptor)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -313,7 +314,7 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 	if found && existing.PasswordEncrypted.Valid {
 		existingPassword = existing.PasswordEncrypted.String
 	}
-	password, err := emailsettings.ResolvePasswordForTest(existingPassword, int32(req.PasswordUpdateMode), req.Password, s.encryptor)
+	password, err := emailsettings.ResolvePasswordForTest(existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
 	if err != nil {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
