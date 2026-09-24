@@ -488,12 +488,15 @@
       "exception": "Not in the app yet: #2825."
     },
     {
-      "name": "Stripe's payment webhook",
+      "name": "The payment providers' webhooks",
       "web": {
-        "routes": ["api/v1/webhook/stripe"],
+        "routes": [
+          "api/v1/webhook/payment/[provider]",
+          "api/v1/webhook/stripe"
+        ],
         "rpcs": ["ProcessPaymentWebhook"]
       },
-      "exception": "Stripe's servers call it; no reader reaches it. A purchase made from the app lands here too."
+      "exception": "The payment provider's servers call it; no reader reaches it. A purchase made from the app lands here too."
     },
     {
       "name": "The files that hand the tenant's links to its app",

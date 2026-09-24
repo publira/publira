@@ -282,6 +282,9 @@ const PaymentSettingsFields = ({
             <FieldDescription>
               <ClientMessage message="admin.settings.payment.webhook_url_description" />
             </FieldDescription>
+            <FieldDescription>
+              <ClientMessage message="admin.settings.payment.webhook_url_legacy_description" />
+            </FieldDescription>
           </FieldContent>
         </Field>
       ) : null}

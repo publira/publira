@@ -64,8 +64,8 @@ export const isSameOriginRequest = (requestHeaders: {
  * Reject a Server Action unless {@link isSameOriginRequest} accepts it.
  *
  * The Route Handlers that skip this guard each say why in their own file: the
- * revalidation endpoint uses its own bearer token, Stripe verifies its webhook
- * signature upstream, and the rest are GET-only.
+ * revalidation endpoint uses its own bearer token, a payment webhook is
+ * verified by its signature upstream, and the rest are GET-only.
  */
 export const assertSameOrigin = async (): Promise<void> => {
   if (!isSameOriginRequest(await headers())) {

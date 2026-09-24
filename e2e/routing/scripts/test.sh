@@ -42,7 +42,8 @@ assert_route "revalidate on admin host stays on web-admin" POST admin.localhost 
 assert_route "revalidate on platform host stays on web-platform" POST platform.localhost /api/v1/revalidate web-platform /api/v1/revalidate
 assert_route "view beacon stays on web-host" POST localhost /api/v1/views web-host /api/v1/views
 assert_route "read beacon stays on web-host" POST localhost /api/v1/series/SERIES_001/episodes/EPISODE_001/read web-host /api/v1/series/SERIES_001/episodes/EPISODE_001/read
-assert_route "stripe webhook stays on web-host" POST localhost /api/v1/webhook/stripe web-host /api/v1/webhook/stripe
+assert_route "payment webhook stays on web-host" POST localhost /api/v1/webhook/payment/stripe web-host /api/v1/webhook/payment/stripe
+assert_route "legacy stripe webhook stays on web-host" POST localhost /api/v1/webhook/stripe web-host /api/v1/webhook/stripe
 assert_route "bare /api/v1 stays on web-host" GET localhost /api/v1 web-host /api/v1
 
 # The exception ends at the path segment: /api/v1abc is not one of the Route

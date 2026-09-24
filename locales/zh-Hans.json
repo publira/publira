@@ -2110,6 +2110,7 @@
         "secret_description": "您输入的值不会再次显示。已保存的值除首尾字符外都会以掩码显示。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "请在 Stripe 控制台中登记此 URL。签名密钥保存在上方的字段中。",
+        "webhook_url_legacy_description": "之前登记的 /api/v1/webhook/stripe 端点仍可使用，但该 URL 已弃用，将在后续版本中删除。请替换为上方的 URL。",
         "saved": "支付设置已保存。",
         "load_failed": "无法加载支付设置。请稍后再试。",
         "save_failed": "无法保存支付设置。请稍后再试。",

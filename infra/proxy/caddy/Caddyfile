@@ -45,7 +45,7 @@
 
 	# Everything under /api except the Next.js Route Handlers on /api/v1:
 	# /api/v1/revalidate on every app, plus the view beacon, the read beacon,
-	# and the Stripe webhook on the public site.
+	# and the payment webhooks on the public site.
 	@api {
 		path /api /api/*
 		not path /api/v1 /api/v1/*

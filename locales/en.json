@@ -2110,6 +2110,7 @@
         "secret_description": "A value you enter is never shown again. A stored value appears masked apart from its first and last characters.",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "Register this URL in the Stripe dashboard. The signing secret is saved in the field above.",
+        "webhook_url_legacy_description": "An endpoint registered earlier at /api/v1/webhook/stripe still works, but that URL is deprecated and will be removed in a later release. Replace it with the URL above.",
         "saved": "The payment settings were saved.",
         "load_failed": "Could not load the payment settings. Please try again later.",
         "save_failed": "Could not save the payment settings. Please try again later.",
