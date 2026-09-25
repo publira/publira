@@ -14,12 +14,18 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import type { EyeCatchVariant } from "#components/eye-catch-picture";
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -206,11 +212,22 @@ const RankingTabs = async ({
 };
 
 /**
- * Resolves the catalog itself rather than taking the three fixed strings as
- * props, the way the series list's pagination does: none of them can stream,
- * and the whole nav already sits inside the section's own boundary.
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
-const RankingPagination = async ({
+const RankingPaginationNav = async ({ children }: { children: ReactNode }) => {
+  const t = await getMessages();
+
+  return (
+    <ListPagination aria-label={t("host.ranking.pagination_aria")}>
+      {children}
+    </ListPagination>
+  );
+};
+
+/** The two directions, written once for both places this screen shows them. */
+const RankingPagination = ({
   nextToken,
   period,
   previousToken,
@@ -218,42 +235,26 @@ const RankingPagination = async ({
   nextToken: string;
   period: RankingPeriodName;
   previousToken: string;
-}) => {
-  const t = await getMessages();
-
-  return (
-    <nav
-      aria-label={t("host.ranking.pagination_aria")}
-      className="mt-8 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={rankingHref(period, previousToken)}
-        >
-          {t("host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.previous_page")}
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={rankingHref(period, nextToken)}
-        >
-          {t("host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.next_page")}
-        </span>
-      )}
-    </nav>
-  );
-};
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <RankingPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? rankingHref(period, previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? rankingHref(period, nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </RankingPaginationNav>
+  </Suspense>
+);
 
 const RankingList = async ({
   searchParams,
@@ -311,98 +312,108 @@ const RankingList = async ({
 
   if (rankedSeries.length === 0) {
     return (
-      <div className="py-20 text-center">
-        <p className="mb-4 text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
-            <Message message="host.ranking.page_empty" />
-          </Suspense>
-        </p>
+      <div className="grid gap-8">
+        <div className="grid gap-4 py-20 text-center">
+          <p className="text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+              <Message message="host.ranking.page_empty" />
+            </Suspense>
+          </p>
+          {previousToken || nextToken ? null : (
+            <p>
+              <LocaleLink
+                className="text-sm text-primary underline-offset-4 hover:underline"
+                href={rankingHref(period)}
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                  <Message message="host.ranking.first_page" />
+                </Suspense>
+              </LocaleLink>
+            </p>
+          )}
+        </div>
         {previousToken || nextToken ? (
           <RankingPagination
             nextToken={nextToken}
             period={period}
             previousToken={previousToken}
           />
-        ) : (
-          <LocaleLink
-            className="text-sm text-primary underline-offset-4 hover:underline"
-            href={rankingHref(period)}
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-              <Message message="host.ranking.first_page" />
-            </Suspense>
-          </LocaleLink>
-        )}
+        ) : null}
       </div>
     );
   }
 
   return (
-    <>
-      <p className="text-sm text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-          <Message
-            message="host.ranking.computed_at"
-            values={{
-              datetime: formatDateTime(computedAt, {
-                fallback: "",
-                locale,
-                timeZone,
-              }),
-            }}
-          />
-        </Suspense>
-      </p>
-      <ol className="mt-4 divide-y divide-border">
-        {rankedSeries.map(({ previousRank, rank, series }) => (
-          <li key={series.publicId}>
-            <LocaleLink
-              className="group flex items-center gap-3 py-3 sm:gap-4"
-              href={`/series/${series.publicId}`}
-            >
-              {/* Wide enough for two digits: "No. 10" wrapping would put the
+    <div className="grid gap-8">
+      <div>
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+            <Message
+              message="host.ranking.computed_at"
+              values={{
+                datetime: formatDateTime(computedAt, {
+                  fallback: "",
+                  locale,
+                  timeZone,
+                }),
+              }}
+            />
+          </Suspense>
+        </p>
+        <ol className="mt-4 divide-y divide-border">
+          {rankedSeries.map(({ previousRank, rank, series }) => (
+            <li key={series.publicId}>
+              <LocaleLink
+                className="group flex items-center gap-3 py-3 sm:gap-4"
+                href={`/series/${series.publicId}`}
+              >
+                {/* Wide enough for two digits: "No. 10" wrapping would put the
                   column out of line with every row above it. */}
-              <span className="w-16 shrink-0 font-serif text-lg leading-tight whitespace-nowrap tabular-nums">
-                <Suspense fallback={<SkeletonLine className="h-5 w-14" />}>
-                  <Message
-                    message="host.ranking.rank_position"
-                    values={{ rank }}
-                  />
-                </Suspense>
-              </span>
-              <RankingArtwork
-                alt={series.title}
-                variants={series.eyeCatchImageVariants}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-serif underline-offset-4 group-hover:underline">
-                  {series.title}
+                <span className="w-16 shrink-0 font-serif text-lg leading-tight whitespace-nowrap tabular-nums">
+                  <Suspense fallback={<SkeletonLine className="h-5 w-14" />}>
+                    <Message
+                      message="host.ranking.rank_position"
+                      values={{ rank }}
+                    />
+                  </Suspense>
                 </span>
-                {series.credits.length > 0 && (
-                  <span className="line-clamp-2 block text-sm">
-                    <CreatorCredits credits={series.credits} locale={locale} />
+                <RankingArtwork
+                  alt={series.title}
+                  variants={series.eyeCatchImageVariants}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-serif underline-offset-4 group-hover:underline">
+                    {series.title}
                   </span>
-                )}
-                {series.ageRating ? (
-                  <span className="mt-1 block">
-                    <AgeRatingBadge rating={series.ageRating} />
-                  </span>
-                ) : null}
-              </span>
-              <span className="shrink-0">
-                <RankMovementMarker previousRank={previousRank} rank={rank} />
-              </span>
-            </LocaleLink>
-          </li>
-        ))}
-      </ol>
+                  {series.credits.length > 0 && (
+                    <span className="line-clamp-2 block text-sm">
+                      <CreatorCredits
+                        credits={series.credits}
+                        locale={locale}
+                      />
+                    </span>
+                  )}
+                  {series.ageRating ? (
+                    <span className="mt-1 block">
+                      <AgeRatingBadge rating={series.ageRating} />
+                    </span>
+                  ) : null}
+                </span>
+                <span className="shrink-0">
+                  <RankMovementMarker previousRank={previousRank} rank={rank} />
+                </span>
+              </LocaleLink>
+            </li>
+          ))}
+        </ol>
+      </div>
 
       <RankingPagination
         nextToken={nextToken}
         period={period}
         previousToken={previousToken}
       />
-    </>
+    </div>
   );
 };
 

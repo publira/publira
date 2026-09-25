@@ -14,6 +14,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import {
+  ListPagination,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { redirectToLogin } from "#lib/auth-session";
@@ -102,67 +106,56 @@ export const ReadingHistorySection = async ({
         </EmptyState>
       ) : null}
       {result.ok && result.reads.length > 0 ? (
-        <ol className="grid gap-3">
-          {result.reads.map((read) => (
-            <li
-              className="rounded-xl border border-border/70 bg-background p-4"
-              key={read.episode.publicId}
+        <div className="grid gap-6">
+          <ol className="grid gap-3">
+            {result.reads.map((read) => (
+              <li
+                className="rounded-xl border border-border/70 bg-background p-4"
+                key={read.episode.publicId}
+              >
+                <p className="text-xs text-muted-foreground">
+                  {read.series.title}
+                </p>
+                <h3 className="mt-1 font-medium">
+                  <LocaleLink
+                    className="hover:underline"
+                    href={`/series/${read.series.publicId}/episodes/${read.episode.publicId}`}
+                  >
+                    #{read.episode.orderIndex} {read.episode.title}
+                  </LocaleLink>
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("host.my.history_finished_at")}{" "}
+                  <span className="text-foreground">
+                    {formatDateTime(read.readAt, {
+                      fallback: "-",
+                      locale,
+                      timeZone,
+                    })}
+                  </span>
+                </p>
+              </li>
+            ))}
+          </ol>
+          <ListPagination aria-label={t("host.my.history_pagination_aria")}>
+            <ListPaginationStep
+              href={
+                result.previousToken ? myPageHref(result.previousToken) : ""
+              }
             >
-              <p className="text-xs text-muted-foreground">
-                {read.series.title}
-              </p>
-              <h3 className="mt-1 font-medium">
-                <LocaleLink
-                  className="hover:underline"
-                  href={`/series/${read.series.publicId}/episodes/${read.episode.publicId}`}
-                >
-                  #{read.episode.orderIndex} {read.episode.title}
-                </LocaleLink>
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("host.my.history_finished_at")}{" "}
-                <span className="text-foreground">
-                  {formatDateTime(read.readAt, {
-                    fallback: "-",
-                    locale,
-                    timeZone,
-                  })}
-                </span>
-              </p>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      {result.ok && result.reads.length > 0 ? (
-        <nav
-          aria-label={t("host.my.history_pagination_aria")}
-          className="mt-6 flex items-center justify-center gap-6"
-        >
-          {result.previousToken ? (
-            <LocaleLink
-              className="text-sm text-primary underline-offset-4 hover:underline"
-              href={myPageHref(result.previousToken)}
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="host.common.previous_page" />
+              </Suspense>
+            </ListPaginationStep>
+            <ListPaginationStep
+              href={result.nextToken ? myPageHref(result.nextToken) : ""}
             >
-              {t("host.common.previous_page")}
-            </LocaleLink>
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {t("host.common.previous_page")}
-            </span>
-          )}
-          {result.nextToken ? (
-            <LocaleLink
-              className="text-sm text-primary underline-offset-4 hover:underline"
-              href={myPageHref(result.nextToken)}
-            >
-              {t("host.common.next_page")}
-            </LocaleLink>
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {t("host.common.next_page")}
-            </span>
-          )}
-        </nav>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.common.next_page" />
+              </Suspense>
+            </ListPaginationStep>
+          </ListPagination>
+        </div>
       ) : null}
     </section>
   );

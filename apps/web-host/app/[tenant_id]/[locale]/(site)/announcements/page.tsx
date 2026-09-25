@@ -8,8 +8,14 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -53,52 +59,51 @@ export const generateMetadata = async (): Promise<Metadata> => {
  */
 
 /**
- * Resolves the catalog itself rather than taking it as a prop: every caller
- * already sits inside the section's own boundary, and the `aria-label` cannot
- * stream in any case.
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
-const AnnouncementsPagination = async ({
+const AnnouncementsPaginationNav = async ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const t = await getMessages();
+
+  return (
+    <ListPagination aria-label={t("host.announcements.pagination_aria")}>
+      {children}
+    </ListPagination>
+  );
+};
+
+/** The two directions, written once for both places this screen shows them. */
+const AnnouncementsPagination = ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => {
-  const t = await getMessages();
-
-  return (
-    <nav
-      aria-label={t("host.announcements.pagination_aria")}
-      className="mt-6 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={announcementsListHref(previousToken)}
-        >
-          {t("host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.previous_page")}
-        </span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={announcementsListHref(nextToken)}
-        >
-          {t("host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.next_page")}
-        </span>
-      )}
-    </nav>
-  );
-};
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <AnnouncementsPaginationNav>
+      <ListPaginationStep
+        href={previousToken ? announcementsListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? announcementsListHref(nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </AnnouncementsPaginationNav>
+  </Suspense>
+);
 
 const AnnouncementsEmptyState = ({
   nextToken,
@@ -123,27 +128,30 @@ const AnnouncementsEmptyState = ({
   // the neighbouring page when it can, and empty tokens when it cannot — then
   // the only way out is the first page (`proto/README.md`).
   return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>
-        <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
-          <Message message="host.announcements.page_empty" />
-        </Suspense>
-      </p>
+    <div className="grid gap-6">
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+        <p>
+          <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
+            <Message message="host.announcements.page_empty" />
+          </Suspense>
+        </p>
+        {previousToken || nextToken ? null : (
+          <LocaleLink
+            className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
+            href={announcementsListHref("")}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="host.announcements.first_page" />
+            </Suspense>
+          </LocaleLink>
+        )}
+      </div>
       {previousToken || nextToken ? (
         <AnnouncementsPagination
           nextToken={nextToken}
           previousToken={previousToken}
         />
-      ) : (
-        <LocaleLink
-          className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
-          href={announcementsListHref("")}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="host.announcements.first_page" />
-          </Suspense>
-        </LocaleLink>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -252,121 +260,124 @@ const AnnouncementsSection = async ({
       ) : null}
 
       {result.announcements.length > 0 ? (
-        <div className="grid gap-3">
-          {result.announcements.map((announcement) => {
-            const linkAction = (() => {
-              if (!announcement.linkUrl) {
-                return null;
-              }
+        <div className="grid gap-6">
+          <div className="grid gap-3">
+            {result.announcements.map((announcement) => {
+              const linkAction = (() => {
+                if (!announcement.linkUrl) {
+                  return null;
+                }
 
-              if (!hasSession || announcement.isRead) {
+                if (!hasSession || announcement.isRead) {
+                  return (
+                    <LocaleLink
+                      className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                      href={announcement.linkUrl}
+                    >
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="host.announcements.open_link" />
+                      </Suspense>
+                    </LocaleLink>
+                  );
+                }
+
                 return (
-                  <LocaleLink
-                    className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                    href={announcement.linkUrl}
-                  >
-                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                      <Message message="host.announcements.open_link" />
-                    </Suspense>
-                  </LocaleLink>
+                  <form action={markAnnouncementAsReadAndNavigateAction}>
+                    <LocaleField />
+                    <input name="tenantId" type="hidden" value={tenantId} />
+                    <input
+                      name="announcementId"
+                      type="hidden"
+                      value={announcement.id}
+                    />
+                    <button
+                      className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                      type="submit"
+                    >
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="host.announcements.open_and_mark_read" />
+                      </Suspense>
+                    </button>
+                  </form>
                 );
-              }
+              })();
 
               return (
-                <form action={markAnnouncementAsReadAndNavigateAction}>
-                  <LocaleField />
-                  <input name="tenantId" type="hidden" value={tenantId} />
-                  <input
-                    name="announcementId"
-                    type="hidden"
-                    value={announcement.id}
-                  />
-                  <button
-                    className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                    type="submit"
-                  >
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <Message message="host.announcements.open_and_mark_read" />
-                    </Suspense>
-                  </button>
-                </form>
-              );
-            })();
-
-            return (
-              <article
-                className="rounded-xl border border-border/70 bg-background p-4"
-                key={announcement.id}
-              >
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <h3 className="font-medium">{announcement.title}</h3>
-                  <div className="flex items-center gap-2">
-                    {hasSession ? (
-                      <span
-                        className={
-                          announcement.isRead
-                            ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                            : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
-                        }
-                      >
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-8" />}
+                <article
+                  className="rounded-xl border border-border/70 bg-background p-4"
+                  key={announcement.id}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="font-medium">{announcement.title}</h3>
+                    <div className="flex items-center gap-2">
+                      {hasSession ? (
+                        <span
+                          className={
+                            announcement.isRead
+                              ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                              : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
+                          }
                         >
-                          {announcement.isRead ? (
-                            <Message message="host.common.read" />
-                          ) : (
-                            <Message message="host.common.unread" />
-                          )}
-                        </Suspense>
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-8" />}
+                          >
+                            {announcement.isRead ? (
+                              <Message message="host.common.read" />
+                            ) : (
+                              <Message message="host.common.unread" />
+                            )}
+                          </Suspense>
+                        </span>
+                      ) : null}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(announcement.createdAt, {
+                          fallback: "-",
+                          locale,
+                          timeZone,
+                        })}
                       </span>
-                    ) : null}
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateTime(announcement.createdAt, {
-                        fallback: "-",
-                        locale,
-                        timeZone,
-                      })}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {announcement.body}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {hasSession && !announcement.isRead ? (
-                    <form action={markAnnouncementAsReadAction}>
-                      <LocaleField />
-                      <input name="tenantId" type="hidden" value={tenantId} />
-                      <input
-                        name="announcementId"
-                        type="hidden"
-                        value={announcement.id}
-                      />
-                      <button
-                        className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
-                        type="submit"
-                      >
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-16" />}
+                  <p className="text-sm text-muted-foreground">
+                    {announcement.body}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {hasSession && !announcement.isRead ? (
+                      <form action={markAnnouncementAsReadAction}>
+                        <LocaleField />
+                        <input name="tenantId" type="hidden" value={tenantId} />
+                        <input
+                          name="announcementId"
+                          type="hidden"
+                          value={announcement.id}
+                        />
+                        <button
+                          className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                          type="submit"
                         >
-                          <Message message="host.common.mark_read" />
-                        </Suspense>
-                      </button>
-                    </form>
-                  ) : null}
-                  {linkAction}
-                </div>
-              </article>
-            );
-          })}
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-16" />}
+                          >
+                            <Message message="host.common.mark_read" />
+                          </Suspense>
+                        </button>
+                      </form>
+                    ) : null}
+                    {linkAction}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <AnnouncementsPagination
+            nextToken={nextToken}
+            previousToken={previousToken}
+          />
         </div>
-      ) : null}
-
-      {result.announcements.length > 0 ? (
-        <AnnouncementsPagination
-          nextToken={nextToken}
-          previousToken={previousToken}
-        />
       ) : null}
     </section>
   );

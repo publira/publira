@@ -7,8 +7,14 @@ import {
 } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
+import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import {
+  ListPagination,
+  ListPaginationSkeleton,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
@@ -27,51 +33,44 @@ interface PurchaseLibraryProps {
 }
 
 /**
- * Resolves the catalog itself rather than taking it as a prop: every caller
- * already sits inside the section's own boundary, and the `aria-label` cannot
- * stream in any case.
+ * The pagination's `<nav>`, and the one component on this screen that resolves
+ * the accessor: an `aria-label` cannot be a node. The key stays written out
+ * here, beside the call that reads it.
  */
-const PurchasePagination = async ({
+const PurchasePaginationNav = async ({ children }: { children: ReactNode }) => {
+  const t = await getMessages();
+
+  return (
+    <ListPagination aria-label={t("host.library.pagination_aria")}>
+      {children}
+    </ListPagination>
+  );
+};
+
+const PurchasePagination = ({
   nextToken,
   previousToken,
 }: {
   nextToken: string;
   previousToken: string;
-}) => {
-  const t = await getMessages();
-
-  return (
-    <nav
-      aria-label={t("host.library.pagination_aria")}
-      className="mt-6 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={purchasesListHref(previousToken)}
-        >
-          {t("host.common.previous_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.previous_page")}
-        </span>
-      )}
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={purchasesListHref(nextToken)}
-        >
-          {t("host.common.next_page")}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t("host.common.next_page")}
-        </span>
-      )}
-    </nav>
-  );
-};
+}) => (
+  <Suspense fallback={<ListPaginationSkeleton />}>
+    <PurchasePaginationNav>
+      <ListPaginationStep
+        href={previousToken ? purchasesListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep href={nextToken ? purchasesListHref(nextToken) : ""}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </PurchasePaginationNav>
+  </Suspense>
+);
 
 const PurchaseCard = async ({
   purchase,
