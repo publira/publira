@@ -1756,6 +1756,7 @@ type Querier interface {
 	// records the purchase looked for a held refund, and the purchase would keep
 	// opening the episode.
 	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
+	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant

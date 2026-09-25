@@ -84,7 +84,16 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
 	}
 
-	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin tenant admin invitation acceptance", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	// The row lock makes a concurrent acceptance of the same invitation wait for
+	// this one, then read it as accepted instead of creating the account twice.
+	invitation, err := txq.LockTenantAdminInvitationByHashForTenant(ctx, dbmodels.LockTenantAdminInvitationByHashForTenantParams{
 		TenantID:  tenant.ID,
 		TokenHash: auth.HashToken(token),
 	})
@@ -104,13 +113,6 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	case "expired":
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation expired"))
 	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin tenant admin invitation acceptance", err, "tenant_id", tenant.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
 
 	user, err := txq.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -133,6 +135,11 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 			Role:     auth.RoleTenantAdmin,
 		})
 		if err != nil {
+			// Only a sign-up with the same address can still take it here; a
+			// retry finds that account and grants it the role.
+			if connectErr := rpcerrors.FromFieldError(err); connectErr != nil {
+				return nil, connectErr
+			}
 			return nil, s.internalDBError(ctx, "failed to create invitation user", err, "tenant_id", tenant.ID.String())
 		}
 		userID = member.UserID
