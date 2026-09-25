@@ -72,7 +72,7 @@ Dev Container 専用のままになるものが 2 つあります。
 - **Traefik**。渡してあるバックエンドのアドレスが `app` コンテナを指すので、ホスト上のプロセスには届きません。各アプリのポート（Next.js 3 つが `3000` / `4000` / `4100`、API と画像が `8000`）へ直接アクセスするか、`infra/proxy/traefik/dynamic/services.yaml` をループバックへ向けてください。
 - **seed の SMTP ホスト**。`db/seeds/dev` は platform / tenant の SMTP 設定を `mailpit` に向けます。ホストのプロセスからメールを送るときは、コンソールでホストを `127.0.0.1` に変えてください。
 
-[CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルも同じ理由で、まだホストでは動きません。PostgreSQL と Valkey を `db` / `redis` として指しています（[#1599](https://github.com/publira/publira/issues/1599)）。
+[CONTRIBUTING.md](CONTRIBUTING.md#working-in-several-worktrees) の worktree ごとの `dev-env` プロファイルは、作成時点の `PUBLIRA_DB_URL`・`PUBLIRA_REDIS_URL`・`PUBLIRA_S3_ENDPOINT` から PostgreSQL・Valkey・RustFS のホストを取るので、`task dev-env:create` の前にも上の値を export してください。
 
 ## ローカル DB 初期化
 
@@ -83,7 +83,7 @@ task db:setup
 `db:setup` は次を順に実行します。
 
 1. migration 適用 (`db/migrations/`)
-2. baseline seed 適用 (`db/seeds/baseline/`)
+2. 開発用 seed 適用 (`db/seeds/dev.sql`: `prod.sql` のロールとオブジェクト所有権に、`db/seeds/dev/` のサンプルデータを加えたもの)
 
 ### migration と seed の責務
 
@@ -202,4 +202,4 @@ Next.js 自体の内部 span（`BaseServer.renderToResponse` / `Router.executeRo
 NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
 ```
 
-属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は Go 側が [server/README.md](server/README.md#distributed-tracing-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。
+設定と計装の詳細は Go 側が [server/README.md](server/README.md#distributed-tracing-opentelemetry)、Next.js 側が [packages/tracing/README.md](packages/tracing/README.md) です。
