@@ -550,6 +550,26 @@ func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
 	env.start(t, env.token)
 }
 
+func TestDBStartStorePurchaseRefusesAStoreWhoseKeyDoesNotDecrypt(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	// A key this server cannot decrypt could not verify the charge.
+	if _, err := env.pg.DB.ExecContext(context.Background(),
+		"UPDATE tenant_app_store_config SET private_key_encrypted = 'enc:v1:not-a-key' WHERE tenant_id = $1", env.tenant.ID); err != nil {
+		t.Fatalf("store a key that does not decrypt: %v", err)
+	}
+	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+		Tenant:          tenantContext(env.tenant),
+		EpisodePublicId: env.episode.PublicID,
+		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+	}, env.token))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("StartStorePurchase through a store whose key does not decrypt: code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	if got := env.count(t, "SELECT count(*) FROM store_purchase_intents WHERE tenant_id = $1", env.tenant.ID); got != 0 {
+		t.Fatalf("store_purchase_intents rows = %d, want 0", got)
+	}
+}
+
 func TestDBConfirmStorePurchaseKeepsTheReadingPeriodTheIntentWasOpenedOn(t *testing.T) {
 	env := newStorePurchaseEnv(t)
 	if _, err := env.pg.DB.ExecContext(context.Background(),
