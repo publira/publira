@@ -29,6 +29,8 @@ INSERT INTO audit_logs (
 -- query; backward uses ASC so the index can be scanned in reverse. The handler
 -- flips ASC rows back into display order. A parameterized ORDER BY cannot be
 -- read in index order, so each scan direction gets its own query.
+-- An invitation entry names the invitation, whose row carries its tenant and
+-- the invited address.
 -- cursor rules: proto/README.md.
 -- name: ListPlatformAuditLogsDesc :many
 SELECT a.id,
@@ -43,8 +45,8 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(target_t.name, ''::text) AS tenant_name,
-    COALESCE(target_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(target_t.name, invitation_t.name, ''::text) AS tenant_name,
+    COALESCE(target_t.public_id, invitation_t.public_id, ''::text) AS tenant_public_id,
     CASE
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
@@ -55,6 +57,7 @@ SELECT a.id,
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
+        WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
         ELSE ''::text
     END AS target_name
 FROM platform_audit_logs a
@@ -65,8 +68,11 @@ FROM platform_audit_logs a
     AND a.target_type = 'user'
     LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
     AND a.target_type = 'tenant'
+    LEFT JOIN tenant_admin_invitations target_inv ON target_inv.id::text = a.target_id
+    AND a.target_type = 'tenant_admin_invitation'
+    LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
-    AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR (a.target_type = 'tenant' AND target_t.public_id = sqlc.narg('filter_tenant_public_id')::text))
+    AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id) = sqlc.narg('filter_tenant_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -95,8 +101,8 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(target_t.name, ''::text) AS tenant_name,
-    COALESCE(target_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(target_t.name, invitation_t.name, ''::text) AS tenant_name,
+    COALESCE(target_t.public_id, invitation_t.public_id, ''::text) AS tenant_public_id,
     CASE
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
@@ -107,6 +113,7 @@ SELECT a.id,
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
         WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
+        WHEN a.target_type = 'tenant_admin_invitation' THEN COALESCE(target_inv.email::text, ''::text)
         ELSE ''::text
     END AS target_name
 FROM platform_audit_logs a
@@ -117,8 +124,11 @@ FROM platform_audit_logs a
     AND a.target_type = 'user'
     LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
     AND a.target_type = 'tenant'
+    LEFT JOIN tenant_admin_invitations target_inv ON target_inv.id::text = a.target_id
+    AND a.target_type = 'tenant_admin_invitation'
+    LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
-    AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR (a.target_type = 'tenant' AND target_t.public_id = sqlc.narg('filter_tenant_public_id')::text))
+    AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id) = sqlc.narg('filter_tenant_public_id')::text)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

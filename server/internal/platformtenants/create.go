@@ -174,7 +174,7 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 		if err != nil {
 			return Created{}, fmt.Errorf("invite tenant admin: %w", err)
 		}
-		if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invited", invitation.Email); err != nil {
+		if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invited", invitation.ID.String()); err != nil {
 			return Created{}, err
 		}
 		created.Invitations = append(created.Invitations, invitation)

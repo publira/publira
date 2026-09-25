@@ -139,7 +139,7 @@ func TestCreateWritesTheTenantWithItsRolesAndInvitations(t *testing.T) {
 
 	audit := platformAuditRows(t, pg)
 	wantActions := []string{"tenant_created", "tenant_admin_invited", "tenant_admin_invited"}
-	wantTargets := []string{tenant.ID.String(), "owner@comics.example.com", "editor@comics.example.com"}
+	wantTargets := []string{tenant.ID.String(), created.Invitations[0].ID.String(), created.Invitations[1].ID.String()}
 	if len(audit) != len(wantActions) {
 		t.Fatalf("audit entries = %+v, want %d", audit, len(wantActions))
 	}

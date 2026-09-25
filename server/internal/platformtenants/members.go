@@ -17,7 +17,11 @@ func Invite(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err != nil {
 		return tenantmembers.Invited{}, err
 	}
-	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", invited.Email); err != nil {
+	target := invited.Email
+	if !invited.RoleGrantedImmediately {
+		target = invited.Invitation.ID.String()
+	}
+	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", target); err != nil {
 		return tenantmembers.Invited{}, err
 	}
 	return invited, nil
@@ -29,7 +33,7 @@ func ResendInvitation(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
-	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invite_resent", invitation.Email); err != nil {
+	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invite_resent", invitation.ID.String()); err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
 	return invitation, nil
@@ -43,7 +47,7 @@ func CancelInvitation(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
-	if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invite_canceled", invitation.Email); err != nil {
+	if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invite_canceled", invitation.ID.String()); err != nil {
 		return dbmodels.TenantAdminInvitation{}, err
 	}
 	return invitation, nil
@@ -112,11 +116,14 @@ func writeMemberEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	return nil
 }
 
-func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action, email string) error {
+// writeInvitationEntry names the invitation, whose row carries its tenant and
+// address; a role granted to an existing user has none, so it names the
+// address, which leaves the tenant unknown (#3055).
+func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action, target string) error {
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     action,
 		TargetType: "tenant_admin_invitation",
-		TargetID:   email,
+		TargetID:   target,
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
 		return fmt.Errorf("audit %s: %w", action, err)
