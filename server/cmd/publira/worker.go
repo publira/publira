@@ -163,7 +163,7 @@ func runWorker() int {
 		DB:        db,
 		Logger:    logger,
 		Sender:    fcmsettings.NewSenders(dbmodels.New(db), encryptor, fcmsettings.NewPushClient, fcmsettings.CacheTTL, logger),
-		WebSender: webpushsettings.NewSenders(dbmodels.New(db), encryptor, webpushsettings.CacheTTL, logger),
+		WebSender: webpushsettings.NewSenders(dbmodels.New(db), encryptor, webpushsettings.NewPushClient, webpushsettings.CacheTTL, logger),
 	}
 
 	// Declared as the interface, never as *revalidate.Client: a typed nil

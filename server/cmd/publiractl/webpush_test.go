@@ -94,9 +94,9 @@ func TestWebPushInitTurnsWebPushOnWithoutARestart(t *testing.T) {
 	ctx := context.Background()
 
 	storefront := webpushsettings.NewPublicKeys(dbmodels.New(pg.OpenPublicDB(t)), 0, slog.Default())
-	worker := webpushsettings.NewSenders(dbmodels.New(pg.OpenOutboxDB(t)), testEncryptor(t), 0, slog.Default())
-	// The push client refuses every address a test can serve, so a delivery
-	// that gets as far as dialing is one signed with the stored pair.
+	worker := webpushsettings.NewSenders(dbmodels.New(pg.OpenOutboxDB(t)), testEncryptor(t), webpushsettings.NewPushClient, 0, slog.Default())
+	// The worker's push client refuses every address a test can serve, so a
+	// delivery that gets as far as dialing is one signed with the stored pair.
 	subscription := browserSubscription(t, "https://127.0.0.1/push/subscription")
 
 	if got := mustWebPushCommand(t, "show"); got != "No VAPID key pair is stored, so Web Push is off\n" {
