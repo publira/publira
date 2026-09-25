@@ -1219,17 +1219,95 @@ describe("catalog.listPublishedGenres", () => {
     expect(mockListPublishedGenres).toHaveBeenCalledTimes(2);
     expect(result.ok && result.value).toEqual([
       {
+        featuredSeries: [],
         name: "Fantasy",
         publicId: "SeedGENRAAA1",
         publishedSeriesCount: 4,
         slug: "fantasy",
       },
       {
+        featuredSeries: [],
         name: "Romance",
         publicId: "SeedGENRAAA2",
         publishedSeriesCount: 0,
         slug: "romance",
       },
+    ]);
+  });
+
+  it("Carries each genre's covers in the order the server sent them", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          featuredSeries: [
+            {
+              eyeCatchImageVariants: [
+                {
+                  contentType: "image/webp",
+                  fileSizeBytes: 1024n,
+                  height: 800,
+                  label: "600",
+                  url: "/images/series/SERIES01/portrait/600",
+                  variantType: "portrait",
+                  width: 600,
+                },
+              ],
+              publicId: "SERIES01",
+              title: "Leading Series",
+            },
+            { publicId: "SERIES02", title: "Series Without Art" },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(result.ok && result.value[0]?.featuredSeries).toEqual([
+      {
+        eyeCatchImageVariants: [
+          {
+            contentType: "image/webp",
+            fileSizeBytes: 1024,
+            height: 800,
+            label: "600",
+            url: "/images/series/SERIES01/portrait/600",
+            variantType: "portrait",
+            width: 600,
+          },
+        ],
+        publicId: "SERIES01",
+      },
+      { eyeCatchImageVariants: undefined, publicId: "SERIES02" },
+    ]);
+  });
+
+  it("Drops a cover that names no series", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          featuredSeries: [
+            { publicId: " ", title: "Nameless" },
+            { publicId: "SERIES02", title: "Kept Series" },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(result.ok && result.value[0]?.featuredSeries).toEqual([
+      { eyeCatchImageVariants: undefined, publicId: "SERIES02" },
     ]);
   });
 

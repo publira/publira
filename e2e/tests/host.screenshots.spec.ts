@@ -182,9 +182,9 @@ test.describe("web-host screenshots", () => {
       });
 
       /**
-       * The genre browse page, whose chips are the tenant's own
-       * classification: the row is a link per genre with its published count,
-       * so a genre with no series still photographs as a chip reading zero.
+       * The genre browse page, a tile per genre in the tenant's own order: its
+       * leading covers, its name, and its published count, so a genre with no
+       * series still photographs as a flat tile reading zero.
        */
       test("the genre list", async ({ page }) => {
         await page.goto(hostPath("/genres"));
