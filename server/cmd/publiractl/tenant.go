@@ -58,20 +58,20 @@ var tenantGroup = commandGroup{
 }
 
 // tenantFlags names the flag each refused field is given through. Every
-// command takes its tenant as -tenant, whichever field the package calls it.
+// command takes its tenant as --tenant, whichever field the package calls it.
 var tenantFlags = map[string]string{
-	platformtenants.FieldTenant:             "-tenant",
-	platformtenants.FieldPublicID:           "-tenant",
-	platformtenants.FieldName:               "-name",
-	platformtenants.FieldDomain:             "-domain",
-	platformtenants.FieldAdminDomain:        "-admin-domain",
-	platformtenants.FieldDefaultLocale:      "-default-locale",
-	platformtenants.FieldInitialAdminEmails: "-initial-admin-email",
-	tenantmembers.FieldUserPublicID:         "-user",
-	tenantmembers.FieldEmail:                "-email",
-	tenantmembers.FieldRole:                 "-role",
-	tenantmembers.FieldPassword:             "-password-stdin",
-	tenantmembers.FieldInvitationID:         "-id",
+	platformtenants.FieldTenant:             "--tenant",
+	platformtenants.FieldPublicID:           "--tenant",
+	platformtenants.FieldName:               "--name",
+	platformtenants.FieldDomain:             "--domain",
+	platformtenants.FieldAdminDomain:        "--admin-domain",
+	platformtenants.FieldDefaultLocale:      "--default-locale",
+	platformtenants.FieldInitialAdminEmails: "--initial-admin-email",
+	tenantmembers.FieldUserPublicID:         "--user",
+	tenantmembers.FieldEmail:                "--email",
+	tenantmembers.FieldRole:                 "--role",
+	tenantmembers.FieldPassword:             "--password-stdin",
+	tenantmembers.FieldInvitationID:         "--id",
 }
 
 // tenantError names the flag behind what the tenant packages refused.
@@ -81,14 +81,14 @@ func tenantError(err error) error {
 	}
 	switch {
 	case errors.Is(err, platformtenants.ErrNoChange):
-		return fmt.Errorf("-name, -domain, or -admin-domain: %w", err)
+		return fmt.Errorf("--name, --domain, or --admin-domain: %w", err)
 	case errors.Is(err, tenantmembers.ErrUserOrEmailRequired), errors.Is(err, tenantmembers.ErrUserAndEmailBothSet):
-		return fmt.Errorf("-user or -email: %w", err)
+		return fmt.Errorf("--user or --email: %w", err)
 	}
 	return err
 }
 
-// tenantFlag declares -tenant, which names a tenant by public ID or domain.
+// tenantFlag declares --tenant, which names a tenant by public ID or domain.
 func tenantFlag(f *commandFlags) *string {
 	return f.String("tenant", "", "the tenant, by public ID or domain")
 }
@@ -194,8 +194,8 @@ func setupTenantUpdate(f *commandFlags) func(context.Context, *commandEnv) error
 	domain := f.String("domain", "", "the new host the tenant's site is served on")
 	adminDomain := f.String("admin-domain", "", `the new host the tenant's console is served on; "" goes back to the default one`)
 	return func(ctx context.Context, env *commandEnv) error {
-		// Only a flag given changes anything, so a -admin-domain left out keeps
-		// the tenant's while -admin-domain "" clears it.
+		// Only a flag given changes anything, so a --admin-domain left out keeps
+		// the tenant's while --admin-domain "" clears it.
 		var params platformtenants.UpdateParams
 		f.Visit(func(fl *flag.Flag) {
 			switch fl.Name {

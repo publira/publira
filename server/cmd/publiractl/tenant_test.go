@@ -20,11 +20,11 @@ func TestTenantCreateWritesTheTenantAsTheSystemActor(t *testing.T) {
 
 	code := runGroup(&tenantGroup, []string{
 		"create",
-		"-name", "Example Comics",
-		"-domain", "comics.example.com",
-		"-default-locale", "en",
-		"-initial-admin-email", "owner@comics.example.com",
-		"-initial-admin-email", "editor@comics.example.com",
+		"--name", "Example Comics",
+		"--domain", "comics.example.com",
+		"--default-locale", "en",
+		"--initial-admin-email", "owner@comics.example.com",
+		"--initial-admin-email", "editor@comics.example.com",
 	}, pipedConsole("", &stderr), &stdout)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
@@ -83,7 +83,7 @@ func TestTenantCreateNamesTheRefusedFlag(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
-	valid := []string{"-name", "Example Comics", "-domain", "comics.example.com", "-default-locale", "en"}
+	valid := []string{"--name", "Example Comics", "--domain", "comics.example.com", "--default-locale", "en"}
 
 	var stdout, stderr bytes.Buffer
 	if code := runGroup(&tenantGroup, append([]string{"create"}, valid...), pipedConsole("", &stderr), &stdout); code != 0 {
@@ -95,11 +95,11 @@ func TestTenantCreateNamesTheRefusedFlag(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "missing name", args: []string{"-domain", "other.example.com", "-default-locale", "en"}, want: "publiractl: -name: name is required\n"},
-		{name: "missing domain", args: []string{"-name", "Other", "-default-locale", "en"}, want: "publiractl: -domain: domain is required\n"},
-		{name: "unsupported locale", args: []string{"-name", "Other", "-domain", "other.example.com", "-default-locale", "fr"}, want: "publiractl: -default-locale: default_locale must be a supported locale\n"},
-		{name: "malformed admin email", args: append([]string{"-initial-admin-email", "nobody"}, valid...), want: "publiractl: -initial-admin-email: invalid initial_admin_emails\n"},
-		{name: "taken domain", args: valid, want: "publiractl: -domain: domain already exists\n"},
+		{name: "missing name", args: []string{"--domain", "other.example.com", "--default-locale", "en"}, want: "publiractl: --name: name is required\n"},
+		{name: "missing domain", args: []string{"--name", "Other", "--default-locale", "en"}, want: "publiractl: --domain: domain is required\n"},
+		{name: "unsupported locale", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
+		{name: "malformed admin email", args: append([]string{"--initial-admin-email", "nobody"}, valid...), want: "publiractl: --initial-admin-email: invalid initial_admin_emails\n"},
+		{name: "taken domain", args: valid, want: "publiractl: --domain: domain already exists\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
@@ -127,7 +127,7 @@ func TestTenantCreateHelpListsItsFlags(t *testing.T) {
 	if code := run([]string{"tenant", "create", "-h"}, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
 	}
-	for _, want := range []string{"Usage: publiractl tenant create [flags]", "-domain", "-admin-domain", "-default-locale", "-initial-admin-email"} {
+	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--initial-admin-email"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("usage = %q, want %q", stderr.String(), want)
 		}

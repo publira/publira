@@ -255,7 +255,7 @@ func setupAdminCreate(f *commandFlags) func(context.Context, *commandEnv) error 
 	generate := f.Bool("generate-password", false, "generate a password and print it once to stdout, instead of reading one")
 	return func(ctx context.Context, env *commandEnv) error {
 		if *generate && password.fromStdin {
-			return errors.New("-generate-password and -password-stdin cannot both be given")
+			return errors.New("--generate-password and --password-stdin cannot both be given")
 		}
 		var err error
 		if *generate {
