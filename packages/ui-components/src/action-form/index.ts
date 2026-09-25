@@ -6,6 +6,7 @@ export {
   ActionFormSubmit,
 } from "./action-form";
 export type {
+  ActionFormControlAction,
   ActionFormProps,
   ActionFormRenderProps,
   ActionFormSubmitProps,
