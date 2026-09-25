@@ -87,8 +87,11 @@ func TestMemberPushNotificationSendsWebPushAndDeletesGoneEndpoint(t *testing.T) 
 	if err := handler(context.Background(), memberPushEvent(t, uuid.New(), "episode_published")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if len(sender.sent) != 1 || sender.sent[0].subscription.Endpoint != endpoint {
-		t.Fatalf("web messages = %+v, want one for %q", sender.sent, endpoint)
+	// The keys are what the payload is encrypted to, so a swap between them is
+	// a delivery no browser can open.
+	want := push.WebPushSubscription{Endpoint: endpoint, P256dh: "p256dh", Auth: "auth"}
+	if len(sender.sent) != 1 || sender.sent[0].subscription != want {
+		t.Fatalf("web messages = %+v, want one for %+v", sender.sent, want)
 	}
 	if len(queries.deleted) != 1 || queries.deleted[0] != endpoint {
 		t.Fatalf("deleted tokens = %v, want [%s]", queries.deleted, endpoint)
