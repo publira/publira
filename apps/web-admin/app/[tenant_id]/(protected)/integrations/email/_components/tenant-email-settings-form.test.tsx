@@ -55,7 +55,10 @@ const renderForm = async (
     testAction = noopAction,
   }: {
     saveAction?: () => Promise<TenantEmailSettingsFormState>;
-    testAction?: () => Promise<TenantSmtpTestFormState>;
+    testAction?: (
+      previousState: TenantSmtpTestFormState,
+      formData: FormData
+    ) => Promise<TenantSmtpTestFormState>;
   } = {}
 ) => {
   await act(() => {
@@ -127,7 +130,6 @@ describe("TenantEmailSettingsForm", () => {
   // started meanwhile would send the fields the save has closed, which a
   // disabled control leaves out of the form, so it waits too.
   it("closes the fields and the connection test while the save is in flight", async () => {
-    // Never resolved: the assertions are about the window the save is open in.
     const save = Promise.withResolvers<TenantEmailSettingsFormState>();
     await renderForm(storedSettings(), { saveAction: () => save.promise });
 
@@ -144,12 +146,56 @@ describe("TenantEmailSettingsForm", () => {
         expect(control.matches(":disabled")).toBe(true);
       }
     });
+
+    // A transition left open would hold back every later test's Action.
+    save.resolve(null);
+    await waitFor(() => {
+      expect(testButton().matches(":disabled")).toBe(false);
+    });
+  });
+
+  // The test runs against what the form holds, saved or not, so an operator
+  // who tests an edit and then saves it has to find the edit still there.
+  it("keeps the typed settings once the connection test settles", async () => {
+    const testAction = vi.fn(
+      (_previousState: TenantSmtpTestFormState, _formData: FormData) =>
+        Promise.resolve<TenantSmtpTestFormState>({
+          message: "Test email sent.",
+          ok: true,
+          recipientEmail: "admin@tenant.example",
+        })
+    );
+    await renderForm(storedSettings(), { testAction });
+
+    const typed = [
+      [/Host/u, "smtp.edited.example"],
+      [/Port/u, "2525"],
+      [/Username/u, "edited-user"],
+      [/Sender name/u, "Edited Mail"],
+      [/Sender email address/u, "edited@tenant.example"],
+      [/Reply-to address/u, "support@tenant.example"],
+    ] as const;
+    for (const [label, value] of typed) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+
+    fireEvent.click(testButton());
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Run the test" })
+    );
+
+    await screen.findByText("Test email sent.");
+    expect(testAction.mock.calls[0]?.[1].get("host")).toBe(
+      "smtp.edited.example"
+    );
+    for (const [label, value] of typed) {
+      expect(screen.getByLabelText(label)).toHaveProperty("value", value);
+    }
   });
 
   // The test carries the recipient chosen when it was started, so a change
   // made while it is in flight would not be where the message went.
   it("closes the recipient while the connection test is in flight", async () => {
-    // Never resolved: the assertions are about the window the test is open in.
     const test = Promise.withResolvers<TenantSmtpTestFormState>();
     await renderForm(storedSettings(), { testAction: () => test.promise });
 
@@ -173,6 +219,12 @@ describe("TenantEmailSettingsForm", () => {
     await waitFor(() => {
       expect(sendToSelf.disabled).toBe(true);
       expect(recipient.disabled).toBe(true);
+    });
+
+    // A transition left open would hold back every later test's Action.
+    test.resolve(null);
+    await waitFor(() => {
+      expect(recipient.disabled).toBe(false);
     });
   });
 });
