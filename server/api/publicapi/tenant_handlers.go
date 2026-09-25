@@ -93,14 +93,19 @@ func (s *apiServer) GetTenant(
 		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
 	}
 
+	// A failed read is not answered as a tenant without a theme: web-host would
+	// cache the default palette as this tenant's brand.
 	var theme *publirattypesv1.TenantTheme
-	themeRow, themeErr := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
-	if themeErr == nil {
-		iconVariants, logoVariants := tenantBrandingImageVariants(ctx, queries, themeRow)
+	themeRow, err := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
+	switch {
+	case err == nil:
+		iconVariants, logoVariants, err := tenantBrandingImageVariants(ctx, queries, themeRow)
+		if err != nil {
+			return nil, s.internalError(ctx, "failed to read the tenant branding image variants", err, "tenant_id", tenant.ID.String())
+		}
 		theme = protomapper.TenantThemeFromGetRow(themeRow, iconVariants, logoVariants)
-	} else if themeErr != sql.ErrNoRows {
-		// Theme is branding only; keep GetTenant available even if theme load fails.
-		_ = themeErr
+	case !errors.Is(err, sql.ErrNoRows):
+		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantResponse{
@@ -196,15 +201,12 @@ func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID
 	return false
 }
 
-// tenantBrandingImageVariants reads the variants of the theme's icon and
-// logo. Branding is not worth failing GetTenant over — the same reason the
-// theme read itself is tolerated above — so a failed lookup yields no variants
-// and the colors still answer.
+// tenantBrandingImageVariants reads the variants of the theme's icon and logo.
 func tenantBrandingImageVariants(
 	ctx context.Context,
 	queries Querier,
 	row dbmodels.GetTenantThemeByTenantIDRow,
-) (iconVariants, logoVariants []*publirattypesv1.TenantImageVariant) {
+) (iconVariants, logoVariants []*publirattypesv1.TenantImageVariant, err error) {
 	imageIDs := make([]uuid.UUID, 0, 2)
 	if row.IconImageID.Valid {
 		imageIDs = append(imageIDs, row.IconImageID.UUID)
@@ -213,16 +215,16 @@ func tenantBrandingImageVariants(
 		imageIDs = append(imageIDs, row.LogoImageID.UUID)
 	}
 	if len(imageIDs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	variantRows, err := queries.ListTenantImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
 
-	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID]
+	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], nil
 }
 
 // publishedWebPushPublicKey answers the key GetTenant publishes. A failed read
