@@ -17,11 +17,13 @@ const MOSAIC_CELLS = [
 /**
  * A genre's leading covers as a 2×2 mosaic in a portrait frame, so every tile
  * is the same size however many covers it has. The cells a genre cannot fill
- * stay flat, and a genre with no cover at all is one flat frame carrying its
- * name.
+ * stay flat, and a genre with no cover to draw — no series, or none with
+ * artwork — is one flat frame carrying its name.
  */
 const GenreCovers = ({ genre }: { genre: PublishedGenreItem }) => {
-  if (genre.featuredSeries.length === 0) {
+  const covers = genre.featuredSeries.slice(0, MOSAIC_CELLS.length);
+
+  if (!covers.some((series) => series.eyeCatchImageVariants)) {
     return (
       <EyeCatchFrame
         alt=""
@@ -44,7 +46,7 @@ const GenreCovers = ({ genre }: { genre: PublishedGenreItem }) => {
           key={cell}
           preferredType="portrait"
           sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, 12vw"
-          variants={genre.featuredSeries[index]?.eyeCatchImageVariants}
+          variants={covers[index]?.eyeCatchImageVariants}
         />
       ))}
     </span>

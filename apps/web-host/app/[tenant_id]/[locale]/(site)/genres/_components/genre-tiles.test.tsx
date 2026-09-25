@@ -162,6 +162,27 @@ describe("GenreTiles", () => {
     expect(link.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3);
   });
 
+  it("Puts the genre's name in one flat frame when none of its series has artwork", () => {
+    render(
+      <GenreTiles
+        genres={[
+          genre({
+            featuredSeries: [
+              { eyeCatchImageVariants: undefined, publicId: "SERIES01" },
+              { eyeCatchImageVariants: undefined, publicId: "SERIES02" },
+            ],
+          }),
+        ]}
+      />
+    );
+
+    const flat = [
+      ...tileLink(/Fantasy/u).querySelectorAll('[aria-hidden="true"]'),
+    ];
+    expect(flat).toHaveLength(1);
+    expect(flat[0]?.textContent).toBe("Fantasy");
+  });
+
   it("Puts the genre's name in one flat frame when it has no cover", () => {
     render(<GenreTiles genres={[genre({ publishedSeriesCount: 0 })]} />);
 
