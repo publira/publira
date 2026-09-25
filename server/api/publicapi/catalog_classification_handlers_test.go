@@ -299,6 +299,20 @@ func publishedGenreRows(rows ...[]driver.Value) *sqlmock.Rows {
 	return built
 }
 
+func genreFeaturedSeriesRows(rows ...[]driver.Value) *sqlmock.Rows {
+	built := sqlmock.NewRows([]string{"genre_id", "id", "public_id", "title", "eye_catch_image_id"})
+	for _, row := range rows {
+		built.AddRow(row...)
+	}
+	return built
+}
+
+func expectGenreFeaturedSeries(mock sqlmock.Sqlmock, tenantID uuid.UUID, surface string, rows *sqlmock.Rows) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreFeaturedSeries)).
+		WithArgs(sqlmock.AnyArg(), tenantID, surface, int32(4), "weekly").
+		WillReturnRows(rows)
+}
+
 func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -308,6 +322,7 @@ func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
 		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(publishedGenreRows([]driver.Value{genreID, "GENRE0000001", "Fantasy", "fantasy", int32(1), int32(3)}))
+	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
@@ -351,6 +366,7 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 			[]driver.Value{second, "GENRE0000002", "Mystery", "mystery", int32(4), int32(1)},
 			[]driver.Value{first, "GENRE0000001", "Fantasy", "fantasy", int32(3), int32(2)},
 		))
+	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
@@ -362,6 +378,59 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 	}
 	if len(resp.Msg.Genres) != 2 || resp.Msg.Genres[0].Name != "Fantasy" || resp.Msg.Genres[1].Name != "Mystery" {
 		t.Fatalf("genres = %v, want the backward page flipped back into display order", resp.Msg.Genres)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// Every genre of the page gets the series the one query answered for it, in
+// the order it answered them, and a series without artwork keeps its title.
+func TestCatalogListPublishedGenresCarriesEachGenresFeaturedSeries(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	fantasyID := uuid.Must(uuid.NewV7())
+	mysteryID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
+		WithArgs(tenantID, "app", nil, false, nil, int32(21)).
+		WillReturnRows(publishedGenreRows(
+			[]driver.Value{fantasyID, "GENRE0000001", "Fantasy", "fantasy", int32(1), int32(2)},
+			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "mystery", int32(2), int32(0)},
+		))
+	expectGenreFeaturedSeries(mock, tenantID, "app", genreFeaturedSeriesRows(
+		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000001", "Dragon Road", imageID},
+		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000002", "Untitled Sky", nil},
+	))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(imageID, "portrait", "portrait_600w", "image/webp", int64(2048), int32(600), int32(800)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedGenres: %v", err)
+	}
+	if len(resp.Msg.Genres) != 2 {
+		t.Fatalf("genres = %v, want two", resp.Msg.Genres)
+	}
+	fantasy := resp.Msg.Genres[0].FeaturedSeries
+	if len(fantasy) != 2 || fantasy[0].PublicId != "SERIES000001" || fantasy[1].PublicId != "SERIES000002" {
+		t.Fatalf("fantasy featured_series = %v, want the two series in query order", fantasy)
+	}
+	if len(fantasy[0].EyeCatchImageVariants) != 1 || fantasy[0].EyeCatchImageVariants[0].Url != "/images/series/"+imageID.String()+"/portrait/600" {
+		t.Fatalf("first cover variants = %v, want the portrait variant", fantasy[0].EyeCatchImageVariants)
+	}
+	if fantasy[1].Title != "Untitled Sky" || len(fantasy[1].EyeCatchImageVariants) != 0 {
+		t.Fatalf("second featured series = %v, want its title and no variants", fantasy[1])
+	}
+	if mystery := resp.Msg.Genres[1].FeaturedSeries; len(mystery) != 0 {
+		t.Fatalf("mystery featured_series = %v, want none", mystery)
 	}
 
 	assertPublicExpectations(t, mock)

@@ -1050,6 +1050,12 @@ type Querier interface {
 	ListEpisodesHoldingBothEpisodeCredits(ctx context.Context, arg ListEpisodesHoldingBothEpisodeCreditsParams) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
+	// The series a page of genre tiles draws its covers from: per genre, the
+	// positions of its newest leaderboard first, then its newest published series,
+	// up to series_limit. The leaderboard only orders the genre's current members,
+	// so a series taken down, moved off the surface, re-rated, or removed from the
+	// genre since the batch ran drops out here.
+	ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error)
 	// Resolves the genres a series form assigned. The caller compares the row
 	// count against what it asked for, so a public_id of another tenant reads as
 	// a genre that does not exist.
