@@ -48,10 +48,6 @@ export default defineConfig({
         "packages/web-session/src/index.ts",
         // Exercises the cookie `expires` boundary above.
         "packages/web-session/src/index.test.ts",
-        // Cache entry TTL / revalidation timestamps are epoch millis.
-        "packages/next-cache-handlers/src/use-cache-handler.ts",
-        "packages/next-cache-handlers/src/incremental-cache-handler.ts",
-        "packages/next-cache-handlers/src/handlers.integration.test.ts",
         // Login responses become the session cookie's `expires`.
         "apps/*/lib/auth.ts",
         "apps/*/lib/auth.test.ts",

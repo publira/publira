@@ -85,12 +85,15 @@ services:
       # `resolveAuthSecret()` has no fallback. Local development only: it is
       # published in this repository, so never reuse it outside a dev stack.
       PUBLIRA_AUTH_SECRET: publira-dev-only-insecure-web-session-secret
-      # Shared Next.js server cache (cacheHandler / cacheHandlers)
+      # Redis the server and the web apps' shared Next.js cache
+      # (@publira/next-cache-handlers) both use; the two names carry one value.
       PUBLIRA_REDIS_URL: redis://redis:6379
+      PNCH_REDIS_URL: redis://redis:6379
       # The Go APIs call every web app directly for cache-tag revalidation.
       # These are private loopback endpoints inside the shared app container;
       # public browser URLs and Traefik are deliberately not part of this path.
       PUBLIRA_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
+      PNCH_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
       PUBLIRA_WEB_HOST_INTERNAL_URL: http://127.0.0.1:3000
       PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://127.0.0.1:4000
       PUBLIRA_WEB_PLATFORM_INTERNAL_URL: http://127.0.0.1:4100

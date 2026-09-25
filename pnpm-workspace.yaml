@@ -15,6 +15,7 @@ catalog:
   "@opentelemetry/api": 1.9.1
   "@opentelemetry/semantic-conventions": 1.43.0
   "@publira/comic-viewer": 0.9.0
+  "@publira/next-cache-handlers": 1.0.0
   "@tailwindcss/postcss": 4.3.3
   "@testing-library/dom": 10.4.2
   "@testing-library/react": 16.3.3

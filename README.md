@@ -138,11 +138,11 @@ For self-hosted and multi-instance deployments, the server-side cache of Next.js
 | `cacheHandlers` (plural) | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler` (singular) | ISR, Route Handlers, `fetch`, and the `next/image` optimization results (`images.customCacheHandler: true`) |
 
-- In the Dev Container the `redis` service starts and `PUBLIRA_REDIS_URL=redis://redis:6379` is passed to the app container; on the host it is `redis://127.0.0.1:6379` (loopback only, because no authentication is configured)
+- In the Dev Container the `redis` service starts and `PNCH_REDIS_URL=redis://redis:6379` is passed to the app container, next to the server's `PUBLIRA_REDIS_URL` with the same value; on the host it is `redis://127.0.0.1:6379` (loopback only, because no authentication is configured)
 - To look inside directly: `docker compose exec redis redis-cli` from the repository root
-- `redis://localhost:6379` is the library-side default that `@publira/next-cache-handlers` uses when `PUBLIRA_REDIS_URL` is unset
-- The key space is separated per app by `PUBLIRA_CACHE_APP` (for example, `web-host`)
-- Details: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
+- `redis://localhost:6379` is the library-side default that `@publira/next-cache-handlers` uses when `PNCH_REDIS_URL` is unset
+- The key space is separated per app by `PNCH_CACHE_APP` (for example, `web-host`), under the prefix `pnch:{app}:`
+- Details: [`@publira/next-cache-handlers`](https://www.npmjs.com/package/@publira/next-cache-handlers)
 
 ## Object storage for development (RustFS)
 

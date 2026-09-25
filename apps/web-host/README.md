@@ -47,12 +47,14 @@ Required environment variables:
 
 Environment variables:
 
-- `PUBLIRA_REDIS_URL` (`redis://redis:6379` in the Dev Container)
-- `PUBLIRA_CACHE_APP=web-host` (recommended; it separates the key space)
+- `PNCH_REDIS_URL` (`redis://redis:6379` in the Dev Container, the same value as the server's `PUBLIRA_REDIS_URL`)
+- `PNCH_CACHE_APP=web-host` (set by the `dev` and `start` scripts; it separates the key space)
+
+The rest are in the [package README](https://www.npmjs.com/package/@publira/next-cache-handlers).
 
 ### Internal cache revalidation
 
-`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PUBLIRA_REVALIDATE_TOKEN` against the `X-Revalidate-Token` header and revalidates the tags it receives (`@publira/next-cache-handlers/revalidate`), without restricting them by tenant ID. This path bypasses the Host-based tenant resolution in `proxy.ts`. The destination is `PUBLIRA_WEB_HOST_INTERNAL_URL` on the private network, and the tags themselves are built by `lib/cache-tags.ts`.
+`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PNCH_REVALIDATE_TOKEN`, set to the server's `PUBLIRA_REVALIDATE_TOKEN`, against the `X-Revalidate-Token` header and revalidates the tags it receives (`@publira/next-cache-handlers/revalidate`), without restricting them by tenant ID. This path bypasses the Host-based tenant resolution in `proxy.ts`. The destination is `PUBLIRA_WEB_HOST_INTERNAL_URL` on the private network, and the tags themselves are built by `lib/cache-tags.ts`.
 
 ### Distributed tracing
 

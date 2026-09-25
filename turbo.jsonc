@@ -39,19 +39,26 @@
       "cache": false,
       // Turbo defaults to strict env mode, which hides every variable the task
       // did not declare. Without this the dev servers never see the Dev
-      // Container's PUBLIRA_REDIS_URL and silently fall back to
+      // Container's PNCH_REDIS_URL and silently fall back to
       // redis://localhost:6379 (and to the default API origins), so the shared
       // cache handler talks to the wrong Redis — or to none at all. Every
       // variable this repository's own code reads is PUBLIRA_*-prefixed (see
       // the env var naming section of AGENTS.md), so the one pattern covers
-      // them all and a new variable needs no entry here. The OpenTelemetry
-      // SDK reads OTEL_* itself and Next.js reads NEXT_OTEL_*, so those two
-      // patterns are listed as well; without them the dev servers export
-      // spans nowhere while the Dev Container thinks it configured Jaeger.
+      // them all and a new variable needs no entry here. The other patterns
+      // are read by outside packages themselves: @publira/next-cache-handlers
+      // reads PNCH_*, the OpenTelemetry SDK reads OTEL_*, and Next.js reads
+      // NEXT_OTEL_*; without the last two the dev servers export spans
+      // nowhere while the Dev Container thinks it configured Jaeger.
       // PORT is the one name outside those patterns: Next.js and the
       // email-renderer read it themselves, and it is how a development profile
       // gives each of its apps a port of its own.
-      "passThroughEnv": ["NEXT_OTEL_*", "OTEL_*", "PORT", "PUBLIRA_*"],
+      "passThroughEnv": [
+        "NEXT_OTEL_*",
+        "OTEL_*",
+        "PNCH_*",
+        "PORT",
+        "PUBLIRA_*",
+      ],
       "persistent": true,
     },
     "test": {
@@ -59,8 +66,6 @@
       // Do not pass PUBLIRA_* here. The Dev Container exports a full
       // development environment, and most suites are hermetic; leaking those
       // values would couple them to ambient Redis, secrets, and API origins.
-      // @publira/next-cache-handlers declares PUBLIRA_REDIS_URL on its own
-      // test task so the Redis integration cases can see a configured URL.
     },
     "typegen": {
       "dependsOn": ["^build"],

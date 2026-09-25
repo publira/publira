@@ -138,11 +138,11 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 | `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
 
-- Dev Container では `redis` サービスが起動し、app コンテナに `PUBLIRA_REDIS_URL=redis://redis:6379` が渡ります。ホストからは `redis://127.0.0.1:6379` です（認証を設定していないため、公開はループバック限定です）
+- Dev Container では `redis` サービスが起動し、app コンテナにはサーバーの `PUBLIRA_REDIS_URL` と同じ値の `PNCH_REDIS_URL=redis://redis:6379` が渡ります。ホストからは `redis://127.0.0.1:6379` です（認証を設定していないため、公開はループバック限定です）
 - 中身を直接見たいときはリポジトリルートで `docker compose exec redis redis-cli`
-- `redis://localhost:6379` は `@publira/next-cache-handlers` が `PUBLIRA_REDIS_URL` 未設定時に使うライブラリ側の既定値です
-- キー空間は `PUBLIRA_CACHE_APP`（例: `web-host`）でアプリ別に分離
-- 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
+- `redis://localhost:6379` は `@publira/next-cache-handlers` が `PNCH_REDIS_URL` 未設定時に使うライブラリ側の既定値です
+- キー空間は `PNCH_CACHE_APP`（例: `web-host`）でアプリ別に分離し、接頭辞は `pnch:{app}:` です
+- 詳細: [`@publira/next-cache-handlers`](https://www.npmjs.com/package/@publira/next-cache-handlers)
 
 ## 開発用オブジェクトストレージ (RustFS)
 

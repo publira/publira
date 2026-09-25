@@ -172,16 +172,19 @@ start_profile() {
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
     pnpm dev --only --filter @publira/web-host
   dev_env_start_background "${run_dir}" web-admin "${tracing[@]}" PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
     pnpm dev --only --filter @publira/web-admin
   dev_env_start_background "${run_dir}" web-platform "${tracing[@]}" PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
+    PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
     pnpm dev --only --filter @publira/web-platform
   printf 'started profile %q\n  host:     http://localhost:%s\n  admin:    http://admin.localhost:%s\n  platform: %s\n  logs:     %s\n' \
     "${name}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}" "${run_dir}"
@@ -254,7 +257,7 @@ print_env() {
   local name="$1" key profile_path
   dev_env_load_profile "${name}"
   profile_path="$(dev_env_profile_path "${name}")"
-  for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}"); do
+  for key in $(awk -F= '/^[A-Z0-9_]+=/{print $1}' "${profile_path}") PNCH_REDIS_URL PNCH_REVALIDATE_TOKEN; do
     printf 'export %s=%q\n' "${key}" "${!key}"
   done
 }

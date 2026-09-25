@@ -47,6 +47,8 @@ export PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_CONTENT_STATS_DB_URL:-postgres://
 # devcontainer / `task dev` value is redis://redis:6379 and would serve
 # another build's cached HTML (login then hangs waiting to hydrate).
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:${PUBLIRA_E2E_REDIS_PORT}"
+# The same Redis, under the name @publira/next-cache-handlers reads in the apps.
+export PNCH_REDIS_URL="${PUBLIRA_REDIS_URL}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 
 # Same reasoning as PUBLIRA_REDIS_URL: the devcontainer exports
@@ -83,7 +85,7 @@ export PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC="${PUBLIRA_E2E_PUBLISH_EPISODES
 export PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC="${PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
 export PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC="${PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC:-2}"
 
-export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
+export PNCH_CACHE_APP="${PNCH_CACHE_APP:-web-host}"
 
 # Session cookie (JWE) key for the three Next.js apps. Required — the apps have
 # no fallback. Test-stack value only; inheriting the devcontainer's is fine
@@ -102,6 +104,8 @@ export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-inse
 # revalidate Route Handler each web app mounts; any value works as long as
 # every process in the stack has the same one.
 export PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN:-publira-e2e-only-insecure-revalidate-token}"
+# The apps' revalidate Route Handler compares the header with this name.
+export PNCH_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}"
 
 # Where the servers send the tags. Always built from the E2E ports, for the
 # same reason as PUBLIRA_REDIS_URL above: an inherited Dev Container value

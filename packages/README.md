@@ -10,7 +10,6 @@ The packages shared across the Node.js side of the repository.
 - `i18n/`: the message catalog loader that reads the root `locales/`, and the generated message types (the `./catalog` / `./messages` subpaths)
 - `icons/`: the shared icon components wrapping `lucide-react`
 - `layouts/`: the layout components shared by several web apps
-- `next-cache-handlers/`: the Redis-backed Next.js `cacheHandler` / `cacheHandlers` (for self-hosted multi-instance deploys)
 - `tracing/`: the OpenTelemetry registration shared by the Next.js apps (called from `instrumentation.ts`)
 - `tsconfig/`: the TypeScript configuration shared across the workspace
 - `tsdown-config/`: the tsdown plugins shared by the packages tsdown builds

@@ -129,7 +129,7 @@ Implementation:
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, and `pnpm typecheck`. | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. Starts a Valkey service so `@publira/next-cache-handlers` Redis integration tests run. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
+| `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`. | [`mobile/README.md`](../../mobile/README.md) |
@@ -234,8 +234,6 @@ git fetch origin main && scripts/check-migration-order.sh
 It compares against `origin/main` unless `BASE_REF` names another ref, and prints the same message CI does; under `GITHUB_ACTIONS` it emits that message as a file annotation instead.
 
 The job then runs against its own Postgres service and must succeed through `migrate up`, `migrate down -all`, and another `migrate up`; any failure, including a dirty database, makes `Summary` fail. Because both guards diff against `origin/main`, this job's checkout uses `fetch-depth: 0` on every event, where `Detect changes` fetches full history only on `push` and `merge_group`.
-
-`Test / TypeScript` starts a Valkey service — the same image as `compose.yaml` — and sets `PUBLIRA_REDIS_URL` so `@publira/next-cache-handlers` integration tests reach Redis. Reproduce it with `pnpm test` in the Dev Container.
 
 `Docker / <target>` executes the matrix from `scripts/ci-plan-jobs.sh` with the same `task docker:build:web|server|publiractl|node` commands used locally, followed by `task docker:smoke:web`, `task docker:smoke:node`, or `task docker:smoke:publiractl` where applicable. See [`infra/docker/README.md`](../../infra/docker/README.md) for role mapping, build conventions, local verification, and Docker triage.
 

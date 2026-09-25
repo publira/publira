@@ -301,6 +301,15 @@ pass "a new profile carries the port of an edge of its own and names the platfor
 ) || exit 1
 pass "loading a profile sets every key its file holds"
 
+(
+  dev_env_load_profile alpha > /dev/null
+  [[ "${PNCH_REDIS_URL}" == "${PUBLIRA_REDIS_URL}" ]] ||
+    fail "PNCH_REDIS_URL is ${PNCH_REDIS_URL}, not the profile's ${PUBLIRA_REDIS_URL}"
+  [[ "${PNCH_REVALIDATE_TOKEN}" == "${PUBLIRA_REVALIDATE_TOKEN}" ]] ||
+    fail "PNCH_REVALIDATE_TOKEN differs from the profile's PUBLIRA_REVALIDATE_TOKEN"
+) || exit 1
+pass "loading a profile hands the cache handlers the profile's Redis and revalidation token"
+
 # A profile written before the worker had a login of its own names the
 # superuser connection as the worker URL and carries no format version. Loading
 # it has to refuse it rather than start the worker on that connection.

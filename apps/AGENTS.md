@@ -93,7 +93,7 @@ All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.con
 - **`cacheHandler` (singular)**: ISR / Route Handler / `fetch` / `unstable_cache` / optimized images
 - **`cacheHandlers` (plural)**: `"use cache"` / `"use cache: remote"`
 
-Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): `packages/next-cache-handlers/README.md`.
+Keep **both** enabled. The package comes from npm through the catalog and is maintained in [publira/next-cache-handlers](https://github.com/publira/next-cache-handlers); a change to the handlers themselves goes there. Details and env (`PNCH_REDIS_URL`, `PNCH_CACHE_APP`, `PNCH_REVALIDATE_TOKEN`): [the package README](https://www.npmjs.com/package/@publira/next-cache-handlers).
 
 ## A cached read carries a tag, and every write clears it
 

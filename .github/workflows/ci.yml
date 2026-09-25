@@ -611,15 +611,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.test_ts == 'true'
     runs-on: ubuntu-latest
-    env:
-      PUBLIRA_REDIS_URL: redis://localhost:6379
-    services:
-      redis:
-        image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -179,6 +179,9 @@ catalogs:
     '@publira/comic-viewer':
       specifier: 0.9.0
       version: 0.9.0
+    '@publira/next-cache-handlers':
+      specifier: 1.0.0
+      version: 1.0.0
     '@tailwindcss/postcss':
       specifier: 4.3.3
       version: 4.3.3
@@ -224,9 +227,6 @@ catalogs:
     react-markdown:
       specifier: 10.1.0
       version: 10.1.0
-    redis:
-      specifier: 6.2.1
-      version: 6.2.1
     tailwindcss:
       specifier: 4.3.3
       version: 4.3.3
@@ -360,8 +360,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
-        specifier: workspace:*
-        version: link:../../packages/next-cache-handlers
+        specifier: 'catalog:'
+        version: 1.0.0(@opentelemetry/api@1.9.1)(next@16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -454,8 +454,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
-        specifier: workspace:*
-        version: link:../../packages/next-cache-handlers
+        specifier: 'catalog:'
+        version: 1.0.0(@opentelemetry/api@1.9.1)(next@16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -551,8 +551,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
-        specifier: workspace:*
-        version: link:../../packages/next-cache-handlers
+        specifier: 'catalog:'
+        version: 1.0.0(@opentelemetry/api@1.9.1)(next@16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -861,34 +861,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@24.13.5)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.13.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
-
-  packages/next-cache-handlers:
-    dependencies:
-      next:
-        specifier: ^16.3.0
-        version: 16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      redis:
-        specifier: 'catalog:'
-        version: 6.2.1(@opentelemetry/api@1.9.1)
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-    devDependencies:
-      '@publira/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.13.6
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.23.0(typescript@6.0.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(jsdom@30.1.0)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/tracing:
     dependencies:
@@ -2199,6 +2171,11 @@ packages:
     resolution: {integrity: sha512-6m+c1Ol6/m1TX3c3pN2wxCaYlRHKZ0CK0KI/+cYNlKIl2/NHPyyQKcKRCJ6ynTQ7R3x/5tfkeJLMs71elv/N/A==}
     peerDependencies:
       react: '>=19'
+
+  '@publira/next-cache-handlers@1.0.0':
+    resolution: {integrity: sha512-zakybMNBLWOdP978Ou2dOZqnuMeW1lbWJfiPMcZ2sfmVEFaSfCDUoPjemvm/oYivYhrRstl38ZgL0760pVvpCQ==}
+    peerDependencies:
+      next: ^16.3.0
 
   '@quansync/fs@1.1.0':
     resolution: {integrity: sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg==}
@@ -6321,6 +6298,15 @@ snapshots:
   '@publira/comic-viewer@0.9.0(react@19.3.0)':
     dependencies:
       react: 19.3.0
+
+  '@publira/next-cache-handlers@1.0.0(@opentelemetry/api@1.9.1)(next@16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
+    dependencies:
+      next: 16.3.6(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      redis: 6.2.1(@opentelemetry/api@1.9.1)
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - '@node-rs/xxhash'
+      - '@opentelemetry/api'
 
   '@quansync/fs@1.1.0':
     dependencies:
