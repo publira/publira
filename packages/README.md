@@ -14,7 +14,7 @@ The packages shared across the Node.js side of the repository.
 - `tracing/`: the OpenTelemetry registration shared by the Next.js apps (called from `instrumentation.ts`)
 - `tsconfig/`: the TypeScript configuration shared across the workspace
 - `tsdown-config/`: the tsdown plugins shared by the packages tsdown builds
-- `ui-components/`: the UI components shared by `web-host` and `web-admin`
+- `ui-components/`: the UI components shared by `web-host`, `web-admin`, and `web-platform`
 - `utils/`: the shared utilities (`cn` and friends)
 - `web-session/`: the jose JWE session cookie helpers for Next.js, including attaching the Bearer token
 

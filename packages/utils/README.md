@@ -184,7 +184,7 @@ await getSeries(parsed.series_id);
 
 `routeParamStringArray()` is the catch-all (`[...slug]`) form. A page builds the schema for the whole `params` and passes only the output of `parseRouteParams` to `lib/`.
 
-A real example: [web-host's series detail page](../../apps/web-host/app/%5Btenant_id%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
+A real example: [web-host's series detail page](../../apps/web-host/app/%5Btenant_id%5D/%5Blocale%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
 
 ### `FormData` and Server Actions
 
