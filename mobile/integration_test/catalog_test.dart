@@ -30,6 +30,7 @@ import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
 import 'support/artifacts.dart';
 import 'support/test_app.dart';
+import 'support/type_text.dart';
 
 /// Live public API, used when CI / `task mobile:e2e` starts api-server.
 const _liveApi = bool.fromEnvironment('PUBLIRA_LIVE_API');
@@ -174,11 +175,13 @@ void main() {
     }
 
     Future<void> signIn(WidgetTester tester) async {
-      await tester.enterText(
+      await typeText(
+        tester,
         find.byKey(const ValueKey('sign-in-email')),
         ConnectFixtureServer.memberEmail,
       );
-      await tester.enterText(
+      await typeText(
+        tester,
         find.byKey(const ValueKey('sign-in-password')),
         ConnectFixtureServer.memberPassword,
       );
@@ -320,7 +323,8 @@ void main() {
           find.byKey(const ValueKey('search-field')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Series',
         );
@@ -400,7 +404,8 @@ void main() {
           find.byKey(const ValueKey('search-field')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Series',
         );
@@ -434,7 +439,8 @@ void main() {
           find.byKey(const ValueKey('search-field')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Author 001',
         );
@@ -516,7 +522,8 @@ void main() {
           find.byKey(const ValueKey('search-field')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Label',
         );
@@ -827,11 +834,13 @@ void main() {
           find.byKey(const ValueKey('sign-in-submit')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           'wrong-password',
         );
@@ -867,19 +876,23 @@ void main() {
           find.byKey(const ValueKey('sign-up-submit')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-name')),
           'New Reader',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-email')),
           email,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password')),
           password,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password-confirm')),
           password,
         );
@@ -911,11 +924,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           email,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           password,
         );
@@ -941,19 +956,23 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-up-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-name')),
           'Unconfirmed Reader',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-email')),
           email,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password')),
           password,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password-confirm')),
           password,
         );
@@ -1003,11 +1022,13 @@ void main() {
             find.byKey(const ValueKey('sign-in-submit')),
           );
 
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('sign-in-email')),
             email,
           );
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('sign-in-password')),
             password,
           );
@@ -1049,7 +1070,8 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
@@ -1085,11 +1107,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('confirm-password-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password')),
           newPassword,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           newPassword,
         );
@@ -1110,11 +1134,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           newPassword,
         );
@@ -1155,7 +1181,8 @@ void main() {
             tester,
             find.byKey(const ValueKey('edit-name-submit')),
           );
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('edit-name-name')),
             'Renamed Member',
           );
@@ -1181,15 +1208,18 @@ void main() {
             tester,
             find.byKey(const ValueKey('change-password-submit')),
           );
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('change-password-current')),
             ConnectFixtureServer.memberPassword,
           );
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('change-password-new')),
             newPassword,
           );
-          await tester.enterText(
+          await typeText(
+            tester,
             find.byKey(const ValueKey('change-password-confirm')),
             newPassword,
           );
@@ -1251,11 +1281,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('change-email-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('change-email-new')),
           'moved@example.com',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('change-email-password')),
           ConnectFixtureServer.memberPassword,
         );
@@ -1304,7 +1336,8 @@ void main() {
           tester,
           find.byKey(const ValueKey('delete-account-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('delete-account-password')),
           ConnectFixtureServer.memberPassword,
         );
@@ -1347,11 +1380,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('confirm-password-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password')),
           'replaced-member-password',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           'replaced-member-password',
         );
@@ -2040,7 +2075,8 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Series',
         );
@@ -2067,7 +2103,8 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Author 001',
         );
@@ -2092,7 +2129,8 @@ void main() {
           tester,
           find.byKey(const ValueKey('search-field')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('search-field')),
           'Seed Label 01',
         );
@@ -2260,11 +2298,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           ConnectFixtureServer.memberPassword,
         );
@@ -2297,11 +2337,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           ConnectFixtureServer.memberPassword,
         );
@@ -2470,19 +2512,23 @@ void main() {
           timeout: const Duration(seconds: 20),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-name')),
           'Live Signup Reader',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-email')),
           email,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password')),
           'live-signup-password',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-up-password-confirm')),
           'live-signup-password',
         );
@@ -2507,11 +2553,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           email,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           'live-signup-password',
         );
@@ -2541,7 +2589,8 @@ void main() {
           find.byKey(const ValueKey('reset-password-submit')),
           timeout: const Duration(seconds: 20),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('reset-password-email')),
           email,
         );
@@ -2573,11 +2622,13 @@ void main() {
           find.byKey(const ValueKey('confirm-password-submit')),
           timeout: const Duration(seconds: 20),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password')),
           'live-reset-password',
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('confirm-password-password-confirm')),
           'live-reset-password',
         );
@@ -2626,11 +2677,13 @@ void main() {
           tester,
           find.byKey(const ValueKey('sign-in-submit')),
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           ConnectFixtureServer.memberPassword,
         );
@@ -2813,11 +2866,13 @@ void main() {
           find.byKey(const ValueKey('sign-in-submit')),
         );
 
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-email')),
           ConnectFixtureServer.memberEmail,
         );
-        await tester.enterText(
+        await typeText(
+          tester,
           find.byKey(const ValueKey('sign-in-password')),
           'wrong-password',
         );
