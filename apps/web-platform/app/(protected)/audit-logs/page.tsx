@@ -37,10 +37,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import {
-  getAuditActionLabel,
-  getAuditActionOptions,
-} from "#lib/audit-log-labels";
+import { getAuditActionOptions } from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
   ListPlatformAuditLogsResult,
@@ -55,6 +52,7 @@ import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { storageTestReasonKey } from "#lib/storage-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
 
+import { AuditActionName } from "./_components/audit-action-name";
 import {
   buildAuditLogsPath,
   parseAuditLogFilters,
@@ -376,14 +374,6 @@ const ActorRoleCell = async ({
   role: string;
 }) => await getActorRoleLabel(role, locale);
 
-const AuditActionCell = async ({
-  action,
-  locale,
-}: {
-  action: string;
-  locale: Locale;
-}) => await getAuditActionLabel(action, locale);
-
 const AuditLogsTableBody = async ({
   hasFilter,
   locale,
@@ -451,7 +441,9 @@ const AuditLogsTableBody = async ({
           <TableCell>
             <div className="grid gap-1">
               <p className="font-medium">
-                <AuditActionCell action={log.action} locale={locale} />
+                <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                  <AuditActionName action={log.action} />
+                </Suspense>
               </p>
               <p>
                 <Badge tone={getOutcomeTone(log.outcome)}>

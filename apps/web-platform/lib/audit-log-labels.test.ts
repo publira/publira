@@ -1,64 +1,35 @@
+import { getLocales } from "@publira/i18n";
 import { describe, expect, it } from "vitest";
 
-import { getAuditActionLabel, getAuditActionOptions } from "./audit-log-labels";
+import { getAuditActionOptions } from "./audit-log-labels";
 
 const en = "en" as const;
 const ja = "ja" as const;
 
-describe("audit-log-labels", () => {
-  it("returns the label for known actions", async () => {
-    await expect(getAuditActionLabel("operator_updated", en)).resolves.toBe(
-      "Updated an operator"
-    );
-    await expect(getAuditActionLabel("tenant_suspended", en)).resolves.toBe(
-      "Suspended a tenant"
-    );
-    await expect(
-      getAuditActionLabel("platform_email_settings_updated", en)
-    ).resolves.toBe("Updated SMTP settings");
-    await expect(
-      getAuditActionLabel("platform_smtp_test_email_sent", en)
-    ).resolves.toBe("Sent an SMTP test email");
-    await expect(
-      getAuditActionLabel("platform_settings_updated", en)
-    ).resolves.toBe("Updated platform settings");
-    await expect(
-      getAuditActionLabel("platform_storage_settings_updated", en)
-    ).resolves.toBe("Updated storage settings");
-    await expect(
-      getAuditActionLabel("platform_storage_connection_tested", en)
-    ).resolves.toBe("Tested the storage connection");
-    await expect(
-      getAuditActionLabel("platform_webpush_subject_updated", en)
-    ).resolves.toBe("Updated the Web Push contact");
-  });
-
-  it("offers the storage actions in the action filter", async () => {
+describe("getAuditActionOptions", () => {
+  it.each([
+    ["platform_storage_settings_updated", "Updated storage settings"],
+    ["platform_storage_connection_tested", "Tested the storage connection"],
+    ["platform_webpush_subject_updated", "Updated the Web Push contact"],
+    ["tenant_admin_invite_canceled", "Canceled a tenant admin invitation"],
+    ["tenant_admin_invite_resent", "Resent a tenant admin invitation"],
+    ["tenant_admin_invited", "Invited a tenant admin"],
+    ["tenant_member_added", "Added a tenant member"],
+    ["tenant_member_created", "Created a tenant member account"],
+    ["tenant_member_removed", "Removed a tenant member"],
+    ["tenant_member_role_updated", "Changed a tenant member's role"],
+  ])("offers %s in the action filter", async (value, label) => {
     const options = await getAuditActionOptions(en);
 
-    expect(options).toContainEqual({
-      label: "Updated storage settings",
-      value: "platform_storage_settings_updated",
-    });
-    expect(options).toContainEqual({
-      label: "Tested the storage connection",
-      value: "platform_storage_connection_tested",
-    });
+    expect(options).toContainEqual({ label, value });
   });
 
-  it("offers the Web Push action in the action filter", async () => {
-    const options = await getAuditActionOptions(en);
+  it.each(getLocales())("words every option in %s", async (locale) => {
+    const options = await getAuditActionOptions(locale);
 
-    expect(options).toContainEqual({
-      label: "Updated the Web Push contact",
-      value: "platform_webpush_subject_updated",
-    });
-  });
-
-  it("returns original action for unknown values", async () => {
-    await expect(getAuditActionLabel("unknown_action", en)).resolves.toBe(
-      "unknown_action"
-    );
+    for (const { label, value } of options) {
+      expect(label).not.toContain(value);
+    }
   });
 
   it("sorts selectable options by the UI locale", async () => {
