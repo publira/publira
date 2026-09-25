@@ -11,6 +11,8 @@ Wire both: with only `cacheHandlers`, the ISR family stays local in a multi-inst
 
 `@publira/next-cache-handlers/tags` exports `readTagRevalidatedAt(tag)`, the moment a tag was last revalidated as every instance sharing the Redis sees it. It is for a value held outside Next.js's caches — in `proxy.ts`, where none of them run — that `revalidateTag` still has to reach.
 
+`@publira/next-cache-handlers/revalidate` exports `revalidateTags(request)`, the Route Handler behind `POST /api/v1/revalidate` in every web app. It compares the `X-Revalidate-Token` header with `PUBLIRA_REVALIDATE_TOKEN`, reads `{ "tags": [...] }` from the body, and calls `revalidateTag(tag, "max")` on each one, so the Go server's one request reaches each app's own `PUBLIRA_CACHE_APP` keyspace. It answers `500` when the token is not configured, `401` when the header does not match, and `400` for a body that is not that shape; it is a machine-to-machine entry point, not a browser-facing API.
+
 ## Environment variables
 
 | Variable | Description |
@@ -19,6 +21,7 @@ Wire both: with only `cacheHandlers`, the ISR family stays local in a multi-inst
 | `PUBLIRA_CACHE_APP` | The app name in the key prefix (default `next` → `publira:{app}:`) |
 | `PUBLIRA_CACHE_KEY_PREFIX` | Overrides the whole prefix |
 | `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` | The command timeout in ms (default `1000`) |
+| `PUBLIRA_REVALIDATE_TOKEN` | The shared secret `revalidateTags` expects in the `X-Revalidate-Token` header. Read by the `./revalidate` handler only |
 
 ## Wiring it in next.config
 
