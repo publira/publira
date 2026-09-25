@@ -207,10 +207,21 @@ func TestDBUpdatePlatformWebPushSubjectRefusesAnInvalidSubject(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	read := getWebPushSettings(t, client, operator)
 
-	for _, subject := range []string{"", "push@example.com", "http://example.com"} {
-		if _, err := updateWebPushSubject(client, operator, subject, read.GetRevision()); connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Fatalf("UpdatePlatformWebPushSubject(%q) code = %v, want invalid_argument", subject, connect.CodeOf(err))
+	for _, tc := range []struct {
+		subject  string
+		revision int64
+		field    string
+	}{
+		{subject: "", revision: read.GetRevision(), field: "subject"},
+		{subject: "push@example.com", revision: read.GetRevision(), field: "subject"},
+		{subject: "http://example.com", revision: read.GetRevision(), field: "subject"},
+		{subject: "mailto:push@example.com", revision: 0, field: "expected_revision"},
+	} {
+		_, err := updateWebPushSubject(client, operator, tc.subject, tc.revision)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("UpdatePlatformWebPushSubject(%q, %d) code = %v, want invalid_argument", tc.subject, tc.revision, connect.CodeOf(err))
 		}
+		assertFieldViolation(t, err, tc.field)
 	}
 	if got := getWebPushSettings(t, client, operator); got.GetHasSubject() || got.GetRevision() != read.GetRevision() {
 		t.Fatalf("settings = %+v, want nothing saved", got)

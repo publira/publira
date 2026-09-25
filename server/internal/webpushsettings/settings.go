@@ -1,6 +1,12 @@
 // Package webpushsettings holds the platform's Web Push identity: the VAPID
 // key pair the server generates for itself, and the subject an operator saves.
 // The private key leaves this package only inside [Credentials], for the sender.
+// The platform API's PlatformWebPushSettingsService and publiractl webpush are
+// adapters over its save.
+//
+// A refusal of what the caller asked for is a [*fielderr.Invalid] naming the
+// field at fault, [ErrConflict], or [ErrSecretManagerUnavailable]; any other
+// error is an internal fault.
 package webpushsettings
 
 import (
