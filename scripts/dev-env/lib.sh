@@ -513,18 +513,32 @@ dev_env_stop_edge() {
   rm -f "${services_file}"
 }
 
+# What a service inherits from the shell that starts it: where its tools are,
+# where they keep their own state, and the locale.
+DEV_ENV_BASE_VARIABLES=(
+  PATH HOME LANG LC_ALL TZ TMPDIR PNPM_HOME
+  XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME
+)
+
 # Starts one service of a profile, detached, and records the pid that stands
-# for it. That pid is also the id of a process group holding nothing else,
-# because job control puts a background job in a group of its own, and
+# for it. The arguments after the name are the service's NAME=value
+# assignments and then its command, run under `env -i` so that nothing but
+# those and DEV_ENV_BASE_VARIABLES reaches it.
+#
+# That pid is also the id of a process group holding nothing else, because job
+# control puts a background job in a group of its own, and
 # dev_env_stop_process_group signals the group rather than the single pid.
 # The distinction is what stops the pnpm-launched services: their recorded pid
 # heads a chain (`pnpm` -> `sh -c` -> `next dev` -> `next-server`) whose last
 # link is the one holding the port, and it outlives a signal to the pid alone.
 dev_env_start_background() {
-  local run_dir="$1" process_name="$2" pid
+  local run_dir="$1" process_name="$2" pid name inherited=()
   shift 2
+  for name in "${DEV_ENV_BASE_VARIABLES[@]}"; do
+    [[ -z "${!name+set}" ]] || inherited+=("${name}=${!name}")
+  done
   set -m
-  nohup "$@" > "${run_dir}/${process_name}.log" 2>&1 < /dev/null &
+  nohup env -i "${inherited[@]}" "$@" > "${run_dir}/${process_name}.log" 2>&1 < /dev/null &
   pid="$!"
   set +m
   # The pid file is the only handle the profile keeps, so the job is dropped
