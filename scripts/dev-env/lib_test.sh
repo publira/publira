@@ -419,6 +419,26 @@ fi
 [[ ! -e "${chain_run_dir}/web.pid" ]] || fail "the pid file of a stopped process was kept"
 pass "stopping a profile ends the descendants of the pid it recorded"
 
+# A service's environment is what its line names plus the base variables; a
+# value this shell exports, the way a loaded profile exports each of its own,
+# does not reach it.
+hermetic_run_dir="$(dev_env_profile_run_dir hermetic)"
+export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@db:5432/publira_hermetic"
+start_fake_service "${hermetic_run_dir}" env PUBLIRA_NAMED=named bash -c 'env > "$1"; true' "${REPO_ROOT}" "${test_dir}/hermetic.env"
+wait_for_process_group_members "${fake_service_pgid}" 0 || fail "the service printing its environment did not exit"
+unset PUBLIRA_ADMIN_DB_URL
+expected_names="PUBLIRA_NAMED"
+for name in "${DEV_ENV_BASE_VARIABLES[@]}"; do
+  [[ -z "${!name+set}" ]] || expected_names+=$'\n'"${name}"
+done
+# bash adds these three to its own environment whatever it was started with.
+actual_names="$(cut -d= -f1 "${test_dir}/hermetic.env" | grep -vxE 'PWD|SHLVL|_' | sort)"
+[[ "${actual_names}" == "$(sort <<< "${expected_names}")" ]] ||
+  fail "a service was started with more than its own and the base variables: $(paste -sd ' ' - <<< "${actual_names}")"
+grep -qx 'PUBLIRA_NAMED=named' "${test_dir}/hermetic.env" || fail "a variable the service's line names did not reach it"
+rm -f "${hermetic_run_dir}/env.pid"
+pass "a service is started with only the variables its line names and the base ones"
+
 finished_run_dir="$(dev_env_profile_run_dir finished)"
 start_fake_service "${finished_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
 finished_pgid="${fake_service_pgid}"

@@ -99,11 +99,27 @@ start_profile() {
   init_profile "${name}"
   task -d "${REPO_ROOT}" server:build
 
+  # Each service is started with nothing but its own line and the base
+  # variables, so the two settings a profile does not hold are taken from this
+  # shell and named here: where spans go, and the credential the object store
+  # signs with (storage-init.sh leaves it to each process).
+  local tracing=(
+    PUBLIRA_TRACING_ENABLED="${PUBLIRA_TRACING_ENABLED:-}"
+    OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+    OTEL_EXPORTER_OTLP_PROTOCOL="${OTEL_EXPORTER_OTLP_PROTOCOL:-}"
+    OTEL_TRACES_EXPORTER="${OTEL_TRACES_EXPORTER:-}"
+  )
+  local object_store=(
+    AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
+    AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
+    AWS_REGION="${AWS_REGION:-}"
+  )
+
   # One process serves the API and the images: the edge forwards `/api` and
   # `/images` to its edge listener, and the Next.js apps dial its internal one.
   # The Redis URL is the image conversion cache's; the rate limit counters use
   # it too once it is there.
-  dev_env_start_background "${run_dir}" server env \
+  dev_env_start_background "${run_dir}" server "${tracing[@]}" "${object_store[@]}" \
     PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_PUBLIC_API_PORT}" \
     PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
@@ -119,12 +135,14 @@ start_profile() {
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/publira" server
-  # The worker also runs the three periodic jobs that promote due episodes,
-  # apply free window boundaries, and turn over each tenant's calendar day, so
-  # it carries the ticker role's connection and the revalidate targets too.
-  dev_env_start_background "${run_dir}" worker env \
+  # The worker also runs the periodic jobs that promote due episodes, apply
+  # free window boundaries, turn over each tenant's calendar day, and rebuild
+  # and purge statistics, so it carries the ticker and content stats roles'
+  # connections and the revalidate targets too.
+  dev_env_start_background "${run_dir}" worker "${tracing[@]}" "${object_store[@]}" \
     PUBLIRA_WORKER_DB_URL="${PUBLIRA_WORKER_DB_URL}" \
     PUBLIRA_TICKER_DB_URL="${PUBLIRA_TICKER_DB_URL}" \
+    PUBLIRA_CONTENT_STATS_DB_URL="${PUBLIRA_CONTENT_STATS_DB_URL}" \
     PUBLIRA_WORKER_ADDR=":${PUBLIRA_WORKER_PORT}" \
     PUBLIRA_EMAIL_RENDERER_URL="${PUBLIRA_EMAIL_RENDERER_URL}" \
     PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_PLATFORM_APP_URL}" \
@@ -148,19 +166,19 @@ start_profile() {
     --filter "@publira/web-host^..." \
     --filter "@publira/web-admin^..." \
     --filter "@publira/web-platform^..."
-  dev_env_start_background "${run_dir}" email-renderer env PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
+  dev_env_start_background "${run_dir}" email-renderer PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
     pnpm dev --only --filter @publira/email-renderer
-  dev_env_start_background "${run_dir}" web-host env PORT="${PUBLIRA_WEB_HOST_PORT}" \
+  dev_env_start_background "${run_dir}" web-host "${tracing[@]}" PORT="${PUBLIRA_WEB_HOST_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm dev --only --filter @publira/web-host
-  dev_env_start_background "${run_dir}" web-admin env PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
+  dev_env_start_background "${run_dir}" web-admin "${tracing[@]}" PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     pnpm dev --only --filter @publira/web-admin
-  dev_env_start_background "${run_dir}" web-platform env PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
+  dev_env_start_background "${run_dir}" web-platform "${tracing[@]}" PORT="${PUBLIRA_WEB_PLATFORM_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
