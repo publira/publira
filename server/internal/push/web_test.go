@@ -1,11 +1,18 @@
 package push
 
 import (
+	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"encoding/base64"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestNewWebPushClientValidatesVAPIDKeyPair(t *testing.T) {
@@ -22,6 +29,53 @@ func TestNewWebPushClientValidatesVAPIDKeyPair(t *testing.T) {
 		VAPIDPublicKey: publicKey, VAPIDPrivateKey: "not-a-key", Subscriber: "mailto:push@example.test",
 	}); err == nil {
 		t.Fatal("NewWebPushClient error = nil, want invalid key rejection")
+	}
+}
+
+// The sub claim is the contact a push service reaches the operator at, so it
+// has to be the subject as saved, in either form RFC 8292 allows.
+func TestWebPushClientSignsTheSubjectAsConfigured(t *testing.T) {
+	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		t.Fatalf("GenerateVAPIDKeys: %v", err)
+	}
+	browserKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+	subscription := WebPushSubscription{
+		P256dh: base64.RawURLEncoding.EncodeToString(browserKey.PublicKey().Bytes()),
+		Auth:   base64.RawURLEncoding.EncodeToString(make([]byte, 16)),
+	}
+
+	for _, subject := range []string{"mailto:push@example.test", "https://example.test/contact"} {
+		t.Run(subject, func(t *testing.T) {
+			authorization := make(chan string, 1)
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				authorization <- r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer server.Close()
+
+			client, err := NewWebPushClient(WebPushConfig{VAPIDPublicKey: publicKey, VAPIDPrivateKey: privateKey, Subscriber: subject})
+			if err != nil {
+				t.Fatalf("NewWebPushClient: %v", err)
+			}
+			client.options.HTTPClient = server.Client()
+			subscription.Endpoint = server.URL
+			if err := client.Send(context.Background(), subscription, WebPushMessage{Title: "New episode"}); err != nil {
+				t.Fatalf("Send: %v", err)
+			}
+
+			token, _, _ := strings.Cut(strings.TrimPrefix(<-authorization, "vapid t="), ", k=")
+			claims := jwt.MapClaims{}
+			if _, _, err := jwt.NewParser().ParseUnverified(token, claims); err != nil {
+				t.Fatalf("parse the VAPID token: %v", err)
+			}
+			if sub, err := claims.GetSubject(); err != nil || sub != subject {
+				t.Fatalf("sub = %q, %v; want %q", sub, err, subject)
+			}
+		})
 	}
 }
 

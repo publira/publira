@@ -48,7 +48,9 @@ type WebPushClient struct {
 
 func NewWebPushClient(cfg WebPushConfig) (*WebPushClient, error) {
 	options := webpush.Options{
-		Subscriber:      strings.TrimSpace(cfg.Subscriber),
+		// webpush-go prefixes every subscriber but an https: URL with mailto:,
+		// so a mailto: subject goes in as its bare address.
+		Subscriber:      strings.TrimPrefix(strings.TrimSpace(cfg.Subscriber), "mailto:"),
 		VAPIDPublicKey:  strings.TrimSpace(cfg.VAPIDPublicKey),
 		VAPIDPrivateKey: strings.TrimSpace(cfg.VAPIDPrivateKey),
 		TTL:             60,
