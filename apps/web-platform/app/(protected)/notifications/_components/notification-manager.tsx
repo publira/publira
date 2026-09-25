@@ -191,7 +191,7 @@ const renderNotificationListBody = ({
             <TableCell>
               {item.isRead ? null : (
                 <MarkNotificationAsReadButton
-                  ariaLabel={markReadAriaLabel(item.title)}
+                  aria-label={markReadAriaLabel(item.title)}
                   notificationId={item.id}
                 >
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -258,19 +258,9 @@ export const NotificationManager = async ({
             </Suspense>
           </p>
           <PaginationControls
-            ariaLabel={t("platform.notifications.pagination_aria")}
+            aria-label={t("platform.notifications.pagination_aria")}
             nextHref={nextHref}
-            nextLabel={
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <Message message="platform.common.next" />
-              </Suspense>
-            }
             previousHref={previousHref}
-            previousLabel={
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <Message message="platform.common.previous" />
-              </Suspense>
-            }
           />
         </div>
       ) : null}

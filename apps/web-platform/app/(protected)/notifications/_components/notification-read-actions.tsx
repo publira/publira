@@ -10,12 +10,13 @@ import {
   markNotificationAsReadAction,
 } from "../_lib/actions";
 
+/** `aria-label` names the notification it marks, since every row has one. */
 export const MarkNotificationAsReadButton = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
   children,
   notificationId,
 }: {
-  ariaLabel: string;
+  "aria-label": string;
   children: ReactNode;
   notificationId: string;
 }) => {

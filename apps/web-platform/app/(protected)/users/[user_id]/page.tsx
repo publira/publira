@@ -1,5 +1,13 @@
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
+import {
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+} from "@publira/ui-components/dialog";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import {
   Identifier,
@@ -49,7 +57,11 @@ import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import { getPlatformEndUser } from "#lib/users";
 
-import { DangerConfirmButton } from "./_components/danger-confirm-button";
+import {
+  DangerConfirmButton,
+  DangerConfirmButtonAction,
+  DangerConfirmButtonTrigger,
+} from "./_components/danger-confirm-button";
 import {
   deleteEndUserAction,
   suspendEndUserAction,
@@ -189,37 +201,79 @@ const UserDetailContent = async ({
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={unsuspendEndUserAction}
-              actionText={t("platform.users.unsuspend_action")}
-              actionVariant="default"
-              cancelText={cancelText}
-              description={t("platform.users.unsuspend_description")}
-              title={t("platform.users.unsuspend_title")}
-              triggerLabel={t("platform.users.unsuspend")}
-              triggerVariant="outline"
-            />
+            >
+              <DangerConfirmButtonTrigger variant="outline">
+                {t("platform.users.unsuspend")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.users.unsuspend_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.users.unsuspend_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction variant="default">
+                    {t("platform.users.unsuspend_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
           {canSuspend ? (
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={suspendEndUserAction}
-              actionText={t("platform.users.suspend_action")}
-              cancelText={cancelText}
-              description={t("platform.users.suspend_description")}
-              title={t("platform.users.suspend_title")}
-              triggerLabel={t("platform.users.suspend")}
-              triggerVariant="outline"
-            />
+            >
+              <DangerConfirmButtonTrigger variant="outline">
+                {t("platform.users.suspend")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.users.suspend_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.users.suspend_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction>
+                    {t("platform.users.suspend_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
           {canDelete ? (
             <DangerConfirmButton
               actionArg={user.publicId}
               actionCreator={deleteEndUserAction}
-              actionText={t("platform.users.delete_action")}
-              cancelText={cancelText}
-              description={t("platform.users.delete_description")}
-              title={t("platform.users.delete_title")}
-              triggerLabel={t("platform.users.delete")}
-            />
+            >
+              <DangerConfirmButtonTrigger>
+                {t("platform.users.delete")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.users.delete_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.users.delete_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction>
+                    {t("platform.users.delete_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
         </PlatformPageActions>
       </PlatformPageHeader>

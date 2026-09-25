@@ -1,5 +1,13 @@
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
+import {
+  ConfirmDialogCancel,
+  ConfirmDialogContent,
+  ConfirmDialogDescription,
+  ConfirmDialogFooter,
+  ConfirmDialogHeader,
+  ConfirmDialogTitle,
+} from "@publira/ui-components/dialog";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
@@ -41,7 +49,11 @@ import { getPlatformOperator } from "#lib/operators";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-import { DangerConfirmButton } from "./_components/danger-confirm-button";
+import {
+  DangerConfirmButton,
+  DangerConfirmButtonAction,
+  DangerConfirmButtonTrigger,
+} from "./_components/danger-confirm-button";
 import { OperatorRoleForm } from "./_components/operator-role-form";
 import {
   deactivateOperatorAction,
@@ -153,37 +165,79 @@ const OperatorDetailContent = async ({
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={unsuspendOperatorAction}
-              actionText={t("platform.operators.resume_action")}
-              actionVariant="default"
-              cancelText={cancelText}
-              description={t("platform.operators.resume_description")}
-              title={t("platform.operators.resume_title")}
-              triggerLabel={t("platform.operators.resume")}
-              triggerVariant="outline"
-            />
+            >
+              <DangerConfirmButtonTrigger variant="outline">
+                {t("platform.operators.resume")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.operators.resume_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.operators.resume_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction variant="default">
+                    {t("platform.operators.resume_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
           {canSuspend ? (
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={suspendOperatorAction}
-              actionText={t("platform.operators.suspend_action")}
-              cancelText={cancelText}
-              description={t("platform.operators.suspend_description")}
-              title={t("platform.operators.suspend_title")}
-              triggerLabel={t("platform.operators.suspend")}
-              triggerVariant="outline"
-            />
+            >
+              <DangerConfirmButtonTrigger variant="outline">
+                {t("platform.operators.suspend")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.operators.suspend_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.operators.suspend_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction>
+                    {t("platform.operators.suspend_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
           {canModify ? (
             <DangerConfirmButton
               actionArg={operator.publicId}
               actionCreator={deactivateOperatorAction}
-              actionText={t("platform.operators.deactivate_action")}
-              cancelText={cancelText}
-              description={t("platform.operators.deactivate_description")}
-              title={t("platform.operators.deactivate_title")}
-              triggerLabel={t("platform.operators.deactivate")}
-            />
+            >
+              <DangerConfirmButtonTrigger>
+                {t("platform.operators.deactivate")}
+              </DangerConfirmButtonTrigger>
+              <ConfirmDialogContent>
+                <ConfirmDialogHeader>
+                  <ConfirmDialogTitle>
+                    {t("platform.operators.deactivate_title")}
+                  </ConfirmDialogTitle>
+                  <ConfirmDialogDescription>
+                    {t("platform.operators.deactivate_description")}
+                  </ConfirmDialogDescription>
+                </ConfirmDialogHeader>
+                <ConfirmDialogFooter>
+                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  <DangerConfirmButtonAction>
+                    {t("platform.operators.deactivate_action")}
+                  </DangerConfirmButtonAction>
+                </ConfirmDialogFooter>
+              </ConfirmDialogContent>
+            </DangerConfirmButton>
           ) : null}
         </PlatformPageActions>
       </PlatformPageHeader>
