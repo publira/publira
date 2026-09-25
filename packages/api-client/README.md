@@ -17,26 +17,31 @@ const client = createPublicApiClient({
 });
 
 await client.catalog.getSeriesDetail({
-  tenant: { tenantSlug: "demo" },
-  seriesSlug: "example-series",
+  publicId: "SeedSERSAAA1",
+  tenant: { tenantId },
 });
 ```
+
+`tenant.tenantId` is the tenant's primary key (a UUID), not the public ID the header carries; `publicId` is the series' 12-character public ID.
 
 The admin API client:
 
 ```ts
 import { createAdminApiClient } from "@publira/api-client/admin/client";
+import { buildBearerHeaders } from "@publira/web-session";
 
 const client = createAdminApiClient({
   baseUrl: process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8081",
   tenantPublicId: () => currentTenantPublicId,
 });
 
-await client.auth.getMe({
-  tenant: { tenantSlug: "demo" },
-  sessionId: "session-id",
-});
+await client.auth.getMe(
+  { tenant: { tenantId } },
+  buildBearerHeaders(accessToken)
+);
 ```
+
+A request carries no session of its own: the session travels as the `Authorization` header, which `buildBearerHeaders` from `@publira/web-session` builds from the access token the app's session cookie holds.
 
 Using the types alone:
 
@@ -49,7 +54,7 @@ import type {
 } from "@publira/api-client/admin/types";
 import type { Tenant } from "@publira/api-client/platform/types";
 import type { MyPurchase } from "@publira/api-client/public/types";
-import type { CreateSessionRequest } from "@publira/api-client/public/auth";
+import type { LoginRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```
 
@@ -104,6 +109,7 @@ With `tenantPublicId` set, every API request automatically carries the `X-Publir
 `@publira/api-client/forwarded-for` exports `createForwardedForInterceptor(resolve)`, which sets `X-Forwarded-For` from `resolve()` on every call that carries `Authorization`, and `FORWARDED_FOR_HEADER` for a sessionless call that sets the header itself. An app passes the interceptor through `interceptors`, with a resolver that reads the header the edge set on the request being served.
 
 ```ts
+import { createAdminApiClient } from "@publira/api-client/admin/client";
 import { createForwardedForInterceptor } from "@publira/api-client/forwarded-for";
 import { headers } from "next/headers";
 
