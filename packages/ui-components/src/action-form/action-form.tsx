@@ -34,11 +34,22 @@ import { FormMessage } from "../form-message";
  * import type { FormActionState } from "@publira/ui-components/action-form";
  * ```
  */
-export type FormActionState = { ok: boolean; message: string } | null;
+export type FormActionState = ActionFormResult | null;
 
-export interface ActionFormRenderProps {
+/**
+ * What every state an `ActionForm` Action returns carries once it has run. A
+ * form that needs more back, such as the settings a save confirmed, widens it.
+ */
+export interface ActionFormResult {
+  ok: boolean;
+  message: string;
+}
+
+export interface ActionFormRenderProps<
+  State extends ActionFormResult = ActionFormResult,
+> {
   isPending: boolean;
-  state: FormActionState;
+  state: State | null;
 }
 
 /** An Action a submit control sends the form's fields to in place of the form's own. */
@@ -201,12 +212,14 @@ export const ActionFormPending = ({ children }: { children: ReactNode }) =>
  * ```
  */
 
-export interface ActionFormProps {
+export interface ActionFormProps<
+  State extends ActionFormResult = ActionFormResult,
+> {
   action: (
-    prevState: FormActionState,
+    prevState: State | null,
     formData: FormData
-  ) => Promise<FormActionState>;
-  children: ReactNode | ((props: ActionFormRenderProps) => ReactNode);
+  ) => Promise<State | null>;
+  children: ReactNode | ((props: ActionFormRenderProps<State>) => ReactNode);
   className?: string;
   /**
    * The `<form>`'s id, for a submit control outside it to name with `form` —
@@ -221,19 +234,19 @@ export interface ActionFormProps {
   showSuccess?: boolean;
 }
 
-export const ActionForm = ({
+export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   action,
   children,
   className,
   id,
   showSuccess = true,
-}: ActionFormProps) => {
+}: ActionFormProps<State>) => {
   const formRef = useRef<HTMLFormElement>(null);
   const controlActionRef = useRef<ActionFormControlAction | null>(null);
   const [submittedTo, setSubmittedTo] =
     useState<ActionFormControlAction | null>(null);
   const [state, formAction, isPending] = useActionState(
-    async (prevState: FormActionState, formData: FormData) => {
+    async (prevState: State | null, formData: FormData) => {
       const nextState = await action(prevState, formData);
       const form = formRef.current;
       if (nextState?.ok && form) {

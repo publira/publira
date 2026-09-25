@@ -9,6 +9,7 @@ export type {
   ActionFormControlAction,
   ActionFormProps,
   ActionFormRenderProps,
+  ActionFormResult,
   ActionFormSubmitProps,
   FormActionState,
 } from "./action-form";
