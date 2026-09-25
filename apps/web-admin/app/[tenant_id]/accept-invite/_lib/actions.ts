@@ -20,10 +20,10 @@ const acceptInviteFormSchema = async (locale: Locale) => {
   return z
     .object({
       accountExists: z.preprocess((value) => value === "true", z.boolean()),
-      confirmPassword: optionalTrimmedString(1024),
+      confirmPassword: z.string().max(1024).optional(),
       email: optionalTrimmedString(),
       name: optionalTrimmedString(),
-      password: optionalTrimmedString(1024),
+      password: z.string().max(1024).optional(),
       tenantId: await tenantIdFormSchema(locale),
       token: await inviteTokenFormSchema(locale),
     })

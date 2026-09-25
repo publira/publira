@@ -21,23 +21,11 @@ const tokenOrEmpty = async (
   return parsed.success ? parsed.data : "";
 };
 
-const trimmedPasswordFormSchema = async (locale: Locale) => {
-  const [t, password] = await Promise.all([
-    getMessagesFor(locale),
-    passwordFormSchema(locale),
-  ]);
-
-  return z
-    .string({ error: t("platform.auth.fields.password_required") })
-    .trim()
-    .pipe(password);
-};
-
 const confirmPasswordFormSchema = async (locale: Locale) => {
   const [t, confirmPassword, password, token] = await Promise.all([
     getMessagesFor(locale),
-    trimmedPasswordFormSchema(locale),
-    trimmedPasswordFormSchema(locale),
+    passwordFormSchema(locale),
+    passwordFormSchema(locale),
     authTokenFormSchema(locale),
   ]);
 

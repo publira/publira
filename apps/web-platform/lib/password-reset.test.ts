@@ -124,6 +124,17 @@ describe("confirmPlatformPasswordReset", () => {
     });
   });
 
+  it("sends the new password with the spaces typed around it", async () => {
+    mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
+
+    await confirmPlatformPasswordReset(TOKEN, "  correct horse  ", "en");
+
+    expect(mockConfirmPasswordReset).toHaveBeenCalledWith(
+      expect.objectContaining({ newPassword: "  correct horse  " }),
+      expect.anything()
+    );
+  });
+
   it("rejects an empty password without calling RPC", async () => {
     await expect(
       confirmPlatformPasswordReset(TOKEN, "   ", "en")
