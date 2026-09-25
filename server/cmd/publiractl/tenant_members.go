@@ -94,7 +94,7 @@ func setupMemberAdd(f *commandFlags) func(context.Context, *commandEnv) error {
 		}
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
 			params.TenantID = tenant.ID
-			member, err := tenantmembers.Add(ctx, tx, params)
+			member, err := platformtenants.AddMember(ctx, tx, env.logger, auditlog.SystemPlatformActor, params)
 			if err != nil {
 				return err
 			}
@@ -115,7 +115,7 @@ func setupMemberUpdateRole(f *commandFlags) func(context.Context, *commandEnv) e
 		}
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
 			params.TenantID = tenant.ID
-			member, err := tenantmembers.UpdateRole(ctx, tx, params)
+			member, err := platformtenants.UpdateMemberRole(ctx, tx, env.logger, auditlog.SystemPlatformActor, params)
 			if err != nil {
 				return err
 			}
@@ -135,7 +135,7 @@ func setupMemberRemove(f *commandFlags) func(context.Context, *commandEnv) error
 		}
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
 			params.TenantID = tenant.ID
-			member, err := tenantmembers.Remove(ctx, tx, params)
+			member, err := platformtenants.RemoveMember(ctx, tx, env.logger, auditlog.SystemPlatformActor, params)
 			if err != nil {
 				return err
 			}

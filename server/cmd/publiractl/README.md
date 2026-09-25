@@ -165,7 +165,7 @@ go run ./server/cmd/publiractl tenant admin create \
 
 `tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a masked prompt, from stdin with `--password-stdin`, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
 
-Each command prints what it did to stdout, and files its audit entries in `platform_audit_logs` under the `system` actor with no operator; the member commands file none, as their RPCs do not. A refused value names its flag on stderr and exits `1` with nothing written.
+Each command prints what it did to stdout, and files its audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
 
 An invitation's mail goes on the outbox, as it does from the console, and the [worker](../publira/README.md#publira-worker) is what sends it. An install running no worker gets the invitation and sends nothing; an invitation's link expires 24 hours after it is created or resent.
 

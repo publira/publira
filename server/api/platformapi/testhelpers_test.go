@@ -1,6 +1,7 @@
 package platformapi
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"log/slog"
@@ -102,6 +103,16 @@ func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
+}
+
+// newOperatorActorContext signs a platform_operator in, as the authentication
+// interceptor does before a handler runs.
+func newOperatorActorContext(userID uuid.UUID) context.Context {
+	return context.WithValue(context.Background(), platformActorContextKey{}, platformActor{
+		UserID: userID,
+		Role:   "platform_operator",
+		Email:  "platform@example.com",
+	})
 }
 
 func expectOperatorAuditLogInsert(mock sqlmock.Sqlmock) {
