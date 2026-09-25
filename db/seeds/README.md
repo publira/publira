@@ -111,7 +111,7 @@ Five card designs and five icon designs are dealt round-robin over the catalogue
 - `public_id`: A standard 12-character Base58 value (the same format as `server/internal/publicid`)
 - `id` (UUID): A value conforming to the UUIDv7 format
 
-Seed `public_id` values are fixed rather than derived from primary-key UUIDs. Their format is `Seed`, a four-character type, and a four-digit sequence number. Because Base58 has no `0`, each zero in the sequence is replaced with `A` (`scenarios/` uses `Bndr` instead of `Seed`).
+Seed `public_id` values are fixed rather than derived from primary-key UUIDs. Their format is `Seed`, a four-character type, and a four-digit sequence number. Because Base58 has no `0`, each zero in the sequence is replaced with `A`. Each file under `scenarios/` picks a four-letter prefix of its own in place of `Seed` (`Bndr` in `010_multi_tenant.sql`, `Scen` in `030_platform_operators.sql`, and so on), so its rows can collide neither with the development seed's nor with another scenario's.
 
 | Type                   | Example                                         |
 | ---------------------- | ----------------------------------------------- |
