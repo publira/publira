@@ -52,6 +52,12 @@ No lint covers this — no tool can tell reference from reasoning. A README sect
 
 Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
 
+### A change spanning the backend and the web apps: one stacked PR per layer
+
+A change that touches both the backend (`proto/`, `db/`, `server/`) and the web apps (`apps/`, `packages/`) is split into one pull request per layer, the backend at the bottom and the frontend stacked on it with `gh stack`, and each layer's pull request closes its own Issue.
+
+No check enforces this; whether a cross-cutting change had to stay atomic is a review judgement.
+
 ### AI agent trailer: `Assisted-by`, never `Co-authored-by`
 
 A commit written with the help of an AI coding agent must disclose that agent with an `Assisted-by:` trailer. The trailer is **process disclosure, not authorship**, following the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy.

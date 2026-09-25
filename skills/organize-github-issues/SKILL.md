@@ -86,6 +86,15 @@ Keep the parent's Type as Feature or Task. Prefer an existing broad outcome as t
 
 An Issue should have only one parent. A parent may still participate in dependency Relationships, but do not duplicate a parent-child relationship as a dependency unless completion order genuinely requires it.
 
+### Work that spans the backend and the web apps
+
+Such work lands as two stacked pull requests, one per layer, and every pull request closes its own Issue, so file it as two Issues:
+
+- the backend one — the `proto/` contract, the schema, and the server that serves it
+- the frontend one — the screens that consume it, `blocked by` the backend one
+
+Give each its own title naming its layer's outcome, its own Effort, and its own `area/*` label, and put both under the same parent with the same milestone when the work has them. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
+
 ## [Create an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 1. Search for duplicates, bot-managed equivalents, and suitable existing parents.
