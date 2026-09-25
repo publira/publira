@@ -298,7 +298,7 @@ func TestSendersReportsWebPushThatIsNotConfigured(t *testing.T) {
 	if _, err := Ensure(context.Background(), store, encryptor); err != nil {
 		t.Fatalf("Ensure: %v", err)
 	}
-	senders := NewSenders(store, encryptor, 0, slog.Default())
+	senders := NewSenders(store, encryptor, NewPushClient, 0, slog.Default())
 
 	err := senders.Send(context.Background(), push.WebPushSubscription{Endpoint: "https://push.example.com/subscription"}, push.WebPushMessage{})
 	if !errors.Is(err, ErrNotConfigured) {
@@ -317,7 +317,7 @@ func TestSendersRebuildsOnlyWhenTheCredentialsChange(t *testing.T) {
 		t.Fatalf("Ensure: %v", err)
 	}
 	store.saveSubject("mailto:push@example.com")
-	senders := NewSenders(store, encryptor, 0, slog.Default())
+	senders := NewSenders(store, encryptor, NewPushClient, 0, slog.Default())
 
 	first, err := senders.cache.Get(context.Background())
 	if err != nil || first == nil {

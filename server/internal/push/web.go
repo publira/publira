@@ -28,6 +28,9 @@ type WebPushConfig struct {
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	Subscriber      string
+	// HTTPClient carries the send, which is how the tests reach a local push
+	// endpoint. Nil builds one that dials only public addresses.
+	HTTPClient *http.Client
 }
 
 type WebPushSubscription struct {
@@ -47,6 +50,10 @@ type WebPushClient struct {
 }
 
 func NewWebPushClient(cfg WebPushConfig) (*WebPushClient, error) {
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		httpClient = newWebPushHTTPClient()
+	}
 	options := webpush.Options{
 		// webpush-go prefixes every subscriber but an https: URL with mailto:,
 		// so a mailto: subject goes in as its bare address.
@@ -54,7 +61,7 @@ func NewWebPushClient(cfg WebPushConfig) (*WebPushClient, error) {
 		VAPIDPublicKey:  strings.TrimSpace(cfg.VAPIDPublicKey),
 		VAPIDPrivateKey: strings.TrimSpace(cfg.VAPIDPrivateKey),
 		TTL:             60,
-		HTTPClient:      newWebPushHTTPClient(),
+		HTTPClient:      httpClient,
 	}
 	if err := ValidateWebPushConfig(cfg); err != nil {
 		return nil, err

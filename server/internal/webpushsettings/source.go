@@ -42,6 +42,14 @@ func (p *PublicKeys) PublicKey(ctx context.Context) (string, error) {
 	return p.cache.Get(ctx)
 }
 
+// NewClient builds the client a delivery is signed and sent with.
+type NewClient func(cfg push.WebPushConfig) (*push.WebPushClient, error)
+
+// NewPushClient is the NewClient that dials only public addresses.
+func NewPushClient(cfg push.WebPushConfig) (*push.WebPushClient, error) {
+	return push.NewWebPushClient(cfg)
+}
+
 // Senders delivers Web Push signed with the stored credentials, rebuilding its
 // client only when what it reads back differs from what it signed with last.
 type Senders struct {
@@ -54,7 +62,7 @@ type Senders struct {
 
 // NewSenders returns a Senders over queries that rereads the row once ttl has
 // passed.
-func NewSenders(queries CredentialsQuerier, mgr SecretManager, ttl time.Duration, logger *slog.Logger) *Senders {
+func NewSenders(queries CredentialsQuerier, mgr SecretManager, newClient NewClient, ttl time.Duration, logger *slog.Logger) *Senders {
 	s := &Senders{}
 	s.cache = ttlcache.New(func(ctx context.Context) (*push.WebPushClient, error) {
 		credentials, err := LoadCredentials(ctx, queries, mgr)
@@ -68,7 +76,7 @@ func NewSenders(queries CredentialsQuerier, mgr SecretManager, ttl time.Duration
 		if s.client != nil && credentials == s.last {
 			return s.client, nil
 		}
-		client, err := push.NewWebPushClient(push.WebPushConfig{
+		client, err := newClient(push.WebPushConfig{
 			VAPIDPublicKey:  credentials.PublicKey,
 			VAPIDPrivateKey: credentials.PrivateKey,
 			Subscriber:      credentials.Subject,

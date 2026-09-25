@@ -57,11 +57,10 @@ func TestWebPushClientSignsTheSubjectAsConfigured(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client, err := NewWebPushClient(WebPushConfig{VAPIDPublicKey: publicKey, VAPIDPrivateKey: privateKey, Subscriber: subject})
+			client, err := NewWebPushClient(WebPushConfig{VAPIDPublicKey: publicKey, VAPIDPrivateKey: privateKey, Subscriber: subject, HTTPClient: server.Client()})
 			if err != nil {
 				t.Fatalf("NewWebPushClient: %v", err)
 			}
-			client.options.HTTPClient = server.Client()
 			subscription.Endpoint = server.URL
 			if err := client.Send(context.Background(), subscription, WebPushMessage{Title: "New episode"}); err != nil {
 				t.Fatalf("Send: %v", err)
@@ -97,6 +96,43 @@ func TestValidateWebPushEndpoint(t *testing.T) {
 				t.Fatalf("ValidateWebPushEndpoint(%q) error = %v, valid = %t", tt.endpoint, err, tt.valid)
 			}
 		})
+	}
+}
+
+// A subscription is the browser's to name, so a client built without an
+// HTTPClient must not let one point the worker at a host on this machine.
+func TestWebPushClientRefusesARestrictedEndpoint(t *testing.T) {
+	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		t.Fatalf("GenerateVAPIDKeys: %v", err)
+	}
+	browserKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+	reached := make(chan struct{}, 1)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached <- struct{}{}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	client, err := NewWebPushClient(WebPushConfig{VAPIDPublicKey: publicKey, VAPIDPrivateKey: privateKey, Subscriber: "mailto:push@example.test"})
+	if err != nil {
+		t.Fatalf("NewWebPushClient: %v", err)
+	}
+	err = client.Send(context.Background(), WebPushSubscription{
+		Endpoint: server.URL,
+		P256dh:   base64.RawURLEncoding.EncodeToString(browserKey.PublicKey().Bytes()),
+		Auth:     base64.RawURLEncoding.EncodeToString(make([]byte, 16)),
+	}, WebPushMessage{Title: "New episode"})
+	if err == nil || !strings.Contains(err.Error(), "restricted address") {
+		t.Fatalf("Send to %s = %v, want it refused at the restricted address", server.URL, err)
+	}
+	select {
+	case <-reached:
+		t.Fatal("the endpoint received the delivery")
+	default:
 	}
 }
 
