@@ -42,12 +42,10 @@ export const CommentActionButton = ({ label }: { label: string }) => {
 
 `type` picks the tone: `success` and `destructive` colour the toast, and any other value leaves it neutral. A toast closes on its own after `timeout`, or when its close control is pressed.
 
-## Import
-
-The toast parts are exported from the package root only:
+## Subpath import
 
 ```tsx
-import { ToastProvider, useToastManager } from "@publira/ui-components";
+import { ToastProvider, useToastManager } from "@publira/ui-components/toast";
 ```
 
 ## Props

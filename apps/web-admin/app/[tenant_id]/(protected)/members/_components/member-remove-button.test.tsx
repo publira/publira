@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { sharedCatalog } from "@publira/i18n/catalog";
-import { ToastProvider } from "@publira/ui-components";
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { ToastProvider } from "@publira/ui-components/toast";
 import {
   act,
   cleanup,

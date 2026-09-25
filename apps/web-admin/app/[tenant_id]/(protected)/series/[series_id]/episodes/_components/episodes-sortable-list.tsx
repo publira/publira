@@ -1,9 +1,9 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
-import { useToastManager } from "@publira/ui-components";
 import { LinkButton } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
+import { useToastManager } from "@publira/ui-components/toast";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

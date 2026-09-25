@@ -1,6 +1,5 @@
 "use client";
 
-import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -14,6 +13,7 @@ import {
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState, useRef } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";

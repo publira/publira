@@ -33,6 +33,7 @@ export default defineConfig({
     "src/table/index.ts",
     "src/tabs/index.ts",
     "src/textarea/index.ts",
+    "src/toast/index.ts",
   ],
   format: "esm",
   plugins: [requireClientDirectives()],
