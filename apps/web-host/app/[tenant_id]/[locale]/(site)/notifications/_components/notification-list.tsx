@@ -8,6 +8,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import {
+  ListPagination,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
@@ -63,54 +67,43 @@ export const NotificationList = async ({
   const t = await getMessagesFor(locale);
   const hasUnread =
     unreadCount > 0 || notifications.some((item) => !item.isRead);
-  const previousLabel = t("host.common.previous_page");
-  const nextLabel = t("host.common.next_page");
 
   const pagination = (
-    <nav
-      aria-label={t("host.notifications.pagination_aria")}
-      className="mt-6 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={notificationsListHref(previousToken)}
-        >
-          {previousLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{previousLabel}</span>
-      )}
-
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={notificationsListHref(nextToken)}
-        >
-          {nextLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{nextLabel}</span>
-      )}
-    </nav>
+    <ListPagination aria-label={t("host.notifications.pagination_aria")}>
+      <ListPaginationStep
+        href={previousToken ? notificationsListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep
+        href={nextToken ? notificationsListHref(nextToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </ListPagination>
   );
 
   // The rows this page pointed at are gone. The server hands back a token for
   // the neighbouring page when it can, and empty tokens when it cannot — then
   // the only way out is the first page (`proto/README.md`).
   const emptyState = token ? (
-    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>{t("host.notifications.page_empty")}</p>
-      {previousToken || nextToken ? (
-        pagination
-      ) : (
-        <LocaleLink
-          className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
-          href={notificationsListHref("")}
-        >
-          {t("host.notifications.first_page")}
-        </LocaleLink>
-      )}
+    <div className="grid gap-6">
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+        <p>{t("host.notifications.page_empty")}</p>
+        {previousToken || nextToken ? null : (
+          <LocaleLink
+            className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
+            href={notificationsListHref("")}
+          >
+            {t("host.notifications.first_page")}
+          </LocaleLink>
+        )}
+      </div>
+      {previousToken || nextToken ? pagination : null}
     </div>
   ) : (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
@@ -150,53 +143,56 @@ export const NotificationList = async ({
       {!listErrorMessage && notifications.length === 0 ? emptyState : null}
 
       {notifications.length > 0 ? (
-        <div className="grid gap-3">
-          {notifications.map((item) => (
-            <article
-              className="rounded-xl border border-border/70 bg-background p-4"
-              key={item.id}
-            >
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <NotificationTitle item={item} />
-                <div className="flex items-center gap-2">
-                  <span
-                    className={
-                      item.isRead
-                        ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                        : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
-                    }
-                  >
-                    {t(item.isRead ? "host.common.read" : "host.common.unread")}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateTime(item.createdAt, {
-                      fallback: "-",
-                      locale,
-                      timeZone,
-                    })}
-                  </span>
+        <div className="grid gap-6">
+          <div className="grid gap-3">
+            {notifications.map((item) => (
+              <article
+                className="rounded-xl border border-border/70 bg-background p-4"
+                key={item.id}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <NotificationTitle item={item} />
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        item.isRead
+                          ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                          : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
+                      }
+                    >
+                      {t(
+                        item.isRead ? "host.common.read" : "host.common.unread"
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(item.createdAt, {
+                        fallback: "-",
+                        locale,
+                        timeZone,
+                      })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {item.description}
-              </p>
-              {item.isRead ? null : (
-                <div className="mt-3">
-                  <MarkNotificationAsReadButton
-                    aria-label={t("host.notifications.mark_read_aria", {
-                      title: item.title,
-                    })}
-                    notificationId={item.id}
-                    tenantId={tenantId}
-                  />
-                </div>
-              )}
-            </article>
-          ))}
+                <p className="text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+                {item.isRead ? null : (
+                  <div className="mt-3">
+                    <MarkNotificationAsReadButton
+                      aria-label={t("host.notifications.mark_read_aria", {
+                        title: item.title,
+                      })}
+                      notificationId={item.id}
+                      tenantId={tenantId}
+                    />
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+          {listErrorMessage ? null : pagination}
         </div>
       ) : null}
-
-      {!listErrorMessage && notifications.length > 0 ? pagination : null}
     </section>
   );
 };

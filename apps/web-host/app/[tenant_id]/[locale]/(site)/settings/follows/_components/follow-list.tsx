@@ -8,6 +8,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import {
+  ListPagination,
+  ListPaginationStep,
+} from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import type { FollowTargetKind } from "#lib/follow";
@@ -63,51 +67,39 @@ export const FollowList = async ({
 }: FollowListProps) => {
   const locale = await getLocale();
   const t = await getMessagesFor(locale);
-  const previousLabel = t("host.common.previous_page");
-  const nextLabel = t("host.common.next_page");
   const returnTo = followsListHref(token);
 
   const pagination = (
-    <nav
-      aria-label={t("host.settings.follows_pagination_aria")}
-      className="mt-6 flex items-center justify-center gap-6"
-    >
-      {previousToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={followsListHref(previousToken)}
-        >
-          {previousLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{previousLabel}</span>
-      )}
-      {nextToken ? (
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={followsListHref(nextToken)}
-        >
-          {nextLabel}
-        </LocaleLink>
-      ) : (
-        <span className="text-sm text-muted-foreground">{nextLabel}</span>
-      )}
-    </nav>
+    <ListPagination aria-label={t("host.settings.follows_pagination_aria")}>
+      <ListPaginationStep
+        href={previousToken ? followsListHref(previousToken) : ""}
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="host.common.previous_page" />
+        </Suspense>
+      </ListPaginationStep>
+      <ListPaginationStep href={nextToken ? followsListHref(nextToken) : ""}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+          <Message message="host.common.next_page" />
+        </Suspense>
+      </ListPaginationStep>
+    </ListPagination>
   );
 
   const emptyState = token ? (
-    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>{t("host.settings.follows_page_empty")}</p>
-      {previousToken || nextToken ? (
-        pagination
-      ) : (
-        <LocaleLink
-          className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
-          href={followsListHref("")}
-        >
-          {t("host.settings.follows_first_page")}
-        </LocaleLink>
-      )}
+    <div className="grid gap-6">
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+        <p>{t("host.settings.follows_page_empty")}</p>
+        {previousToken || nextToken ? null : (
+          <LocaleLink
+            className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
+            href={followsListHref("")}
+          >
+            {t("host.settings.follows_first_page")}
+          </LocaleLink>
+        )}
+      </div>
+      {previousToken || nextToken ? pagination : null}
     </div>
   ) : (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
@@ -153,52 +145,53 @@ export const FollowList = async ({
       {!listErrorMessage && items.length === 0 ? emptyState : null}
 
       {items.length > 0 ? (
-        <div className="grid gap-3">
-          {items.map((item) => (
-            <article
-              className="rounded-xl border border-border/70 bg-background p-4"
-              key={`${item.targetKind}:${item.publicId}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    {t(kindLabelKey[item.targetKind])}
-                  </p>
-                  <FollowTitle item={item} />
-                  {item.unavailable ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t("host.settings.follows_unavailable")}
+        <div className="grid gap-6">
+          <div className="grid gap-3">
+            {items.map((item) => (
+              <article
+                className="rounded-xl border border-border/70 bg-background p-4"
+                key={`${item.targetKind}:${item.publicId}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {t(kindLabelKey[item.targetKind])}
                     </p>
-                  ) : null}
+                    <FollowTitle item={item} />
+                    {item.unavailable ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t("host.settings.follows_unavailable")}
+                      </p>
+                    ) : null}
+                  </div>
+                  {item.unavailable ? null : (
+                    <UnfollowButton
+                      aria-label={t("host.follow.unfollow_aria", {
+                        name: item.title,
+                      })}
+                      publicId={item.publicId}
+                      returnTo={returnTo}
+                      targetKind={item.targetKind}
+                      tenantId={tenantId}
+                    />
+                  )}
                 </div>
-                {item.unavailable ? null : (
-                  <UnfollowButton
-                    aria-label={t("host.follow.unfollow_aria", {
-                      name: item.title,
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {t("host.settings.follows_followed_at")}{" "}
+                  <time dateTime={item.followedAt}>
+                    {formatDateTime(item.followedAt, {
+                      fallback: "-",
+                      locale,
+                      timeZone,
                     })}
-                    publicId={item.publicId}
-                    returnTo={returnTo}
-                    targetKind={item.targetKind}
-                    tenantId={tenantId}
-                  />
-                )}
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {t("host.settings.follows_followed_at")}{" "}
-                <time dateTime={item.followedAt}>
-                  {formatDateTime(item.followedAt, {
-                    fallback: "-",
-                    locale,
-                    timeZone,
-                  })}
-                </time>
-              </p>
-            </article>
-          ))}
+                  </time>
+                </p>
+              </article>
+            ))}
+          </div>
+          {listErrorMessage ? null : pagination}
         </div>
       ) : null}
-
-      {!listErrorMessage && items.length > 0 ? pagination : null}
     </section>
   );
 };
