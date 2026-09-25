@@ -251,11 +251,9 @@ const AuditLogsPagination = async ({
     <div className="flex items-center justify-between gap-3">
       <p className="text-xs text-muted-foreground">{summaryText}</p>
       <PaginationControls
-        ariaLabel={t("platform.audit.pagination_aria")}
+        aria-label={t("platform.audit.pagination_aria")}
         nextHref={nextHref}
-        nextLabel={<Message message="platform.common.next" />}
         previousHref={previousHref}
-        previousLabel={<Message message="platform.common.previous" />}
       />
     </div>
   );

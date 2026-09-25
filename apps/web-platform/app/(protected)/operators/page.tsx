@@ -194,11 +194,9 @@ const OperatorsContent = async ({
       </Table>
 
       <PaginationControls
-        ariaLabel={t("platform.operators.pagination_aria")}
+        aria-label={t("platform.operators.pagination_aria")}
         nextHref={nextHref}
-        nextLabel={t("platform.common.next")}
         previousHref={previousHref}
-        previousLabel={t("platform.common.previous")}
       />
     </div>
   );

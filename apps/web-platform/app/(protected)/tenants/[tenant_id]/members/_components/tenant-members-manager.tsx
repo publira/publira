@@ -116,8 +116,6 @@ export interface TenantMembersManagerCopy {
   membersListFailed: string;
   membersListTitle: string;
   newRole: string;
-  next: string;
-  previous: string;
   resendInvite: string;
   role: string;
   roleLabels: Record<string, string>;
@@ -236,8 +234,6 @@ const useTenantMembersCopy = (): TenantMembersManagerCopy => {
     membersListFailed: t("platform.tenants.members_load_failed"),
     membersListTitle: t("platform.tenants.members_list_title"),
     newRole: t("platform.tenants.new_role"),
-    next: t("platform.common.next"),
-    previous: t("platform.common.previous"),
     resendInvite: t("platform.tenants.resend_invite"),
     role: t("platform.common.role"),
     roleLabels: {
@@ -711,11 +707,9 @@ const TenantInvitationsSection = ({
       </Table>
 
       <PaginationControls
-        ariaLabel={copy.invitationsAria}
+        aria-label={copy.invitationsAria}
         nextHref={invitationsNextHref}
-        nextLabel={copy.next}
         previousHref={invitationsPreviousHref}
-        previousLabel={copy.previous}
       />
     </>
   );
@@ -891,11 +885,9 @@ export const TenantMembersManager = ({
                 </TableBody>
               </Table>
               <PaginationControls
-                ariaLabel={copy.membersAria}
+                aria-label={copy.membersAria}
                 nextHref={membersNextHref}
-                nextLabel={copy.next}
                 previousHref={membersPreviousHref}
-                previousLabel={copy.previous}
               />
             </>
           )}

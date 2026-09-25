@@ -584,11 +584,9 @@ const UsersContent = async ({
             : await buildSummaryText(result, users.length, locale)}
         </p>
         <PaginationControls
-          ariaLabel={t("platform.users.pagination_aria")}
+          aria-label={t("platform.users.pagination_aria")}
           nextHref={nextHref}
-          nextLabel={t("platform.common.next")}
           previousHref={previousHref}
-          previousLabel={t("platform.common.previous")}
         />
       </div>
     </div>

@@ -6,7 +6,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ErrorBoundaryMessage } from "#components/error-boundary-message";
-import { ErrorScreen } from "#components/error-screen";
+import {
+  ErrorScreen,
+  ErrorScreenDigest,
+  ErrorScreenRetry,
+} from "#components/error-screen";
+import {
+  PlatformPageActions,
+  PlatformPageDescription,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 
 /**
  * Error boundary for the platform console pages. It wraps the pages and nested
@@ -55,37 +66,39 @@ const ConsoleError = ({
   error: Error & { digest?: string };
   retry: () => void;
 }) => (
-  <ErrorScreen
-    actions={
-      <LinkButton render={<Link href="/" />} variant="outline">
-        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-          <ErrorBoundaryMessage message="platform.common.back_to_dashboard" />
-        </Suspense>
-      </LinkButton>
-    }
-    description={
-      <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-        <ErrorBoundaryMessage message="platform.errors.console_description" />
-      </Suspense>
-    }
-    digest={error.digest}
-    digestLabel={
+  <ErrorScreen digest={error.digest} retry={retry}>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
+            <ErrorBoundaryMessage message="platform.errors.console_title" />
+          </Suspense>
+        </PlatformPageTitle>
+        <PlatformPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+            <ErrorBoundaryMessage message="platform.errors.console_description" />
+          </Suspense>
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+      <PlatformPageActions>
+        <ErrorScreenRetry>
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <ErrorBoundaryMessage message="platform.common.retry" />
+          </Suspense>
+        </ErrorScreenRetry>
+        <LinkButton render={<Link href="/" />} variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+            <ErrorBoundaryMessage message="platform.common.back_to_dashboard" />
+          </Suspense>
+        </LinkButton>
+      </PlatformPageActions>
+    </PlatformPageHeader>
+    <ErrorScreenDigest>
       <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
         <ErrorBoundaryMessage message="platform.common.error_id" />
       </Suspense>
-    }
-    retry={retry}
-    retryLabel={
-      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <ErrorBoundaryMessage message="platform.common.retry" />
-      </Suspense>
-    }
-    title={
-      <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
-        <ErrorBoundaryMessage message="platform.errors.console_title" />
-      </Suspense>
-    }
-  />
+    </ErrorScreenDigest>
+  </ErrorScreen>
 );
 
 export default ConsoleError;

@@ -240,11 +240,9 @@ const TenantsContent = async ({
       </Table>
 
       <PaginationControls
-        ariaLabel={t("platform.tenants.pagination_aria")}
+        aria-label={t("platform.tenants.pagination_aria")}
         nextHref={nextHref}
-        nextLabel={t("platform.common.next")}
         previousHref={previousHref}
-        previousLabel={t("platform.common.previous")}
       />
     </div>
   );
