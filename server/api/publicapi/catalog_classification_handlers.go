@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"math"
 	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -21,6 +23,8 @@ const (
 	defaultTagPageSize   = int32(20)
 	maxTagPageSize       = int32(100)
 	tagInclusiveKey      = "inclusive"
+	// genreFeaturedSeriesLimit fills the 2×2 mosaic a genre's tile draws.
+	genreFeaturedSeriesLimit = int32(4)
 )
 
 // publishedGenreRow is one row of a genre page, shared by the ascending and
@@ -105,6 +109,57 @@ func (s *apiServer) publishedGenrePage(
 	return mapPublishedGenreAscRows(rows), nil
 }
 
+// genreFeaturedSeries reads the covers of a whole page of genres in one query.
+// The weekly leaderboard orders them, since a daily one cut per genre is
+// mostly empty and would reshuffle the tiles every day.
+func (s *apiServer) genreFeaturedSeries(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	surface string,
+	genres []publishedGenreRow,
+) (map[uuid.UUID][]*publirav1.PublishedGenreFeaturedSeries, error) {
+	if len(genres) == 0 {
+		return nil, nil
+	}
+	genreIDs := make([]uuid.UUID, 0, len(genres))
+	for _, genre := range genres {
+		genreIDs = append(genreIDs, genre.id)
+	}
+
+	rows, err := s.queriesFor(ctx).ListGenreFeaturedSeries(ctx, dbmodels.ListGenreFeaturedSeriesParams{
+		GenreIds:    genreIDs,
+		TenantID:    tenantID,
+		Surface:     surface,
+		SeriesLimit: genreFeaturedSeriesLimit,
+		RankingKey:  contentranking.WeeklyRankingKey,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list genre featured series", err, "tenant_id", tenantID.String())
+	}
+
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		if row.EyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
+		}
+	}
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		// Variants decorate the tiles; a frame without them shows the title.
+		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
+	}
+
+	featured := make(map[uuid.UUID][]*publirav1.PublishedGenreFeaturedSeries, len(genres))
+	for _, row := range rows {
+		series := &publirav1.PublishedGenreFeaturedSeries{PublicId: row.PublicID, Title: row.Title}
+		if row.EyeCatchImageID.Valid {
+			series.EyeCatchImageVariants = variantsByImageID[row.EyeCatchImageID.UUID]
+		}
+		featured[row.GenreID] = append(featured[row.GenreID], series)
+	}
+	return featured, nil
+}
+
 // ListPublishedGenres hands the storefront the classification a reader browses
 // by: the tenant's genres, in the order the console put them in, each with how
 // many of its series are published right now.
@@ -147,6 +202,11 @@ func (s *apiServer) ListPublishedGenres(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
+	featured, err := s.genreFeaturedSeries(ctx, tenant.ID, surface, rows)
+	if err != nil {
+		return nil, err
+	}
+
 	genres := make([]*publirav1.PublishedGenre, 0, len(rows))
 	for _, row := range rows {
 		genres = append(genres, &publirav1.PublishedGenre{
@@ -154,6 +214,7 @@ func (s *apiServer) ListPublishedGenres(
 			Name:                 row.name,
 			Slug:                 row.slug,
 			PublishedSeriesCount: row.publishedSeriesCount,
+			FeaturedSeries:       featured[row.id],
 		})
 	}
 

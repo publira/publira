@@ -331,6 +331,19 @@ message PublishedGenre {
   string name = 2;
   string slug = 3;
   int32 published_series_count = 4;
+  // Up to four series to draw the genre's tile from: the genre's weekly
+  // leaderboard first, in its order, then its newest published series. Each
+  // is published now, visible on the requested surface, and rated all-ages.
+  // Empty when the genre has no such series.
+  repeated PublishedGenreFeaturedSeries featured_series = 5;
+}
+
+// A series on a genre's tile. The title is what a frame shows for a work with
+// no artwork.
+message PublishedGenreFeaturedSeries {
+  string public_id = 1;
+  string title = 2;
+  repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 3;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

@@ -227,6 +227,75 @@ ORDER BY g.display_order DESC,
     g.id DESC
 LIMIT sqlc.arg('limit');
 
+-- The series a page of genre tiles draws its covers from: per genre, the
+-- positions of its newest leaderboard first, then its newest published series,
+-- up to series_limit. The leaderboard only orders the genre's current members,
+-- so a series taken down, moved off the surface, re-rated, or removed from the
+-- genre since the batch ran drops out here.
+-- name: ListGenreFeaturedSeries :many
+WITH leaderboards AS (
+    SELECT DISTINCT ON (crs.genre_id) crs.genre_id,
+        crs.items
+    FROM content_ranking_snapshots crs
+    WHERE crs.tenant_id = sqlc.arg('tenant_id')
+        AND crs.genre_id = ANY(sqlc.arg('genre_ids')::uuid[])
+        AND crs.ranking_key = sqlc.arg('ranking_key')::text
+        AND crs.entity_type = 'series'
+    ORDER BY crs.genre_id,
+        crs.period_start DESC,
+        crs.period_end DESC,
+        crs.computed_at DESC,
+        crs.id DESC
+),
+ranked AS (
+    SELECT l.genre_id,
+        (item->>'entity_id')::uuid AS series_id,
+        min((item->>'rank')::int) AS rank
+    FROM leaderboards l
+        CROSS JOIN LATERAL jsonb_array_elements(l.items) AS item
+    WHERE item->>'rank' IS NOT NULL
+    GROUP BY l.genre_id,
+        (item->>'entity_id')::uuid
+)
+SELECT g.genre_id::uuid AS genre_id,
+    f.id,
+    f.public_id,
+    f.title,
+    f.eye_catch_image_id
+FROM unnest(sqlc.arg('genre_ids')::uuid[]) AS g(genre_id)
+    CROSS JOIN LATERAL (
+        SELECT s.id,
+            s.public_id,
+            s.title,
+            s.eye_catch_image_id,
+            r.rank,
+            s.published_at
+        FROM series_genres sg
+            JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+            JOIN series_listings sl ON sl.series_id = s.id
+            LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
+        WHERE sg.tenant_id = sqlc.arg('tenant_id')
+            AND sg.genre_id = g.genre_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND sl.age_rating = 'all'
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = sqlc.arg('surface')::text
+            )
+        ORDER BY r.rank ASC NULLS LAST,
+            s.published_at DESC,
+            s.id DESC
+        LIMIT sqlc.arg('series_limit')::int
+    ) f
+ORDER BY g.genre_id,
+    f.rank ASC NULLS LAST,
+    f.published_at DESC,
+    f.id DESC;
+
 -- name: GetGenreIDByPublicIDForTenant :one
 -- Whether a public ID the series list was filtered by names a genre of this
 -- tenant. A filter naming nothing is refused rather than answered with an

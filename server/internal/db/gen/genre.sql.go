@@ -168,6 +168,127 @@ func (q *Queries) GetMaxGenreDisplayOrderForTenant(ctx context.Context, tenantID
 	return max_display_order, err
 }
 
+const ListGenreFeaturedSeries = `-- name: ListGenreFeaturedSeries :many
+WITH leaderboards AS (
+    SELECT DISTINCT ON (crs.genre_id) crs.genre_id,
+        crs.items
+    FROM content_ranking_snapshots crs
+    WHERE crs.tenant_id = $2
+        AND crs.genre_id = ANY($1::uuid[])
+        AND crs.ranking_key = $5::text
+        AND crs.entity_type = 'series'
+    ORDER BY crs.genre_id,
+        crs.period_start DESC,
+        crs.period_end DESC,
+        crs.computed_at DESC,
+        crs.id DESC
+),
+ranked AS (
+    SELECT l.genre_id,
+        (item->>'entity_id')::uuid AS series_id,
+        min((item->>'rank')::int) AS rank
+    FROM leaderboards l
+        CROSS JOIN LATERAL jsonb_array_elements(l.items) AS item
+    WHERE item->>'rank' IS NOT NULL
+    GROUP BY l.genre_id,
+        (item->>'entity_id')::uuid
+)
+SELECT g.genre_id::uuid AS genre_id,
+    f.id,
+    f.public_id,
+    f.title,
+    f.eye_catch_image_id
+FROM unnest($1::uuid[]) AS g(genre_id)
+    CROSS JOIN LATERAL (
+        SELECT s.id,
+            s.public_id,
+            s.title,
+            s.eye_catch_image_id,
+            r.rank,
+            s.published_at
+        FROM series_genres sg
+            JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+            JOIN series_listings sl ON sl.series_id = s.id
+            LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
+        WHERE sg.tenant_id = $2
+            AND sg.genre_id = g.genre_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+            AND sl.age_rating = 'all'
+            AND EXISTS (
+                SELECT 1
+                FROM series_surfaces ss
+                WHERE ss.series_id = s.id
+                    AND ss.surface = $3::text
+            )
+        ORDER BY r.rank ASC NULLS LAST,
+            s.published_at DESC,
+            s.id DESC
+        LIMIT $4::int
+    ) f
+ORDER BY g.genre_id,
+    f.rank ASC NULLS LAST,
+    f.published_at DESC,
+    f.id DESC
+`
+
+type ListGenreFeaturedSeriesParams struct {
+	GenreIds    []uuid.UUID `json:"genre_ids"`
+	TenantID    uuid.UUID   `json:"tenant_id"`
+	Surface     string      `json:"surface"`
+	SeriesLimit int32       `json:"series_limit"`
+	RankingKey  string      `json:"ranking_key"`
+}
+
+type ListGenreFeaturedSeriesRow struct {
+	GenreID         uuid.UUID     `json:"genre_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Title           string        `json:"title"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
+}
+
+// The series a page of genre tiles draws its covers from: per genre, the
+// positions of its newest leaderboard first, then its newest published series,
+// up to series_limit. The leaderboard only orders the genre's current members,
+// so a series taken down, moved off the surface, re-rated, or removed from the
+// genre since the batch ran drops out here.
+func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListGenreFeaturedSeries,
+		pq.Array(arg.GenreIds),
+		arg.TenantID,
+		arg.Surface,
+		arg.SeriesLimit,
+		arg.RankingKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGenreFeaturedSeriesRow
+	for rows.Next() {
+		var i ListGenreFeaturedSeriesRow
+		if err := rows.Scan(
+			&i.GenreID,
+			&i.ID,
+			&i.PublicID,
+			&i.Title,
+			&i.EyeCatchImageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListGenresByPublicIDsForTenant = `-- name: ListGenresByPublicIDsForTenant :many
 SELECT g.id,
     g.public_id,
