@@ -37,7 +37,7 @@ type command struct {
 
 // groups are the settings and provisioning command groups, dispatched beside db
 // and job.
-var groups = []commandGroup{tenantGroup}
+var groups = []commandGroup{smtpGroup, tenantGroup}
 
 func lookupGroup(name string) *commandGroup {
 	for i := range groups {
@@ -193,6 +193,11 @@ func commandUsage(g *commandGroup, c *command, f *commandFlags) string {
 	}
 	if len(f.secrets) > 0 {
 		b.WriteString("\nA secret is read from a masked prompt, or from stdin with its --*-stdin flag,\none per invocation. It is never taken as an argument.\n")
+	}
+	for _, s := range f.secrets {
+		if s.keepable {
+			fmt.Fprintf(&b, "The saved %s is kept when it is left blank at the prompt,\nor when stdin is not a terminal and --%s-stdin is not given.\n", s.label, s.name)
+		}
 	}
 	return b.String()
 }

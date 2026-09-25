@@ -126,3 +126,30 @@ func TestOnlyOneSecretReadsStdinPerInvocation(t *testing.T) {
 		t.Fatalf("error = %v, want two secrets on stdin refused", err)
 	}
 }
+
+// A secret that replaces a saved one reads as "" when none is given, so the
+// command keeps what is saved; one given on stdin must still hold something.
+func TestKeepableSecretReadsBlankAsKeep(t *testing.T) {
+	var stderr bytes.Buffer
+	blankPrompt := console{
+		stderr:       &stderr,
+		isTerminal:   func() bool { return true },
+		readPassword: func() ([]byte, error) { return nil, nil },
+	}
+	s := &secret{name: "password", label: "SMTP password", keepable: true}
+
+	if got, err := s.read(blankPrompt); err != nil || got != "" {
+		t.Fatalf("blank at the prompt = %q, %v; want \"\"", got, err)
+	}
+	if want := "SMTP password (blank keeps the saved one): \n"; stderr.String() != want {
+		t.Fatalf("prompt = %q, want %q", stderr.String(), want)
+	}
+	if got, err := s.read(pipedConsole(testSecretValue, &bytes.Buffer{})); err != nil || got != "" {
+		t.Fatalf("no terminal and no flag = %q, %v; want \"\" without reading stdin", got, err)
+	}
+
+	s.fromStdin = true
+	if _, err := s.read(pipedConsole("\n", &bytes.Buffer{})); err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("an empty stdin = %v, want it refused", err)
+	}
+}

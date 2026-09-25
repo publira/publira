@@ -76,8 +76,8 @@ var tenantFlags = map[string]string{
 
 // tenantError names the flag behind what the tenant packages refused.
 func tenantError(err error) error {
-	if field := fielderr.Field(err); field != "" {
-		return fmt.Errorf("%s: %w", tenantFlags[field], err)
+	if flag := tenantFlags[fielderr.Field(err)]; flag != "" {
+		return fmt.Errorf("%s: %w", flag, err)
 	}
 	switch {
 	case errors.Is(err, platformtenants.ErrNoChange):

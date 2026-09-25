@@ -186,7 +186,7 @@ func seedTenant(t *testing.T, pg *testutil.PostgresEnv, publicID, domain, name s
 		ID:            uuid.Must(uuid.NewV7()),
 		PublicID:      publicID,
 		Domain:        domain,
-		AdminDomain:   nullableString("admin-" + domain),
+		AdminDomain:   sql.NullString{String: "admin-" + domain, Valid: true},
 		Name:          name,
 		Timezone:      tenanttz.Default,
 		DefaultLocale: "ja",

@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
 
 ```bash
 task server:build
@@ -39,6 +39,47 @@ Environment variables:
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../worker/README.md) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## smtp
+
+Saves and tests the SMTP settings the worker sends the platform's mail with: the Platform Console's own mail, and the mail of every tenant that saves no SMTP settings of its own, tenant administrator invitations included. It does what `PlatformEmailSettingsService` does from the Platform Console, through the same implementation, `internal/platformsmtp`.
+
+```bash
+eval "$(task --silent dev-env:env)"
+printf '%s' "$SMTP_PASSWORD" | go run ./server/cmd/publiractl smtp set \
+  --host smtp.example.com \
+  --port 587 \
+  --encryption starttls \
+  --username mailer \
+  --from-address no-reply@example.com \
+  --password-stdin
+go run ./server/cmd/publiractl smtp test --to operator@example.com
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one |
+| `smtp show` | `GetPlatformEmailSettings` | Prints the saved settings and whether a password is saved, never the password |
+| `smtp test` | `SendPlatformSmtpTestEmail` | Sends the console's test message through the saved settings to `--to`, and exits `1` when the server does not take it |
+
+`smtp set` takes these flags:
+
+| Flag | What it sets |
+| --- | --- |
+| `--host`, `--port` | The SMTP server. Required |
+| `--encryption` | `tls` for a connection encrypted from the start, `starttls` for one upgraded after connecting, or `none`. Required |
+| `--username` | The user the server is signed in to as. Required |
+| `--from-address` | The address the mail is sent from. Required |
+| `--reply-to` | The address replies go to, when it is not the sender's |
+
+The password comes from a masked prompt or from stdin with `--password-stdin`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save needs one. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
+
+`smtp set` files `platform_email_settings_updated` and every `smtp test` files `platform_smtp_test_email_sent` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the password `smtp set` stores, and decrypt the one `smtp test` sends with. Required by both: set the values the servers run with.
 
 ## tenant
 

@@ -36,6 +36,9 @@ type secret struct {
 	name      string
 	label     string
 	fromStdin bool
+	// keepable is a secret a command already has a saved value for, which
+	// reads as "" when none is given.
+	keepable bool
 }
 
 // Secret declares --<name>-stdin, the only flag through which the secret can
@@ -45,6 +48,15 @@ func (f *commandFlags) Secret(name, label string) *secret {
 	s := &secret{name: name, label: label}
 	f.BoolVar(&s.fromStdin, name+"-stdin", false, "read the "+label+" from the whole of stdin")
 	f.secrets = append(f.secrets, s)
+	return s
+}
+
+// KeepableSecret is [commandFlags.Secret] for a secret that replaces a saved
+// one: left blank at the prompt, or not given where no terminal can prompt for
+// it, it reads as "" and the saved one is kept.
+func (f *commandFlags) KeepableSecret(name, label string) *secret {
+	s := f.Secret(name, label)
+	s.keepable = true
 	return s
 }
 
@@ -76,13 +88,22 @@ func (s *secret) read(con console) (string, error) {
 		}
 		value = strings.TrimSuffix(strings.TrimSuffix(string(raw), "\n"), "\r")
 	case con.isTerminal():
-		_, _ = fmt.Fprintf(con.stderr, "%s: ", s.label)
+		prompt := s.label
+		if s.keepable {
+			prompt += " (blank keeps the saved one)"
+		}
+		_, _ = fmt.Fprintf(con.stderr, "%s: ", prompt)
 		raw, err := con.readPassword()
 		_, _ = io.WriteString(con.stderr, "\n")
 		if err != nil {
 			return "", fmt.Errorf("read the %s: %w", s.label, err)
 		}
+		if s.keepable && len(raw) == 0 {
+			return "", nil
+		}
 		value = string(raw)
+	case s.keepable:
+		return "", nil
 	default:
 		return "", fmt.Errorf("stdin is not a terminal to prompt for the %s on; pipe it in with --%s-stdin", s.label, s.name)
 	}
