@@ -83,7 +83,7 @@ task db:setup
 `db:setup` runs the following in order.
 
 1. Apply migrations (`db/migrations/`)
-2. Apply the baseline seed (`db/seeds/baseline/`)
+2. Apply the development seed (`db/seeds/dev.sql`: the roles and object ownership of `prod.sql`, plus the sample data under `db/seeds/dev/`)
 
 ### Responsibilities of migrations and seeds
 
@@ -202,4 +202,4 @@ Start with `NEXT_OTEL_VERBOSE=1` only when you want to see the internal spans of
 NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
 ```
 
-Attributes, span naming, and the sampling policy follow the design agreed in [#502](https://github.com/publira/publira/issues/502). For the details of the configuration and instrumentation, see [server/README.md](server/README.md#distributed-tracing-opentelemetry) for the Go side and [packages/tracing/README.md](packages/tracing/README.md) for the Next.js side.
+For the details of the configuration and instrumentation, see [server/README.md](server/README.md#distributed-tracing-opentelemetry) for the Go side and [packages/tracing/README.md](packages/tracing/README.md) for the Next.js side.
