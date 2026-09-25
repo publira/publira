@@ -12,7 +12,7 @@ env:
   # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
   GOLANGCI_LINT_VERSION: 2.14.0
   # renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
-  WAIT4X_VERSION: 3.7.1
+  WAIT4X_VERSION: 3.7.2
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.47.5
   # Retry flags for every release download below, unquoted at each call site so
