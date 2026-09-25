@@ -120,6 +120,7 @@ type ContentRankingSnapshot struct {
 	AlgorithmVersion int32           `json:"algorithm_version"`
 	ComputedAt       time.Time       `json:"computed_at"`
 	GenreID          uuid.NullUUID   `json:"genre_id"`
+	Surface          sql.NullString  `json:"surface"`
 }
 
 type Creator struct {

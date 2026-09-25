@@ -247,7 +247,7 @@ func (s *apiServer) ListRelatedSeries(
 		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "public_id", seriesPublicID)
 	}
 
-	ranking, err := s.latestSeriesRanking(ctx, tenant.ID)
+	ranking, err := s.latestSeriesRanking(ctx, tenant.ID, surface)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())
 	}

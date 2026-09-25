@@ -187,6 +187,46 @@ func TestPurgeRunDropsGenreSnapshotsOnTheTenantWideCutoffs(t *testing.T) {
 	}
 }
 
+func TestPurgeRunKeepsTheNewestPeriodOfEachSurface(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "PURGESURF001", "surface-purge-rankings.example.com", "Surface Purge Ranking Tenant")
+	drama := pg.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Drama"})
+
+	var expired, retained []uuid.UUID
+	for _, genreID := range []uuid.UUID{uuid.Nil, drama.ID} {
+		expired = append(expired,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-31", genreID: genreID, surface: "web"}),
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-29", genreID: genreID, surface: "app"}),
+		)
+		retained = append(retained,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28", genreID: genreID, surface: "web"}),
+			// Expired, and the newest period of the app's ranking. The web's
+			// newer period does not make it any less the one an app reader
+			// would be shown.
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-30", genreID: genreID, surface: "app"}),
+		)
+	}
+
+	result, err := NewPurger(pg.OpenContentStatsDB(t)).Run(context.Background(), purgeOptions(false))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if want := (PurgeResult{TenantCount: 1, RowCount: int64(len(expired)), ChunkCount: 1}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	for _, id := range expired {
+		if snapshotExists(t, pg.DB, id) {
+			t.Fatalf("expired snapshot %s survived the purge", id)
+		}
+	}
+	for _, id := range retained {
+		if !snapshotExists(t, pg.DB, id) {
+			t.Fatalf("retained snapshot %s was purged", id)
+		}
+	}
+}
+
 func TestPurgeRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -231,6 +271,9 @@ type snapshotSeed struct {
 	// genreID files the snapshot as that genre's ranking. Zero is the
 	// tenant-wide ranking.
 	genreID uuid.UUID
+	// surface is the surface a series ranking was cut for. Empty is the web
+	// for a series ranking and none for an episode ranking.
+	surface string
 }
 
 // insertRetentionSnapshot files one snapshot at seed.periodEnd. Only the end
@@ -249,6 +292,10 @@ func insertRetentionSnapshot(t *testing.T, db *sql.DB, seed snapshotSeed) uuid.U
 	if algorithmVersion == 0 {
 		algorithmVersion = AlgorithmVersion
 	}
+	surface := sql.NullString{String: seed.surface, Valid: seed.surface != ""}
+	if !surface.Valid && entityType == "series" {
+		surface = sql.NullString{String: "web", Valid: true}
+	}
 	periodStart := seed.periodEnd
 	if seed.rankingKey == WeeklyRankingKey {
 		periodStart = at(seed.periodEnd).AddDate(0, 0, -(weeklyWindowDays - 1)).Format(time.DateOnly)
@@ -258,9 +305,9 @@ func insertRetentionSnapshot(t *testing.T, db *sql.DB, seed snapshotSeed) uuid.U
 	genreID := uuid.NullUUID{UUID: seed.genreID, Valid: seed.genreID != uuid.Nil}
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, genre_id
-		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7, $8)
-	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion, genreID); err != nil {
+			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, genre_id, surface
+		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7, $8, $9)
+	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion, genreID, surface); err != nil {
 		t.Fatalf("insert %s snapshot ending %s: %v", seed.rankingKey, seed.periodEnd, err)
 	}
 	return id

@@ -158,7 +158,7 @@ func assertSeriesPublicIDs(t *testing.T, items []*publirattypesv1.Series, want .
 }
 
 func contentRankingSnapshotColumns() []string {
-	return []string{"id", "tenant_id", "ranking_key", "period_start", "period_end", "entity_type", "items", "algorithm_version", "computed_at", "genre_id"}
+	return []string{"id", "tenant_id", "ranking_key", "period_start", "period_end", "entity_type", "items", "algorithm_version", "computed_at", "genre_id", "surface"}
 }
 
 func contentEventColumns() []string {

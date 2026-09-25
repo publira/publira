@@ -4,7 +4,8 @@
 -- page's popularity module, and the genre tiles are about, and the development
 -- seed produces no reading signals, so nothing computes one. These rows are
 -- that batch's output, written directly: four tenant-wide snapshots and the
--- current weekly snapshot of each genre.
+-- current weekly snapshot of each genre, each filed for the web and the app
+-- alike because every seeded series is on both.
 --
 -- Two periods of each tenant-wide ranking, because a movement marker is the
 -- difference between them. Together they cover every marker the page can draw:
@@ -31,9 +32,9 @@
 
 BEGIN;
 
--- The four snapshots. `items` carries only the two fields the ranking read
--- looks at; the batch writes the scores beside them, and nothing on the screen
--- shows a score.
+-- The four snapshots, per surface. `items` carries only the two fields the
+-- ranking read looks at; the batch writes the scores beside them, and nothing
+-- on the screen shows a score.
 WITH tenant_scope AS (
     SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
     FROM tenants t
@@ -104,6 +105,7 @@ INSERT INTO content_ranking_snapshots (
     period_start,
     period_end,
     entity_type,
+    surface,
     items,
     algorithm_version,
     computed_at
@@ -115,6 +117,7 @@ SELECT
     ts.yesterday - ss.start_offset,
     ts.yesterday - ss.end_offset,
     'series',
+    sf.surface,
     COALESCE((
         SELECT jsonb_agg(
             jsonb_build_object('rank', si.rank, 'entity_id', s.id)
@@ -131,7 +134,8 @@ SELECT
     ss.computed_at
 FROM snapshot_seed ss
 CROSS JOIN tenant_scope ts
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
+CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 
@@ -189,6 +193,7 @@ INSERT INTO content_ranking_snapshots (
     period_end,
     entity_type,
     genre_id,
+    surface,
     items,
     algorithm_version,
     computed_at
@@ -201,6 +206,7 @@ SELECT
     ts.yesterday,
     'series',
     g.id,
+    sf.surface,
     COALESCE((
         SELECT jsonb_agg(
             jsonb_build_object('rank', gi.rank, 'entity_id', s.id)
@@ -220,7 +226,8 @@ FROM tenant_scope ts
 JOIN genres g
     ON g.tenant_id = ts.id
     AND g.public_id LIKE 'SeedGENR%'
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
+CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 

@@ -41,7 +41,7 @@ func rankingSnapshotRow(
 ) *sqlmock.Rows {
 	return rows.AddRow(
 		snapshotID, tenantID, rankingKey,
-		periodStart, periodEnd, "series", items, int32(1), computedAt, nil,
+		periodStart, periodEnd, "series", items, int32(1), computedAt, nil, "web",
 	)
 }
 
@@ -69,7 +69,7 @@ func expectRankingSnapshotPairLookup(
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, rankingKey, "series", nil, int32(2)).
+		WithArgs(tenantID, "web", rankingKey, "series", nil, int32(2)).
 		WillReturnRows(rows)
 }
 
@@ -84,7 +84,7 @@ func expectPinnedRankingSnapshotLookup(
 ) {
 	periodStart := computedAt.AddDate(0, 0, -1)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
-		WithArgs(tenantID, snapshotID, rankingKey, "series").
+		WithArgs(tenantID, snapshotID, "web", rankingKey, "series").
 		WillReturnRows(rankingSnapshotRow(
 			sqlmock.NewRows(contentRankingSnapshotColumns()),
 			snapshotID, tenantID, rankingKey, periodStart, periodStart, computedAt, current,
@@ -100,7 +100,7 @@ func expectPinnedRankingSnapshotLookup(
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, rankingKey, "series", periodStart, int32(1)).
+		WithArgs(tenantID, "web", rankingKey, "series", periodStart, int32(1)).
 		WillReturnRows(rows)
 }
 
@@ -270,7 +270,7 @@ func TestCatalogListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T)
 	// The batch has never ranked this tenant. Nothing computed is not a
 	// failure, and there is no window to report either.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLatestContentRankingSnapshots)).
-		WithArgs(tenantID, "daily", "series", nil, int32(2)).
+		WithArgs(tenantID, "web", "daily", "series", nil, int32(2)).
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -423,7 +423,7 @@ func TestCatalogListRankedSeriesRejectsATokenWhoseRankingIsGone(t *testing.T) {
 	// positions cannot be continued in a newer ranking, so the token is refused
 	// and the client starts again at the first page.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetContentRankingSnapshotByID)).
-		WithArgs(tenantID, snapshotID, "daily", "series").
+		WithArgs(tenantID, snapshotID, "web", "daily", "series").
 		WillReturnError(sql.ErrNoRows)
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)

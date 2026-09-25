@@ -316,8 +316,8 @@ func insertRetentionRanking(t *testing.T, db *sql.DB, tenantID uuid.UUID, rankin
 	id := uuid.Must(uuid.NewV7())
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version
-		) VALUES ($1, $2, $3, $4::date, $5::date, 'series', '[]'::jsonb, $6)
+			id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items, algorithm_version
+		) VALUES ($1, $2, $3, $4::date, $5::date, 'series', 'web', '[]'::jsonb, $6)
 	`, id, tenantID, rankingKey, periodStart.Format(time.DateOnly), periodEnd.Format(time.DateOnly), contentranking.AlgorithmVersion); err != nil {
 		t.Fatalf("insert %s snapshot ending %s: %v", rankingKey, periodEnd.Format(time.DateOnly), err)
 	}

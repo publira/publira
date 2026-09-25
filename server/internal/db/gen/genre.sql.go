@@ -175,6 +175,7 @@ WITH leaderboards AS (
     FROM content_ranking_snapshots crs
     WHERE crs.tenant_id = $2
         AND crs.genre_id = ANY($1::uuid[])
+        AND crs.surface = $3::text
         AND crs.ranking_key = $5::text
         AND crs.entity_type = 'series'
     ORDER BY crs.genre_id,
@@ -250,10 +251,10 @@ type ListGenreFeaturedSeriesRow struct {
 }
 
 // The series a page of genre tiles draws its covers from: per genre, the
-// positions of its newest leaderboard first, then its newest published series,
-// up to series_limit. The leaderboard only orders the genre's current members,
-// so a series taken down, moved off the surface, re-rated, or removed from the
-// genre since the batch ran drops out here.
+// positions of its newest leaderboard for the surface first, then its newest
+// published series, up to series_limit. The leaderboard only orders the genre's
+// current members, so a series taken down, moved off the surface, re-rated, or
+// removed from the genre since the batch ran drops out here.
 func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListGenreFeaturedSeries,
 		pq.Array(arg.GenreIds),
