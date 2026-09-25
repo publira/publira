@@ -15,6 +15,7 @@ import type {
   ListRecommendedSeriesResponse,
   ListRelatedSeriesResponse,
   PublishedGenre,
+  PublishedGenreFeaturedSeries,
   PublishedTag,
 } from "@publira/api-client/public/catalog";
 import {
@@ -740,23 +741,62 @@ export const listPublishedSeries = async (
   };
 };
 
+/** One series whose cover a genre's tile draws. */
+export interface GenreFeaturedSeriesItem {
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
+  publicId: string;
+}
+
 /** One genre the tenant curates, beside how many of its series are published. */
 export interface PublishedGenreItem {
+  featuredSeries: GenreFeaturedSeriesItem[];
   publicId: string;
   name: string;
   slug: string;
   publishedSeriesCount: number;
 }
 
+/**
+ * The generated `PublishedGenreFeaturedSeries` fields
+ * {@link toGenreFeaturedSeriesItem} reads.
+ */
+type RawGenreFeaturedSeries = Pick<
+  PublishedGenreFeaturedSeries,
+  "eyeCatchImageVariants" | "publicId"
+>;
+
+/**
+ * An entry with no `public_id` is dropped, as a genre is in
+ * {@link toSeriesGenreItem}: the id is what keeps one cover apart from the next.
+ */
+const toGenreFeaturedSeriesItem = (
+  series: RawGenreFeaturedSeries
+): GenreFeaturedSeriesItem[] => {
+  const publicId = series.publicId?.trim() ?? "";
+  return publicId.length > 0
+    ? [
+        {
+          eyeCatchImageVariants: toEyeCatchImageVariants(
+            series.eyeCatchImageVariants
+          ),
+          publicId,
+        },
+      ]
+    : [];
+};
+
 /** The generated `PublishedGenre` fields {@link toPublishedGenreItem} reads. */
 type RawPublishedGenre = Pick<
   PublishedGenre,
-  "name" | "publicId" | "publishedSeriesCount" | "slug"
+  "featuredSeries" | "name" | "publicId" | "publishedSeriesCount" | "slug"
 >;
 
 const toPublishedGenreItem = (
   genre: RawPublishedGenre
 ): PublishedGenreItem => ({
+  featuredSeries: (genre.featuredSeries ?? []).flatMap(
+    toGenreFeaturedSeriesItem
+  ),
   name: genre.name?.trim() ?? "",
   publicId: genre.publicId ?? "",
   publishedSeriesCount: genre.publishedSeriesCount ?? 0,
@@ -766,8 +806,8 @@ const toPublishedGenreItem = (
 /**
  * Every genre of the tenant, in the order the console put them in.
  *
- * The whole list rather than one page: a genre row is a name and a count, the
- * set is curated small enough to browse, and the three places that read it —
+ * The whole list rather than one page: a genre row is a name, a count, and a
+ * few covers, the set is curated small enough to browse, and the three places that read it —
  * the browse page, the chips on the home page, and the filter on the series
  * list — each want all of it. Paging it would give the reader a "next page" of
  * a classification the tenant arranged to be seen at once.
@@ -782,10 +822,20 @@ export const listPublishedGenres = async (
   locale: Locale
 ): Promise<CachedReadResult<PublishedGenreItem[]>> => {
   "use cache";
+  try {
+    // The ranking batch reorders the covers daily without a write that drops
+    // the tag, and having it drop the series list tag would rebuild every list
+    // for one module, so the entry revalidates on its own and expires after a
+    // day left idle.
+    cacheLife({ expire: 86_400, revalidate: 900 });
+  } catch {
+    // Unit tests run without the Next.js cache runtime, same as applyCacheTag.
+  }
 
   const normalizedTenantId = tenantId.trim();
   // The tag the admin console drops when a genre is created, renamed, or
-  // reordered, and when a series changes the genres it carries.
+  // reordered, and when a series changes the genres it carries, its cover, or
+  // whether it is published.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   const genres: PublishedGenreItem[] = [];

@@ -8,12 +8,11 @@ import {
   SectionErrorHeading,
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { GenreChips } from "#components/genre-chips";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedGenres } from "#lib/catalog";
@@ -24,7 +23,9 @@ import { getPageAlternates } from "#lib/page-alternates";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
-/** Enough chips to fill the row a phone shows while the read comes back. */
+import { GenreTiles, GenreTilesSkeleton } from "./_components/genre-tiles";
+
+/** Two rows of tiles on a desktop while the read comes back. */
 const GENRE_SKELETON_COUNT = 8;
 
 export const generateStaticParams = () =>
@@ -38,14 +39,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
   return { alternates, title: t("host.genres.list_title") };
 };
-
-const GenreChipsSkeleton = () => (
-  <div aria-hidden="true" className="flex flex-wrap gap-2">
-    {Array.from({ length: GENRE_SKELETON_COUNT }, (_, index) => (
-      <Skeleton className="h-9 w-28 rounded-control" key={index} />
-    ))}
-  </div>
-);
 
 /**
  * The tenant's name sits inside the sentence, and the locales put it in
@@ -95,7 +88,7 @@ const GenresListData = async () => {
     );
   }
 
-  return <GenreChips genres={result.value} />;
+  return <GenreTiles genres={result.value} />;
 };
 
 const GenresPage = () => (
@@ -120,7 +113,7 @@ const GenresPage = () => (
         </Suspense>
       }
     >
-      <Suspense fallback={<GenreChipsSkeleton />}>
+      <Suspense fallback={<GenreTilesSkeleton count={GENRE_SKELETON_COUNT} />}>
         <GenresListData />
       </Suspense>
     </SectionErrorBoundary>
