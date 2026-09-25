@@ -80,7 +80,12 @@ export interface ActionFormSubmitProps {
   children: ReactNode;
   className?: string;
   disabled?: boolean;
-  /** The id of the form a control rendered outside it submits, such as one in a dialog. */
+  /**
+   * The id of the form this control submits when a portal, such as a
+   * dialog's, puts it outside that form's DOM. It must still sit inside the
+   * form in the React tree: that is where `useFormStatus` reports the form's
+   * submission, so it is what disables the control and swaps its wording.
+   */
   form?: string;
   /**
    * The caller's own Action for this control to send the form's fields to in

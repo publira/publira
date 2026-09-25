@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useActionState } from "react";
+import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -223,6 +224,37 @@ describe("ActionForm", () => {
     run.resolve(null);
     await waitFor(() => {
       expect(screen.getByText("Test")).toBeTruthy();
+    });
+  });
+
+  it("reports the submission to a control a portal renders outside the form's DOM", async () => {
+    const save = Promise.withResolvers<FormActionState>();
+
+    render(
+      <ActionForm action={() => save.promise} id="portal-form">
+        <input aria-label="Name" name="name" />
+        {createPortal(
+          <ActionFormSubmit form="portal-form">
+            <ActionFormIdle>Save</ActionFormIdle>
+            <ActionFormPending>Saving...</ActionFormPending>
+          </ActionFormSubmit>,
+          document.body
+        )}
+      </ActionForm>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Saving..." })).toHaveProperty(
+        "disabled",
+        true
+      );
+    });
+
+    save.resolve(null);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     });
   });
 
