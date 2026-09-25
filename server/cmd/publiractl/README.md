@@ -214,21 +214,6 @@ Environment variables:
 
 The structured log records the reference date, item limit, algorithm version, and how many tenants, snapshots, and items the run finished — on failure too, since each tenant commits on its own.
 
-### Score formula
-
-A snapshot ranks whatever `content_daily_stats` recorded over its window. Each daily row contributes
-
-```text
-1 × view_count
-+ 2 × unique_viewer_count
-+ 20 × purchase_count
-+ 10 × comment_count
-+ 8 × favorite_count
-+ 3 × max(rating_sum − 3 × rating_count, 0)
-```
-
-faded by `0.5 ^ (days before the last day of the window / 3)`, and an entity's score is the sum over its rows. Views are whatever `content_daily_stats` holds, which today is soft PV — a reader opening an episode or series detail page, reported through `RecordContentView`.
-
 ### Snapshot contract
 
 Each row is one leaderboard, identified by `(tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id)`. A re-run replaces the row with that key in place; a run with a different `algorithm_version` writes alongside it.
