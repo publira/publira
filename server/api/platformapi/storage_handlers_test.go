@@ -19,27 +19,43 @@ func newStorageActorContext() context.Context {
 }
 
 // A configuration that addresses no bucket is refused before the save reaches
-// the row, so a stored configuration is always one that names something.
+// the row, so a stored configuration is always one that names something. The
+// refusal names the field at fault.
 func TestUpdatePlatformStorageSettingsRefusesAConfigurationBeforeItIsWritten(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		req  *publirasplatformv1.UpdatePlatformStorageSettingsRequest
+		name  string
+		field string
+		req   *publirasplatformv1.UpdatePlatformStorageSettingsRequest
 	}{
 		{
-			name: "no bucket",
-			req:  &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Region: "ap-northeast-1"},
+			name:  "no bucket",
+			field: "bucket",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Region: "ap-northeast-1"},
 		},
 		{
-			name: "no region",
-			req:  &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects"},
+			name:  "a bucket name S3 refuses",
+			field: "bucket",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "Publira_Objects", Region: "ap-northeast-1"},
 		},
 		{
-			name: "an endpoint that is not a URL",
-			req:  &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects", Region: "ap-northeast-1", Endpoint: "s3.example.com"},
+			name:  "no region",
+			field: "region",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects"},
 		},
 		{
-			name: "a revision no read could have answered",
-			req:  &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects", Region: "ap-northeast-1", ExpectedRevision: -1},
+			name:  "an endpoint that is not a URL",
+			field: "endpoint",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects", Region: "ap-northeast-1", Endpoint: "s3.example.com"},
+		},
+		{
+			name:  "a public base URL with a query",
+			field: "public_base_url",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects", Region: "ap-northeast-1", PublicBaseUrl: "https://cdn.example.com/?v=1"},
+		},
+		{
+			name:  "a revision no read could have answered",
+			field: "expected_revision",
+			req:   &publirasplatformv1.UpdatePlatformStorageSettingsRequest{Bucket: "publira-objects", Region: "ap-northeast-1", ExpectedRevision: -1},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -49,6 +65,7 @@ func TestUpdatePlatformStorageSettingsRefusesAConfigurationBeforeItIsWritten(t *
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformStorageSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
+			assertFieldViolation(t, err, tc.field)
 			assertOperatorHandlerExpectations(t, mock)
 		})
 	}
@@ -64,6 +81,7 @@ func TestTestPlatformStorageConnectionRefusesAConfigurationBeforeItIsTested(t *t
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("TestPlatformStorageConnection code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
+	assertFieldViolation(t, err, "bucket")
 	if _, _, calls := server.storageTester.(*recordingTester).snapshot(); calls != 0 {
 		t.Fatal("a configuration that addresses no bucket reached the store")
 	}

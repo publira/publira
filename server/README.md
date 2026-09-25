@@ -101,7 +101,7 @@ Save the `whsec_...` it prints as that tenant's webhook signing secret through `
 
 ## Image storage configuration
 
-The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (uploads on the platform pool, image reads on the admin pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
+The installation has one S3-compatible object store, saved in `platform_storage_config` through `PlatformStorageSettingsService` or `publiractl storage set`: bucket, region, endpoint, path-style mode, public base URL, and an optional access key. No process reads it from its environment. `publira server` (uploads on the platform pool, image reads on the admin pool), the worker's `maintenance.purge_orphan_images`, and `publiractl job purge-orphan-images` each resolve it from that row and read the row again every 30 seconds (`platformstorage.RefreshInterval`), so a saved change reaches every process without a restart.
 
 Every process starts with nothing saved. Until something is, an upload fails with `FailedPrecondition` and the `STORAGE_NOT_CONFIGURED` reason, an image answers `503`, and the orphan sweep fails (the worker cancels the job).
 
@@ -116,7 +116,7 @@ Creating the bucket is not the application's responsibility (it is never created
 task storage:init
 ```
 
-It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store in `PUBLIRA_DB_URL`, signed with the ambient credential. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
+It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket already exists, and saves that bucket (with `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and `AWS_REGION`) as the platform's object store with `publiractl storage set`, signed with the ambient credential. Those variables are read by the scripts alone. `task dev` runs it before starting each server. `task setup`, the E2E preparation, and the bootstrap check run `task storage:seed` instead, which creates the bucket the same way and then uploads the images the development seed's rows name. Production buckets are out of scope and are provisioned separately, together with their IAM and lifecycle settings.
 
 ### Development environment (RustFS)
 

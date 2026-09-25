@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # storage-init.sh — Idempotently creates PUBLIRA_S3_BUCKET via aws-cli and saves
-# it as the platform's object store in PUBLIRA_DB_URL.
+# it as the platform's object store with `publiractl storage set`, in the
+# database PUBLIRA_PLATFORM_DB_URL names.
 #
 # The servers read the object store from platform_storage_config rather than
 # from their environment, so a local database has to name the bucket this
@@ -11,51 +12,33 @@
 # is safe to run repeatedly (idempotent).
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 if ! command -v aws > /dev/null 2>&1; then
   echo "aws CLI is required (Dev Container: devcontainer feature aws-cli)" >&2
   exit 1
 fi
 
-if ! command -v psql > /dev/null 2>&1; then
-  echo "psql is required to save the bucket as the platform's object store" >&2
-  exit 1
-fi
-
 bucket="${PUBLIRA_S3_BUCKET:?PUBLIRA_S3_BUCKET is required}"
-db_url="${PUBLIRA_DB_URL:-postgres://postgres:password@db:5432/publira?sslmode=disable}"
 region="${AWS_REGION:-us-east-1}"
 force_path_style="${PUBLIRA_S3_FORCE_PATH_STYLE:-false}"
 endpoint="${PUBLIRA_S3_ENDPOINT:-}"
 endpoint_args=()
+set_args=(--bucket "${bucket}" --region "${region}")
 if [[ -n "${endpoint}" ]]; then
   endpoint_args=(--endpoint-url "${endpoint}")
+  set_args+=(--endpoint "${endpoint}")
+fi
+if [[ "${force_path_style}" == "true" ]]; then
+  set_args+=(--force-path-style)
 fi
 
-# save_platform_storage points platform_storage_config at the bucket. The
-# revision moves only when a value changed, so a rerun leaves every running
-# server's client as it is.
+# save_platform_storage points platform_storage_config at the bucket. A save
+# of what is already saved changes nothing, so a rerun leaves every running
+# server's client as it is. `go run` caches the binary it builds, so a rerun
+# does not compile it again.
 save_platform_storage() {
-  psql "${db_url}" -v ON_ERROR_STOP=1 -q \
-    -v bucket="${bucket}" -v region="${region}" -v endpoint="${endpoint}" \
-    -v force_path_style="${force_path_style}" << 'SQL'
-INSERT INTO platform_storage_config (singleton, bucket, region, endpoint, force_path_style)
-VALUES (TRUE, :'bucket', :'region', NULLIF(:'endpoint', ''), :'force_path_style'::boolean)
-ON CONFLICT (singleton) DO UPDATE
-SET bucket = EXCLUDED.bucket,
-    region = EXCLUDED.region,
-    endpoint = EXCLUDED.endpoint,
-    force_path_style = EXCLUDED.force_path_style,
-    access_key_id = NULL,
-    secret_access_key_encrypted = NULL,
-    revision = platform_storage_config.revision + 1,
-    updated_at = NOW()
-WHERE (platform_storage_config.bucket, platform_storage_config.region,
-        platform_storage_config.endpoint, platform_storage_config.force_path_style,
-        platform_storage_config.access_key_id)
-    IS DISTINCT FROM
-    (EXCLUDED.bucket, EXCLUDED.region, EXCLUDED.endpoint, EXCLUDED.force_path_style, NULL::text);
-SQL
-  echo "storage configured for the platform (bucket=${bucket})"
+  go -C "${repo_root}/server" run ./cmd/publiractl storage set "${set_args[@]}"
 }
 
 # The Dev Container runs this from postCreate (`task setup`), where
