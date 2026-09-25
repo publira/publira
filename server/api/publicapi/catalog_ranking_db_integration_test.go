@@ -30,12 +30,27 @@ func rankingPeriodDate(daysBack int) time.Time {
 	return time.Date(2026, time.March, 14, 0, 0, 0, 0, time.UTC).AddDate(0, 0, -daysBack)
 }
 
-// seedPeriodRankingSnapshot files one snapshot under a ranking key, over the
-// single day given, in the order the ids are given. computed_at follows the
-// period, so snapshots of older periods are also the older computations.
+// seedPeriodRankingSnapshot files one tenant-wide snapshot under a ranking
+// key, over the single day given, in the order the ids are given. computed_at
+// follows the period, so snapshots of older periods are also the older
+// computations.
 func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
+	rankingKey string,
+	period time.Time,
+	seriesIDs ...uuid.UUID,
+) {
+	t.Helper()
+	e.seedGenrePeriodRankingSnapshot(t, tenantID, uuid.NullUUID{}, rankingKey, period, seriesIDs...)
+}
+
+// seedGenrePeriodRankingSnapshot is seedPeriodRankingSnapshot for one genre's
+// ranking. A null genre is the tenant-wide ranking.
+func (e *publicDBEnv) seedGenrePeriodRankingSnapshot(
+	t *testing.T,
+	tenantID uuid.UUID,
+	genreID uuid.NullUUID,
 	rankingKey string,
 	period time.Time,
 	seriesIDs ...uuid.UUID,
@@ -54,12 +69,12 @@ func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO content_ranking_snapshots (
 			id, tenant_id, ranking_key, period_start, period_end,
-			entity_type, items, algorithm_version, computed_at
+			entity_type, items, algorithm_version, computed_at, genre_id
 		) VALUES (
 			uuidv7(), $1, $2, $3::date, $3::date,
-			'series', $4::jsonb, $5, $3::date + interval '1 day'
+			'series', $4::jsonb, $5, $3::date + interval '1 day', $6
 		)
-	`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion); err != nil {
+	`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion, genreID); err != nil {
 		t.Fatalf("insert content_ranking_snapshots: %v", err)
 	}
 }
@@ -335,6 +350,48 @@ func TestDBListRankedSeriesReportsMovementAgainstTheEarlierSnapshot(t *testing.T
 	// The weekly chart has one snapshot of its own, so nothing to compare with.
 	if weekly.RankedSeries[0].PreviousRank != nil {
 		t.Fatalf("weekly previous_rank = %d, want absent", weekly.RankedSeries[0].GetPreviousRank())
+	}
+}
+
+func TestDBListRankedSeriesReadsOnlyTheTenantWideRanking(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	genre := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Action"})
+	genreID := uuid.NullUUID{UUID: genre.ID, Valid: true}
+
+	first := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESAONE01",
+		Title:       "First Overall",
+		Published:   true,
+		PublishedAt: time.Now().Add(-72 * time.Hour),
+	})
+	second := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+		PublicID:    "SERIESATWO01",
+		Title:       "Second Overall",
+		Published:   true,
+		PublishedAt: time.Now().Add(-48 * time.Hour),
+	})
+
+	// The genre's ranking holds the newest period and the one before the
+	// tenant-wide chart's, so either would be read if the chart did not keep
+	// to the tenant-wide ranking.
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, genreID, contentranking.DailyRankingKey, rankingPeriodDate(2), first.ID, second.ID)
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(1), first.ID, second.ID)
+	env.seedGenrePeriodRankingSnapshot(t, tenant.ID, genreID, contentranking.DailyRankingKey, rankingPeriodDate(0), second.ID)
+
+	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+		Tenant: tenantContext(tenant),
+	})
+	if got, want := rankedPositions(resp.RankedSeries), []string{"SERIESAONE01@1", "SERIESATWO01@2"}; !slices.Equal(got, want) {
+		t.Fatalf("ranked series = %v, want %v", got, want)
+	}
+	if period := rankingPeriodDate(1).Format(time.DateOnly); resp.PeriodStart != period {
+		t.Fatalf("period_start = %q, want %q", resp.PeriodStart, period)
+	}
+	for _, series := range resp.RankedSeries {
+		if series.PreviousRank != nil {
+			t.Fatalf("previous_rank = %d, want absent: the tenant-wide ranking has no earlier period", series.GetPreviousRank())
+		}
 	}
 }
 

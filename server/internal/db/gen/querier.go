@@ -348,12 +348,12 @@ type Querier interface {
 	// from, so a numbered chart cannot take its positions from two different runs
 	// when the batch lands mid-pagination. This is the read that pins it.
 	//
-	// ranking_key and entity_type are checked here rather than after the row comes
-	// back: an id is the only part of a token a client could put there on purpose,
-	// and a snapshot of another ranking has to be no answer rather than a chart
-	// served under the wrong heading. A snapshot the retention purge has already
-	// dropped is the same no answer, and the caller rejects the token instead of
-	// silently continuing in a newer ranking.
+	// ranking_key, entity_type, and the genre are checked here rather than after
+	// the row comes back: an id is the only part of a token a client could put
+	// there on purpose, and a snapshot of another ranking has to be no answer
+	// rather than a chart served under the wrong heading. A snapshot the retention
+	// purge has already dropped is the same no answer, and the caller rejects the
+	// token instead of silently continuing in a newer ranking.
 	GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
@@ -683,12 +683,12 @@ type Querier interface {
 	//   GetContentRankingSnapshot
 	//     -> idx_content_ranking_snapshots_unique
 	//   GetLatestContentRankingSnapshot
-	//     -> idx_content_ranking_snapshots_tenant_key_computed
+	//     -> idx_content_ranking_snapshots_tenant_genre_key_computed
 	//   GetContentRankingSnapshotByID
 	//     -> content_ranking_snapshots_pkey
 	//   ListLatestContentRankingSnapshots
-	//     -> idx_content_ranking_snapshots_tenant_key_computed for the scan, then a
-	//        sort by period (see the note there)
+	//     -> idx_content_ranking_snapshots_tenant_genre_key_computed for the scan,
+	//        then a sort by period (see the note there)
 	//   ListRankedSeriesIDs / ListRankedSeriesIDsReversed
 	//     -> no index; expands one snapshot's items (see the note there)
 	//   InsertDebouncedEpisodeViewEvent
@@ -1083,8 +1083,9 @@ type Querier interface {
 	// markers compare against, without assuming the run before it was yesterday's.
 	// NULL asks for the newest periods.
 	//
-	// No index serves the order. idx_content_ranking_snapshots_tenant_key_computed
-	// narrows the scan to one tenant's ranking key, and what is left is the periods
+	// No index serves the order.
+	// idx_content_ranking_snapshots_tenant_genre_key_computed narrows the scan to
+	// one tenant's ranking key, and what is left is the periods
 	// purge-content-rankings has not yet dropped — a sort over days, not over rows.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
 	// The backward direction of ListMyEpisodeReadsDesc.

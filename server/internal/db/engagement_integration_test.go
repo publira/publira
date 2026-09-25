@@ -416,10 +416,10 @@ func TestContentEventsExplainUsesExpectedIndexes(t *testing.T) {
 	}
 }
 
-// The public recommendation list asks for the newest snapshot of one ranking
-// key and entity type, so all three columns have to be in the index ahead of
-// computed_at. With entity_type left out, the scan walks past every other
-// entity type's snapshots before it can honour LIMIT 1.
+// The public recommendation list asks for the newest tenant-wide snapshot of
+// one ranking key and entity type, so the genre and all three columns have to
+// be in the index ahead of computed_at. With any of them left out, the scan
+// walks past other rankings' snapshots before it can honour LIMIT 1.
 func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -454,7 +454,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 
 	rows, err := tx.QueryContext(ctx, `
 		EXPLAIN SELECT * FROM content_ranking_snapshots
-		WHERE tenant_id = $1 AND ranking_key = 'weekly' AND entity_type = 'series'
+		WHERE tenant_id = $1 AND genre_id IS NULL AND ranking_key = 'weekly' AND entity_type = 'series'
 		ORDER BY computed_at DESC LIMIT 1
 	`, seed.tenantID)
 	if err != nil {
@@ -476,7 +476,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 		t.Fatalf("close explain: %v", err)
 	}
 
-	const index = "idx_content_ranking_snapshots_tenant_key_computed"
+	const index = "idx_content_ranking_snapshots_tenant_genre_key_computed"
 	if !strings.Contains(plan.String(), index) {
 		t.Fatalf("plan did not use %s:\n%s", index, plan.String())
 	}

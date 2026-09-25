@@ -145,6 +145,48 @@ func TestPurgeRunDeletesInChunks(t *testing.T) {
 	}
 }
 
+func TestPurgeRunDropsGenreSnapshotsOnTheTenantWideCutoffs(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "PURGEGENRE01", "genre-purge-rankings.example.com", "Genre Purge Ranking Tenant")
+	action := pg.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Action"})
+	romance := pg.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Romance"})
+
+	expired := []uuid.UUID{
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-31", genreID: action.ID}),
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, periodEnd: "2025-12-31", genreID: action.ID}),
+	}
+	retained := []uuid.UUID{
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28", genreID: action.ID}),
+		// Exactly at the cutoff: the comparison is exclusive.
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: dailyCutoffDate, genreID: action.ID}),
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, periodEnd: "2026-08-28", genreID: action.ID}),
+		// Expired, and the newest period of this genre's daily ranking. Newer
+		// periods of the tenant-wide ranking and of another genre do not make
+		// it any less the one a reader of this genre would be shown.
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-30", genreID: romance.ID}),
+		insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28"}),
+	}
+
+	result, err := NewPurger(pg.OpenContentStatsDB(t)).Run(context.Background(), purgeOptions(false))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if want := (PurgeResult{TenantCount: 1, RowCount: int64(len(expired)), ChunkCount: 1}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	for _, id := range expired {
+		if snapshotExists(t, pg.DB, id) {
+			t.Fatalf("expired genre snapshot %s survived the purge", id)
+		}
+	}
+	for _, id := range retained {
+		if !snapshotExists(t, pg.DB, id) {
+			t.Fatalf("retained snapshot %s was purged", id)
+		}
+	}
+}
+
 func TestPurgeRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -186,6 +228,9 @@ type snapshotSeed struct {
 	periodEnd        string
 	entityType       string
 	algorithmVersion int
+	// genreID files the snapshot as that genre's ranking. Zero is the
+	// tenant-wide ranking.
+	genreID uuid.UUID
 }
 
 // insertRetentionSnapshot files one snapshot at seed.periodEnd. Only the end
@@ -210,11 +255,12 @@ func insertRetentionSnapshot(t *testing.T, db *sql.DB, seed snapshotSeed) uuid.U
 	}
 
 	id := uuid.Must(uuid.NewV7())
+	genreID := uuid.NullUUID{UUID: seed.genreID, Valid: seed.genreID != uuid.Nil}
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version
-		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7)
-	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion); err != nil {
+			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, genre_id
+		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7, $8)
+	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion, genreID); err != nil {
 		t.Fatalf("insert %s snapshot ending %s: %v", seed.rankingKey, seed.periodEnd, err)
 	}
 	return id
