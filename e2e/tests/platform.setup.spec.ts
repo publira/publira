@@ -130,7 +130,9 @@ test.describe("web-platform initial setup", () => {
   }) => {
     const response = await page.goto(platformUrl("/setup"));
 
-    expect(response?.status(), await page.content()).toBe(200);
+    // No page content in the message: the browser may already be navigating to
+    // `/login`, and `page.content()` throws while it does.
+    expect(response?.status()).toBe(200);
     await page.waitForURL((url) => url.pathname === "/login");
     await expect(
       page.getByRole("button", { exact: true, name: "Sign in" })
