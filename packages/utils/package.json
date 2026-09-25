@@ -75,7 +75,7 @@
   },
   "dependencies": {
     "@publira/i18n": "workspace:*",
-    "cn": "0.3.2",
+    "cn": "0.3.3",
     "zod": "catalog:"
   },
   "devDependencies": {
