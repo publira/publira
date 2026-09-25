@@ -11,7 +11,7 @@ The end-user mobile app for iOS and Android, built with Flutter.
 
 ## Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.41 or later)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install), at the version `FLUTTER_VERSION` in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) pins; [`scripts/setup-flutter.sh`](../scripts/setup-flutter.sh) installs it
 - Xcode (for iOS builds)
 - Android Studio or the Android SDK (for Android builds)
 
@@ -292,6 +292,7 @@ mobile/
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
+│   ├── tenant/                   # The tenant's brand and theme, and the controller that loads them
 │   └── viewer/                   # Paged reader
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
