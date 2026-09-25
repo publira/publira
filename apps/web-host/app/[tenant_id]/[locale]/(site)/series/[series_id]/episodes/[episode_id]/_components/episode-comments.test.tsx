@@ -111,25 +111,15 @@ vi.mock("./comment-delete-button", () => ({
   ),
 }));
 
-// The control names the comment from what the section hands it, so the mock
-// words that name through the real catalog.
 vi.mock("./comment-report-button", () => ({
   CommentReportButton: ({
-    authorName,
-    commentedAt,
+    "aria-label": ariaLabel,
     commentPublicId,
   }: {
-    authorName: string;
-    commentedAt: string;
+    "aria-label": string;
     commentPublicId: string;
   }) => (
-    <button
-      aria-label={bindMessages(sharedCatalog("en"))(
-        "host.episode.comments.report_aria",
-        { author: authorName, date: commentedAt }
-      )}
-      type="button"
-    >
+    <button aria-label={ariaLabel} type="button">
       Report {commentPublicId}
     </button>
   ),

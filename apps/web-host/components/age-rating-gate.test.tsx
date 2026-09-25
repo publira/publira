@@ -12,7 +12,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { writeConfirmedAgeRating } from "#lib/age-rating-confirmation";
 
-import { AgeRatingGate } from "./age-rating-gate";
+import {
+  AgeRatingGate,
+  AgeRatingGateActions,
+  AgeRatingGateBack,
+  AgeRatingGateConfirm,
+  AgeRatingGateConfirmation,
+  AgeRatingGateContent,
+  AgeRatingGateDescription,
+  AgeRatingGateHeading,
+  AgeRatingGateTitle,
+} from "./age-rating-gate";
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "tenant-1",
@@ -24,13 +34,7 @@ vi.mock("#components/locale-provider", () => ({
 }));
 
 vi.mock("#components/client-message", () => ({
-  ClientMessage: ({
-    message,
-    values,
-  }: {
-    message: string;
-    values?: Record<string, string>;
-  }) => (values?.title ? `${message}:${values.title}` : message),
+  ClientMessage: ({ message }: { message: string }) => message,
 }));
 
 vi.mock("next/link", () => ({
@@ -50,16 +54,24 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+const title = "“Night Side” is age-rated";
+
 const renderGate = (rating?: "r15" | "r18", proven?: "r15" | "r18") =>
   render(
-    <AgeRatingGate
-      backHref="/"
-      backMessage="host.common.back_to_top"
-      provenAgeRating={proven}
-      rating={rating}
-      seriesTitle="Night Side"
-    >
-      <p>Series body</p>
+    <AgeRatingGate provenAgeRating={proven} rating={rating}>
+      <AgeRatingGateConfirmation>
+        <AgeRatingGateHeading>
+          <AgeRatingGateTitle>{title}</AgeRatingGateTitle>
+          <AgeRatingGateDescription />
+        </AgeRatingGateHeading>
+        <AgeRatingGateActions>
+          <AgeRatingGateConfirm />
+          <AgeRatingGateBack href="/">Back to home</AgeRatingGateBack>
+        </AgeRatingGateActions>
+      </AgeRatingGateConfirmation>
+      <AgeRatingGateContent>
+        <p>Series body</p>
+      </AgeRatingGateContent>
     </AgeRatingGate>
   );
 
@@ -72,24 +84,23 @@ describe("AgeRatingGate", () => {
     renderGate();
 
     expect(screen.getByText("Series body")).not.toBeNull();
-    expect(
-      screen.queryByText("host.series.age_gate.r18_title:Night Side")
-    ).toBeNull();
+    expect(screen.queryByText(title)).toBeNull();
   });
 
   it("Hides a rated body behind the confirmation", () => {
     renderGate("r18");
 
     expect(screen.queryByText("Series body")).toBeNull();
-    expect(
-      screen.getByText("host.series.age_gate.r18_title:Night Side")
-    ).not.toBeNull();
+    expect(screen.getByText(title)).not.toBeNull();
     expect(
       screen.getByRole("button", { name: "host.series.age_gate.confirm_r18" })
     ).not.toBeNull();
     expect(
-      screen.getByRole("link", { name: "host.common.back_to_top" })
+      screen.getByText("host.series.age_gate.r18_description")
     ).not.toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Back to home" }).getAttribute("href")
+    ).toBe("/");
   });
 
   it("Opens the body once the reader confirms", async () => {
@@ -121,9 +132,7 @@ describe("AgeRatingGate", () => {
     renderGate("r18");
 
     await waitFor(() => {
-      expect(
-        screen.getByText("host.series.age_gate.r18_title:Night Side")
-      ).not.toBeNull();
+      expect(screen.getByText(title)).not.toBeNull();
     });
     expect(screen.queryByText("Series body")).toBeNull();
   });
@@ -142,9 +151,7 @@ describe("AgeRatingGate", () => {
   it("Still asks a reader whose birth date falls short of the rating", () => {
     renderGate("r18", "r15");
 
-    expect(
-      screen.getByText("host.series.age_gate.r18_title:Night Side")
-    ).not.toBeNull();
+    expect(screen.getByText(title)).not.toBeNull();
     expect(screen.queryByText("Series body")).toBeNull();
   });
 });

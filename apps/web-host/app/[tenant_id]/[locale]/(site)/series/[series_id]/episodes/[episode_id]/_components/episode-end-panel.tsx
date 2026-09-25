@@ -37,17 +37,17 @@ const RELATED_SERIES_COUNT = 3;
  * and what it costs.
  *
  * Episodes carry no artwork of their own anywhere in the data model, so every
- * row shows the series' eye-catch; what tells the two rows apart is the label
- * above the title.
+ * row shows the series' eye-catch; what tells the two rows apart is the
+ * `EpisodeNeighborDirection` above the title.
  */
 const EpisodeNeighborRow = ({
-  directionLabel,
+  children,
   episode,
   locale,
   series,
 }: {
-  /** Which side of this episode the row leads to, in the reader's words. */
-  directionLabel: ReactNode;
+  /** `EpisodeNeighborDirection`. */
+  children: ReactNode;
   episode: EpisodeNeighborItem;
   locale: Locale;
   series: EpisodeSeriesSummary;
@@ -66,9 +66,7 @@ const EpisodeNeighborRow = ({
       />
       <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
         <span className="grid min-w-0 flex-1 gap-1">
-          <span className="text-sm text-muted-foreground">
-            {directionLabel}
-          </span>
+          {children}
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
               <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
@@ -95,6 +93,11 @@ const EpisodeNeighborRow = ({
       </span>
     </LocaleLink>
   </li>
+);
+
+/** Which side of this episode the row leads to, in the reader's words. */
+const EpisodeNeighborDirection = ({ children }: { children: ReactNode }) => (
+  <span className="text-sm text-muted-foreground">{children}</span>
 );
 
 /**
@@ -163,27 +166,29 @@ export const EpisodeEndPanel = async ({
           <ol className="divide-y divide-border border-b border-border">
             {previousEpisode ? (
               <EpisodeNeighborRow
-                directionLabel={
-                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                    <Message message="host.episode.navigation.previous" />
-                  </Suspense>
-                }
                 episode={previousEpisode}
                 locale={locale}
                 series={series}
-              />
+              >
+                <EpisodeNeighborDirection>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="host.episode.navigation.previous" />
+                  </Suspense>
+                </EpisodeNeighborDirection>
+              </EpisodeNeighborRow>
             ) : null}
             {nextEpisode ? (
               <EpisodeNeighborRow
-                directionLabel={
-                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                    <Message message="host.episode.navigation.next" />
-                  </Suspense>
-                }
                 episode={nextEpisode}
                 locale={locale}
                 series={series}
-              />
+              >
+                <EpisodeNeighborDirection>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="host.episode.navigation.next" />
+                  </Suspense>
+                </EpisodeNeighborDirection>
+              </EpisodeNeighborRow>
             ) : null}
           </ol>
         </section>

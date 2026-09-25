@@ -261,8 +261,10 @@ export const EpisodeComments = async ({
                     delete it instead. */}
                 {viewer && comment.authorPublicId !== viewer.publicId ? (
                   <CommentReportButton
-                    authorName={comment.authorName}
-                    commentedAt={commentedAt(comment)}
+                    aria-label={t("host.episode.comments.report_aria", {
+                      author: comment.authorName,
+                      date: commentedAt(comment),
+                    })}
                     commentPublicId={comment.publicId}
                     returnTo={episodePath}
                     tenantId={tenantId}

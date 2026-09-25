@@ -8,6 +8,7 @@ import {
   EmptyStateHeading,
   EmptyStateTitle,
 } from "@publira/ui-components/empty-state";
+import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
@@ -18,77 +19,23 @@ import {
   useConfirmedAgeRating,
   writeConfirmedAgeRating,
 } from "#lib/age-rating-confirmation";
-import type { HostClientMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
-/** The interstitial itself: why the page is closed, and the two ways out. */
-const AgeRatingConfirmation = ({
-  backHref,
-  backMessage,
-  rating,
-  seriesTitle,
-}: {
-  backHref: string;
-  backMessage: HostClientMessageKey;
+interface AgeRatingGateState {
+  open: boolean;
   rating?: RestrictedAgeRating;
-  seriesTitle: string;
-}) => {
-  const tenantId = useTenantId();
+}
 
-  const titleMessage: HostClientMessageKey =
-    rating === "r18"
-      ? "host.series.age_gate.r18_title"
-      : "host.series.age_gate.r15_title";
-  const descriptionMessage: HostClientMessageKey =
-    rating === "r18"
-      ? "host.series.age_gate.r18_description"
-      : "host.series.age_gate.r15_description";
-  const confirmMessage: HostClientMessageKey =
-    rating === "r18"
-      ? "host.series.age_gate.confirm_r18"
-      : "host.series.age_gate.confirm_r15";
+const AgeRatingGateContext = createContext<AgeRatingGateState | null>(null);
 
-  const onConfirm = () => {
-    if (rating) {
-      writeConfirmedAgeRating(tenantId, rating);
-    }
-  };
-
-  return (
-    <div className="mx-auto grid max-w-6xl px-6 py-10">
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
-            <ClientMessage
-              message={titleMessage}
-              values={{ title: seriesTitle }}
-            />
-          </EmptyStateTitle>
-          <EmptyStateDescription>
-            <ClientMessage message={descriptionMessage} />
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-        <EmptyStateActions>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button
-              onClick={onConfirm}
-              size="lg"
-              type="button"
-              variant="secondary"
-            >
-              <ClientMessage message={confirmMessage} />
-            </Button>
-            <LinkButton
-              render={<LocaleLink href={backHref} />}
-              variant="outline"
-            >
-              <ClientMessage message={backMessage} />
-            </LinkButton>
-          </div>
-        </EmptyStateActions>
-      </EmptyState>
-    </div>
-  );
+const useAgeRatingGateState = (): AgeRatingGateState => {
+  const state = useContext(AgeRatingGateContext);
+  if (!state) {
+    throw new Error(
+      "AgeRatingGate slots must be rendered inside an AgeRatingGate."
+    );
+  }
+  return state;
 };
 
 /**
@@ -99,38 +46,125 @@ const AgeRatingConfirmation = ({
  *
  * `provenAgeRating` is what the reader's own birth date already carries, so a
  * reader the tenant has verified is never asked to say it again.
+ *
+ * ```tsx
+ * <AgeRatingGate provenAgeRating={…} rating={…}>
+ *   <AgeRatingGateConfirmation>
+ *     <AgeRatingGateHeading>
+ *       <AgeRatingGateTitle>…</AgeRatingGateTitle>
+ *       <AgeRatingGateDescription />
+ *     </AgeRatingGateHeading>
+ *     <AgeRatingGateActions>
+ *       <AgeRatingGateConfirm />
+ *       <AgeRatingGateBack href="/">…</AgeRatingGateBack>
+ *     </AgeRatingGateActions>
+ *   </AgeRatingGateConfirmation>
+ *   <AgeRatingGateContent>…</AgeRatingGateContent>
+ * </AgeRatingGate>
+ * ```
  */
 export const AgeRatingGate = ({
-  backHref,
-  backMessage,
   children,
   provenAgeRating,
   rating,
-  seriesTitle,
 }: {
-  backHref: string;
-  backMessage: HostClientMessageKey;
+  /** `AgeRatingGateConfirmation` and `AgeRatingGateContent`. */
   children: ReactNode;
   provenAgeRating?: RestrictedAgeRating;
   rating?: RestrictedAgeRating;
-  seriesTitle: string;
 }) => {
   const tenantId = useTenantId();
   const confirmed = useConfirmedAgeRating(tenantId);
-
-  if (
+  const open =
     ageRatingSatisfiedBy(rating, provenAgeRating) ||
-    ageRatingSatisfiedBy(rating, confirmed)
-  ) {
-    return children;
-  }
+    ageRatingSatisfiedBy(rating, confirmed);
+  const state = useMemo(() => ({ open, rating }), [open, rating]);
 
-  return (
-    <AgeRatingConfirmation
-      backHref={backHref}
-      backMessage={backMessage}
-      rating={rating}
-      seriesTitle={seriesTitle}
-    />
+  return <AgeRatingGateContext value={state}>{children}</AgeRatingGateContext>;
+};
+
+/** The gated body, rendered once the rating is satisfied. */
+export const AgeRatingGateContent = ({ children }: { children: ReactNode }) => {
+  const { open } = useAgeRatingGateState();
+
+  return open ? children : null;
+};
+
+/** The interstitial: why the page is closed, and the two ways out. */
+export const AgeRatingGateConfirmation = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const { open } = useAgeRatingGateState();
+
+  return open ? null : (
+    <div className="mx-auto grid max-w-6xl px-6 py-10">
+      <EmptyState>{children}</EmptyState>
+    </div>
   );
 };
+
+export const AgeRatingGateHeading = ({ children }: { children: ReactNode }) => (
+  <EmptyStateHeading>{children}</EmptyStateHeading>
+);
+
+export const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
+  <EmptyStateTitle>{children}</EmptyStateTitle>
+);
+
+/** What confirming asserts, worded for the gate's rating. */
+export const AgeRatingGateDescription = () => {
+  const { rating } = useAgeRatingGateState();
+
+  return (
+    <EmptyStateDescription>
+      {rating === "r18" ? (
+        <ClientMessage message="host.series.age_gate.r18_description" />
+      ) : (
+        <ClientMessage message="host.series.age_gate.r15_description" />
+      )}
+    </EmptyStateDescription>
+  );
+};
+
+export const AgeRatingGateActions = ({ children }: { children: ReactNode }) => (
+  <EmptyStateActions>
+    <div className="flex flex-wrap justify-center gap-3">{children}</div>
+  </EmptyStateActions>
+);
+
+/** Stores the reader's confirmation of the gate's rating, which opens it. */
+export const AgeRatingGateConfirm = () => {
+  const { rating } = useAgeRatingGateState();
+  const tenantId = useTenantId();
+
+  const onConfirm = () => {
+    if (rating) {
+      writeConfirmedAgeRating(tenantId, rating);
+    }
+  };
+
+  return (
+    <Button onClick={onConfirm} size="lg" type="button" variant="secondary">
+      {rating === "r18" ? (
+        <ClientMessage message="host.series.age_gate.confirm_r18" />
+      ) : (
+        <ClientMessage message="host.series.age_gate.confirm_r15" />
+      )}
+    </Button>
+  );
+};
+
+/** The way out for a reader who does not confirm. */
+export const AgeRatingGateBack = ({
+  children,
+  href,
+}: {
+  children: ReactNode;
+  href: string;
+}) => (
+  <LinkButton render={<LocaleLink href={href} />} variant="outline">
+    {children}
+  </LinkButton>
+);
