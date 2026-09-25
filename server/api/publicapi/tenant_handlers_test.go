@@ -7,6 +7,7 @@ import (
 	"errors"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -294,6 +295,101 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 		t.Fatalf("logo variant = %+v, want logo 1024x256", logo)
 	}
 	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectPaymentsUnavailable(mock, tenantID)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.Theme != nil {
+		t.Fatalf("theme = %+v, want nil", resp.Msg.Theme)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// web-host caches whatever GetTenant answers, so a failed branding read answered
+// as a tenant without a theme would be served as that tenant's brand.
+func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
+	iconImageID := uuid.Must(uuid.NewV7())
+	readFailure := errors.New("connection reset by peer")
+	tests := []struct {
+		name        string
+		wantLog     string
+		expectTheme func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+	}{
+		{
+			name:    "theme",
+			wantLog: "failed to read the tenant theme",
+			expectTheme: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+					WithArgs(tenantID).
+					WillReturnError(readFailure)
+			},
+		},
+		{
+			name:    "branding image variants",
+			wantLog: "failed to read the tenant branding image variants",
+			expectTheme: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+					WithArgs(tenantID).
+					WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+						AddRow(tenantThemeSelectRowWithBrandingImages(
+							tenantID,
+							"#112233",
+							now,
+							uuid.NullUUID{UUID: iconImageID, Valid: true},
+							uuid.NullUUID{},
+						)...))
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantImageVariantsByImageIDs)).
+					WithArgs(pq.Array([]uuid.UUID{iconImageID})).
+					WillReturnError(readFailure)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newPublicPaymentServer(t, nil)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Second)
+			expectTenantLookup(env.mock, tenantID, "TENANT001", now)
+			env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+				WithArgs(tenantID).
+				WillReturnError(sql.ErrNoRows)
+			expectPaymentsUnavailable(env.mock, tenantID)
+			tt.expectTheme(env.mock, tenantID, now)
+
+			client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
+			_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			}))
+			if connect.CodeOf(err) != connect.CodeInternal {
+				t.Fatalf("GetTenant error = %v, want CodeInternal", err)
+			}
+			logs := env.logs.String()
+			if !strings.Contains(logs, tt.wantLog) || !strings.Contains(logs, readFailure.Error()) {
+				t.Fatalf("logs = %q, want %q with the read error", logs, tt.wantLog)
+			}
+			assertPublicExpectations(t, env.mock)
+		})
+	}
 }
 
 func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
