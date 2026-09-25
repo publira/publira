@@ -24,18 +24,20 @@ export const EpisodeRatingGate = async ({
   locale,
   rating,
   seriesPublicId,
-  seriesTitle,
   tenantId,
 }: {
   /** The anonymous read's answer, which is the same for every reader. */
   access: EpisodeAccessState;
   checkoutSessionId: string;
+  /**
+   * The rating confirmation's `AgeRatingGateConfirmation` and the page as
+   * `AgeRatingGateContent`, which the tenant's rule replaces outright.
+   */
   children: ReactNode;
   episodePublicId: string;
   locale: Locale;
   rating?: RestrictedAgeRating;
   seriesPublicId: string;
-  seriesTitle: string;
   tenantId: string;
 }) => {
   // The anonymous read answers `age_restricted` for everyone on a covered
@@ -70,13 +72,7 @@ export const EpisodeRatingGate = async ({
     : undefined;
 
   return (
-    <AgeRatingGate
-      backHref={`/series/${seriesPublicId}`}
-      backMessage="host.episode.to_series_detail"
-      provenAgeRating={provenAgeRating}
-      rating={rating}
-      seriesTitle={seriesTitle}
-    >
+    <AgeRatingGate provenAgeRating={provenAgeRating} rating={rating}>
       {children}
     </AgeRatingGate>
   );

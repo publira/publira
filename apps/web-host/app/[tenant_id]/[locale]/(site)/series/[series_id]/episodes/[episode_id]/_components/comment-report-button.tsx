@@ -46,16 +46,13 @@ import { reportEpisodeCommentAction } from "../_lib/comment-actions";
  * comment the removal was meant to be silent about.
  */
 export const CommentReportButton = ({
-  authorName,
-  commentedAt,
+  "aria-label": ariaLabel,
   commentPublicId,
   returnTo,
   tenantId,
 }: {
-  /** Who wrote the comment, named in the control's accessible label. */
-  authorName: string;
-  /** When it was posted, already formatted in the tenant's time zone. */
-  commentedAt: string;
+  /** Names the comment the trigger reports: who wrote it, and when. */
+  "aria-label": string;
   commentPublicId: string;
   returnTo: string;
   tenantId: string;
@@ -101,10 +98,7 @@ export const CommentReportButton = ({
           <DialogTrigger
             render={
               <Button
-                aria-label={t("host.episode.comments.report_aria", {
-                  author: authorName,
-                  date: commentedAt,
-                })}
+                aria-label={ariaLabel}
                 disabled={isPending}
                 size="sm"
                 type="button"
