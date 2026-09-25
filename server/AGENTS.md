@@ -157,7 +157,7 @@ Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint
 
 - Suppressing anything else needs a reason on the line (`//nolint:staticcheck // …`) or, for a whole rule, a comment in `.golangci.yml`. Bare directives beyond the `defer` convention above, and blanket `linters.disable` entries, do not belong here.
 - Adding or removing a linter or formatter is its own change, separate from the work that surfaced the need. The formatter set is plain `gofmt`; swapping in a stricter one (`gofumpt`, `goimports`, `golines`) reformats the whole module and needs its own discussion.
-- Version bumps: `GOLANGCI_LINT_VERSION` in [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) and [`ci.yml`](../.github/workflows/ci.yml) must move together (Renovate manages both).
+- Version bumps: `GOLANGCI_LINT_VERSION` in [`ci.yml`](../.github/workflows/ci.yml) is the one pin; the Dev Container image (`publira/base-images`) installs the same version and is updated separately.
 
 ### When codegen inputs change
 

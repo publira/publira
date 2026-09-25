@@ -17,11 +17,7 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 
 A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations it carries (`db migrate`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.
 
-Keep the Dev Container separate from production images.
-
-| Use | Path |
-| --- | --- |
-| Development environment | [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
+Keep the Dev Container separate from production images. Its image, `ghcr.io/publira/base-images/publira-dev`, is built in the `publira/base-images` repository; `.devcontainer/` holds only the configuration that runs it.
 
 Do **not** put Dockerfiles in `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`, including generated copies.
 
@@ -124,7 +120,7 @@ docker build -f infra/docker/node/Dockerfile \
 | Build | Debian-based image with the full toolchain (Node bookworm-slim / golang bookworm) |
 | Runtime | distroless (Web / Node: `nodejs24-debian12:nonroot`; publiractl: `static:nonroot`). The server image alone uses `debian:bookworm-slim` plus `libvips42` (CGO, for Manael). |
 | Base image | Pin the digest as `tag@sha256:…` (tracked by Renovate). |
-| Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the same form as [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) |
+| Tool versions (`turbo`, `pnpm`, and more) | `ARG *_VERSION` plus `# renovate: datasource=…`, in the form [`web/Dockerfile`](./web/Dockerfile) uses |
 
 Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) to reduce dependencies.
 
@@ -138,7 +134,7 @@ See each service's README and Dockerfile comments for details.
 
 ## Exceptions
 
-1. **Dev Container** (`.devcontainer/Dockerfile`) is not a production runtime image; it is for development with a toolchain and volumes.
+1. **Dev Container** (`ghcr.io/publira/base-images/publira-dev`, built in `publira/base-images`) is not a production runtime image; it is for development with a toolchain and volumes.
 2. **Temporary verification Dockerfiles** may exist only on a personal branch. To keep one on `main`, promote it to a new role under `infra/docker/` and update this table.
 3. **Generated Dockerfiles must not be committed.** Do not copy a template into every service and commit the output.
 
