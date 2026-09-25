@@ -370,8 +370,8 @@ func (s *apiServer) CreateUser(
 
 	name := strings.TrimSpace(req.Msg.Name)
 	email := strings.TrimSpace(req.Msg.Email)
-	password := strings.TrimSpace(req.Msg.Password)
-	if name == "" || email == "" || password == "" {
+	password := req.Msg.Password
+	if name == "" || email == "" || strings.TrimSpace(password) == "" {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
 	}
@@ -626,8 +626,8 @@ func (s *apiServer) RequestEmailChange(
 
 	newEmail := strings.TrimSpace(req.Msg.NewEmail)
 	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
-	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
-	if currentEmail == "" || newEmail == "" || currentPassword == "" {
+	currentPassword := req.Msg.CurrentPassword
+	if currentEmail == "" || newEmail == "" || strings.TrimSpace(currentPassword) == "" {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
 	}
@@ -945,8 +945,8 @@ func (s *apiServer) ConfirmPasswordReset(
 	}
 
 	token := strings.TrimSpace(req.Msg.Token)
-	newPassword := strings.TrimSpace(req.Msg.NewPassword)
-	if token == "" || newPassword == "" {
+	newPassword := req.Msg.NewPassword
+	if token == "" || strings.TrimSpace(newPassword) == "" {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
 	}
@@ -1035,9 +1035,9 @@ func (s *apiServer) ChangePassword(
 		return nil, err
 	}
 
-	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
-	newPassword := strings.TrimSpace(req.Msg.NewPassword)
-	if currentPassword == "" || newPassword == "" {
+	currentPassword := req.Msg.CurrentPassword
+	newPassword := req.Msg.NewPassword
+	if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" {
 		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
 	}
@@ -1274,8 +1274,8 @@ func (s *apiServer) DeleteMe(
 		auth.AuditEvent(req.Header(), "delete_me", "failure", "", "", "invalid_session")
 		return nil, err
 	}
-	password := strings.TrimSpace(req.Msg.Password)
-	if password == "" {
+	password := req.Msg.Password
+	if strings.TrimSpace(password) == "" {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password is required"))
 	}
