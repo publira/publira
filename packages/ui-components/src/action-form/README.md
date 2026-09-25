@@ -59,7 +59,7 @@ A second control that sends the same fields to another Action, such as a connect
 
 ### Render function mode
 
-Pass a function as `children` when you want to place the message yourself or read the state the Action returned.
+Pass a function as `children` when you want to place the message yourself or read the state the Action returned. The state has the Action's own type, so an Action that returns more than `ok` and `message` hands the rest to the function too.
 
 ```tsx
 import {
@@ -116,14 +116,17 @@ export const myAction = async (
 
 ```tsx
 import { ActionForm } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type {
+  ActionFormResult,
+  FormActionState,
+} from "@publira/ui-components/action-form";
 ```
 
 ## Props
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `action` | `(prevState, formData) => Promise<FormActionState>` | Required | The Server Action |
+| `action` | `(prevState, formData) => Promise<State \| null>` | Required | The Server Action. `State` is `ActionFormResult` (`{ ok, message }`) or a type that widens it, such as a save that also returns the settings it confirmed; the render function reads it back as `state` |
 | `children` | `ReactNode \| (props) => ReactNode` | Required | Form content. Passing a function switches to render function mode |
 | `showSuccess` | `boolean` | `true` | Show a success message when the state is `{ ok: true }`. Pass `false` to suppress it |
 | `className` | `string` | — | className of the `<form>` |

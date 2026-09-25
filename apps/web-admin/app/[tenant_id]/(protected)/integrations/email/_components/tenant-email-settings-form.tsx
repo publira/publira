@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -319,21 +320,18 @@ export const TenantEmailSettingsForm = ({
   const [sendToSelf, setSendToSelf] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const [saveState, saveFormAction, isSaving] = useActionState(
-    async (
-      previousState: TenantEmailSettingsFormState,
-      formData: FormData
-    ): Promise<TenantEmailSettingsFormState> => {
-      const nextState = await saveAction(previousState, formData);
-      if (nextState?.ok) {
-        setSmtpOverrideEnabled(nextState.settings.smtpOverrideEnabled);
-        setHasStoredPassword(nextState.settings.hasPassword);
-        setIsPasswordEditing(!nextState.settings.hasPassword);
-      }
-      return nextState;
-    },
-    null
-  );
+  const saveSettings = async (
+    previousState: TenantEmailSettingsFormState,
+    formData: FormData
+  ): Promise<TenantEmailSettingsFormState> => {
+    const nextState = await saveAction(previousState, formData);
+    if (nextState?.ok) {
+      setSmtpOverrideEnabled(nextState.settings.smtpOverrideEnabled);
+      setHasStoredPassword(nextState.settings.hasPassword);
+      setIsPasswordEditing(!nextState.settings.hasPassword);
+    }
+    return nextState;
+  };
   const [testState, testFormAction, isTesting] = useActionState(
     testAction,
     null
@@ -368,207 +366,215 @@ export const TenantEmailSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form
-        action={saveFormAction}
+      {/* An `ActionForm` resets the fields only after its own save succeeds,
+          so a test run from the dialog leaves what the operator typed. */}
+      <ActionForm
+        action={saveSettings}
         className="grid gap-5 sm:max-w-3xl"
         id={formId}
       >
-        <input name="tenant_id" type="hidden" value={tenantId} />
+        {({ isPending: isSaving, state: saveState }) => (
+          <>
+            <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <Fieldset className="grid gap-5" disabled={isSaving}>
-          <Field>
-            <FieldLabel htmlFor={smtpOverrideId}>
-              <ClientMessage message="admin.settings.email.override" />
-            </FieldLabel>
-            <FieldContent>
-              <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                <input
-                  checked={smtpOverrideEnabled}
-                  disabled={!canEdit}
-                  id={smtpOverrideId}
-                  name="smtp_override_enabled"
-                  onChange={handleOverrideChange}
-                  type="checkbox"
-                />
-                <ClientMessage message="admin.settings.email.override_checkbox" />
-              </label>
-              <FieldDescription>
-                <ClientMessage message="admin.settings.email.override_description" />
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+            <Fieldset className="grid gap-5" disabled={isSaving}>
+              <Field>
+                <FieldLabel htmlFor={smtpOverrideId}>
+                  <ClientMessage message="admin.settings.email.override" />
+                </FieldLabel>
+                <FieldContent>
+                  <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      checked={smtpOverrideEnabled}
+                      disabled={!canEdit}
+                      id={smtpOverrideId}
+                      name="smtp_override_enabled"
+                      onChange={handleOverrideChange}
+                      type="checkbox"
+                    />
+                    <ClientMessage message="admin.settings.email.override_checkbox" />
+                  </label>
+                  <FieldDescription>
+                    <ClientMessage message="admin.settings.email.override_description" />
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              <ClientMessage message="admin.settings.email.host" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.host}
-                disabled={!fieldsInteractive}
-                name="host"
-                placeholder="smtp.example.com"
-                required={fieldsInteractive}
-                type="text"
+              <Field>
+                <FieldLabel required={fieldsInteractive}>
+                  <ClientMessage message="admin.settings.email.host" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={initialSettings.host}
+                    disabled={!fieldsInteractive}
+                    name="host"
+                    placeholder="smtp.example.com"
+                    required={fieldsInteractive}
+                    type="text"
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel required={fieldsInteractive}>
+                  <ClientMessage message="admin.settings.email.port" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={String(initialSettings.port || 587)}
+                    disabled={!fieldsInteractive}
+                    max={65_535}
+                    min={1}
+                    name="port"
+                    required={fieldsInteractive}
+                    type="number"
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel required={fieldsInteractive}>
+                  <ClientMessage message="admin.settings.email.username" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={initialSettings.username}
+                    disabled={!fieldsInteractive}
+                    name="username"
+                    required={fieldsInteractive}
+                    type="text"
+                  />
+                </FieldContent>
+              </Field>
+
+              <PasswordFieldSection
+                fieldsInteractive={fieldsInteractive}
+                hasStoredPassword={hasStoredPassword}
+                isPasswordEditing={isPasswordEditing}
+                onCancelPasswordEdit={handleCancelPasswordEdit}
+                onStartPasswordEdit={handleStartPasswordEdit}
               />
-            </FieldContent>
-          </Field>
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              <ClientMessage message="admin.settings.email.port" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={String(initialSettings.port || 587)}
-                disabled={!fieldsInteractive}
-                max={65_535}
-                min={1}
-                name="port"
-                required={fieldsInteractive}
-                type="number"
+              <Field>
+                <FieldLabel required={fieldsInteractive}>
+                  <ClientMessage message="admin.settings.email.encryption" />
+                </FieldLabel>
+                <FieldContent>
+                  <Select
+                    defaultValue={initialSettings.encryption || "starttls"}
+                    disabled={!fieldsInteractive}
+                    items={[
+                      { label: "TLS", value: "tls" },
+                      { label: "STARTTLS", value: "starttls" },
+                      {
+                        label: t("admin.settings.email.encryption_none"),
+                        value: "none",
+                      },
+                    ]}
+                    name="encryption"
+                    required={fieldsInteractive}
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  <ClientMessage message="admin.settings.email.from_name" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={initialSettings.fromName}
+                    disabled={!fieldsInteractive}
+                    name="from_name"
+                    placeholder={
+                      tenantName || t("admin.settings.email.from_name_fallback")
+                    }
+                    type="text"
+                  />
+                  <FieldDescription>
+                    <ClientMessage message="admin.settings.email.from_name_description" />
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel required={fieldsInteractive}>
+                  <ClientMessage message="admin.settings.email.from_address" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={initialSettings.fromAddress}
+                    disabled={!fieldsInteractive}
+                    name="from_address"
+                    placeholder="noreply@example.com"
+                    required={fieldsInteractive}
+                    type="email"
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  <ClientMessage message="admin.settings.email.reply_to" />
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={initialSettings.replyTo}
+                    disabled={!fieldsInteractive}
+                    name="reply_to"
+                    placeholder="support@example.com"
+                    type="email"
+                  />
+                </FieldContent>
+              </Field>
+            </Fieldset>
+
+            {canEdit ? null : (
+              <FormMessage variant="destructive">
+                <ClientMessage message="admin.settings.admin_only" />
+              </FormMessage>
+            )}
+
+            {loadErrorMessage ? (
+              <FormMessage variant="destructive">
+                {loadErrorMessage}
+              </FormMessage>
+            ) : null}
+
+            {saveState ? (
+              <FormMessage variant={saveState.ok ? "success" : "destructive"}>
+                {saveState.message}
+              </FormMessage>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              {/* A test sends the fields too, which a save in flight has
+                  closed and so left out of the form. */}
+              <SmtpTestDialog
+                canTest={fieldsInteractive && !isSaving}
+                dialogOpen={dialogOpen}
+                formId={formId}
+                isTesting={isTesting}
+                onDialogOpenChange={setDialogOpen}
+                onSendToSelfChange={setSendToSelf}
+                sendToSelf={sendToSelf}
+                testFormAction={testFormAction}
+                testState={testState}
               />
-            </FieldContent>
-          </Field>
 
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              <ClientMessage message="admin.settings.email.username" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.username}
-                disabled={!fieldsInteractive}
-                name="username"
-                required={fieldsInteractive}
-                type="text"
-              />
-            </FieldContent>
-          </Field>
-
-          <PasswordFieldSection
-            fieldsInteractive={fieldsInteractive}
-            hasStoredPassword={hasStoredPassword}
-            isPasswordEditing={isPasswordEditing}
-            onCancelPasswordEdit={handleCancelPasswordEdit}
-            onStartPasswordEdit={handleStartPasswordEdit}
-          />
-
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              <ClientMessage message="admin.settings.email.encryption" />
-            </FieldLabel>
-            <FieldContent>
-              <Select
-                defaultValue={initialSettings.encryption || "starttls"}
-                disabled={!fieldsInteractive}
-                items={[
-                  { label: "TLS", value: "tls" },
-                  { label: "STARTTLS", value: "starttls" },
-                  {
-                    label: t("admin.settings.email.encryption_none"),
-                    value: "none",
-                  },
-                ]}
-                name="encryption"
-                required={fieldsInteractive}
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              <ClientMessage message="admin.settings.email.from_name" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.fromName}
-                disabled={!fieldsInteractive}
-                name="from_name"
-                placeholder={
-                  tenantName || t("admin.settings.email.from_name_fallback")
-                }
-                type="text"
-              />
-              <FieldDescription>
-                <ClientMessage message="admin.settings.email.from_name_description" />
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel required={fieldsInteractive}>
-              <ClientMessage message="admin.settings.email.from_address" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.fromAddress}
-                disabled={!fieldsInteractive}
-                name="from_address"
-                placeholder="noreply@example.com"
-                required={fieldsInteractive}
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>
-              <ClientMessage message="admin.settings.email.reply_to" />
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSettings.replyTo}
-                disabled={!fieldsInteractive}
-                name="reply_to"
-                placeholder="support@example.com"
-                type="email"
-              />
-            </FieldContent>
-          </Field>
-        </Fieldset>
-
-        {canEdit ? null : (
-          <FormMessage variant="destructive">
-            <ClientMessage message="admin.settings.admin_only" />
-          </FormMessage>
+              <ActionFormSubmit disabled={!canEdit}>
+                <ActionFormIdle>
+                  <ClientMessage message="admin.settings.save" />
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <ClientMessage message="admin.settings.saving" />
+                </ActionFormPending>
+              </ActionFormSubmit>
+            </div>
+          </>
         )}
-
-        {loadErrorMessage ? (
-          <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
-        ) : null}
-
-        {saveState ? (
-          <FormMessage variant={saveState.ok ? "success" : "destructive"}>
-            {saveState.message}
-          </FormMessage>
-        ) : null}
-
-        <div className="flex flex-wrap gap-3">
-          {/* A test sends the fields too, which a save in flight has closed
-              and so left out of the form. */}
-          <SmtpTestDialog
-            canTest={fieldsInteractive && !isSaving}
-            dialogOpen={dialogOpen}
-            formId={formId}
-            isTesting={isTesting}
-            onDialogOpenChange={setDialogOpen}
-            onSendToSelfChange={setSendToSelf}
-            sendToSelf={sendToSelf}
-            testFormAction={testFormAction}
-            testState={testState}
-          />
-
-          <ActionFormSubmit disabled={!canEdit} formAction={saveFormAction}>
-            <ActionFormIdle>
-              <ClientMessage message="admin.settings.save" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.settings.saving" />
-            </ActionFormPending>
-          </ActionFormSubmit>
-        </div>
-      </form>
+      </ActionForm>
     </AdminSection>
   );
 };
