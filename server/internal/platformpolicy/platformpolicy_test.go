@@ -8,6 +8,7 @@ import (
 	"time"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 )
 
 func TestDefaultsAreAValidPolicy(t *testing.T) {
@@ -260,5 +261,26 @@ func TestResolverReportsAFailureWithNothingRead(t *testing.T) {
 	resolver, _ := newTestResolver(&fakeQuerier{err: errors.New("connection refused")}, CacheTTL)
 	if _, err := resolver.Policy(t.Context()); err == nil {
 		t.Fatal("Policy = nil error, want the failure")
+	}
+}
+
+// A refusal names the field at fault as the request carries it, so the
+// Connect handler and publiractl policy set name the same one.
+func TestSaveParamsValidateNamesTheRequestField(t *testing.T) {
+	for want, adjust := range map[string]func(*SaveParams){
+		"policy.password_verification.per_minute": func(p *SaveParams) { p.Policy.PasswordVerification.PerMinute = 0 },
+		"policy.community_limit_defaults.contact_message_per_client.per_day": func(p *SaveParams) {
+			p.Policy.Community.ContactMessagePerClient.PerDay = p.Policy.Community.ContactMessagePerClient.PerHour - 1
+		},
+		"policy." + FieldDuplicateCommentWindow: func(p *SaveParams) { p.Policy.Community.DuplicateCommentWindow = 0 },
+		FieldExpectedRevision:                   func(p *SaveParams) { p.ExpectedRevision = new(int64(-1)) },
+	} {
+		t.Run(want, func(t *testing.T) {
+			params := SaveParams{Policy: Defaults()}
+			adjust(&params)
+			if got := fielderr.Field(params.Validate()); got != want {
+				t.Fatalf("Validate() names %q, want %q", got, want)
+			}
+		})
 	}
 }

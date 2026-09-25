@@ -86,15 +86,31 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 		}
 	}
 
-	for name, defaults := range map[string]*publirattypesv1.RetentionPeriods{
-		"missing defaults":      nil,
-		"a missing period":      {WithdrawnCommentDays: 30, ContentEventDays: 30, DailyRankingSnapshotDays: 30},
-		"a negative period":     {WithdrawnCommentDays: -1, ContentEventDays: 30, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
-		"a period past the cap": {WithdrawnCommentDays: 30, ContentEventDays: retention.MaxDays + 1, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
+	// A refusal names the request field at fault, the same field publiractl
+	// retention set names through the flag it came from.
+	for name, tc := range map[string]struct {
+		defaults *publirattypesv1.RetentionPeriods
+		field    string
+	}{
+		"missing defaults": {nil, "defaults"},
+		"a missing period": {
+			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: 30, ContentEventDays: 30, DailyRankingSnapshotDays: 30},
+			"defaults.weekly_ranking_snapshot_days",
+		},
+		"a negative period": {
+			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: -1, ContentEventDays: 30, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
+			"defaults.withdrawn_comment_days",
+		},
+		"a period past the cap": {
+			&publirattypesv1.RetentionPeriods{WithdrawnCommentDays: 30, ContentEventDays: retention.MaxDays + 1, DailyRankingSnapshotDays: 30, WeeklyRankingSnapshotDays: 30},
+			"defaults.content_event_days",
+		},
 	} {
-		if _, err := updateRetentionDefaults(client, operator, defaults, updated.Msg.Revision); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		_, err := updateRetentionDefaults(client, operator, tc.defaults, updated.Msg.Revision)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("%s error = %v, want invalid_argument", name, err)
 		}
+		assertFieldViolation(t, err, tc.field)
 	}
 	if got, _ := getRetentionDefaults(t, client, operator); got != want {
 		t.Fatalf("defaults after refused saves = %+v, want %+v", got, want)

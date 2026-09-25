@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 )
 
 // The built-in defaults are what the purge batches kept before the periods
@@ -248,5 +249,23 @@ func TestZeroTableResolvesToBuiltin(t *testing.T) {
 	}
 	if got := table.Defaults(); got != Builtin() {
 		t.Fatalf("zero Table.Defaults() = %+v, want Builtin %+v", got, Builtin())
+	}
+}
+
+// A refusal names the field at fault as the request carries it, so the
+// Connect handler and publiractl retention set name the same one.
+func TestSaveDefaultsParamsValidateNamesTheRequestField(t *testing.T) {
+	for want, adjust := range map[string]func(*SaveDefaultsParams){
+		"defaults.withdrawn_comment_days":       func(p *SaveDefaultsParams) { p.Defaults.WithdrawnCommentDays = 0 },
+		"defaults.weekly_ranking_snapshot_days": func(p *SaveDefaultsParams) { p.Defaults.WeeklyRankingSnapshotDays = MaxDays + 1 },
+		FieldExpectedRevision:                   func(p *SaveDefaultsParams) { p.ExpectedRevision = new(int64(-1)) },
+	} {
+		t.Run(want, func(t *testing.T) {
+			params := SaveDefaultsParams{Defaults: Builtin()}
+			adjust(&params)
+			if got := fielderr.Field(params.Validate()); got != want {
+				t.Fatalf("Validate() names %q, want %q", got, want)
+			}
+		})
 	}
 }

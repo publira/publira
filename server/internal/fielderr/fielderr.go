@@ -36,3 +36,14 @@ func Field(err error) string {
 	}
 	return ""
 }
+
+// Within reports err's field as a field of parent, for a value that is
+// validated on its own and sent inside the request field parent. Any other
+// error is returned as it is.
+func Within(parent string, err error) error {
+	var invalid *Invalid
+	if errors.As(err, &invalid) {
+		return &Invalid{Field: parent + "." + invalid.Field, Err: invalid.Err}
+	}
+	return err
+}

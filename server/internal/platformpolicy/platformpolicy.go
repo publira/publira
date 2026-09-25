@@ -1,5 +1,10 @@
 // Package platformpolicy resolves the platform's security and abuse-control
-// policy from the platform_policy_config row, or Defaults when none is saved.
+// policy from the platform_policy_config row, or Defaults when none is saved,
+// and saves that row. The platform API's PlatformPolicyService and publiractl
+// policy are adapters over its save.
+//
+// A refusal of what the caller asked for is a [*fielderr.Invalid] naming the
+// field at fault or [ErrConflict]; any other error is the database's.
 package platformpolicy
 
 import (
@@ -12,6 +17,7 @@ import (
 	"time"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 )
 
 // MinuteDay is a burst allowance per minute paired with a budget per day.
@@ -52,6 +58,10 @@ type Policy struct {
 	StorePurchaseConfirmation MinuteDay
 }
 
+// FieldDuplicateCommentWindow is the one field of the PlatformPolicy message
+// that is not half of a limit.
+const FieldDuplicateCommentWindow = "community_limit_defaults.duplicate_comment_window_minutes"
+
 // MaxDuplicateCommentWindow bounds the duplicate-comment window. Past a week
 // the refusal stops reading as "you just said that".
 const MaxDuplicateCommentWindow = 7 * 24 * time.Hour
@@ -77,36 +87,42 @@ func Defaults() Policy {
 	}
 }
 
-// Validate reports the first value no reader or form could live within. A
-// limit of zero refuses everyone, and a day allowing less than the shorter
-// window inside it is a burst rule that can never bind.
+// Validate reports the first value no reader or form could live within, as a
+// [*fielderr.Invalid] naming its field in the PlatformPolicy message. A limit
+// of zero refuses everyone, and a day allowing less than the shorter window
+// inside it is a burst rule that can never bind.
 func (p Policy) Validate() error {
 	for _, limit := range []struct {
-		name  string
-		short int
-		day   int
+		name   string
+		window string
+		short  int
+		day    int
 	}{
-		{"password_verification", p.PasswordVerification.PerMinute, p.PasswordVerification.PerDay},
-		{"mail_requests_per_address", p.MailRequestsPerAddress.PerHour, p.MailRequestsPerAddress.PerDay},
-		{"mail_requests_per_source", p.MailRequestsPerSource.PerHour, p.MailRequestsPerSource.PerDay},
-		{"community_limit_defaults.comment_post", p.Community.CommentPost.PerMinute, p.Community.CommentPost.PerDay},
-		{"community_limit_defaults.comment_report", p.Community.CommentReport.PerMinute, p.Community.CommentReport.PerDay},
-		{"community_limit_defaults.episode_rating", p.Community.EpisodeRating.PerMinute, p.Community.EpisodeRating.PerDay},
-		{"community_limit_defaults.contact_message_per_account", p.Community.ContactMessagePerAccount.PerHour, p.Community.ContactMessagePerAccount.PerDay},
-		{"community_limit_defaults.contact_message_per_client", p.Community.ContactMessagePerClient.PerHour, p.Community.ContactMessagePerClient.PerDay},
-		{"community_limit_defaults.viewer_preferences", p.Community.ViewerPreferencesUpdate.PerMinute, p.Community.ViewerPreferencesUpdate.PerDay},
-		{"store_purchase_confirmation", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
+		{"password_verification", "per_minute", p.PasswordVerification.PerMinute, p.PasswordVerification.PerDay},
+		{"mail_requests_per_address", "per_hour", p.MailRequestsPerAddress.PerHour, p.MailRequestsPerAddress.PerDay},
+		{"mail_requests_per_source", "per_hour", p.MailRequestsPerSource.PerHour, p.MailRequestsPerSource.PerDay},
+		{"community_limit_defaults.comment_post", "per_minute", p.Community.CommentPost.PerMinute, p.Community.CommentPost.PerDay},
+		{"community_limit_defaults.comment_report", "per_minute", p.Community.CommentReport.PerMinute, p.Community.CommentReport.PerDay},
+		{"community_limit_defaults.episode_rating", "per_minute", p.Community.EpisodeRating.PerMinute, p.Community.EpisodeRating.PerDay},
+		{"community_limit_defaults.contact_message_per_account", "per_hour", p.Community.ContactMessagePerAccount.PerHour, p.Community.ContactMessagePerAccount.PerDay},
+		{"community_limit_defaults.contact_message_per_client", "per_hour", p.Community.ContactMessagePerClient.PerHour, p.Community.ContactMessagePerClient.PerDay},
+		{"community_limit_defaults.viewer_preferences", "per_minute", p.Community.ViewerPreferencesUpdate.PerMinute, p.Community.ViewerPreferencesUpdate.PerDay},
+		{"store_purchase_confirmation", "per_minute", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
 	} {
+		short, day := limit.name+"."+limit.window, limit.name+".per_day"
 		if limit.short < 1 {
-			return fmt.Errorf("%s must allow at least 1 in its shorter window, got %d", limit.name, limit.short)
+			return &fielderr.Invalid{Field: short, Err: fmt.Errorf("%s must be at least 1, got %d", short, limit.short)}
 		}
 		if limit.day < limit.short {
-			return fmt.Errorf("%s must allow at least as many per day (%d) as in its shorter window (%d)", limit.name, limit.day, limit.short)
+			return &fielderr.Invalid{Field: day, Err: fmt.Errorf("%s must be at least %s (%d), got %d", day, short, limit.short, limit.day)}
 		}
 	}
 	window := p.Community.DuplicateCommentWindow
 	if window < time.Minute || window > MaxDuplicateCommentWindow || window%time.Minute != 0 {
-		return fmt.Errorf("community_limit_defaults.duplicate_comment_window_minutes must be a whole number of minutes from 1 to %d, got %s", int(MaxDuplicateCommentWindow/time.Minute), window)
+		return &fielderr.Invalid{
+			Field: FieldDuplicateCommentWindow,
+			Err:   fmt.Errorf("%s must be a whole number of minutes from 1 to %d, got %s", FieldDuplicateCommentWindow, int(MaxDuplicateCommentWindow/time.Minute), window),
+		}
 	}
 	return nil
 }
@@ -167,15 +183,27 @@ type Querier interface {
 	GetPlatformPolicyConfig(ctx context.Context) (dbmodels.PlatformPolicyConfig, error)
 }
 
+// Get reads the saved row, reporting false when nothing is saved.
+func Get(ctx context.Context, q Querier) (dbmodels.PlatformPolicyConfig, bool, error) {
+	config, err := q.GetPlatformPolicyConfig(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.PlatformPolicyConfig{}, false, nil
+	}
+	if err != nil {
+		return dbmodels.PlatformPolicyConfig{}, false, fmt.Errorf("read platform policy: %w", err)
+	}
+	return config, true, nil
+}
+
 // Read returns the effective policy and the revision of the row it came from.
 // A platform that has saved nothing gets Defaults at revision zero.
 func Read(ctx context.Context, q Querier) (Policy, int64, error) {
-	config, err := q.GetPlatformPolicyConfig(ctx)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Defaults(), 0, nil
-	}
+	config, found, err := Get(ctx, q)
 	if err != nil {
-		return Policy{}, 0, fmt.Errorf("read platform policy: %w", err)
+		return Policy{}, 0, err
+	}
+	if !found {
+		return Defaults(), 0, nil
 	}
 	return FromConfig(config), config.Revision, nil
 }

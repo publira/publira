@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -39,6 +39,69 @@ Environment variables:
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## policy
+
+Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the in-app purchase confirmation limit, the mail limits, and the community limits every tenant starts from and may loosen up to. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl policy set --mfa-required-for-tenant-admin --comment-post-per-minute 5
+go run ./server/cmd/publiractl policy show
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `policy set` | `UpdatePlatformPolicy` | Saves the values its flags give over the saved policy, or over the built-in defaults when none is saved, and keeps every other value. It refuses to run with no flag |
+| `policy show` | `GetPlatformPolicy` | Prints the saved policy with its revision, or the built-in defaults, marked as such, when none is saved |
+
+`policy set` takes one flag per field of `PlatformPolicy`:
+
+| Flag | What it sets |
+| --- | --- |
+| `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing |
+| `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session |
+| `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify |
+| `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address |
+| `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant |
+| `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below |
+| `--comment-report-per-minute`, `--comment-report-per-day` | Comments one reader may report |
+| `--episode-rating-per-minute`, `--episode-rating-per-day` | Presses of the episode rating one reader may make |
+| `--contact-message-per-account-per-hour`, `--contact-message-per-account-per-day` | Contact messages one signed-in reader may send |
+| `--contact-message-per-client-per-hour`, `--contact-message-per-client-per-day` | Contact messages one client may send across every account and tenant |
+| `--viewer-preferences-per-minute`, `--viewer-preferences-per-day` | Times one reader may save the viewer layout |
+| `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes |
+
+Every limit is a whole number of at least 1, and its daily value is at least its per-minute or per-hour one. Running servers reread the policy within `platformpolicy.CacheTTL`, so a save reaches them without a restart. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
+
+`policy set` files `platform_policy_updated` in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+
+## retention
+
+Changes the platform's retention defaults: how long each kind of expiring record is kept for every tenant that has set no period of its own. It does what `PlatformPolicyService.UpdatePlatformRetentionDefaults` does from the Platform Console, through the same implementation, `internal/retention`. A tenant's own periods are saved from its admin console and are not changed here. An install that saves no defaults keeps the built-in periods under [Retention periods](#retention-periods).
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl retention set --content-event-days 30
+go run ./server/cmd/publiractl retention show
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `retention set` | `UpdatePlatformRetentionDefaults` | Saves the periods its flags give over the saved defaults, or over the built-in ones when none are saved, and keeps every other period. It refuses to run with no flag |
+| `retention show` | `GetPlatformRetentionDefaults` | Prints the saved defaults with their revision, or the built-in ones, marked as such, when none are saved |
+
+`retention set` takes one flag per field of `RetentionPeriods`, each a whole number of days from 1 to 36500: `--withdrawn-comment-days`, `--content-event-days`, `--daily-ranking-snapshot-days`, and `--weekly-ranking-snapshot-days`. Each purge reads the defaults when its run starts, so a save applies from the next run. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
+
+`retention set` files `platform_retention_defaults_updated` in `platform_audit_logs` under the `system` actor. A refused period names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## smtp
 
@@ -315,7 +378,7 @@ Each entry of `items`:
 
 ## Retention periods
 
-`purge-content-events`, `purge-ranking-snapshots`, and `purge-withdrawn-comments` read how long to keep each tenant's rows from the database at the start of every run, not from the environment. A tenant's period is its own override in `tenant_retention_settings` (`TenantSettingsService.UpdateTenantRetentionSettings`), else the platform default in `platform_retention_config` (`PlatformPolicyService.UpdatePlatformRetentionDefaults`), else the built-in default:
+`purge-content-events`, `purge-ranking-snapshots`, and `purge-withdrawn-comments` read how long to keep each tenant's rows from the database at the start of every run, not from the environment. A tenant's period is its own override in `tenant_retention_settings` (`TenantSettingsService.UpdateTenantRetentionSettings`), else the platform default in `platform_retention_config` (`PlatformPolicyService.UpdatePlatformRetentionDefaults`, or [`publiractl retention set`](#retention)), else the built-in default:
 
 | Period                   | Built-in default |
 | ------------------------ | ---------------- |

@@ -398,7 +398,7 @@ A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_chal
 
 ### Requiring the factor
 
-`mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
+`mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
 Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
 
