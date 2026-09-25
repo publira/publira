@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -172,6 +172,30 @@ An invitation's mail goes on the outbox, as it does from the console, and the [w
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+
+## webpush
+
+Turns on Web Push by saving the subject push services reach the platform at, generating the VAPID key pair every browser subscription is made against when none is stored. It does what `PlatformWebPushSettingsService` does from the Platform Console, through the same implementation, `internal/webpushsettings`. Web Push is optional: an install that never saves a subject sends no browser notifications and fails nothing.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl webpush init --subject mailto:push@example.com
+go run ./server/cmd/publiractl webpush show
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `webpush init --subject <URI>` | `UpdatePlatformWebPushSubject` | Saves the subject, a `mailto:` URI with an address or an absolute `https:` URL. The key pair is generated only when none is stored and is otherwise kept, so running it again changes the subject alone. Nothing regenerates the pair, which would invalidate every subscription |
+| `webpush show` | `GetPlatformWebPushSettings` | Prints the subject and the VAPID public key, never the private key. Unlike the RPC, it generates nothing |
+
+The private key is stored encrypted with the keys the servers decrypt it with. The storefront and the worker reread the settings within `webpushsettings.CacheTTL`, so a save reaches them without a restart.
+
+`webpush init` files `platform_webpush_subject_updated` in `platform_audit_logs` under the `system` actor. A refused subject names `--subject` on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the private key `webpush init` generates. Required only when no key pair is stored yet: set the values the servers run with.
 
 ## job
 

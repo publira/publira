@@ -186,9 +186,9 @@ A send reaches the devices it can. A run that reached none of them is retried as
 
 ## Web Push
 
-The public site registers browser subscriptions and the worker delivers them with VAPID. No environment variable configures it: the key pair is a platform setting the server generates for itself the first time the Platform API's `GetPlatformWebPushSettings` is called, with the private key sealed by `PUBLIRA_SECRET_ENCRYPTION_KEYS`. A process started without those keys cannot generate one, and the read answers `failed_precondition`.
+The public site registers browser subscriptions and the worker delivers them with VAPID. No environment variable configures it: the key pair is a platform setting generated the first time the Platform API's `GetPlatformWebPushSettings` is called or `publiractl webpush init` runs, with the private key sealed by `PUBLIRA_SECRET_ENCRYPTION_KEYS`. A process started without those keys cannot generate one: the read answers `failed_precondition`, and `publiractl webpush init` exits non-zero.
 
-Web Push is off until an operator saves a subject — the `mailto:` or `https:` contact a push service may reach the sender at — through `UpdatePlatformWebPushSubject`. Until then web registrations are refused, the tenant response carries no public VAPID key, and the worker sends nothing to a browser. Each process rereads the setting every ten seconds, so a saved subject reaches every instance without a restart. A push service response of `410 Gone` removes the expired subscription.
+Web Push is off until an operator saves a subject — the `mailto:` or `https:` contact a push service may reach the sender at — through `UpdatePlatformWebPushSubject` or `publiractl webpush init`. Until then web registrations are refused, the tenant response carries no public VAPID key, and the worker sends nothing to a browser. Each process rereads the setting every ten seconds, so a saved subject reaches every instance without a restart. A push service response of `410 Gone` removes the expired subscription.
 
 ## Distributed tracing (OpenTelemetry)
 
