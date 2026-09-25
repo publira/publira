@@ -38,7 +38,7 @@ Environment variables:
 - `PUBLIRA_DB_URL`: the connection that owns the schema. Required: unlike the `job` group, the `db` group reads no other variable and never falls back to the development URL, so an unset variable fails before connecting.
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
-River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../worker/README.md) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
 
 ## smtp
 
@@ -175,9 +175,9 @@ Environment variables:
 
 ## job
 
-Nothing needs to schedule a job. The [worker](../worker/README.md) runs all ten jobs on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. `publiractl job` is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
+Nothing needs to schedule a job. The [worker](../publira/README.md#publira-worker) runs every job below on its own schedule, catching up the days it missed after downtime, so a deployment that runs the worker has no cron entry or Kubernetes CronJob to set up. `publiractl job` is for what the schedule does not do: backfilling a named date, recovering after an incident, inspecting a purge with a dry run, a one-off pass, and debugging outside the resident worker. Each run rebuilds, purges, or closes once and exits.
 
-Every job here is a thin invocation of `internal/maintenance`, and the worker registers the same ten jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
+Every job here is a thin invocation of `internal/maintenance`, and the worker registers the same jobs as River kinds over that package. So a backfill of a named date, a recovery after an incident, and a dry-run inspection run the implementation a scheduled pass runs, rather than a second copy of it that is free to diverge. A run here neither reads nor moves the worker's `daily_rebuild_progress`, and it may overlap a scheduled pass of the same job. The three dated rebuilds take a per-tenant advisory lock, so one of two overlapping runs waits for the other, and fails after 30 seconds, rather than both restating the same rows; the projection and the purges are safe to run twice at once, because the second finds nothing left to file or delete, and so is the royalty close, because a month is closed once and the second close of it finds it closed.
 
 The worker's ticker jobs — publishing due episodes, applying free window boundaries, rolling a tenant's day, expiring pinned announcements — have no `job` subcommand. They act on every instant that has passed each time they run, including the first run after the worker starts, so there is nothing a manual run could do that the worker does not.
 
