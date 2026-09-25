@@ -22,6 +22,8 @@ class EyeCatchCover extends StatelessWidget {
     required this.requestHeaders,
     required this.preferredTypes,
     required this.aspectRatio,
+    this.radius = 8,
+    this.placeholderIcon = Icons.collections_bookmark_outlined,
   });
 
   /// What the artwork belongs to, `series` or `label`, which with [id] names
@@ -45,13 +47,21 @@ class EyeCatchCover extends StatelessWidget {
   /// eye-catch happens to carry.
   final double aspectRatio;
 
+  /// Rounding of the box's corners. A cell of a larger frame that clips its
+  /// own corners draws square.
+  final double radius;
+
+  /// What marks the box as a cover still to come. `null` leaves it flat.
+  final IconData? placeholderIcon;
+
   @override
   Widget build(BuildContext context) {
     final placeholder = _CoverPlaceholder(
       key: ValueKey('$kind-cover-placeholder-$id'),
+      icon: placeholderIcon,
     );
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(radius),
       child: AspectRatio(
         aspectRatio: aspectRatio,
         child: LayoutBuilder(
@@ -96,19 +106,19 @@ class EyeCatchCover extends StatelessWidget {
 
 /// What fills the box when there is no cover to draw.
 class _CoverPlaceholder extends StatelessWidget {
-  const _CoverPlaceholder({super.key});
+  const _CoverPlaceholder({super.key, required this.icon});
+
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final icon = this.icon;
     return ColoredBox(
       color: colors.surfaceContainerHighest,
-      child: Center(
-        child: Icon(
-          Icons.collections_bookmark_outlined,
-          color: colors.onSurfaceVariant,
-        ),
-      ),
+      child: icon == null
+          ? null
+          : Center(child: Icon(icon, color: colors.onSurfaceVariant)),
     );
   }
 }

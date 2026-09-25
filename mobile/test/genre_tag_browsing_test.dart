@@ -28,6 +28,31 @@ const timeTravel = PublishedTag(
   seriesCount: 1,
 );
 
+/// A series on a genre's tile, with a portrait cover of its own.
+GenreFeaturedSeries featuredWithCover(String id) => GenreFeaturedSeries(
+  id: id,
+  eyeCatchVariants: [
+    EyeCatchVariant(
+      variantType: 'portrait',
+      url: Uri.parse('http://images.test/images/series/$id/portrait/400'),
+      width: 400,
+      height: 533,
+    ),
+  ],
+);
+
+/// [genre] carrying [featured] on its tile.
+PublishedGenre genreWith(
+  PublishedGenre genre,
+  List<GenreFeaturedSeries> featured,
+) => PublishedGenre(
+  id: genre.id,
+  name: genre.name,
+  seriesCount: genre.seriesCount,
+  featuredSeries: featured,
+  imageRequestHeaders: fixtureImageHeaders,
+);
+
 /// A series wearing both a genre and a tag, the way the series screen offers
 /// a way into each.
 const taggedSeries = SeriesItem(
@@ -82,6 +107,15 @@ void main() {
   Finder tileOf(String seriesId) =>
       find.byKey(ValueKey('series-tile-$seriesId'));
 
+  Finder genreTileOf(String genreId) =>
+      find.byKey(ValueKey('genre-tile-$genreId'));
+
+  Finder inGenreTile(String genreId, Finder matching) =>
+      find.descendant(of: genreTileOf(genreId), matching: matching);
+
+  Finder coverOf(String seriesId) =>
+      find.byKey(ValueKey('series-cover-$seriesId'));
+
   group('the catalog', () {
     testWidgets('offers the genres, each opening its series', (tester) async {
       await pumpApp(tester);
@@ -115,8 +149,8 @@ void main() {
       );
 
       expect(router.state.uri.path, AppRoutes.genresPath);
-      expect(find.byKey(ValueKey('genre-chip-${fantasy.id}')), findsOneWidget);
-      expect(find.byKey(ValueKey('genre-chip-${romance.id}')), findsOneWidget);
+      expect(genreTileOf(fantasy.id), findsOneWidget);
+      expect(genreTileOf(romance.id), findsOneWidget);
     });
 
     testWidgets('shows no genre row for a tenant that curates none', (
@@ -173,6 +207,197 @@ void main() {
 
       await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
     });
+
+    testWidgets('draws a tile per genre, in the tenant\'s order', (
+      tester,
+    ) async {
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(inGenreTile(fantasy.id, find.text('Fantasy')), findsWidgets);
+      expect(
+        inGenreTile(fantasy.id, find.text('2 published series')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(genreTileOf(fantasy.id)).dx,
+        lessThan(tester.getTopLeft(genreTileOf(romance.id)).dx),
+      );
+
+      await tester.tap(genreTileOf(fantasy.id));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('genre-body')),
+      );
+      expect(router.state.uri.path, AppRoutes.genreDetailPath(fantasy.id));
+    });
+
+    testWidgets('draws the first four covers of a genre as a 2×2 mosaic', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(fantasy, [
+          for (var index = 1; index <= 5; index++)
+            featuredWithCover('SERIES0$index'),
+        ]),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      final cells = [
+        for (var index = 1; index <= 4; index++)
+          tester.getTopLeft(inGenreTile(fantasy.id, coverOf('SERIES0$index'))),
+      ];
+      // Read across, then down.
+      expect(cells[0].dy, cells[1].dy);
+      expect(cells[0].dx, lessThan(cells[1].dx));
+      expect(cells[2].dx, cells[0].dx);
+      expect(cells[2].dy, greaterThan(cells[0].dy));
+      expect(cells[3], Offset(cells[1].dx, cells[2].dy));
+      expect(inGenreTile(fantasy.id, coverOf('SERIES05')), findsNothing);
+      expect(
+        inGenreTile(
+          fantasy.id,
+          find.byKey(ValueKey('genre-${fantasy.id}-name-frame')),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('leaves the cells a genre cannot fill flat, at the same size', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(fantasy, [
+          for (var index = 1; index <= 4; index++)
+            featuredWithCover('SERIES0$index'),
+        ]),
+        genreWith(romance, [
+          featuredWithCover('SERIES11'),
+          featuredWithCover('SERIES12'),
+        ]),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(inGenreTile(romance.id, coverOf('SERIES11')), findsOneWidget);
+      expect(inGenreTile(romance.id, coverOf('SERIES12')), findsOneWidget);
+      for (final index in [2, 3]) {
+        final blank = find.byKey(ValueKey('genre-${romance.id}-blank-$index'));
+        expect(inGenreTile(romance.id, blank), findsOneWidget);
+        expect(
+          find.descendant(of: blank, matching: find.byType(Text)),
+          findsNothing,
+        );
+      }
+      expect(
+        tester.getSize(genreTileOf(romance.id)),
+        tester.getSize(genreTileOf(fantasy.id)),
+      );
+    });
+
+    testWidgets('draws a series without artwork as a flat cell in its place', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(fantasy, [
+          const GenreFeaturedSeries(id: 'SERIES01'),
+          featuredWithCover('SERIES02'),
+        ]),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      final flat = inGenreTile(
+        fantasy.id,
+        find.byKey(const ValueKey('series-cover-placeholder-SERIES01')),
+      );
+      expect(flat, findsOneWidget);
+      expect(
+        find.descendant(of: flat, matching: find.byType(Icon)),
+        findsNothing,
+      );
+      expect(inGenreTile(fantasy.id, coverOf('SERIES02')), findsOneWidget);
+    });
+
+    testWidgets('announces each tile as one button naming the genre once', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      catalog.genres = [
+        genreWith(fantasy, [featuredWithCover('SERIES01')]),
+        // The name frame repeats the name the tile already reads out.
+        genreWith(romance, const []),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(
+        tester.getSemantics(genreTileOf(fantasy.id)),
+        isSemantics(
+          label: 'Fantasy\n2 published series',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(
+        tester.getSemantics(genreTileOf(romance.id)),
+        isSemantics(
+          label: 'Romance\n0 published series',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+
+      tester.semantics.tap(
+        find.semantics.byLabel('Romance\n0 published series'),
+      );
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('genre-body')),
+      );
+      expect(router.state.uri.path, AppRoutes.genreDetailPath(romance.id));
+      semantics.dispose();
+    });
+
+    for (final (description, featured) in [
+      ('has no series to draw', const <GenreFeaturedSeries>[]),
+      (
+        'has series, none with artwork',
+        const [
+          GenreFeaturedSeries(id: 'SERIES01'),
+          GenreFeaturedSeries(id: 'SERIES02'),
+        ],
+      ),
+    ]) {
+      testWidgets('puts its name in one flat frame when it $description', (
+        tester,
+      ) async {
+        catalog.genres = [
+          genreWith(fantasy, [
+            for (var index = 1; index <= 4; index++)
+              featuredWithCover('SERIES1$index'),
+          ]),
+          genreWith(romance, featured),
+        ];
+        await pumpApp(tester, location: AppRoutes.genresPath);
+        await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+        final frame = inGenreTile(
+          romance.id,
+          find.byKey(ValueKey('genre-${romance.id}-name-frame')),
+        );
+        expect(
+          find.descendant(of: frame, matching: find.text('Romance')),
+          findsOneWidget,
+        );
+        expect(inGenreTile(romance.id, find.byType(Image)), findsNothing);
+        expect(
+          tester.getSize(genreTileOf(romance.id)),
+          tester.getSize(genreTileOf(fantasy.id)),
+        );
+      });
+    }
   });
 
   group('a genre', () {

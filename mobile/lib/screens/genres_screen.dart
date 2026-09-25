@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
-import 'package:publira/catalog/genre_chip.dart';
+import 'package:publira/catalog/genre_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 
@@ -97,14 +97,50 @@ class _GenresScreenState extends State<GenresScreen> {
         message: messages.genresEmpty,
       );
     }
-    return SingleChildScrollView(
-      key: const ValueKey('genres-body'),
-      padding: const EdgeInsets.all(16),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [for (final genre in genres) GenreChip(genre: genre)],
-      ),
+    return _GenreGrid(key: const ValueKey('genres-body'), genres: genres);
+  }
+}
+
+/// The genres as rows of tiles, read one row at a time as the reader scrolls.
+class _GenreGrid extends StatelessWidget {
+  const _GenreGrid({super.key, required this.genres});
+
+  final List<PublishedGenre> genres;
+
+  static const _columnGap = 16.0;
+
+  /// Two tiles to a row on a phone, and more as the window widens, at the
+  /// Material window size class breakpoints.
+  static int _columnsFor(double width) => switch (width) {
+    >= 840 => 4,
+    >= 600 => 3,
+    _ => 2,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = _columnsFor(constraints.maxWidth);
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: (genres.length / columns).ceil(),
+          separatorBuilder: (context, row) => const SizedBox(height: 24),
+          itemBuilder: (context, row) => Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var column = 0; column < columns; column++) ...[
+                if (column > 0) const SizedBox(width: _columnGap),
+                Expanded(child: _tileAt(row * columns + column)),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
+
+  Widget _tileAt(int index) => index < genres.length
+      ? GenreTile(genre: genres[index])
+      : const SizedBox.shrink();
 }

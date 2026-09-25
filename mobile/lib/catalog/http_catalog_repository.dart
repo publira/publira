@@ -419,6 +419,8 @@ class HttpCatalogRepository implements CatalogRepository {
             ),
             name: _readString(json, 'name', 'genres[]'),
             seriesCount: _readCount(json, 'publishedSeriesCount', 'genres[]'),
+            featuredSeries: _parseGenreFeaturedSeries(json['featuredSeries']),
+            imageRequestHeaders: config.publicImageRequestHeaders,
           ),
         );
         return false;
@@ -427,6 +429,30 @@ class HttpCatalogRepository implements CatalogRepository {
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  List<GenreFeaturedSeries> _parseGenreFeaturedSeries(Object? raw) {
+    // protojson omits an empty repeated field, which is how a genre with no
+    // series to draw arrives.
+    if (raw == null) {
+      return const [];
+    }
+    const path = 'genres[].featuredSeries[]';
+    final series = _expectList(raw, 'genres[].featuredSeries')
+        .map((item) => _expectMap(item, path))
+        .map(
+          (json) => GenreFeaturedSeries(
+            id: _readString(json, 'publicId', path),
+            eyeCatchVariants: _parseEyeCatchVariants(
+              json['eyeCatchImageVariants'],
+              path,
+            ),
+          ),
+        )
+        // An entry with no id names no series, and the site drops it too.
+        .where((series) => series.id.isNotEmpty)
+        .toList();
+    return List<GenreFeaturedSeries>.unmodifiable(series);
   }
 
   @override
