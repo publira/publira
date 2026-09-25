@@ -62,7 +62,7 @@ Manael uses libvips, so building and running require `libvips-dev` (`libvips42` 
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
-The tenant-admin MFA requirement, the reader write limits, the step-up password limit, and the mail limits are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
+The tenant-admin MFA requirement, the reader write limits, the step-up password limit, and the mail limits are not environment variables: they are the platform policy, read and saved through `PlatformPolicyService` or `publiractl policy`, and a platform that has saved none gets the built-in defaults. A saved change reaches a running server within ten seconds.
 
 The object store is read from the platform's settings: uploads resolve it on the platform pool, and image delivery on the admin pool, whose login is granted `platform_storage_config` and nothing else of the platform's; see [Image storage configuration](../../README.md#image-storage-configuration). Both read the row again every 30 seconds, so a saved change reaches a running process without a restart, and the process starts before an operator has saved one: an upload until then is refused and an image answers `503`.
 

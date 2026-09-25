@@ -79,7 +79,7 @@ No lint covers this. The reclamation logic is `internal/orphanimages`, documente
 
 ## A reader-writable RPC charges the shared flood control
 
-Every public RPC a signed-in reader writes through spends an allowance before it reaches the database: `chargeReaderAction` in `api/publicapi`, over the counters in `internal/ratelimit`. Adding one is an action name and its rules in `reader_guards.go`, its limits in the platform policy (`internal/platformpolicy`, stored in `platform_policy_config` and edited through `PlatformPolicyService`), and the charge in the handler — never a limiter of its own or an environment variable, either of which would be a second policy an operator has to find before they can raise a limit.
+Every public RPC a signed-in reader writes through spends an allowance before it reaches the database: `chargeReaderAction` in `api/publicapi`, over the counters in `internal/ratelimit`. Adding one is an action name and its rules in `reader_guards.go`, its limits in the platform policy (`internal/platformpolicy`, stored in `platform_policy_config` and edited through `PlatformPolicyService` and `publiractl policy set`), and the charge in the handler — never a limiter of its own or an environment variable, either of which would be a second policy an operator has to find before they can raise a limit.
 
 An RPC that stores something a reader can repeat verbatim also claims that text for the window, so the same body arriving twice is refused rather than stored twice.
 

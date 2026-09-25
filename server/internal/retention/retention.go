@@ -7,6 +7,11 @@
 // withdrawn comment's deadline from that value and the purge batches delete by
 // it, so both go through Settings.Effective and the date arithmetic below
 // rather than each carrying a copy.
+//
+// The platform API's PlatformPolicyService and publiractl retention are
+// adapters over SaveDefaults. A refusal of what the caller asked for is a
+// [*fielderr.Invalid] naming the field at fault or [ErrDefaultsConflict]; any
+// other error is the database's.
 package retention
 
 import (
@@ -19,6 +24,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 )
 
 // MaxDays bounds every period. It keeps the cutoff a date PostgreSQL can hold;
@@ -68,9 +74,11 @@ func (p Periods) Validate() error {
 	return nil
 }
 
+// validateDays refuses a period as a [*fielderr.Invalid] naming its field in
+// the RetentionPeriods message.
 func validateDays(name string, days int) error {
 	if days < 1 || days > MaxDays {
-		return fmt.Errorf("%s must be from 1 to %d, got %d", name, MaxDays, days)
+		return &fielderr.Invalid{Field: name, Err: fmt.Errorf("%s must be from 1 to %d, got %d", name, MaxDays, days)}
 	}
 	return nil
 }
@@ -236,15 +244,28 @@ type DefaultsQuerier interface {
 	GetPlatformRetentionConfig(ctx context.Context) (dbmodels.PlatformRetentionConfig, error)
 }
 
+// GetDefaults reads the saved platform defaults row, reporting false when
+// nothing is saved.
+func GetDefaults(ctx context.Context, q DefaultsQuerier) (dbmodels.PlatformRetentionConfig, bool, error) {
+	config, err := q.GetPlatformRetentionConfig(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.PlatformRetentionConfig{}, false, nil
+	}
+	if err != nil {
+		return dbmodels.PlatformRetentionConfig{}, false, fmt.Errorf("read platform retention defaults: %w", err)
+	}
+	return config, true, nil
+}
+
 // ReadDefaults returns the platform defaults and the revision of the row they
 // came from. A platform that has saved nothing gets Builtin at revision zero.
 func ReadDefaults(ctx context.Context, q DefaultsQuerier) (Periods, int64, error) {
-	config, err := q.GetPlatformRetentionConfig(ctx)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Builtin(), 0, nil
-	}
+	config, found, err := GetDefaults(ctx, q)
 	if err != nil {
-		return Periods{}, 0, fmt.Errorf("read platform retention defaults: %w", err)
+		return Periods{}, 0, err
+	}
+	if !found {
+		return Builtin(), 0, nil
 	}
 	return FromPlatformConfig(config), config.Revision, nil
 }

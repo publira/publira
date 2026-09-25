@@ -37,7 +37,7 @@ type command struct {
 
 // groups are the settings and provisioning command groups, dispatched beside db
 // and job.
-var groups = []commandGroup{smtpGroup, storageGroup, tenantGroup, webPushGroup}
+var groups = []commandGroup{policyGroup, retentionGroup, smtpGroup, storageGroup, tenantGroup, webPushGroup}
 
 func lookupGroup(name string) *commandGroup {
 	for i := range groups {

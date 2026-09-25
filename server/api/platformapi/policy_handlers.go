@@ -2,22 +2,15 @@ package platformapi
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
 	"connectrpc.com/connect"
 
-	"github.com/publira/publira/server/internal/auditlog"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
-
-// errPlatformPolicyConflict is what a save based on a revision the stored row
-// has moved past reports.
-var errPlatformPolicyConflict = errors.New("platform policy has changed since it was read")
 
 func minuteDayToProto(limit platformpolicy.MinuteDay) *publirasplatformv1.MinuteDayLimit {
 	return &publirasplatformv1.MinuteDayLimit{PerMinute: int32(limit.PerMinute), PerDay: int32(limit.PerDay)}
@@ -91,63 +84,16 @@ func (s *platformServer) GetPlatformPolicy(
 	}), nil
 }
 
-// writePlatformPolicy locks the row, compares its revision with the one the
-// request states, and writes only when they match. The audit entry commits with
-// the write, so a change to the security policy never goes unrecorded.
-func (s *platformServer) writePlatformPolicy(
-	ctx context.Context,
-	policy platformpolicy.Policy,
-	expectedRevision int64,
-	audit *auditlog.PlatformEntry,
-) (dbmodels.PlatformPolicyConfig, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to begin update platform policy transaction", err)
+// platformPolicyError maps what platformpolicy refuses to this API's codes,
+// naming the request field when the refusal has one.
+func (s *platformServer) platformPolicyError(ctx context.Context, err error) error {
+	if connectErr := rpcerrors.FromFieldError(err); connectErr != nil {
+		return connectErr
 	}
-	defer tx.Rollback() //nolint:errcheck
-
-	txq := dbmodels.New(tx)
-	params := policy.ConfigParams()
-
-	var updated dbmodels.PlatformPolicyConfig
-	current, err := txq.LockPlatformPolicyConfig(ctx)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		// Any revision but zero was read from a row that has since been
-		// deleted, and creating one would resurrect values nobody confirmed.
-		if expectedRevision != 0 {
-			return dbmodels.PlatformPolicyConfig{}, connect.NewError(connect.CodeFailedPrecondition, errPlatformPolicyConflict)
-		}
-		updated, err = txq.InsertPlatformPolicyConfig(ctx, dbmodels.InsertPlatformPolicyConfigParams(params))
-		if err != nil {
-			// Two first saves both find nothing to lock; the primary key
-			// settles which one wins.
-			if dberr.IsUniqueViolation(err) {
-				return dbmodels.PlatformPolicyConfig{}, connect.NewError(connect.CodeFailedPrecondition, errPlatformPolicyConflict)
-			}
-			return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to create platform policy", err)
-		}
-	case err != nil:
-		return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to lock platform policy", err)
-	default:
-		if expectedRevision != current.Revision {
-			return dbmodels.PlatformPolicyConfig{}, connect.NewError(connect.CodeFailedPrecondition, errPlatformPolicyConflict)
-		}
-		updated, err = txq.UpdatePlatformPolicyConfig(ctx, params)
-		if err != nil {
-			return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to update platform policy", err)
-		}
+	if errors.Is(err, platformpolicy.ErrConflict) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-
-	if audit != nil {
-		if err := auditlog.WritePlatform(ctx, txq, s.logger, *audit); err != nil {
-			return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to audit platform policy", err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return dbmodels.PlatformPolicyConfig{}, s.internalDBError(ctx, "failed to commit platform policy", err)
-	}
-	return updated, nil
+	return s.internalDBError(ctx, "failed to save platform policy", err)
 }
 
 func (s *platformServer) UpdatePlatformPolicy(
@@ -155,33 +101,25 @@ func (s *platformServer) UpdatePlatformPolicy(
 	req *connect.Request[publirasplatformv1.UpdatePlatformPolicyRequest],
 ) (*connect.Response[publirasplatformv1.UpdatePlatformPolicyResponse], error) {
 	if req.Msg.GetPolicy() == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("policy is required"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("policy is required"), platformpolicy.FieldPolicy)
 	}
-	policy := platformPolicyFromProto(req.Msg.GetPolicy())
-	if err := policy.Validate(); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	expectedRevision := req.Msg.GetExpectedRevision()
+	params := platformpolicy.SaveParams{
+		Policy:           platformPolicyFromProto(req.Msg.GetPolicy()),
+		ExpectedRevision: &expectedRevision,
 	}
-	if req.Msg.ExpectedRevision < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))
+	if err := params.Validate(); err != nil {
+		return nil, s.platformPolicyError(ctx, err)
 	}
-
-	var audit *auditlog.PlatformEntry
-	if actor, ok := platformActorFromContext(ctx); ok {
-		audit = &auditlog.PlatformEntry{
-			ActorPlatformUserID: actor.UserID,
-			ActorRole:           actor.Role,
-			Action:              "platform_policy_updated",
-			TargetType:          "platform_policy",
-			TargetID:            "platform",
-			Outcome:             auditlog.OutcomeSuccess,
-			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
-		}
-	}
-	updated, err := s.writePlatformPolicy(ctx, policy, req.Msg.ExpectedRevision, audit)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
+	updated, err := platformpolicy.Save(ctx, s.db, s.logger, actor, params)
+	if err != nil {
+		return nil, s.platformPolicyError(ctx, err)
+	}
 	return connect.NewResponse(&publirasplatformv1.UpdatePlatformPolicyResponse{
 		Policy:   platformPolicyToProto(platformpolicy.FromConfig(updated)),
 		Revision: updated.Revision,

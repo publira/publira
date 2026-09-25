@@ -166,37 +166,60 @@ func TestDBUpdatePlatformPolicyRefusesARevisionWithoutARow(t *testing.T) {
 	}
 }
 
+// A refusal names the request field at fault, the same field publiractl
+// policy set names through the flag it came from.
 func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 	client, pg, operator := newPolicyClient(t)
 
-	for name, adjust := range map[string]func(*publirasplatformv1.PlatformPolicy){
-		"no policy":    nil,
-		"a zero limit": func(p *publirasplatformv1.PlatformPolicy) { p.CommunityLimitDefaults.CommentPost.PerMinute = 0 },
-		"a day below its hour": func(p *publirasplatformv1.PlatformPolicy) {
-			p.MailRequestsPerSource.PerDay = p.MailRequestsPerSource.PerHour - 1
+	for name, tc := range map[string]struct {
+		adjust func(*publirasplatformv1.PlatformPolicy)
+		field  string
+	}{
+		"no policy": {nil, "policy"},
+		"a zero limit": {
+			func(p *publirasplatformv1.PlatformPolicy) { p.CommunityLimitDefaults.CommentPost.PerMinute = 0 },
+			"policy.community_limit_defaults.comment_post.per_minute",
 		},
-		"a missing limit":           func(p *publirasplatformv1.PlatformPolicy) { p.PasswordVerification = nil },
-		"a missing community group": func(p *publirasplatformv1.PlatformPolicy) { p.CommunityLimitDefaults = nil },
-		"a duplicate window over a week": func(p *publirasplatformv1.PlatformPolicy) {
-			p.CommunityLimitDefaults.DuplicateCommentWindowMinutes = 7*24*60 + 1
+		"a day below its hour": {
+			func(p *publirasplatformv1.PlatformPolicy) {
+				p.MailRequestsPerSource.PerDay = p.MailRequestsPerSource.PerHour - 1
+			},
+			"policy.mail_requests_per_source.per_day",
+		},
+		"a missing limit": {
+			func(p *publirasplatformv1.PlatformPolicy) { p.PasswordVerification = nil },
+			"policy.password_verification.per_minute",
+		},
+		"a missing community group": {
+			func(p *publirasplatformv1.PlatformPolicy) { p.CommunityLimitDefaults = nil },
+			"policy.community_limit_defaults.comment_post.per_minute",
+		},
+		"a duplicate window over a week": {
+			func(p *publirasplatformv1.PlatformPolicy) {
+				p.CommunityLimitDefaults.DuplicateCommentWindowMinutes = 7*24*60 + 1
+			},
+			"policy.community_limit_defaults.duplicate_comment_window_minutes",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var policy *publirasplatformv1.PlatformPolicy
-			if adjust != nil {
+			if tc.adjust != nil {
 				policy = platformPolicyToProto(platformpolicy.Defaults())
-				adjust(policy)
+				tc.adjust(policy)
 			}
 			_, err := client.UpdatePlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{Policy: policy}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformPolicy code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
+			assertFieldViolation(t, err, tc.field)
 		})
 	}
 
-	if _, err := updatePolicy(t, client, operator, platformpolicy.Defaults(), -1); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	_, err := updatePolicy(t, client, operator, platformpolicy.Defaults(), -1)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdatePlatformPolicy with a negative revision code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertFieldViolation(t, err, "expected_revision")
 	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_policy_config`); got != 0 {
 		t.Fatalf("platform_policy_config rows = %d, want the rejected saves to write nothing", got)
 	}
