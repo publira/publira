@@ -304,7 +304,7 @@ func TestReaderAddressRequestsKeepOneLinkUnderConcurrentProcessing(t *testing.T)
 
 // A worker that dies while it holds a sign-up leaves the request behind, and
 // the next worker opens the account from it. Once the request is done, the
-// password hash it carried is gone from the row.
+// password hash and the form's contents it carried are gone from the row.
 func TestReaderSignupRequestSurvivesAWorkerThatDiesHoldingIt(t *testing.T) {
 	env := newReaderRequestEnv(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -353,8 +353,68 @@ func TestReaderSignupRequestSurvivesAWorkerThatDiesHoldingIt(t *testing.T) {
 	if accounts := env.count(t, `SELECT count(*) FROM users WHERE id = $1`, userID); accounts != 1 {
 		t.Fatalf("accounts opened from the request = %d, want 1", accounts)
 	}
-	if strings.Contains(string(done.Payload), "password_hash") {
-		t.Fatalf("payload of the done request still holds the password hash: %s", done.Payload)
+	assertPayloadDropsFormContents(t, done.Payload)
+}
+
+func assertPayloadDropsFormContents(t *testing.T, payload json.RawMessage) {
+	t.Helper()
+
+	var body map[string]any
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("decode payload %s: %v", payload, err)
+	}
+	for _, key := range []string{"password_hash", "email", "name", "birth_date"} {
+		if _, ok := body[key]; ok {
+			t.Fatalf("payload of the done request still holds %s: %s", key, payload)
+		}
+	}
+	if body["tenant_id"] == nil {
+		t.Fatalf("payload of the done request lost its tenant_id: %s", payload)
+	}
+}
+
+// An address someone typed into the reset or the resend form is not kept once
+// the request is done, whether or not an account holds it.
+func TestReaderAddressRequestsDropTheAddressOnceDone(t *testing.T) {
+	env := newReaderRequestEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	member := env.pg.SeedEndUser(t, env.tenant.ID, "READERREQU01", "member@reader-request.example.com", "Member")
+
+	queries := dbmodels.New(env.pg.DB)
+	var events []dbmodels.OutboxEvent
+	for _, eventType := range []string{outbox.EventTypeReaderPasswordResetRequest, outbox.EventTypeReaderEmailVerificationRequest} {
+		for _, email := range []string{member.Email, "stranger@reader-request.example.com"} {
+			body, err := json.Marshal(map[string]string{"tenant_id": env.tenant.ID.String(), "email": email})
+			if err != nil {
+				t.Fatalf("marshal payload: %v", err)
+			}
+			id := uuid.Must(uuid.NewV7())
+			event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+				ID:             id,
+				TenantID:       uuid.NullUUID{UUID: env.tenant.ID, Valid: true},
+				EventType:      eventType,
+				Payload:        body,
+				IdempotencyKey: eventType + ":" + id.String(),
+				AvailableAt:    time.Now().UTC().Add(-time.Second),
+			})
+			if err != nil {
+				t.Fatalf("InsertOutboxEvent: %v", err)
+			}
+			events = append(events, event)
+		}
+	}
+
+	handlers := outbox.NewRegistry()
+	handlers.Register(outbox.EventTypeReaderPasswordResetRequest, outbox.NewReaderPasswordResetRequestHandler(env.cfg))
+	handlers.Register(outbox.EventTypeReaderEmailVerificationRequest, outbox.NewReaderEmailVerificationRequestHandler(env.cfg))
+	startTestWorker(t, env.pg.DB, outbox.Config{Handlers: handlers})
+	for _, event := range events {
+		done := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+		if strings.Contains(string(done.Payload), "@reader-request.example.com") {
+			t.Fatalf("payload of the done %s still holds the address: %s", event.EventType, done.Payload)
+		}
+		assertPayloadDropsFormContents(t, done.Payload)
 	}
 }
 
