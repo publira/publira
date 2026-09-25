@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -574,9 +578,12 @@ export const ThemeSettingsForm = ({
 
             <div className="flex justify-end">
               <Button disabled={isPending} type="submit">
-                {isPending
-                  ? t("admin.settings.saving")
-                  : t("admin.settings.theme.submit")}
+                <ActionFormIdle>
+                  <ClientMessage message="admin.settings.theme.submit" />
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <ClientMessage message="admin.settings.saving" />
+                </ActionFormPending>
               </Button>
             </div>
           </form>

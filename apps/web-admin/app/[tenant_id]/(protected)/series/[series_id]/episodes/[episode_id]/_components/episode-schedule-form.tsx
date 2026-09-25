@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -13,7 +17,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -38,7 +42,6 @@ export const EpisodeScheduleForm = ({
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -86,9 +89,12 @@ export const EpisodeScheduleForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={isPending} type="submit">
-            {isPending
-              ? t("admin.series.episodes.updating")
-              : t("admin.series.episodes.schedule_update")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.series.episodes.schedule_update" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.series.episodes.updating" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -44,13 +48,6 @@ const PURCHASE_AVAILABILITY_ITEMS = [
     value: "app",
   },
 ];
-
-const SubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.settings.saving" />
-  ) : (
-    <ClientMessage message="admin.settings.purchase.submit" />
-  );
 
 interface PurchaseSettingsFieldsProps {
   disabled: boolean;
@@ -253,7 +250,12 @@ export const TenantPurchaseSettingsForm = ({
 
         <div className="flex flex-wrap gap-3">
           <Button disabled={fieldsDisabled} type="submit">
-            <SubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.purchase.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

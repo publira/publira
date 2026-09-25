@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -76,18 +80,6 @@ const commentModeItems = (disabled: boolean) => [
     value: "approval_required",
   },
 ];
-
-/**
- * What the save control says, idle and while it is in flight. Each branch
- * names its key inside the `<ClientMessage>` it returns, so the key stays
- * where a translation extractor can see it.
- */
-const SubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.settings.saving" />
-  ) : (
-    <ClientMessage message="admin.settings.comments.submit" />
-  );
 
 export const TenantCommentSettingsForm = ({
   action,
@@ -200,7 +192,12 @@ export const TenantCommentSettingsForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={fieldsDisabled || isPending} type="submit">
-            <SubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.comments.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -17,7 +21,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState, useRef } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { cancelTenantAdminInvitationAction } from "../_lib/actions";
@@ -32,7 +36,6 @@ export const InvitationCancelButton = ({
   email,
   invitationId,
 }: InvitationCancelButtonProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const { add } = useToastManager();
   const formRef = useRef<HTMLFormElement>(null);
@@ -56,11 +59,9 @@ export const InvitationCancelButton = ({
   );
 
   return (
-    <div className="grid gap-1">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="invitation_id" type="hidden" value={invitationId} />
-      </form>
+    <form action={formAction} className="grid gap-1" ref={formRef}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="invitation_id" type="hidden" value={invitationId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -70,9 +71,12 @@ export const InvitationCancelButton = ({
               type="button"
               variant="destructive"
             >
-              {isPending
-                ? t("admin.members.canceling")
-                : t("admin.members.cancel_action")}
+              <ActionFormIdle>
+                <ClientMessage message="admin.members.cancel_action" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <ClientMessage message="admin.members.canceling" />
+              </ActionFormPending>
             </Button>
           }
         />
@@ -105,6 +109,6 @@ export const InvitationCancelButton = ({
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

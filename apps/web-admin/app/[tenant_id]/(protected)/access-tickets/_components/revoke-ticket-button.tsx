@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -51,11 +55,9 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
   );
 
   return (
-    <div className="grid gap-1">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={publicId} />
-      </form>
+    <form action={formAction} className="grid gap-1" ref={formRef}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={publicId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -65,9 +67,12 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
               type="button"
               variant="outline"
             >
-              {isPending
-                ? t("admin.access_tickets.revoking")
-                : t("admin.access_tickets.revoke")}
+              <ActionFormIdle>
+                <ClientMessage message="admin.access_tickets.revoke" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <ClientMessage message="admin.access_tickets.revoking" />
+              </ActionFormPending>
             </Button>
           }
         />
@@ -97,6 +102,6 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

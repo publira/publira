@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -183,9 +187,12 @@ export const TenantIconForm = ({
             type="submit"
             value="upload"
           >
-            {isPending
-              ? t("admin.settings.saving")
-              : t("admin.settings.icon.submit")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.icon.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

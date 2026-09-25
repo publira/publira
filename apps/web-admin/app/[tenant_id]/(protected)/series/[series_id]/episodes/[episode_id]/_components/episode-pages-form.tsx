@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -265,18 +269,20 @@ export const EpisodePagesForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={isPending} type="submit">
-            {(() => {
-              if (isPending) {
-                return t("admin.series.episodes.pages.adding");
-              }
-              if (uploadMode === "zip") {
-                return t("admin.series.episodes.pages.submit_zip");
-              }
-              if (uploadMode === "epub") {
-                return t("admin.series.episodes.pages.submit_epub");
-              }
-              return t("admin.series.episodes.pages.submit_image");
-            })()}
+            <ActionFormIdle>
+              {uploadMode === "pages" ? (
+                <ClientMessage message="admin.series.episodes.pages.submit_image" />
+              ) : null}
+              {uploadMode === "zip" ? (
+                <ClientMessage message="admin.series.episodes.pages.submit_zip" />
+              ) : null}
+              {uploadMode === "epub" ? (
+                <ClientMessage message="admin.series.episodes.pages.submit_epub" />
+              ) : null}
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.series.episodes.pages.adding" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -21,7 +25,7 @@ import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState, useContext, useRef } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { hideCommentAction, purgeCommentAction } from "../_lib/actions";
@@ -42,16 +46,13 @@ interface CommentReasonDialogProps {
   publicId: string;
 }
 
-interface ReasonDialogCopy {
-  confirm: string;
-  description: string;
-  done: string;
-  idle: string;
-  pending: string;
-  reasonLabel: string;
-  reasonPlaceholder: string;
-  title: string;
-}
+/** What the toast says once the removal has landed. */
+const ReasonActionDone = ({ action }: { action: ReasonCommentAction }) =>
+  action === "hide" ? (
+    <ClientMessage message="admin.comments.hidden" />
+  ) : (
+    <ClientMessage message="admin.comments.purged" />
+  );
 
 export const CommentReasonDialog = ({
   action,
@@ -62,28 +63,6 @@ export const CommentReasonDialog = ({
     throw new Error("AdminLocaleProvider is required.");
   }
   const t = useClientMessages();
-  const copy: ReasonDialogCopy =
-    action === "hide"
-      ? {
-          confirm: t("admin.comments.hide_confirm_action"),
-          description: t("admin.comments.hide_confirm_description"),
-          done: t("admin.comments.hidden"),
-          idle: t("admin.comments.hide"),
-          pending: t("admin.comments.hiding"),
-          reasonLabel: t("admin.comments.reason_optional"),
-          reasonPlaceholder: t("admin.comments.reason_placeholder"),
-          title: t("admin.comments.hide_confirm_title"),
-        }
-      : {
-          confirm: t("admin.comments.purge_confirm_action"),
-          description: t("admin.comments.purge_confirm_description"),
-          done: t("admin.comments.purged"),
-          idle: t("admin.comments.purge"),
-          pending: t("admin.comments.purging"),
-          reasonLabel: t("admin.comments.reason_required"),
-          reasonPlaceholder: t("admin.comments.reason_placeholder"),
-          title: t("admin.comments.purge_confirm_title"),
-        };
   const tenantId = useTenantId();
   const { add } = useToastManager();
   // A public id is unique across the tenant, so it is enough to keep the two
@@ -101,7 +80,7 @@ export const CommentReasonDialog = ({
         ? hideCommentAction(previousState, formData)
         : purgeCommentAction(previousState, formData));
       if (nextState?.ok) {
-        add({ title: copy.done, type: "success" });
+        add({ title: <ReasonActionDone action={action} />, type: "success" });
       }
       return nextState;
     },
@@ -109,17 +88,13 @@ export const CommentReasonDialog = ({
   );
 
   return (
-    <div className="grid gap-1">
-      {/*
-        The form stays outside the dialog and the reason field joins it through
-        `form=`, so confirming submits a form that is still mounted while the
-        popup is being torn down. Keeping the fields inside the popup instead
-        would race the unmount for the submit.
-      */}
-      <form action={formAction} className="hidden" id={formId} ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={publicId} />
-      </form>
+    // The form wraps the dialog rather than sitting in its popup, and the reason
+    // field joins it through `form=`, so confirming submits a form that is
+    // still mounted while the popup is being torn down. Keeping the fields
+    // inside the popup instead would race the unmount for the submit.
+    <form action={formAction} className="grid gap-1" id={formId} ref={formRef}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={publicId} />
       <Dialog>
         <DialogTrigger
           render={
@@ -129,7 +104,25 @@ export const CommentReasonDialog = ({
               type="button"
               variant={action === "purge" ? "destructive" : "outline"}
             >
-              {isPending ? copy.pending : copy.idle}
+              {action === "hide" ? (
+                <>
+                  <ActionFormIdle>
+                    <ClientMessage message="admin.comments.hide" />
+                  </ActionFormIdle>
+                  <ActionFormPending>
+                    <ClientMessage message="admin.comments.hiding" />
+                  </ActionFormPending>
+                </>
+              ) : (
+                <>
+                  <ActionFormIdle>
+                    <ClientMessage message="admin.comments.purge" />
+                  </ActionFormIdle>
+                  <ActionFormPending>
+                    <ClientMessage message="admin.comments.purging" />
+                  </ActionFormPending>
+                </>
+              )}
             </Button>
           }
         />
@@ -139,22 +132,34 @@ export const CommentReasonDialog = ({
             <DialogPopup>
               <DialogHeader>
                 <DialogTitle className="text-lg font-semibold">
-                  {copy.title}
+                  {action === "hide" ? (
+                    <ClientMessage message="admin.comments.hide_confirm_title" />
+                  ) : (
+                    <ClientMessage message="admin.comments.purge_confirm_title" />
+                  )}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  {copy.description}
+                  {action === "hide" ? (
+                    <ClientMessage message="admin.comments.hide_confirm_description" />
+                  ) : (
+                    <ClientMessage message="admin.comments.purge_confirm_description" />
+                  )}
                 </DialogDescription>
               </DialogHeader>
 
               <Field className="mt-4">
                 <FieldLabel required={action === "purge"}>
-                  {copy.reasonLabel}
+                  {action === "hide" ? (
+                    <ClientMessage message="admin.comments.reason_optional" />
+                  ) : (
+                    <ClientMessage message="admin.comments.reason_required" />
+                  )}
                 </FieldLabel>
                 <FieldContent>
                   <Textarea
                     form={formId}
                     name="reason"
-                    placeholder={copy.reasonPlaceholder}
+                    placeholder={t("admin.comments.reason_placeholder")}
                   />
                 </FieldContent>
               </Field>
@@ -176,7 +181,11 @@ export const CommentReasonDialog = ({
                       type="button"
                       variant={action === "purge" ? "destructive" : "default"}
                     >
-                      {copy.confirm}
+                      {action === "hide" ? (
+                        <ClientMessage message="admin.comments.hide_confirm_action" />
+                      ) : (
+                        <ClientMessage message="admin.comments.purge_confirm_action" />
+                      )}
                     </Button>
                   }
                 />
@@ -188,6 +197,6 @@ export const CommentReasonDialog = ({
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

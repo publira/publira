@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -15,7 +19,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useRef } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { deleteGenreAction } from "../_lib/actions";
@@ -37,7 +41,6 @@ export const GenreDeleteButton = ({
   name,
   publicId,
 }: GenreDeleteButtonProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(
@@ -46,11 +49,9 @@ export const GenreDeleteButton = ({
   );
 
   return (
-    <div className="grid gap-1">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={publicId} />
-      </form>
+    <form action={formAction} className="grid gap-1" ref={formRef}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={publicId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -60,9 +61,12 @@ export const GenreDeleteButton = ({
               type="button"
               variant="destructive"
             >
-              {isPending
-                ? t("admin.genres.deleting")
-                : t("admin.genres.delete_action")}
+              <ActionFormIdle>
+                <ClientMessage message="admin.genres.delete_action" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <ClientMessage message="admin.genres.deleting" />
+              </ActionFormPending>
             </Button>
           }
         />
@@ -97,6 +101,6 @@ export const GenreDeleteButton = ({
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

@@ -1,11 +1,14 @@
 "use client";
 
 import { CheckIcon, CloseIcon } from "@publira/icons";
-import { Button } from "@publira/ui-components/button";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { cn } from "@publira/utils";
-import type { MouseEvent } from "react";
-import { startTransition, useActionState, useCallback } from "react";
+import { useActionState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 
@@ -19,30 +22,14 @@ interface StorageConnectionTestProps {
 }
 
 /**
- * Runs the connection test with whatever the surrounding form holds, saved or
- * not. The Action is dispatched from the click rather than as the button's
- * `formAction`, because React resets a form once a form Action settles, and a
- * test is not a reason to wipe the values the operator is about to save.
+ * Runs the connection test with whatever the surrounding settings form holds,
+ * saved or not, as a second submission of that form.
  */
 export const StorageConnectionTest = ({
   action,
 }: StorageConnectionTestProps) => {
-  const [state, dispatch, isPending] = useActionState(action, null);
+  const [state, dispatch] = useActionState(action, null);
   const t = useClientMessages();
-
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const { form } = event.currentTarget;
-      if (!form) {
-        return;
-      }
-      const formData = new FormData(form);
-      startTransition(() => {
-        dispatch(formData);
-      });
-    },
-    [dispatch]
-  );
 
   return (
     <div className="grid gap-3 rounded-control border border-border p-4">
@@ -55,18 +42,14 @@ export const StorageConnectionTest = ({
         </p>
       </div>
       <div>
-        <Button
-          disabled={isPending}
-          onClick={handleClick}
-          type="button"
-          variant="outline"
-        >
-          {isPending ? (
-            <ClientMessage message="platform.storage.test.pending" />
-          ) : (
+        <ActionFormSubmit formAction={dispatch} variant="outline">
+          <ActionFormIdle>
             <ClientMessage message="platform.storage.test.submit" />
-          )}
-        </Button>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="platform.storage.test.pending" />
+          </ActionFormPending>
+        </ActionFormSubmit>
       </div>
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

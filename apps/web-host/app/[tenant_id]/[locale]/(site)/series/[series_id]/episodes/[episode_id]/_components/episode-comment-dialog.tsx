@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -155,11 +159,12 @@ export const EpisodeCommentDialog = ({
                     disabled={isPending}
                     type="submit"
                   >
-                    {isPending ? (
-                      <ClientMessage message="host.episode.comments.posting" />
-                    ) : (
+                    <ActionFormIdle>
                       <ClientMessage message="host.episode.comments.submit" />
-                    )}
+                    </ActionFormIdle>
+                    <ActionFormPending>
+                      <ClientMessage message="host.episode.comments.posting" />
+                    </ActionFormPending>
                   </Button>
                   {state ? (
                     <FormMessage variant={state.ok ? "success" : "destructive"}>

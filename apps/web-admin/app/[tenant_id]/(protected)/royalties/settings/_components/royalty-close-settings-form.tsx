@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -62,13 +66,6 @@ const closeModeItems = (disabled: boolean) => [
     value: "automatic",
   },
 ];
-
-const SubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.settings.saving" />
-  ) : (
-    <ClientMessage message="admin.settings.royalties.submit" />
-  );
 
 export const RoyaltyCloseSettingsForm = ({
   action,
@@ -193,7 +190,12 @@ export const RoyaltyCloseSettingsForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={controlsDisabled} type="submit">
-            <SubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.royalties.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

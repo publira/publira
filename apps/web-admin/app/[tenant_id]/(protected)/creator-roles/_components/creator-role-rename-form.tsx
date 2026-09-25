@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -65,11 +69,12 @@ export const CreatorRoleRenameForm = ({
           </FieldContent>
         </Field>
         <Button disabled={isPending} size="sm" type="submit" variant="outline">
-          {isPending ? (
-            <ClientMessage message="admin.creator_roles.saving" />
-          ) : (
+          <ActionFormIdle>
             <ClientMessage message="admin.creator_roles.save_action" />
-          )}
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.creator_roles.saving" />
+          </ActionFormPending>
         </Button>
       </div>
       {state && state.publicId === creatorRole.publicId ? (

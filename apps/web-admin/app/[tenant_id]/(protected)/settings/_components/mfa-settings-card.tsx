@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -13,7 +17,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { MfaCodeField } from "#components/mfa-code-field";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
@@ -47,27 +51,24 @@ const MfaStartForm = ({
   isPending,
   state,
   tenantId,
-}: MfaFormProps & { state: MfaEnrollmentStartState }) => {
-  const t = useClientMessages();
-
-  return (
-    <form action={action} className="grid gap-3">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-      <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
-          {t(
-            isPending
-              ? "admin.auth.mfa.enroll_starting"
-              : "admin.settings.mfa.enable_submit"
-          )}
-        </Button>
-      </div>
-    </form>
-  );
-};
+}: MfaFormProps & { state: MfaEnrollmentStartState }) => (
+  <form action={action} className="grid gap-3">
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    {state && !state.ok ? (
+      <FormMessage variant="destructive">{state.message}</FormMessage>
+    ) : null}
+    <div className="flex justify-end">
+      <Button disabled={isPending} type="submit">
+        <ActionFormIdle>
+          <ClientMessage message="admin.settings.mfa.enable_submit" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="admin.auth.mfa.enroll_starting" />
+        </ActionFormPending>
+      </Button>
+    </div>
+  </form>
+);
 
 const MfaConfirmForm = ({
   action,
@@ -80,29 +81,26 @@ const MfaConfirmForm = ({
   qr: QrCodePath;
   secret: string;
   state: MfaEnrollmentConfirmState;
-}) => {
-  const t = useClientMessages();
-
-  return (
-    <form action={action} className="grid gap-4">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <MfaEnrollmentSecret qr={qr} secret={secret} />
-      <MfaCodeField allowRecoveryCode={false} disabled={isPending} />
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-      <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
-          {t(
-            isPending
-              ? "admin.auth.mfa.enroll_confirm_submitting"
-              : "admin.auth.mfa.enroll_confirm_submit"
-          )}
-        </Button>
-      </div>
-    </form>
-  );
-};
+}) => (
+  <form action={action} className="grid gap-4">
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <MfaEnrollmentSecret qr={qr} secret={secret} />
+    <MfaCodeField allowRecoveryCode={false} disabled={isPending} />
+    {state && !state.ok ? (
+      <FormMessage variant="destructive">{state.message}</FormMessage>
+    ) : null}
+    <div className="flex justify-end">
+      <Button disabled={isPending} type="submit">
+        <ActionFormIdle>
+          <ClientMessage message="admin.auth.mfa.enroll_confirm_submit" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="admin.auth.mfa.enroll_confirm_submitting" />
+        </ActionFormPending>
+      </Button>
+    </div>
+  </form>
+);
 
 const MfaRegenerateForm = ({
   action,
@@ -129,11 +127,12 @@ const MfaRegenerateForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit" variant="outline">
-          {t(
-            isPending
-              ? "admin.settings.mfa.regenerate_submitting"
-              : "admin.settings.mfa.regenerate_submit"
-          )}
+          <ActionFormIdle>
+            <ClientMessage message="admin.settings.mfa.regenerate_submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.settings.mfa.regenerate_submitting" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>
@@ -165,11 +164,12 @@ const MfaDisableForm = ({
       ) : null}
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit" variant="destructive">
-          {t(
-            isPending
-              ? "admin.settings.mfa.disable_submitting"
-              : "admin.settings.mfa.disable_submit"
-          )}
+          <ActionFormIdle>
+            <ClientMessage message="admin.settings.mfa.disable_submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.settings.mfa.disable_submitting" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>

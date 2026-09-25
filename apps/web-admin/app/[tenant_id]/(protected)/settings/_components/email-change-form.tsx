@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -18,7 +22,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EmailChangeActionState } from "../settings-types";
@@ -31,7 +35,6 @@ interface EmailChangeFormProps {
 }
 
 export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [currentEmail, setCurrentEmail] = useState("");
@@ -139,9 +142,12 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={isPending} type="submit">
-            {isPending
-              ? t("admin.settings.email_change.submitting")
-              : t("admin.settings.email_change.submit")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.email_change.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.email_change.submitting" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

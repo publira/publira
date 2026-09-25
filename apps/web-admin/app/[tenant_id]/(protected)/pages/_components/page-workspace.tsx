@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -377,9 +381,12 @@ export const PageWorkspace = ({
 
           <div className="flex justify-end">
             <Button disabled={isSavePending} type="submit">
-              {isSavePending
-                ? t("admin.pages.workspace.saving")
-                : t("admin.pages.workspace.save")}
+              <ActionFormIdle>
+                <ClientMessage message="admin.pages.workspace.save" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <ClientMessage message="admin.pages.workspace.saving" />
+              </ActionFormPending>
             </Button>
           </div>
         </form>

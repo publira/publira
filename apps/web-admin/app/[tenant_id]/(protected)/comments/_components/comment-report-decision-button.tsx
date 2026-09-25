@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useToastManager } from "@publira/ui-components/toast";
@@ -27,26 +31,29 @@ interface CommentReportDecisionButtonProps {
  * translation extractor can see it.
  */
 const DecisionLabel = ({
-  isPending,
   resolution,
 }: {
-  isPending: boolean;
   resolution: CommentReportResolution;
-}) => {
-  if (resolution === "resolved") {
-    return isPending ? (
-      <ClientMessage message="admin.comments.reports.resolving" />
-    ) : (
-      <ClientMessage message="admin.comments.reports.resolve" />
-    );
-  }
-
-  return isPending ? (
-    <ClientMessage message="admin.comments.reports.rejecting" />
+}) =>
+  resolution === "resolved" ? (
+    <>
+      <ActionFormIdle>
+        <ClientMessage message="admin.comments.reports.resolve" />
+      </ActionFormIdle>
+      <ActionFormPending>
+        <ClientMessage message="admin.comments.reports.resolving" />
+      </ActionFormPending>
+    </>
   ) : (
-    <ClientMessage message="admin.comments.reports.reject" />
+    <>
+      <ActionFormIdle>
+        <ClientMessage message="admin.comments.reports.reject" />
+      </ActionFormIdle>
+      <ActionFormPending>
+        <ClientMessage message="admin.comments.reports.rejecting" />
+      </ActionFormPending>
+    </>
   );
-};
 
 /** What the toast says once the decision has landed. */
 const DecisionDone = ({
@@ -107,7 +114,7 @@ export const CommentReportDecisionButton = ({
         type="submit"
         variant={resolution === "resolved" ? "default" : "outline"}
       >
-        <DecisionLabel isPending={isPending} resolution={resolution} />
+        <DecisionLabel resolution={resolution} />
       </Button>
       {state && !state.ok && state.reportId === reportId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

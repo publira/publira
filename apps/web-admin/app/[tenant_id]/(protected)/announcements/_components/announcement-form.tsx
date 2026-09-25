@@ -1,6 +1,10 @@
 "use client";
 
 import { toIntlLocale } from "@publira/i18n";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import {
@@ -292,9 +296,12 @@ export const AnnouncementForm = ({
 
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          {isPending
-            ? t("admin.announcements.form.submitting")
-            : t("admin.announcements.form.submit")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.announcements.form.submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.announcements.form.submitting" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>

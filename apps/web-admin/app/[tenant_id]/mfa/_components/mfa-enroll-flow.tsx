@@ -5,6 +5,10 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import Link from "next/link";
@@ -35,20 +39,6 @@ const MfaEnrollDoneLabel = ({ signedIn }: { signedIn: boolean }) =>
     <ClientMessage message="admin.auth.mfa.continue_to_console" />
   ) : (
     <ClientMessage message="admin.auth.mfa.back_to_login" />
-  );
-
-const MfaEnrollConfirmLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.auth.mfa.enroll_confirm_submitting" />
-  ) : (
-    <ClientMessage message="admin.auth.mfa.enroll_confirm_submit" />
-  );
-
-const MfaEnrollStartLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.auth.mfa.enroll_starting" />
-  ) : (
-    <ClientMessage message="admin.auth.mfa.enroll_start" />
   );
 
 /**
@@ -103,7 +93,12 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
             disabled={isConfirming}
             type="submit"
           >
-            <MfaEnrollConfirmLabel isPending={isConfirming} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.auth.mfa.enroll_confirm_submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.auth.mfa.enroll_confirm_submitting" />
+            </ActionFormPending>
           </Button>
         </form>
       </AuthScreenBody>
@@ -134,7 +129,12 @@ export const MfaEnrollFlow = ({ nextPath, tenantId }: MfaEnrollFlowProps) => {
             disabled={isStarting}
             type="submit"
           >
-            <MfaEnrollStartLabel isPending={isStarting} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.auth.mfa.enroll_start" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.auth.mfa.enroll_starting" />
+            </ActionFormPending>
           </Button>
         </form>
       </AuthScreenBody>

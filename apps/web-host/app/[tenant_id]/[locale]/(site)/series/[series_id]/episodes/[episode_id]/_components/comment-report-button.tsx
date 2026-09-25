@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -80,9 +84,8 @@ export const CommentReportButton = ({
         formData
       );
       if (nextState?.ok) {
-        // Closing only once the Action has answered keeps the form mounted for
-        // the whole submission, and leaves a rejection on screen in the dialog
-        // the reader can correct it in.
+        // Closing only once the Action has answered leaves a rejection with
+        // the dialog the reader can correct it in.
         setOpen(false);
       }
       return nextState;
@@ -90,9 +93,22 @@ export const CommentReportButton = ({
     null
   );
   const reported = state?.ok === true;
+  // The fields in the popup join the form through `form=`: the popup portals
+  // out of it, while the trigger stays inside, so its wording follows the
+  // submission.
+  const formId = `comment-report-${commentPublicId}`;
 
   return (
-    <div className="grid justify-items-end gap-2">
+    <form
+      action={formAction}
+      className="grid justify-items-end gap-2"
+      id={formId}
+    >
+      <LocaleField />
+      <input name="commentPublicId" type="hidden" value={commentPublicId} />
+      <input name="reason" type="hidden" value={reason} />
+      <input name="returnTo" type="hidden" value={returnTo} />
+      <input name="tenantId" type="hidden" value={tenantId} />
       {reported ? null : (
         <Dialog onOpenChange={setOpen} open={open}>
           <DialogTrigger
@@ -104,94 +120,86 @@ export const CommentReportButton = ({
                 type="button"
                 variant="ghost"
               >
-                {isPending ? (
-                  <ClientMessage message="host.episode.comments.reporting" />
-                ) : (
+                <ActionFormIdle>
                   <ClientMessage message="host.episode.comments.report" />
-                )}
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <ClientMessage message="host.episode.comments.reporting" />
+                </ActionFormPending>
               </Button>
             }
           />
           <DialogPortal>
             <DialogBackdrop />
             <DialogViewport>
-              <DialogPopup>
-                <form action={formAction} className="grid gap-4">
-                  <LocaleField />
-                  <input
-                    name="commentPublicId"
-                    type="hidden"
-                    value={commentPublicId}
-                  />
-                  <input name="reason" type="hidden" value={reason} />
-                  <input name="returnTo" type="hidden" value={returnTo} />
-                  <input name="tenantId" type="hidden" value={tenantId} />
+              <DialogPopup className="grid gap-4">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-semibold">
+                    <ClientMessage message="host.episode.comments.report_title" />
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    <ClientMessage message="host.episode.comments.report_description" />
+                  </DialogDescription>
+                </DialogHeader>
 
-                  <DialogHeader>
-                    <DialogTitle className="text-lg font-semibold">
-                      <ClientMessage message="host.episode.comments.report_title" />
-                    </DialogTitle>
-                    <DialogDescription className="text-sm text-muted-foreground">
-                      <ClientMessage message="host.episode.comments.report_description" />
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <Field>
-                    <FieldLabel required>
-                      <ClientMessage message="host.episode.comments.report_reason_label" />
-                    </FieldLabel>
-                    <FieldContent>
-                      <RadioGroup
-                        items={EPISODE_COMMENT_REPORT_REASONS.map((value) => ({
-                          label: reasonLabels[value],
-                          value,
-                        }))}
-                        onValueChange={(value) => {
-                          if (isEpisodeCommentReportReason(value)) {
-                            setReason(value);
-                          }
-                        }}
-                        value={reason}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel>
-                      <ClientMessage message="host.episode.comments.report_note_label" />
-                    </FieldLabel>
-                    <FieldContent>
-                      <Textarea
-                        name="note"
-                        placeholder={t(
-                          "host.episode.comments.report_note_placeholder"
-                        )}
-                        rows={3}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <DialogFooter>
-                    <DialogClose
-                      render={
-                        <Button type="button" variant="outline">
-                          <ClientMessage message="host.common.cancel" />
-                        </Button>
-                      }
+                <Field>
+                  <FieldLabel required>
+                    <ClientMessage message="host.episode.comments.report_reason_label" />
+                  </FieldLabel>
+                  <FieldContent>
+                    <RadioGroup
+                      items={EPISODE_COMMENT_REPORT_REASONS.map((value) => ({
+                        label: reasonLabels[value],
+                        value,
+                      }))}
+                      onValueChange={(value) => {
+                        if (isEpisodeCommentReportReason(value)) {
+                          setReason(value);
+                        }
+                      }}
+                      value={reason}
                     />
-                    <Button
-                      aria-busy={isPending}
-                      disabled={isPending}
-                      type="submit"
-                    >
-                      {isPending ? (
-                        <ClientMessage message="host.episode.comments.reporting" />
-                      ) : (
-                        <ClientMessage message="host.episode.comments.report_confirm" />
+                  </FieldContent>
+                </Field>
+
+                <Field>
+                  <FieldLabel>
+                    <ClientMessage message="host.episode.comments.report_note_label" />
+                  </FieldLabel>
+                  <FieldContent>
+                    <Textarea
+                      form={formId}
+                      name="note"
+                      placeholder={t(
+                        "host.episode.comments.report_note_placeholder"
                       )}
-                    </Button>
-                  </DialogFooter>
-                </form>
+                      rows={3}
+                    />
+                  </FieldContent>
+                </Field>
+
+                <DialogFooter>
+                  <DialogClose
+                    render={
+                      <Button type="button" variant="outline">
+                        <ClientMessage message="host.common.cancel" />
+                      </Button>
+                    }
+                  />
+                  <Button
+                    aria-busy={isPending}
+                    disabled={isPending}
+                    form={formId}
+                    type="submit"
+                  >
+                    <ActionFormIdle>
+                      <ClientMessage message="host.episode.comments.report_confirm" />
+                    </ActionFormIdle>
+                    <ActionFormPending>
+                      <ClientMessage message="host.episode.comments.reporting" />
+                    </ActionFormPending>
+                  </Button>
+                </DialogFooter>
               </DialogPopup>
             </DialogViewport>
           </DialogPortal>
@@ -202,6 +210,6 @@ export const CommentReportButton = ({
           {state.message}
         </FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

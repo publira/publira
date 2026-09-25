@@ -2,6 +2,10 @@
 
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
 import { CloseIcon, PlusIcon } from "@publira/icons";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -16,7 +20,7 @@ import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
 import {
   isCreditShareTotalSavable,
@@ -164,7 +168,6 @@ export const EpisodeCreatorCreditsForm = ({
   initialCredits: EpisodeCreatorCredit[];
   seriesPublicId: string;
 }) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [rows, setRows] = useState<CreditEditorRow[]>(() =>
@@ -285,9 +288,12 @@ export const EpisodeCreatorCreditsForm = ({
             disabled={isPending || !isCreditShareTotalSavable(shareTotal)}
             type="submit"
           >
-            {isPending
-              ? t("admin.series.episodes.credits.saving")
-              : t("admin.series.episodes.credits.save")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.series.episodes.credits.save" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.series.episodes.credits.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

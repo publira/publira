@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
@@ -335,9 +339,12 @@ export const TicketForm = ({
 
       <div className="flex justify-end">
         <Button disabled={!canSubmit} type="submit">
-          {isPending
-            ? t("admin.access_tickets.form.submitting")
-            : t("admin.access_tickets.form.submit")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.access_tickets.form.submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.access_tickets.form.submitting" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>
