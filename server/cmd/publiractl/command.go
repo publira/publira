@@ -18,11 +18,12 @@ import (
 
 // commandGroup is a group of the settings and provisioning commands, which
 // write the platform_* tables and the tenant rows in place of the Platform
-// Console.
+// Console. A group can hold groups of its own, dispatched by the next word.
 type commandGroup struct {
 	name     string
 	summary  string
 	commands []command
+	groups   []commandGroup
 }
 
 // command is one subcommand of a commandGroup. setup declares its flags and
@@ -100,6 +101,12 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 	if len(args) == 0 {
 		return usageError(stderr, g.name+" requires a command", g.usage())
 	}
+	for _, sub := range g.groups {
+		if sub.name == args[0] {
+			sub.name = g.name + " " + sub.name
+			return runGroup(&sub, args[1:], con, stdout)
+		}
+	}
 	var c *command
 	for i := range g.commands {
 		if g.commands[i].name == args[0] {
@@ -158,6 +165,9 @@ func (g *commandGroup) usage() string {
 	fmt.Fprintf(&b, "\nUsage: publiractl %s <command> [flags]\n\nCommands:\n", g.name)
 	for _, c := range g.commands {
 		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
+	}
+	for _, sub := range g.groups {
+		fmt.Fprintf(&b, "  %-25s %s\n", sub.name, sub.summary)
 	}
 	return b.String()
 }

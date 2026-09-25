@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, and `tenant` creates a tenant in place of the Platform Console.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
 
 ```bash
 task server:build
@@ -42,16 +42,37 @@ River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `
 
 ## tenant
 
-Creates a tenant the way `PlatformTenantService.CreateTenant` does from the Platform Console — the same implementation, `internal/platformtenants` — so a tenant created here is indistinguishable from one created there: it starts on the platform's default time zone with the default creator roles, and every initial administrator is sent an invitation.
+Does to a tenant what `PlatformTenantService` does from the Platform Console, through the same implementation — `internal/platformtenants` and `internal/tenantmembers` — so every command writes the rows the corresponding RPC writes. Every command but `create` names its tenant with `-tenant`, by public ID or by domain.
 
 ```bash
 eval "$(task --silent dev-env:env)"
 go run ./server/cmd/publiractl tenant create \
   -name "Example Comics" \
   -domain comics.example.com \
-  -default-locale en \
-  -initial-admin-email owner@comics.example.com
+  -default-locale en
+go run ./server/cmd/publiractl tenant admin create \
+  -tenant comics.example.com \
+  -email owner@comics.example.com \
+  -name Owner \
+  -generate-password
 ```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `tenant create` | `CreateTenant` | Creates a tenant on the platform's default time zone with the default creator roles, and invites every `-initial-admin-email` |
+| `tenant show` | `GetTenant` | Prints the tenant |
+| `tenant update` | `UpdateTenant` | Replaces the `-name`, `-domain`, or `-admin-domain` it is given and keeps the rest; `-admin-domain ""` goes back to the default console host |
+| `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again |
+| `tenant member list` | `ListTenantMembers` | Prints every user holding a console role |
+| `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `-user` (public ID) or `-email`, the `-role` |
+| `tenant member update-role` | `UpdateTenantMemberRole` | Replaces the `-user`'s console role with `-role` |
+| `tenant member remove` | `RemoveTenantMember` | Takes every console role from the `-user`, who stays a user of the tenant |
+| `tenant invite create` | `CreateTenantAdminInvitation` | Invites `-email` to administer the tenant; an address that already has an account is given `tenant_admin` at once |
+| `tenant invite list` | `ListTenantAdminInvitations` | Prints every invitation with its ID and status |
+| `tenant invite resend`, `tenant invite cancel` | `ResendTenantAdminInvitation`, `CancelTenantAdminInvitation` | Mails the invitation `-id` again with a new link, or withdraws it |
+| `tenant admin create` | — | Creates a console account for `-email` with `-name` and `-role` (`tenant_admin` unless given), its email already verified, and sends no mail |
+
+`tenant create` takes these flags:
 
 | Flag | What it sets |
 | --- | --- |
@@ -61,9 +82,11 @@ go run ./server/cmd/publiractl tenant create \
 | `-default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
 | `-initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
 
-It prints the new tenant's public ID and each invitation it queued to stdout, and files the audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
+`tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a masked prompt, from stdin with `-password-stdin`, or is generated with `-generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
 
-The invitation mail goes on the outbox, as it does from the console, and the [worker](../publira/README.md#publira-worker) is what sends it. An install running no worker gets the tenant and its pending invitations and sends nothing; an invitation's link expires 24 hours after it is created.
+Each command prints what it did to stdout, and files its audit entries in `platform_audit_logs` under the `system` actor with no operator; the member commands file none, as their RPCs do not. A refused value names its flag on stderr and exits `1` with nothing written.
+
+An invitation's mail goes on the outbox, as it does from the console, and the [worker](../publira/README.md#publira-worker) is what sends it. An install running no worker gets the invitation and sends nothing; an invitation's link expires 24 hours after it is created or resent.
 
 Environment variables:
 

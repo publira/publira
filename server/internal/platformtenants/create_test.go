@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
 )
 
@@ -73,9 +74,9 @@ func TestValidateRefusesAField(t *testing.T) {
 			p := validParams()
 			tc.modify(&p)
 			_, err := p.Validate()
-			var invalid *InvalidError
+			var invalid *fielderr.Invalid
 			if !errors.As(err, &invalid) {
-				t.Fatalf("err = %v, want *InvalidError", err)
+				t.Fatalf("err = %v, want *fielderr.Invalid", err)
 			}
 			if invalid.Field != tc.field {
 				t.Fatalf("field = %q, want %q", invalid.Field, tc.field)

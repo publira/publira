@@ -8,6 +8,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -45,6 +46,48 @@ func TestDBAdminLoginIssuesUsableSession(t *testing.T) {
 	}
 	if me.Msg.User.PublicId != tenant.User.PublicID {
 		t.Fatalf("GetMe user = %q, want %q", me.Msg.User.PublicId, tenant.User.PublicID)
+	}
+}
+
+// An account publiractl creates, as publira_platform and with no invitation,
+// signs in to the console straight away.
+func TestDBAdminLoginAcceptsAnAccountCreatedWithoutAnInvitation(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+
+	tx, err := env.PG.OpenPlatformDB(t).BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	member, err := tenantmembers.CreateAccount(ctx, tx, tenantmembers.AccountParams{
+		TenantID: tenant.Tenant.ID,
+		Email:    "second@tenant-a.example.com",
+		Name:     "Second",
+		Password: "a password nobody mailed",
+		Role:     auth.RoleTenantAdmin,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+
+	loggedIn, err := env.authClient().Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+		Tenant:   tenant.tenantContext(),
+		Email:    "second@tenant-a.example.com",
+		Password: "a password nobody mailed",
+	}))
+	if err != nil {
+		t.Fatalf("Login: %v", err)
+	}
+	if loggedIn.Msg.User.PublicId != member.PublicID || loggedIn.Msg.User.Role != auth.RoleTenantAdmin {
+		t.Fatalf("login user = %+v, want %s as %s", loggedIn.Msg.User, member.PublicID, auth.RoleTenantAdmin)
+	}
+	if count := env.countRows(t, `SELECT count(*) FROM outbox_events WHERE tenant_id = $1`, tenant.Tenant.ID); count != 0 {
+		t.Fatalf("queued events = %d, want no mail", count)
 	}
 }
 

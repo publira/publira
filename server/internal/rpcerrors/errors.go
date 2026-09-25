@@ -11,6 +11,7 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/pagination"
 )
 
@@ -71,6 +72,21 @@ func NewFieldViolationError(code connect.Code, err error, field string) *connect
 	return withDetail(code, err, &errdetails.BadRequest{
 		FieldViolations: []*errdetails.BadRequest_FieldViolation{{Field: field}},
 	})
+}
+
+// FromFieldError reports a [fielderr.Invalid] as invalid_argument and a
+// [fielderr.Conflict] as already_exists, each naming its field. It answers nil
+// for any other error.
+func FromFieldError(err error) *connect.Error {
+	var invalid *fielderr.Invalid
+	if errors.As(err, &invalid) {
+		return NewFieldViolationError(connect.CodeInvalidArgument, invalid, invalid.Field)
+	}
+	var conflict *fielderr.Conflict
+	if errors.As(err, &conflict) {
+		return NewFieldViolationError(connect.CodeAlreadyExists, conflict, conflict.Field)
+	}
+	return nil
 }
 
 // NewErrorInfoError reports a stable reason for a failure that is not tied to a
