@@ -18,7 +18,18 @@ import (
 	"strings"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/secretupdate"
+)
+
+// The fields a refusal names, as a [*fielderr.Invalid].
+const (
+	FieldBucket          = "bucket"
+	FieldRegion          = "region"
+	FieldEndpoint        = "endpoint"
+	FieldPublicBaseURL   = "public_base_url"
+	FieldAccessKeyID     = "access_key_id"
+	FieldSecretAccessKey = "secret_access_key"
 )
 
 const (
@@ -116,18 +127,22 @@ func NormalizeCredentials(credentials Credentials) Credentials {
 func Validate(settings Settings) error {
 	settings = Normalize(settings)
 	if err := validateBucketName(settings.Bucket); err != nil {
-		return err
+		return &fielderr.Invalid{Field: FieldBucket, Err: err}
 	}
 	if settings.Region == "" {
-		return errors.New("region is required")
+		return invalid(FieldRegion, "region is required")
 	}
 	if strings.ContainsAny(settings.Region, " \t") {
-		return errors.New("region must not contain whitespace")
+		return invalid(FieldRegion, "region must not contain whitespace")
 	}
-	if err := validateAbsoluteURL("endpoint", settings.Endpoint); err != nil {
+	if err := validateAbsoluteURL(FieldEndpoint, settings.Endpoint); err != nil {
 		return err
 	}
-	return validateAbsoluteURL("public_base_url", settings.PublicBaseURL)
+	return validateAbsoluteURL(FieldPublicBaseURL, settings.PublicBaseURL)
+}
+
+func invalid(field, message string) error {
+	return &fielderr.Invalid{Field: field, Err: errors.New(message)}
 }
 
 // ValidateCredentialPair refuses half a credential. An access key id without
@@ -138,9 +153,9 @@ func ValidateCredentialPair(accessKeyID string, hasSecretAccessKey bool) error {
 	accessKeyID = strings.TrimSpace(accessKeyID)
 	switch {
 	case accessKeyID == "" && hasSecretAccessKey:
-		return ErrAccessKeyIDRequired
+		return &fielderr.Invalid{Field: FieldAccessKeyID, Err: ErrAccessKeyIDRequired}
 	case accessKeyID != "" && !hasSecretAccessKey:
-		return ErrSecretAccessKeyMissing
+		return &fielderr.Invalid{Field: FieldSecretAccessKey, Err: ErrSecretAccessKeyMissing}
 	default:
 		return nil
 	}
@@ -158,7 +173,7 @@ func ValidateKeptSecret(storedAccessKeyID, accessKeyID string, mode secretupdate
 		return nil
 	}
 	if accessKeyID != strings.TrimSpace(storedAccessKeyID) {
-		return ErrAccessKeyIDChanged
+		return &fielderr.Invalid{Field: FieldSecretAccessKey, Err: ErrAccessKeyIDChanged}
 	}
 	return nil
 }
@@ -286,16 +301,16 @@ func validateAbsoluteURL(field, value string) error {
 	}
 	parsed, err := url.Parse(value)
 	if err != nil {
-		return fmt.Errorf("%s must be a valid URL", field)
+		return invalid(field, field+" must be a valid URL")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return fmt.Errorf("%s must be an http or https URL", field)
+		return invalid(field, field+" must be an http or https URL")
 	}
 	if parsed.Host == "" {
-		return fmt.Errorf("%s must name a host", field)
+		return invalid(field, field+" must name a host")
 	}
 	if parsed.RawQuery != "" || parsed.Fragment != "" {
-		return fmt.Errorf("%s must not carry a query or a fragment", field)
+		return invalid(field, field+" must not carry a query or a fragment")
 	}
 	return nil
 }

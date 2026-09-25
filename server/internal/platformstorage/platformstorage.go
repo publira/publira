@@ -2,6 +2,12 @@
 // the platform's saved storage configuration. The row is reread once
 // [RefreshInterval] has passed, and the client built from it is rebuilt only
 // when the row has changed.
+//
+// It also saves that configuration and tests the store it addresses. The
+// platform API's PlatformStorageSettingsService and publiractl storage are
+// adapters over [Save] and [Tester]. A refusal of what the caller asked for is
+// a [*fielderr.Invalid] naming the field at fault, [ErrConflict], or
+// [ErrNotSaved]; any other error is the database's or the store's.
 package platformstorage
 
 import (

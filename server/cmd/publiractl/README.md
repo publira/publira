@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, and `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console.
 
 ```bash
 task server:build
@@ -80,6 +80,46 @@ Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the password `smtp set` stores, and decrypt the one `smtp test` sends with. Required by both: set the values the servers run with.
+
+## storage
+
+Saves and tests the S3-compatible object store `publira server` uploads to and reads images from, and the orphan sweep lists and deletes in. It does what `PlatformStorageSettingsService` does from the Platform Console, through the same implementation, `internal/platformstorage`. Creating the bucket stays with whoever provisions it.
+
+```bash
+eval "$(task --silent dev-env:env)"
+printf '%s' "$AWS_SECRET_ACCESS_KEY" | go run ./server/cmd/publiractl storage set \
+  --bucket publira-images \
+  --region ap-northeast-1 \
+  --access-key-id "$AWS_ACCESS_KEY_ID" \
+  --secret-access-key-stdin
+go run ./server/cmd/publiractl storage test
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `storage set` | `UpdatePlatformStorageSettings` | Replaces every saved setting with the flags given, so a `--public-base-url` left out clears the saved one. Saving what is already saved changes nothing and files nothing |
+| `storage show` | `GetPlatformStorageSettings` | Prints the saved settings and whether a secret access key is saved, never the key |
+| `storage test` | `TestPlatformStorageConnection` | Puts, gets, lists, and deletes a probe object in the saved store, printing one line per check, and exits `1` when any fails |
+
+`storage set` takes these flags:
+
+| Flag | What it sets |
+| --- | --- |
+| `--bucket`, `--region` | The bucket. Required |
+| `--endpoint` | The store's URL, for a store other than Amazon S3 |
+| `--force-path-style` | Addresses the bucket in the URL path, which most self-hosted stores need |
+| `--public-base-url` | The URL stored objects are readable from, when something serves them directly |
+| `--access-key-id` | The access key requests are signed with. Left out, every process signs with the credential the AWS SDK finds for itself, and a saved key is removed |
+
+With `--access-key-id`, the secret access key comes from a masked prompt or from stdin with `--secret-access-key-stdin`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one, which only goes with the access key id it was saved with. Every process rereads the settings within `platformstorage.RefreshInterval`, so a save reaches them without a restart.
+
+`storage set` files `platform_storage_settings_updated` and every `storage test` files `platform_storage_connection_tested` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the secret access key `storage set` stores, and decrypt the one `storage test` signs with. Required only when an access key is saved: set the values the servers run with.
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` and the rest of the AWS SDK's credential chain: what `storage test` signs with when no access key is saved, as every process does.
 
 ## tenant
 

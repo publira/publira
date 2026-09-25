@@ -1,13 +1,21 @@
 package platformstorage_test
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
+	"slices"
 	"testing"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storage"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
+	"github.com/publira/publira/server/internal/storagesettings"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -105,5 +113,64 @@ func assertKeys(t *testing.T, env *testutil.RustFSEnv, bucket string, want ...st
 		if got[i] != want[i] {
 			t.Fatalf("%s holds %v, want %v", bucket, got, want)
 		}
+	}
+}
+
+// The Platform Console tests the settings on its form, and publiractl storage
+// test the saved ones; given the same settings, the store answers each with
+// the same checks, whether it takes the probe or refuses it.
+func TestTheConsoleAndTheSavedSettingsRunTheSameChecks(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	s3 := testutil.StartRustFS(t)
+	s3.CreateNamedBucket(t, "platformstorage-checks")
+	encryptor, err := secretcrypto.NewManager(map[string][]byte{"k1": bytes.Repeat([]byte{1}, 32)}, "k1")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	q := dbmodels.New(db)
+	tester := platformstorage.Tester{Encryptor: encryptor, Store: s3storage.NewConnectionTester(), Recorder: auditlog.New(q, slog.Default())}
+	ctx := context.Background()
+
+	for _, bucket := range []string{"platformstorage-checks", "platformstorage-missing"} {
+		settings := storagesettings.Settings{Bucket: bucket, Region: s3.Region, Endpoint: s3.Endpoint, ForcePathStyle: true}
+		if _, err := platformstorage.Save(ctx, db, slog.Default(), encryptor, auditlog.SystemPlatformActor, platformstorage.SaveParams{
+			Settings:        settings,
+			AccessKeyID:     s3.AccessKey,
+			SecretMode:      secretupdate.Replace,
+			SecretAccessKey: s3.SecretKey,
+		}); err != nil {
+			t.Fatalf("Save %s: %v", bucket, err)
+		}
+		console, err := tester.Test(ctx, q, auditlog.SystemPlatformActor, platformstorage.TestParams{
+			Settings:    settings,
+			AccessKeyID: s3.AccessKey,
+			SecretMode:  secretupdate.Unchanged,
+		})
+		if err != nil {
+			t.Fatalf("Test %s: %v", bucket, err)
+		}
+		saved, err := tester.TestSaved(ctx, q, auditlog.SystemPlatformActor)
+		if err != nil {
+			t.Fatalf("TestSaved %s: %v", bucket, err)
+		}
+		if !slices.Equal(console, saved) {
+			t.Fatalf("%s: the console's checks %+v, the saved settings' %+v", bucket, console, saved)
+		}
+		if len(console) == 0 {
+			t.Fatalf("%s: no checks were run", bucket)
+		}
+	}
+}
+
+func TestTestSavedWithNothingSaved(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	q := dbmodels.New(pg.OpenPlatformDB(t))
+	tester := platformstorage.Tester{Store: s3storage.NewConnectionTester(), Recorder: auditlog.New(q, slog.Default())}
+
+	if _, err := tester.TestSaved(context.Background(), q, auditlog.SystemPlatformActor); !errors.Is(err, platformstorage.ErrNotSaved) {
+		t.Fatalf("TestSaved = %v, want ErrNotSaved", err)
 	}
 }
