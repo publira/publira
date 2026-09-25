@@ -1,14 +1,15 @@
 -- Scenario: ranking snapshots for the development seed tenant.
 --
--- A tenant the engagement batch has run for is what the ranking page and the
--- top page's popularity module are about, and the development seed produces no
--- reading signals, so nothing computes one. These four rows are that batch's
--- output, written directly.
+-- A tenant the engagement batch has run for is what the ranking page, the top
+-- page's popularity module, and the genre tiles are about, and the development
+-- seed produces no reading signals, so nothing computes one. These rows are
+-- that batch's output, written directly: four tenant-wide snapshots and the
+-- current weekly snapshot of each genre.
 --
--- Two periods of each ranking, because a movement marker is the difference
--- between them. Together they cover every marker the page can draw: a series
--- that climbed, one that fell, one the earlier period did not rank at all, and
--- one that held its position.
+-- Two periods of each tenant-wide ranking, because a movement marker is the
+-- difference between them. Together they cover every marker the page can draw:
+-- a series that climbed, one that fell, one the earlier period did not rank at
+-- all, and one that held its position.
 --
 -- Applied to the seed tenant rather than a tenant of its own, and by
 -- `e2e/scripts/db-setup.sh` rather than by a spec, for the same reason
@@ -130,6 +131,95 @@ SELECT
     ss.computed_at
 FROM snapshot_seed ss
 CROSS JOIN tenant_scope ts
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
+SET items = EXCLUDED.items,
+    computed_at = EXCLUDED.computed_at;
+
+-- The current week of each genre, in an order other than newest-first and
+-- consistent with the tenant-wide week. Action ranks only two series, so its
+-- tile fills the other two covers with the genre's newest.
+WITH tenant_scope AS (
+    SELECT t.id, (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday
+    FROM tenants t
+    WHERE t.domain = 'localhost'
+),
+-- Each row is one position: the number in `SeedGENRNNNN`, the place, and the
+-- number in `Seed Series NNN` that holds it.
+genre_item (genre_number, rank, series_number) AS (
+    VALUES
+        -- Fantasy
+        (1, 1, 7),
+        (1, 2, 43),
+        (1, 3, 19),
+        (1, 4, 85),
+        (1, 5, 61),
+        -- Romance
+        (2, 1, 44),
+        (2, 2, 8),
+        (2, 3, 62),
+        (2, 4, 20),
+        (2, 5, 80),
+        -- Mystery
+        (3, 1, 63),
+        (3, 2, 15),
+        (3, 3, 99),
+        (3, 4, 87),
+        (3, 5, 39),
+        (3, 6, 9),
+        -- Science fiction
+        (4, 1, 100),
+        (4, 2, 58),
+        (4, 3, 22),
+        (4, 4, 64),
+        (4, 5, 4),
+        -- Slice of life
+        (5, 1, 71),
+        (5, 2, 29),
+        (5, 3, 53),
+        (5, 4, 11),
+        -- Action
+        (6, 1, 42),
+        (6, 2, 30)
+)
+INSERT INTO content_ranking_snapshots (
+    id,
+    tenant_id,
+    ranking_key,
+    period_start,
+    period_end,
+    entity_type,
+    genre_id,
+    items,
+    algorithm_version,
+    computed_at
+)
+SELECT
+    uuidv7(),
+    ts.id AS tenant_id,
+    'weekly',
+    ts.yesterday - 6,
+    ts.yesterday,
+    'series',
+    g.id,
+    COALESCE((
+        SELECT jsonb_agg(
+            jsonb_build_object('rank', gi.rank, 'entity_id', s.id)
+            ORDER BY gi.rank
+        )
+        FROM genre_item gi
+        JOIN series s
+            ON s.tenant_id = ts.id
+            AND s.public_id = 'SeedSERS'
+                || TRANSLATE(LPAD(gi.series_number::text, 4, '0'), '0', 'A')
+        WHERE 'SeedGENR'
+            || TRANSLATE(LPAD(gi.genre_number::text, 4, '0'), '0', 'A') = g.public_id
+    ), '[]'::jsonb),
+    1,
+    TIMESTAMPTZ '2026-04-20 06:00:00+00'
+FROM tenant_scope ts
+JOIN genres g
+    ON g.tenant_id = ts.id
+    AND g.public_id LIKE 'SeedGENR%'
 ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;

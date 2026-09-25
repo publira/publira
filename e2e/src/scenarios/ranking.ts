@@ -1,6 +1,6 @@
 /**
- * The ranking `db/seeds/scenarios/170_ranking.sql` writes for the development
- * seed tenant.
+ * The rankings `db/seeds/scenarios/170_ranking.sql` writes for the development
+ * seed tenant: tenant-wide, and for each genre.
  *
  * `task e2e:db` applies that file, so these positions are part of the state
  * every suite starts from — the screenshot projects included.
@@ -47,3 +47,23 @@ export const RANKING_ENTRY_COUNT = 10;
  * `computed_at` is 2026-04-20T06:00:00Z.
  */
 export const RANKING_COMPUTED_ON = "Apr 20, 2026";
+
+/**
+ * The genre whose weekly leaderboard ranks fewer series than a tile has
+ * covers: its tile draws the two ranked series in rank order, then the genre's
+ * two newest. Numbers are those of `Seed Series NNN`.
+ */
+export const RANKED_GENRE = {
+  coverSeriesNumbers: [42, 30, 90, 84],
+  name: "Action",
+} as const;
+
+/**
+ * The `series_images` id `db/seeds/dev/060_images.sql` gives `Seed Series NNN`,
+ * derived the way its SQL derives it. A cover's URL is
+ * `/images/series/{id}/…`, so this is what says which series a cover is.
+ */
+export const seedSeriesImageId = (seriesNumber: number): string => {
+  const sequence = seriesNumber.toString(16);
+  return `018f0e76-${sequence.padStart(4, "0")}-7000-8000-${sequence.padStart(12, "0")}`;
+};
