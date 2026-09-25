@@ -43,9 +43,12 @@ func signUpAgreeing(env *publicDBEnv, tenant testutil.Tenant, email string, vers
 	return err
 }
 
+// agreedVersions reads the consents an account was opened with, once the worker
+// has taken the sign-ups waiting for it.
 func agreedVersions(t *testing.T, env *publicDBEnv, email string) map[uuid.UUID]bool {
 	t.Helper()
 
+	env.processReaderAuthRequests(t)
 	rows, err := env.PG.DB.Query(`
 		SELECT c.page_version_id
 		FROM user_page_consents c

@@ -25,7 +25,6 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantconn"
@@ -240,24 +239,6 @@ func (s *apiServer) Login(
 // column and in the payload alike, which is what the table's own check
 // constraint and its tenant-isolation policy both require.
 
-func enqueueReaderEmailVerificationEmail(
-	ctx context.Context,
-	queries *dbmodels.Queries,
-	tenantID, tokenID uuid.UUID,
-	token string,
-) error {
-	payload, err := json.Marshal(outbox.ReaderEmailVerificationEmailPayload{
-		TenantID: tenantID.String(),
-		TokenID:  tokenID.String(),
-		Token:    token,
-	})
-	if err != nil {
-		return fmt.Errorf("marshal reader email verification email event: %w", err)
-	}
-	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderEmailVerificationEmail, payload,
-		"reader_email_verification_email:"+tokenID.String())
-}
-
 func enqueueReaderEmailChangeConfirmationEmail(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -295,24 +276,6 @@ func enqueueReaderEmailChangedNoticeEmail(
 		"reader_email_changed_notice_email:"+tokenID.String())
 }
 
-func enqueueReaderPasswordResetEmail(
-	ctx context.Context,
-	queries *dbmodels.Queries,
-	tenantID, tokenID uuid.UUID,
-	token string,
-) error {
-	payload, err := json.Marshal(outbox.ReaderPasswordResetEmailPayload{
-		TenantID: tenantID.String(),
-		TokenID:  tokenID.String(),
-		Token:    token,
-	})
-	if err != nil {
-		return fmt.Errorf("marshal reader password reset email event: %w", err)
-	}
-	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderPasswordResetEmail, payload,
-		"reader_password_reset_email:"+tokenID.String())
-}
-
 func enqueueReaderPasswordChangedNoticeEmail(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -334,24 +297,34 @@ func enqueueReaderPasswordChangedNoticeEmail(
 		fmt.Sprintf("reader_password_changed_notice_email:%s:%d", userID, credentialsVersion))
 }
 
-func enqueueReaderSignupAttemptNoticeEmail(
+// queueReaderAuthRequest records a request from one of the forms that answer a
+// registered address exactly as they answer a free one. It is the only write
+// those handlers make, so the time they take does not depend on the address;
+// the worker decides which case it is in.
+func queueReaderAuthRequest(
 	ctx context.Context,
-	queries *dbmodels.Queries,
-	tenantID, userID, attemptID uuid.UUID,
+	queries dbmodels.Querier,
+	tenantID uuid.UUID,
+	eventType string,
+	payload any,
 ) error {
-	payload, err := json.Marshal(outbox.ReaderSignupAttemptNoticeEmailPayload{
-		TenantID: tenantID.String(),
-		UserID:   userID.String(),
-	})
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshal reader signup attempt notice email event: %w", err)
+		return fmt.Errorf("marshal %s event: %w", eventType, err)
 	}
-	// Every other reader mail is keyed by the row it announces, which collapses
-	// a repeated write into one send. An attempt writes no row, and a reader who
-	// is targeted again months later has to hear about it, so the key names the
-	// attempt instead.
-	return insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypeReaderSignupAttemptNoticeEmail, payload,
-		"reader_signup_attempt_notice_email:"+attemptID.String())
+	requestID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             requestID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      eventType,
+		Payload:        body,
+		IdempotencyKey: eventType + ":" + requestID.String(),
+		AvailableAt:    time.Now().UTC(),
+	})
+	return err
 }
 
 // insertPublicOutboxEvent queues one side effect of a public-API write, in the
@@ -435,120 +408,44 @@ func (s *apiServer) CreateUser(
 		return nil, err
 	}
 
-	// Charged before the address is looked up, so a caller out of allowance is
-	// refused the same way whether or not the address has an account, and
-	// neither the account nor the notice below is written on the way there.
+	// Charged before the request is recorded, so a caller out of allowance
+	// leaves nothing behind for the worker to mail.
 	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 
-	// Hashing before the lookup on purpose. Both addresses are answered the same
-	// way, so the work behind the answer must not be what separates them, and
-	// the hash is the one expensive step in this handler.
+	// The hash is the one expensive step, and it runs for every sign-up: the
+	// address is not looked up until the worker takes the request.
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
-	existing, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err == nil {
-		return s.acceptSignupForRegisteredEmail(ctx, req, tenant, existing)
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String())
-	}
-
 	userID, err := uuid.NewV7()
 	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+	signup := outbox.ReaderSignupRequestPayload{
+		TenantID:     tenant.ID.String(),
+		UserID:       userID.String(),
+		Email:        email,
+		Name:         name,
+		PasswordHash: passwordHash,
 	}
-	verificationToken := hex.EncodeToString(rawToken)
-	verificationID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// The account, its verification token, and the mail that carries the link
-	// are one write: a signup that leaves an inactive account behind with no way
-	// to activate it is the state this transaction exists to rule out.
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin signup transaction", err, "tenant_id", tenant.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
-
-	user, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.User, error) {
-		return txq.CreateUser(ctx, dbmodels.CreateUserParams{
-			ID:           userID,
-			TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID:     publicID,
-			Email:        email,
-			PasswordHash: passwordHash,
-			Name:         name,
-			BirthDate:    birthDate,
-		})
-	})
-	if err != nil {
-		if dberr.IsUniqueViolation(err) {
-			// Two sign-ups for the same address raced past the read above. The
-			// loser is answered like the one that saw the row, which needs this
-			// transaction out of the way first: the notice opens its own.
-			_ = tx.Rollback()
-			return s.acceptSignupForRacedEmail(ctx, req, tenant, email)
-		}
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create user", err, "tenant_id", tenant.ID.String(), "user_id", userID.String())
-	}
-
-	if _, err := txq.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"}); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "set_inactive_failed")
-		return nil, s.internalDBError(ctx, "failed to set user inactive", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if _, err := txq.CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
-		ID:        verificationID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(verificationToken),
-		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
-	}); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create email verification token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	if birthDate.Valid {
+		signup.BirthDate = birthDate.Time.Format(time.DateOnly)
 	}
 	for _, versionID := range agreedVersionIDs {
-		if err := txq.CreateUserPageConsent(ctx, dbmodels.CreateUserPageConsentParams{
-			TenantID:      tenant.ID,
-			UserID:        user.ID,
-			PageVersionID: versionID,
-		}); err != nil {
-			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "consent_create_failed")
-			return nil, s.internalDBError(ctx, "failed to record page consent", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-		}
+		signup.AgreedPageVersionIDs = append(signup.AgreedPageVersionIDs, versionID.String())
 	}
-	if err := enqueueReaderEmailVerificationEmail(ctx, txq, tenant.ID, verificationID, verificationToken); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "verification_email_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit signup transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderSignupRequest, signup); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "signup_request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader signup request", err, "tenant_id", tenant.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "verification_email_enqueued")
+	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, "", "requested")
 	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
 }
 
@@ -620,71 +517,6 @@ func (s *apiServer) signupConsents(ctx context.Context, tenantID uuid.UUID, rawI
 	return versionIDs, nil
 }
 
-// acceptSignupForRegisteredEmail answers a sign-up whose address already has an
-// account exactly as a sign-up for a free address is answered: nothing is
-// created, nothing on the account changes, and the caller is told no more than
-// that the request was taken. The account's owner is the one who learns of it,
-// by mail, because the alternative is a silent dead end for a reader who forgot
-// they had signed up.
-func (s *apiServer) acceptSignupForRegisteredEmail(
-	ctx context.Context,
-	req *connect.Request[publirav1.CreateUserRequest],
-	tenant dbmodels.Tenant,
-	user dbmodels.User,
-) (*connect.Response[publirav1.CreateUserResponse], error) {
-	attemptID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "attempt_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin signup notice transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	if err := enqueueReaderSignupAttemptNoticeEmail(ctx, dbmodels.New(tx), tenant.ID, user.ID, attemptID); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "signup_attempt_notice_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue reader signup attempt notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit signup notice transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	// The audit trail is the one place the two outcomes are still told apart.
-	auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
-	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
-}
-
-// acceptSignupForRacedEmail is the same answer for the sign-up that lost a race
-// on the address, which learns of the account from the unique violation rather
-// than from a read.
-func (s *apiServer) acceptSignupForRacedEmail(
-	ctx context.Context,
-	req *connect.Request[publirav1.CreateUserRequest],
-	tenant dbmodels.Tenant,
-	email string,
-) (*connect.Response[publirav1.CreateUserResponse], error) {
-	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// The winning row is gone again. There is no owner left to notify,
-			// and the answer still says nothing about that.
-			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
-			return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to load the account a signup raced", err, "tenant_id", tenant.ID.String())
-	}
-	return s.acceptSignupForRegisteredEmail(ctx, req, tenant, user)
-}
-
 func (s *apiServer) VerifyUserEmail(
 	ctx context.Context,
 	req *connect.Request[publirav1.VerifyUserEmailRequest],
@@ -743,8 +575,10 @@ func (s *apiServer) VerifyUserEmail(
 //
 // Every address is answered the same way — an unverified account, a confirmed
 // one, and one that does not exist all end in requested: true — so the form
-// reports nothing about who is registered. What separates them is the mailbox:
-// only the first receives anything.
+// reports nothing about who is registered, and takes as long for one as for
+// another: the handler records the request, and the worker decides which case
+// the address is in. What separates them is the mailbox: only the first
+// receives anything.
 func (s *apiServer) RequestEmailVerification(
 	ctx context.Context,
 	req *connect.Request[publirav1.RequestEmailVerificationRequest],
@@ -769,97 +603,14 @@ func (s *apiServer) RequestEmailVerification(
 		return nil, err
 	}
 
-	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, "", "requested")
-			return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to get user for email verification request", err, "tenant_id", tenant.ID.String())
-	}
-	if user.EmailVerifiedAt.Valid {
-		// Nothing left to activate, so nothing is sent. The answer is the same
-		// either way; the audit trail is where the outcomes are told apart.
-		auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "already_verified")
-		return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderEmailVerificationRequest,
+		outbox.ReaderEmailVerificationRequestPayload{TenantID: tenant.ID.String(), Email: email},
+	); err != nil {
+		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification request", err, "tenant_id", tenant.ID.String())
 	}
 
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	verificationToken := hex.EncodeToString(rawToken)
-	verificationID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin email verification request transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
-
-	// Two requests for the same address arrive as often as a reader submits the
-	// form twice, and the delete below cannot serialize them on its own: it
-	// locks the rows it finds, so a request whose snapshot predates the other's
-	// insert deletes nothing and leaves two live links behind. The account row
-	// is what both requests have in common, so locking it is what puts them in
-	// order — the second one's statements then run on a snapshot that includes
-	// the first one's token, and the account keeps a single live link.
-	//
-	// It is a lock, not a write. The account itself is never modified here — no
-	// password, no name, no credentials_version — so a request made by anyone
-	// but its owner leaves nothing behind but a link only its owner receives.
-	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// The account was deleted while this request waited. There is
-			// nothing to activate, and the answer still says nothing about that.
-			auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "account_gone")
-			return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
-		return nil, s.internalDBError(ctx, "failed to lock the account for an email verification request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if locked.EmailVerifiedAt.Valid {
-		// The link from an earlier request was opened while this one waited.
-		auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "already_verified")
-		return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
-	}
-
-	if err := txq.DeleteUserEmailVerificationTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete email verification tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if _, err := txq.CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
-		ID:        verificationID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(verificationToken),
-		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
-	}); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create email verification token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := enqueueReaderEmailVerificationEmail(ctx, txq, tenant.ID, verificationID, verificationToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "verification_email_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit email verification request transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, user.PublicID, "requested")
+	auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, "", "requested")
 	return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
 }
 
@@ -1170,78 +921,16 @@ func (s *apiServer) RequestPasswordReset(
 		return nil, err
 	}
 
-	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, "", "requested")
-			return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to get user for password reset", err, "tenant_id", tenant.ID.String())
+	// Recorded for the worker whether or not the address has an account, so an
+	// unknown address takes as long to answer as a registered one.
+	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderPasswordResetRequest,
+		outbox.ReaderPasswordResetRequestPayload{TenantID: tenant.ID.String(), Email: email},
+	); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue reader password reset request", err, "tenant_id", tenant.ID.String())
 	}
 
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	resetToken := hex.EncodeToString(rawToken)
-	tokenID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
-
-	// The delete below locks only the rows it finds, so two requests arriving at
-	// once each insert a token and leave two live links behind. Locking the
-	// account row orders them: the second one's statements then run on a
-	// snapshot that already holds the first one's token.
-	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// The account was deleted while this request waited, and the answer
-			// says nothing about that either.
-			auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, user.PublicID, "account_gone")
-			return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
-		return nil, s.internalDBError(ctx, "failed to lock the account for a password reset request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	if err := txq.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if _, err := txq.CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
-		ID:        tokenID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(resetToken),
-		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
-	}); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := enqueueReaderPasswordResetEmail(ctx, txq, tenant.ID, tokenID, resetToken); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue reader password reset email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, user.PublicID, "requested")
+	auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, "", "requested")
 	return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
 }
 

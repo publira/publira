@@ -2544,7 +2544,9 @@ void main() {
 
         // The link is in a mailbox this test cannot read, so what it can
         // prove is the half the API owns: the account exists and Login keeps
-        // refusing it until the address is confirmed.
+        // refusing it until the address is confirmed. The worker opens the
+        // account a moment after the sign-up answers, so a sign-in that beats
+        // it is refused as an unknown address and tried again.
         await tapReachable(
           tester,
           find.byKey(const ValueKey('sign-up-pending-sign-in')),
@@ -2563,15 +2565,22 @@ void main() {
           find.byKey(const ValueKey('sign-in-password')),
           'live-signup-password',
         );
-        await tapReachable(
-          tester,
-          find.byKey(const ValueKey('sign-in-submit')),
+        final resend = find.byKey(
+          const ValueKey('sign-in-resend-verification'),
         );
-        await pumpUntilFound(
-          tester,
-          find.byKey(const ValueKey('sign-in-resend-verification')),
-          timeout: const Duration(seconds: 20),
-        );
+        final deadline = DateTime.now().add(const Duration(seconds: 30));
+        while (resend.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          final attemptEnd = DateTime.now().add(const Duration(seconds: 3));
+          while (resend.evaluate().isEmpty &&
+              DateTime.now().isBefore(attemptEnd)) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+        }
+        expect(resend, findsOne);
       });
     });
 

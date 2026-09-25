@@ -128,6 +128,9 @@ It also handles these non-mail events:
 | `comment_reported_notification` | The same, for an episode whose comments readers have reported |
 | `announcement_notification` | A `notifications` row for every reader one posted announcement addresses — every user of the tenant on a broadcast, the single named recipient on a targeted one |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
+| `reader_signup_request` | A sign-up the storefront accepted: the inactive account, its consents, and a `reader_email_verification_email` for a free address, or a `reader_signup_attempt_notice_email` for a registered one |
+| `reader_password_reset_request` | A password reset the storefront accepted: the reset token and a `reader_password_reset_email` when the address has an account |
+| `reader_email_verification_request` | A verification resend the storefront accepted: a fresh token and a `reader_email_verification_email` when the address has an unconfirmed account |
 | `google_play_purchase_consume` | The Google Play Developer API consume of a Play purchase `ConfirmStorePurchase` recorded, which also acknowledges it |
 
 The push handler is always registered and reads its credentials per delivery: a mobile device is sent with its tenant's stored FCM credentials and skipped while the tenant has none, and a browser with the platform's VAPID key pair; see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging) and [Web Push](../../README.md#web-push).

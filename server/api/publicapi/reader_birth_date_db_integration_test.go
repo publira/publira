@@ -172,6 +172,7 @@ func TestDBCreateUserStoresTheBirthDateGivenAtSignup(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
+	env.processReaderAuthRequests(t)
 
 	if count := env.countRows(t,
 		"SELECT count(*) FROM users WHERE email = $1 AND birth_date = DATE '2000-04-02'",
@@ -195,6 +196,7 @@ func TestDBCreateUserAcceptsASignupWithNoBirthDate(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
+	env.processReaderAuthRequests(t)
 
 	if count := env.countRows(t,
 		"SELECT count(*) FROM users WHERE email = $1 AND birth_date IS NULL",

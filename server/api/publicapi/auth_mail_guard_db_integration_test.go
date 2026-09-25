@@ -55,6 +55,7 @@ func TestDBCreateUserStopsQueueingNoticesAtTheLimit(t *testing.T) {
 		t.Fatalf("the second CreateUser code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 
+	env.processReaderAuthRequests(t)
 	notices := countRows(t, env, `
 		SELECT count(*) FROM outbox_events
 		WHERE event_type = 'reader_signup_attempt_notice_email'
@@ -108,15 +109,24 @@ func TestDBCreateUserRefusesARegisteredAddressLikeAFreeOne(t *testing.T) {
 		t.Fatalf("codes = %v and %v, want one answer", connect.CodeOf(registered), connect.CodeOf(free))
 	}
 
+	// Both refusals wrote nothing at all: the two requests on record are the
+	// ones the allowances paid for.
+	if count := countRows(t, env, `SELECT count(*) FROM outbox_events`); count != 2 {
+		t.Fatalf("recorded requests = %d, want the two the allowances paid for", count)
+	}
+	env.processReaderAuthRequests(t)
+
 	// The free address is still free: the sign-up that would have registered it
 	// was the refused one.
 	if count := countRows(t, env, `SELECT count(*) FROM users WHERE email = $1`, freeEmail); count != 0 {
 		t.Fatalf("accounts for %s = %d, want none", freeEmail, count)
 	}
 	// Only the notice the registered address paid for is queued. The password
-	// reset for an address with no account mails nothing, and both refusals
-	// wrote nothing at all.
-	if count := countRows(t, env, `SELECT count(*) FROM outbox_events`); count != 1 {
+	// reset for an address with no account mails nothing.
+	if count := countRows(t, env, `
+		SELECT count(*) FROM outbox_events
+		WHERE event_type NOT IN ('reader_signup_request', 'reader_password_reset_request')
+	`); count != 1 {
 		t.Fatalf("queued mails = %d, want the one the allowance paid for", count)
 	}
 }
@@ -197,6 +207,7 @@ func TestDBRequestEmailChangeDoesNotSpendTheAllowanceOfAnAddressItRefuses(t *tes
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset for the address that was named: %v", err)
 	}
+	env.processReaderAuthRequests(t)
 	if count := countRows(t, env, `
 		SELECT count(*) FROM outbox_events WHERE event_type = 'reader_password_reset_email'
 	`); count != 1 {

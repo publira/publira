@@ -107,7 +107,7 @@ An RPC that queues mail for an address the request has not authenticated spends 
 
 The charge goes **as late as it can and still be before the first write**, and never after one: an attempt refused after a write would leave the outbox an event the worker has to recognize and drop. Every check that can reject the request without mailing anything therefore runs first, because an allowance spent on a request that sends no mail is one the mailbox it names cannot spend on its own password reset. `RequestEmailChange` is where that bites: it answers an address that already has an account with `already_exists` and mails nothing, so charging before that lookup would let any signed-in caller burn the allowance of every address they can name.
 
-The exception is the forms that answer a registered address exactly as they answer a free one — `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset`. There the charge goes **before the address is looked up**, because a refusal that arrived only for one of the two outcomes would be the disclosure the whole handler is written to avoid.
+The exception is the forms that answer a registered address exactly as they answer a free one — `CreateUser`, `RequestEmailVerification`, `RequestPasswordReset`. Their handlers never look the address up: they charge the guard, record the request as an outbox event as their only write, and leave it to the worker to decide which case the address is in, so neither the answer nor the time it takes depends on it.
 
 A caller over either allowance gets `resource_exhausted` with `Retry-After` and nothing else.
 

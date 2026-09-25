@@ -712,20 +712,27 @@ type Querier interface {
 	// runs the handler, and records done / retry / dead.
 	//
 	// Auth-mail payloads carry the raw token the token tables store only
-	// as a hash. Terminal updates drop that key on the event types below
-	// so a processed row does not keep a usable secret. Other event types
-	// keep payload.token, if they have one. Keep this list in sync with
-	// MarkOutboxEventDone, MarkOutboxEventDead, both halves of the stale
-	// reclaim (RecoverStaleProcessingOutboxEvents excludes the list,
-	// RecoverStaleProcessingAuthMailOutboxEvents selects it), and the
-	// terminal-token data migration:
+	// as a hash, and the reader requests carry what a stranger typed into a
+	// form: the address, and for a sign-up the name, the birth date, and
+	// the password hash of the account it may open. Terminal updates drop
+	// those keys on the event types below so a processed row keeps neither
+	// a usable secret nor the form's contents. Other event types keep
+	// payload.token, if they have one. Keep this list in
+	// sync with MarkOutboxEventDone, MarkOutboxEventDead, and both halves
+	// of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
+	// list, RecoverStaleProcessingAuthMailOutboxEvents selects it). The
+	// terminal-token data migration covers the types that existed when it
+	// ran:
 	//   admin_email_change_confirmation_email
 	//   admin_password_reset_email
 	//   platform_email_change_confirmation_email
 	//   platform_password_reset_email
 	//   reader_email_change_confirmation_email
 	//   reader_email_verification_email
+	//   reader_email_verification_request
 	//   reader_password_reset_email
+	//   reader_password_reset_request
+	//   reader_signup_request
 	//   tenant_admin_invitation_email
 	//
 	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
@@ -1793,7 +1800,8 @@ type Querier interface {
 	// token tables store a hash, so the producing transaction writes the
 	// secret into payload for the worker to render. Once an auth-mail
 	// event is terminal the worker no longer needs it, so the key is
-	// dropped and the rest of the payload stays for diagnosis. Other
+	// dropped and the rest of the payload stays for diagnosis. A reader
+	// request loses the form's contents the same way. Other
 	// event types are left alone. The plaintext window is the
 	// pending/processing lifetime. Retries keep the token so a later
 	// attempt can still send the mail, so that window is the retry budget
@@ -1960,11 +1968,11 @@ type Querier interface {
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
-	// The same reclaim for the events whose payload holds a raw token. A crash
+	// The same reclaim for the events whose payload holds a secret. A crash
 	// records no failure, so an event whose worker dies on every attempt would
 	// be re-queued forever and never reach the terminal update that drops the
-	// token. The reclaim therefore counts as a failed attempt, and the one that
-	// exhausts max_attempts marks the row dead and strips the token exactly as
+	// secret. The reclaim therefore counts as a failed attempt, and the one that
+	// exhausts max_attempts marks the row dead and strips the secret exactly as
 	// MarkOutboxEventDead does. The plaintext window is bounded by max_attempts
 	// reclaims of the stale-processing grace period.
 	RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context, arg RecoverStaleProcessingAuthMailOutboxEventsParams) ([]OutboxEvent, error)
