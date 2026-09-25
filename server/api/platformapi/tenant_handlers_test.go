@@ -13,6 +13,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformtenants"
@@ -430,11 +431,20 @@ func TestListTenantMembersTenantNotFound(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+// expectTenantMemberAuditLogInsert expects the entry a member change files
+// inside its transaction, under the operator and naming the user.
+func expectTenantMemberAuditLogInsert(mock sqlmock.Sqlmock, operatorID uuid.UUID, action string, userID uuid.UUID) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
+		WithArgs(sqlmock.AnyArg(), uuid.NullUUID{UUID: operatorID, Valid: true}, "platform_operator", action, "user", userID.String(), auditlog.OutcomeSuccess, nil, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
 func TestAddTenantMemberSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	targetUserID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
 		WithArgs("TENANT001").
@@ -455,9 +465,10 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
+	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 		Role:           "tenant_admin",
@@ -479,6 +490,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	targetUserID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
 		WithArgs("TENANT001").
@@ -499,9 +511,10 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
+	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		Email:          "alice@example.com",
 		Role:           "tenant_admin",
@@ -518,7 +531,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 func TestAddTenantMemberRequiresPublicIDOrEmail(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		Role:           "tenant_admin",
 	}))
@@ -535,7 +548,7 @@ func TestAddTenantMemberTenantNotFound(t *testing.T) {
 		WithArgs("TENANT001").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 		Role:           "tenant_admin",
@@ -562,7 +575,7 @@ func TestAddTenantMemberUserNotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "NOTFOUND",
 		Role:           "tenant_admin",
@@ -595,7 +608,7 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 	mock.ExpectRollback()
 
-	_, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 		Role:           "tenant_admin",
@@ -611,6 +624,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	targetUserID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
 		WithArgs("TENANT001").
@@ -634,9 +648,10 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_editor").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_editor", now, tenantID))
+	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_role_updated", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.UpdateTenantMemberRole(context.Background(), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
+	resp, err := server.UpdateTenantMemberRole(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 		Role:           "tenant_editor",
@@ -672,7 +687,7 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 	mock.ExpectRollback()
 
-	_, err := server.UpdateTenantMemberRole(context.Background(), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
+	_, err := server.UpdateTenantMemberRole(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 		Role:           "tenant_editor",
@@ -688,6 +703,7 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	targetUserID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
 		WithArgs("TENANT001").
@@ -706,9 +722,10 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantUserRolesByUserID)).
 		WithArgs(targetUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_removed", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.RemoveTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+	resp, err := server.RemoveTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 	}))
@@ -717,6 +734,43 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	}
 	if resp.Msg.UserPublicId != "USER000001" {
 		t.Fatalf("user_public_id = %q, want USER000001", resp.Msg.UserPublicId)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A change whose entry cannot be written is not committed either.
+func TestRemoveTenantMemberRollsBackWhenItsEntryFails(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
+		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
+		WillReturnRows(sqlmock.NewRows(tenantScopedUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", tenantID, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
+		WithArgs(targetUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantUserRolesByUserID)).
+		WithArgs(targetUserID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertPlatformAuditLog)).
+		WillReturnError(errors.New("connection reset"))
+	mock.ExpectRollback()
+
+	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("RemoveTenantMember code = %v, want internal", connect.CodeOf(err))
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -737,7 +791,7 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := server.RemoveTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
 		TenantPublicId: "TENANT001",
 		UserPublicId:   "USER000001",
 	}))

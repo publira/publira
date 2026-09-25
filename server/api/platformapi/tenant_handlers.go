@@ -405,6 +405,10 @@ func (s *platformServer) AddTenantMember(
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid add tenant member request", err)
 	}
+	actor, err := s.auditActor(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 
 	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
@@ -418,7 +422,7 @@ func (s *platformServer) AddTenantMember(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	member, err := tenantmembers.Add(ctx, tx, params)
+	member, err := platformtenants.AddMember(ctx, tx, s.logger, actor, params)
 	if err != nil {
 		return nil, s.tenantError(ctx, "failed to add tenant member", err, "tenant_id", tenant.ID.String())
 	}
@@ -449,6 +453,10 @@ func (s *platformServer) UpdateTenantMemberRole(
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant member role request", err)
 	}
+	actor, err := s.auditActor(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 
 	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
@@ -462,7 +470,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	member, err := tenantmembers.UpdateRole(ctx, tx, params)
+	member, err := platformtenants.UpdateMemberRole(ctx, tx, s.logger, actor, params)
 	if err != nil {
 		return nil, s.tenantError(ctx, "failed to update tenant member role", err, "tenant_id", tenant.ID.String())
 	}
@@ -487,6 +495,10 @@ func (s *platformServer) RemoveTenantMember(
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid remove tenant member request", err)
 	}
+	actor, err := s.auditActor(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 
 	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
@@ -500,7 +512,7 @@ func (s *platformServer) RemoveTenantMember(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	member, err := tenantmembers.Remove(ctx, tx, params)
+	member, err := platformtenants.RemoveMember(ctx, tx, s.logger, actor, params)
 	if err != nil {
 		return nil, s.tenantError(ctx, "failed to remove tenant member", err, "tenant_id", tenant.ID.String())
 	}

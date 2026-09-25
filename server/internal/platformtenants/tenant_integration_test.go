@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -206,6 +208,75 @@ func TestInvitationChangesFileTheirEntries(t *testing.T) {
 	}
 	if got := strings.Join(actions, ","); got != "tenant_admin_invited,tenant_admin_invite_resent,tenant_admin_invite_canceled" {
 		t.Fatalf("audit actions = %s", got)
+	}
+}
+
+func TestMemberChangesFileTheirEntries(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	operator := pg.SeedPlatformOperator(t, "PLATOPS01", "operator@platform.example.com", "Operator")
+	actor := auditlog.PlatformActor{UserID: operator.ID, Role: operator.Role, ClientIP: "203.0.113.10"}
+	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	reader := pg.SeedEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
+	ctx := context.Background()
+
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := AddMember(ctx, tx, nil, actor, tenantmembers.AddParams{TenantID: tenant.ID, UserPublicID: reader.PublicID, Role: auth.RoleTenantEditor})
+		return err
+	}); err != nil {
+		t.Fatalf("AddMember: %v", err)
+	}
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := UpdateMemberRole(ctx, tx, nil, actor, tenantmembers.UpdateRoleParams{TenantID: tenant.ID, UserPublicID: reader.PublicID, Role: auth.RoleTenantAdmin})
+		return err
+	}); err != nil {
+		t.Fatalf("UpdateMemberRole: %v", err)
+	}
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := RemoveMember(ctx, tx, nil, actor, tenantmembers.RemoveParams{TenantID: tenant.ID, UserPublicID: reader.PublicID})
+		return err
+	}); err != nil {
+		t.Fatalf("RemoveMember: %v", err)
+	}
+
+	var actions []string
+	for _, e := range platformAuditRows(t, pg) {
+		if e.targetID != reader.ID.String() {
+			t.Fatalf("audit entry = %+v, want it to name the user", e)
+		}
+		if e.actorUserID.UUID != operator.ID || e.actorRole != operator.Role || e.clientIP.String != "203.0.113.10" {
+			t.Fatalf("audit entry = %+v, want it filed under the operator", e)
+		}
+		actions = append(actions, e.action)
+	}
+	if got := strings.Join(actions, ","); got != "tenant_member_added,tenant_member_role_updated,tenant_member_removed" {
+		t.Fatalf("audit actions = %s", got)
+	}
+}
+
+// A role change whose entry cannot be written does not land either: an actor
+// naming no operator is refused by the entry's foreign key.
+func TestMemberChangeIsNotCommittedWithoutItsEntry(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	reader := pg.SeedEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
+	unknown := auditlog.PlatformActor{UserID: uuid.Must(uuid.NewV7()), Role: auth.RolePlatformOperator}
+
+	err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := AddMember(context.Background(), tx, nil, unknown, tenantmembers.AddParams{TenantID: tenant.ID, UserPublicID: reader.PublicID, Role: auth.RoleTenantAdmin})
+		return err
+	})
+	if err == nil {
+		t.Fatal("AddMember succeeded with an entry that cannot be written")
+	}
+
+	var roles int
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM tenant_user_roles WHERE user_id = $1`, reader.ID).Scan(&roles); err != nil {
+		t.Fatalf("count roles: %v", err)
+	}
+	if roles != 0 {
+		t.Fatalf("roles = %d, want the role rolled back with the entry", roles)
 	}
 }
 

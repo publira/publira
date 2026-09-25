@@ -56,15 +56,60 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor a
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
+	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_created", member); err != nil {
+		return tenantmembers.Member{}, err
+	}
+	return member, nil
+}
+
+// AddMember is [tenantmembers.Add] with its entry filed under actor.
+func AddMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, p tenantmembers.AddParams) (tenantmembers.Member, error) {
+	member, err := tenantmembers.Add(ctx, tx, p)
+	if err != nil {
+		return tenantmembers.Member{}, err
+	}
+	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_added", member); err != nil {
+		return tenantmembers.Member{}, err
+	}
+	return member, nil
+}
+
+// UpdateMemberRole is [tenantmembers.UpdateRole] with its entry filed under
+// actor.
+func UpdateMemberRole(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, p tenantmembers.UpdateRoleParams) (tenantmembers.Member, error) {
+	member, err := tenantmembers.UpdateRole(ctx, tx, p)
+	if err != nil {
+		return tenantmembers.Member{}, err
+	}
+	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_role_updated", member); err != nil {
+		return tenantmembers.Member{}, err
+	}
+	return member, nil
+}
+
+// RemoveMember is [tenantmembers.Remove] with its entry filed under actor.
+func RemoveMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, p tenantmembers.RemoveParams) (tenantmembers.Member, error) {
+	member, err := tenantmembers.Remove(ctx, tx, p)
+	if err != nil {
+		return tenantmembers.Member{}, err
+	}
+	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_removed", member); err != nil {
+		return tenantmembers.Member{}, err
+	}
+	return member, nil
+}
+
+// writeMemberEntry names the user, whose own row names the tenant.
+func writeMemberEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, member tenantmembers.Member) error {
 	if err := auditlog.WritePlatform(ctx, dbmodels.New(tx), logger, actor.Entry(auditlog.PlatformEntry{
-		Action:     "tenant_member_created",
+		Action:     action,
 		TargetType: "user",
 		TargetID:   member.UserID.String(),
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
-		return tenantmembers.Member{}, fmt.Errorf("audit tenant_member_created: %w", err)
+		return fmt.Errorf("audit %s: %w", action, err)
 	}
-	return member, nil
+	return nil
 }
 
 func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action, email string) error {

@@ -109,6 +109,9 @@ func TestTenantMemberCommands(t *testing.T) {
 	if roles != 0 {
 		t.Fatalf("roles after remove = %d, want 0", roles)
 	}
+	if got := platformActions(t, pg); got != "tenant_member_added,tenant_member_role_updated,tenant_member_removed" {
+		t.Fatalf("audit actions = %s", got)
+	}
 }
 
 func TestTenantInviteCommands(t *testing.T) {
