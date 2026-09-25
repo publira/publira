@@ -15,8 +15,7 @@ It listens on `0.0.0.0:8080` by default. `PORT` changes the port and `HOST` the 
 `publira.email.v1.EmailRendererService/RenderEmail` takes `template`, `locale`, `data`, and `time_zone`, and returns `html`.
 
 - `time_zone` is an IANA time zone name. Always pass the display time zone resolved for the tenant.
-- An unknown template ID or invalid data returns `invalid_argument`.
-- An unknown `locale` renders as `ja`, following the convention of the template package.
+- An unknown template ID, invalid data, or a `locale` the build does not serve returns `invalid_argument`; nothing falls back to another locale.
 
 `GET /livez` always returns `200 ok`. `GET /readyz` has no dependency to check, so it returns `200` with `{ "status": "ok", "checks": {} }`.
 
