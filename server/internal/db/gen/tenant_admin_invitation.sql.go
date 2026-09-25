@@ -321,6 +321,37 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 	return items, nil
 }
 
+const LockTenantAdminInvitationByHashForTenant = `-- name: LockTenantAdminInvitationByHashForTenant :one
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1
+FOR UPDATE
+`
+
+type LockTenantAdminInvitationByHashForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
+}
+
+func (q *Queries) LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, LockTenantAdminInvitationByHashForTenant, arg.TenantID, arg.TokenHash)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const MarkTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
 UPDATE tenant_admin_invitations
 SET accepted_at = COALESCE(accepted_at, NOW()),

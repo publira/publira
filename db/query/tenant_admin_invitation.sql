@@ -30,6 +30,14 @@ WHERE tenant_id = $1
     AND token_hash = $2
 LIMIT 1;
 
+-- name: LockTenantAdminInvitationByHashForTenant :one
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1
+FOR UPDATE;
+
 -- name: UpdateTenantAdminInvitationForResend :one
 UPDATE tenant_admin_invitations
 SET token_hash = $3,

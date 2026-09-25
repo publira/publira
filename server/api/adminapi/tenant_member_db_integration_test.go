@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -354,6 +357,173 @@ func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *tes
 		SELECT count(*) FROM tenant_user_roles tur JOIN users u ON u.id = tur.user_id
 		WHERE u.tenant_id = $1 AND u.email = $2 AND tur.role = $3
 	`, tenant.Tenant.ID, "invitee@tenant-a.example.com", auth.RoleTenantAdmin); count != 1 {
+		t.Fatalf("invitee tenant_admin roles = %d, want 1", count)
+	}
+}
+
+// seedAdminInvitation inserts a pending invitation whose link carries token,
+// so a test can accept it without reading the mail off the outbox.
+func (e *adminDBEnv) seedAdminInvitation(t *testing.T, tenant adminDBTenant, email, token string) {
+	t.Helper()
+
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_admin_invitations (id, tenant_id, email, token_hash, expires_at)
+		VALUES ($1, $2, $3, $4, NOW() + INTERVAL '1 day')
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, email, auth.HashToken(token)); err != nil {
+		t.Fatalf("insert invitation: %v", err)
+	}
+}
+
+// waitForBlockedBackend waits until another session is waiting on a lock, so
+// the test knows the request reached the row it holds instead of racing past it.
+func (e *adminDBEnv) waitForBlockedBackend(t *testing.T) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		var blocked int
+		if err := e.PG.DB.QueryRowContext(ctx, `
+			SELECT count(*)
+			FROM pg_stat_activity
+			WHERE pid <> pg_backend_pid()
+				AND wait_event_type = 'Lock'
+		`).Scan(&blocked); err != nil {
+			t.Fatalf("read pg_stat_activity: %v", err)
+		}
+		if blocked > 0 {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("no session ever waited on a lock")
+}
+
+// A double-submitted form sends the same acceptance twice at once: the second
+// has to answer as a later acceptance does, not fail on the account the first
+// one is creating.
+func TestDBConcurrentAcceptancesOfOneInvitationCreateOneAccount(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+
+	const token = "concurrent-acceptance-token"
+	const email = "invitee@tenant-a.example.com"
+	env.seedAdminInvitation(t, tenant, email, token)
+
+	const acceptances = 2
+	responses := make([]*publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse, acceptances)
+	errs := make([]error, acceptances)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range acceptances {
+		wg.Go(func() {
+			<-start
+			res, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+				Tenant:   tenant.tenantContext(),
+				Token:    token,
+				Name:     "Invitee",
+				Password: testutil.SeededPassword,
+			}))
+			errs[i] = err
+			if err == nil {
+				responses[i] = res.Msg
+			}
+		})
+	}
+	close(start)
+	wg.Wait()
+
+	created := 0
+	for i := range acceptances {
+		if errs[i] != nil {
+			t.Fatalf("acceptance %d: %v", i, errs[i])
+		}
+		if !responses[i].Accepted {
+			t.Fatalf("acceptance %d response = %+v, want accepted", i, responses[i])
+		}
+		if responses[i].AccountCreated {
+			created++
+		}
+	}
+	if created != 1 {
+		t.Fatalf("acceptances that created the account = %d, want 1", created)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM users WHERE tenant_id = $1 AND email = $2", tenant.Tenant.ID, email); count != 1 {
+		t.Fatalf("invitee accounts = %d, want 1", count)
+	}
+	if count := env.countRows(t, `
+		SELECT count(*) FROM tenant_user_roles tur JOIN users u ON u.id = tur.user_id
+		WHERE u.tenant_id = $1 AND u.email = $2 AND tur.role = $3
+	`, tenant.Tenant.ID, email, auth.RoleTenantAdmin); count != 1 {
+		t.Fatalf("invitee tenant_admin roles = %d, want 1", count)
+	}
+}
+
+// A reader signing up with the invited address while the invitation is being
+// accepted takes the address first; the acceptance says so on the field
+// instead of reporting a database failure, and a retry grants that account.
+func TestDBAcceptanceRacingASignUpAnswersAlreadyExists(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+
+	const token = "racing-sign-up-token"
+	const email = "invitee@tenant-a.example.com"
+	env.seedAdminInvitation(t, tenant, email, token)
+
+	// The sign-up holds its row uncommitted, so the acceptance sees no account
+	// and waits on the address's unique index when it inserts one.
+	signUp, err := env.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the sign-up: %v", err)
+	}
+	defer signUp.Rollback() //nolint:errcheck
+	if _, err := signUp.ExecContext(ctx, `
+		INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
+		VALUES ($1, $2, 'TAREADER', $3, 'not-a-real-hash', 'Reader')
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, email); err != nil {
+		t.Fatalf("insert the signing-up reader: %v", err)
+	}
+
+	accept := func() (*connect.Response[publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error) {
+		return env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+			Tenant:   tenant.tenantContext(),
+			Token:    token,
+			Name:     "Invitee",
+			Password: testutil.SeededPassword,
+		}))
+	}
+	var racingErr error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, racingErr = accept()
+	}()
+	env.waitForBlockedBackend(t)
+	if err := signUp.Commit(); err != nil {
+		t.Fatalf("commit the sign-up: %v", err)
+	}
+	<-done
+
+	if connect.CodeOf(racingErr) != connect.CodeAlreadyExists {
+		t.Fatalf("racing acceptance code = %v, want already_exists (err=%v)", connect.CodeOf(racingErr), racingErr)
+	}
+	assertBadRequestField(t, racingErr, "email")
+
+	retried, err := accept()
+	if err != nil {
+		t.Fatalf("retried AcceptTenantAdminInvitation: %v", err)
+	}
+	if !retried.Msg.Accepted || retried.Msg.AccountCreated {
+		t.Fatalf("retried response = %+v, want an accepted invitation on the existing account", retried.Msg)
+	}
+	if count := env.countRows(t, `
+		SELECT count(*) FROM tenant_user_roles tur JOIN users u ON u.id = tur.user_id
+		WHERE u.tenant_id = $1 AND u.email = $2 AND tur.role = $3
+	`, tenant.Tenant.ID, email, auth.RoleTenantAdmin); count != 1 {
 		t.Fatalf("invitee tenant_admin roles = %d, want 1", count)
 	}
 }
