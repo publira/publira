@@ -177,8 +177,16 @@ type GetTenantResponse struct {
 	// APP_PURCHASE_ROUTE_UNSPECIFIED: a tenant that has chosen nothing sells
 	// through the external checkout.
 	AppPurchaseRoute v1.AppPurchaseRoute `protobuf:"varint,18,opt,name=app_purchase_route,json=appPurchaseRoute,proto3,enum=publira.types.v1.AppPurchaseRoute" json:"app_purchase_route,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Whether the tenant's app can sell an episode through the App Store's and
+	// Google Play's in-app purchase right now: the route is
+	// APP_PURCHASE_ROUTE_STORE and that store is ready, which is what
+	// PurchaseService.StartStorePurchase requires. The route needs only one
+	// ready store, so the app on the other platform offers no purchase. Like
+	// accepts_payments, this exposes nothing of the credentials.
+	AcceptsAppStorePayments   bool `protobuf:"varint,19,opt,name=accepts_app_store_payments,json=acceptsAppStorePayments,proto3" json:"accepts_app_store_payments,omitempty"`
+	AcceptsGooglePlayPayments bool `protobuf:"varint,20,opt,name=accepts_google_play_payments,json=acceptsGooglePlayPayments,proto3" json:"accepts_google_play_payments,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -335,6 +343,20 @@ func (x *GetTenantResponse) GetAppPurchaseRoute() v1.AppPurchaseRoute {
 		return x.AppPurchaseRoute
 	}
 	return v1.AppPurchaseRoute(0)
+}
+
+func (x *GetTenantResponse) GetAcceptsAppStorePayments() bool {
+	if x != nil {
+		return x.AcceptsAppStorePayments
+	}
+	return false
+}
+
+func (x *GetTenantResponse) GetAcceptsGooglePlayPayments() bool {
+	if x != nil {
+		return x.AcceptsGooglePlayPayments
+	}
+	return false
 }
 
 type GetTenantMobileAppAssociationRequest struct {
@@ -556,7 +578,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x03 \x01(\tR\tversionId\"\xff\x06\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\"\xfd\a\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -578,7 +600,9 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\n" +
 	"terms_page\x18\x10 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
 	"\fprivacy_page\x18\x11 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\x12P\n" +
-	"\x12app_purchase_route\x18\x12 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\"_\n" +
+	"\x12app_purchase_route\x18\x12 \x01(\x0e2\".publira.types.v1.AppPurchaseRouteR\x10appPurchaseRoute\x12;\n" +
+	"\x1aaccepts_app_store_payments\x18\x13 \x01(\bR\x17acceptsAppStorePayments\x12?\n" +
+	"\x1caccepts_google_play_payments\x18\x14 \x01(\bR\x19acceptsGooglePlayPayments\"_\n" +
 	"$GetTenantMobileAppAssociationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"~\n" +
 	"\x1bTenantAndroidAppAssociation\x12%\n" +

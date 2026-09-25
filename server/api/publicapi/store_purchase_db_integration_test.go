@@ -61,6 +61,7 @@ type storePurchaseEnv struct {
 	appStore *fakeAppStore
 	play     *googleplaytest.Server
 	client   publirav1connect.PurchaseServiceClient
+	tenants  publirav1connect.TenantServiceClient
 }
 
 // newStorePurchaseEnv seeds a tenant whose app sells through both stores and
@@ -132,6 +133,7 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 		appStore: fake,
 		play:     play,
 		client:   publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL),
+		tenants:  publirav1connect.NewTenantServiceClient(ts.Client(), ts.URL),
 	}
 }
 
@@ -232,6 +234,48 @@ func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testin
 	}, env.token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+}
+
+// The app offers a purchase only through a store StartStorePurchase would
+// accept, so the tenant read answers each store on the same terms.
+func TestDBGetTenantAnswersWhichStoreTheAppSellsThrough(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	storePayments := func() (bool, bool) {
+		t.Helper()
+		res, err := env.tenants.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			Tenant: tenantContext(env.tenant),
+		}))
+		if err != nil {
+			t.Fatalf("GetTenant: %v", err)
+		}
+		return res.Msg.AcceptsAppStorePayments, res.Msg.AcceptsGooglePlayPayments
+	}
+	exec := func(query string) {
+		t.Helper()
+		if _, err := env.pg.DB.ExecContext(context.Background(), query, env.tenant.ID); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+
+	if appStore, googlePlay := storePayments(); !appStore || !googlePlay {
+		t.Fatalf("both stores ready: store payments = %v / %v, want true / true", appStore, googlePlay)
+	}
+
+	exec("UPDATE tenant_google_play_config SET enabled = false WHERE tenant_id = $1")
+	if appStore, googlePlay := storePayments(); !appStore || googlePlay {
+		t.Fatalf("App Store alone ready: store payments = %v / %v, want true / false", appStore, googlePlay)
+	}
+
+	// A key this server cannot decrypt could not verify the charge.
+	exec("UPDATE tenant_app_store_config SET private_key_encrypted = 'enc:v1:not-a-key' WHERE tenant_id = $1")
+	if appStore, googlePlay := storePayments(); appStore || googlePlay {
+		t.Fatalf("App Store key that does not decrypt: store payments = %v / %v, want false / false", appStore, googlePlay)
+	}
+
+	exec("UPDATE tenant_config SET app_purchase_route = 'external_checkout' WHERE tenant_id = $1")
+	if appStore, googlePlay := storePayments(); appStore || googlePlay {
+		t.Fatalf("external checkout: store payments = %v / %v, want false / false", appStore, googlePlay)
 	}
 }
 

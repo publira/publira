@@ -88,6 +88,10 @@ func (s *apiServer) GetTenant(
 		_ = err
 	}
 	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
+	var acceptsAppStorePayments, acceptsGooglePlayPayments bool
+	if appPurchaseRoute == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
+		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
+	}
 
 	var theme *publirattypesv1.TenantTheme
 	themeRow, themeErr := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
@@ -100,24 +104,26 @@ func (s *apiServer) GetTenant(
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantResponse{
-		TenantPublicId:        tenant.PublicID,
-		TenantName:            tenant.Name,
-		TenantDomain:          tenant.Domain,
-		CopyrightText:         copyrightText,
-		SiteDescription:       siteDescription,
-		SiteTagline:           siteTagline,
-		Theme:                 theme,
-		Timezone:              tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
-		DefaultLocale:         defaultLocale,
-		AcceptsPayments:       acceptsPayments,
-		AgeVerification:       ageVerification,
-		CommentMode:           commentMode,
-		WebPushVapidPublicKey: s.publishedWebPushPublicKey(ctx),
-		AppStoreUrl:           appStoreURL,
-		GooglePlayUrl:         googlePlayURL,
-		TermsPage:             termsPage,
-		PrivacyPage:           privacyPage,
-		AppPurchaseRoute:      appPurchaseRoute,
+		TenantPublicId:            tenant.PublicID,
+		TenantName:                tenant.Name,
+		TenantDomain:              tenant.Domain,
+		CopyrightText:             copyrightText,
+		SiteDescription:           siteDescription,
+		SiteTagline:               siteTagline,
+		Theme:                     theme,
+		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
+		DefaultLocale:             defaultLocale,
+		AcceptsPayments:           acceptsPayments,
+		AgeVerification:           ageVerification,
+		CommentMode:               commentMode,
+		WebPushVapidPublicKey:     s.publishedWebPushPublicKey(ctx),
+		AppStoreUrl:               appStoreURL,
+		GooglePlayUrl:             googlePlayURL,
+		TermsPage:                 termsPage,
+		PrivacyPage:               privacyPage,
+		AppPurchaseRoute:          appPurchaseRoute,
+		AcceptsAppStorePayments:   acceptsAppStorePayments,
+		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
 	}), nil
 }
 
@@ -163,6 +169,31 @@ func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUI
 		return false
 	}
 	return strings.TrimSpace(secrets.SecretKey) != "" && strings.TrimSpace(secrets.WebhookSecret) != ""
+}
+
+// tenantAcceptsStorePayments answers which stores the tenant's app can charge
+// through, for a tenant on the store route. A store counts only once its key
+// decrypts, since ConfirmStorePurchase cannot verify a charge without it, so
+// this fails closed like tenantAcceptsPayments.
+func (s *apiServer) tenantAcceptsStorePayments(ctx context.Context, tenantID uuid.UUID) (appStore, googlePlay bool) {
+	stores := s.appStores(ctx)
+	_, appStoreErr := stores.LoadAppStoreCredentials(ctx, tenantID)
+	_, googlePlayErr := stores.LoadGooglePlayCredentials(ctx, tenantID)
+	return s.storeAcceptsPayments(ctx, tenantID, storeAppStore, appStoreErr),
+		s.storeAcceptsPayments(ctx, tenantID, storeGooglePlay, googlePlayErr)
+}
+
+// storeAcceptsPayments reads the outcome of loading one store's credentials.
+// A store that is off says nothing worth logging; a ready one whose key does
+// not decrypt is a fault an operator has to see.
+func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID, store string, err error) bool {
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, paymentsettings.ErrStoreNotReady) {
+		s.logger.WarnContext(ctx, "could not determine tenant store payment availability", "tenant_id", tenantID, "store", store, "error", err)
+	}
+	return false
 }
 
 // tenantBrandingImageVariants reads the variants of the theme's icon and
