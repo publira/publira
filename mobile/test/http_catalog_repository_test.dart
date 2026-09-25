@@ -773,6 +773,66 @@ void main() {
     expect(requests.last.body['token'], '1');
   });
 
+  test(
+    'listGenres carries each genre\'s covers in the order they came',
+    () async {
+      server.genres = [
+        {
+          ...ConnectFixtureServer.seedGenres().first,
+          'featuredSeries': [
+            {
+              'publicId': ConnectFixtureServer.seedSeriesId,
+              'title': ConnectFixtureServer.seedSeriesTitle,
+              'eyeCatchImageVariants':
+                  ConnectFixtureServer.seedEyeCatchVariants(),
+            },
+            {'publicId': 'series-kitchen', 'title': 'The Little Kitchen'},
+          ],
+        },
+        {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+      ];
+
+      final genres = await catalog.listGenres();
+
+      final featured = genres.first.featuredSeries;
+      expect(
+        [for (final series in featured) series.id],
+        [ConnectFixtureServer.seedSeriesId, 'series-kitchen'],
+      );
+      expect(
+        featured.first.eyeCatchVariants.first.url.toString(),
+        '${server.baseUrl}/images/series/'
+        '${ConnectFixtureServer.seedSeriesImageId}/portrait/400',
+      );
+      // A series with no artwork is still a cell of the tile, drawn flat.
+      expect(featured.last.eyeCatchVariants, isEmpty);
+      expect(genres.first.imageRequestHeaders, {
+        'x-forwarded-host': 'localhost',
+      });
+      // protojson omits an empty repeated field, which is a genre with none.
+      expect(genres.last.featuredSeries, isEmpty);
+    },
+  );
+
+  test('listGenres drops a cover that names no series', () async {
+    server.genres = [
+      {
+        ...ConnectFixtureServer.seedGenres().first,
+        'featuredSeries': [
+          {'publicId': '  ', 'title': 'Nameless'},
+          {'publicId': 'series-kitchen', 'title': 'The Little Kitchen'},
+        ],
+      },
+    ];
+
+    final genres = await catalog.listGenres();
+
+    expect(
+      [for (final series in genres.single.featuredSeries) series.id],
+      ['series-kitchen'],
+    );
+  });
+
   test('listGenres reads a tenant with no genre as empty', () async {
     expect(await catalog.listGenres(), isEmpty);
   });

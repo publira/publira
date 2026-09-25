@@ -6,6 +6,8 @@ class PublishedGenre {
     required this.id,
     required this.name,
     required this.seriesCount,
+    this.featuredSeries = const [],
+    this.imageRequestHeaders = const {},
   });
 
   /// Public id (`public_id`), used as the route parameter.
@@ -15,6 +17,30 @@ class PublishedGenre {
   /// How many of its series are published right now. A genre whose last
   /// series was taken down stays listed, at zero.
   final int seriesCount;
+
+  /// The series its tile draws covers from, in the order the API returned
+  /// them. Empty for a genre with none, which is what puts its name in the
+  /// tile instead.
+  final List<GenreFeaturedSeries> featuredSeries;
+
+  /// Headers the covers of [featuredSeries] must be fetched with.
+  final Map<String, String> imageRequestHeaders;
+}
+
+/// A series on a genre's tile, as `publira.v1.PublishedGenreFeaturedSeries`
+/// describes it.
+class GenreFeaturedSeries {
+  const GenreFeaturedSeries({
+    required this.id,
+    this.eyeCatchVariants = const [],
+  });
+
+  /// Public id (`public_id`) of the series.
+  final String id;
+
+  /// Artwork renditions. Empty for a series with none, which leaves its cell
+  /// flat.
+  final List<EyeCatchVariant> eyeCatchVariants;
 }
 
 /// A tag at least one published series carries, as `publira.v1.PublishedTag`
