@@ -14,7 +14,38 @@ class FakePurchaseRepository implements PurchaseRepository {
     this.seriesByEpisode = const {},
     this.checkoutFailure,
     this.pages = const [],
+    this.route = AppPurchaseRoute.externalCheckout,
   });
+
+  /// What [appPurchaseRoute] answers.
+  AppPurchaseRoute route;
+
+  /// The product [startStorePurchase] answers every episode with.
+  String storeProductId = 'episode_500';
+
+  /// Thrown by [startStorePurchase].
+  PurchaseFailure? storeStartFailure;
+
+  /// Episodes [startStorePurchase] was asked for, in order.
+  final List<String> storeIntents = <String>[];
+
+  /// Thrown by [confirmStorePurchase], standing in for a server that cannot
+  /// record the transaction yet.
+  PurchaseFailure? confirmFailure;
+
+  /// Held open by a test that needs a confirmation in flight.
+  Completer<void>? confirmGate;
+
+  /// Called for a transaction [confirmStorePurchase] records, which is when
+  /// the server starts answering the episode as the reader's.
+  void Function()? onConfirmed;
+
+  /// Transactions [confirmStorePurchase] recorded, in order.
+  final List<String> confirmed = <String>[];
+
+  /// The intent [startStorePurchase] opens for [episodePublicId].
+  static String intentFor(String episodePublicId) =>
+      'intent-$episodePublicId'.toLowerCase();
 
   /// What [acceptsPayments] answers.
   bool payments;
@@ -73,6 +104,40 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     return checkoutUrlFor(episodePublicId);
+  }
+
+  @override
+  Future<AppPurchaseRoute> appPurchaseRoute() async => route;
+
+  @override
+  Future<StorePurchaseIntent> startStorePurchase(
+    String episodePublicId,
+    InAppPurchaseStore store,
+  ) async {
+    storeIntents.add(episodePublicId);
+    final failure = storeStartFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return StorePurchaseIntent(
+      intentId: intentFor(episodePublicId),
+      productId: storeProductId,
+    );
+  }
+
+  @override
+  Future<void> confirmStorePurchase({
+    required InAppPurchaseStore store,
+    required String transaction,
+    required String productId,
+  }) async {
+    await confirmGate?.future;
+    final failure = confirmFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    confirmed.add(transaction);
+    onConfirmed?.call();
   }
 
   @override

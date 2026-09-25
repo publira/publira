@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/announcements/http_announcement_repository.dart';
@@ -46,6 +47,7 @@ import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/push/http_push_repository.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_device_store.dart';
@@ -77,6 +79,7 @@ class PubliraApp extends StatefulWidget {
     this.pages,
     this.purchases,
     this.checkoutLauncher,
+    this.storePurchaser,
     this.offline,
     this.downloader,
     this.progress,
@@ -114,6 +117,10 @@ class PubliraApp extends StatefulWidget {
   /// counted under, which an on-device test replaces so one test's reader is
   /// not the next one's.
   ///
+  /// [inAppPurchase] is the store's in-app purchase, which `main` hands over on
+  /// iOS and Android. An on-device test leaves it out, and the app then offers
+  /// no store purchase, since a test device has no store account to buy with.
+  ///
   /// [messaging] is the device's notification service, which `main` resolves
   /// before the first frame because initializing Firebase is asynchronous. It
   /// is `null` for a build carrying no Firebase project, and push is off then.
@@ -124,6 +131,7 @@ class PubliraApp extends StatefulWidget {
     SessionStore store = const SecureSessionStore(),
     OfflineLibrary? offline,
     PushMessaging? messaging,
+    InAppPurchasePlatform? inAppPurchase,
     PushDeviceStore pushDevices = const SecurePushDeviceStore(),
     AgeRatingConfirmationStore ageRatingConfirmation =
         const FileAgeRatingConfirmationStore(),
@@ -154,6 +162,14 @@ class PubliraApp extends StatefulWidget {
         tenants: tenants,
       ),
       store: store,
+    );
+    final purchaseStore = inAppPurchase == null
+        ? null
+        : deviceInAppPurchaseStore();
+    final purchases = HttpPurchaseRepository(
+      client: client,
+      tenants: tenants,
+      store: purchaseStore,
     );
     final catalog = OfflineCatalogRepository(
       origin: HttpCatalogRepository(
@@ -192,8 +208,15 @@ class PubliraApp extends StatefulWidget {
       ),
       contact: HttpContactRepository(client: client, tenants: tenants),
       pages: HttpPageRepository(client: client, tenants: tenants),
-      purchases: HttpPurchaseRepository(client: client, tenants: tenants),
+      purchases: purchases,
       checkoutLauncher: checkoutLauncher ?? const PluginCheckoutLauncher(),
+      storePurchaser: inAppPurchase == null || purchaseStore == null
+          ? null
+          : StorePurchaser(
+              platform: inAppPurchase,
+              store: purchaseStore,
+              repository: purchases,
+            ),
       offline: library,
       downloader: EpisodeDownloader(catalog: catalog, library: library),
       progress: catalog.outbox,
@@ -288,6 +311,13 @@ class PubliraApp extends StatefulWidget {
   /// purchase at all, and a locked episode then offers none.
   final PurchaseRepository? purchases;
   final CheckoutLauncher? checkoutLauncher;
+
+  /// The store's in-app purchase, for a tenant whose app sells through it.
+  ///
+  /// [PubliraApp.fromConfig] supplies one when it is handed the store's
+  /// platform on iOS or Android. The app starts it on launch and has it
+  /// confirm what the store still holds on sign-in and on resume.
+  final StorePurchaser? storePurchaser;
 
   /// What the device holds for reading without a network.
   ///
@@ -422,6 +452,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
     unawaited(_restore());
+    unawaited(widget.storePurchaser?.start());
     unawaited(widget.tenantBrand?.start());
     unawaited(_readAnnouncements());
   }
@@ -523,7 +554,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// Reads the unread count and the pinned announcement again when the reader
   /// comes back to the app, which is when a notification they were sent or a
   /// banner pinned in the meantime would otherwise go unseen. It is also when
-  /// a reader who read offline is most likely to be back on a network.
+  /// a reader who read offline is most likely to be back on a network, and
+  /// when a store transaction the server could not take is sent again.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
@@ -533,6 +565,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
       unawaited(widget.progress?.flush());
+      unawaited(widget.storePurchaser?.reconcile());
     }
   }
 
@@ -580,6 +613,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       );
       if (signedIn) {
         unawaited(widget.notifications?.refresh());
+        // A transaction the store reported before there was a session could
+        // not be confirmed.
+        unawaited(widget.storePurchaser?.reconcile());
       } else {
         widget.notifications?.reset();
       }
@@ -706,6 +742,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                             child: PurchaseScope(
                               repository: widget.purchases,
                               launcher: widget.checkoutLauncher,
+                              storePurchaser: widget.storePurchaser,
                               child: AgeRatingConfirmationScope(
                                 controller: _ageRating,
                                 child: ScreenCaptureScope(

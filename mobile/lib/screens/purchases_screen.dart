@@ -250,6 +250,9 @@ class _PurchasesListState extends State<_PurchasesList> {
       PurchaseFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
       PurchaseFailureKind.alreadyPurchased ||
       PurchaseFailureKind.gone ||
+      PurchaseFailureKind.storeUnavailable ||
+      PurchaseFailureKind.notSold ||
+      PurchaseFailureKind.notSettled ||
       PurchaseFailureKind.unexpected => messages.purchasesFailed,
     };
   }

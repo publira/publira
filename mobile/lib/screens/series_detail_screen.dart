@@ -588,6 +588,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                         onAlreadyPurchased: () => context.pushInTab(
                           AppRoutes.episodeViewerPath(series.id, episode.id),
                         ),
+                        onStorePurchase: () => context.pushInTab(
+                          AppRoutes.episodeViewerPath(
+                            series.id,
+                            episode.id,
+                            checkout: CheckoutOutcome.success,
+                          ),
+                        ),
                       )
                     : null,
               ),

@@ -3671,8 +3671,10 @@
       "cancelled": "購買已取消，未產生任何扣款。",
       "check_again": "再次確認",
       "confirming": "我們正在確認您的付款。購買生效後即可開啟該章節。",
+      "not_sold_in_app": "目前無法在應用程式中購買該章節。請稍後再試。",
       "sold_on_web": "在網站上販售",
-      "start_failed": "無法開始購買。請稍後再試。"
+      "start_failed": "無法開始購買。請稍後再試。",
+      "store_unavailable": "此裝置無法進行購買。請確認已登入商店且未限制購買。"
     },
     "purchases": {
       "account_description": "查看您購買的章節，包括未儲存在此裝置上的章節。",
