@@ -173,10 +173,12 @@ export const FollowList = async ({
                 </div>
                 {item.unavailable ? null : (
                   <UnfollowButton
+                    aria-label={t("host.follow.unfollow_aria", {
+                      name: item.title,
+                    })}
                     publicId={item.publicId}
                     returnTo={returnTo}
                     targetKind={item.targetKind}
-                    targetName={item.title}
                     tenantId={tenantId}
                   />
                 )}

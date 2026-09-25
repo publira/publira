@@ -1,15 +1,24 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
+import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
+import { ClientMessage } from "#components/client-message";
+
+interface ErrorScreenState {
+  digest: string | undefined;
+  retry: () => void;
+}
+
+const ErrorScreenStateContext = createContext<ErrorScreenState | null>(null);
+
 interface ErrorScreenProps {
-  /** Extra navigation shown next to the retry button. */
-  actions?: ReactNode;
-  description: ReactNode;
-  /** Only a boundary catches a digest, so a caller without one omits both. */
-  digestLabel?: ReactNode;
-  retryLabel: ReactNode;
+  /**
+   * `ErrorScreenTitle`, `ErrorScreenDescription`, `ErrorScreenActions` holding
+   * an `ErrorScreenRetry`, and an `ErrorScreenDigest`.
+   */
+  children: ReactNode;
   /**
    * `error.digest` from the boundary. Server Component errors are stripped of
    * their message before they reach the client, so the digest is the only
@@ -17,7 +26,6 @@ interface ErrorScreenProps {
    */
   digest?: string;
   retry: () => void;
-  title: ReactNode;
 }
 
 /**
@@ -29,36 +37,85 @@ interface ErrorScreenProps {
  * row below. Nothing is centred and nothing is wrapped in a surface — a failure
  * is a page the reader landed on, not a notice pinned to the middle of one.
  *
- * Retry is an outline button rather than a filled one. The reading action is
- * what the site's one filled button is for, and a screen that has lost its
- * content has nothing to read.
+ * The title and description name the failure, so the caller writes them; the
+ * retry label and the digest prefix are the same on every screen, so their
+ * slots resolve them from the catalog.
  *
- * Retry is wired to `retry()` rather than `reset()`: `reset()` only clears the
- * error state, while `retry()` re-fetches and re-renders the boundary's
- * children, which is what a reader means by Try again.
+ * ```tsx
+ * <ErrorScreen digest={error.digest} retry={retry}>
+ *   <ErrorScreenTitle>…</ErrorScreenTitle>
+ *   <ErrorScreenDescription>…</ErrorScreenDescription>
+ *   <ErrorScreenActions>
+ *     <ErrorScreenRetry />
+ *   </ErrorScreenActions>
+ *   <ErrorScreenDigest />
+ * </ErrorScreen>
+ * ```
  */
-export const ErrorScreen = ({
-  actions,
-  description,
-  digest,
-  digestLabel,
-  retry,
-  retryLabel,
-  title,
-}: ErrorScreenProps) => (
-  <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
-    <h1 className="font-serif text-3xl leading-tight">{title}</h1>
-    <p className="text-foreground">{description}</p>
-    <div className="mt-2 flex flex-wrap items-center gap-3">
-      <Button onClick={() => retry()} variant="outline">
-        {retryLabel}
-      </Button>
-      {actions}
-    </div>
-    {digest ? (
-      <p className="mt-4 text-xs text-muted-foreground">
-        {digestLabel} <code className="font-mono">{digest}</code>
-      </p>
-    ) : null}
-  </div>
+export const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
+  const state = useMemo(() => ({ digest, retry }), [digest, retry]);
+
+  return (
+    <ErrorScreenStateContext value={state}>
+      <div className="mx-auto grid max-w-(--measure-prose) gap-4 px-6 py-16">
+        {children}
+      </div>
+    </ErrorScreenStateContext>
+  );
+};
+
+const useErrorScreenState = (): ErrorScreenState => {
+  const state = useContext(ErrorScreenStateContext);
+  if (!state) {
+    throw new Error(
+      "ErrorScreenRetry and ErrorScreenDigest must be rendered inside an ErrorScreen."
+    );
+  }
+  return state;
+};
+
+export const ErrorScreenTitle = ({ children }: { children: ReactNode }) => (
+  <h1 className="font-serif text-3xl leading-tight">{children}</h1>
 );
+
+export const ErrorScreenDescription = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <p className="text-foreground">{children}</p>;
+
+export const ErrorScreenActions = ({ children }: { children: ReactNode }) => (
+  <div className="mt-2 flex flex-wrap items-center gap-3">{children}</div>
+);
+
+/**
+ * Outline rather than filled: the reading action is what the site's one filled
+ * button is for, and a screen that has lost its content has nothing to read.
+ * `retry()` rather than `reset()`, because only `retry()` re-fetches the
+ * boundary's children, which is what a reader means by Try again.
+ */
+export const ErrorScreenRetry = () => {
+  const { retry } = useErrorScreenState();
+
+  return (
+    <Button onClick={() => retry()} variant="outline">
+      <ClientMessage message="host.common.retry" />
+    </Button>
+  );
+};
+
+/** The digest behind its prefix, or nothing when the error carries none. */
+export const ErrorScreenDigest = () => {
+  const { digest } = useErrorScreenState();
+
+  if (!digest) {
+    return null;
+  }
+
+  return (
+    <p className="mt-4 text-xs text-muted-foreground">
+      <ClientMessage message="host.common.error_id" />{" "}
+      <code className="font-mono">{digest}</code>
+    </p>
+  );
+};

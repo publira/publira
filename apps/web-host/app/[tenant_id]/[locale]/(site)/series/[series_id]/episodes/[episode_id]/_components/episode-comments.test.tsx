@@ -98,8 +98,16 @@ vi.mock("./episode-comment-dialog", () => ({
 }));
 
 vi.mock("./comment-delete-button", () => ({
-  CommentDeleteButton: ({ commentPublicId }: { commentPublicId: string }) => (
-    <button type="button">Delete {commentPublicId}</button>
+  CommentDeleteButton: ({
+    "aria-label": ariaLabel,
+    commentPublicId,
+  }: {
+    "aria-label": string;
+    commentPublicId: string;
+  }) => (
+    <button aria-label={ariaLabel} type="button">
+      Delete {commentPublicId}
+    </button>
   ),
 }));
 
@@ -301,6 +309,11 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     expect(screen.getByText("Delete CmntAAAAAAA2")).toBeDefined();
+    expect(
+      screen.getByRole("button", {
+        name: "Delete your comment posted on Sep 2, 2026, 12:00 AM",
+      })
+    ).toBeDefined();
     expect(screen.queryByText("Delete CmntAAAAAAA1")).toBeNull();
   });
 

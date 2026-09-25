@@ -1,9 +1,13 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
 
 import {
@@ -14,17 +18,18 @@ import {
 const actionButtonClassName =
   "inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60";
 
+/**
+ * `aria-label` names the notification, so each row's control is told apart.
+ */
 export const MarkNotificationAsReadButton = ({
+  "aria-label": ariaLabel,
   notificationId,
-  notificationTitle,
   tenantId,
 }: {
+  "aria-label": string;
   notificationId: string;
-  /** Named in the accessible label, so each row's control is told apart. */
-  notificationTitle: string;
   tenantId: string;
 }) => {
-  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     markNotificationAsReadAction,
     null
@@ -36,18 +41,17 @@ export const MarkNotificationAsReadButton = ({
       <input name="tenantId" type="hidden" value={tenantId} />
       <input name="notificationId" type="hidden" value={notificationId} />
       <button
-        aria-label={t("host.notifications.mark_read_aria", {
-          title: notificationTitle,
-        })}
+        aria-label={ariaLabel}
         className={actionButtonClassName}
         disabled={isPending}
         type="submit"
       >
-        {isPending ? (
-          <ClientMessage message="host.common.updating" />
-        ) : (
+        <ActionFormIdle>
           <ClientMessage message="host.common.mark_read" />
-        )}
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="host.common.updating" />
+        </ActionFormPending>
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -75,11 +79,12 @@ export const MarkAllNotificationsAsReadButton = ({
         disabled={isPending}
         type="submit"
       >
-        {isPending ? (
-          <ClientMessage message="host.common.updating" />
-        ) : (
+        <ActionFormIdle>
           <ClientMessage message="host.common.mark_all_read" />
-        )}
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="host.common.updating" />
+        </ActionFormPending>
       </button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

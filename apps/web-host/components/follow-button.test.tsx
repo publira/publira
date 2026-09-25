@@ -8,6 +8,8 @@ import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import {
   FollowButton,
+  FollowButtonFollow,
+  FollowButtonUnfollow,
   FollowControlSkeleton,
   FollowLoginLink,
 } from "./follow-button";
@@ -39,8 +41,8 @@ describe("FollowLoginLink", () => {
   it("Return to current details page Guide to login with returnTo", async () => {
     await renderWithClientMessages(
       <FollowLoginLink
+        aria-label="Sign in to follow Published Series"
         href="/login?returnTo=%2Fseries%2FSERIES01"
-        targetName="Published Series"
       />
     );
 
@@ -62,9 +64,11 @@ describe("FollowButton", () => {
         publicId="SERIES01"
         returnTo="/series/SERIES01"
         targetKind="series"
-        targetName="Published Series"
         tenantId={tenantId}
-      />
+      >
+        <FollowButtonFollow aria-label="Follow Published Series" />
+        <FollowButtonUnfollow aria-label="Unfollow Published Series" />
+      </FollowButton>
     );
 
     const button = screen.getByRole("button", {
@@ -81,9 +85,11 @@ describe("FollowButton", () => {
         publicId="CREATOR01"
         returnTo="/creators/CREATOR01"
         targetKind="creator"
-        targetName="Published Creator"
         tenantId={tenantId}
-      />
+      >
+        <FollowButtonFollow aria-label="Follow Published Creator" />
+        <FollowButtonUnfollow aria-label="Unfollow Published Creator" />
+      </FollowButton>
     );
 
     const button = screen.getByRole("button", {

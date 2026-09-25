@@ -48,10 +48,16 @@ vi.mock("./notification-read-actions", () => ({
     <button type="button">Mark all as read {tenantId}</button>
   ),
   MarkNotificationAsReadButton: ({
+    "aria-label": ariaLabel,
     notificationId,
   }: {
+    "aria-label": string;
     notificationId: string;
-  }) => <button type="button">Mark as read {notificationId}</button>,
+  }) => (
+    <button aria-label={ariaLabel} type="button">
+      Mark as read {notificationId}
+    </button>
+  ),
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -138,6 +144,11 @@ describe("NotificationList", () => {
     expect(screen.getByText("Unread")).toBeDefined();
     expect(screen.getByText("Read")).toBeDefined();
     expect(screen.getByText("Mark as read n1")).toBeDefined();
+    expect(
+      screen.getByRole("button", {
+        name: "Mark A new episode has been published as read",
+      })
+    ).toBeDefined();
     expect(screen.queryByText("Mark as read n2")).toBeNull();
     expect(screen.getByText(`Mark all as read ${tenantId}`)).toBeDefined();
     expect(
