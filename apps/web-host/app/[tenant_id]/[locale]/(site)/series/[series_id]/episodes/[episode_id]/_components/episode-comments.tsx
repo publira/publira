@@ -247,7 +247,9 @@ export const EpisodeComments = async ({
                 </div>
                 {viewer && comment.authorPublicId === viewer.publicId ? (
                   <CommentDeleteButton
-                    commentedAt={commentedAt(comment)}
+                    aria-label={t("host.episode.comments.delete_aria", {
+                      date: commentedAt(comment),
+                    })}
                     commentPublicId={comment.publicId}
                     episodePublicId={episodePublicId}
                     returnTo={episodePath}

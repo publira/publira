@@ -12,9 +12,15 @@ import { buildLoginPath } from "#lib/auth-shared";
 import type { FollowTargetKind } from "#lib/follow";
 import { getMyFollowStatus } from "#lib/follow";
 import { getLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
-import { FollowButton, FollowLoginLink } from "./follow-button";
+import {
+  FollowButton,
+  FollowButtonFollow,
+  FollowButtonUnfollow,
+  FollowLoginLink,
+} from "./follow-button";
 
 /**
  * Member-specific follow island. The surrounding series/creator body stays on
@@ -35,7 +41,8 @@ export const FollowControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const [defaultLocale, result] = await Promise.all([
+  const [t, defaultLocale, result] = await Promise.all([
+    getMessagesFor(locale),
     getTenantDefaultLocale(tenantId),
     getMyFollowStatus(tenantId, targetKind, publicId, locale),
   ]);
@@ -58,8 +65,8 @@ export const FollowControl = async ({
   if (!result.signedIn) {
     return (
       <FollowLoginLink
+        aria-label={t("host.follow.login_aria", { name: targetName })}
         href={buildLoginPath(locale, defaultLocale, returnTo)}
-        targetName={targetName}
       />
     );
   }
@@ -70,8 +77,14 @@ export const FollowControl = async ({
       publicId={publicId}
       returnTo={returnTo}
       targetKind={targetKind}
-      targetName={targetName}
       tenantId={tenantId}
-    />
+    >
+      <FollowButtonFollow
+        aria-label={t("host.follow.follow_aria", { name: targetName })}
+      />
+      <FollowButtonUnfollow
+        aria-label={t("host.follow.unfollow_aria", { name: targetName })}
+      />
+    </FollowButton>
   );
 };

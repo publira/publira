@@ -183,8 +183,10 @@ export const NotificationList = async ({
               {item.isRead ? null : (
                 <div className="mt-3">
                   <MarkNotificationAsReadButton
+                    aria-label={t("host.notifications.mark_read_aria", {
+                      title: item.title,
+                    })}
                     notificationId={item.id}
-                    notificationTitle={item.title}
                     tenantId={tenantId}
                   />
                 </div>

@@ -26,10 +26,10 @@ describe("UnfollowButton", () => {
   it("Displays only the release operation from the list", async () => {
     await renderWithClientMessages(
       <UnfollowButton
+        aria-label="Unfollow Published Series"
         publicId="SERIES01"
         returnTo="/settings/follows"
         targetKind="series"
-        targetName="Published Series"
         tenantId={tenantId}
       />
     );
