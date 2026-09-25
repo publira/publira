@@ -4,15 +4,18 @@ import type { Page } from "@playwright/test";
 import { applyScenarioSql } from "../src/db";
 import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
 import {
+  RANKED_GENRE,
   RANKING_COMPUTED_ON,
   RANKING_ENTRY_COUNT,
   RANKING_SERIES,
+  seedSeriesImageId,
 } from "../src/scenarios/ranking";
 import { hostPath, WEB_HOST_OTHER_TENANT_BASE_URL } from "../src/urls";
 
 /**
  * The ranking a reader sees: the numbered module the top page opens with, the
- * chart behind it, and the two periods that chart is kept in.
+ * chart behind it, the two periods that chart is kept in, and the order a
+ * genre tile draws its covers in.
  *
  * The positions come from `db/seeds/scenarios/170_ranking.sql`, which
  * `task e2e:db` applies for the whole stack, so this suite seeds nothing of its
@@ -94,6 +97,31 @@ test.describe("web-host ranking", () => {
     await expect(page).toHaveURL(/period=weekly/u);
     await expect(chartRow(page, RANKING_SERIES.held.title)).toContainText(
       `No. ${RANKING_SERIES.held.weeklyRank}`
+    );
+  });
+
+  test("a genre tile draws its weekly leaderboard before its newest series", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/genres"));
+
+    const tile = page
+      .locator("main li")
+      .filter({ has: page.getByRole("link", { name: RANKED_GENRE.name }) });
+    const covers = tile.locator("img");
+    await expect(covers).toHaveCount(RANKED_GENRE.coverSeriesNumbers.length);
+
+    // The covers are `alt=""`, so the series each one is comes from its URL.
+    const imageIds = await covers.evaluateAll((images) =>
+      images.map(
+        (image) =>
+          /\/images\/series\/(?<id>[^/]+)\//u.exec(
+            image.getAttribute("src") ?? ""
+          )?.groups?.id
+      )
+    );
+    expect(imageIds).toEqual(
+      RANKED_GENRE.coverSeriesNumbers.map(seedSeriesImageId)
     );
   });
 
