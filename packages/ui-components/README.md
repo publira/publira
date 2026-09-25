@@ -39,10 +39,14 @@ Add it as a workspace dependency and load the styles from the global CSS.
 
 - [Badge / StatusChip](./src/badge) - status indicators and supplementary labels
 - [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
-- [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow](./src/table) - the table primitives
+- [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow / TableSkeleton](./src/table) - the table primitives
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
 - [Tabs / TabsList / TabsTab / TabsPanel](./src/tabs) - one panel at a time, with the row of tabs that switches them
 - [Popover](./src/popover) - the floating surfaces placed in a header and similar places
+- [LocaleSwitcher](./src/locale-switcher) - the display-language control a header offers
+- [ToastProvider / useToastManager](./src/toast) - the toasts a screen raises after an action
+- [Identifier / IdentifierCopy / IdentifierValue](./src/identifier) - a public ID or a code an operator copies off a detail screen
+- [Figure / FigureLine / FigureLabel / FigureValue](./src/figure-line) - a labelled figure, such as a count or an amount
 - [EmptyState](./src/empty-state) - the empty state
 - [SectionError](./src/section-error) - one section of a page that failed to load
 - [SectionErrorCatch](./src/section-error-fallback) - a section-level error boundary

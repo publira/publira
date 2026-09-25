@@ -29,7 +29,7 @@ Once `children` throw, it renders the `fallback` tree the app gives it and suppl
 
 The body is a `fallback` prop rather than `children` because `children` is the subtree the boundary protects.
 
-Place the boundary outside the `<Suspense>`, so the section's skeleton comes back while the retry runs.
+Place the boundary outside the `<Suspense>`, so the section's skeleton comes back while the retry runs. `SectionErrorBoundary` here is web-host's wrapper (`components/section-error-boundary.tsx`), which fills the `fallback` above from its own catalog and takes only the `title` of the section from the caller.
 
 ```tsx
 <SectionErrorBoundary title="Could not display the recommendations">
