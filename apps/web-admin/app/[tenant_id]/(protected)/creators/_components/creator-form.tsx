@@ -28,7 +28,10 @@ import {
   centreCropRect,
   framedPreviewStyle,
 } from "#components/image-crop/crop";
-import { ImageCropDialog } from "#components/image-crop/crop-dialog";
+import {
+  ImageCropDialog,
+  ImageCropDialogTitle,
+} from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -205,8 +208,11 @@ const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
           onOpenChange={setIsFraming}
           open={isFraming}
           source={source}
-          title={t("admin.creators.form.icon_crop_title")}
-        />
+        >
+          <ImageCropDialogTitle>
+            {t("admin.creators.form.icon_crop_title")}
+          </ImageCropDialogTitle>
+        </ImageCropDialog>
       ) : null}
     </Field>
   );

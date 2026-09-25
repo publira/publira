@@ -96,11 +96,11 @@ const formatReportDateTime = (
  * the operator had it.
  */
 const CommentReportStatusFilter = ({
-  ariaLabel,
+  "aria-label": ariaLabel,
   status,
   statusOptions,
 }: {
-  ariaLabel: string;
+  "aria-label": string;
   status: string;
   statusOptions: readonly CommentReportStatusOption[];
 }) => (
@@ -440,7 +440,7 @@ export const CommentReportQueue = async ({
         <AdminSectionActions>
           {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
           <CommentReportStatusFilter
-            ariaLabel={t("admin.comments.reports.filter_aria")}
+            aria-label={t("admin.comments.reports.filter_aria")}
             status={status}
             statusOptions={statusOptions}
           />

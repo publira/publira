@@ -21,7 +21,10 @@ import {
   centreCropRect,
   framedPreviewStyle,
 } from "#components/image-crop/crop";
-import { ImageCropDialog } from "#components/image-crop/crop-dialog";
+import {
+  ImageCropDialog,
+  ImageCropDialogTitle,
+} from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -267,10 +270,13 @@ const EyeCatchAspectSlot = ({
           onOpenChange={setIsFraming}
           open={isFraming}
           source={source}
-          title={t("admin.eye_catch.aspect.crop_title", {
-            variant_type: variantType,
-          })}
-        />
+        >
+          <ImageCropDialogTitle>
+            {t("admin.eye_catch.aspect.crop_title", {
+              variant_type: variantType,
+            })}
+          </ImageCropDialogTitle>
+        </ImageCropDialog>
       ) : null}
     </div>
   );

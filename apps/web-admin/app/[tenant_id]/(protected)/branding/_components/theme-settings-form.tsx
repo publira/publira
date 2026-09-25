@@ -55,22 +55,17 @@ interface ThemeSettingsFormProps {
 
 interface ColorSwatchInputProps {
   name: string;
-  pickerLabel: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const ColorSwatchInput = ({
-  name,
-  pickerLabel,
-  value,
-  onChange,
-}: ColorSwatchInputProps) => {
+const ColorSwatchInput = ({ name, value, onChange }: ColorSwatchInputProps) => {
+  const t = useClientMessages();
   const pickerId = useId();
   return (
     <div className="relative flex max-w-48 items-center">
       <label
-        aria-label={pickerLabel}
+        aria-label={t("admin.settings.theme.color_picker")}
         className="absolute left-2 h-6 w-6 shrink-0 cursor-pointer overflow-hidden rounded-sm border"
         htmlFor={pickerId}
         style={{ backgroundColor: value }}
@@ -342,7 +337,6 @@ export const ThemeSettingsForm = ({
   preview,
 }: ThemeSettingsFormProps) => {
   const t = useClientMessages();
-  const pickerLabel = t("admin.settings.theme.color_picker");
   const tenantId = useTenantId();
   // Seeded once per mount; submitting is what replaces it, with the palette the
   // server stored — normalization included, so the pickers show what a reload
@@ -504,7 +498,6 @@ export const ThemeSettingsForm = ({
                                 <ColorSwatchInput
                                   name={field.formName}
                                   onChange={createHandler(field.key)}
-                                  pickerLabel={pickerLabel}
                                   value={theme[field.key]}
                                 />
                                 {field.descriptionKey ? (
@@ -527,7 +520,6 @@ export const ThemeSettingsForm = ({
                                 <ColorSwatchInput
                                   name={pair.formName}
                                   onChange={createHandler(pair.key)}
-                                  pickerLabel={pickerLabel}
                                   value={theme[pair.key]}
                                 />
                                 {pair.descriptionKey ? (
@@ -553,7 +545,6 @@ export const ThemeSettingsForm = ({
                             <ColorSwatchInput
                               name={field.formName}
                               onChange={createHandler(field.key)}
-                              pickerLabel={pickerLabel}
                               value={theme[field.key]}
                             />
                             {field.descriptionKey ? (
