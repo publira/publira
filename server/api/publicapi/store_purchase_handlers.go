@@ -135,25 +135,37 @@ func (s *apiServer) StartStorePurchase(
 }
 
 // requireStoreSelling answers failed_precondition unless the tenant's app sells
-// through the store and the store the app is about to charge through is ready:
-// the route needs only one of the two stores, and a charge through the other
-// could not be confirmed.
+// through the store and the store the app is about to charge through can
+// verify the charge: the route needs only one of the two stores, and a charge
+// through the other, or through one whose key does not decrypt, could not be
+// confirmed.
 func (s *apiServer) requireStoreSelling(ctx context.Context, tenantID uuid.UUID, store publirav1.InAppPurchaseStore) error {
-	config, err := s.appStores(ctx).Get(ctx, tenantID)
+	stores := s.appStores(ctx)
+	config, err := stores.Get(ctx, tenantID)
 	if err != nil {
 		return s.internalDBError(ctx, "failed to get tenant store settings", err, "tenant_id", tenantID.String())
 	}
 	if config.Route != paymentsettings.RouteStore {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app does not sell through the store"))
 	}
-	ready := config.AppStore.Ready
+	name := storeAppStore
 	if store == publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
-		ready = config.GooglePlay.Ready
+		name = storeGooglePlay
+		_, err = stores.LoadGooglePlayCredentials(ctx, tenantID)
+	} else {
+		_, err = stores.LoadAppStoreCredentials(ctx, tenantID)
 	}
-	if !ready {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, paymentsettings.ErrStoreNotReady):
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+	case paymentsettings.IsUnavailable(err):
+		s.logger.WarnContext(ctx, "store purchase refused because the store's key does not decrypt", "tenant_id", tenantID, "store", name, "error", err)
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+	default:
+		return s.internalDBError(ctx, "failed to load store credentials", err, "tenant_id", tenantID.String(), "store", name)
 	}
-	return nil
 }
 
 // storeTransaction is a transaction the store has vouched for.
