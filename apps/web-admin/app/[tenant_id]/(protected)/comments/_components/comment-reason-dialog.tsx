@@ -1,6 +1,5 @@
 "use client";
 
-import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Textarea } from "@publira/ui-components/textarea";
+import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState, useContext, useRef } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";

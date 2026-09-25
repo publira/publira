@@ -1,7 +1,7 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
-import { useToastManager } from "@publira/ui-components";
+import { useToastManager } from "@publira/ui-components/toast";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useTransition } from "react";

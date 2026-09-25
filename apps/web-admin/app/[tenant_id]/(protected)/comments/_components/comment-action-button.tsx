@@ -1,8 +1,8 @@
 "use client";
 
-import { useToastManager } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState } from "react";
 
 import { useClientMessages } from "#components/client-message";

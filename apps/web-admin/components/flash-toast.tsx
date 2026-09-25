@@ -1,6 +1,6 @@
 "use client";
 
-import { useToastManager } from "@publira/ui-components";
+import { useToastManager } from "@publira/ui-components/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useEffectEvent, useRef } from "react";
 
