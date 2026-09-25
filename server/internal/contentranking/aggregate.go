@@ -53,6 +53,17 @@ const (
 // them would file incomparable rankings under the same version. Changing any
 // of these means bumping AlgorithmVersion.
 //
+// Each content_daily_stats row in a window contributes
+//
+//	viewWeight × view_count + uniqueViewerWeight × unique_viewer_count
+//	+ purchaseWeight × purchase_count + commentWeight × comment_count
+//	+ favoriteWeight × favorite_count + ratingWeight × rating_sum
+//
+// faded by 0.5 ^ (days before the window's last day / recencyHalfLifeDays),
+// and an entity's score is the sum over its rows. view_count is soft PV: a
+// reader opening a series or episode detail page, reported through
+// RecordContentView.
+//
 // The ordering behind the numbers: paying for an episode is the strongest
 // statement a reader makes, writing about it the next strongest, following a
 // series after that, and a view the weakest. A distinct viewer counts for more
