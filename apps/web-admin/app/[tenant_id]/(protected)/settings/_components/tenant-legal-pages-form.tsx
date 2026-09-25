@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Combobox,
@@ -159,13 +163,6 @@ const LegalPageField = ({
   );
 };
 
-const SubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.settings.saving" />
-  ) : (
-    <ClientMessage message="admin.settings.legal_pages.submit" />
-  );
-
 export const TenantLegalPagesForm = ({
   action,
   canEdit,
@@ -257,7 +254,12 @@ export const TenantLegalPagesForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={controlsDisabled} type="submit">
-            <SubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.legal_pages.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

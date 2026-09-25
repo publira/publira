@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -151,9 +155,12 @@ export const SiteSettingsForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={isPending} type="submit">
-            {isPending
-              ? t("admin.settings.saving")
-              : t("admin.settings.site.submit")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.site.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

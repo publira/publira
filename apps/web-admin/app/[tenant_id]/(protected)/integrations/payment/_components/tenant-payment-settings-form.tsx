@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -307,7 +311,12 @@ const PaymentSettingsFields = ({
 
       <div className="flex flex-wrap gap-3">
         <Button disabled={fieldsDisabled || isSaving} type="submit">
-          {isSaving ? t("admin.settings.saving") : t("admin.settings.save")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.settings.save" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.settings.saving" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>

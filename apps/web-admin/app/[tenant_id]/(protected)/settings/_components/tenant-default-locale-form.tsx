@@ -2,6 +2,10 @@
 
 import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Field,
@@ -135,9 +139,12 @@ export const TenantDefaultLocaleForm = ({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button disabled={controlsDisabled} type="submit">
-            {isPending
-              ? t("admin.settings.saving")
-              : t("admin.settings.default_locale.submit")}
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.default_locale.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -180,7 +185,6 @@ const SmtpTestDialog = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useClientMessages();
   const handleSendToSelfChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onSendToSelfChange(event.target.checked);
@@ -264,17 +268,18 @@ const SmtpTestDialog = ({
                   </Button>
                 }
               />
-              <Button
-                disabled={isTesting}
+              <ActionFormSubmit
                 form={formId}
                 formAction={testFormAction}
-                type="submit"
                 variant="outline"
               >
-                {isTesting
-                  ? t("admin.settings.email.test_sending")
-                  : t("admin.settings.email.test_submit")}
-              </Button>
+                <ActionFormIdle>
+                  <ClientMessage message="admin.settings.email.test_submit" />
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <ClientMessage message="admin.settings.email.test_sending" />
+                </ActionFormPending>
+              </ActionFormSubmit>
             </DialogFooter>
           </DialogPopup>
         </DialogViewport>
@@ -554,9 +559,14 @@ export const TenantEmailSettingsForm = ({
             testState={testState}
           />
 
-          <Button disabled={!canEdit || isSaving} type="submit">
-            {isSaving ? t("admin.settings.saving") : t("admin.settings.save")}
-          </Button>
+          <ActionFormSubmit disabled={!canEdit} formAction={saveFormAction}>
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.save" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
+          </ActionFormSubmit>
         </div>
       </form>
     </AdminSection>

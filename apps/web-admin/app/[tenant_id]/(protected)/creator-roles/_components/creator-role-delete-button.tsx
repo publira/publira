@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -44,11 +48,9 @@ export const CreatorRoleDeleteButton = ({
   );
 
   return (
-    <div className="grid gap-1">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={creatorRole.publicId} />
-      </form>
+    <form action={formAction} className="grid gap-1" ref={formRef}>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="public_id" type="hidden" value={creatorRole.publicId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -58,11 +60,12 @@ export const CreatorRoleDeleteButton = ({
               type="button"
               variant="destructive"
             >
-              {isPending ? (
-                <ClientMessage message="admin.creator_roles.deleting" />
-              ) : (
+              <ActionFormIdle>
                 <ClientMessage message="admin.creator_roles.delete_action" />
-              )}
+              </ActionFormIdle>
+              <ActionFormPending>
+                <ClientMessage message="admin.creator_roles.deleting" />
+              </ActionFormPending>
             </Button>
           }
         />
@@ -95,6 +98,6 @@ export const CreatorRoleDeleteButton = ({
       {state && !state.ok && state.publicId === creatorRole.publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

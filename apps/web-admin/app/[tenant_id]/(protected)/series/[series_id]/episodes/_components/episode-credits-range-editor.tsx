@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
@@ -18,7 +22,7 @@ import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useId, useState } from "react";
 
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import { sharePercentToBps } from "#lib/credit-share";
 
 import { MAX_BULK_EPISODE_CREDIT_EPISODES } from "../_lib/credit-range";
@@ -657,9 +661,12 @@ export const EpisodeCreditsRangeEditor = ({
           }
         />
         <Button disabled={!canSubmit} type="submit">
-          {isPending
-            ? t("admin.series.episodes.credits.applying")
-            : t("admin.series.episodes.credits.apply")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.series.episodes.credits.apply" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.series.episodes.credits.applying" />
+          </ActionFormPending>
         </Button>
       </DialogFooter>
     </form>

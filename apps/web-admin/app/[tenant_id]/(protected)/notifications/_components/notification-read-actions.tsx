@@ -1,11 +1,15 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState, useContext } from "react";
 
 import { AdminLocaleContext } from "#components/admin-locale-context";
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 import {
   markAllNotificationsAsReadAction,
@@ -44,9 +48,12 @@ export const MarkNotificationAsReadButton = ({
         type="submit"
         variant="outline"
       >
-        {isPending
-          ? t("admin.notifications.updating")
-          : t("admin.notifications.mark_read")}
+        <ActionFormIdle>
+          <ClientMessage message="admin.notifications.mark_read" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="admin.notifications.updating" />
+        </ActionFormPending>
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -64,7 +71,6 @@ export const MarkAllNotificationsAsReadButton = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     markAllNotificationsAsReadAction,
     null
@@ -74,9 +80,12 @@ export const MarkAllNotificationsAsReadButton = ({
     <form action={formAction} className="grid justify-items-end gap-1">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <Button disabled={isPending} size="sm" type="submit" variant="outline">
-        {isPending
-          ? t("admin.notifications.updating")
-          : t("admin.notifications.mark_all_read")}
+        <ActionFormIdle>
+          <ClientMessage message="admin.notifications.mark_all_read" />
+        </ActionFormIdle>
+        <ActionFormPending>
+          <ClientMessage message="admin.notifications.updating" />
+        </ActionFormPending>
       </Button>
       {state && !state.ok ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

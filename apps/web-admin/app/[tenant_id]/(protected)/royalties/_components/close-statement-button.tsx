@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   ConfirmDialog,
@@ -48,20 +52,23 @@ export const CloseStatementButton = ({
   );
 
   return (
-    <div className="grid justify-items-start gap-2">
-      <form action={formAction} className="hidden" ref={formRef}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="period" type="hidden" value={period} />
-      </form>
+    <form
+      action={formAction}
+      className="grid justify-items-start gap-2"
+      ref={formRef}
+    >
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="period" type="hidden" value={period} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={<Button disabled={isPending} type="button" />}
         >
-          {isPending ? (
-            <ClientMessage message="admin.royalties.close.closing" />
-          ) : (
+          <ActionFormIdle>
             <ClientMessage message="admin.royalties.close.button" />
-          )}
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.royalties.close.closing" />
+          </ActionFormPending>
         </ConfirmDialogTrigger>
         <ConfirmDialogContent>
           <ConfirmDialogHeader>
@@ -87,6 +94,6 @@ export const CloseStatementButton = ({
       {state ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
-    </div>
+    </form>
   );
 };

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
@@ -53,7 +57,12 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
           type="text"
         />
         <Button disabled={isPending} size="sm" type="submit" variant="outline">
-          {isPending ? t("admin.genres.saving") : t("admin.genres.save_action")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.genres.save_action" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.genres.saving" />
+          </ActionFormPending>
         </Button>
         <p className="text-xs text-muted-foreground">
           <ClientMessage

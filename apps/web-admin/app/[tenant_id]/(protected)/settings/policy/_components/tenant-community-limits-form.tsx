@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
@@ -87,13 +91,6 @@ const toHourDayField = (
   perHour: String((override ?? platformDefault).perHour),
   useDefault: override === undefined,
 });
-
-const SubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.settings.saving" />
-  ) : (
-    <ClientMessage message="admin.settings.policy.community.submit" />
-  );
 
 export const TenantCommunityLimitsForm = ({
   action,
@@ -624,7 +621,12 @@ export const TenantCommunityLimitsForm = ({
 
         <div className="mt-2 flex justify-end">
           <Button disabled={controlsDisabled} type="submit">
-            <SubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.settings.policy.community.submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

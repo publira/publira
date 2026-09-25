@@ -31,7 +31,20 @@ export default function Example() {
 }
 ```
 
-`ActionFormIdle` and `ActionFormPending` render only while the form is idle and only while its Action is in flight. A control whose wording does not change while submitting takes plain children instead.
+`ActionFormIdle` and `ActionFormPending` render only while the form is idle and only while the submission their control started is in flight. A control whose wording does not change while submitting takes plain children instead.
+
+A second control that sends the same fields to another Action, such as a connection test beside a save, is an `ActionFormSubmit` given that Action as `formAction`. The form keeps what it holds afterwards, the control is not the form's default button, so Enter in a field still saves, and the pending slots inside each control follow only the submission that control started.
+
+```tsx
+<ActionForm action={saveAction}>
+  <Field>...</Field>
+  <ActionFormSubmit formAction={dispatchTest} variant="outline">
+    <ActionFormIdle>Test connection</ActionFormIdle>
+    <ActionFormPending>Testing...</ActionFormPending>
+  </ActionFormSubmit>
+  <ActionFormSubmit>Save</ActionFormSubmit>
+</ActionForm>
+```
 
 `ActionFormFieldset` is a `Fieldset` that is also closed while the Action is in flight. Wrap the fields the form submits in it; a control independent of the submission, such as one that opens an unrelated dialog, can stay outside.
 
@@ -49,7 +62,11 @@ export default function Example() {
 Pass a function as `children` when you want to place the message yourself or read the state the Action returned.
 
 ```tsx
-import { ActionForm } from "@publira/ui-components/action-form";
+import {
+  ActionForm,
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 
@@ -65,7 +82,8 @@ export default function Example() {
             </FormMessage>
           ) : null}
           <Button disabled={isPending} type="submit">
-            {isPending ? "Saving..." : "Save"}
+            <ActionFormIdle>Save</ActionFormIdle>
+            <ActionFormPending>Saving...</ActionFormPending>
           </Button>
         </>
       )}
@@ -111,4 +129,4 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 | `className` | `string` | — | className of the `<form>` |
 | `id` | `string` | — | id of the `<form>`, for a submit control outside it to name with `form` (such as `ConfirmDialogAction`) |
 
-`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, and `disabled`. `ActionFormFieldset` takes the props of `Fieldset`; its `disabled` closes the fields whether or not the Action is in flight.
+`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, `disabled`, and `form` — the id of the form for a control a portal renders outside the form's DOM, which still has to sit inside the form in the React tree for `useFormStatus` to report the submission to it — and a `formAction` of `(formData: FormData) => void` to send the fields to in place of the form's Action. The pending slots read the same `formAction` in a plain `<form>` too, where it is the button's own `formAction`: a form with two Actions gives each of its two submit controls one. `ActionFormFieldset` takes the props of `Fieldset`; its `disabled` closes the fields whether or not the Action is in flight.

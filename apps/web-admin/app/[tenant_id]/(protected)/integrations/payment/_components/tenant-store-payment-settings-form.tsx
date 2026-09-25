@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -629,11 +633,12 @@ export const TenantStorePaymentSettingsForm = ({
 
         <div className="flex flex-wrap gap-3">
           <Button disabled={fieldsDisabled} type="submit">
-            {isPending ? (
-              <ClientMessage message="admin.settings.saving" />
-            ) : (
+            <ActionFormIdle>
               <ClientMessage message="admin.settings.store_payment.submit" />
-            )}
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.settings.saving" />
+            </ActionFormPending>
           </Button>
         </div>
       </form>

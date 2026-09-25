@@ -5,6 +5,10 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import Link from "next/link";
@@ -20,14 +24,6 @@ interface MfaVerifyFormProps {
   nextPath: string;
   tenantId: string;
 }
-
-/** The submit label names the state the form is in, so each state has a key. */
-const MfaVerifySubmitLabel = ({ isPending }: { isPending: boolean }) =>
-  isPending ? (
-    <ClientMessage message="admin.auth.mfa.verify_submitting" />
-  ) : (
-    <ClientMessage message="admin.auth.mfa.verify_submit" />
-  );
 
 export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
   const [state, formAction, isPending] = useActionState(verifyMfaAction, null);
@@ -78,7 +74,12 @@ export const MfaVerifyForm = ({ nextPath, tenantId }: MfaVerifyFormProps) => {
             disabled={isPending}
             type="submit"
           >
-            <MfaVerifySubmitLabel isPending={isPending} />
+            <ActionFormIdle>
+              <ClientMessage message="admin.auth.mfa.verify_submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.auth.mfa.verify_submitting" />
+            </ActionFormPending>
           </Button>
         </form>
       </AuthScreenBody>

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
@@ -11,7 +15,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -29,7 +33,6 @@ export const SeriesEyeCatchForm = ({
   initialSeries,
   action,
 }: SeriesEyeCatchFormProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
@@ -143,9 +146,12 @@ export const SeriesEyeCatchForm = ({
 
       <div className="flex justify-end">
         <Button disabled={isPending} type="submit">
-          {isPending
-            ? t("admin.series.form.submitting")
-            : t("admin.series.form.eye_catch_update")}
+          <ActionFormIdle>
+            <ClientMessage message="admin.series.form.eye_catch_update" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.series.form.submitting" />
+          </ActionFormPending>
         </Button>
       </div>
     </form>

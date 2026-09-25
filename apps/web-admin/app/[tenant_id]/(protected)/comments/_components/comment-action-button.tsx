@@ -1,11 +1,15 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useToastManager } from "@publira/ui-components/toast";
 import { useActionState } from "react";
 
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { approveCommentAction, restoreCommentAction } from "../_lib/actions";
@@ -28,23 +32,18 @@ interface CommentActionButtonProps {
   publicId: string;
 }
 
+/** What the toast says once the action has landed. */
+const ActionDone = ({ action }: { action: PlainCommentAction }) =>
+  action === "approve" ? (
+    <ClientMessage message="admin.comments.approved" />
+  ) : (
+    <ClientMessage message="admin.comments.restored" />
+  );
+
 export const CommentActionButton = ({
   action,
   publicId,
 }: CommentActionButtonProps) => {
-  const t = useClientMessages();
-  const copy =
-    action === "approve"
-      ? {
-          done: t("admin.comments.approved"),
-          idle: t("admin.comments.approve"),
-          pending: t("admin.comments.approving"),
-        }
-      : {
-          done: t("admin.comments.restored"),
-          idle: t("admin.comments.restore"),
-          pending: t("admin.comments.restoring"),
-        };
   const tenantId = useTenantId();
   const { add } = useToastManager();
   // The Action drops the comment cache tag itself, so the list and the
@@ -59,7 +58,7 @@ export const CommentActionButton = ({
         ? approveCommentAction(previousState, formData)
         : restoreCommentAction(previousState, formData));
       if (nextState?.ok) {
-        add({ title: copy.done, type: "success" });
+        add({ title: <ActionDone action={action} />, type: "success" });
       }
       return nextState;
     },
@@ -76,7 +75,25 @@ export const CommentActionButton = ({
         type="submit"
         variant={action === "approve" ? "default" : "outline"}
       >
-        {isPending ? copy.pending : copy.idle}
+        {action === "approve" ? (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.approve" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.approving" />
+            </ActionFormPending>
+          </>
+        ) : (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.restore" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.restoring" />
+            </ActionFormPending>
+          </>
+        )}
       </Button>
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

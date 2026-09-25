@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
@@ -241,11 +245,12 @@ const EyeCatchAspectSlot = ({
           size="sm"
           type="submit"
         >
-          {t(
-            isUploading
-              ? "admin.eye_catch.aspect.uploading"
-              : "admin.eye_catch.aspect.upload"
-          )}
+          <ActionFormIdle>
+            <ClientMessage message="admin.eye_catch.aspect.upload" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <ClientMessage message="admin.eye_catch.aspect.uploading" />
+          </ActionFormPending>
         </Button>
       </form>
 
