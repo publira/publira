@@ -58,9 +58,8 @@ func SeriesStatusFromStored(stored string) (publirattypesv1.SeriesStatus, error)
 // SeriesStatusToStored maps a requested status onto the value to store.
 //
 // Unlike a comment mode, an unspecified status stores the column's own default
-// rather than being refused. The admin save writes the whole listing row, and a
-// series nobody has said anything about is a running one — the same answer the
-// column gives a row that predates the field.
+// rather than being refused: a series nobody has said anything about is a
+// running one — the same answer the column gives a row that predates the field.
 func SeriesStatusToStored(status publirattypesv1.SeriesStatus) (string, error) {
 	switch status {
 	case publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED,

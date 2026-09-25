@@ -544,9 +544,9 @@ describe("series actions", () => {
     expect(mockCreateSeries).not.toHaveBeenCalled();
   });
 
-  // The cover image tab offers no surfaces, so its save must not put a series
-  // kept to one surface back on both.
-  it("keeps the stored surfaces when the cover image is removed", async () => {
+  // The cover image tab offers neither the listing fields nor the surfaces, so
+  // its save states none of them and the series keeps what it has stored.
+  it("keeps the stored listing fields and surfaces when the cover image is removed", async () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,
       series: { eyeCatchImageVariants: [], publicId: "SERIES001" },
@@ -557,26 +557,27 @@ describe("series actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
     formData.set("title", "Series title");
-    formData.set("synopsis", "A synopsis");
-    formData.set("reading_period_hours", "24");
     formData.set("label_public_id", "LABEL001");
-    formData.set("status", "ongoing");
-    formData.set("age_rating", "all");
-    formData.set("comment_mode", "");
-    formData.set("purchase_availability", "");
-    formData.set("reading_direction", "rtl");
-    formData.set("spread_start_page", "2");
     formData.set("clear_eye_catch_image", "1");
 
     await updateSeriesEyeCatchAction(null, formData);
 
     expect(mockUpdateSeries).toHaveBeenCalledOnce();
-    expect(mockUpdateSeries.mock.calls[0]?.[0]).not.toHaveProperty(
-      "availability"
-    );
-    expect(mockUpdateSeries.mock.calls[0]?.[0]).not.toHaveProperty(
-      "purchaseAvailability"
-    );
+    const input = mockUpdateSeries.mock.calls[0]?.[0];
+    for (const field of [
+      "ageRating",
+      "availability",
+      "commentMode",
+      "purchaseAvailability",
+      "readingDirection",
+      "readingPeriodHours",
+      "scheduleWeekdays",
+      "spreadStartIndex",
+      "status",
+      "synopsis",
+    ]) {
+      expect(input).not.toHaveProperty(field);
+    }
   });
 
   it("sends where the series' episodes are sold", async () => {

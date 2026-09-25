@@ -528,10 +528,9 @@ type seriesListingMetadata struct {
 }
 
 // normalizeSeriesListingMetadata validates the listing fields of a create or
-// update request. An unspecified enum stores the column's default, so a client
-// that does not carry these fields yet keeps saving series the way it did — and
-// for the comment mode that default is no value at all, which is the series
-// following whatever its tenant has chosen.
+// update request. An unspecified enum stores the column's default, and for the
+// comment mode that default is no value at all, which is the series following
+// whatever its tenant has chosen.
 func normalizeSeriesListingMetadata(
 	status publirattypesv1.SeriesStatus,
 	scheduleWeekdays []int32,
@@ -675,7 +674,7 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create series", err, "tenant_id", tenant.ID.String())
 	}
-	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
+	_, err = s.queriesFor(txCtx).CreateSeriesListing(txCtx, dbmodels.CreateSeriesListingParams{
 		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
@@ -688,7 +687,7 @@ func (s *adminServer) CreateSeries(
 		SpreadStartIndex:   listingMetadata.spreadStartIndex,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
@@ -797,13 +796,15 @@ func (s *adminServer) UpdateSeries(
 	if strings.TrimSpace(req.Msg.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
 	}
-	if req.Msg.ReadingPeriodHours < 0 {
+	if req.Msg.GetReadingPeriodHours() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
 	}
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode, req.Msg.ReadingDirection, req.Msg.SpreadStartIndex)
+	// An absent field normalizes to its default, which UpdateSeriesListing only
+	// writes into a series that has no listing row yet.
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.GetStatus(), req.Msg.GetWeeklySchedule().GetWeekdays(), req.Msg.GetAgeRating(), req.Msg.GetCommentMode(), req.Msg.GetReadingDirection(), req.Msg.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -886,20 +887,28 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
-	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
-		TenantID:           tenant.ID,
-		SeriesID:           current.ID,
-		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
-		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
-		Status:             listingMetadata.status,
-		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
-		AgeRating:          listingMetadata.ageRating,
-		CommentMode:        listingMetadata.commentMode,
-		ReadingDirection:   listingMetadata.readingDirection,
-		SpreadStartIndex:   listingMetadata.spreadStartIndex,
+	_, err = s.queriesFor(txCtx).UpdateSeriesListing(txCtx, dbmodels.UpdateSeriesListingParams{
+		TenantID:                tenant.ID,
+		SeriesID:                current.ID,
+		Synopsis:                sql.NullString{String: req.Msg.GetSynopsis(), Valid: strings.TrimSpace(req.Msg.GetSynopsis()) != ""},
+		ReadingPeriodHours:      sql.NullInt32{Int32: req.Msg.GetReadingPeriodHours(), Valid: req.Msg.GetReadingPeriodHours() > 0},
+		Status:                  listingMetadata.status,
+		ScheduleWeekdays:        listingMetadata.scheduleWeekdays,
+		AgeRating:               listingMetadata.ageRating,
+		CommentMode:             listingMetadata.commentMode,
+		ReadingDirection:        listingMetadata.readingDirection,
+		SpreadStartIndex:        listingMetadata.spreadStartIndex,
+		WriteSynopsis:           req.Msg.Synopsis != nil,
+		WriteReadingPeriodHours: req.Msg.ReadingPeriodHours != nil,
+		WriteStatus:             req.Msg.Status != nil,
+		WriteScheduleWeekdays:   req.Msg.WeeklySchedule != nil,
+		WriteAgeRating:          req.Msg.AgeRating != nil,
+		WriteCommentMode:        req.Msg.CommentMode != nil,
+		WriteReadingDirection:   req.Msg.ReadingDirection != nil,
+		WriteSpreadStartIndex:   req.Msg.SpreadStartIndex != nil,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,

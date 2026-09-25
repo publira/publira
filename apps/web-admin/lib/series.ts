@@ -694,44 +694,32 @@ export const getSeries = async (
 };
 
 /**
- * The classification every save carries.
- *
- * Not optional, because `UpdateSeries` writes the whole listing row: a field
- * left out resets to the column default, so a form that omitted one would drop
- * the series' status or its genres every time somebody fixed a typo in the
- * title.
+ * The listing fields of a series. A new series states every one; an update
+ * writes the ones it carries and keeps the rest as stored.
  */
-interface SeriesClassificationInput {
+type SeriesListingInput = {
+  synopsis: string;
+  readingPeriodHours: number;
   status: SeriesStatusValue;
   scheduleWeekdays: number[];
   ageRating: SeriesAgeRatingValue;
+  /** The empty value follows the tenant's mode. */
+  commentMode: SeriesCommentMode;
+} & ReadingLayout;
+
+/**
+ * Genres and tags, which every save carries: `UpdateSeries` replaces each list
+ * whole, so a save without them would clear them.
+ */
+interface SeriesTaxonomyInput {
   genrePublicIds: string[];
   tagNames: string[];
 }
-
-/**
- * The comment mode every save carries, for the reason the classification is
- * carried: a save that left it out would put the series back on its tenant's
- * setting, so an editor fixing a typo would reopen commenting on a title that
- * had it turned off.
- */
-interface SeriesCommentModeInput {
-  commentMode: SeriesCommentMode;
-}
-
-/**
- * The layout every save carries: `UpdateSeries` stores the column default for
- * a direction or an index left out, so a save without it would turn a
- * left-to-right work back to right to left.
- */
-type SeriesReadingLayoutInput = ReadingLayout;
 
 export const createSeries = async (
   input: {
     tenantId: string;
     title: string;
-    synopsis: string;
-    readingPeriodHours: number;
     labelPublicId: string;
     creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
@@ -741,9 +729,8 @@ export const createSeries = async (
     availability: SurfaceAvailabilityValue;
     /** The empty value follows the tenant's default. */
     purchaseAvailability: PurchaseAvailabilityOverride;
-  } & SeriesClassificationInput &
-    SeriesCommentModeInput &
-    SeriesReadingLayoutInput,
+  } & SeriesListingInput &
+    SeriesTaxonomyInput,
   locale: Locale
 ): Promise<CreateSeriesResult> => {
   const [t, sessionId] = await Promise.all([
@@ -819,8 +806,6 @@ export const updateSeries = async (
     tenantId: string;
     publicId: string;
     title: string;
-    synopsis: string;
-    readingPeriodHours: number;
     labelPublicId: string;
     creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
@@ -838,9 +823,8 @@ export const updateSeries = async (
      * absent keeps the value stored, for the reason `availability` gives.
      */
     purchaseAvailability?: PurchaseAvailabilityOverride;
-  } & SeriesClassificationInput &
-    SeriesCommentModeInput &
-    SeriesReadingLayoutInput,
+  } & Partial<SeriesListingInput> &
+    SeriesTaxonomyInput,
   locale: Locale
 ): Promise<UpdateSeriesResult> => {
   const [t, sessionId] = await Promise.all([
@@ -857,13 +841,19 @@ export const updateSeries = async (
   try {
     const response = await apiClient.series.updateSeries(
       {
-        ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
+        ageRating:
+          input.ageRating === undefined
+            ? undefined
+            : SERIES_AGE_RATING_ENUM[input.ageRating],
         availability:
           input.availability === undefined
             ? undefined
             : SURFACE_AVAILABILITY_ENUM[input.availability],
         clearEyeCatchImage: input.clearEyeCatchImage,
-        commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
+        commentMode:
+          input.commentMode === undefined
+            ? undefined
+            : SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
@@ -876,15 +866,24 @@ export const updateSeries = async (
           input.purchaseAvailability === undefined
             ? undefined
             : toSurfaceAvailabilityOverrideEnum(input.purchaseAvailability),
-        readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
+        readingDirection:
+          input.readingDirection === undefined
+            ? undefined
+            : READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
-        scheduleWeekdays: input.scheduleWeekdays,
         spreadStartIndex: input.spreadStartIndex,
-        status: SERIES_STATUS_ENUM[input.status],
+        status:
+          input.status === undefined
+            ? undefined
+            : SERIES_STATUS_ENUM[input.status],
         synopsis: input.synopsis,
         tagNames: input.tagNames,
         tenant: { tenantId: input.tenantId },
         title: input.title,
+        weeklySchedule:
+          input.scheduleWeekdays === undefined
+            ? undefined
+            : { weekdays: input.scheduleWeekdays },
       },
       withSessionHeaders(sessionId)
     );

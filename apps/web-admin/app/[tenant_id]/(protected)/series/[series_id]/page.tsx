@@ -181,9 +181,7 @@ const EditSeriesFormData = async ({
       <div className="grid gap-6" key={result.series.publicId}>
         <SeriesEyeCatchForm
           action={updateSeriesEyeCatchAction}
-          commentMode={result.commentMode}
           initialSeries={result.series}
-          readingLayout={result.readingLayout}
         />
         <EyeCatchAspectImages
           publicId={result.series.publicId}

@@ -98,7 +98,7 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 		Tenant:           tenant.tenantContext(),
 		PublicId:         seriesPublicID,
 		Title:            "Left To Right",
-		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT,
+		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT.Enum(),
 		SpreadStartIndex: new(int32),
 	}))
 	if err != nil {
@@ -131,7 +131,7 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 		Tenant:           tenant.tenantContext(),
 		PublicId:         seriesPublicID,
 		Title:            "Left To Right",
-		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT,
+		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT.Enum(),
 		SpreadStartIndex: new(int32),
 	})); err != nil {
 		t.Fatalf("UpdateSeries again: %v", err)
@@ -216,7 +216,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 		name string
 		req  *publiraadminv1.UpdateSeriesRequest
 	}{
-		{name: "unknown-direction", req: &publiraadminv1.UpdateSeriesRequest{ReadingDirection: publirattypesv1.ReadingDirection(99)}},
+		{name: "unknown-direction", req: &publiraadminv1.UpdateSeriesRequest{ReadingDirection: publirattypesv1.ReadingDirection(99).Enum()}},
 		{name: "negative-spread-start", req: &publiraadminv1.UpdateSeriesRequest{SpreadStartIndex: int32Ptr(-1)}},
 	}
 	for _, tc := range seriesCases {
