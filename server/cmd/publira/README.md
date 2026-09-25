@@ -101,7 +101,7 @@ The server checks mutating RPCs in a shared interceptor, so a rejected call neve
 
 ## publira worker
 
-The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the ten [maintenance jobs](#maintenance-jobs) that rebuild, purge, and close stored data. It runs as a separate process from `publira server`, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the [maintenance jobs](#maintenance-jobs) that rebuild, purge, close, and reconcile stored data. It runs as a separate process from `publira server`, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
