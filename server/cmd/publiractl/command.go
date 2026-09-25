@@ -18,11 +18,12 @@ import (
 
 // commandGroup is a group of the settings and provisioning commands, which
 // write the platform_* tables and the tenant rows in place of the Platform
-// Console.
+// Console. A group can hold groups of its own, dispatched by the next word.
 type commandGroup struct {
 	name     string
 	summary  string
 	commands []command
+	groups   []commandGroup
 }
 
 // command is one subcommand of a commandGroup. setup declares its flags and
@@ -100,6 +101,12 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 	if len(args) == 0 {
 		return usageError(stderr, g.name+" requires a command", g.usage())
 	}
+	for _, sub := range g.groups {
+		if sub.name == args[0] {
+			sub.name = g.name + " " + sub.name
+			return runGroup(&sub, args[1:], con, stdout)
+		}
+	}
 	var c *command
 	for i := range g.commands {
 		if g.commands[i].name == args[0] {
@@ -119,7 +126,7 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 			_, _ = io.WriteString(stderr, usage)
 			return 0
 		}
-		return usageError(stderr, err.Error(), usage)
+		return usageError(stderr, flagError(err), usage)
 	}
 	// A positional argument is refused without being repeated: it may be a
 	// secret typed where a flag was meant.
@@ -159,22 +166,47 @@ func (g *commandGroup) usage() string {
 	for _, c := range g.commands {
 		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
 	}
+	for _, sub := range g.groups {
+		fmt.Fprintf(&b, "  %-25s %s\n", sub.name, sub.summary)
+	}
 	return b.String()
 }
 
 func commandUsage(g *commandGroup, c *command, f *commandFlags) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nUsage: publiractl %s %s [flags]\n\n%s\n", g.name, c.name, c.summary)
-	hasFlags := false
-	f.VisitAll(func(*flag.Flag) { hasFlags = true })
-	if hasFlags {
-		b.WriteString("\nFlags:\n")
-		f.SetOutput(&b)
-		f.PrintDefaults()
-		f.SetOutput(io.Discard)
+	var flags strings.Builder
+	f.VisitAll(func(fl *flag.Flag) {
+		typeName, usage := flag.UnquoteUsage(fl)
+		fmt.Fprintf(&flags, "  --%s", fl.Name)
+		if typeName != "" {
+			fmt.Fprintf(&flags, " %s", typeName)
+		}
+		fmt.Fprintf(&flags, "\n    \t%s", usage)
+		if fl.DefValue != "" && fl.DefValue != "false" {
+			fmt.Fprintf(&flags, " (default %q)", fl.DefValue)
+		}
+		flags.WriteString("\n")
+	})
+	if flags.Len() > 0 {
+		b.WriteString("\nFlags:\n" + flags.String())
 	}
 	if len(f.secrets) > 0 {
-		b.WriteString("\nA secret is read from a masked prompt, or from stdin with its -stdin flag,\none per invocation. It is never taken as an argument.\n")
+		b.WriteString("\nA secret is read from a masked prompt, or from stdin with its --*-stdin flag,\none per invocation. It is never taken as an argument.\n")
 	}
 	return b.String()
+}
+
+// flagSpellings are the places the flag package names a flag in its errors,
+// always with one dash.
+var flagSpellings = []string{"flag provided but not defined: -", "flag needs an argument: -", " for flag -", " for -"}
+
+// flagError is what f.Parse refused, naming the flag with the two dashes the
+// usage and every other message spell it with.
+func flagError(err error) string {
+	msg := err.Error()
+	for _, spelling := range flagSpellings {
+		msg = strings.Replace(msg, spelling, spelling+"-", 1)
+	}
+	return msg
 }

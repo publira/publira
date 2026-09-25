@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -48,8 +49,8 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	if tenant.Domain != "integration.example.com" {
 		t.Fatalf("tenant.domain = %q, want integration.example.com", tenant.Domain)
 	}
-	if tenant.Status != tenantStatusActive {
-		t.Fatalf("tenant.status = %q, want %s", tenant.Status, tenantStatusActive)
+	if tenant.Status != platformtenants.StatusActive {
+		t.Fatalf("tenant.status = %q, want %s", tenant.Status, platformtenants.StatusActive)
 	}
 	if tenant.PublicId == "" {
 		t.Fatal("tenant.public_id is empty")
@@ -217,8 +218,8 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
-	if suspendResp.Msg.Tenant.Status != tenantStatusSuspended {
-		t.Fatalf("status after suspend = %q, want %s", suspendResp.Msg.Tenant.Status, tenantStatusSuspended)
+	if suspendResp.Msg.Tenant.Status != platformtenants.StatusSuspended {
+		t.Fatalf("status after suspend = %q, want %s", suspendResp.Msg.Tenant.Status, platformtenants.StatusSuspended)
 	}
 
 	resumeResp, err := client.ResumeTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ResumeTenantRequest{
@@ -227,8 +228,8 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
-	if resumeResp.Msg.Tenant.Status != tenantStatusActive {
-		t.Fatalf("status after resume = %q, want %s", resumeResp.Msg.Tenant.Status, tenantStatusActive)
+	if resumeResp.Msg.Tenant.Status != platformtenants.StatusActive {
+		t.Fatalf("status after resume = %q, want %s", resumeResp.Msg.Tenant.Status, platformtenants.StatusActive)
 	}
 }
 

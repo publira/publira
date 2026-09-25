@@ -60,7 +60,7 @@ func TestSecretWithoutATerminalOrItsFlagNamesTheFlag(t *testing.T) {
 	s := &secret{name: "smtp-password", label: "SMTP password"}
 
 	_, err := s.read(pipedConsole(testSecretValue, &stderr))
-	if err == nil || !strings.Contains(err.Error(), "-smtp-password-stdin") {
+	if err == nil || !strings.Contains(err.Error(), "--smtp-password-stdin") {
 		t.Fatalf("error = %v, want the flag named", err)
 	}
 }
@@ -112,13 +112,13 @@ func TestOnlyOneSecretReadsStdinPerInvocation(t *testing.T) {
 	f.Secret("vapid-private-key", "VAPID private key")
 	f.Secret("smtp-password", "SMTP password")
 
-	if err := f.Parse([]string{"-vapid-private-key-stdin"}); err != nil {
+	if err := f.Parse([]string{"--vapid-private-key-stdin"}); err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	if err := f.checkSecretSources(); err != nil {
 		t.Fatalf("one secret on stdin: %v", err)
 	}
-	if err := f.Parse([]string{"-vapid-private-key-stdin", "-smtp-password-stdin"}); err != nil {
+	if err := f.Parse([]string{"--vapid-private-key-stdin", "--smtp-password-stdin"}); err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	err := f.checkSecretSources()

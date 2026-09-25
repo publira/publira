@@ -260,8 +260,10 @@ func TestCreateTenantAdminInvitationCommitsOutboxEventWithoutSMTP(t *testing.T) 
 	tenantID := seedTenant(t, pg, "OUTBOXAPI001", "outbox-api.example.com", "Outbox API Tenant")
 	queries := dbmodels.New(pg.DB)
 	server := &platformServer{queries: queries, db: pg.DB, logger: slog.Default(), mail: openMailGuard()}
+	operator := pg.SeedPlatformOperator(t, "OUTBOXOPS001", "operator@platform.example.com", "Operator")
+	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{UserID: operator.ID, Role: operator.Role})
 
-	response, err := server.CreateTenantAdminInvitation(context.Background(), connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{
+	response, err := server.CreateTenantAdminInvitation(ctx, connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantPublicId: "OUTBOXAPI001",
 		Email:          "admin@example.com",
 	}))

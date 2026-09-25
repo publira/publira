@@ -295,10 +295,12 @@ func TestSuspendTenantSuccess(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs("ACTIVE01", "suspended").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "ACTIVE01"}))
@@ -318,9 +320,11 @@ func TestSuspendTenantNotFound(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs("NOTFOUND", "suspended").
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "NOTFOUND"}))
@@ -338,10 +342,12 @@ func TestResumeTenantSuccess(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs("SUSP001", "active").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ResumeTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ResumeTenantRequest{PublicId: "SUSP001"}))

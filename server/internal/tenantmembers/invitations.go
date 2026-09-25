@@ -30,7 +30,17 @@ var (
 	ErrInvitationNotFound    = errors.New("invitation not found")
 	ErrInvitationAccepted    = errors.New("invitation already accepted")
 	ErrInvitationWasCanceled = errors.New("invitation already canceled")
+	ErrInvalidInvitationID   = errors.New("invalid invitation_id")
 )
+
+// ParseInvitationID reads the ID an invitation is named by.
+func ParseInvitationID(raw string) (uuid.UUID, error) {
+	id, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return uuid.Nil, invalid(FieldInvitationID, ErrInvalidInvitationID)
+	}
+	return id, nil
+}
 
 // Invitation statuses, as [InvitationStatus] reports them.
 const (
@@ -107,11 +117,17 @@ type Invited struct {
 	RoleGrantedImmediately bool
 }
 
+// Validate refuses p without reading anything.
+func (p InviteParams) Validate() error {
+	_, err := normalizeEmail(p.Email)
+	return err
+}
+
 // Invite makes the address a tenant_admin inside tx. An address that already
 // belongs to a user of the tenant is granted the role on the spot; any other
 // is sent an invitation, rearming the one it already has.
 func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
-	email, err := NormalizeEmail(p.Email)
+	email, err := normalizeEmail(p.Email)
 	if err != nil {
 		return Invited{}, err
 	}
@@ -123,7 +139,7 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 	})
 	switch {
 	case err == nil:
-		if err := replaceRole(ctx, q, p.TenantID, user.ID, auth.RoleTenantAdmin); err != nil {
+		if err := ReplaceRole(ctx, q, p.TenantID, user.ID, auth.RoleTenantAdmin); err != nil {
 			return Invited{}, err
 		}
 		return Invited{Email: email, RoleGrantedImmediately: true}, nil

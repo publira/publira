@@ -54,7 +54,7 @@ func (f *commandFlags) checkSecretSources() error {
 	var fromStdin []string
 	for _, s := range f.secrets {
 		if s.fromStdin {
-			fromStdin = append(fromStdin, "-"+s.name+"-stdin")
+			fromStdin = append(fromStdin, "--"+s.name+"-stdin")
 		}
 	}
 	if len(fromStdin) > 1 {
@@ -84,7 +84,7 @@ func (s *secret) read(con console) (string, error) {
 		}
 		value = string(raw)
 	default:
-		return "", fmt.Errorf("stdin is not a terminal to prompt for the %s on; pipe it in with -%s-stdin", s.label, s.name)
+		return "", fmt.Errorf("stdin is not a terminal to prompt for the %s on; pipe it in with --%s-stdin", s.label, s.name)
 	}
 	if value == "" {
 		return "", errors.New("the " + s.label + " is empty")

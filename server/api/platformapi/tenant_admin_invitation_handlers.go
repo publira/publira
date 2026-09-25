@@ -2,19 +2,17 @@ package platformapi
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -38,24 +36,6 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 		ExpiresAt:  invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AcceptedAt: acceptedAt,
 		CanceledAt: canceledAt,
-	}
-}
-
-// tenantInvitationError maps what tenantmembers refuses to this API's codes;
-// anything else is a database failure.
-func (s *platformServer) tenantInvitationError(ctx context.Context, msg string, err error, keyvals ...any) error {
-	var connectErr *connect.Error
-	switch {
-	case errors.As(err, &connectErr):
-		return connectErr
-	case errors.Is(err, tenantmembers.ErrEmailRequired), errors.Is(err, tenantmembers.ErrInvalidEmail):
-		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, tenantmembers.ErrInvitationNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, tenantmembers.ErrInvitationAccepted), errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	default:
-		return s.internalDBError(ctx, msg, err, keyvals...)
 	}
 }
 
@@ -132,14 +112,20 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tenantmembers.NormalizeEmail(req.Msg.Email); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	params := tenantmembers.InviteParams{Email: req.Msg.Email, AllowMail: s.allowInvitationMail(ctx, req)}
+	if err := params.Validate(); err != nil {
+		return nil, s.tenantError(ctx, "invalid tenant admin invitation request", err)
+	}
+	actor, err := s.tenantActor(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	tenant, err := s.tenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		return nil, err
 	}
+	params.TenantID = tenant.ID
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -147,19 +133,13 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{
-		TenantID:  tenant.ID,
-		Email:     req.Msg.Email,
-		AllowMail: s.allowInvitationMail(ctx, req),
-	})
+	invited, err := platformtenants.Invite(ctx, tx, s.logger, actor, params)
 	if err != nil {
-		return nil, s.tenantInvitationError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
+		return nil, s.tenantError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit tenant admin invitation transaction", err, "tenant_id", tenant.ID.String())
 	}
-
-	s.recordTenantInvitation(ctx, req.Header(), "tenant_admin_invited", invited.Email)
 
 	if invited.RoleGrantedImmediately {
 		return connect.NewResponse(&publirasplatformv1.CreateTenantAdminInvitationResponse{
@@ -179,6 +159,10 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	if err != nil {
 		return nil, err
 	}
+	actor, err := s.tenantActor(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -186,19 +170,17 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{
+	updated, err := platformtenants.ResendInvitation(ctx, tx, s.logger, actor, tenantmembers.ResendParams{
 		TenantID:     tenant.ID,
 		InvitationID: invitationID,
 		AllowMail:    s.allowInvitationMail(ctx, req),
 	})
 	if err != nil {
-		return nil, s.tenantInvitationError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
+		return nil, s.tenantError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
-
-	s.recordTenantInvitation(ctx, req.Header(), "tenant_admin_invite_resent", updated.Email)
 
 	return connect.NewResponse(&publirasplatformv1.ResendTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
@@ -213,13 +195,24 @@ func (s *platformServer) CancelTenantAdminInvitation(
 	if err != nil {
 		return nil, err
 	}
-
-	updated, err := tenantmembers.Cancel(ctx, s.queriesFor(ctx), tenantmembers.InvitationParams{TenantID: tenant.ID, InvitationID: invitationID})
+	actor, err := s.tenantActor(ctx, req)
 	if err != nil {
-		return nil, s.tenantInvitationError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
+		return nil, err
 	}
 
-	s.recordTenantInvitation(ctx, req.Header(), "tenant_admin_invite_canceled", updated.Email)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin cancel tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	updated, err := platformtenants.CancelInvitation(ctx, tx, s.logger, actor, tenantmembers.InvitationParams{TenantID: tenant.ID, InvitationID: invitationID})
+	if err != nil {
+		return nil, s.tenantError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit cancel tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
+	}
 
 	return connect.NewResponse(&publirasplatformv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
@@ -244,36 +237,17 @@ func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantPu
 	if err != nil {
 		return dbmodels.Tenant{}, uuid.Nil, err
 	}
-	parsedID, err := uuid.Parse(invitationID)
+	parsedID, err := tenantmembers.ParseInvitationID(invitationID)
 	if err != nil {
-		return dbmodels.Tenant{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid invitation_id"))
+		return dbmodels.Tenant{}, uuid.Nil, s.tenantError(ctx, "invalid invitation_id", err)
 	}
 	return tenant, parsedID, nil
 }
 
 func (s *platformServer) tenantByPublicID(ctx context.Context, publicID string) (dbmodels.Tenant, error) {
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, publicID)
+	tenant, err := platformtenants.Get(ctx, s.queriesFor(ctx), publicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return dbmodels.Tenant{}, s.internalDBError(ctx, "failed to get tenant", err, "public_id", publicID)
+		return dbmodels.Tenant{}, s.tenantError(ctx, "failed to get tenant", err, "public_id", publicID)
 	}
 	return tenant, nil
-}
-
-func (s *platformServer) recordTenantInvitation(ctx context.Context, header http.Header, action, email string) {
-	actor, ok := platformActorFromContext(ctx)
-	if !ok {
-		return
-	}
-	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: actor.UserID,
-		ActorRole:           actor.Role,
-		Action:              action,
-		TargetType:          "tenant_admin_invitation",
-		TargetID:            email,
-		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(header),
-	})
 }

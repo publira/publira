@@ -1,6 +1,11 @@
 // Package platformtenants holds what the platform does to a tenant, once, for
 // the adapters that expose it: PlatformTenantService in api/platformapi, and
 // the tenant group of publiractl. Neither adapter keeps any of it.
+//
+// Every write here files its platform audit entry inside the caller's
+// transaction, under the actor the adapter names, so the change and its entry
+// commit together. A refusal over a request field is a [*fielderr.Invalid] or
+// a [*fielderr.Conflict].
 package platformtenants
 
 import (
@@ -18,15 +23,17 @@ import (
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenantmembers"
 )
 
-// The fields a refusal names, spelled as CreateTenantRequest spells them so
-// the Connect adapter can report them as they are.
+// The fields a refusal names, spelled as the PlatformTenantService requests
+// spell them so the Connect adapter can report them as they are.
 const (
+	FieldPublicID           = "public_id"
 	FieldName               = "name"
 	FieldDomain             = "domain"
 	FieldAdminDomain        = "admin_domain"
@@ -39,23 +46,6 @@ var (
 	ErrDomainRequired            = errors.New("domain is required")
 	ErrInvalidInitialAdminEmails = errors.New("invalid initial_admin_emails")
 )
-
-// InvalidError refuses a request over one of its fields.
-type InvalidError struct {
-	Field string
-	Err   error
-}
-
-func (e *InvalidError) Error() string { return e.Err.Error() }
-
-func (e *InvalidError) Unwrap() error { return e.Err }
-
-// ConflictError refuses a value another tenant already holds.
-type ConflictError struct {
-	Field string
-}
-
-func (e *ConflictError) Error() string { return e.Field + " already exists" }
 
 // CreateParams is a tenant as the operator asked for it.
 type CreateParams struct {
@@ -78,7 +68,7 @@ type Creation struct {
 	initialAdminEmails []string
 }
 
-// Validate normalizes p, or refuses it with an [*InvalidError]. It reads
+// Validate normalizes p, or refuses it with a [*fielderr.Invalid]. It reads
 // nothing, so an adapter can refuse a request before it opens a transaction.
 func (p CreateParams) Validate() (Creation, error) {
 	c := Creation{
@@ -86,17 +76,17 @@ func (p CreateParams) Validate() (Creation, error) {
 		domain: strings.TrimSpace(p.Domain),
 	}
 	if c.name == "" {
-		return Creation{}, &InvalidError{Field: FieldName, Err: ErrNameRequired}
+		return Creation{}, &fielderr.Invalid{Field: FieldName, Err: ErrNameRequired}
 	}
 	if c.domain == "" {
-		return Creation{}, &InvalidError{Field: FieldDomain, Err: ErrDomainRequired}
+		return Creation{}, &fielderr.Invalid{Field: FieldDomain, Err: ErrDomainRequired}
 	}
 	if adminDomain := strings.TrimSpace(p.AdminDomain); adminDomain != "" {
 		c.adminDomain = sql.NullString{String: adminDomain, Valid: true}
 	}
 	defaultLocale, err := locale.Normalize(p.DefaultLocale)
 	if err != nil {
-		return Creation{}, &InvalidError{Field: FieldDefaultLocale, Err: err}
+		return Creation{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
 	c.defaultLocale = defaultLocale
 
@@ -108,7 +98,7 @@ func (p CreateParams) Validate() (Creation, error) {
 			continue
 		}
 		if err != nil {
-			return Creation{}, &InvalidError{Field: FieldInitialAdminEmails, Err: ErrInvalidInitialAdminEmails}
+			return Creation{}, &fielderr.Invalid{Field: FieldInitialAdminEmails, Err: ErrInvalidInitialAdminEmails}
 		}
 		if _, ok := seen[email]; ok {
 			continue
@@ -138,7 +128,7 @@ type Created struct {
 // so a tenant reaches the database with all of it or not at all.
 //
 // A domain or admin domain another tenant holds is refused with a
-// [*ConflictError]; anything else is a failure of the database.
+// [*fielderr.Conflict]; anything else is a failure of the database.
 func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Creation) (Created, error) {
 	q := dbmodels.New(tx)
 
@@ -164,7 +154,7 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	})
 	if err != nil {
 		if field := uniqueViolationField(err); field != "" {
-			return Created{}, &ConflictError{Field: field}
+			return Created{}, &fielderr.Conflict{Field: field}
 		}
 		return Created{}, fmt.Errorf("create tenant: %w", err)
 	}
@@ -172,13 +162,8 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err := creatorroles.CreateDefaults(ctx, tx, tenant.ID); err != nil {
 		return Created{}, fmt.Errorf("create default creator roles: %w", err)
 	}
-	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
-		Action:     "tenant_created",
-		TargetType: "tenant",
-		TargetID:   tenant.ID.String(),
-		Outcome:    auditlog.OutcomeSuccess,
-	})); err != nil {
-		return Created{}, fmt.Errorf("audit tenant creation: %w", err)
+	if err := writeTenantEntry(ctx, q, logger, actor, "tenant_created", tenant); err != nil {
+		return Created{}, err
 	}
 
 	// The tenant is new, so none of the addresses can belong to one of its
@@ -189,13 +174,8 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 		if err != nil {
 			return Created{}, fmt.Errorf("invite tenant admin: %w", err)
 		}
-		if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
-			Action:     "tenant_admin_invited",
-			TargetType: "tenant_admin_invitation",
-			TargetID:   invitation.Email,
-			Outcome:    auditlog.OutcomeSuccess,
-		})); err != nil {
-			return Created{}, fmt.Errorf("audit tenant admin invitation: %w", err)
+		if err := writeInvitationEntry(ctx, q, logger, actor, "tenant_admin_invited", invitation.Email); err != nil {
+			return Created{}, err
 		}
 		created.Invitations = append(created.Invitations, invitation)
 	}

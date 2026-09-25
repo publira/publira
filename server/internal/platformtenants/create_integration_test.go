@@ -12,6 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -199,9 +200,9 @@ func TestCreateRefusesADomainAnotherTenantHolds(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := create(t, pg, auditlog.SystemPlatformActor, tc.params)
-			var conflict *ConflictError
+			var conflict *fielderr.Conflict
 			if !errors.As(err, &conflict) {
-				t.Fatalf("err = %v, want *ConflictError", err)
+				t.Fatalf("err = %v, want *fielderr.Conflict", err)
 			}
 			if conflict.Field != tc.field {
 				t.Fatalf("field = %q, want %q", conflict.Field, tc.field)

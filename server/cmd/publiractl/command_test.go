@@ -78,7 +78,7 @@ func TestRunGroupStoresASecretReadFromStdin(t *testing.T) {
 	tg := &testGroup{}
 	var stdout, stderr bytes.Buffer
 
-	code := runGroup(tg.group(), []string{"save", "-host", "smtp.example.com", "-password-stdin"}, pipedConsole(testSecretValue+"\n", &stderr), &stdout)
+	code := runGroup(tg.group(), []string{"save", "--host", "smtp.example.com", "--password-stdin"}, pipedConsole(testSecretValue+"\n", &stderr), &stdout)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
 	}
@@ -106,7 +106,7 @@ func TestRunGroupStopsBeforeWritingWithoutEncryptionKeys(t *testing.T) {
 	tg := &testGroup{}
 	var stdout, stderr bytes.Buffer
 
-	code := runGroup(tg.group(), []string{"save", "-password-stdin"}, pipedConsole(testSecretValue, &stderr), &stdout)
+	code := runGroup(tg.group(), []string{"save", "--password-stdin"}, pipedConsole(testSecretValue, &stderr), &stdout)
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1\n%s", code, stderr.String())
 	}
@@ -142,8 +142,8 @@ func TestRunGroupRefusesASecretOnTheCommandLine(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "as a flag value", args: []string{"save", "-password=" + testSecretValue}, want: "flag provided but not defined: -password"},
-		{name: "as a flag followed by its value", args: []string{"save", "--password", testSecretValue}, want: "flag provided but not defined: -password"},
+		{name: "as a flag value", args: []string{"save", "--password=" + testSecretValue}, want: "flag provided but not defined: --password"},
+		{name: "as a flag followed by its value", args: []string{"save", "--password", testSecretValue}, want: "flag provided but not defined: --password"},
 		{name: "as a positional argument", args: []string{"save", testSecretValue}, want: "takes no positional arguments"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -181,7 +181,11 @@ func TestRunGroupUsageErrors(t *testing.T) {
 	}{
 		{name: "no command", args: nil, want: "example requires a command", usage: "Usage: publiractl example <command>"},
 		{name: "unknown command", args: []string{"delete"}, want: `unknown example command "delete"`, usage: "Usage: publiractl example <command>"},
-		{name: "unknown flag", args: []string{"save", "-port", "25"}, want: "flag provided but not defined: -port", usage: "Usage: publiractl example save [flags]"},
+		{name: "unknown flag", args: []string{"save", "--port", "25"}, want: "flag provided but not defined: --port", usage: "Usage: publiractl example save [flags]"},
+		// The flag package spells every flag with one dash, whichever it was given.
+		{name: "unknown flag given with one dash", args: []string{"save", "-port", "25"}, want: "flag provided but not defined: --port", usage: "Usage: publiractl example save [flags]"},
+		{name: "flag with no value", args: []string{"save", "--host"}, want: "flag needs an argument: --host", usage: "Usage: publiractl example save [flags]"},
+		{name: "malformed boolean", args: []string{"save", "--password-stdin=maybe"}, want: `invalid boolean value "maybe" for --password-stdin: parse error`, usage: "Usage: publiractl example save [flags]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
@@ -205,10 +209,13 @@ func TestRunGroupHelpListsTheSecretFlag(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
-	for _, want := range []string{"-host", "-password-stdin", "masked prompt"} {
+	for _, want := range []string{"\n  --host string\n", "\n  --password-stdin\n", "masked prompt"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("usage = %q, want %q", stderr.String(), want)
 		}
+	}
+	if strings.Contains(stderr.String(), "\n  -host") {
+		t.Fatalf("usage = %q, want every flag spelled with two dashes", stderr.String())
 	}
 }
 
