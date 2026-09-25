@@ -15,7 +15,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
 
-Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
+Dev Container is **out of scope** here: its image is built in the `publira/base-images` repository, and `.devcontainer/` holds only the configuration that runs it.
 
 ## Placement rules
 
@@ -42,7 +42,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    - publiractl: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
    - server: `golang:*-bookworm` + `libvips-dev` → `debian:bookworm-slim` + `libvips42` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
-3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, same style as `.devcontainer/Dockerfile`:
+3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, as `web/Dockerfile` does:
 
    ```dockerfile
    # renovate: datasource=npm depName=turbo versioning=semver
@@ -92,4 +92,4 @@ Branch ruleset required check is the final aggregator job name **`Summary`** onl
 
 - Commit generated per-service Dockerfiles “from templates”.
 - Use Alpine for Next.js **build** when the runner is Debian-based distroless (glibc / native addons such as `sharp`).
-- Put production image logic into `.devcontainer/Dockerfile`.
+- Put production image logic into the Dev Container image (`publira/base-images`).

@@ -51,7 +51,7 @@ task server:test
 
 - `task server:lint` (= `golangci-lint run ./...`) runs the static analysis. It is the same configuration and the same version as the `Lint / Go` job in CI.
 - The rule set is [`.golangci.yml`](.golangci.yml). It enables golangci-lint's own `standard` default set (`errcheck` / `govet` / `ineffassign` / `staticcheck` / `unused`).
-- `golangci-lint` is installed in the devcontainer at a pinned version (`GOLANGCI_LINT_VERSION` in [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile)). Install the same version when you run it outside the devcontainer.
+- `golangci-lint` is installed in the Dev Container at a pinned version (`GOLANGCI_LINT_VERSION` in [`ci.yml`](../.github/workflows/ci.yml)). Install the same version when you run it outside the Dev Container.
 - Generated code (`internal/proto/gen/**`, `internal/db/gen/**`) is excluded automatically by its `DO NOT EDIT.` header. The hand-written integration tests under `internal/db/` stay in scope.
 
 ## Tests
