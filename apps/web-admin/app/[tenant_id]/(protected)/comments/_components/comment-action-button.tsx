@@ -32,28 +32,6 @@ interface CommentActionButtonProps {
   publicId: string;
 }
 
-/** What the control says, idle and while it is in flight. */
-const ActionLabel = ({ action }: { action: PlainCommentAction }) =>
-  action === "approve" ? (
-    <>
-      <ActionFormIdle>
-        <ClientMessage message="admin.comments.approve" />
-      </ActionFormIdle>
-      <ActionFormPending>
-        <ClientMessage message="admin.comments.approving" />
-      </ActionFormPending>
-    </>
-  ) : (
-    <>
-      <ActionFormIdle>
-        <ClientMessage message="admin.comments.restore" />
-      </ActionFormIdle>
-      <ActionFormPending>
-        <ClientMessage message="admin.comments.restoring" />
-      </ActionFormPending>
-    </>
-  );
-
 /** What the toast says once the action has landed. */
 const ActionDone = ({ action }: { action: PlainCommentAction }) =>
   action === "approve" ? (
@@ -97,7 +75,25 @@ export const CommentActionButton = ({
         type="submit"
         variant={action === "approve" ? "default" : "outline"}
       >
-        <ActionLabel action={action} />
+        {action === "approve" ? (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.approve" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.approving" />
+            </ActionFormPending>
+          </>
+        ) : (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.restore" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.restoring" />
+            </ActionFormPending>
+          </>
+        )}
       </Button>
       {state && !state.ok && state.publicId === publicId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>

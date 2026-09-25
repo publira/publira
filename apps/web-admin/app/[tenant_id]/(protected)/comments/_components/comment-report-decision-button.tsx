@@ -23,38 +23,6 @@ interface CommentReportDecisionButtonProps {
   resolution: CommentReportResolution;
 }
 
-/**
- * What one decision control says, idle and while it is in flight.
- *
- * Each branch names its key inside the `<ClientMessage>` it returns, the same
- * way the queue's server-rendered copy does, so the key stays where a
- * translation extractor can see it.
- */
-const DecisionLabel = ({
-  resolution,
-}: {
-  resolution: CommentReportResolution;
-}) =>
-  resolution === "resolved" ? (
-    <>
-      <ActionFormIdle>
-        <ClientMessage message="admin.comments.reports.resolve" />
-      </ActionFormIdle>
-      <ActionFormPending>
-        <ClientMessage message="admin.comments.reports.resolving" />
-      </ActionFormPending>
-    </>
-  ) : (
-    <>
-      <ActionFormIdle>
-        <ClientMessage message="admin.comments.reports.reject" />
-      </ActionFormIdle>
-      <ActionFormPending>
-        <ClientMessage message="admin.comments.reports.rejecting" />
-      </ActionFormPending>
-    </>
-  );
-
 /** What the toast says once the decision has landed. */
 const DecisionDone = ({
   resolution,
@@ -114,7 +82,25 @@ export const CommentReportDecisionButton = ({
         type="submit"
         variant={resolution === "resolved" ? "default" : "outline"}
       >
-        <DecisionLabel resolution={resolution} />
+        {resolution === "resolved" ? (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.reports.resolve" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.reports.resolving" />
+            </ActionFormPending>
+          </>
+        ) : (
+          <>
+            <ActionFormIdle>
+              <ClientMessage message="admin.comments.reports.reject" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <ClientMessage message="admin.comments.reports.rejecting" />
+            </ActionFormPending>
+          </>
+        )}
       </Button>
       {state && !state.ok && state.reportId === reportId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
