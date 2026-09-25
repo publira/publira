@@ -116,7 +116,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid tenant admin invitation request", err)
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	if err != nil {
 		return nil, err
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 	if err != nil {
 		return nil, err
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}

@@ -14,10 +14,12 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
 )
 
@@ -101,8 +103,8 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 		WithArgs("smtp.example.com", int32(587), "mailer", existingEncrypted, "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
 			AddRow(true, "smtp.example.com", 587, "mailer", existingEncrypted, "starttls", "no-reply@example.com", "reply@example.com", now, now, 4))
-	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(3)))
 	if err != nil {
@@ -151,8 +153,8 @@ func TestUpdatePlatformEmailSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 		WithArgs("smtp.example.com", int32(587), "mailer", sqlmock.AnyArg(), "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
 			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:ciphertext", "starttls", "no-reply@example.com", "reply@example.com", now, now, 1))
-	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	req := emailUpdateRequest(0)
 	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
@@ -304,4 +306,98 @@ func TestGetPlatformEmailSettingsRejectsNonPlatformRole(t *testing.T) {
 		t.Fatalf("GetPlatformEmailSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
 	assertIntegrationExpectations(t, mock)
+}
+
+// Each refusal names the request field publiractl smtp names as a flag, and
+// writes nothing.
+func TestPlatformEmailSettingsRPCsNameTheRefusedField(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		field  string
+		update func(*publirasplatformv1.UpdatePlatformEmailSettingsRequest)
+	}{
+		{name: "no host", field: "host", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Host = " " }},
+		{name: "port out of range", field: "port", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Port = 70000 }},
+		{name: "no username", field: "username", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Username = "" }},
+		{name: "unknown encryption", field: "encryption", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.Encryption = "ssl" }},
+		{name: "malformed sender", field: "from_address", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.FromAddress = "nobody" }},
+		{name: "malformed reply-to", field: "reply_to", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.ReplyTo = "nobody" }},
+		{name: "negative revision", field: "expected_revision", update: func(r *publirasplatformv1.UpdatePlatformEmailSettingsRequest) { r.ExpectedRevision = -1 }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			req := emailUpdateRequest(0)
+			tc.update(req)
+			_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("code = %v, want invalid_argument (err = %v)", connect.CodeOf(err), err)
+			}
+			assertFieldViolation(t, err, tc.field)
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+
+	t.Run("custom recipient that is no address", func(t *testing.T) {
+		server, mock := newOperatorHandlerTestServer(t)
+		server.tester = &smtpTesterStub{}
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
+		_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+			RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
+			RecipientEmail:     "nobody",
+			Host:               "smtp.example.com",
+			Port:               587,
+			Username:           "mailer",
+			PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
+			Password:           "new-secret",
+			Encryption:         "starttls",
+			FromAddress:        "no-reply@example.com",
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want invalid_argument (err = %v)", connect.CodeOf(err), err)
+		}
+		assertFieldViolation(t, err, "recipient_email")
+		assertOperatorHandlerExpectations(t, mock)
+	})
+}
+
+// A message the server refuses is reported with a reason the console can
+// explain, and recorded as a failed attempt.
+func TestSendPlatformSmtpTestEmailReportsTheFailureReason(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	server.tester = &smtpTesterStub{err: errors.New("535 5.7.8 authentication failed")}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
+	expectOperatorAuditLogInsert(mock)
+
+	_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+		RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
+		Host:               "smtp.example.com",
+		Port:               587,
+		Username:           "mailer",
+		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
+		Password:           "wrong-secret",
+		Encryption:         "starttls",
+		FromAddress:        "no-reply@example.com",
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("code = %v, want failed_precondition (err = %v)", connect.CodeOf(err), err)
+	}
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("error = %T, want a *connect.Error", err)
+	}
+	if connectErr.Message() != "smtp connection test failed" {
+		t.Fatalf("message = %q, want the server's reply kept out of it", connectErr.Message())
+	}
+	var reason string
+	for _, detail := range connectErr.Details() {
+		if value, err := detail.Value(); err == nil {
+			if info, ok := value.(*errdetails.ErrorInfo); ok {
+				reason = info.GetReason()
+			}
+		}
+	}
+	if reason != rpcerrors.ReasonSMTPTestAuthentication {
+		t.Fatalf("reason = %q, want %s", reason, rpcerrors.ReasonSMTPTestAuthentication)
+	}
+	assertOperatorHandlerExpectations(t, mock)
 }

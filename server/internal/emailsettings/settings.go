@@ -5,7 +5,20 @@ import (
 	"net/mail"
 	"strings"
 
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/secretupdate"
+)
+
+// The fields [Validate] and [ValidateOptional] refuse, named as the settings
+// RPCs name them.
+const (
+	FieldHost        = "host"
+	FieldPort        = "port"
+	FieldUsername    = "username"
+	FieldPassword    = "password"
+	FieldEncryption  = "encryption"
+	FieldFromAddress = "from_address"
+	FieldReplyTo     = "reply_to"
 )
 
 const (
@@ -46,56 +59,64 @@ func Normalize(settings SMTPSettings) SMTPSettings {
 	return settings
 }
 
+// Validate refuses settings that cannot send with a [*fielderr.Invalid] naming
+// the field at fault.
 func Validate(settings SMTPSettings, requirePassword bool) error {
 	settings = Normalize(settings)
 	if settings.Host == "" {
-		return errors.New("host is required")
+		return invalid(FieldHost, "host is required")
 	}
 	if settings.Port < 1 || settings.Port > 65535 {
-		return errors.New("port must be between 1 and 65535")
+		return invalid(FieldPort, "port must be between 1 and 65535")
 	}
 	if settings.Username == "" {
-		return errors.New("username is required")
+		return invalid(FieldUsername, "username is required")
 	}
 	if requirePassword && settings.Password == "" {
-		return ErrPasswordRequired
+		return &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	}
 	if !isSupportedEncryption(settings.Encryption) {
-		return errors.New("encryption must be one of tls, starttls, none")
+		return invalid(FieldEncryption, "encryption must be one of tls, starttls, none")
 	}
 	if _, err := mail.ParseAddress(settings.FromAddress); err != nil {
-		return errors.New("from_address must be a valid email address")
+		return invalid(FieldFromAddress, "from_address must be a valid email address")
 	}
 	if settings.ReplyTo != "" {
 		if _, err := mail.ParseAddress(settings.ReplyTo); err != nil {
-			return errors.New("reply_to must be a valid email address")
+			return invalid(FieldReplyTo, "reply_to must be a valid email address")
 		}
 	}
 	return nil
 }
 
+// ValidateOptional is [Validate] for settings any of whose fields may be left
+// empty.
 func ValidateOptional(settings SMTPSettings, hasPassword bool) error {
 	settings = Normalize(settings)
 	if settings.Port != 0 && (settings.Port < 1 || settings.Port > 65535) {
-		return errors.New("port must be between 1 and 65535")
+		return invalid(FieldPort, "port must be between 1 and 65535")
 	}
 	if settings.Encryption != "" && !isSupportedEncryption(settings.Encryption) {
-		return errors.New("encryption must be one of tls, starttls, none")
+		return invalid(FieldEncryption, "encryption must be one of tls, starttls, none")
 	}
 	if settings.FromAddress != "" {
 		if _, err := mail.ParseAddress(settings.FromAddress); err != nil {
-			return errors.New("from_address must be a valid email address")
+			return invalid(FieldFromAddress, "from_address must be a valid email address")
 		}
 	}
 	if settings.ReplyTo != "" {
 		if _, err := mail.ParseAddress(settings.ReplyTo); err != nil {
-			return errors.New("reply_to must be a valid email address")
+			return invalid(FieldReplyTo, "reply_to must be a valid email address")
 		}
 	}
 	if strings.TrimSpace(settings.Password) != "" && !hasPassword {
-		return ErrPasswordRequired
+		return &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	}
 	return nil
+}
+
+func invalid(field, msg string) error {
+	return &fielderr.Invalid{Field: field, Err: errors.New(msg)}
 }
 
 func HasAnyValue(settings SMTPSettings, hasPassword bool) bool {

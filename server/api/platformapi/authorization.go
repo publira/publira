@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 )
@@ -66,6 +67,21 @@ func (s *platformServer) requirePlatformActor(ctx context.Context, headers http.
 		return platformActor{}, err
 	}
 	return platformActor{UserID: user.ID, Role: role, Email: user.Email}, nil
+}
+
+// auditActor is the operator behind req, as the packages under internal/ file
+// their audit entries.
+func (s *platformServer) auditActor(ctx context.Context, req connect.AnyRequest) (auditlog.PlatformActor, error) {
+	actor, err := s.requirePlatformActor(ctx, req.Header())
+	if err != nil {
+		return auditlog.PlatformActor{}, err
+	}
+	return actor.audit(req.Header()), nil
+}
+
+// audit is a, as the packages under internal/ file their audit entries.
+func (a platformActor) audit(headers http.Header) auditlog.PlatformActor {
+	return auditlog.PlatformActor{UserID: a.UserID, Role: a.Role, ClientIP: auditlog.ClientIPFromHeader(headers)}
 }
 
 func (s *platformServer) requirePlatformWriteActor(ctx context.Context, headers http.Header) (platformActor, error) {

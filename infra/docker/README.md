@@ -12,7 +12,7 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | Server (long-running) | [`server/Dockerfile`](./server/Dockerfile) | `server/cmd/publira`, run as `publira server` (the API and image delivery, Manael / libvips) or `publira worker` | `VERSION` |
-| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations, which the image carries, manual runs of every maintenance job, and creating and managing a tenant) | none |
+| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations, which the image carries, manual runs of every maintenance job, saving and testing the platform's SMTP settings, and creating and managing a tenant) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
 A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations it carries (`db migrate`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.

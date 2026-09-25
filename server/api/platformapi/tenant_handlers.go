@@ -160,7 +160,7 @@ func (s *platformServer) CreateTenant(
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid create tenant request", err)
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -187,19 +187,6 @@ func (s *platformServer) CreateTenant(
 	return connect.NewResponse(&publirasplatformv1.CreateTenantResponse{
 		Tenant: tenantToProto(created.Tenant, func() string { return created.Tenant.Timezone }),
 	}), nil
-}
-
-// tenantActor is the operator behind req, as platformtenants files it.
-func (s *platformServer) tenantActor(ctx context.Context, req connect.AnyRequest) (auditlog.PlatformActor, error) {
-	actor, err := s.requirePlatformActor(ctx, req.Header())
-	if err != nil {
-		return auditlog.PlatformActor{}, err
-	}
-	return auditlog.PlatformActor{
-		UserID:   actor.UserID,
-		Role:     actor.Role,
-		ClientIP: auditlog.ClientIPFromHeader(req.Header()),
-	}, nil
 }
 
 // tenantError maps what platformtenants and tenantmembers refuse to this
@@ -264,7 +251,7 @@ func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyReq
 	if err != nil {
 		return dbmodels.Tenant{}, s.tenantError(ctx, "invalid "+what+" request", err)
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
@@ -299,7 +286,7 @@ func (s *platformServer) UpdateTenant(
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
-	actor, err := s.tenantActor(ctx, req)
+	actor, err := s.auditActor(ctx, req)
 	if err != nil {
 		return nil, err
 	}
