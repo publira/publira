@@ -1017,8 +1017,8 @@ importers:
         specifier: workspace:*
         version: link:../i18n
       cn:
-        specifier: 0.3.3
-        version: 0.3.3
+        specifier: 0.4.0
+        version: 0.4.0
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -3033,8 +3033,8 @@ packages:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
 
-  cn@0.3.3:
-    resolution: {integrity: sha512-OEiyJkSpYm2kOuNOKQ+c2wmzZRG8orrb9fnObtHTbCGNx/E9KLnGcmcocItOzREKk5KzQN5I2e3BUCj563KEpw==}
+  cn@0.4.0:
+    resolution: {integrity: sha512-qOAeUhPwPzBxx6jaeQdo646XIKliKHc2j1ZF7Ngb1o0pJZKH5gq8FkA0aVdUdPFUDXNXyUCXpCtoJISo6dhizg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -7022,7 +7022,7 @@ snapshots:
 
   cluster-key-slot@1.1.2: {}
 
-  cn@0.3.3: {}
+  cn@0.4.0: {}
 
   color-convert@2.0.1:
     dependencies:
