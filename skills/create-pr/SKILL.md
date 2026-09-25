@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, attaches a screenshot of every screen a UI change touches, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, and fills in the repository pull request template under an English Conventional Commits title.
+description: Create a pull request in this repository following its own conventions, and add follow-up commits to one. Use when asked to open, raise, or draft a PR, to commit and push finished work for review, to write a PR description, or to push fixes for review feedback onto an existing PR. Reads the applicable AGENTS.md policy, stages only the intended diff, commits with the required Assisted-by trailer, attaches a screenshot of every screen a UI change touches, runs the verification commands that match the changed area, rebases onto origin/main before every push and before requesting review, stacks a change that spans the backend and the web apps as one pull request per layer with gh stack, and fills in the repository pull request template under an English Conventional Commits title.
 ---
 
 # Create a Pull Request
@@ -59,6 +59,71 @@ git switch -c <type>/<short-slug>
 ```
 
 Use the Conventional Commits type as the prefix and a short English slug, matching the repository's existing branches (`feat/...`, `fix/...`, `docs/...`, `chore/...`, `refactor/...`).
+
+## Stack a change that spans the backend and the web apps
+
+A change that touches both the backend and the web apps becomes two pull requests, one per layer: the backend against `main`, the frontend stacked on it. The reviewer reads Go and TypeScript separately, each bucket measures one layer, and the backend can merge while the frontend is still under review. Work that stays inside one layer is not stacked.
+
+Decide this before writing code, not at push time — the vendored `gh-stack` skill explains why a stack is cheaper to plan than to split. Where that skill and this section disagree (`submit`, `merge`), this section wins.
+
+### Split the Issue first
+
+One Issue per pull request still holds, so each layer needs its own Issue, the frontend one `blocked by` the backend one. The `organize-github-issues` skill covers filing them. When the work began as one Issue, split it before opening either pull request, so that each layer's body can say `Fixes` for what it finishes.
+
+### Where the line goes
+
+| Layer | Paths |
+| --- | --- |
+| Backend, bottom | `proto/`, `db/`, `server/`, and everything `task gen` writes from them: `server/internal/proto/gen/`, `server/internal/db/gen/`, `packages/api-client/src/gen/` |
+| Frontend, top | `apps/`, `locales/`, the rest of `packages/` (the hand-written `packages/api-client` wrappers included), and the `e2e/` scenarios for those screens |
+
+Generated output travels with its source: the regenerated `packages/api-client/src/gen/` belongs to the pull request that changes `proto/`, even though it lives under `packages/`. The backend layer has to pass on its own — the server tests and `pnpm preflight`, since the regenerated client is TypeScript.
+
+### Build the stack
+
+`gh stack` is GitHub's CLI extension for stacked pull requests. Install it once and turn on `rerere`, so that a conflict resolved in one layer is replayed in the layers above:
+
+```bash
+gh extension install github/gh-stack
+git config rerere.enabled true
+```
+
+Start on the backend branch, created from `origin/main` like any other, and let `gh stack` track it:
+
+```bash
+git add <backend paths> && git commit ...    # the bottom layer
+gh stack init <backend-branch>                # adopt the current branch as the bottom
+gh stack add <frontend-branch>                # branch the top layer from it
+git add <frontend paths> && git commit ...    # the top layer
+```
+
+Stage by path as everywhere else; `gh stack add -Am` stages the whole tree.
+
+### Rebase, verify, and push the stack
+
+`gh stack rebase` takes the place of `git rebase origin/main`: it fetches `main` and rebases the backend onto it and the frontend onto the backend. When `main` is checked out in another worktree it cannot move the local `main`, says so, and rebases onto `origin/main` instead, which is what the rebase rule asks for. Resolve a conflict (exit 3) with `git add` and `gh stack rebase --continue`.
+
+Then run each layer's verification on that layer's branch, and push every layer with `gh stack push`, which uses `--force-with-lease` per branch.
+
+### Open one pull request per layer
+
+Open each pull request with `gh pr create`, as described under **Create the PR**, not with `gh stack submit --auto`: that opens drafts whose titles and bodies come from a commit or a branch name rather than from the template.
+
+```bash
+gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m
+gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s
+gh stack link <backend-pr> <frontend-pr>      # bottom to top
+```
+
+- Each body carries `Fixes` for its own layer's Issue only.
+- Score each layer's diff on its own: `git diff origin/main...<backend-branch>` for the bottom and `git diff <backend-branch>...<frontend-branch>` for the top, each piped to `node scripts/pr-size.ts`.
+- `gh stack link` is not optional. A base branch alone does not make the upper pull request part of a stack on GitHub, and until it is linked its `CI` run does not start. Confirm with `gh stack view --json`.
+
+### After the stack is open
+
+A fix belongs to the layer that owns it. Check that layer out (`gh stack down`, or `gh stack checkout <branch>`), commit there, replay the layers above with `gh stack rebase --upstack`, return with `gh stack top`, and push with `gh stack push`.
+
+Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue, and the bottom layer lands first. Once it has, `gh stack sync` notices the squash merge, rebases the remaining layer onto `main` without replaying the merged commits, and pushes it.
 
 ## Commit
 
@@ -232,6 +297,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - the verification commands for the changed area ran and passed
 - the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
 - no throwaway worktree is left behind (`git worktree list`)
+- a change spanning the backend and the web apps is one pull request per layer, each closing its own Issue, and `gh stack view --json` shows them linked bottom to top
 - a pull request that changes a screen shows a screenshot of it in the body, above the `Assisted-by:` trailer
 - `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and no hand-set `ai-assisted`, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind
