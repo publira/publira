@@ -66,8 +66,7 @@ A new tenant's default language is not taken from the platform default: `/tenant
 ## Development
 
 ```bash
-cd apps/web-platform
-pnpm dev
+pnpm dev --filter @publira/web-platform
 ```
 
 ### Internal cache revalidation

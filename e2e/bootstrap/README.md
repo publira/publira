@@ -19,9 +19,9 @@ This check therefore starts the repository-root **`compose.yaml` itself** — th
 | Bootstrap Postgres | `5434` | Change with `PUBLIRA_BOOTSTRAP_POSTGRES_PORT`. |
 | Bootstrap Redis | `6381` | Change with `PUBLIRA_BOOTSTRAP_REDIS_PORT`. |
 | Bootstrap RustFS (S3) | `9002` | Change with `PUBLIRA_BOOTSTRAP_RUSTFS_PORT`. |
-| All services from `task dev` | `3000` `4000` `4100` `8000` `8100` | **Cannot change**; Next.js ports are fixed in `apps/*/package.json` `dev` commands. |
+| All services from `task dev` | `3000` `4000` `4100` `8000` `8100` | The check runs `task dev` on its default ports, so these are not overridden here. |
 
-The data-store ports differ from Playwright E2E (`5433` / `6380` / `9003`), so both can run together. `task dev` ports are fixed, however, so phase 4 cannot run while another development `task dev` is active; the check detects the collision before startup.
+The data-store ports differ from Playwright E2E (`5433` / `6380` / `9003`), so both can run together. Phase 4 starts `task dev` on its default ports, however, so it cannot run while another development `task dev` is listening on them; the check detects the collision before startup.
 
 ## Run
 

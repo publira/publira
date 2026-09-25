@@ -21,10 +21,10 @@ pnpm dev
 task dev
 
 # Start one app
-cd apps/web-host     && pnpm dev
-cd apps/web-admin    && pnpm dev
-cd apps/web-platform && pnpm dev
-cd apps/email-renderer && pnpm dev
+pnpm dev --filter @publira/web-host
+pnpm dev --filter @publira/web-admin
+pnpm dev --filter @publira/web-platform
+pnpm dev --filter @publira/email-renderer
 ```
 
 With a worktree profile, run `eval "$(task --silent dev-env:env)"` before the usual command. `pnpm dev` of `web-host`, `web-admin`, and `web-platform` honors `PORT`, so each one listens on the port the profile assigned.
