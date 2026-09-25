@@ -320,6 +320,46 @@ void main() {
       expect(inGenreTile(fantasy.id, coverOf('SERIES02')), findsOneWidget);
     });
 
+    testWidgets('announces each tile as one button naming the genre once', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      catalog.genres = [
+        genreWith(fantasy, [featuredWithCover('SERIES01')]),
+        // The name frame repeats the name the tile already reads out.
+        genreWith(romance, const []),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(
+        tester.getSemantics(genreTileOf(fantasy.id)),
+        isSemantics(
+          label: 'Fantasy\n2 published series',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(
+        tester.getSemantics(genreTileOf(romance.id)),
+        isSemantics(
+          label: 'Romance\n0 published series',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+
+      tester.semantics.tap(
+        find.semantics.byLabel('Romance\n0 published series'),
+      );
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('genre-body')),
+      );
+      expect(router.state.uri.path, AppRoutes.genreDetailPath(romance.id));
+      semantics.dispose();
+    });
+
     for (final (description, featured) in [
       ('has no series to draw', const <GenreFeaturedSeries>[]),
       (

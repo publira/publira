@@ -19,32 +19,36 @@ class GenreTile extends StatelessWidget {
     final theme = Theme.of(context);
     final messages = AppMessages.of(context);
     return MergeSemantics(
-      child: InkWell(
-        key: ValueKey('genre-tile-${genre.id}'),
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => context.pushInTab(AppRoutes.genreDetailPath(genre.id)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _GenreCovers(genre: genre),
-            const SizedBox(height: 8),
-            Text(
-              genre.name,
-              style: theme.textTheme.titleSmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              messages.commonSeriesCount(
-                count: messages.formatInteger(genre.seriesCount),
+      // A button the way a ListTile row is, which InkWell alone does not say.
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          key: ValueKey('genre-tile-${genre.id}'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => context.pushInTab(AppRoutes.genreDetailPath(genre.id)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _GenreCovers(genre: genre),
+              const SizedBox(height: 8),
+              Text(
+                genre.name,
+                style: theme.textTheme.titleSmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 2),
+              Text(
+                messages.commonSeriesCount(
+                  count: messages.formatInteger(genre.seriesCount),
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
