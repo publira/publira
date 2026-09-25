@@ -15,8 +15,9 @@ const SERVER_ACTION_HEADER = "next-action";
  *
  * This is for the write that says nothing: an optimistic list rearranges itself
  * the moment the button is pressed, whether or not the Action behind it has
- * even been sent. Start waiting before the click, and await it before
- * navigating:
+ * even been sent. It is also for the write whose message an earlier write on
+ * the same page already put on screen. Start waiting before the click, and
+ * await it before navigating:
  *
  * ```ts
  * const reordered = serverActionAnswered(page);

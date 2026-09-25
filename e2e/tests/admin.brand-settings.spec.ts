@@ -5,6 +5,7 @@ import { fillField, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { EYE_CATCH_ASPECT_FIXTURES } from "../src/scenarios/eye-catch";
 import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
+import { serverActionAnswered } from "../src/server-action";
 import {
   hostPath,
   WEB_ADMIN_BASE_URL,
@@ -103,15 +104,18 @@ const themePrimaryDeclaration = (css: string): string => {
   return match?.[0] ?? "";
 };
 
-const expectThemeCssToContain = (
+const expectThemeCssToContain = async (
   request: APIRequestContext,
   snippet: string,
   origin = WEB_HOST_BASE_URL
-): ReturnType<typeof expect.poll<string>> =>
-  expect.poll(async () => await fetchThemeCss(request, origin), {
-    message: `${origin}${THEME_CSS_PATH} never contained ${snippet}`,
-    timeout: 30_000,
-  });
+): Promise<void> => {
+  await expect
+    .poll(async () => await fetchThemeCss(request, origin), {
+      message: `${origin}${THEME_CSS_PATH} never contained ${snippet}`,
+      timeout: 30_000,
+    })
+    .toContain(snippet);
+};
 
 const primaryCustomProperty = (page: Page): Promise<string> =>
   page.evaluate(() =>
@@ -158,8 +162,15 @@ const pollHostPage = <T>(page: Page, url: string, read: () => Promise<T>) =>
     { message: `${url} never caught up with the console`, timeout: 30_000 }
   );
 
+/**
+ * A page that saved once already shows "The theme was saved.", so the status
+ * alone would pass before this click's Action is answered, and the next
+ * `page.goto` would cancel it.
+ */
 const saveTheme = async (page: Page): Promise<void> => {
+  const saved = serverActionAnswered(page);
   await page.getByRole("button", { name: "Save the theme" }).click();
+  await saved;
   await expectStatus(page, "The theme was saved.");
 };
 
