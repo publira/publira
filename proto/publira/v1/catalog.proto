@@ -336,6 +336,8 @@ message PublishedGenre {
   // is published now, visible on the requested surface, and rated all-ages.
   // Empty when the genre has no such series.
   repeated PublishedGenreFeaturedSeries featured_series = 5;
+  // The eye-catch the console uploaded for the genre. Empty when it has none.
+  repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 6;
 }
 
 // A series on a genre's tile. The title is what a frame shows for a work with

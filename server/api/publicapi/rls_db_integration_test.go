@@ -112,6 +112,8 @@ var publicDataTables = []struct {
 	{name: "creator_image_variants", count: "SELECT count(*) FROM creator_image_variants"},
 	{name: "label_images", count: "SELECT count(*) FROM label_images"},
 	{name: "label_image_variants", count: "SELECT count(*) FROM label_image_variants"},
+	{name: "genre_images", count: "SELECT count(*) FROM genre_images"},
+	{name: "genre_image_variants", count: "SELECT count(*) FROM genre_image_variants"},
 	{name: "tenant_images", count: "SELECT count(*) FROM tenant_images"},
 	{name: "tenant_image_variants", count: "SELECT count(*) FROM tenant_image_variants"},
 	{name: "episode_images", count: "SELECT count(*) FROM episode_images"},
@@ -259,6 +261,12 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		(id, tenant_id, label_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
 		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/label.webp', 'image/webp', 1, 320, 480)`,
 		uuid.Must(uuid.NewV7()), first.ID, labelImageID)
+	genreImageID := uuid.Must(uuid.NewV7())
+	seed("genre image", "INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)", genreImageID, first.ID, genre.ID)
+	seed("genre image variant", `INSERT INTO genre_image_variants
+		(id, tenant_id, genre_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/genre.webp', 'image/webp', 1, 320, 480)`,
+		uuid.Must(uuid.NewV7()), first.ID, genreImageID)
 	tenantImageID := uuid.Must(uuid.NewV7())
 	seed("tenant image", "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", tenantImageID, first.ID)
 	seed("tenant image variant", `INSERT INTO tenant_image_variants

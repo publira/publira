@@ -58,6 +58,8 @@ type stubTenantQueries struct {
 	tenantErr        error
 	tenantKey        tenantVariantKey
 	tenantParams     *dbmodels.GetTenantImageVariantByTypeForTenantParams
+	genre            dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow
+	genreKey         genreVariantKey
 	userRef          dbmodels.GetUserByPublicIDForTenantRow
 	userRefErr       error
 	user             dbmodels.User
@@ -100,6 +102,28 @@ func (s stubTenantQueries) GetTenantImageVariantByTypeForTenant(_ context.Contex
 		return dbmodels.GetTenantImageVariantByTypeForTenantRow{}, sql.ErrNoRows
 	}
 	return s.tenant, nil
+}
+
+func (s stubTenantQueries) GetGenreImageVariantByTypeAndWidthForTenant(_ context.Context, arg dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow, error) {
+	requested := genreVariantKey{
+		genreImageID: arg.GenreImageID,
+		tenantID:     arg.TenantID,
+		variantType:  arg.VariantType,
+		width:        arg.Width,
+	}
+	if s.genre.ObjectKey == "" || requested != s.genreKey {
+		return dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.genre, nil
+}
+
+// genreVariantKey is the tuple the genre variant query filters on, matched
+// exactly for the reason tenantVariantKey is.
+type genreVariantKey struct {
+	genreImageID uuid.UUID
+	tenantID     uuid.UUID
+	variantType  string
+	width        int32
 }
 
 func (s stubTenantQueries) GetLabelImageVariantByTypeAndWidthForTenant(context.Context, dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
@@ -1122,6 +1146,54 @@ func TestCreatorImageConvertsToWebP(t *testing.T) {
 	}
 	if got := rec.Header().Get("Content-Type"); got != "image/webp" {
 		t.Fatalf("Content-Type = %q, want image/webp", got)
+	}
+}
+
+// A genre eye-catch is addressed by image, ratio, and width, the way a label's
+// is, and only the variant stored under all three is served.
+func TestGenreImageServesTheStoredVariant(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
+	queries := stubTenantQueries{
+		genre: dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow{
+			ObjectKey:   "tenants/acme/genres/GENRE0000001/portrait_600w.jpg",
+			ContentType: "image/jpeg",
+		},
+		genreKey: genreVariantKey{
+			genreImageID: mediaID,
+			tenantID:     tenantID,
+			variantType:  "portrait",
+			width:        600,
+		},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/genres/GENRE0000001/portrait_600w.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: queries},
+		store,
+	)
+
+	cases := []struct {
+		path string
+		want int
+	}{
+		{path: "/images/genres/" + mediaID.String() + "/portrait/600", want: http.StatusOK},
+		{path: "/images/genres/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
+		{path: "/images/genres/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
+		{path: "/images/genres/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Host = "example.test"
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+			}
+		})
 	}
 }
 

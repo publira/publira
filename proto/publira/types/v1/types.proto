@@ -142,6 +142,10 @@ message Genre {
   // rather than standing in for it: two genres cannot differ by case or
   // spacing alone.
   string slug = 3;
+  // The eye-catch the console uploaded, as a label carries one. Filled by the
+  // genre RPCs themselves; a genre listed on a series carries names only.
+  string eye_catch_image_updated_at = 4;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 5;
 }
 
 // A free-form label written on the series form. Tags have no console of their

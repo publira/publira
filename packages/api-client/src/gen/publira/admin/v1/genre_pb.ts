@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Genre, TenantContext } from "../../types/v1/types_pb";
+import type { Genre, ImageCropRect, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/genre.proto.
  */
 export const file_publira_admin_v1_genre: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlMKEkNyZWF0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCSI9ChNDcmVhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSJmChJVcGRhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJIj0KE1VwZGF0ZUdlbnJlUmVzcG9uc2USJgoFZ2VucmUYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlIoQBChRSZW9yZGVyR2VucmVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGAoQZ2VucmVfcHVibGljX2lkcxgCIAMoCRIhChlleHBlY3RlZF9nZW5yZV9wdWJsaWNfaWRzGAMgAygJIkAKFVJlb3JkZXJHZW5yZXNSZXNwb25zZRInCgZnZW5yZXMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlIlgKEkRlbGV0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIhUKE0RlbGV0ZUdlbnJlUmVzcG9uc2Uy7AMKEUFkbWluR2VucmVTZXJ2aWNlElkKCkxpc3RHZW5yZXMSIy5wdWJsaXJhLmFkbWluLnYxLkxpc3RHZW5yZXNSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5MaXN0R2VucmVzUmVzcG9uc2UiABJcCgtDcmVhdGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5DcmVhdGVHZW5yZVJlc3BvbnNlIgASXAoLVXBkYXRlR2VucmUSJC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUdlbnJlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlR2VucmVSZXNwb25zZSIAEmIKDVJlb3JkZXJHZW5yZXMSJi5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJHZW5yZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyR2VucmVzUmVzcG9uc2UiABJcCgtEZWxldGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpcBChJDcmVhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYAyABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgEIAEoCSI9ChNDcmVhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSLJAQoSVXBkYXRlR2VucmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgEIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAUgASgJEh0KFWNsZWFyX2V5ZV9jYXRjaF9pbWFnZRgGIAEoCCI9ChNVcGRhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSKEAQoUUmVvcmRlckdlbnJlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhgKEGdlbnJlX3B1YmxpY19pZHMYAiADKAkSIQoZZXhwZWN0ZWRfZ2VucmVfcHVibGljX2lkcxgDIAMoCSJAChVSZW9yZGVyR2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSJYChJEZWxldGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSIVChNEZWxldGVHZW5yZVJlc3BvbnNlIuABCiVVcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSFAoMdmFyaWFudF90eXBlGAMgASgJEhIKCmltYWdlX2RhdGEYBCABKAwSGgoSaW1hZ2VfY29udGVudF90eXBlGAUgASgJEi0KBGNyb3AYBiABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLkltYWdlQ3JvcFJlY3QiUAomVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlUmVzcG9uc2USJgoFZ2VucmUYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlMoQFChFBZG1pbkdlbnJlU2VydmljZRJZCgpMaXN0R2VucmVzEiMucHVibGlyYS5hZG1pbi52MS5MaXN0R2VucmVzUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuTGlzdEdlbnJlc1Jlc3BvbnNlIgASXAoLQ3JlYXRlR2VucmUSJC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUdlbnJlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlR2VucmVSZXNwb25zZSIAElwKC1VwZGF0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUdlbnJlUmVzcG9uc2UiABJiCg1SZW9yZGVyR2VucmVzEiYucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyR2VucmVzUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuUmVvcmRlckdlbnJlc1Jlc3BvbnNlIgASXAoLRGVsZXRlR2VucmUSJC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUdlbnJlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlR2VucmVSZXNwb25zZSIAEpUBCh5VcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2USNy5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlcXVlc3QaOC5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -96,6 +96,19 @@ export type CreateGenreRequest = Message<"publira.admin.v1.CreateGenreRequest"> 
    * @generated from field: string name = 2;
    */
   name: string;
+
+  /**
+   * Cropped into every ratio of the eye-catch. Empty leaves the genre without
+   * one.
+   *
+   * @generated from field: bytes eye_catch_image_data = 3;
+   */
+  eyeCatchImageData: Uint8Array;
+
+  /**
+   * @generated from field: string eye_catch_image_content_type = 4;
+   */
+  eyeCatchImageContentType: string;
 };
 
 /**
@@ -145,6 +158,25 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
    * @generated from field: string name = 3;
    */
   name: string;
+
+  /**
+   * Replaces the whole eye-catch. Empty keeps the one the genre has.
+   *
+   * @generated from field: bytes eye_catch_image_data = 4;
+   */
+  eyeCatchImageData: Uint8Array;
+
+  /**
+   * @generated from field: string eye_catch_image_content_type = 5;
+   */
+  eyeCatchImageContentType: string;
+
+  /**
+   * Removes the eye-catch. Refused alongside eye_catch_image_data.
+   *
+   * @generated from field: bool clear_eye_catch_image = 6;
+   */
+  clearEyeCatchImage: boolean;
 };
 
 /**
@@ -262,6 +294,73 @@ export const DeleteGenreResponseSchema: GenMessage<DeleteGenreResponse> = /*@__P
   messageDesc(file_publira_admin_v1_genre, 9);
 
 /**
+ * Replaces the image of one aspect ratio of a genre eye-catch. The other
+ * ratios keep the images they already hold.
+ *
+ * @generated from message publira.admin.v1.UploadGenreEyeCatchAspectImageRequest
+ */
+export type UploadGenreEyeCatchAspectImageRequest = Message<"publira.admin.v1.UploadGenreEyeCatchAspectImageRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+
+  /**
+   * portrait / square / landscape / og
+   *
+   * @generated from field: string variant_type = 3;
+   */
+  variantType: string;
+
+  /**
+   * @generated from field: bytes image_data = 4;
+   */
+  imageData: Uint8Array;
+
+  /**
+   * @generated from field: string image_content_type = 5;
+   */
+  imageContentType: string;
+
+  /**
+   * Where in the upload the cut is taken. Omitted, the image is cut from its
+   * centre.
+   *
+   * @generated from field: publira.types.v1.ImageCropRect crop = 6;
+   */
+  crop?: ImageCropRect | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadGenreEyeCatchAspectImageRequest.
+ * Use `create(UploadGenreEyeCatchAspectImageRequestSchema)` to create a new message.
+ */
+export const UploadGenreEyeCatchAspectImageRequestSchema: GenMessage<UploadGenreEyeCatchAspectImageRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_genre, 10);
+
+/**
+ * @generated from message publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
+ */
+export type UploadGenreEyeCatchAspectImageResponse = Message<"publira.admin.v1.UploadGenreEyeCatchAspectImageResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.Genre genre = 1;
+   */
+  genre?: Genre | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadGenreEyeCatchAspectImageResponse.
+ * Use `create(UploadGenreEyeCatchAspectImageResponseSchema)` to create a new message.
+ */
+export const UploadGenreEyeCatchAspectImageResponseSchema: GenMessage<UploadGenreEyeCatchAspectImageResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_genre, 11);
+
+/**
  * @generated from service publira.admin.v1.AdminGenreService
  */
 export const AdminGenreService: GenService<{
@@ -304,6 +403,14 @@ export const AdminGenreService: GenService<{
     methodKind: "unary";
     input: typeof DeleteGenreRequestSchema;
     output: typeof DeleteGenreResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage
+   */
+  uploadGenreEyeCatchAspectImage: {
+    methodKind: "unary";
+    input: typeof UploadGenreEyeCatchAspectImageRequestSchema;
+    output: typeof UploadGenreEyeCatchAspectImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_genre, 0);

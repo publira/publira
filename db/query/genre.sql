@@ -10,8 +10,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -34,8 +37,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -58,8 +64,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND g.public_id = $2
 LIMIT 1;
@@ -82,17 +91,21 @@ ORDER BY g.display_order ASC,
 -- name: LockGenresForTenant :many
 -- Locks every genre of the tenant and hands back the order they are in now, so
 -- a reorder can check the client's expected order against a list no concurrent
--- write can move underneath it. The names come along because a reorder answers
--- with the whole list, and nothing in this transaction changes them.
-SELECT id,
-    public_id,
-    name,
-    slug
-FROM genres
-WHERE tenant_id = $1
-ORDER BY display_order ASC,
-    id ASC
-FOR UPDATE;
+-- write can move underneath it. The names and eye-catches come along because a
+-- reorder answers with the whole list, and nothing in this transaction changes
+-- them.
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = $1
+ORDER BY g.display_order ASC,
+    g.id ASC
+FOR UPDATE OF g;
 
 -- name: GetMaxGenreDisplayOrderForTenant :one
 -- Where a newly created genre goes: after everything that already exists.
@@ -123,7 +136,8 @@ RETURNING *;
 -- name: UpdateGenre :exec
 UPDATE genres
 SET name = $2,
-    slug = $3
+    slug = $3,
+    eye_catch_image_id = $4
 WHERE id = $1;
 
 -- name: UpdateGenreDisplayOrder :exec
@@ -155,6 +169,7 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
+    g.eye_catch_image_id,
     (
         SELECT COUNT(*)
         FROM series_genres sg
@@ -194,6 +209,7 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
+    g.eye_catch_image_id,
     (
         SELECT COUNT(*)
         FROM series_genres sg

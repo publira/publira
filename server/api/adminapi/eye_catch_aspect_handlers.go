@@ -419,3 +419,127 @@ func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header http
 		ClientIP:    auditlog.ClientIPFromHeader(header),
 	})
 }
+
+func (s *adminServer) UploadGenreEyeCatchAspectImage(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UploadGenreEyeCatchAspectImageRequest],
+) (*connect.Response[publiraadminv1.UploadGenreEyeCatchAspectImageResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	aspect, err := resolveEyeCatchAspect(req.Msg.VariantType)
+	if err != nil {
+		return nil, err
+	}
+	image, err := normalizeEyeCatchImage(req.Msg.ImageData, req.Msg.ImageContentType, "image_data", "image_content_type")
+	if err != nil {
+		return nil, err
+	}
+	if image == nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("image_data is required"), "image_data")
+	}
+	if s.storage == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+	}
+
+	current, err := s.genreByPublicID(ctx, tenant.ID, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	if !current.EyeCatchImageID.Valid {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre has no eye catch image yet"))
+	}
+
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
+	if err != nil {
+		return nil, eyeCatchAspectBuildError(err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin genre eye catch aspect upload transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	// Serialized and re-read behind the lock, like the series upload above.
+	if _, err := s.queriesFor(txCtx).LockGenreByPublicIDForTenant(txCtx, dbmodels.LockGenreByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: current.PublicID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock genre for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	locked, err := s.queriesFor(txCtx).GetGenreByPublicIDForTenant(txCtx, dbmodels.GetGenreByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to re-read genre for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	if !locked.EyeCatchImageID.Valid {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre has no eye catch image yet"))
+	}
+
+	imageID := locked.EyeCatchImageID.UUID
+	if _, err := s.queriesFor(txCtx).DeleteGenreImageVariantsByType(txCtx, dbmodels.DeleteGenreImageVariantsByTypeParams{
+		GenreImageID: imageID,
+		VariantType:  aspect.VariantType,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to clear genre image variants for aspect", err, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
+	}
+
+	uploadID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	store, err := storage.Pin(txCtx, s.storage)
+	if err != nil {
+		return nil, storageUploadError(err)
+	}
+	for _, variant := range variants {
+		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
+			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "genres", current.PublicID, imageID, uploadID, variant),
+			ContentType: variant.ContentType,
+			Data:        variant.Data,
+		})
+		if uploadErr != nil {
+			return nil, storageUploadError(uploadErr)
+		}
+		variantID, variantIDErr := uuid.NewV7()
+		if variantIDErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, variantIDErr)
+		}
+		if _, createErr := s.queriesFor(txCtx).CreateGenreImageVariant(txCtx, dbmodels.CreateGenreImageVariantParams{
+			ID:              variantID,
+			TenantID:        tenant.ID,
+			GenreImageID:    imageID,
+			VariantType:     variant.VariantType,
+			Label:           variant.Label,
+			StorageProvider: uploaded.Provider,
+			ObjectKey:       uploaded.ObjectKey,
+			ContentType:     variant.ContentType,
+			FileSizeBytes:   uploaded.SizeBytes,
+			Width:           int32(variant.Width),
+			Height:          int32(variant.Height),
+		}); createErr != nil {
+			return nil, s.internalDBError(ctx, "failed to create genre image variant for aspect", createErr, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
+		}
+	}
+	if err := s.queriesFor(txCtx).TouchGenreImage(txCtx, imageID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to touch genre image", err, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
+	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the genre eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit genre eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	s.reval.Send(ctx, owed)
+
+	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
+
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, current.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.UploadGenreEyeCatchAspectImageResponse{Genre: genre}), nil
+}

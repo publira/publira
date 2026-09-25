@@ -341,13 +341,37 @@ type EpisodeSurface struct {
 }
 
 type Genre struct {
-	ID           uuid.UUID `json:"id"`
-	TenantID     uuid.UUID `json:"tenant_id"`
-	PublicID     string    `json:"public_id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	DisplayOrder int32     `json:"display_order"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Slug            string        `json:"slug"`
+	DisplayOrder    int32         `json:"display_order"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
+}
+
+type GenreImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	GenreID   uuid.UUID `json:"genre_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type GenreImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	GenreImageID    uuid.UUID `json:"genre_image_id"`
+	Label           string    `json:"label"`
+	VariantType     string    `json:"variant_type"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type ItemRecommendFeature struct {

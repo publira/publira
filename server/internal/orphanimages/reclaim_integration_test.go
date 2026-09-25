@@ -43,6 +43,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	series := env.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIES000001", LabelID: label.ID})
 	episode := env.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODE00001"})
 	creator := env.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATOR00001"})
+	genre := env.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENRE0000001", Name: "Fantasy"})
 
 	// Every image an entity still points at, one per table that holds object
 	// keys. None of these may be touched by a run.
@@ -52,6 +53,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	seedSeriesImage(t, env.DB, tenant.ID, series.ID, liveSeriesEyeCatch, true)
 	liveLabelEyeCatch := "tenants/TENANT001/labels/LABEL0000001/live-portrait.webp"
 	seedLabelImage(t, env.DB, tenant.ID, label.ID, liveLabelEyeCatch, true)
+	liveGenreEyeCatch := "tenants/TENANT001/genres/GENRE0000001/live-portrait.webp"
+	seedGenreImage(t, env.DB, tenant.ID, genre.ID, liveGenreEyeCatch, true)
 	liveTenantIcon := "tenants/TENANT001/icons/live-icon.webp"
 	seedTenantImage(t, env.DB, tenant.ID, liveTenantIcon, true)
 	liveEpisodePage := "tenants/TENANT001/episodes/EPISODE00001/live-original.webp"
@@ -62,13 +65,17 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	supersededCreatorIcon := "tenants/TENANT001/creators/CREATOR00001/superseded-original.webp"
 	supersededImageID := seedCreatorImage(t, env.DB, tenant.ID, creator.ID, supersededCreatorIcon, false)
 
+	// The eye-catch a genre let go of when the console cleared it.
+	clearedGenreEyeCatch := "tenants/TENANT001/genres/GENRE0000001/cleared-portrait.webp"
+	clearedImageID := seedGenreImage(t, env.DB, tenant.ID, genre.ID, clearedGenreEyeCatch, false)
+
 	// The object a rolled-back transaction abandoned: it was uploaded, and the
 	// rows that would have named it were never committed.
 	abandonedObject := "tenants/TENANT001/series/SERIES000001/rolled-back-portrait.webp"
 
 	stored := []string{
-		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveTenantIcon,
-		liveEpisodePage, supersededCreatorIcon, abandonedObject,
+		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
+		liveEpisodePage, supersededCreatorIcon, clearedGenreEyeCatch, abandonedObject,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -109,24 +116,27 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		t.Fatalf("Run with a cutoff ahead of every object: %v", err)
 	}
 
-	if result.RowCount != 1 {
-		t.Fatalf("row count = %d, want the one superseded creator image", result.RowCount)
+	if result.RowCount != 2 {
+		t.Fatalf("row count = %d, want the superseded creator image and the cleared genre image", result.RowCount)
 	}
-	if result.DeletedCount != 2 {
-		t.Fatalf("deleted count = %d, want the superseded and the abandoned object", result.DeletedCount)
+	if result.DeletedCount != 3 {
+		t.Fatalf("deleted count = %d, want the superseded, the cleared, and the abandoned object", result.DeletedCount)
 	}
 	if result.ScannedCount != int64(len(stored)) {
 		t.Fatalf("scanned count = %d, want %d", result.ScannedCount, len(stored))
 	}
 
 	want := slices.Sorted(slices.Values([]string{
-		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveTenantIcon, liveEpisodePage,
+		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)
 	}
 	if imageRowExists(t, env.DB, "creator_images", supersededImageID) {
 		t.Fatal("the superseded creator_images row survived the run")
+	}
+	if imageRowExists(t, env.DB, "genre_images", clearedImageID) {
+		t.Fatal("the cleared genre_images row survived the run")
 	}
 
 	// Reclamation is idempotent: with nothing left unreferenced, a second run
@@ -237,6 +247,27 @@ func seedLabelImage(t *testing.T, db *sql.DB, tenantID, labelID uuid.UUID, objec
 	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
 	if inUse {
 		exec(t, db, `UPDATE labels SET eye_catch_image_id = $1 WHERE id = $2`, imageID, labelID)
+	}
+	return imageID
+}
+
+func seedGenreImage(t *testing.T, db *sql.DB, tenantID, genreID uuid.UUID, objectKey string, inUse bool) uuid.UUID {
+	t.Helper()
+
+	imageID := uuid.Must(uuid.NewV7())
+	exec(t, db, `
+		INSERT INTO genre_images (id, tenant_id, genre_id)
+		VALUES ($1, $2, $3)
+	`, imageID, tenantID, genreID)
+	exec(t, db, `
+		INSERT INTO genre_image_variants (
+			id, tenant_id, genre_image_id, label, variant_type, storage_provider,
+			object_key, content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, 'portrait-640', 'portrait', 's3', $4, 'image/webp', 1024, 640, 960)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
+	if inUse {
+		exec(t, db, `UPDATE genres SET eye_catch_image_id = $1 WHERE id = $2`, imageID, genreID)
 	}
 	return imageID
 }

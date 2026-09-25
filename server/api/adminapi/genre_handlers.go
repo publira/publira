@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"connectrpc.com/connect"
@@ -18,12 +19,14 @@ import (
 	"github.com/publira/publira/server/internal/catalogslug"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -91,13 +94,31 @@ func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID,
 	})
 }
 
+// genreRow is a genre as every admin genre RPC answers with it, whichever
+// query read it.
+type genreRow struct {
+	publicID               string
+	name                   string
+	slug                   string
+	eyeCatchImageID        uuid.NullUUID
+	eyeCatchImageUpdatedAt sql.NullTime
+}
+
+func genreRowFromGet(row dbmodels.GetGenreByPublicIDForTenantRow) genreRow {
+	return genreRow{
+		publicID:               row.PublicID,
+		name:                   row.Name,
+		slug:                   row.Slug,
+		eyeCatchImageID:        row.EyeCatchImageID,
+		eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+	}
+}
+
 // genrePageRow is one row of a genre page, shared by the ascending and
 // descending keyset queries so the handler reads a single shape.
 type genrePageRow struct {
+	genreRow
 	id           uuid.UUID
-	publicID     string
-	name         string
-	slug         string
 	displayOrder int32
 }
 
@@ -105,10 +126,14 @@ func mapGenreAscRows(rows []dbmodels.ListGenresByTenantAscRow) []genrePageRow {
 	mapped := make([]genrePageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, genrePageRow{
+			genreRow: genreRow{
+				publicID:               row.PublicID,
+				name:                   row.Name,
+				slug:                   row.Slug,
+				eyeCatchImageID:        row.EyeCatchImageID,
+				eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			},
 			id:           row.ID,
-			publicID:     row.PublicID,
-			name:         row.Name,
-			slug:         row.Slug,
 			displayOrder: row.DisplayOrder,
 		})
 	}
@@ -119,14 +144,154 @@ func mapGenreDescRows(rows []dbmodels.ListGenresByTenantDescRow) []genrePageRow 
 	mapped := make([]genrePageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, genrePageRow{
+			genreRow: genreRow{
+				publicID:               row.PublicID,
+				name:                   row.Name,
+				slug:                   row.Slug,
+				eyeCatchImageID:        row.EyeCatchImageID,
+				eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			},
 			id:           row.ID,
-			publicID:     row.PublicID,
-			name:         row.Name,
-			slug:         row.Slug,
 			displayOrder: row.DisplayOrder,
 		})
 	}
 	return mapped
+}
+
+// genreMessages builds the answer for a list of genres, reading the variants
+// of every eye-catch among them in one query.
+func (s *adminServer) genreMessages(ctx context.Context, rows []genreRow) ([]*publirattypesv1.Genre, error) {
+	genres := make([]*publirattypesv1.Genre, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	genreByImageID := make(map[uuid.UUID]*publirattypesv1.Genre, len(rows))
+	for _, row := range rows {
+		genre := &publirattypesv1.Genre{PublicId: row.publicID, Name: row.name, Slug: row.slug}
+		if row.eyeCatchImageUpdatedAt.Valid {
+			genre.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		genres = append(genres, genre)
+		if row.eyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
+			genreByImageID[row.eyeCatchImageID.UUID] = genre
+		}
+	}
+	variantsByImageID, err := s.genreEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	for imageID, variants := range variantsByImageID {
+		if genre, ok := genreByImageID[imageID]; ok {
+			genre.EyeCatchImageVariants = variants
+		}
+	}
+	return genres, nil
+}
+
+func (s *adminServer) genreMessage(ctx context.Context, row genreRow) (*publirattypesv1.Genre, error) {
+	genres, err := s.genreMessages(ctx, []genreRow{row})
+	if err != nil {
+		return nil, err
+	}
+	return genres[0], nil
+}
+
+func (s *adminServer) genreEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListGenreImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list genre image variants", err)
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(imageIDs))
+	for _, row := range rows {
+		mapped[row.GenreImageID] = append(mapped[row.GenreImageID], &publirattypesv1.SeriesEyeCatchVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           fmt.Sprintf("/images/genres/%s/%s/%d", row.GenreImageID.String(), row.VariantType, row.Width),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return mapped, nil
+}
+
+func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, genreID uuid.UUID, genrePublicID string, image *normalizedEyeCatchImage) (uuid.NullUUID, error) {
+	if image == nil {
+		return uuid.NullUUID{}, nil
+	}
+	if s.storage == nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+	}
+
+	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
+	if err != nil {
+		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
+	}
+
+	genreImageID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+	}
+	createdImage, err := s.queriesFor(ctx).CreateGenreImage(ctx, dbmodels.CreateGenreImageParams{
+		ID:       genreImageID,
+		TenantID: tenant.ID,
+		GenreID:  genreID,
+	})
+	if err != nil {
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create genre image", err, "tenant_id", tenant.ID.String(), "genre_id", genreID.String())
+	}
+
+	store, err := storage.Pin(ctx, s.storage)
+	if err != nil {
+		return uuid.NullUUID{}, storageUploadError(err)
+	}
+	for _, variant := range variants {
+		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
+			ObjectKey: fmt.Sprintf(
+				"tenants/%s/genres/%s/%s-%s%s",
+				tenant.PublicID,
+				genrePublicID,
+				createdImage.ID.String(),
+				variant.Label,
+				variant.Extension,
+			),
+			ContentType: variant.ContentType,
+			Data:        variant.Data,
+		})
+		if uploadErr != nil {
+			return uuid.NullUUID{}, storageUploadError(uploadErr)
+		}
+
+		variantID, variantIDErr := uuid.NewV7()
+		if variantIDErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+		}
+		if _, createErr := s.queriesFor(ctx).CreateGenreImageVariant(ctx, dbmodels.CreateGenreImageVariantParams{
+			ID:              variantID,
+			TenantID:        tenant.ID,
+			GenreImageID:    createdImage.ID,
+			VariantType:     variant.VariantType,
+			Label:           variant.Label,
+			StorageProvider: uploaded.Provider,
+			ObjectKey:       uploaded.ObjectKey,
+			ContentType:     variant.ContentType,
+			FileSizeBytes:   uploaded.SizeBytes,
+			Width:           int32(variant.Width),
+			Height:          int32(variant.Height),
+		}); createErr != nil {
+			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create genre image variant", createErr, "tenant_id", tenant.ID.String(), "genre_image_id", createdImage.ID.String())
+		}
+	}
+
+	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
 }
 
 // genrePage runs the keyset query for one page. The list reads in the tenant's
@@ -202,13 +367,13 @@ func (s *adminServer) ListGenres(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	genres := make([]*publirattypesv1.Genre, 0, len(rows))
+	genreRows := make([]genreRow, 0, len(rows))
 	for _, row := range rows {
-		genres = append(genres, &publirattypesv1.Genre{
-			PublicId: row.publicID,
-			Name:     row.name,
-			Slug:     row.slug,
-		})
+		genreRows = append(genreRows, row.genreRow)
+	}
+	genres, err := s.genreMessages(ctx, genreRows)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &publiraadminv1.ListGenresResponse{Genres: genres}
@@ -248,16 +413,31 @@ func (s *adminServer) CreateGenre(
 	if err != nil {
 		return nil, err
 	}
+	eyeCatchImage, err := normalizeEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType, "eye_catch_image_data", "eye_catch_image_content_type")
+	if err != nil {
+		return nil, err
+	}
 	genreID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	maxDisplayOrder, err := s.queriesFor(ctx).GetMaxGenreDisplayOrderForTenant(ctx, tenant.ID)
+
+	// The genre and its eye-catch commit together. A genre left behind by a
+	// failed upload would hold the name, and the editor's retry would be
+	// refused as a duplicate of it.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create genre transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	maxDisplayOrder, err := s.queriesFor(txCtx).GetMaxGenreDisplayOrderForTenant(txCtx, tenant.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to resolve the next genre display order", err, "tenant_id", tenant.ID.String())
 	}
-	created, err := publicid.Insert(func(publicID string) (dbmodels.Genre, error) {
-		return s.queriesFor(ctx).CreateGenre(ctx, dbmodels.CreateGenreParams{
+	created, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Genre, error) {
+		return s.queriesFor(txCtx).CreateGenre(txCtx, dbmodels.CreateGenreParams{
 			ID:           genreID,
 			TenantID:     tenant.ID,
 			PublicID:     publicID,
@@ -272,13 +452,46 @@ func (s *adminServer) CreateGenre(
 		}
 		return nil, s.internalDBError(ctx, "failed to create genre", err, "tenant_id", tenant.ID.String())
 	}
+	eyeCatchImageID, err := s.createGenreEyeCatchImage(txCtx, tenant, created.ID, created.PublicID, eyeCatchImage)
+	if err != nil {
+		return nil, err
+	}
+	if eyeCatchImageID.Valid {
+		if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
+			ID:              created.ID,
+			Name:            created.Name,
+			Slug:            created.Slug,
+			EyeCatchImageID: eyeCatchImageID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to point the genre at its eye catch image", err, "tenant_id", tenant.ID.String(), "genre_id", created.ID.String())
+		}
+	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the created genre", err, "tenant_id", tenant.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create genre", err, "tenant_id", tenant.ID.String())
+	}
+	s.reval.Send(ctx, owed)
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_created", created.PublicID)
-	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
-	return connect.NewResponse(&publiraadminv1.CreateGenreResponse{
-		Genre: &publirattypesv1.Genre{PublicId: created.PublicID, Name: created.Name, Slug: created.Slug},
-	}), nil
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, created.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.CreateGenreResponse{Genre: genre}), nil
+}
+
+// genreWithEyeCatch re-reads a genre after a write, so the answer carries the
+// eye-catch delivery now serves.
+func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Genre, error) {
+	row, err := s.genreByPublicID(ctx, tenantID, publicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.genreMessage(ctx, genreRowFromGet(row))
 }
 
 // existingGenreNameError reports a name whose slug another genre of the tenant
@@ -305,27 +518,63 @@ func (s *adminServer) UpdateGenre(
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
+	}
+	eyeCatchImage, err := normalizeEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType, "eye_catch_image_data", "eye_catch_image_content_type")
+	if err != nil {
+		return nil, err
+	}
 	current, err := s.genreByPublicID(ctx, tenant.ID, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.queriesFor(ctx).UpdateGenre(ctx, dbmodels.UpdateGenreParams{
-		ID:   current.ID,
-		Name: normalized.name,
-		Slug: normalized.slug,
+
+	// Committed with the rename, so a name another genre holds does not leave
+	// an eye-catch behind that nothing shows.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin update genre transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	eyeCatchImageID := current.EyeCatchImageID
+	if req.Msg.ClearEyeCatchImage {
+		eyeCatchImageID = uuid.NullUUID{}
+	} else if eyeCatchImage != nil {
+		eyeCatchImageID, err = s.createGenreEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
+		ID:              current.ID,
+		Name:            normalized.name,
+		Slug:            normalized.slug,
+		EyeCatchImageID: eyeCatchImageID,
 	}); err != nil {
 		if dberr.IsUniqueViolation(err) {
 			return nil, existingGenreNameError()
 		}
 		return nil, s.internalDBError(ctx, "failed to update genre", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated genre", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit update genre", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	}
+	s.reval.Send(ctx, owed)
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_updated", current.PublicID)
-	s.revalidateTags(ctx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 
-	return connect.NewResponse(&publiraadminv1.UpdateGenreResponse{
-		Genre: &publirattypesv1.Genre{PublicId: current.PublicID, Name: normalized.name, Slug: normalized.slug},
-	}), nil
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, current.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateGenreResponse{Genre: genre}), nil
 }
 
 func (s *adminServer) ReorderGenres(
@@ -370,7 +619,7 @@ func (s *adminServer) ReorderGenres(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre order has changed"))
 	}
 
-	genres := make([]*publirattypesv1.Genre, 0, len(req.Msg.GenrePublicIds))
+	reordered := make([]genreRow, 0, len(req.Msg.GenrePublicIds))
 	for index, publicID := range req.Msg.GenrePublicIds {
 		row := byPublicID[publicID]
 		if err := s.queriesFor(txCtx).UpdateGenreDisplayOrder(txCtx, dbmodels.UpdateGenreDisplayOrderParams{
@@ -379,7 +628,13 @@ func (s *adminServer) ReorderGenres(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update genre display order", err, "tenant_id", tenant.ID.String(), "genre_id", row.ID.String())
 		}
-		genres = append(genres, &publirattypesv1.Genre{PublicId: row.PublicID, Name: row.Name, Slug: row.Slug})
+		reordered = append(reordered, genreRow{
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			slug:                   row.Slug,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		})
 	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 	if err != nil {
@@ -392,6 +647,10 @@ func (s *adminServer) ReorderGenres(
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genres_reordered", tenant.PublicID)
 
+	genres, err := s.genreMessages(ctx, reordered)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&publiraadminv1.ReorderGenresResponse{Genres: genres}), nil
 }
 

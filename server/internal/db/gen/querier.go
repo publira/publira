@@ -212,6 +212,8 @@ type Querier interface {
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error)
 	CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre, error)
+	CreateGenreImage(ctx context.Context, arg CreateGenreImageParams) (GenreImage, error)
+	CreateGenreImageVariant(ctx context.Context, arg CreateGenreImageVariantParams) (GenreImageVariant, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
@@ -276,6 +278,8 @@ type Querier interface {
 	// from the read it did first.
 	DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
+	// Clears one aspect ratio of an eye-catch.
+	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -299,6 +303,7 @@ type Querier interface {
 	// creator_images row behind, referenced by nothing. created_at guards the
 	// upload still in flight, whose row exists before the creator names it.
 	DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// A tenant image is reachable from either branding slot, and the theme holds
@@ -400,6 +405,7 @@ type Querier interface {
 	// empty list, so a storefront cannot show an empty page for a genre that was
 	// deleted or belongs to somebody else.
 	GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error)
+	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetGenreImageVariantByTypeAndWidthForTenantParams) (GetGenreImageVariantByTypeAndWidthForTenantRow, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -1056,6 +1062,7 @@ type Querier interface {
 	// so a series taken down, moved off the surface, re-rated, or removed from the
 	// genre since the batch ran drops out here.
 	ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error)
+	ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListGenreImageVariantsByImageIDsRow, error)
 	// Resolves the genres a series form assigned. The caller compares the row
 	// count against what it asked for, so a public_id of another tenant reads as
 	// a genre that does not exist.
@@ -1476,8 +1483,8 @@ type Querier interface {
 	// in the integration test to confirm the index is eligible):
 	//   ListReferencedObjectKeys
 	//     -> idx_<entity>_image_variants_object_key, once per variant table
-	//   DeleteUnreferencedCreatorImages / ...LabelImages / ...SeriesImages /
-	//   ...TenantImages
+	//   DeleteUnreferencedCreatorImages / ...GenreImages / ...LabelImages /
+	//   ...SeriesImages / ...TenantImages
 	//     -> no index; one anti-join per run over a table that holds one row per
 	//        entity image
 	// Returns the subset of object_keys that some image variant still names. The
@@ -1708,10 +1715,14 @@ type Querier interface {
 	// ORDER BY e.id is what keeps two range edits over overlapping ranges from
 	// deadlocking: both take the row locks in the same order.
 	LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error)
+	// Serializes eye-catch writes on one genre, as LockLabelByPublicIDForTenant
+	// does for a label; the caller re-reads eye_catch_image_id behind it.
+	LockGenreByPublicIDForTenant(ctx context.Context, arg LockGenreByPublicIDForTenantParams) (uuid.UUID, error)
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
-	// write can move underneath it. The names come along because a reorder answers
-	// with the whole list, and nothing in this transaction changes them.
+	// write can move underneath it. The names and eye-catches come along because a
+	// reorder answers with the whole list, and nothing in this transaction changes
+	// them.
 	LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error)
 	// Lock the label row so concurrent eye-catch writes serialize, the way
 	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
@@ -2073,6 +2084,8 @@ type Querier interface {
 	// Suspends a reader and invalidates the sessions they hold. A reader who is
 	// already suspended is no rows, like a staff account and another tenant's.
 	SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error)
+	// Records that the eye-catch changed after one of its ratios was replaced.
+	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchLabelImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.

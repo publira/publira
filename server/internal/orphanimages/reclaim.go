@@ -36,6 +36,7 @@ const (
 type Querier interface {
 	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
 	DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
@@ -174,6 +175,7 @@ func (r *Reclaimer) deleteUnreferencedImages(ctx context.Context, cutoff time.Ti
 		run  func(context.Context, time.Time) (int64, error)
 	}{
 		{"creator_images", r.queries.DeleteUnreferencedCreatorImages},
+		{"genre_images", r.queries.DeleteUnreferencedGenreImages},
 		{"label_images", r.queries.DeleteUnreferencedLabelImages},
 		{"series_images", r.queries.DeleteUnreferencedSeriesImages},
 		{"tenant_images", r.queries.DeleteUnreferencedTenantImages},
