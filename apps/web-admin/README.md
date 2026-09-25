@@ -36,8 +36,7 @@ An individual operator switches locale from the Display language card on `/setti
 ## Development
 
 ```bash
-cd apps/web-admin
-pnpm dev
+pnpm dev --filter @publira/web-admin
 ```
 
 ### Internal cache revalidation

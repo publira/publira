@@ -5,8 +5,7 @@ The public tenant site. It serves the delivery catalog, authentication, and the 
 ## Development
 
 ```bash
-cd apps/web-host
-pnpm dev
+pnpm dev --filter @publira/web-host
 ```
 
 The default port is `3000`.
