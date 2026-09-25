@@ -201,8 +201,8 @@ func TestInvitationChangesFileTheirEntries(t *testing.T) {
 	}
 	var actions []string
 	for _, e := range platformAuditRows(t, pg) {
-		if e.targetID != "owner@tenant-a.example.com" {
-			t.Fatalf("audit entry = %+v, want it to name the address", e)
+		if e.targetID != invited.Invitation.ID.String() {
+			t.Fatalf("audit entry = %+v, want it to name the invitation", e)
 		}
 		actions = append(actions, e.action)
 	}
