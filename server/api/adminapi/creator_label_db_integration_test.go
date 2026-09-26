@@ -2,11 +2,14 @@ package adminapi
 
 import (
 	"context"
+	"errors"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 func TestDBCreateCreatorAndAttachToSeries(t *testing.T) {
@@ -267,5 +270,166 @@ func TestDBSeriesRejectsLabelFromAnotherTenant(t *testing.T) {
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM series"); count != 0 {
 		t.Fatalf("series rows = %d, want 0", count)
+	}
+}
+
+// refusingStorageProvider refuses every upload while refuse is set, the way an
+// object store that is down does, and accepts them again once it is cleared.
+type refusingStorageProvider struct {
+	testStorageProvider
+	refuse atomic.Bool
+}
+
+func (p *refusingStorageProvider) Upload(ctx context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
+	if p.refuse.Load() {
+		return storage.UploadResult{}, errors.New("object store unavailable")
+	}
+	return p.testStorageProvider.Upload(ctx, req)
+}
+
+// A create that fails on its eye-catch must not leave the label behind, or the
+// editor's retry makes a second label of the same name.
+func TestDBCreateLabelWithAnUnusableImageLeavesNoLabel(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	labels := env.labelClient()
+
+	request := func(image []byte) *connect.Request[publiraadminv1.CreateLabelRequest] {
+		return newAdminDBRequest(tenant, &publiraadminv1.CreateLabelRequest{
+			Tenant:                   tenant.tenantContext(),
+			Name:                     "Shonen",
+			EyeCatchImageData:        image,
+			EyeCatchImageContentType: "image/jpeg",
+		})
+	}
+
+	if _, err := labels.CreateLabel(context.Background(), request(aspectJPEG(t, 600, 800))); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateLabel with a small image error = %v, want invalid_argument", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM labels WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("labels after the refused create = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM label_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("label_images after the refused create = %d, want 0", count)
+	}
+
+	created, err := labels.CreateLabel(context.Background(), request(aspectJPEG(t, 2400, 3200)))
+	if err != nil {
+		t.Fatalf("CreateLabel with a usable image: %v", err)
+	}
+	if got := len(created.Msg.Label.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
+		t.Fatalf("created variants = %d, want %d", got, eyeCatchVariantCount)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM labels WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("labels after the retry = %d, want 1", count)
+	}
+}
+
+// An update that fails on its eye-catch keeps the label as it was and leaves no
+// image row that nothing points at.
+func TestDBUpdateLabelWithAnUnusableImageLeavesNoImage(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	labels := env.labelClient()
+
+	created, err := labels.CreateLabel(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateLabelRequest{
+		Tenant: tenant.tenantContext(),
+		Name:   "Shonen",
+	}))
+	if err != nil {
+		t.Fatalf("CreateLabel: %v", err)
+	}
+
+	_, err = labels.UpdateLabel(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateLabelRequest{
+		Tenant:                   tenant.tenantContext(),
+		PublicId:                 created.Msg.Label.PublicId,
+		Name:                     "Seinen",
+		EyeCatchImageData:        aspectJPEG(t, 600, 800),
+		EyeCatchImageContentType: "image/jpeg",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateLabel with a small image error = %v, want invalid_argument", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM label_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("label_images after the refused update = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM labels WHERE tenant_id = $1 AND name = 'Shonen'", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("labels still named Shonen = %d, want 1", count)
+	}
+}
+
+// A create whose icon the object store refuses must not leave the creator
+// behind, or the editor's retry makes a second author of the same name.
+func TestDBCreateCreatorWhoseIconTheStoreRefusesLeavesNoCreator(t *testing.T) {
+	store := &refusingStorageProvider{}
+	store.refuse.Store(true)
+	env := newAdminDBEnvWithStorage(t, store)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	creators := env.creatorClient()
+
+	request := func() *connect.Request[publiraadminv1.CreateCreatorRequest] {
+		return newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+			Tenant:               tenant.tenantContext(),
+			Name:                 "Aoi Sakura",
+			IconImageData:        aspectJPEG(t, 300, 300),
+			IconImageContentType: "image/jpeg",
+		})
+	}
+
+	if _, err := creators.CreateCreator(context.Background(), request()); connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateCreator with the store refusing error = %v, want internal", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM creators WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("creators after the refused create = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM creator_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("creator_images after the refused create = %d, want 0", count)
+	}
+
+	store.refuse.Store(false)
+	created, err := creators.CreateCreator(context.Background(), request())
+	if err != nil {
+		t.Fatalf("CreateCreator once the store accepts: %v", err)
+	}
+	if created.Msg.Creator.GetIconImageUrl() == "" {
+		t.Fatal("created creator has no icon")
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM creators WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("creators after the retry = %d, want 1", count)
+	}
+}
+
+// An update whose icon the object store refuses keeps the author as it was and
+// leaves no image row that nothing points at.
+func TestDBUpdateCreatorWhoseIconTheStoreRefusesLeavesNoImage(t *testing.T) {
+	store := &refusingStorageProvider{}
+	env := newAdminDBEnvWithStorage(t, store)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	creators := env.creatorClient()
+
+	created, err := creators.CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+		Tenant: tenant.tenantContext(),
+		Name:   "Aoi Sakura",
+	}))
+	if err != nil {
+		t.Fatalf("CreateCreator: %v", err)
+	}
+
+	store.refuse.Store(true)
+	_, err = creators.UpdateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateCreatorRequest{
+		Tenant:               tenant.tenantContext(),
+		PublicId:             created.Msg.Creator.PublicId,
+		Name:                 "Sakura Aoi",
+		IconImageData:        aspectJPEG(t, 300, 300),
+		IconImageContentType: "image/jpeg",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdateCreator with the store refusing error = %v, want internal", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM creator_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("creator_images after the refused update = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM creators WHERE tenant_id = $1 AND name = 'Aoi Sakura'", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("creators still named Aoi Sakura = %d, want 1", count)
 	}
 }

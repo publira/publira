@@ -18,6 +18,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -43,11 +44,25 @@ func newAdminDBEnv(t *testing.T) *adminDBEnv {
 func newAdminDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *adminDBEnv {
 	t.Helper()
 
+	return newAdminDBEnvWith(t, &testStorageProvider{}, mail)
+}
+
+// newAdminDBEnvWithStorage is newAdminDBEnv for the cases that are about what
+// a handler leaves behind when the object store refuses an upload.
+func newAdminDBEnvWithStorage(t *testing.T, provider storage.Provider) *adminDBEnv {
+	t.Helper()
+
+	return newAdminDBEnvWith(t, provider, openMailGuard())
+}
+
+func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard) *adminDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	api, err := newAPI(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
+	api, err := newAPI(db, dbmodels.New(db), provider, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
