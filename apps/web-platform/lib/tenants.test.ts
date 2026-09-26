@@ -16,9 +16,14 @@ import {
   platformTenantCacheTag,
   platformTenantsCacheTag,
   resendPlatformTenantAdminInvitation,
+  removePlatformTenantMember,
   resumePlatformTenant,
   suspendPlatformTenant,
+  updatePlatformTenant,
+  updatePlatformTenantMemberRole,
 } from "./tenants";
+
+const tenantId = "01a0deb5-0000-7000-8000-000000000002";
 
 type ListTenantsMethod = PlatformApiClient["tenants"]["listTenants"];
 type ListTenantsResponse = Awaited<ReturnType<ListTenantsMethod>>;
@@ -61,6 +66,7 @@ const {
   mockResumeTenant,
   mockResendTenantAdminInvitation,
   mockSuspendTenant,
+  mockUpdateTenant,
   mockUpdateTenantMemberRole,
   mockCancelTenantAdminInvitation,
 } = vi.hoisted(() => ({
@@ -81,6 +87,7 @@ const {
   mockResolveSessionId: vi.fn(),
   mockResumeTenant: vi.fn(),
   mockSuspendTenant: vi.fn(),
+  mockUpdateTenant: vi.fn(),
   mockUpdateTenantMemberRole: vi.fn(),
 }));
 
@@ -106,6 +113,7 @@ vi.mock("./api-client", () => ({
       resendTenantAdminInvitation: mockResendTenantAdminInvitation,
       resumeTenant: mockResumeTenant,
       suspendTenant: mockSuspendTenant,
+      updateTenant: mockUpdateTenant,
       updateTenantMemberRole: mockUpdateTenantMemberRole,
     },
     users: {
@@ -161,7 +169,7 @@ describe("listPlatformTenants", () => {
     });
 
     expect(mockListTenants).toHaveBeenCalledWith(
-      { limit: 20, name: "", publicId: "", status: "", token: "" },
+      { limit: 20, name: "", status: "", token: "" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
@@ -194,7 +202,6 @@ describe("listPlatformTenants", () => {
       {
         limit: 50,
         name: "Test",
-        publicId: "",
         status: "active",
         token: "current-page",
       },
@@ -451,6 +458,7 @@ describe("createPlatformTenant", () => {
         adminDomain: "admin.example.com",
         createdAt: "2026-03-01T10:00:00Z",
         domain: "example.com",
+        id: tenantId,
         name: "Blue Maple Press",
         publicId: "tenant_bluemaple",
         status: "active",
@@ -463,6 +471,7 @@ describe("createPlatformTenant", () => {
         adminDomain: "admin.example.com",
         createdAt: "2026-03-01T10:00:00Z",
         domain: "example.com",
+        id: tenantId,
         name: "Blue Maple Press",
         publicId: "tenant_bluemaple",
         status: "active",
@@ -522,13 +531,13 @@ describe("createPlatformTenant", () => {
           name: "Owner",
           role: "tenant_owner",
           status: "active",
-          userPublicId: "user_001",
+          userId: "01a0deb5-0000-7000-8000-000000000003",
         },
       ],
     });
 
     await expect(
-      listPlatformTenantMembers({ locale: "en", tenantId: "tenant_bluemaple" })
+      listPlatformTenantMembers({ locale: "en", tenantId })
     ).resolves.toEqual({
       members: [
         {
@@ -537,7 +546,7 @@ describe("createPlatformTenant", () => {
           name: "Owner",
           role: "tenant_owner",
           status: "active",
-          userPublicId: "user_001",
+          userId: "01a0deb5-0000-7000-8000-000000000003",
         },
       ],
       nextToken: "",
@@ -546,7 +555,7 @@ describe("createPlatformTenant", () => {
     });
 
     expect(mockListTenantMembers).toHaveBeenCalledWith(
-      { limit: 20, tenantPublicId: "tenant_bluemaple", token: "" },
+      { limit: 20, tenantId, token: "" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
@@ -555,20 +564,20 @@ describe("createPlatformTenant", () => {
     mockSuspendTenant.mockResolvedValueOnce({});
     mockResumeTenant.mockResolvedValueOnce({});
 
-    await expect(suspendPlatformTenant("tenant_bluemaple")).resolves.toBe(true);
-    await expect(resumePlatformTenant("tenant_bluemaple")).resolves.toBe(true);
+    await expect(suspendPlatformTenant(tenantId)).resolves.toBe(true);
+    await expect(resumePlatformTenant(tenantId)).resolves.toBe(true);
 
     expect(mockSuspendTenant).toHaveBeenCalledWith(
-      { publicId: "tenant_bluemaple" },
+      { tenantId },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
     expect(mockResumeTenant).toHaveBeenCalledWith(
-      { publicId: "tenant_bluemaple" },
+      { tenantId },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
-  it("resolves an end user by email to userPublicId when adding a member", async () => {
+  it("adds a member by email to the tenant named by its internal ID", async () => {
     mockAddTenantMember.mockResolvedValueOnce({});
 
     await expect(
@@ -576,7 +585,7 @@ describe("createPlatformTenant", () => {
         email: "member@example.com",
         locale: "en",
         role: "tenant_admin",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({ ok: true });
 
@@ -584,7 +593,7 @@ describe("createPlatformTenant", () => {
       {
         email: "member@example.com",
         role: "tenant_admin",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -598,7 +607,7 @@ describe("createPlatformTenant", () => {
         email: "Member@Example.COM",
         locale: "en",
         role: "tenant_admin",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({ ok: true });
 
@@ -606,8 +615,43 @@ describe("createPlatformTenant", () => {
       {
         email: "member@example.com",
         role: "tenant_admin",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("names the tenant and the member by their internal IDs", async () => {
+    const userId = "01a0deb5-0000-7000-8000-000000000003";
+    mockUpdateTenantMemberRole.mockResolvedValueOnce({});
+    mockRemoveTenantMember.mockResolvedValueOnce({});
+
+    await expect(
+      updatePlatformTenantMemberRole(tenantId, userId, "tenant_auditor", "en")
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      removePlatformTenantMember(tenantId, userId, "en")
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockUpdateTenantMemberRole).toHaveBeenCalledWith(
+      { role: "tenant_auditor", tenantId, userId },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+    expect(mockRemoveTenantMember).toHaveBeenCalledWith(
+      { tenantId, userId },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("updates the tenant named by its internal ID", async () => {
+    mockUpdateTenant.mockResolvedValueOnce({});
+
+    await expect(
+      updatePlatformTenant(tenantId, "Blue Maple", "example.com", "en")
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockUpdateTenant).toHaveBeenCalledWith(
+      { adminDomain: "", domain: "example.com", name: "Blue Maple", tenantId },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
@@ -622,7 +666,7 @@ describe("createPlatformTenant", () => {
         email: "member@example.com",
         locale: "en",
         role: "tenant_admin",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({
       message: "No user was found with that email address.",
@@ -652,7 +696,7 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         locale: "en",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({
       invitations: [
@@ -674,7 +718,7 @@ describe("tenant admin invitations", () => {
     expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
       {
         limit: 20,
-        tenantPublicId: "tenant_bluemaple",
+        tenantId,
         token: "",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
@@ -692,7 +736,7 @@ describe("tenant admin invitations", () => {
       listPlatformTenantAdminInvitations({
         limit: 50,
         locale: "en",
-        tenantId: "tenant_bluemaple",
+        tenantId,
         token: "current-page",
       })
     ).resolves.toEqual({
@@ -705,7 +749,7 @@ describe("tenant admin invitations", () => {
     expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
       {
         limit: 50,
-        tenantPublicId: "tenant_bluemaple",
+        tenantId,
         token: "current-page",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
@@ -718,7 +762,7 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         locale: "en",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({
       invitations: [],
@@ -740,7 +784,7 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         locale: "en",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).resolves.toEqual({
       invitations: [],
@@ -760,7 +804,7 @@ describe("tenant admin invitations", () => {
     await expect(
       listPlatformTenantAdminInvitations({
         locale: "en",
-        tenantId: "tenant_bluemaple",
+        tenantId,
       })
     ).rejects.toThrow("boom");
   });
@@ -780,11 +824,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      createPlatformTenantAdminInvitation(
-        "tenant_bluemaple",
-        "admin@example.com",
-        "ja"
-      )
+      createPlatformTenantAdminInvitation(tenantId, "admin@example.com", "ja")
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",
@@ -814,7 +854,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      resendPlatformTenantAdminInvitation("tenant_bluemaple", "inv_001", "ja")
+      resendPlatformTenantAdminInvitation(tenantId, "inv_001", "ja")
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",
@@ -843,7 +883,7 @@ describe("tenant admin invitations", () => {
     });
 
     await expect(
-      cancelPlatformTenantAdminInvitation("tenant_bluemaple", "inv_001", "ja")
+      cancelPlatformTenantAdminInvitation(tenantId, "inv_001", "ja")
     ).resolves.toEqual({
       invitation: {
         acceptedAt: "",
@@ -868,15 +908,15 @@ describe("tenant cache tags", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(platformTenantsCacheTag);
   });
 
-  it("files a tenant's detail under the tenants tag and its own", async () => {
-    mockGetTenant.mockResolvedValueOnce({ tenant: undefined });
+  it("files a tenant's detail under the tenants tag and its internal ID's", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      tenant: { id: tenantId, publicId: "tenant_bluemaple" },
+    });
 
     await getPlatformTenant("tenant_bluemaple", "en");
 
-    expect(mockCacheTag).toHaveBeenCalledWith(
-      "platform:tenants",
-      "platform:tenants:tenant_bluemaple"
-    );
+    expect(mockCacheTag).toHaveBeenCalledWith("platform:tenants");
+    expect(mockCacheTag).toHaveBeenCalledWith(`platform:tenants:${tenantId}`);
   });
 
   it("files a tenant's members under the tenants tag and the tenant's own", async () => {
@@ -884,12 +924,12 @@ describe("tenant cache tags", () => {
 
     await listPlatformTenantMembers({
       locale: "en",
-      tenantId: "tenant_bluemaple",
+      tenantId,
     });
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       platformTenantsCacheTag,
-      platformTenantCacheTag("tenant_bluemaple")
+      platformTenantCacheTag(tenantId)
     );
   });
 
@@ -898,12 +938,12 @@ describe("tenant cache tags", () => {
 
     await listPlatformTenantAdminInvitations({
       locale: "en",
-      tenantId: "tenant_bluemaple",
+      tenantId,
     });
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       platformTenantsCacheTag,
-      platformTenantCacheTag("tenant_bluemaple")
+      platformTenantCacheTag(tenantId)
     );
   });
 });

@@ -60,6 +60,8 @@ export interface PlatformTenantDetail {
   adminDomain: string;
   createdAt: string;
   domain: string;
+  /** The internal ID every write and every read under the tenant sends. */
+  id: string;
   name: string;
   publicId: string;
   status: string;
@@ -84,7 +86,7 @@ export interface PlatformTenantMemberSummary {
   name: string;
   role: string;
   status: string;
-  userPublicId: string;
+  userId: string;
 }
 
 export interface PlatformTenantAdminInvitation {
@@ -100,6 +102,7 @@ export interface PlatformTenantAdminInvitation {
 export interface ListPlatformTenantAdminInvitationsInput {
   limit?: number;
   locale: Locale;
+  /** The tenant's internal ID. */
   tenantId: string;
   token?: string;
 }
@@ -161,10 +164,11 @@ export const platformTenantsCacheTag = "platform:tenants";
 
 /**
  * The tag the reads of one tenant carry as well, so a write that touches only
- * its members or invitations leaves every other tenant cached.
+ * its members or invitations leaves every other tenant cached. It is keyed by
+ * the tenant's internal ID, which is what those writes carry.
  */
-export const platformTenantCacheTag = (publicId: string): string =>
-  `platform:tenants:${publicId}`;
+export const platformTenantCacheTag = (tenantId: string): string =>
+  `platform:tenants:${tenantId}`;
 
 export const listPlatformTenants = async (
   input: ListPlatformTenantsInput
@@ -191,7 +195,6 @@ export const listPlatformTenants = async (
       {
         limit: input.limit ?? 20,
         name: input.name ?? "",
-        publicId: "",
         status: input.status ?? "",
         token: input.token ?? "",
       },
@@ -238,7 +241,7 @@ export const listPlatformTenants = async (
  */
 type RawTenant = Pick<
   Tenant,
-  "adminDomain" | "createdAt" | "domain" | "name" | "publicId" | "status"
+  "adminDomain" | "createdAt" | "domain" | "id" | "name" | "publicId" | "status"
 >;
 
 const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
@@ -250,18 +253,23 @@ const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
     adminDomain: tenant.adminDomain,
     createdAt: tenant.createdAt,
     domain: tenant.domain,
+    id: tenant.id,
     name: tenant.name,
     publicId: tenant.publicId,
     status: tenant.status,
   };
 };
 
+/**
+ * Resolves the tenant a URL names by its public ID. Everything else about the
+ * tenant is addressed by the internal ID this returns.
+ */
 export const getPlatformTenant = async (
   publicId: string,
   locale: Locale
 ): Promise<GetPlatformTenantResult> => {
   "use cache: private";
-  cacheTag(platformTenantsCacheTag, platformTenantCacheTag(publicId));
+  cacheTag(platformTenantsCacheTag);
 
   const sid = await resolveAccessToken();
   if (!sid) {
@@ -278,9 +286,12 @@ export const getPlatformTenant = async (
 
   try {
     const response = await apiClient.tenants.getTenant(
-      { publicId } as never,
+      { publicId },
       buildSessionHeaders(sid)
     );
+    if (response.tenant) {
+      cacheTag(platformTenantCacheTag(response.tenant.id));
+    }
     return { ok: true, tenant: mapTenant(response.tenant) };
   } catch (error) {
     // The caller turns `tenant: null` into `notFound()`. A rejected session is
@@ -308,6 +319,7 @@ export const getPlatformTenant = async (
 export interface ListPlatformTenantMembersInput {
   limit?: number;
   locale: Locale;
+  /** The tenant's internal ID. */
   tenantId: string;
   token?: string;
 }
@@ -354,7 +366,7 @@ export const listPlatformTenantMembers = async (
     const response = await apiClient.tenants.listTenantMembers(
       {
         limit: input.limit ?? 20,
-        tenantPublicId: tenantId,
+        tenantId,
         token: input.token ?? "",
       },
       buildSessionHeaders(sid)
@@ -366,7 +378,7 @@ export const listPlatformTenantMembers = async (
         name: member.name,
         role: member.role,
         status: member.status,
-        userPublicId: member.userPublicId,
+        userId: member.userId,
       })),
       nextToken: response.nextToken ?? "",
       ok: true,
@@ -392,16 +404,16 @@ export const listPlatformTenantMembers = async (
 };
 
 export const suspendPlatformTenant = async (
-  publicId: string
+  tenantId: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken();
-  if (!publicId.trim() || !sid) {
+  if (!tenantId.trim() || !sid) {
     return false;
   }
 
   try {
     await apiClient.tenants.suspendTenant(
-      { publicId } as never,
+      { tenantId },
       buildSessionHeaders(sid)
     );
     return true;
@@ -413,16 +425,16 @@ export const suspendPlatformTenant = async (
 };
 
 export const resumePlatformTenant = async (
-  publicId: string
+  tenantId: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken();
-  if (!publicId.trim() || !sid) {
+  if (!tenantId.trim() || !sid) {
     return false;
   }
 
   try {
     await apiClient.tenants.resumeTenant(
-      { publicId } as never,
+      { tenantId },
       buildSessionHeaders(sid)
     );
     return true;
@@ -528,6 +540,7 @@ export interface AddPlatformTenantMemberInput {
   email: string;
   locale: Locale;
   role: string;
+  /** The tenant's internal ID. */
   tenantId: string;
 }
 
@@ -605,7 +618,7 @@ export const listPlatformTenantAdminInvitations = async (
     const response = await apiClient.tenants.listTenantAdminInvitations(
       {
         limit: input.limit ?? 20,
-        tenantPublicId: tenantId,
+        tenantId,
         token: input.token ?? "",
       },
       buildSessionHeaders(sid)
@@ -667,7 +680,7 @@ export const createPlatformTenantAdminInvitation = async (
       {
         email: email.trim().toLowerCase(),
         tenantId: tenantId.trim(),
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
     return {
@@ -725,7 +738,7 @@ export const resendPlatformTenantAdminInvitation = async (
       {
         invitationId: invitationId.trim(),
         tenantId: tenantId.trim(),
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
     return {
@@ -782,7 +795,7 @@ export const cancelPlatformTenantAdminInvitation = async (
       {
         invitationId: invitationId.trim(),
         tenantId: tenantId.trim(),
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
     return {
@@ -812,7 +825,7 @@ export const cancelPlatformTenantAdminInvitation = async (
 };
 
 export const updatePlatformTenant = async (
-  publicId: string,
+  tenantId: string,
   name: string,
   domain: string,
   locale: Locale,
@@ -851,8 +864,8 @@ export const updatePlatformTenant = async (
         adminDomain: trimmedAdminDomain,
         domain: trimmedDomain,
         name: trimmedName,
-        publicId,
-      } as never,
+        tenantId,
+      },
       buildSessionHeaders(sid)
     );
     return { ok: true };
@@ -907,7 +920,7 @@ export const addPlatformTenantMember = async (
         email: email.toLowerCase(),
         role,
         tenantId,
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
     return { ok: true };
@@ -929,7 +942,7 @@ export const addPlatformTenantMember = async (
 
 export const updatePlatformTenantMemberRole = async (
   tenantId: string,
-  userPublicId: string,
+  userId: string,
   role: string,
   locale: Locale
 ): Promise<UpdatePlatformTenantMemberRoleResult> => {
@@ -945,7 +958,7 @@ export const updatePlatformTenantMemberRole = async (
     };
   }
 
-  if (!tenantId.trim() || !userPublicId.trim() || !role.trim()) {
+  if (!tenantId.trim() || !userId.trim() || !role.trim()) {
     return {
       message: t("platform.common.required"),
       ok: false,
@@ -957,8 +970,8 @@ export const updatePlatformTenantMemberRole = async (
       {
         role: role.trim(),
         tenantId: tenantId.trim(),
-        userPublicId: userPublicId.trim(),
-      } as never,
+        userId: userId.trim(),
+      },
       buildSessionHeaders(sid)
     );
 
@@ -984,7 +997,7 @@ export const updatePlatformTenantMemberRole = async (
 
 export const removePlatformTenantMember = async (
   tenantId: string,
-  userPublicId: string,
+  userId: string,
   locale: Locale
 ): Promise<RemovePlatformTenantMemberResult> => {
   const {
@@ -999,7 +1012,7 @@ export const removePlatformTenantMember = async (
     };
   }
 
-  if (!tenantId.trim() || !userPublicId.trim()) {
+  if (!tenantId.trim() || !userId.trim()) {
     return {
       message: t("platform.common.required"),
       ok: false,
@@ -1010,8 +1023,8 @@ export const removePlatformTenantMember = async (
     await apiClient.tenants.removeTenantMember(
       {
         tenantId: tenantId.trim(),
-        userPublicId: userPublicId.trim(),
-      } as never,
+        userId: userId.trim(),
+      },
       buildSessionHeaders(sid)
     );
 

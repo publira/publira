@@ -277,7 +277,6 @@ export const searchPlatformTenantFilterOptions = async (
         {
           limit: platformTenantFilterSearchLimit,
           name: normalized,
-          publicId: "",
           status: "",
           token: "",
         },
