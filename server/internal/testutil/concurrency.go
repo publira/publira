@@ -50,19 +50,28 @@ func RunConcurrently(t *testing.T, n int, request func() error) {
 func WaitForBlockedBackend(t *testing.T, db *sql.DB) {
 	t.Helper()
 
+	WaitForBlockedBackends(t, db, 1)
+}
+
+// WaitForBlockedBackends is WaitForBlockedBackend for n requests queued behind
+// the same held row, so a case can release them into the lock together only
+// once every one of them has got past whatever it does before taking it.
+func WaitForBlockedBackends(t *testing.T, db *sql.DB, n int) {
+	t.Helper()
+
 	deadline := time.Now().Add(10 * time.Second)
+	blocked := 0
 	for time.Now().Before(deadline) {
-		var blocked int
 		if err := db.QueryRow(`
 			SELECT count(*) FROM pg_stat_activity
 			WHERE wait_event_type = 'Lock' AND state = 'active'
 		`).Scan(&blocked); err != nil {
 			t.Fatalf("read pg_stat_activity: %v", err)
 		}
-		if blocked > 0 {
+		if blocked >= n {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatal("no connection reached the held row before the timeout")
+	t.Fatalf("%d of %d connections reached the held row before the timeout", blocked, n)
 }
