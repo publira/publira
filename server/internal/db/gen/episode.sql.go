@@ -311,11 +311,10 @@ SELECT e.id,
     e.spread_start_index,
     sl.reading_direction AS series_reading_direction,
     sl.spread_start_index AS series_spread_start_index,
-    -- The end of the free window covering this instant, or NULL when none
-    -- does. Windows on one episode cannot overlap, so at most one row answers.
-    -- A priced episode inside one reads as free until this moment, which is
-    -- also what the response shows the reader as a countdown.
-    fw.ends_at AS free_until,
+    -- Whether the body is free to everyone right now, and the end of the free
+    -- window that makes it so, which the response shows as a countdown.
+    (fe.episode_id IS NOT NULL)::boolean AS is_free,
+    fe.free_until,
     -- How many readers have rated this episode. The stored tally, so the join
     -- is one row rather than a scan of the ratings, and an episode nobody has
     -- rated has no row at all and reads as 0.
@@ -329,11 +328,7 @@ FROM episodes e
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
-    -- At most one window can cover an instant of an episode, so this join
-    -- cannot multiply the row.
-    LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
-    AND fw.starts_at <= NOW()
-    AND fw.ends_at > NOW()
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -380,6 +375,7 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 	SpreadStartIndex             sql.NullInt32  `json:"spread_start_index"`
 	SeriesReadingDirection       sql.NullString `json:"series_reading_direction"`
 	SeriesSpreadStartIndex       sql.NullInt32  `json:"series_spread_start_index"`
+	IsFree                       bool           `json:"is_free"`
 	FreeUntil                    sql.NullTime   `json:"free_until"`
 	RatingCount                  int64          `json:"rating_count"`
 	PurchaseAvailability         string         `json:"purchase_availability"`
@@ -409,6 +405,7 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.SpreadStartIndex,
 		&i.SeriesReadingDirection,
 		&i.SeriesSpreadStartIndex,
+		&i.IsFree,
 		&i.FreeUntil,
 		&i.RatingCount,
 		&i.PurchaseAvailability,
@@ -1090,15 +1087,10 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
         e.title,
         e.order_index,
         el.price,
-        (
-            el.price = 0
-            OR EXISTS (
-                SELECT 1
-                FROM episode_free_windows fw
-                WHERE fw.episode_id = e.id
-                    AND fw.starts_at <= NOW()
-                    AND fw.ends_at > NOW()
-            )
+        EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.episode_id = e.id
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
@@ -1132,15 +1124,10 @@ UNION ALL
         e.title,
         e.order_index,
         el.price,
-        (
-            el.price = 0
-            OR EXISTS (
-                SELECT 1
-                FROM episode_free_windows fw
-                WHERE fw.episode_id = e.id
-                    AND fw.starts_at <= NOW()
-                    AND fw.ends_at > NOW()
-            )
+        EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.episode_id = e.id
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
@@ -1177,14 +1164,14 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 }
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
-	Direction            int32        `json:"direction"`
-	ID                   uuid.UUID    `json:"id"`
-	PublicID             string       `json:"public_id"`
-	Title                string       `json:"title"`
-	OrderIndex           int32        `json:"order_index"`
-	Price                int32        `json:"price"`
-	IsFree               sql.NullBool `json:"is_free"`
-	PurchaseAvailability string       `json:"purchase_availability"`
+	Direction            int32     `json:"direction"`
+	ID                   uuid.UUID `json:"id"`
+	PublicID             string    `json:"public_id"`
+	Title                string    `json:"title"`
+	OrderIndex           int32     `json:"order_index"`
+	Price                int32     `json:"price"`
+	IsFree               bool      `json:"is_free"`
+	PurchaseAvailability string    `json:"purchase_availability"`
 }
 
 // The published episodes on either side of one episode within its own series,
@@ -1198,8 +1185,8 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 // been taken down is not a link the storefront may offer, whichever episode
 // was asked about.
 //
-// `is_free` is the same rule the body access uses, price 0 or an open free
-// window, so a link cannot say "paid" about an episode that is free at the
+// `is_free` reads published_free_episodes, the free half of the body access
+// rule, so a link cannot say "paid" about an episode that is free at the
 // moment the reader would follow it. `purchase_availability` is resolved
 // through the series and the tenant as the episode read resolves it.
 func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
@@ -1506,23 +1493,7 @@ WHERE s.tenant_id = $2
         WHERE es.episode_id = e.id
             AND es.surface = $5::text
     )
-    AND (
-        el.price = 0
-        OR EXISTS (
-            SELECT 1
-            FROM episode_free_windows fw
-            WHERE fw.episode_id = e.id
-                AND fw.starts_at <= NOW()
-                AND fw.ends_at > NOW()
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM episode_content_grants g
-            WHERE g.tenant_id = $2
-                AND g.user_id = $3
-                AND g.episode_id = e.id
-        )
-    )
+    AND reader_may_open_episode($2, $3, e.id)
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
 SET read_at = episode_reads.read_at
 RETURNING id, tenant_id, user_id, episode_id, read_at

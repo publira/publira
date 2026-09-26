@@ -635,9 +635,10 @@ type PlatformWebpushConfig struct {
 }
 
 type PublishedFreeEpisode struct {
-	EpisodeID uuid.UUID `json:"episode_id"`
-	SeriesID  uuid.UUID `json:"series_id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID    `json:"episode_id"`
+	SeriesID  uuid.UUID    `json:"series_id"`
+	TenantID  uuid.UUID    `json:"tenant_id"`
+	FreeUntil sql.NullTime `json:"free_until"`
 }
 
 type Purchase struct {

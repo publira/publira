@@ -39,24 +39,7 @@ WITH readable AS (
             WHERE es.episode_id = e.id
                 AND es.surface = sqlc.arg('surface')::text
         )
-        AND (
-            el.price = 0
-            OR EXISTS (
-                SELECT 1
-                FROM episode_free_windows fw
-                WHERE fw.episode_id = e.id
-                    AND fw.starts_at <= NOW()
-                    AND fw.ends_at > NOW()
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM episode_content_grants g
-                WHERE g.tenant_id = sqlc.arg('tenant_id')
-                    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND g.user_id = sqlc.arg('user_id')::uuid
-                    AND g.episode_id = e.id
-            )
-        )
+        AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
     LIMIT 1
 ),
 saved AS (
@@ -109,24 +92,7 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
         WHERE es.episode_id = e.id
             AND es.surface = sqlc.arg('surface')::text
     )
-    AND (
-        el.price = 0
-        OR EXISTS (
-            SELECT 1
-            FROM episode_free_windows fw
-            WHERE fw.episode_id = e.id
-                AND fw.starts_at <= NOW()
-                AND fw.ends_at > NOW()
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM episode_content_grants g
-            WHERE g.tenant_id = sqlc.arg('tenant_id')
-                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND g.user_id = sqlc.arg('user_id')::uuid
-                AND g.episode_id = e.id
-        )
-    )
+    AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 LIMIT 1;
 
 -- name: GetMySeriesReadingProgress :one
@@ -175,24 +141,7 @@ WHERE rp.tenant_id = sqlc.arg('tenant_id')
         WHERE es.episode_id = e.id
             AND es.surface = sqlc.arg('surface')::text
     )
-    AND (
-        el.price = 0
-        OR EXISTS (
-            SELECT 1
-            FROM episode_free_windows fw
-            WHERE fw.episode_id = e.id
-                AND fw.starts_at <= NOW()
-                AND fw.ends_at > NOW()
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM episode_content_grants g
-            WHERE g.tenant_id = sqlc.arg('tenant_id')
-                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND g.user_id = sqlc.arg('user_id')::uuid
-                AND g.episode_id = e.id
-        )
-    )
+    AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 ORDER BY rp.updated_at DESC,
     rp.episode_id DESC
 LIMIT 1;
@@ -339,24 +288,7 @@ FROM continue_from cf
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')
         AND rp.user_id = sqlc.arg('user_id')
         AND rp.episode_id = e.id
-        AND (
-            el.price = 0
-            OR EXISTS (
-                SELECT 1
-                FROM episode_free_windows fw
-                WHERE fw.episode_id = e.id
-                    AND fw.starts_at <= NOW()
-                    AND fw.ends_at > NOW()
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM episode_content_grants g
-                WHERE g.tenant_id = sqlc.arg('tenant_id')
-                    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND g.user_id = sqlc.arg('user_id')::uuid
-                    AND g.episode_id = e.id
-            )
-        )
+        AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 WHERE (
         sqlc.narg('cursor_last_activity_at')::timestamptz IS NULL
         OR (
@@ -490,24 +422,7 @@ FROM continue_from cf
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')
         AND rp.user_id = sqlc.arg('user_id')
         AND rp.episode_id = e.id
-        AND (
-            el.price = 0
-            OR EXISTS (
-                SELECT 1
-                FROM episode_free_windows fw
-                WHERE fw.episode_id = e.id
-                    AND fw.starts_at <= NOW()
-                    AND fw.ends_at > NOW()
-            )
-            OR EXISTS (
-                SELECT 1
-                FROM episode_content_grants g
-                WHERE g.tenant_id = sqlc.arg('tenant_id')
-                    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                    AND g.user_id = sqlc.arg('user_id')::uuid
-                    AND g.episode_id = e.id
-            )
-        )
+        AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 WHERE (
         sqlc.narg('cursor_last_activity_at')::timestamptz IS NULL
         OR (

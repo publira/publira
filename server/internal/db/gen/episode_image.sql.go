@@ -131,24 +131,7 @@ SELECT ei.id,
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
     ) AS is_published,
-    (
-        el.price = 0
-        OR EXISTS (
-            SELECT 1
-            FROM episode_free_windows fw
-            WHERE fw.episode_id = e.id
-                AND fw.starts_at <= NOW()
-                AND fw.ends_at > NOW()
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM episode_content_grants g
-            WHERE g.tenant_id = s.tenant_id
-                -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-                AND g.user_id = $1::uuid
-                AND g.episode_id = e.id
-        )
-    ) AS has_access,
+    reader_may_open_episode(s.tenant_id, $1::uuid, e.id) AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided
     -- here: which rating demands which age is one mapping the whole build
     -- shares, and it lives in Go. A series the tenant has not classified has no
@@ -186,7 +169,7 @@ type GetEpisodeImageAccessByIDForUserRow struct {
 	ObjectKey       string         `json:"object_key"`
 	ContentType     string         `json:"content_type"`
 	IsPublished     sql.NullBool   `json:"is_published"`
-	HasAccess       sql.NullBool   `json:"has_access"`
+	HasAccess       bool           `json:"has_access"`
 	AgeRating       sql.NullString `json:"age_rating"`
 	AgeVerification sql.NullString `json:"age_verification"`
 }
@@ -267,14 +250,11 @@ SELECT ei.id,
         AND el.published_at IS NOT NULL
         AND el.published_at <= NOW()
     ) AS is_published,
-    (
-        el.price = 0
-        OR fw.ends_at IS NOT NULL
-    ) AS has_public_access,
+    (fe.episode_id IS NOT NULL)::boolean AS has_public_access,
     -- When the body is public only because a window is open, this is the
     -- instant it stops being public. The caller bounds how long the response
     -- may be cached by it, so no copy of a paid page outlives the campaign.
-    fw.ends_at AS free_until,
+    fe.free_until,
     -- The age rule, for the reason GetEpisodeImageAccessByIDForUser gives. This
     -- path names no reader, so what the caller does with a rating the rule
     -- covers is refuse the request outright.
@@ -293,11 +273,7 @@ JOIN LATERAL (
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
-    -- At most one window can cover an instant of an episode, so this join
-    -- cannot multiply the row.
-    LEFT JOIN episode_free_windows fw ON fw.episode_id = e.id
-    AND fw.starts_at <= NOW()
-    AND fw.ends_at > NOW()
+    LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
 WHERE ei.id = $1
     AND s.tenant_id = $2
 LIMIT 1
@@ -314,7 +290,7 @@ type GetEpisodeImagePublicAccessByIDForTenantRow struct {
 	ObjectKey       string         `json:"object_key"`
 	ContentType     string         `json:"content_type"`
 	IsPublished     sql.NullBool   `json:"is_published"`
-	HasPublicAccess sql.NullBool   `json:"has_public_access"`
+	HasPublicAccess bool           `json:"has_public_access"`
 	FreeUntil       sql.NullTime   `json:"free_until"`
 	AgeRating       sql.NullString `json:"age_rating"`
 	AgeVerification sql.NullString `json:"age_verification"`

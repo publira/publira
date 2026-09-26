@@ -43,11 +43,13 @@ sqlc emits one `<file>.sql.go` per source and one shared `Querier` interface for
 
 No lint can tell a domain name from a generic one, so this rule is enforced by review.
 
-## Views
+## Views and functions
 
 sqlc compiles every query on its own — a query cannot call another — so a rule several queries ask about has no home in `query/` and ends up written out once per query. A view is that home: `published_free_episodes` answers "which published episodes may a reader open without paying" for the catalog's filter and its count alike, where six queries would otherwise each carry the predicate and drift apart. A query that needs such an answer reads the view rather than spelling the rule again.
 
 Declare every view `WITH (security_invoker = true)`. Without it a view runs with the rights of its owner, and its owner is the role that applies migrations, which bypasses row-level security: a tenant-scoped query reading through it would see every tenant's rows. `TestDBPublicRoleSeesNothingWithoutTenantSetting` lists the relations a storefront request reads, views included, and fails when one of them answers a connection that set no tenant.
+
+A rule that takes an argument from the query, such as which reader is asking, is a SQL function instead, as `reader_may_open_episode` is, and stays `SECURITY INVOKER` for the same reason.
 
 ## Layout (quick map)
 

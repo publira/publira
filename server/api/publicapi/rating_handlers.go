@@ -85,7 +85,7 @@ func (s *apiServer) readerMayReadEpisode(
 	tenantID, userID uuid.UUID,
 	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
 ) (bool, error) {
-	if row.Price == 0 || row.FreeUntil.Valid {
+	if row.IsFree {
 		return true, nil
 	}
 	granted, err := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
