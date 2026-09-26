@@ -1,4 +1,8 @@
 import {
+  ActionFormIdle,
+  ActionFormPending,
+} from "@publira/ui-components/action-form";
+import {
   SectionError,
   SectionErrorDescription,
   SectionErrorHeading,
@@ -15,12 +19,11 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
+import { FollowButton, FollowLoginLink } from "./follow-button";
 import {
-  FollowButton,
   FollowButtonFollow,
   FollowButtonUnfollow,
-  FollowLoginLink,
-} from "./follow-button";
+} from "./follow-button-state";
 
 /**
  * Member-specific follow island. The surrounding series/creator body stays on
@@ -67,7 +70,11 @@ export const FollowControl = async ({
       <FollowLoginLink
         aria-label={t("host.follow.login_aria", { name: targetName })}
         href={buildLoginPath(locale, defaultLocale, returnTo)}
-      />
+      >
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="host.follow.follow" />
+        </Suspense>
+      </FollowLoginLink>
     );
   }
 
@@ -81,10 +88,32 @@ export const FollowControl = async ({
     >
       <FollowButtonFollow
         aria-label={t("host.follow.follow_aria", { name: targetName })}
-      />
+      >
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.follow.follow" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.follow.pending" />
+          </Suspense>
+        </ActionFormPending>
+      </FollowButtonFollow>
       <FollowButtonUnfollow
         aria-label={t("host.follow.unfollow_aria", { name: targetName })}
-      />
+      >
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.follow.unfollow" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.follow.pending" />
+          </Suspense>
+        </ActionFormPending>
+      </FollowButtonUnfollow>
     </FollowButton>
   );
 };

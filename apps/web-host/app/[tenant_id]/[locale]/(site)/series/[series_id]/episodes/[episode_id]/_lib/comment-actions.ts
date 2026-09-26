@@ -13,8 +13,8 @@ import {
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { tenantEpisodeCommentsTag } from "#lib/cache-tags";
-import { EPISODE_COMMENT_REPORT_REASONS } from "#lib/comment-report-reason";
 import {
+  EPISODE_COMMENT_REPORT_REASONS,
   postEpisodeComment,
   reportEpisodeComment,
   withdrawEpisodeComment,

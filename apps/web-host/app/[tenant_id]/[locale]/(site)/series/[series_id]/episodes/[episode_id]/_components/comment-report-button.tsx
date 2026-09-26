@@ -1,10 +1,9 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
   Dialog,
@@ -20,20 +19,79 @@ import {
   DialogViewport,
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { RadioGroup } from "@publira/ui-components/radio-group";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useState } from "react";
+import type { ReactNode } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
-import {
-  EPISODE_COMMENT_REPORT_REASONS,
-  isEpisodeCommentReportReason,
-} from "#lib/comment-report-reason";
-import type { EpisodeCommentReportReason } from "#lib/comment-report-reason";
+import { Message } from "#components/message";
+import { UntilActionSucceeds } from "#components/until-action-succeeds";
+import { EPISODE_COMMENT_REPORT_REASONS } from "#lib/comments";
+import type { EpisodeCommentReportReason } from "#lib/comments";
+import { getMessages } from "#lib/get-messages";
 
 import { reportEpisodeCommentAction } from "../_lib/comment-actions";
+
+// Keyed by the stored reason, so a reason added to the list is a type error
+// here rather than an option with no wording.
+const reasonLabels: Record<EpisodeCommentReportReason, ReactNode> = {
+  abuse: (
+    <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+      <Message message="host.episode.comments.report_reason_abuse" />
+    </Suspense>
+  ),
+  other: (
+    <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+      <Message message="host.episode.comments.report_reason_other" />
+    </Suspense>
+  ),
+  spam: (
+    <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+      <Message message="host.episode.comments.report_reason_spam" />
+    </Suspense>
+  ),
+  spoiler: (
+    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+      <Message message="host.episode.comments.report_reason_spoiler" />
+    </Suspense>
+  ),
+};
+
+/**
+ * The note box, whole: the placeholder is an attribute and waits on the
+ * catalog, and Base UI registers the label's id from the field's own Effects,
+ * so a control hydrating after its label would not match the server's HTML.
+ */
+const CommentReportNoteField = async ({ form }: { form: string }) => {
+  const t = await getMessages();
+
+  return (
+    <Field>
+      <FieldLabel>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="host.episode.comments.report_note_label" />
+        </Suspense>
+      </FieldLabel>
+      <FieldContent>
+        <Textarea
+          form={form}
+          name="note"
+          placeholder={t("host.episode.comments.report_note_placeholder")}
+          rows={3}
+        />
+      </FieldContent>
+    </Field>
+  );
+};
+
+const CommentReportNoteFieldSkeleton = () => (
+  <div aria-hidden="true" className="grid gap-2">
+    <SkeletonLine className="h-4 w-28" />
+    <Skeleton className="h-20 w-full" />
+  </div>
+);
 
 /**
  * Flags one other reader's comment as breaking the rules.
@@ -48,6 +106,11 @@ import { reportEpisodeCommentAction } from "../_lib/comment-actions";
  * report, and the control says the same thing back either way: a reader who
  * could tell the two apart could learn what the platform has done about a
  * comment the removal was meant to be silent about.
+ *
+ * The fields in the popup join the form through `form=`: the popup portals out
+ * of it, while the trigger stays inside, so its wording follows the
+ * submission. A refused report leaves the dialog open for the reader to
+ * correct; a sent one takes the dialog and its trigger away.
  */
 export const CommentReportButton = ({
   "aria-label": ariaLabel,
@@ -61,155 +124,113 @@ export const CommentReportButton = ({
   returnTo: string;
   tenantId: string;
 }) => {
-  const t = useClientMessages();
-  // Keyed by the stored reason, so a reason added to the list is a type error
-  // here rather than an option with no wording.
-  const reasonLabels: Record<EpisodeCommentReportReason, string> = {
-    abuse: t("host.episode.comments.report_reason_abuse"),
-    other: t("host.episode.comments.report_reason_other"),
-    spam: t("host.episode.comments.report_reason_spam"),
-    spoiler: t("host.episode.comments.report_reason_spoiler"),
-  };
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<EpisodeCommentReportReason>(
-    EPISODE_COMMENT_REPORT_REASONS[0]
-  );
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: FormActionState,
-      formData: FormData
-    ): Promise<FormActionState> => {
-      const nextState = await reportEpisodeCommentAction(
-        previousState,
-        formData
-      );
-      if (nextState?.ok) {
-        // Closing only once the Action has answered leaves a rejection with
-        // the dialog the reader can correct it in.
-        setOpen(false);
-      }
-      return nextState;
-    },
-    null
-  );
-  const reported = state?.ok === true;
-  // The fields in the popup join the form through `form=`: the popup portals
-  // out of it, while the trigger stays inside, so its wording follows the
-  // submission.
   const formId = `comment-report-${commentPublicId}`;
 
   return (
-    <form
-      action={formAction}
+    <ActionForm
+      action={reportEpisodeCommentAction}
       className="grid justify-items-end gap-2"
       id={formId}
     >
       <LocaleField />
       <input name="commentPublicId" type="hidden" value={commentPublicId} />
-      <input name="reason" type="hidden" value={reason} />
       <input name="returnTo" type="hidden" value={returnTo} />
       <input name="tenantId" type="hidden" value={tenantId} />
-      {reported ? null : (
-        <Dialog onOpenChange={setOpen} open={open}>
+      <UntilActionSucceeds>
+        <Dialog>
           <DialogTrigger
             render={
               <Button
                 aria-label={ariaLabel}
-                disabled={isPending}
                 size="sm"
                 type="button"
                 variant="ghost"
-              >
-                <ActionFormIdle>
-                  <ClientMessage message="host.episode.comments.report" />
-                </ActionFormIdle>
-                <ActionFormPending>
-                  <ClientMessage message="host.episode.comments.reporting" />
-                </ActionFormPending>
-              </Button>
+              />
             }
-          />
+          >
+            <ActionFormIdle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="host.episode.comments.report" />
+              </Suspense>
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="host.episode.comments.reporting" />
+              </Suspense>
+            </ActionFormPending>
+          </DialogTrigger>
           <DialogPortal>
             <DialogBackdrop />
             <DialogViewport>
               <DialogPopup className="grid gap-4">
                 <DialogHeader>
                   <DialogTitle className="text-lg font-semibold">
-                    <ClientMessage message="host.episode.comments.report_title" />
+                    <Suspense fallback={<SkeletonLine className="h-6 w-48" />}>
+                      <Message message="host.episode.comments.report_title" />
+                    </Suspense>
                   </DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground">
-                    <ClientMessage message="host.episode.comments.report_description" />
+                    <Suspense
+                      fallback={<SkeletonLine className="h-4 w-full" />}
+                    >
+                      <Message message="host.episode.comments.report_description" />
+                    </Suspense>
                   </DialogDescription>
                 </DialogHeader>
 
                 <Field>
                   <FieldLabel required>
-                    <ClientMessage message="host.episode.comments.report_reason_label" />
+                    <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                      <Message message="host.episode.comments.report_reason_label" />
+                    </Suspense>
                   </FieldLabel>
                   <FieldContent>
                     <RadioGroup
+                      defaultValue={EPISODE_COMMENT_REPORT_REASONS[0]}
+                      form={formId}
                       items={EPISODE_COMMENT_REPORT_REASONS.map((value) => ({
                         label: reasonLabels[value],
                         value,
                       }))}
-                      onValueChange={(value) => {
-                        if (isEpisodeCommentReportReason(value)) {
-                          setReason(value);
-                        }
-                      }}
-                      value={reason}
+                      name="reason"
                     />
                   </FieldContent>
                 </Field>
 
-                <Field>
-                  <FieldLabel>
-                    <ClientMessage message="host.episode.comments.report_note_label" />
-                  </FieldLabel>
-                  <FieldContent>
-                    <Textarea
-                      form={formId}
-                      name="note"
-                      placeholder={t(
-                        "host.episode.comments.report_note_placeholder"
-                      )}
-                      rows={3}
-                    />
-                  </FieldContent>
-                </Field>
+                <Suspense fallback={<CommentReportNoteFieldSkeleton />}>
+                  <CommentReportNoteField form={formId} />
+                </Suspense>
 
                 <DialogFooter>
                   <DialogClose
-                    render={
-                      <Button type="button" variant="outline">
-                        <ClientMessage message="host.common.cancel" />
-                      </Button>
-                    }
-                  />
-                  <Button
-                    aria-busy={isPending}
-                    disabled={isPending}
-                    form={formId}
-                    type="submit"
+                    render={<Button type="button" variant="outline" />}
                   >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="host.common.cancel" />
+                    </Suspense>
+                  </DialogClose>
+                  <ActionFormSubmit form={formId}>
                     <ActionFormIdle>
-                      <ClientMessage message="host.episode.comments.report_confirm" />
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-20" />}
+                      >
+                        <Message message="host.episode.comments.report_confirm" />
+                      </Suspense>
                     </ActionFormIdle>
                     <ActionFormPending>
-                      <ClientMessage message="host.episode.comments.reporting" />
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="host.episode.comments.reporting" />
+                      </Suspense>
                     </ActionFormPending>
-                  </Button>
+                  </ActionFormSubmit>
                 </DialogFooter>
               </DialogPopup>
             </DialogViewport>
           </DialogPortal>
         </Dialog>
-      )}
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
-    </form>
+      </UntilActionSucceeds>
+    </ActionForm>
   );
 };

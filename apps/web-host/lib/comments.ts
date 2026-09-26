@@ -20,7 +20,6 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { applyCacheTag, tenantEpisodeCommentsTag } from "./cache-tags";
-import type { EpisodeCommentReportReason } from "./comment-report-reason";
 import { getMessagesFor } from "./messages";
 import { localizedReadFailure } from "./read-failure";
 
@@ -453,6 +452,23 @@ export const withdrawEpisodeComment = async (
     };
   }
 };
+
+/**
+ * Why a reader says a comment breaks the rules. The stored
+ * `episode_comment_reports.reason` values rather than the generated enum, so
+ * the chooser, the `FormData` it submits, the Action's schema, and the catalog
+ * keys naming each option are all the same four strings; `reportReasonCodes`
+ * is where they become the wire enum.
+ */
+export type EpisodeCommentReportReason = "abuse" | "other" | "spam" | "spoiler";
+
+/** The order the chooser offers, ending with the one that needs a sentence. */
+export const EPISODE_COMMENT_REPORT_REASONS = [
+  "spam",
+  "abuse",
+  "spoiler",
+  "other",
+] as const satisfies readonly EpisodeCommentReportReason[];
 
 /**
  * The stored reason as the wire enum. The record is exhaustive by its type, so

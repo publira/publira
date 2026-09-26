@@ -75,7 +75,7 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  return { ok: true };
+  return { message: "", ok: true };
 };
 
 export const markAllNotificationsAsReadAction = async (
@@ -113,5 +113,5 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
-  return { ok: true };
+  return { message: "", ok: true };
 };

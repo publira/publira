@@ -28,6 +28,7 @@ import {
   EpisodeReactionNameReaders,
   EpisodeReactionSubmit,
 } from "./episode-reaction";
+import { LocaleField } from "./locale-field";
 
 /**
  * Member-specific reaction island. The surrounding episode body stays on the
@@ -101,14 +102,15 @@ export const EpisodeReactionControl = async ({
   return (
     <EpisodeReaction size={size}>
       <EpisodeReactionForm
-        episodePublicId={episodePublicId}
         mode={result.mode}
         ratingCount={result.ratingCount}
-        returnTo={returnTo}
         score={result.score}
-        seriesPublicId={seriesPublicId}
-        tenantId={tenantId}
       >
+        <LocaleField />
+        <input name="episodePublicId" type="hidden" value={episodePublicId} />
+        <input name="returnTo" type="hidden" value={returnTo} />
+        <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
+        <input name="tenantId" type="hidden" value={tenantId} />
         <EpisodeReactionSubmit>
           <EpisodeReactionName>
             <Suspense fallback={<SkeletonLine className="h-4 w-52" />}>

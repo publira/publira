@@ -1,17 +1,16 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
+import { Message } from "#components/message";
+import { UntilActionSucceeds } from "#components/until-action-succeeds";
 import type { FollowTargetKind } from "#lib/follow";
-import type { FollowActionState } from "#lib/follow-actions";
 import { toggleFollowAction } from "#lib/follow-actions";
 
 /** `aria-label` names the series or creator it unfollows. */
@@ -27,43 +26,30 @@ export const UnfollowButton = ({
   returnTo: string;
   targetKind: FollowTargetKind;
   tenantId: string;
-}) => {
-  const [state, formAction, isPending] = useActionState(
-    toggleFollowAction,
-    null as FollowActionState
-  );
-  const removed = state?.ok === true && !state.isFollowing;
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-2">
-      <LocaleField />
-      <input name="intent" type="hidden" value="unfollow" />
-      <input name="publicId" type="hidden" value={publicId} />
-      <input name="returnTo" type="hidden" value={returnTo} />
-      <input name="targetKind" type="hidden" value={targetKind} />
-      <input name="tenantId" type="hidden" value={tenantId} />
-      {removed ? null : (
-        <Button
-          aria-busy={isPending}
-          aria-label={ariaLabel}
-          disabled={isPending}
-          size="sm"
-          type="submit"
-          variant="outline"
-        >
-          <ActionFormIdle>
-            <ClientMessage message="host.follow.unfollow" />
-          </ActionFormIdle>
-          <ActionFormPending>
-            <ClientMessage message="host.follow.pending" />
-          </ActionFormPending>
-        </Button>
-      )}
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
-    </form>
-  );
-};
+}) => (
+  <ActionForm
+    action={toggleFollowAction}
+    className="grid justify-items-end gap-2"
+  >
+    <LocaleField />
+    <input name="intent" type="hidden" value="unfollow" />
+    <input name="publicId" type="hidden" value={publicId} />
+    <input name="returnTo" type="hidden" value={returnTo} />
+    <input name="targetKind" type="hidden" value={targetKind} />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <UntilActionSucceeds>
+      <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.follow.unfollow" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.follow.pending" />
+          </Suspense>
+        </ActionFormPending>
+      </ActionFormSubmit>
+    </UntilActionSucceeds>
+  </ActionForm>
+);

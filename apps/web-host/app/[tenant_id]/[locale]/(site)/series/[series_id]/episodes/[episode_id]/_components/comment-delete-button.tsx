@@ -1,15 +1,15 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
 import { LocaleField } from "#components/locale-field";
+import { Message } from "#components/message";
+import { UntilActionSucceeds } from "#components/until-action-succeeds";
 
 import { withdrawEpisodeCommentAction } from "../_lib/comment-actions";
 
@@ -35,42 +35,29 @@ export const CommentDeleteButton = ({
   episodePublicId: string;
   returnTo: string;
   tenantId: string;
-}) => {
-  const [state, formAction, isPending] = useActionState(
-    withdrawEpisodeCommentAction,
-    null
-  );
-  const deleted = state?.ok === true;
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-2">
-      <LocaleField />
-      <input name="commentPublicId" type="hidden" value={commentPublicId} />
-      <input name="episodePublicId" type="hidden" value={episodePublicId} />
-      <input name="returnTo" type="hidden" value={returnTo} />
-      <input name="tenantId" type="hidden" value={tenantId} />
-      {deleted ? null : (
-        <Button
-          aria-busy={isPending}
-          aria-label={ariaLabel}
-          disabled={isPending}
-          size="sm"
-          type="submit"
-          variant="outline"
-        >
-          <ActionFormIdle>
-            <ClientMessage message="host.episode.comments.delete" />
-          </ActionFormIdle>
-          <ActionFormPending>
-            <ClientMessage message="host.episode.comments.deleting" />
-          </ActionFormPending>
-        </Button>
-      )}
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
-    </form>
-  );
-};
+}) => (
+  <ActionForm
+    action={withdrawEpisodeCommentAction}
+    className="grid justify-items-end gap-2"
+  >
+    <LocaleField />
+    <input name="commentPublicId" type="hidden" value={commentPublicId} />
+    <input name="episodePublicId" type="hidden" value={episodePublicId} />
+    <input name="returnTo" type="hidden" value={returnTo} />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <UntilActionSucceeds>
+      <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="host.episode.comments.delete" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="host.episode.comments.deleting" />
+          </Suspense>
+        </ActionFormPending>
+      </ActionFormSubmit>
+    </UntilActionSucceeds>
+  </ActionForm>
+);

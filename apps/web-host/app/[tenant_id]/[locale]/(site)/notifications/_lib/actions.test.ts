@@ -67,7 +67,7 @@ describe("notification actions", () => {
       })
     );
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ message: "", ok: true });
     expect(mockMarkNotificationAsRead).toHaveBeenCalledWith({
       locale: "en",
       notificationId,
@@ -114,7 +114,7 @@ describe("notification actions", () => {
       formData({ locale: "en", tenantId })
     );
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ message: "", ok: true });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId, "en");
     expect(mockRequirePublicSession).toHaveBeenCalledWith(
       "en",
