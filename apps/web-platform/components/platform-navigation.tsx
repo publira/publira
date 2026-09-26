@@ -55,11 +55,6 @@ const hrefs = [
 export const PlatformNavigation = () => (
   <ConsoleSidebarNavigation hrefs={hrefs}>
     <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
-        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-          <Message message="platform.nav.overview" />
-        </Suspense>
-      </ConsoleSidebarNavigationTitle>
       <ConsoleSidebarNavigationItems>
         <ConsoleSidebarNavigationItem href="/">
           <ConsoleSidebarNavigationItemIcon>

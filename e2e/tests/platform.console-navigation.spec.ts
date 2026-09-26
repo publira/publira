@@ -47,7 +47,6 @@ test.describe("web-platform console navigation", () => {
     const navigation = page.getByRole("navigation");
     // Section headings are paragraphs; the entries' labels are not.
     await expect(navigation.locator("p")).toHaveText([
-      "Overview",
       "Tenants",
       "Platform",
       "Services",
