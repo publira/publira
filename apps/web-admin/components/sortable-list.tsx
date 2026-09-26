@@ -12,10 +12,10 @@ import type {
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import { GripVerticalIcon } from "@publira/icons";
 import { cn } from "@publira/utils";
-import { createContext, use, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import type { AdminClientMessageAccessor } from "#lib/messages";
 
@@ -154,7 +154,7 @@ export const SortableList = ({
   onDragEnd,
   ...props
 }: SortableListProps) => {
-  const locale = use(AdminLocaleContext);
+  const locale = useAdminLocale();
   const t = useClientMessages();
 
   return (

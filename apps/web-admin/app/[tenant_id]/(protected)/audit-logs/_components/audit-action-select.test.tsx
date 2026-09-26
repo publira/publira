@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { getLocales } from "@publira/i18n";
-import { sharedCatalog, sharedMessage } from "@publira/i18n/catalog";
+import { sharedMessage } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -11,7 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { auditActions } from "../_lib/audit-actions";
 import { AuditActionSelect } from "./audit-action-select";
@@ -34,9 +34,9 @@ const openOptionLabels = async () => {
 describe("AuditActionSelect", () => {
   it("offers every action the filter accepts, each once", async () => {
     render(
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+      <AdminLocaleTestProvider locale="en">
         <AuditActionSelect defaultValue="" />
-      </AdminLocaleProvider>
+      </AdminLocaleTestProvider>
     );
 
     expect(await openOptionLabels()).toEqual([
@@ -48,11 +48,11 @@ describe("AuditActionSelect", () => {
   it("submits each action under the label that names it", () => {
     for (const action of auditActions) {
       const { container, unmount } = render(
-        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        <AdminLocaleTestProvider locale="en">
           <form>
             <AuditActionSelect defaultValue={action} />
           </form>
-        </AdminLocaleProvider>
+        </AdminLocaleTestProvider>
       );
 
       const form = container.querySelector("form");
@@ -66,9 +66,9 @@ describe("AuditActionSelect", () => {
 
   it.each(getLocales())("names every action in %s", async (locale) => {
     render(
-      <AdminLocaleProvider locale={locale} messages={sharedCatalog(locale)}>
+      <AdminLocaleTestProvider locale={locale}>
         <AuditActionSelect defaultValue="" />
-      </AdminLocaleProvider>
+      </AdminLocaleTestProvider>
     );
 
     const labels = await openOptionLabels();

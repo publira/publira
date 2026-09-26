@@ -15,7 +15,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { GenreListItem } from "../genre-types";
 import { GenreEyeCatchForm } from "./genre-eye-catch-form";
@@ -45,9 +45,7 @@ vi.mock("#components/message", () => ({
 // The image field is a client control, which reads its own copy from the
 // catalog the console layout provides.
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
+  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
 
 const genre: GenreListItem = {

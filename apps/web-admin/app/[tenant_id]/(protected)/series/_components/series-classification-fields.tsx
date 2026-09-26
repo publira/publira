@@ -26,10 +26,10 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
-import { useCallback, useContext, useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import type { ChangeEventHandler, KeyboardEventHandler } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 import { MAX_SERIES_TAGS } from "#lib/series-classification";
@@ -42,18 +42,6 @@ export interface GenreOption {
   publicId: string;
   name: string;
 }
-
-/**
- * The locale the console was rendered in, for the values `Intl` words rather
- * than the catalog does — the weekday names and the order genre names sort in.
- */
-const useAdminLocale = () => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
-  return locale;
-};
 
 const SERIES_STATUS_ITEMS = [
   {

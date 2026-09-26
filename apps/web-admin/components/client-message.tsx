@@ -8,17 +8,20 @@ import { AdminMessagesContext } from "#components/admin-locale-context";
 import type {
   AdminClientMessageAccessor,
   AdminClientMessageKey,
+  AdminClientMessages,
 } from "#lib/messages";
 
 /**
  * The accessor a Client Component resolves its copy through, bound to the
  * catalog `AdminLocaleProvider` carries.
  *
- * It does not suspend: the server resolved the catalog for the request, so no
- * `<Suspense>` is needed around a caller. Missing the provider is a wiring bug
- * rather than a case to fall back from — a component rendered outside one has
- * no locale to answer in. `app/[tenant_id]/error.tsx`, which renders above the
- * layout that seeds the provider, uses `<ErrorBoundaryMessage>` instead.
+ * On the server this waits on that read under the boundary the surrounding
+ * section already sits behind. The read has settled in the payload by the time
+ * the browser hydrates, so the copy is there on the first client render and no
+ * catalog is loaded in the browser. Missing the provider is a wiring bug rather
+ * than a case to fall back from — a component rendered outside one has no
+ * locale to answer in. `app/[tenant_id]/error.tsx`, which renders above the
+ * layout that places the provider, uses `<ErrorBoundaryMessage>` instead.
  */
 export const useClientMessages = (): AdminClientMessageAccessor => {
   const messages = use(AdminMessagesContext);
@@ -26,7 +29,8 @@ export const useClientMessages = (): AdminClientMessageAccessor => {
     throw new Error("AdminLocaleProvider is required.");
   }
 
-  return bindMessages(messages);
+  const catalog: AdminClientMessages = use(messages);
+  return bindMessages(catalog);
 };
 
 /** One catalog string rendered by a Client Component. */

@@ -12,15 +12,9 @@ import {
   DialogTrigger,
   DialogViewport,
 } from "@publira/ui-components/dialog";
-import {
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -56,10 +50,7 @@ const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
 export const EpisodeCreditsRangeDialog = ({
   seriesPublicId,
 }: EpisodeCreditsRangeDialogProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [open, setOpen] = useState(false);

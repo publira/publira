@@ -22,9 +22,8 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useToastManager } from "@publira/ui-components/toast";
-import { useActionState, useContext, useRef } from "react";
+import { useActionState, useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -58,10 +57,6 @@ export const CommentReasonDialog = ({
   action,
   publicId,
 }: CommentReasonDialogProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { add } = useToastManager();

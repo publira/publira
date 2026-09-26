@@ -7,9 +7,9 @@ import { useToastManager } from "@publira/ui-components/toast";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useContext, useOptimistic, useTransition } from "react";
+import { useCallback, useOptimistic, useTransition } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
   SortableItem,
@@ -51,10 +51,7 @@ export const EpisodesSortableList = ({
   reorderAction,
   timeZone,
 }: EpisodesSortableListProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { selectedIds, selectMany, toggle } = useEpisodeCreditsSelection();

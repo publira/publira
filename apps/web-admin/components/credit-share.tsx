@@ -4,9 +4,9 @@ import { toIntlLocale } from "@publira/i18n";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useContext, useId } from "react";
+import { useId } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage } from "#components/client-message";
 import {
   MAX_CREDIT_SHARE_BPS,
@@ -64,10 +64,7 @@ export const CreditShareInput = ({
  * publisher's remainder, or why the list cannot be saved yet.
  */
 export const CreditShareSummary = ({ total }: { total: CreditShareTotal }) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const intlLocale = toIntlLocale(locale);
   const format = (bps: number) => formatShareBps(bps, intlLocale);
 

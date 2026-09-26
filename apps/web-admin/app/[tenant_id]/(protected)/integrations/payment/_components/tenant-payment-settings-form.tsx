@@ -17,15 +17,8 @@ import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { ChangeEvent, ReactNode } from "react";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useId,
-  useState,
-} from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -129,10 +122,6 @@ const PaymentSecretField = ({
   name,
   required,
 }: PaymentSecretFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const inputId = useId();
   const [isEditing, setIsEditing] = useState(false);
@@ -216,10 +205,6 @@ const PaymentSettingsFields = ({
   settings,
   webhookUrl,
 }: PaymentSettingsFieldsProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const tenantId = useTenantId();
   const enabledId = useId();
   const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
@@ -375,10 +360,6 @@ export const TenantPaymentSettingsForm = ({
   loadErrorMessage,
   webhookUrl,
 }: TenantPaymentSettingsFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const [saveState, saveFormAction, isSaving] = useActionState(action, null);
   const settings = saveState?.ok ? saveState.settings : initialSettings;

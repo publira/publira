@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -13,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { CloseRoyaltyStatementActionState } from "../royalty-types";
 import { CloseStatementButton } from "./close-statement-button";
@@ -40,9 +39,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
+  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
 
 const renderButton = async () => {

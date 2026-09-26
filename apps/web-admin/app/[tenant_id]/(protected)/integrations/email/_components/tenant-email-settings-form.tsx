@@ -31,15 +31,8 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import type { ChangeEvent } from "react";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useId,
-  useState,
-} from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -92,10 +85,6 @@ const PasswordFieldSection = ({
   onCancelPasswordEdit,
   onStartPasswordEdit,
 }: PasswordFieldSectionProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
 
   return (
@@ -182,10 +171,6 @@ const SmtpTestDialog = ({
   testState,
   canTest,
 }: SmtpTestDialogProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const handleSendToSelfChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onSendToSelfChange(event.target.checked);
@@ -297,10 +282,6 @@ export const TenantEmailSettingsForm = ({
   saveAction,
   testAction,
 }: TenantEmailSettingsFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const formId = useId();

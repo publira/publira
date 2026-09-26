@@ -12,7 +12,7 @@ import {
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { BulkEditEpisodeCreditsActionState } from "../episode-types";
 import { EpisodeCreditsRangeForm } from "./episode-credits-range-form";
@@ -127,13 +127,13 @@ const render = ({
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        <AdminLocaleTestProvider locale="en">
           <EpisodeCreditsSelectionProvider
             initialSelectedIds={initialSelectedIds}
           >
             {children}
           </EpisodeCreditsSelectionProvider>
-        </AdminLocaleProvider>
+        </AdminLocaleTestProvider>
       ),
     }
   );

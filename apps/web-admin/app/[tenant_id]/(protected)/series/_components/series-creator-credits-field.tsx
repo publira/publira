@@ -14,16 +14,9 @@ import {
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  useCallback,
-  useContext,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
 import {
@@ -318,10 +311,7 @@ export const SeriesCreatorCreditsField = ({
   initialCredits,
   onSavableChange,
 }: SeriesCreatorCreditsFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' credits.
   const [rows, setRows] = useState(() =>

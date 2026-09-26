@@ -129,10 +129,14 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageTitle>
-          <Message message="admin.creators.edit_title" />
+          <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
+            <Message message="admin.creators.edit_title" />
+          </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
-          <Message message="admin.creators.edit_description" />
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="admin.creators.edit_description" />
+          </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>

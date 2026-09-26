@@ -26,14 +26,13 @@ import { Textarea } from "@publira/ui-components/textarea";
 import {
   useActionState,
   useCallback,
-  useContext,
   useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -61,10 +60,7 @@ export const TicketForm = ({
   seriesErrorMessage,
   timeZone,
 }: TicketFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

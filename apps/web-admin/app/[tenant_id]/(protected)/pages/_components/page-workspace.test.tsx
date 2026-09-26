@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -11,7 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type {
   PageFormState,
@@ -54,7 +53,7 @@ const renderWorkspace = async (
 ) => {
   await act(() => {
     renderBase(
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+      <AdminLocaleTestProvider locale="en">
         <PageWorkspace
           initialPage={page}
           initialVersions={[version]}
@@ -64,7 +63,7 @@ const renderWorkspace = async (
           timeZone="UTC"
           unpublishAction={noopFormAction}
         />
-      </AdminLocaleProvider>
+      </AdminLocaleTestProvider>
     );
   });
 };

@@ -14,7 +14,7 @@ import {
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
 import { CreatorForm } from "./creator-form";
@@ -39,9 +39,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-        {children}
-      </AdminLocaleProvider>
+      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 

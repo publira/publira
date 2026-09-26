@@ -9,7 +9,6 @@ export {
   ConsoleLayout,
   ConsoleLayoutContent,
   ConsoleLayoutMain,
-  ConsoleLayoutSkeleton,
   ConsoleMobileNavigation,
   ConsoleMobileNavigationCloseButton,
   ConsoleMobileNavigationOpenButton,
@@ -25,7 +24,6 @@ export {
   ConsoleSidebarNavigationItems,
   ConsoleSidebarNavigationSection,
   ConsoleSidebarNavigationTitle,
-  ConsoleSidebarSkeleton,
 } from "./console-layout";
 export {
   ConsoleHeaderUser,

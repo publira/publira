@@ -4,15 +4,9 @@ import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { DialogClose, DialogFooter } from "@publira/ui-components/dialog";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { useActionState, useCallback, useMemo, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { formatShareBps, sharePercentToBps } from "#lib/credit-share";
 import type { AdminClientMessageAccessor } from "#lib/messages";
@@ -188,10 +182,7 @@ export const EpisodeCreditsRangeForm = ({
   onRetryEpisodes,
   seriesPublicId,
 }: EpisodeCreditsRangeFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { clear, selectedIds, selectMany, toggle } =

@@ -16,7 +16,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { ThemePreview } from "./theme-preview";
 import { ThemeSettingsForm } from "./theme-settings-form";
@@ -44,9 +44,7 @@ vi.mock("next/navigation", () => ({
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-        {children}
-      </AdminLocaleProvider>
+      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 

@@ -13,11 +13,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor, loadAdminClientMessages } from "#lib/messages";
+import { getMessagesFor } from "#lib/messages";
 import { readMfaChallenge } from "#lib/mfa-challenge";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -61,11 +61,8 @@ const MfaPageContent = async () => {
     redirect(buildLoginPath(challenge?.nextPath));
   }
 
-  const locale = await getLocale(tenantId);
-  const messages = await loadAdminClientMessages(locale);
-
   return (
-    <AdminLocaleProvider locale={locale} messages={messages}>
+    <AdminLocaleProvider>
       {challenge.kind === "enroll" ? (
         <MfaEnrollFlow nextPath={challenge.nextPath} tenantId={tenantId} />
       ) : (

@@ -1,49 +1,19 @@
-import { ConsoleLayoutSkeleton } from "@publira/layouts/admin";
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
-import type { ReactNode } from "react";
-
 import { AdminLayout } from "#components/admin-layout";
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { AdminToastProvider } from "#components/admin-toast-provider";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getLocale } from "#lib/locale";
-import { loadAdminClientMessages } from "#lib/messages";
-import { getTenantForSession } from "#lib/tenant-detail";
-import { getTenantId } from "#lib/tenant-id";
-import { getTenantThemeLogo } from "#lib/theme-settings";
 
-const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
-  const tenantId = await getTenantId();
-
-  const locale = await getLocale(tenantId);
-  const [result, logo, messages] = await Promise.all([
-    getTenantForSession(tenantId),
-    getTenantThemeLogo(tenantId, locale),
-    loadAdminClientMessages(locale),
-  ]);
-  if (!result.ok) {
-    // The proxy let this request in on a cookie the API has since rejected,
-    // so the console asks for the session again — with the path to come back
-    // to, and the marker that makes the proxy drop the cookie.
-    await redirectToLoginIfSessionRejected(result);
-    // Invalid/missing session: send back to login instead of a blank 404.
-    redirect("/login");
-  }
-
-  return (
-    <AdminLocaleProvider locale={locale} messages={messages}>
-      <AdminLayout logo={logo} tenant={result.tenant} tenantId={tenantId}>
-        <AdminToastProvider>{children}</AdminToastProvider>
-      </AdminLayout>
-    </AdminLocaleProvider>
-  );
-};
-
+/**
+ * Awaits nothing: this layout wraps every console route, so a read here would
+ * hold back each route's static shell. The chrome waits on the tenant, the
+ * logo, and the session in its own parts, and the provider hands its reads
+ * down unresolved.
+ */
 const ProtectedLayout = ({ children }: LayoutProps<"/[tenant_id]">) => (
-  <Suspense fallback={<ConsoleLayoutSkeleton />}>
-    <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
-  </Suspense>
+  <AdminLocaleProvider>
+    <AdminLayout>
+      <AdminToastProvider>{children}</AdminToastProvider>
+    </AdminLayout>
+  </AdminLocaleProvider>
 );
 
 export default ProtectedLayout;

@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type {
   CreatorRoleListItem,
@@ -78,9 +77,7 @@ const creatorRoles: CreatorRoleListItem[] = [
 ];
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
+  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
 
 const renderList = async (ui: ReactNode) => {

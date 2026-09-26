@@ -47,8 +47,8 @@ import {
  * response as a bare `500 Internal Server Error` that no boundary can catch.
  *
  * Which boundary that is depends on where the read lives, so an admin API
- * outage is not this screen: session and tenant are read in
- * `(protected)/layout.tsx`, above this boundary, and
+ * outage is not this screen: session and tenant are read by the console chrome
+ * `(protected)/layout.tsx` renders, above this boundary, and
  * `app/[tenant_id]/error.tsx` answers instead —
  * `e2e/tests/admin.error-boundary.spec.ts` asserts that and the retry that
  * recovers from it. This screen is for a failure inside the pages below.

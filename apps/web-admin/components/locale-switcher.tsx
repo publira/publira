@@ -12,14 +12,11 @@ import { getLocale } from "../lib/locale";
 import { setAdminLocaleAction } from "../lib/locale-action";
 import { LOCALE_FIELD_NAME } from "../lib/locale-shared";
 import { getMessagesFor } from "../lib/messages";
+import { getTenantId } from "../lib/tenant-id";
 
 /** Header display-language control backed by the existing locale cookie. */
-export const AdminLocaleSwitcher = async ({
-  tenantId,
-}: {
-  tenantId: string;
-}) => {
-  const locale = await getLocale(tenantId);
+export const AdminLocaleSwitcher = async () => {
+  const locale = await getLocale(await getTenantId());
   const t = await getMessagesFor(locale);
   const label = t("locale.label");
 

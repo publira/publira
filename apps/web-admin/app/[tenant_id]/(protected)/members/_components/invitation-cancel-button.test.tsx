@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { ToastProvider } from "@publira/ui-components/toast";
 import {
@@ -15,7 +14,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { InvitationCancelButton } from "./invitation-cancel-button";
 
@@ -39,9 +38,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+  <AdminLocaleTestProvider locale="en">
     <ToastProvider>{children}</ToastProvider>
-  </AdminLocaleProvider>
+  </AdminLocaleTestProvider>
 );
 
 const renderButton = async () => {

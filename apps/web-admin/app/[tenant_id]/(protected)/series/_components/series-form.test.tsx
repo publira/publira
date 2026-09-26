@@ -14,7 +14,7 @@ import {
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 import { SeriesForm } from "./series-form";
@@ -57,9 +57,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-        {children}
-      </AdminLocaleProvider>
+      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 
@@ -575,7 +573,7 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
   mockLocale.current = "ja";
 
   renderBase(
-    <AdminLocaleProvider locale="ja" messages={sharedCatalog("ja")}>
+    <AdminLocaleTestProvider locale="ja">
       <SeriesForm
         action={action}
         creatorRoles={creatorRoles}
@@ -587,7 +585,7 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
         tagSuggestions={tagSuggestions}
         timeZone="UTC"
       />
-    </AdminLocaleProvider>
+    </AdminLocaleTestProvider>
   );
 
   expect(screen.getByRole("textbox", { name: /タイトル/u })).toBeDefined();

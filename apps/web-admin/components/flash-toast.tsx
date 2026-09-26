@@ -2,7 +2,13 @@
 
 import { useToastManager } from "@publira/ui-components/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useEffectEvent, useRef } from "react";
+import {
+  startTransition,
+  Suspense,
+  useEffect,
+  useEffectEvent,
+  useRef,
+} from "react";
 
 import type { AdminClientMessageKey } from "#lib/messages";
 
@@ -15,7 +21,7 @@ interface FlashToastProps {
   title?: string;
 }
 
-export const FlashToast = ({
+const FlashToastEffect = ({
   keyName = "created",
   message,
   title,
@@ -52,3 +58,14 @@ export const FlashToast = ({
 
   return null;
 };
+
+/**
+ * Pages place this beside their sections rather than inside one, and it reads
+ * the query string and the catalog, so it carries its own boundary: it renders
+ * nothing, and waiting here must not hold back the page around it.
+ */
+export const FlashToast = (props: FlashToastProps) => (
+  <Suspense fallback={null}>
+    <FlashToastEffect {...props} />
+  </Suspense>
+);

@@ -81,7 +81,7 @@ const adminCatalog = (locale: Locale): Promise<AdminMessages> => {
 
 /**
  * One catalog string for `app/[tenant_id]/error.tsx`, which renders when the
- * layout that seeds `AdminLocaleProvider` is what failed, so it has no provider
+ * layout that places `AdminLocaleProvider` is what failed, so it has no provider
  * to read `<ClientMessage>` from.
  *
  * The locale comes from the browser ({@link readClientLocale}) and the catalog

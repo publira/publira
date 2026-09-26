@@ -47,6 +47,16 @@ const MfaSectionSkeleton = () => (
   </div>
 );
 
+const EmailChangeFormSkeleton = () => (
+  <div className="grid gap-4">
+    <SkeletonLine className="h-5 w-40" />
+    <Skeleton className="h-16" />
+    <Skeleton className="h-16" />
+    <Skeleton className="h-20" />
+    <Skeleton className="ml-auto h-10 w-36" />
+  </div>
+);
+
 const MfaSection = async () => {
   const tenantId = await getTenantId();
   const result = await getAdminMfaStatus(tenantId);
@@ -92,7 +102,9 @@ const AccountSettingsPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <div className="grid gap-6">
-        <EmailChangeForm action={requestEmailChangeAction} />
+        <Suspense fallback={<EmailChangeFormSkeleton />}>
+          <EmailChangeForm action={requestEmailChangeAction} />
+        </Suspense>
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>

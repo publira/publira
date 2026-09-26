@@ -5,11 +5,21 @@ import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
+import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
 import { getLocale } from "../lib/locale";
-import { AdminLayout, AdminUser } from "./admin-layout";
+import { getTenantForSession } from "../lib/tenant-detail";
+import { getTenantThemeLogo } from "../lib/theme-settings";
+import {
+  AdminHeaderBrand,
+  AdminHeaderTenantName,
+  AdminLayout,
+  AdminSidebarBrandMark,
+  AdminSidebarContext,
+  AdminUser,
+} from "./admin-layout";
 import { AdminLocaleSwitcher } from "./locale-switcher";
 
 // `admin-brand-logo.test.tsx` covers how the alternative text is resolved.
@@ -54,8 +64,16 @@ vi.mock("../lib/logout-action", () => ({
   logoutAction: vi.fn(),
 }));
 
+vi.mock("../lib/tenant-detail", () => ({
+  getTenantForSession: vi.fn(),
+}));
+
 vi.mock("../lib/tenant-id", () => ({
-  getTenantId: vi.fn(),
+  getTenantId: vi.fn(() => Promise.resolve("tenant-id")),
+}));
+
+vi.mock("../lib/theme-settings", () => ({
+  getTenantThemeLogo: vi.fn(),
 }));
 
 vi.mock("./notification-bell", () => ({
@@ -89,40 +107,44 @@ const logo = {
   ],
 };
 
+beforeEach(() => {
+  vi.mocked(getTenantForSession).mockResolvedValue({ ok: true, tenant });
+  vi.mocked(getTenantThemeLogo).mockResolvedValue(null);
+});
+
 afterEach(() => {
   cleanup();
 });
 
+/** Every part of the chrome that names the tenant, as the layout places them. */
+const renderTenantChrome = async () =>
+  render(
+    <>
+      {await AdminSidebarBrandMark()}
+      {await AdminSidebarContext()}
+      {await AdminHeaderBrand()}
+      <p>{await AdminHeaderTenantName()}</p>
+    </>
+  );
+
 describe("AdminLayout", () => {
-  it("puts the logo in the header and the sidebar and keeps the tenant name", () => {
+  it("renders the screen before the tenant and the session are read", () => {
+    vi.mocked(getTenantForSession).mockReturnValue(
+      Promise.withResolvers<never>().promise
+    );
+
     render(
-      <AdminLayout logo={logo} tenant={tenant} tenantId="tenant-id">
+      <AdminLayout>
         <p>Body</p>
       </AdminLayout>
     );
 
-    expect(screen.getAllByAltText("Acme Publishing logo")).toHaveLength(2);
-    expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Publira")).toBeNull();
-    expect(screen.queryByText("Admin Console")).toBeNull();
-  });
-
-  it("makes the tenant name the brand and hides the product name when there is no logo", () => {
-    render(
-      <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
-        <p>Body</p>
-      </AdminLayout>
-    );
-
-    expect(screen.queryByAltText("Acme Publishing logo")).toBeNull();
-    expect(screen.queryByText("Publira")).toBeNull();
-    expect(screen.queryByText("Admin Console")).toBeNull();
-    expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
+    expect(screen.getByText("Body")).toBeDefined();
   });
 
   it("marks the navigation item for the screen the console is on", () => {
     render(
-      <AdminLayout logo={null} tenant={tenant} tenantId="tenant-id">
+      <AdminLayout>
         <p>Body</p>
       </AdminLayout>
     );
@@ -133,6 +155,39 @@ describe("AdminLayout", () => {
         .filter((link) => link.getAttribute("aria-current") === "page")
         .map((link) => link.getAttribute("href"))
     ).toEqual(["/series"]);
+  });
+});
+
+describe("the tenant chrome", () => {
+  it("puts the logo in the header and the sidebar and keeps the tenant name", async () => {
+    vi.mocked(getTenantThemeLogo).mockResolvedValue(logo);
+
+    await renderTenantChrome();
+
+    expect(screen.getAllByAltText("Acme Publishing logo")).toHaveLength(2);
+    expect(screen.getAllByText("Acme Publishing").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Publira")).toBeNull();
+    expect(screen.queryByText("Admin Console")).toBeNull();
+  });
+
+  it("makes the tenant name the brand and hides the product name when there is no logo", async () => {
+    await renderTenantChrome();
+
+    expect(screen.queryByAltText("Acme Publishing logo")).toBeNull();
+    expect(screen.queryByText("Publira")).toBeNull();
+    expect(screen.queryByText("Admin Console")).toBeNull();
+    expect(screen.getAllByText("Acme Publishing")).toHaveLength(2);
+  });
+
+  it("sends a session the API rejected back to login", async () => {
+    const rejected = { ok: false, requiresSignIn: true } as const;
+    vi.mocked(getTenantForSession).mockResolvedValue(rejected);
+    vi.mocked(redirectToLoginIfSessionRejected).mockRejectedValue(
+      new Error("NEXT_REDIRECT")
+    );
+
+    await expect(AdminHeaderTenantName()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirectToLoginIfSessionRejected).toHaveBeenCalledWith(rejected);
   });
 });
 
@@ -153,7 +208,7 @@ describe("AdminUser", () => {
         },
       });
 
-      render(await AdminUser({ logoutAction: () => Promise.resolve() }));
+      render(await AdminUser());
 
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }
@@ -169,7 +224,7 @@ describe("AdminLocaleSwitcher", () => {
     async (locale, expected) => {
       vi.mocked(getLocale).mockResolvedValue(locale);
 
-      render(await AdminLocaleSwitcher({ tenantId: "tenant-id" }));
+      render(await AdminLocaleSwitcher());
 
       expect(screen.getByRole("button", { name: expected })).toBeDefined();
     }
