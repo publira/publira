@@ -34,13 +34,13 @@ class HttpContentViewRepository implements ContentViewRepository {
   Future<void> _tail = Future.value();
 
   @override
-  Future<void> record(ContentViewKind kind, String publicId) {
-    final sent = _tail.then((_) => _send(kind, publicId));
+  Future<void> record(ContentViewKind kind, String targetId) {
+    final sent = _tail.then((_) => _send(kind, targetId));
     _tail = sent.then<void>((_) {}, onError: (Object _) {});
     return sent;
   }
 
-  Future<void> _send(ContentViewKind kind, String publicId) async {
+  Future<void> _send(ContentViewKind kind, String targetId) async {
     final tenantId = await _tenants.resolve();
     final stored = await _anonymousIds.read();
     final anonymousId = stored != null && stored.isLiveAt(_now())
@@ -50,7 +50,7 @@ class HttpContentViewRepository implements ContentViewRepository {
       _procedure,
       {
         'tenant': {'tenantId': tenantId},
-        'target': {'type': kind.wireValue, 'publicId': publicId},
+        'target': {'type': kind.wireValue, 'id': targetId},
         'surface': appClientSurface,
       },
       tenantId: tenantId,

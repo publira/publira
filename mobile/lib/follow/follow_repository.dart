@@ -7,7 +7,8 @@ import 'package:publira/models/follow.dart';
 /// them across their devices and the site, so a device that answered it on its
 /// own would show a state the next screen contradicts.
 abstract class FollowRepository {
-  /// Whether the signed-in reader follows [targetId].
+  /// Whether the signed-in reader follows the series or creator whose
+  /// internal id is [targetId].
   ///
   /// A reader who is signed out follows nothing, so this answers `false`
   /// without a request. Throws [FollowFailure].

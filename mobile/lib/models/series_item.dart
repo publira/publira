@@ -29,12 +29,17 @@ class EyeCatchVariant {
 class SeriesCreator {
   const SeriesCreator({
     required this.id,
+    this.internalId = '',
     required this.name,
     this.roleName = '',
   });
 
   /// Public id (`public_id`), which addresses the creator.
   final String id;
+
+  /// Internal id (`id`), which following the creator takes. Empty on a copy
+  /// saved before the id was kept.
+  final String internalId;
   final String name;
 
   /// The role this credit is held in. Empty on a credit written before the
@@ -167,6 +172,7 @@ class SeriesTag {
 class SeriesItem {
   const SeriesItem({
     required this.id,
+    this.internalId = '',
     required this.title,
     required this.description,
     this.episodeCount = 0,
@@ -186,6 +192,10 @@ class SeriesItem {
 
   /// Public id (`public_id`), used as the route parameter.
   final String id;
+
+  /// Internal id (`id`), which the requests that act on the series take.
+  /// Empty on a copy saved before the id was kept.
+  final String internalId;
   final String title;
   final String description;
   final int episodeCount;
@@ -251,6 +261,7 @@ class SeriesItem {
   }) {
     return SeriesItem(
       id: id,
+      internalId: internalId,
       title: title,
       description: description,
       episodeCount: episodeCount ?? this.episodeCount,
@@ -302,6 +313,7 @@ enum EpisodePurchaseSurface {
 class EpisodeItem {
   const EpisodeItem({
     required this.id,
+    this.internalId = '',
     required this.title,
     required this.orderIndex,
     required this.price,
@@ -309,7 +321,12 @@ class EpisodeItem {
     this.ratingCount = 0,
   });
 
+  /// Public id (`public_id`), used as the route parameter.
   final String id;
+
+  /// Internal id (`id`), which the requests that act on the episode take.
+  /// Empty on a copy saved before the id was kept.
+  final String internalId;
   final String title;
   final int orderIndex;
   final int price;

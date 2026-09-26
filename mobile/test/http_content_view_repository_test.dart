@@ -45,14 +45,17 @@ void main() {
   });
 
   test('a series view names the series, the tenant, and the app', () async {
-    await repository().record(ContentViewKind.series, seriesId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
 
     final request = server.requestsTo('RecordContentView').single;
     expect(request.body, {
       'tenant': {'tenantId': server.tenantId},
       'target': {
         'type': 'CONTENT_VIEW_TARGET_TYPE_SERIES',
-        'publicId': seriesId,
+        'id': ConnectFixtureServer.internalIdOf(seriesId),
       },
       'surface': 'CLIENT_SURFACE_APP',
     });
@@ -60,19 +63,25 @@ void main() {
   });
 
   test('an episode view names the episode', () async {
-    await repository().record(ContentViewKind.episode, episodeId);
+    await repository().record(
+      ContentViewKind.episode,
+      ConnectFixtureServer.internalIdOf(episodeId),
+    );
 
     final request = server.requestsTo('RecordContentView').single;
     expect(request.body['target'], {
       'type': 'CONTENT_VIEW_TARGET_TYPE_EPISODE',
-      'publicId': episodeId,
+      'id': ConnectFixtureServer.internalIdOf(episodeId),
     });
   });
 
   test('a signed-in reader is attributed by the session', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
-    await repository().record(ContentViewKind.series, seriesId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
 
     final request = server.requestsTo('RecordContentView').single;
     expect(request.headers['authorization'], 'Bearer $accessToken');
@@ -88,8 +97,14 @@ void main() {
   test('a signed-out reader keeps the identifier the API hands over', () async {
     server.mintedAnonymousIdCookie = plainCookie;
 
-    await repository().record(ContentViewKind.series, seriesId);
-    await repository().record(ContentViewKind.episode, episodeId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
+    await repository().record(
+      ContentViewKind.episode,
+      ConnectFixtureServer.internalIdOf(episodeId),
+    );
 
     expect(
       anonymousIds.anonymousId?.value,
@@ -114,8 +129,14 @@ void main() {
       final views = repository();
 
       await Future.wait([
-        views.record(ContentViewKind.series, seriesId),
-        views.record(ContentViewKind.episode, episodeId),
+        views.record(
+          ContentViewKind.series,
+          ConnectFixtureServer.internalIdOf(seriesId),
+        ),
+        views.record(
+          ContentViewKind.episode,
+          ConnectFixtureServer.internalIdOf(episodeId),
+        ),
       ]);
 
       final [first, second] = server.requestsTo('RecordContentView').toList();
@@ -131,11 +152,17 @@ void main() {
     server.contentViewStatus = HttpStatus.serviceUnavailable;
     final views = repository();
     await expectLater(
-      views.record(ContentViewKind.series, seriesId),
+      views.record(
+        ContentViewKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       throwsA(isA<ConnectException>()),
     );
     server.contentViewStatus = HttpStatus.ok;
-    await views.record(ContentViewKind.episode, episodeId);
+    await views.record(
+      ContentViewKind.episode,
+      ConnectFixtureServer.internalIdOf(episodeId),
+    );
 
     expect(server.requestsTo('RecordContentView'), hasLength(2));
   });
@@ -146,7 +173,10 @@ void main() {
       expiresAt: now.subtract(const Duration(seconds: 1)),
     );
 
-    await repository().record(ContentViewKind.series, seriesId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
 
     final request = server.requestsTo('RecordContentView').single;
     expect(request.headers[HttpHeaders.cookieHeader], isNull);
@@ -156,13 +186,19 @@ void main() {
     server.mintedAnonymousIdCookie =
         'publira_aid=${ConnectFixtureServer.mintedAnonymousId}; Path=/';
 
-    await repository().record(ContentViewKind.series, seriesId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
 
     expect(anonymousIds.anonymousId, isNull);
   });
 
   test('a Secure identifier is not kept over plain HTTP', () async {
-    await repository().record(ContentViewKind.series, seriesId);
+    await repository().record(
+      ContentViewKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
 
     expect(anonymousIds.anonymousId, isNull);
   });
@@ -171,7 +207,10 @@ void main() {
     server.contentViewStatus = HttpStatus.serviceUnavailable;
 
     await expectLater(
-      repository().record(ContentViewKind.series, seriesId),
+      repository().record(
+        ContentViewKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       throwsA(isA<ConnectException>()),
     );
   });

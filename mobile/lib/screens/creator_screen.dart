@@ -181,7 +181,7 @@ class _CreatorHeader extends StatelessWidget {
             const SizedBox(height: 16),
             FollowControl(
               kind: FollowTargetKind.creator,
-              targetId: creator.id,
+              targetId: creator.internalId,
               targetName: creator.name,
             ),
           ],

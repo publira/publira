@@ -72,10 +72,12 @@ abstract class PurchaseRepository {
   Future<AppPurchaseRoute> appPurchaseRoute();
 
   /// What the reader in front of the app may do with each published episode
-  /// of [seriesPublicId], keyed by episode public id.
+  /// of the series [seriesInternalId] names, keyed by episode public id.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
-  Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(String seriesPublicId);
+  Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
+    String seriesInternalId,
+  );
 
   /// The series public id [episodePublicId] belongs to, or `null` when the
   /// episode is not public. A checkout return names the episode alone, and
@@ -84,21 +86,21 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<String?> seriesOfEpisode(String episodePublicId);
 
-  /// The checkout page the signed-in reader pays for [episodePublicId] on,
-  /// built to return to the app.
+  /// The checkout page the signed-in reader pays for the episode
+  /// [episodeInternalId] names on, built to return to the app.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
   /// there is nothing to pay for.
-  Future<Uri> startEpisodeCheckout(String episodePublicId);
+  Future<Uri> startEpisodeCheckout(String episodeInternalId);
 
-  /// Opens a purchase of [episodePublicId] through [store] for the signed-in
-  /// reader.
+  /// Opens a purchase of the episode [episodeInternalId] names through [store]
+  /// for the signed-in reader.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
   /// there is nothing to pay for, and [PurchaseFailureKind.notSold] when the
   /// tenant does not sell it through [store] right now.
   Future<StorePurchaseIntent> startStorePurchase(
-    String episodePublicId,
+    String episodeInternalId,
     InAppPurchaseStore store,
   );
 

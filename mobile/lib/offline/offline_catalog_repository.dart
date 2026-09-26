@@ -252,8 +252,9 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<int?> getReadingPosition(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     final reader = _readerId();
     // A position belongs to a member, so there is neither one to ask for nor
     // one to answer with while nobody is signed in.
@@ -264,6 +265,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       final position = await _origin.getReadingPosition(
         seriesPublicId,
         episodePublicId,
+        episodeInternalId: episodeInternalId,
       );
       // Read before the flush this answer starts, which may send it.
       final queued = await outbox.queuedPage(reader, episodePublicId);
@@ -307,8 +309,9 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<void> saveReadingPosition(
     String seriesPublicId,
     String episodePublicId,
-    int pageIndex,
-  ) async {
+    int pageIndex, {
+    required String episodeInternalId,
+  }) async {
     final reader = _readerId();
     if (reader.isEmpty) {
       return;
@@ -322,6 +325,7 @@ class OfflineCatalogRepository implements CatalogRepository {
     final progress = UnsentProgress(
       readerId: reader,
       episodeId: episodePublicId,
+      episodeInternalId: episodeInternalId,
       seriesId: seriesPublicId,
       pageIndex: pageIndex,
     );
@@ -334,6 +338,7 @@ class OfflineCatalogRepository implements CatalogRepository {
           seriesPublicId,
           episodePublicId,
           pageIndex,
+          episodeInternalId: episodeInternalId,
         ),
       );
     } on CatalogFailure catch (failure) {
@@ -349,21 +354,31 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// Sends the finish to the API, and queues it for [outbox] to send when the
   /// API cannot be reached.
   @override
-  Future<void> markEpisodeAsRead(String episodePublicId) async {
+  Future<void> markEpisodeAsRead(
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     final reader = _readerId();
     // A guest's finish is recorded nowhere, and the API is asked nothing.
     if (reader.isEmpty) {
-      return _origin.markEpisodeAsRead(episodePublicId);
+      return _origin.markEpisodeAsRead(
+        episodePublicId,
+        episodeInternalId: episodeInternalId,
+      );
     }
     final progress = UnsentProgress(
       readerId: reader,
       episodeId: episodePublicId,
+      episodeInternalId: episodeInternalId,
       finished: true,
     );
     try {
       await outbox.send(
         progress,
-        () => _origin.markEpisodeAsRead(episodePublicId),
+        () => _origin.markEpisodeAsRead(
+          episodePublicId,
+          episodeInternalId: episodeInternalId,
+        ),
       );
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -379,12 +394,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   // unlike catalog reads they are never served from or queued into offline
   // storage.
   @override
-  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) =>
-      _origin.getEpisodeReaction(episodePublicId);
+  Future<EpisodeReaction?> getEpisodeReaction(String episodeInternalId) =>
+      _origin.getEpisodeReaction(episodeInternalId);
 
   @override
-  Future<EpisodeReaction> reactToEpisode(String episodePublicId) =>
-      _origin.reactToEpisode(episodePublicId);
+  Future<EpisodeReaction> reactToEpisode(String episodeInternalId) =>
+      _origin.reactToEpisode(episodeInternalId);
 
   /// The reader's continue-reading row, which only the API can answer.
   ///

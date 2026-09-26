@@ -486,8 +486,9 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<int?> getReadingPosition(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     final error = readingPositionError;
     if (error != null) {
       throw error;
@@ -499,8 +500,9 @@ class FakeCatalogRepository implements CatalogRepository {
   Future<void> saveReadingPosition(
     String seriesPublicId,
     String episodePublicId,
-    int pageIndex,
-  ) async {
+    int pageIndex, {
+    required String episodeInternalId,
+  }) async {
     final error = readingPositionError;
     if (error != null) {
       throw error;
@@ -512,7 +514,10 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<void> markEpisodeAsRead(String episodePublicId) async {
+  Future<void> markEpisodeAsRead(
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     markedRead.add(episodePublicId);
     final error = markReadError;
     if (error != null) {
@@ -521,7 +526,7 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) async {
+  Future<EpisodeReaction?> getEpisodeReaction(String episodeInternalId) async {
     final gate = reactionGate;
     if (gate != null) {
       return gate.future;
@@ -530,17 +535,17 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
-    return reactions[episodePublicId];
+    return reactions[episodeInternalId];
   }
 
   @override
-  Future<EpisodeReaction> reactToEpisode(String episodePublicId) async {
+  Future<EpisodeReaction> reactToEpisode(String episodeInternalId) async {
     final error = reactionError;
     if (error != null) {
       throw error;
     }
     final current =
-        reactions[episodePublicId] ??
+        reactions[episodeInternalId] ??
         const EpisodeReaction(
           score: 0,
           ratingCount: 0,
@@ -554,7 +559,7 @@ class FakeCatalogRepository implements CatalogRepository {
       ratingCount: current.ratingCount + (current.score == 0 ? 1 : 0),
       allowsMultiplePresses: current.allowsMultiplePresses,
     );
-    reactions = {...reactions, episodePublicId: next};
+    reactions = {...reactions, episodeInternalId: next};
     return next;
   }
 
@@ -654,15 +659,31 @@ final fixtureEyeCatchVariants = <EyeCatchVariant>[
 /// role. The second series is credited to nobody, which is what leaves its
 /// credit line off the screen.
 const fixtureCreators = <SeriesCreator>[
-  SeriesCreator(id: 'SeedAUTHAAA1', name: 'Seed Author 001', roleName: 'Story'),
-  SeriesCreator(id: 'SeedAUTHAAA2', name: 'Seed Author 002', roleName: 'Art'),
-  SeriesCreator(id: 'SeedAUTHAAA3', name: 'Seed Author 003', roleName: 'Art'),
+  SeriesCreator(
+    id: 'SeedAUTHAAA1',
+    internalId: 'internal-SeedAUTHAAA1',
+    name: 'Seed Author 001',
+    roleName: 'Story',
+  ),
+  SeriesCreator(
+    id: 'SeedAUTHAAA2',
+    internalId: 'internal-SeedAUTHAAA2',
+    name: 'Seed Author 002',
+    roleName: 'Art',
+  ),
+  SeriesCreator(
+    id: 'SeedAUTHAAA3',
+    internalId: 'internal-SeedAUTHAAA3',
+    name: 'Seed Author 003',
+    roleName: 'Art',
+  ),
 ];
 
 /// The first author credited on [fixtureSeries]' first series, as the
 /// author's own page describes them.
 const fixturePublishedCreator = PublishedCreator(
   id: 'SeedAUTHAAA1',
+  internalId: 'internal-SeedAUTHAAA1',
   name: 'Seed Author 001',
   profileText: 'Profile text for Seed Author 001',
   seriesCount: 1,
@@ -685,6 +706,7 @@ const fixtureGenres = <SeriesGenre>[
 final fixtureSeries = <SeriesItem>[
   SeriesItem(
     id: 'SeedSERSAAA1',
+    internalId: 'internal-SeedSERSAAA1',
     title: 'Seed Series 001',
     description: 'A published series of Seed Tenant.',
     episodeCount: 10,
@@ -699,6 +721,7 @@ final fixtureSeries = <SeriesItem>[
   ),
   const SeriesItem(
     id: 'series-kitchen',
+    internalId: 'internal-series-kitchen',
     title: 'The Little Kitchen',
     description: 'Everyday cooking, one plate at a time.',
     episodeCount: 8,
@@ -749,17 +772,42 @@ const fixtureUnknownRatedSeries = SeriesItem(
   ageRating: SeriesAgeRating.unknown,
 );
 
+/// The internal id a fixture record answers with beside its public id
+/// [publicId], kept apart from it so a request sent with the wrong one fails.
+String fixtureInternalId(String publicId) => 'internal-$publicId';
+
 /// [paidSurface] is where the paid episode, the last one, may be bought.
 SeriesDetail fixtureDetail(
   SeriesItem item, {
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
 }) {
   return SeriesDetail(
-    series: item,
+    series: item.internalId.isEmpty
+        ? SeriesItem(
+            id: item.id,
+            internalId: fixtureInternalId(item.id),
+            title: item.title,
+            description: item.description,
+            episodeCount: item.episodeCount,
+            labelId: item.labelId,
+            labelName: item.labelName,
+            creators: item.creators,
+            eyeCatchVariants: item.eyeCatchVariants,
+            imageRequestHeaders: item.imageRequestHeaders,
+            status: item.status,
+            scheduleWeekdays: item.scheduleWeekdays,
+            ageRating: item.ageRating,
+            genres: item.genres,
+            tags: item.tags,
+            ratingAverage: item.ratingAverage,
+            ratingCount: item.ratingCount,
+          )
+        : item,
     episodes: [
       for (var i = 1; i <= item.episodeCount; i++)
         EpisodeItem(
           id: '${item.id}-ep-$i',
+          internalId: fixtureInternalId('${item.id}-ep-$i'),
           title: '${item.title} #$i',
           orderIndex: i,
           price: i == item.episodeCount ? 500 : 0,

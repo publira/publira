@@ -90,7 +90,7 @@ class HttpFollowRepository implements FollowRepository {
       final body = await _client.unary(
         procedure,
         {
-          'target': {'publicId': targetId, 'type': kind.wireValue},
+          'target': {'id': targetId, 'type': kind.wireValue},
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },
@@ -145,12 +145,14 @@ class HttpFollowRepository implements FollowRepository {
   MyFollow? _follow(Map<String, Object?> json) {
     final kind = FollowTargetKind.fromWire(json['targetType']);
     final targetId = _readString(json, 'targetPublicId');
-    if (kind == null || targetId.isEmpty) {
+    final targetInternalId = _readString(json, 'targetId');
+    if (kind == null || targetId.isEmpty || targetInternalId.isEmpty) {
       return null;
     }
     return MyFollow(
       kind: kind,
       targetId: targetId,
+      targetInternalId: targetInternalId,
       followedAt: _readInstant(json, 'followedAt'),
     );
   }

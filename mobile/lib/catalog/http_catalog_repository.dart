@@ -289,6 +289,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final creator = _expectMap(body['creator'], 'creator');
       return SeriesCreator(
         id: _readString(creator, 'publicId', 'creator'),
+        internalId: _readString(creator, 'id', 'creator'),
         name: _readString(creator, 'name', 'creator'),
       );
     } on ConnectException catch (error) {
@@ -369,6 +370,7 @@ class HttpCatalogRepository implements CatalogRepository {
     final iconUrl = _readString(json, 'iconImageUrl', path);
     return PublishedCreator(
       id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      internalId: _readString(json, 'id', path),
       name: _readString(json, 'name', path),
       profileText: _readString(json, 'profileText', path),
       // protojson omits an empty string, which is a creator with no portrait.
@@ -593,8 +595,9 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<int?> getReadingPosition(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     // A guest holds no session, and every one of these RPCs answers a request
     // without one `unauthenticated`. Asking anyway would spend a round trip on
     // the answer the viewer already has: the first page.
@@ -613,7 +616,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _client.unary(
         _readingPositionProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },
@@ -636,8 +639,9 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<void> saveReadingPosition(
     String seriesPublicId,
     String episodePublicId,
-    int pageIndex,
-  ) async {
+    int pageIndex, {
+    required String episodeInternalId,
+  }) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
       return;
@@ -647,7 +651,7 @@ class HttpCatalogRepository implements CatalogRepository {
       await _client.unary(
         _saveReadingPositionProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'pageIndex': pageIndex,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
@@ -661,7 +665,10 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<void> markEpisodeAsRead(String episodePublicId) async {
+  Future<void> markEpisodeAsRead(
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
       return;
@@ -671,7 +678,7 @@ class HttpCatalogRepository implements CatalogRepository {
       await _client.unary(
         _markReadProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },
@@ -684,7 +691,7 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId) async {
+  Future<EpisodeReaction?> getEpisodeReaction(String episodeInternalId) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
       return null;
@@ -694,7 +701,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _client.unary(
         _myEpisodeRatingProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },
@@ -708,7 +715,7 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<EpisodeReaction> reactToEpisode(String episodePublicId) async {
+  Future<EpisodeReaction> reactToEpisode(String episodeInternalId) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
       throw const CatalogFailure(
@@ -721,7 +728,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _client.unary(
         _rateEpisodeProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'presses': 1,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
@@ -950,6 +957,7 @@ class HttpCatalogRepository implements CatalogRepository {
     final label = rawLabel == null ? null : _expectMap(rawLabel, '$path.label');
     return SeriesItem(
       id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      internalId: _readString(json, 'id', path),
       title: _readString(json, 'title', path),
       description: _readString(json, 'synopsis', path),
       labelId: label == null
@@ -1074,6 +1082,7 @@ class HttpCatalogRepository implements CatalogRepository {
           final rawRole = json['role'];
           return SeriesCreator(
             id: _readString(json, 'publicId', creatorPath),
+            internalId: _readString(json, 'id', creatorPath),
             name: _readString(json, 'name', creatorPath),
             // protojson omits an unset message, which is a credit written
             // before the tenant curated any role.
@@ -1131,6 +1140,7 @@ class HttpCatalogRepository implements CatalogRepository {
   EpisodeItem _episodeFromJson(Map<String, Object?> json, String path) {
     return EpisodeItem(
       id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      internalId: _readString(json, 'id', path),
       title: _readString(json, 'title', path),
       orderIndex: _readInt(json, 'orderIndex', path),
       price: _readInt(json, 'price', path),

@@ -23,7 +23,7 @@ class FollowControl extends StatefulWidget {
 
   final FollowTargetKind kind;
 
-  /// Public id of the series or author this control acts on.
+  /// Internal id of the series or author this control acts on.
   final String targetId;
 
   /// What the target is called, which is the only thing telling one control

@@ -14,11 +14,11 @@ enum ContentViewKind {
 /// Where the app reports that a reader opened a series or an episode, which
 /// the tenant's rankings and content statistics are built from.
 abstract class ContentViewRepository {
-  /// Records one view of the [kind] whose public id is [publicId].
+  /// Records one view of the [kind] whose internal id is [targetId].
   ///
   /// Throws whatever the call failed with; the caller decides that a view
   /// which could not be recorded is simply lost.
-  Future<void> record(ContentViewKind kind, String publicId);
+  Future<void> record(ContentViewKind kind, String targetId);
 }
 
 /// Looks up the [ContentViewRepository] installed by [ContentViewScope].

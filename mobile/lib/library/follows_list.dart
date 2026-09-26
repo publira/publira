@@ -287,7 +287,7 @@ class _FollowRow extends StatelessWidget {
       subtitle: Text(details.join(' · ')),
       trailing: FollowControl(
         kind: follow.kind,
-        targetId: follow.targetId,
+        targetId: follow.targetInternalId,
         targetName: target.name,
         // Every row of this list is followed, so the control has its state
         // without asking for it once per row.

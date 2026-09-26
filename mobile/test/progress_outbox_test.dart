@@ -38,8 +38,9 @@ class _GatedCatalog extends FakeCatalogRepository {
   Future<void> saveReadingPosition(
     String seriesPublicId,
     String episodePublicId,
-    int pageIndex,
-  ) async {
+    int pageIndex, {
+    required String episodeInternalId,
+  }) async {
     final gate = positionGate;
     if (gate != null && (gatedPage == null || gatedPage == pageIndex)) {
       await gate.future;
@@ -51,17 +52,24 @@ class _GatedCatalog extends FakeCatalogRepository {
       seriesPublicId,
       episodePublicId,
       pageIndex,
+      episodeInternalId: episodeInternalId,
     );
   }
 
   @override
-  Future<void> markEpisodeAsRead(String episodePublicId) {
+  Future<void> markEpisodeAsRead(
+    String episodePublicId, {
+    required String episodeInternalId,
+  }) {
     final failsFor = markReadFailsFor;
     if (failsFor != null && !failsFor.contains(episodePublicId)) {
       markedRead.add(episodePublicId);
       return Future<void>.value();
     }
-    return super.markEpisodeAsRead(episodePublicId);
+    return super.markEpisodeAsRead(
+      episodePublicId,
+      episodeInternalId: episodeInternalId,
+    );
   }
 }
 
@@ -70,6 +78,7 @@ void main() {
     const queued = UnsentProgress(
       readerId: _reader,
       episodeId: _episodeId,
+      episodeInternalId: 'internal-$_episodeId',
       seriesId: _seriesId,
       pageIndex: 2,
     );
@@ -80,6 +89,7 @@ void main() {
             const UnsentProgress(
               readerId: _reader,
               episodeId: _episodeId,
+              episodeInternalId: 'internal-$_episodeId',
               finished: true,
             ),
           )
@@ -87,6 +97,7 @@ void main() {
             const UnsentProgress(
               readerId: _reader,
               episodeId: _episodeId,
+              episodeInternalId: 'internal-$_episodeId',
               seriesId: _seriesId,
               pageIndex: 5,
             ),
@@ -103,6 +114,7 @@ void main() {
             const UnsentProgress(
               readerId: _reader,
               episodeId: _episodeId,
+              episodeInternalId: 'internal-$_episodeId',
               seriesId: _seriesId,
               pageIndex: 4,
             ),
@@ -118,6 +130,7 @@ void main() {
         const UnsentProgress(
           readerId: _reader,
           episodeId: _episodeId,
+          episodeInternalId: 'internal-$_episodeId',
           seriesId: _seriesId,
           pageIndex: 7,
         ),
@@ -151,7 +164,10 @@ void main() {
     test('a finish made with the API gone is kept, not reported', () async {
       origin.markReadError = _network;
 
-      await build().markEpisodeAsRead(_episodeId);
+      await build().markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       expect(await library.readUnsentProgress(readerId: _reader), [
         isA<UnsentProgress>()
@@ -163,7 +179,10 @@ void main() {
     test('a finish is sent once the API is back, then dropped', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.markReadError = null;
       await catalog.outbox.flush();
@@ -175,8 +194,18 @@ void main() {
     test('only the last page turned to with the API gone is sent', () async {
       final catalog = build();
       origin.readingPositionError = _network;
-      await catalog.saveReadingPosition(_seriesId, _episodeId, 1);
-      await catalog.saveReadingPosition(_seriesId, _episodeId, 2);
+      await catalog.saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        1,
+        episodeInternalId: 'internal-$_episodeId',
+      );
+      await catalog.saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        2,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.readingPositionError = null;
       await catalog.outbox.flush();
@@ -188,7 +217,10 @@ void main() {
     test('a read the API answers sends what was queued', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.markReadError = null;
       await catalog.listSeries();
@@ -200,7 +232,10 @@ void main() {
     test('a flush that cannot reach the API keeps the queue', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       await catalog.outbox.flush();
 
@@ -210,7 +245,10 @@ void main() {
     test('a session the API refused keeps the queue', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.markReadError = _sessionExpired;
       await catalog.outbox.flush();
@@ -221,7 +259,10 @@ void main() {
     test('a send the API refuses is dropped', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.markReadError = _refused;
       await catalog.outbox.flush();
@@ -232,8 +273,14 @@ void main() {
     test('a server fault keeps the entry and lets the next one go', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
-      await catalog.markEpisodeAsRead(_otherEpisodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
+      await catalog.markEpisodeAsRead(
+        _otherEpisodeId,
+        episodeInternalId: 'internal-$_otherEpisodeId',
+      );
 
       origin
         ..markReadError = _unexpected
@@ -254,11 +301,23 @@ void main() {
       final catalog = build();
       origin.readingPositions = {episodeKey(_seriesId, _episodeId): 3};
       origin.readingPositionError = _network;
-      await catalog.saveReadingPosition(_seriesId, _episodeId, 10);
+      await catalog.saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        10,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.readingPositionError = null;
 
-      expect(await catalog.getReadingPosition(_seriesId, _episodeId), 10);
+      expect(
+        await catalog.getReadingPosition(
+          _seriesId,
+          _episodeId,
+          episodeInternalId: 'internal-$_episodeId',
+        ),
+        10,
+      );
     });
 
     test(
@@ -266,14 +325,24 @@ void main() {
       () async {
         final catalog = build();
         origin.readingPositionError = _network;
-        await catalog.saveReadingPosition(_seriesId, _episodeId, 1);
+        await catalog.saveReadingPosition(
+          _seriesId,
+          _episodeId,
+          1,
+          episodeInternalId: 'internal-$_episodeId',
+        );
         origin.readingPositionError = null;
 
         final gate = origin.positionGate = Completer<void>();
         origin.gatedPage = 1;
         final flushed = catalog.outbox.flush();
         await pumpEventQueue();
-        final live = catalog.saveReadingPosition(_seriesId, _episodeId, 2);
+        final live = catalog.saveReadingPosition(
+          _seriesId,
+          _episodeId,
+          2,
+          episodeInternalId: 'internal-$_episodeId',
+        );
         await pumpEventQueue();
         gate.complete();
         await Future.wait([flushed, live]);
@@ -286,10 +355,20 @@ void main() {
     test('a page recorded online drops an older one still queued', () async {
       final catalog = build();
       origin.readingPositionError = _network;
-      await catalog.saveReadingPosition(_seriesId, _episodeId, 1);
+      await catalog.saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        1,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.readingPositionError = null;
-      await catalog.saveReadingPosition(_seriesId, _episodeId, 3);
+      await catalog.saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        3,
+        episodeInternalId: 'internal-$_episodeId',
+      );
       await catalog.outbox.flush();
 
       expect(origin.readingPositions, {episodeKey(_seriesId, _episodeId): 3});
@@ -300,7 +379,12 @@ void main() {
       () async {
         final catalog = build();
         origin.readingPositionError = _network;
-        await catalog.saveReadingPosition(_seriesId, _episodeId, 1);
+        await catalog.saveReadingPosition(
+          _seriesId,
+          _episodeId,
+          1,
+          episodeInternalId: 'internal-$_episodeId',
+        );
         origin.readingPositionError = null;
 
         final gate = origin.positionGate = Completer<void>();
@@ -310,6 +394,7 @@ void main() {
           const UnsentProgress(
             readerId: _reader,
             episodeId: _episodeId,
+            episodeInternalId: 'internal-$_episodeId',
             seriesId: _seriesId,
             pageIndex: 2,
           ),
@@ -327,7 +412,10 @@ void main() {
     test("another reader's queue is never sent under this session", () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       origin.markReadError = null;
       readerId = _otherReader;
@@ -342,9 +430,15 @@ void main() {
     test('signing out drops only that reader\'s queue', () async {
       final catalog = build();
       origin.markReadError = _network;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
       readerId = _otherReader;
-      await catalog.markEpisodeAsRead(_episodeId);
+      await catalog.markEpisodeAsRead(
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       await catalog.outbox.forget(_reader);
 
@@ -360,7 +454,10 @@ void main() {
       origin.markReadError = _network;
 
       await expectLater(
-        build().markEpisodeAsRead(_episodeId),
+        build().markEpisodeAsRead(
+          _episodeId,
+          episodeInternalId: 'internal-$_episodeId',
+        ),
         throwsA(isA<CatalogFailure>()),
       );
       expect(library.unsent, isEmpty);

@@ -67,7 +67,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     try {
       final reaction = await CatalogScope.of(
         context,
-      ).getEpisodeReaction(widget.episode.id);
+      ).getEpisodeReaction(widget.episode.internalId);
       if (!_isCurrent(request)) {
         return;
       }
@@ -93,7 +93,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     try {
       final reaction = await CatalogScope.of(
         context,
-      ).reactToEpisode(widget.episode.id);
+      ).reactToEpisode(widget.episode.internalId);
       if (!_isCurrent(request)) {
         return;
       }

@@ -30,6 +30,7 @@ void main() {
       UnsentProgress(
         readerId: fakeSession.userPublicId,
         episodeId: _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
         finished: true,
       ),
     );

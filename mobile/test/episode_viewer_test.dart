@@ -869,7 +869,7 @@ void main() {
     tester,
   ) async {
     catalog.reactions = {
-      episodeId: const EpisodeReaction(
+      fixtureInternalId(episodeId): const EpisodeReaction(
         score: 0,
         ratingCount: 0,
         allowsMultiplePresses: false,
@@ -900,7 +900,7 @@ void main() {
         .call();
     await tester.pumpAndSettle();
 
-    expect(catalog.reactions[episodeId]?.score, 5);
+    expect(catalog.reactions[fixtureInternalId(episodeId)]?.score, 5);
     expect(find.text('1 reader reacted'), findsOneWidget);
     expect(
       tester

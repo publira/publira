@@ -120,6 +120,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// signed in now.
   EpisodeReadRecorder? _recorder;
 
+  /// The episode's internal id, which the saver and the recorder send. Known
+  /// once the body has been read, which is before either has a page to send.
+  String _episodeInternalId = '';
+
   /// Whether the reader asked to give a birth date, which the account tab
   /// takes, and whether this tab has since gone off screen for it. The date is
   /// read back once the tab is on screen again.
@@ -170,10 +174,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         widget.seriesId,
         widget.episodeId,
         pageIndex,
+        episodeInternalId: _episodeInternalId,
       ),
     );
     _recorder = EpisodeReadRecorder(
-      send: () => catalog.markEpisodeAsRead(widget.episodeId),
+      send: () => catalog.markEpisodeAsRead(
+        widget.episodeId,
+        episodeInternalId: _episodeInternalId,
+      ),
     );
     _future = _load(
       catalog,
@@ -265,9 +273,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   /// The body and the page to open it on.
   ///
-  /// Both reads are started before either is awaited: the position does not
-  /// depend on the body, and a reader made to wait out two round trips in a
-  /// row would see the first page later for it.
+  /// The position is read once the body is: the API knows the episode by the
+  /// internal id the body read returns.
   ///
   /// [confirmPurchase] reads a body that is still locked again after each of
   /// [checkoutConfirmationDelays], for a reader the browser has just sent
@@ -277,7 +284,6 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     AuthController auth, {
     bool confirmPurchase = false,
   }) async {
-    final position = _savedPageIndex(catalog);
     var detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
     if (confirmPurchase) {
       for (final delay in checkoutConfirmationDelays) {
@@ -291,10 +297,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
       }
     }
-    final saved = await position;
     if (detail == null) {
       return null;
     }
+    _episodeInternalId = detail.episode.internalId;
+    final saved = await _savedPageIndex(catalog);
     // Asked only where the answer decides what is shown: a rating to gate, or
     // a body withheld over an age.
     final age =
@@ -331,6 +338,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return await catalog.getReadingPosition(
         widget.seriesId,
         widget.episodeId,
+        episodeInternalId: _episodeInternalId,
       );
     } on CatalogFailure {
       return null;
@@ -421,7 +429,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
                   provenRating: open.provenRating,
                   child: ContentViewRecorder(
                     kind: ContentViewKind.episode,
-                    publicId: open.detail.episode.id,
+                    targetId: open.detail.episode.internalId,
                     child: _body(messages, open),
                   ),
                 ),
@@ -497,6 +505,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
+            episodeInternalId: detail.episode.internalId,
             price: detail.episode.price,
             onAlreadyPurchased: _reload,
             onStorePurchase: () => context.pushReplacementInTab(

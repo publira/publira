@@ -77,12 +77,12 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   @override
   Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
-    String seriesPublicId,
+    String seriesInternalId,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_accessProcedure, {
-        'seriesPublicId': seriesPublicId,
+        'seriesId': seriesInternalId,
         'surface': appClientSurface,
         'tenant': {'tenantId': tenantId},
       }, tenantId: tenantId);
@@ -136,7 +136,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<Uri> startEpisodeCheckout(String episodePublicId) async {
+  Future<Uri> startEpisodeCheckout(String episodeInternalId) async {
     // The token is read here and sent explicitly, so a checkout is never
     // started for a reader other than the one who tapped.
     final accessToken = _client.accessToken;
@@ -152,7 +152,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         _checkoutProcedure,
         {
           'client': 'CLIENT_MOBILE',
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'tenant': {'tenantId': tenantId},
         },
         tenantId: tenantId,
@@ -174,7 +174,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   @override
   Future<StorePurchaseIntent> startStorePurchase(
-    String episodePublicId,
+    String episodeInternalId,
     InAppPurchaseStore store,
   ) async {
     // Read once and sent explicitly, so the intent is opened for the reader
@@ -185,7 +185,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       final body = await _client.unary(
         _startStoreProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'store': store.wireName,
           'tenant': {'tenantId': tenantId},
         },

@@ -28,15 +28,23 @@ enum FollowTargetKind {
 /// One target the signed-in reader follows, as `publira.v1.MyFollow`
 /// describes it.
 ///
-/// The row carries no name: `ListMyFollows` answers with public ids, and what
-/// a screen shows beside one is read from the catalog.
+/// The row carries no name: `ListMyFollows` answers with ids, and what a
+/// screen shows beside one is read from the catalog.
 class MyFollow {
-  const MyFollow({required this.kind, required this.targetId, this.followedAt});
+  const MyFollow({
+    required this.kind,
+    required this.targetId,
+    required this.targetInternalId,
+    this.followedAt,
+  });
 
   final FollowTargetKind kind;
 
   /// Public id of the followed series or creator.
   final String targetId;
+
+  /// Internal id of the followed series or creator, which unfollowing takes.
+  final String targetInternalId;
 
   /// When the reader followed it, and `null` when the API sent a timestamp
   /// this build could not read. A row without a date still renders: the target

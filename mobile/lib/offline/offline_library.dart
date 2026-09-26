@@ -134,6 +134,7 @@ class UnsentProgress {
   const UnsentProgress({
     required this.readerId,
     required this.episodeId,
+    required this.episodeInternalId,
     this.seriesId = '',
     this.pageIndex,
     this.finished = false,
@@ -143,6 +144,9 @@ class UnsentProgress {
   final String readerId;
 
   final String episodeId;
+
+  /// Internal id of [episodeId], which the API is sent.
+  final String episodeInternalId;
 
   /// The series [episodeId] is under, which sending a page needs. Empty for
   /// an entry that only carries a finish.
@@ -164,6 +168,7 @@ class UnsentProgress {
   UnsentProgress mergedWith(UnsentProgress later) => UnsentProgress(
     readerId: readerId,
     episodeId: episodeId,
+    episodeInternalId: episodeInternalId,
     seriesId: later.pageIndex == null ? seriesId : later.seriesId,
     pageIndex: later.pageIndex ?? pageIndex,
     finished: finished || later.finished,
@@ -181,6 +186,7 @@ class UnsentProgress {
     return UnsentProgress(
       readerId: readerId,
       episodeId: episodeId,
+      episodeInternalId: episodeInternalId,
       seriesId: seriesId,
       pageIndex: pageSent ? null : pageIndex,
       finished: finished && !sent.finished,

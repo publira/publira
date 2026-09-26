@@ -102,9 +102,9 @@ void main() {
       await tester.tap(buy);
       await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
 
-      expect(purchases.checkouts, [paidEpisodeId]);
+      expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
       expect(launcher.opened, [
-        FakePurchaseRepository.checkoutUrlFor(paidEpisodeId),
+        FakePurchaseRepository.checkoutUrlFor(fixtureInternalId(paidEpisodeId)),
       ]);
     });
 
@@ -444,7 +444,7 @@ void main() {
 
       await tester.tap(buy);
       await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
-      expect(purchases.checkouts, [paidEpisodeId]);
+      expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
     });
 
     testWidgets('names the price of an episode the reader already holds', (

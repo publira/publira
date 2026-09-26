@@ -160,14 +160,15 @@ abstract class CatalogRepository {
   ///
   /// A reader who is signed out has no position: the API keeps one per member
   /// and answers a guest nothing, so the viewer opens at the first page.
-  /// [seriesPublicId] addresses nothing at the API, which knows the episode by
-  /// itself, and is here because the device keys its own copy by both.
+  /// The API knows the episode by [episodeInternalId]; the two public ids are
+  /// what the device keys its own copy by.
   ///
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<int?> getReadingPosition(
     String seriesPublicId,
-    String episodePublicId,
-  );
+    String episodePublicId, {
+    required String episodeInternalId,
+  });
 
   /// Records that the signed-in reader stopped on [pageIndex], zero-based over
   /// the episode's pages in reading order.
@@ -178,23 +179,28 @@ abstract class CatalogRepository {
   Future<void> saveReadingPosition(
     String seriesPublicId,
     String episodePublicId,
-    int pageIndex,
-  );
+    int pageIndex, {
+    required String episodeInternalId,
+  });
 
   /// Records that the signed-in reader finished [episodePublicId]. A re-read
   /// keeps the first record, and a guest is left alone.
   ///
   /// Throws [CatalogFailure] on a transport or unexpected server error, and
   /// on an episode the reader may not read.
-  Future<void> markEpisodeAsRead(String episodePublicId);
+  Future<void> markEpisodeAsRead(
+    String episodePublicId, {
+    required String episodeInternalId,
+  });
 
-  /// This signed-in reader's reaction state for an episode. A signed-out
-  /// reader has no private state, so this returns `null` without a request.
-  Future<EpisodeReaction?> getEpisodeReaction(String episodePublicId);
+  /// This signed-in reader's reaction state for the episode
+  /// [episodeInternalId] names. A signed-out reader has no private state, so
+  /// this returns `null` without a request.
+  Future<EpisodeReaction?> getEpisodeReaction(String episodeInternalId);
 
   /// Adds one reaction press for the signed-in reader. A reaction is never
   /// removed or lowered; the server applies the series' press mode.
-  Future<EpisodeReaction> reactToEpisode(String episodePublicId);
+  Future<EpisodeReaction> reactToEpisode(String episodeInternalId);
 
   /// The series the signed-in reader was in the middle of, newest activity
   /// first, each with the episode to continue from.

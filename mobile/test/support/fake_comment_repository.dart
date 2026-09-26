@@ -5,12 +5,12 @@ import 'package:publira/models/episode_comment.dart';
 /// One report a test can read back, as the reader sent it.
 class RecordedReport {
   const RecordedReport({
-    required this.commentPublicId,
+    required this.commentId,
     required this.reason,
     required this.note,
   });
 
-  final String commentPublicId;
+  final String commentId;
   final CommentReportReason reason;
   final String note;
 }
@@ -46,6 +46,9 @@ class FakeCommentRepository implements CommentRepository {
   CommentFailure? withdrawFailure;
   CommentFailure? reportFailure;
 
+  /// Episodes [listComments] was asked about, in order.
+  final episodeIds = <String>[];
+
   /// Cursors [listComments] was asked for, in order.
   final tokens = <String>[];
 
@@ -68,9 +71,10 @@ class FakeCommentRepository implements CommentRepository {
 
   @override
   Future<EpisodeCommentPage> listComments(
-    String episodePublicId, {
+    String episodeInternalId, {
     String token = '',
   }) async {
+    episodeIds.add(episodeInternalId);
     tokens.add(token);
     final failure = listFailure;
     if (failure != null) {
@@ -80,7 +84,7 @@ class FakeCommentRepository implements CommentRepository {
   }
 
   @override
-  Future<List<EpisodeComment>> listMyComments(String episodePublicId) async {
+  Future<List<EpisodeComment>> listMyComments(String episodeInternalId) async {
     final failure = ownFailure;
     if (failure != null) {
       throw failure;
@@ -90,7 +94,7 @@ class FakeCommentRepository implements CommentRepository {
 
   @override
   Future<EpisodeComment> post({
-    required String episodePublicId,
+    required String episodeInternalId,
     required String body,
   }) async {
     final failure = postFailure;
@@ -112,18 +116,18 @@ class FakeCommentRepository implements CommentRepository {
   }
 
   @override
-  Future<void> withdraw(String commentPublicId) async {
+  Future<void> withdraw(String commentId) async {
     final failure = withdrawFailure;
     if (failure != null) {
       throw failure;
     }
-    withdrawn.add(commentPublicId);
-    own = own.where((comment) => comment.id != commentPublicId).toList();
+    withdrawn.add(commentId);
+    own = own.where((comment) => comment.id != commentId).toList();
     pages = {
       for (final entry in pages.entries)
         entry.key: EpisodeCommentPage(
           comments: entry.value.comments
-              .where((comment) => comment.id != commentPublicId)
+              .where((comment) => comment.id != commentId)
               .toList(),
           previousToken: entry.value.previousToken,
           nextToken: entry.value.nextToken,
@@ -133,7 +137,7 @@ class FakeCommentRepository implements CommentRepository {
 
   @override
   Future<void> report({
-    required String commentPublicId,
+    required String commentId,
     required CommentReportReason reason,
     String note = '',
   }) async {
@@ -142,11 +146,7 @@ class FakeCommentRepository implements CommentRepository {
       throw failure;
     }
     reports.add(
-      RecordedReport(
-        commentPublicId: commentPublicId,
-        reason: reason,
-        note: note,
-      ),
+      RecordedReport(commentId: commentId, reason: reason, note: note),
     );
   }
 }

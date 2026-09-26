@@ -521,12 +521,24 @@ void main() {
 
   test('the position the API holds is what the reader resumes at', () async {
     readerId = _reader;
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
     // What the reader left on another device, which is what a position saved
     // on the website looks like from here.
     origin.readingPositions = {episodeKey(_seriesId, _episodeId): 11};
 
-    expect(await build().getReadingPosition(_seriesId, _episodeId), 11);
+    expect(
+      await build().getReadingPosition(
+        _seriesId,
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      ),
+      11,
+    );
     // And the device is brought up to date with it, so the next launch
     // without a network resumes there too.
     expect(
@@ -541,28 +553,57 @@ void main() {
 
   test('a page turned with the API gone is answered from the device', () async {
     readerId = _reader;
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
     origin.readingPositionError = _network;
 
-    expect(await build().getReadingPosition(_seriesId, _episodeId), 3);
+    expect(
+      await build().getReadingPosition(
+        _seriesId,
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      ),
+      3,
+    );
   });
 
   test(
     'a position only the device holds is not overruled by silence',
     () async {
       readerId = _reader;
-      await build().saveReadingPosition(_seriesId, _episodeId, 3);
+      await build().saveReadingPosition(
+        _seriesId,
+        _episodeId,
+        3,
+        episodeInternalId: 'internal-$_episodeId',
+      );
 
       // The API knows of no position in this episode, which says nothing about
       // the page the reader turned to while it was unreachable.
-      expect(await build().getReadingPosition(_seriesId, _episodeId), 3);
+      expect(
+        await build().getReadingPosition(
+          _seriesId,
+          _episodeId,
+          episodeInternalId: 'internal-$_episodeId',
+        ),
+        3,
+      );
     },
   );
 
   test('a recorded page reaches the API as well as the device', () async {
     readerId = _reader;
 
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
 
     expect(origin.readingPositions[episodeKey(_seriesId, _episodeId)], 3);
   });
@@ -571,7 +612,12 @@ void main() {
     readerId = _reader;
     origin.readingPositionError = _network;
 
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
 
     expect(
       await library.readReadingPosition(
@@ -589,7 +635,12 @@ void main() {
 
     expect(
       await failureOf(
-        () => build().saveReadingPosition(_seriesId, _episodeId, 3),
+        () => build().saveReadingPosition(
+          _seriesId,
+          _episodeId,
+          3,
+          episodeInternalId: 'internal-$_episodeId',
+        ),
       ),
       CatalogFailureKind.unexpected,
     );
@@ -597,12 +648,29 @@ void main() {
 
   test('a guest has no position, and records none', () async {
     readerId = _reader;
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
 
     readerId = '';
-    await build().saveReadingPosition(_seriesId, _episodeId, 7);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      7,
+      episodeInternalId: 'internal-$_episodeId',
+    );
 
-    expect(await build().getReadingPosition(_seriesId, _episodeId), isNull);
+    expect(
+      await build().getReadingPosition(
+        _seriesId,
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      ),
+      isNull,
+    );
     expect(
       await library.readReadingPosition(
         _seriesId,
@@ -615,12 +683,24 @@ void main() {
 
   test('a second reader on the device resumes nowhere', () async {
     readerId = _reader;
-    await build().saveReadingPosition(_seriesId, _episodeId, 3);
+    await build().saveReadingPosition(
+      _seriesId,
+      _episodeId,
+      3,
+      episodeInternalId: 'internal-$_episodeId',
+    );
 
     readerId = 'SeedMMBRAAA2';
     origin.readingPositionError = _network;
 
-    expect(await build().getReadingPosition(_seriesId, _episodeId), isNull);
+    expect(
+      await build().getReadingPosition(
+        _seriesId,
+        _episodeId,
+        episodeInternalId: 'internal-$_episodeId',
+      ),
+      isNull,
+    );
   });
 
   test('the continue-reading row is answered by the API alone', () async {

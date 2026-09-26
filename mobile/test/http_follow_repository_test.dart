@@ -53,7 +53,10 @@ void main() {
 
   test('a reader who is signed out is not asked about a follow', () async {
     expect(
-      await repository().isFollowing(FollowTargetKind.series, seriesId),
+      await repository().isFollowing(
+        FollowTargetKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       isFalse,
     );
     expect(server.requestsTo('GetMyFollowStatus'), isEmpty);
@@ -64,13 +67,16 @@ void main() {
     server.myFollows = [row(FollowTargetKind.series, seriesId)];
 
     expect(
-      await repository().isFollowing(FollowTargetKind.series, seriesId),
+      await repository().isFollowing(
+        FollowTargetKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       isTrue,
     );
 
     final request = server.requestsTo('GetMyFollowStatus').single;
     expect(request.body['target'], {
-      'publicId': seriesId,
+      'id': ConnectFixtureServer.internalIdOf(seriesId),
       'type': 'FOLLOW_TARGET_TYPE_SERIES',
     });
     expect(request.headers['authorization'], 'Bearer $accessToken');
@@ -80,9 +86,18 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
     final follows = repository();
 
-    await follows.isFollowing(FollowTargetKind.series, seriesId);
-    await follows.follow(FollowTargetKind.creator, creatorId);
-    await follows.unfollow(FollowTargetKind.creator, creatorId);
+    await follows.isFollowing(
+      FollowTargetKind.series,
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
+    await follows.follow(
+      FollowTargetKind.creator,
+      ConnectFixtureServer.internalIdOf(creatorId),
+    );
+    await follows.unfollow(
+      FollowTargetKind.creator,
+      ConnectFixtureServer.internalIdOf(creatorId),
+    );
     await follows.listMyFollows();
 
     final calls = server.requests.where(
@@ -101,7 +116,10 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
     expect(
-      await repository().isFollowing(FollowTargetKind.creator, creatorId),
+      await repository().isFollowing(
+        FollowTargetKind.creator,
+        ConnectFixtureServer.internalIdOf(creatorId),
+      ),
       isFalse,
     );
   });
@@ -110,17 +128,24 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
     expect(
-      await repository().follow(FollowTargetKind.creator, creatorId),
+      await repository().follow(
+        FollowTargetKind.creator,
+        ConnectFixtureServer.internalIdOf(creatorId),
+      ),
       isTrue,
     );
 
     expect(server.requestsTo('Follow').single.body['target'], {
-      'publicId': creatorId,
+      'id': ConnectFixtureServer.internalIdOf(creatorId),
       'type': 'FOLLOW_TARGET_TYPE_CREATOR',
     });
     final follow = (await repository().listMyFollows()).follows.single;
     expect(follow.kind, FollowTargetKind.creator);
     expect(follow.targetId, creatorId);
+    expect(
+      follow.targetInternalId,
+      ConnectFixtureServer.internalIdOf(creatorId),
+    );
   });
 
   test('unfollowing takes the target off the list', () async {
@@ -128,7 +153,10 @@ void main() {
     server.myFollows = [row(FollowTargetKind.series, seriesId)];
 
     expect(
-      await repository().unfollow(FollowTargetKind.series, seriesId),
+      await repository().unfollow(
+        FollowTargetKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       isFalse,
     );
 
@@ -207,7 +235,10 @@ void main() {
 
   test('following without a session fails before the request', () async {
     await expectLater(
-      repository().follow(FollowTargetKind.series, seriesId),
+      repository().follow(
+        FollowTargetKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       throwsA(
         isA<FollowFailure>().having(
           (failure) => failure.kind,
@@ -223,7 +254,10 @@ void main() {
     accessToken = 'stale-token';
 
     await expectLater(
-      repository().follow(FollowTargetKind.series, seriesId),
+      repository().follow(
+        FollowTargetKind.series,
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
       throwsA(
         isA<FollowFailure>().having(
           (failure) => failure.kind,
