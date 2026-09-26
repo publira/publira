@@ -41,6 +41,8 @@ message AccessToken {
 message CreatorRole {
   string public_id = 1;
   string name = 2;
+  // The role's primary key, which the admin API addresses it by.
+  string id = 3;
 }
 
 // Where an episode credit was written. Series rows are baked onto an episode
@@ -70,8 +72,8 @@ message Creator {
   // Set when this creator stands for an episode credit. It lets an editor see
   // which rows are local additions that a later range edit must leave alone.
   CreatorCreditSource source = 9;
-  // Set on the credits of a series the reader API returns, which is where a
-  // reader follows a credited creator from.
+  // The creator's primary key. The admin API addresses a creator by it, and
+  // the reader API sets it on a series' credits so a reader can follow them.
   string id = 10;
 }
 
@@ -80,6 +82,8 @@ message Label {
   string name = 2;
   string eye_catch_image_updated_at = 3;
   repeated SeriesEyeCatchVariant eye_catch_image_variants = 4;
+  // The label's primary key, which the admin API addresses it by.
+  string id = 5;
 }
 
 message SeriesEyeCatchVariant {
@@ -149,6 +153,8 @@ message Genre {
   // genre RPCs themselves; a genre listed on a series carries names only.
   string eye_catch_image_updated_at = 4;
   repeated SeriesEyeCatchVariant eye_catch_image_variants = 5;
+  // The genre's primary key, which the admin API addresses it by.
+  string id = 6;
 }
 
 // A free-form label written on the series form. Tags have no console of their

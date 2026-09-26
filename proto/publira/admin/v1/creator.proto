@@ -62,6 +62,8 @@ message UpdateCreatorRequest {
   // Where in the upload the square icon is cut. Omitted, the image is cut
   // from its centre as it always has been.
   publira.types.v1.ImageCropRect icon_image_crop = 8;
+  // The creator's primary key (Creator.id). Takes precedence over public_id.
+  string creator_id = 9;
 }
 
 message UpdateCreatorResponse {

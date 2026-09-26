@@ -281,12 +281,13 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	current, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	ref, err := recordRefArg(req.Msg.LabelId, req.Msg.PublicId, "label_id")
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get label for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
+		return nil, err
+	}
+	current, err := s.labelByRef(ctx, tenant.ID, ref)
+	if err != nil {
+		return nil, err
 	}
 	if !current.EyeCatchImageID.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
@@ -305,15 +306,12 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	// Serialized and re-read behind the lock, like the series upload above.
-	if _, err := s.queriesFor(txCtx).LockLabelByPublicIDForTenant(txCtx, dbmodels.LockLabelByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: current.PublicID,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to lock label for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	if err := s.lockLabelByRef(txCtx, tenant.ID, ref); err != nil {
+		return nil, err
 	}
-	locked, err := s.queriesFor(txCtx).GetLabelByPublicIDForTenant(txCtx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	locked, err := s.labelByRef(txCtx, tenant.ID, ref)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to re-read label for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+		return nil, err
 	}
 	if !locked.EyeCatchImageID.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
@@ -378,17 +376,17 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
-	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, req.Msg.PublicId)
+	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}), nil
 }
 
-func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Label, error) {
-	row, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: publicID})
+func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, ref recordRef) (*publirattypesv1.Label, error) {
+	row, err := s.labelByRef(ctx, tenantID, ref)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get label after eye catch aspect upload", err, "tenant_id", tenantID.String(), "label_public_id", publicID)
+		return nil, err
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if row.EyeCatchImageID.Valid {
@@ -398,7 +396,7 @@ func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uu
 		}
 		variants = variantsByImageID[row.EyeCatchImageID.UUID]
 	}
-	return protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants), nil
+	return adminLabel(row.ID, protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants)), nil
 }
 
 // recordEyeCatchAspectAudit files the change under the entity it belongs to,
@@ -443,7 +441,11 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	current, err := s.genreByPublicID(ctx, tenant.ID, req.Msg.PublicId)
+	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.genreByRef(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -464,15 +466,12 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	// Serialized and re-read behind the lock, like the series upload above.
-	if _, err := s.queriesFor(txCtx).LockGenreByPublicIDForTenant(txCtx, dbmodels.LockGenreByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: current.PublicID,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to lock genre for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+	if err := s.lockGenreByRef(txCtx, tenant.ID, ref); err != nil {
+		return nil, err
 	}
-	locked, err := s.queriesFor(txCtx).GetGenreByPublicIDForTenant(txCtx, dbmodels.GetGenreByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	locked, err := s.genreByRef(txCtx, tenant.ID, ref)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to re-read genre for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "genre_id", current.ID.String())
+		return nil, err
 	}
 	if !locked.EyeCatchImageID.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre has no eye catch image yet"))
@@ -537,7 +536,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, current.PublicID)
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}

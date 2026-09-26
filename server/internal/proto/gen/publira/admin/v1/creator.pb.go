@@ -385,6 +385,8 @@ type UpdateCreatorRequest struct {
 	// Where in the upload the square icon is cut. Omitted, the image is cut
 	// from its centre as it always has been.
 	IconImageCrop *v1.ImageCropRect `protobuf:"bytes,8,opt,name=icon_image_crop,json=iconImageCrop,proto3" json:"icon_image_crop,omitempty"`
+	// The creator's primary key (Creator.id). Takes precedence over public_id.
+	CreatorId     string `protobuf:"bytes,9,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -475,6 +477,13 @@ func (x *UpdateCreatorRequest) GetIconImageCrop() *v1.ImageCropRect {
 	return nil
 }
 
+func (x *UpdateCreatorRequest) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
 type UpdateCreatorResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
@@ -546,7 +555,7 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x17icon_image_content_type\x18\x05 \x01(\tR\x14iconImageContentType\x12G\n" +
 	"\x0ficon_image_crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\"L\n" +
 	"\x15CreateCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xf5\x02\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\x94\x03\n" +
 	"\x14UpdateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -555,7 +564,9 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x0ficon_image_data\x18\x05 \x01(\fR\riconImageData\x125\n" +
 	"\x17icon_image_content_type\x18\x06 \x01(\tR\x14iconImageContentType\x12(\n" +
 	"\x10clear_icon_image\x18\a \x01(\bR\x0eclearIconImage\x12G\n" +
-	"\x0ficon_image_crop\x18\b \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\"L\n" +
+	"\x0ficon_image_crop\x18\b \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\t \x01(\tR\tcreatorId\"L\n" +
 	"\x15UpdateCreatorResponse\x123\n" +
 	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator2\x99\x03\n" +
 	"\x13AdminCreatorService\x12_\n" +

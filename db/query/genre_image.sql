@@ -59,6 +59,15 @@ WHERE tenant_id = $1
     AND public_id = $2
 FOR UPDATE;
 
+-- name: LockGenreByIDForTenant :one
+-- The same lock as LockGenreByPublicIDForTenant, for a request that names the
+-- genre by primary key.
+SELECT id
+FROM genres
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE;
+
 -- name: TouchGenreImage :exec
 -- Records that the eye-catch changed after one of its ratios was replaced.
 UPDATE genre_images

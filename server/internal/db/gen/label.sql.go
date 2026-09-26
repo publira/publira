@@ -168,6 +168,51 @@ func (q *Queries) DeleteLabelImageVariantsByType(ctx context.Context, arg Delete
 	return result.RowsAffected()
 }
 
+const GetLabelByIDForTenant = `-- name: GetLabelByIDForTenant :one
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.id = $2
+LIMIT 1
+`
+
+type GetLabelByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetLabelByIDForTenantRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	TenantID               uuid.UUID     `json:"tenant_id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+func (q *Queries) GetLabelByIDForTenant(ctx context.Context, arg GetLabelByIDForTenantParams) (GetLabelByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetLabelByIDForTenant, arg.TenantID, arg.ID)
+	var i GetLabelByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
+	)
+	return i, err
+}
+
 const GetLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
 SELECT l.id,
     l.tenant_id,
@@ -930,6 +975,28 @@ func (q *Queries) ListPublishedLabelsDesc(ctx context.Context, arg ListPublished
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockLabelByIDForTenant = `-- name: LockLabelByIDForTenant :one
+SELECT id
+FROM labels
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE
+`
+
+type LockLabelByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// The same lock as LockLabelByPublicIDForTenant, for a request that names the
+// label by primary key.
+func (q *Queries) LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockLabelByIDForTenant, arg.TenantID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const LockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one

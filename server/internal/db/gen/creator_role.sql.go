@@ -85,6 +85,41 @@ func (q *Queries) DeleteCreatorRole(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const GetCreatorRoleByIDForTenant = `-- name: GetCreatorRoleByIDForTenant :one
+SELECT cr.id,
+    cr.public_id,
+    cr.name,
+    cr.display_priority
+FROM creator_roles cr
+WHERE cr.tenant_id = $1
+    AND cr.id = $2
+LIMIT 1
+`
+
+type GetCreatorRoleByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetCreatorRoleByIDForTenantRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	Name            string    `json:"name"`
+	DisplayPriority int32     `json:"display_priority"`
+}
+
+func (q *Queries) GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetCreatorRoleByIDForTenant, arg.TenantID, arg.ID)
+	var i GetCreatorRoleByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.DisplayPriority,
+	)
+	return i, err
+}
+
 const GetCreatorRoleByPublicIDForTenant = `-- name: GetCreatorRoleByPublicIDForTenant :one
 SELECT cr.id,
     cr.public_id,

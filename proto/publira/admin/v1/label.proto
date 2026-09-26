@@ -54,6 +54,8 @@ message UpdateLabelRequest {
   bytes eye_catch_image_data = 4;
   string eye_catch_image_content_type = 5;
   bool clear_eye_catch_image = 6;
+  // The label's primary key (Label.id). Takes precedence over public_id.
+  string label_id = 7;
 }
 
 message UpdateLabelResponse {
@@ -72,6 +74,8 @@ message UploadLabelEyeCatchAspectImageRequest {
   // Where in the upload the cut is taken. Omitted, the image is cut from its
   // centre as it always has been.
   publira.types.v1.ImageCropRect crop = 6;
+  // The label's primary key (Label.id). Takes precedence over public_id.
+  string label_id = 7;
 }
 
 message UploadLabelEyeCatchAspectImageResponse {

@@ -254,7 +254,9 @@ type UpdateCreatorRoleRequest struct {
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// The public_id does not move, so every credit keeps the role it names.
-	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+	CreatorRoleId string `protobuf:"bytes,4,opt,name=creator_role_id,json=creatorRoleId,proto3" json:"creator_role_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -306,6 +308,13 @@ func (x *UpdateCreatorRoleRequest) GetPublicId() string {
 func (x *UpdateCreatorRoleRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateCreatorRoleRequest) GetCreatorRoleId() string {
+	if x != nil {
+		return x.CreatorRoleId
 	}
 	return ""
 }
@@ -364,8 +373,12 @@ type ReorderCreatorRolesRequest struct {
 	// RPC locks the tenant's roles, re-reads the current order, and rejects the
 	// write with failed_precondition when this no longer matches.
 	ExpectedCreatorRolePublicIds []string `protobuf:"bytes,3,rep,name=expected_creator_role_public_ids,json=expectedCreatorRolePublicIds,proto3" json:"expected_creator_role_public_ids,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// The same two lists by primary key (CreatorRole.id). When either is set,
+	// both are read and the public ID lists are ignored.
+	CreatorRoleIds         []string `protobuf:"bytes,4,rep,name=creator_role_ids,json=creatorRoleIds,proto3" json:"creator_role_ids,omitempty"`
+	ExpectedCreatorRoleIds []string `protobuf:"bytes,5,rep,name=expected_creator_role_ids,json=expectedCreatorRoleIds,proto3" json:"expected_creator_role_ids,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ReorderCreatorRolesRequest) Reset() {
@@ -419,6 +432,20 @@ func (x *ReorderCreatorRolesRequest) GetExpectedCreatorRolePublicIds() []string 
 	return nil
 }
 
+func (x *ReorderCreatorRolesRequest) GetCreatorRoleIds() []string {
+	if x != nil {
+		return x.CreatorRoleIds
+	}
+	return nil
+}
+
+func (x *ReorderCreatorRolesRequest) GetExpectedCreatorRoleIds() []string {
+	if x != nil {
+		return x.ExpectedCreatorRoleIds
+	}
+	return nil
+}
+
 type ReorderCreatorRolesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CreatorRoles  []*v1.CreatorRole      `protobuf:"bytes,1,rep,name=creator_roles,json=creatorRoles,proto3" json:"creator_roles,omitempty"`
@@ -467,9 +494,11 @@ func (x *ReorderCreatorRolesResponse) GetCreatorRoles() []*v1.CreatorRole {
 // failed_precondition: dropping it would take the credits holding it with it,
 // so the editor is told to re-credit them first.
 type DeleteCreatorRoleRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+	CreatorRoleId string `protobuf:"bytes,3,opt,name=creator_role_id,json=creatorRoleId,proto3" json:"creator_role_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -514,6 +543,13 @@ func (x *DeleteCreatorRoleRequest) GetTenant() *v1.TenantContext {
 func (x *DeleteCreatorRoleRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *DeleteCreatorRoleRequest) GetCreatorRoleId() string {
+	if x != nil {
+		return x.CreatorRoleId
 	}
 	return ""
 }
@@ -572,22 +608,26 @@ const file_publira_admin_v1_creator_role_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"]\n" +
 	"\x19CreateCreatorRoleResponse\x12@\n" +
-	"\fcreator_role\x18\x01 \x01(\v2\x1d.publira.types.v1.CreatorRoleR\vcreatorRole\"\x84\x01\n" +
+	"\fcreator_role\x18\x01 \x01(\v2\x1d.publira.types.v1.CreatorRoleR\vcreatorRole\"\xac\x01\n" +
 	"\x18UpdateCreatorRoleRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"]\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12&\n" +
+	"\x0fcreator_role_id\x18\x04 \x01(\tR\rcreatorRoleId\"]\n" +
 	"\x19UpdateCreatorRoleResponse\x12@\n" +
-	"\fcreator_role\x18\x01 \x01(\v2\x1d.publira.types.v1.CreatorRoleR\vcreatorRole\"\xd4\x01\n" +
+	"\fcreator_role\x18\x01 \x01(\v2\x1d.publira.types.v1.CreatorRoleR\vcreatorRole\"\xb9\x02\n" +
 	"\x1aReorderCreatorRolesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x17creator_role_public_ids\x18\x02 \x03(\tR\x14creatorRolePublicIds\x12F\n" +
-	" expected_creator_role_public_ids\x18\x03 \x03(\tR\x1cexpectedCreatorRolePublicIds\"a\n" +
+	" expected_creator_role_public_ids\x18\x03 \x03(\tR\x1cexpectedCreatorRolePublicIds\x12(\n" +
+	"\x10creator_role_ids\x18\x04 \x03(\tR\x0ecreatorRoleIds\x129\n" +
+	"\x19expected_creator_role_ids\x18\x05 \x03(\tR\x16expectedCreatorRoleIds\"a\n" +
 	"\x1bReorderCreatorRolesResponse\x12B\n" +
-	"\rcreator_roles\x18\x01 \x03(\v2\x1d.publira.types.v1.CreatorRoleR\fcreatorRoles\"p\n" +
+	"\rcreator_roles\x18\x01 \x03(\v2\x1d.publira.types.v1.CreatorRoleR\fcreatorRoles\"\x98\x01\n" +
 	"\x18DeleteCreatorRoleRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12&\n" +
+	"\x0fcreator_role_id\x18\x03 \x01(\tR\rcreatorRoleId\"\x1b\n" +
 	"\x19DeleteCreatorRoleResponse2\xcc\x04\n" +
 	"\x17AdminCreatorRoleService\x12k\n" +
 	"\x10ListCreatorRoles\x12).publira.admin.v1.ListCreatorRolesRequest\x1a*.publira.admin.v1.ListCreatorRolesResponse\"\x00\x12n\n" +

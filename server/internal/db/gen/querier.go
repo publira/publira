@@ -360,8 +360,10 @@ type Querier interface {
 	// purge has already dropped is the same no answer, and the caller rejects the
 	// token instead of silently continuing in a newer ranking.
 	GetContentRankingSnapshotByID(ctx context.Context, arg GetContentRankingSnapshotByIDParams) (ContentRankingSnapshot, error)
+	GetCreatorByIDForTenant(ctx context.Context, arg GetCreatorByIDForTenantParams) (GetCreatorByIDForTenantRow, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
+	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
 	GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg GetCreatorRoleByPublicIDForTenantParams) (GetCreatorRoleByPublicIDForTenantRow, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
@@ -399,6 +401,7 @@ type Querier interface {
 	// rate assembled from one page's rows would describe that page instead of the
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
+	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
 	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -407,6 +410,7 @@ type Querier interface {
 	GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetGenreImageVariantByTypeAndWidthForTenantParams) (GetGenreImageVariantByTypeAndWidthForTenantRow, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
+	GetLabelByIDForTenant(ctx context.Context, arg GetLabelByIDForTenantParams) (GetLabelByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	// The newest snapshot of one surface for one ranking key and entity type,
@@ -1725,6 +1729,9 @@ type Querier interface {
 	// ORDER BY e.id is what keeps two range edits over overlapping ranges from
 	// deadlocking: both take the row locks in the same order.
 	LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error)
+	// The same lock as LockGenreByPublicIDForTenant, for a request that names the
+	// genre by primary key.
+	LockGenreByIDForTenant(ctx context.Context, arg LockGenreByIDForTenantParams) (uuid.UUID, error)
 	// Serializes eye-catch writes on one genre, as LockLabelByPublicIDForTenant
 	// does for a label; the caller re-reads eye_catch_image_id behind it.
 	LockGenreByPublicIDForTenant(ctx context.Context, arg LockGenreByPublicIDForTenantParams) (uuid.UUID, error)
@@ -1734,6 +1741,9 @@ type Querier interface {
 	// reorder answers with the whole list, and nothing in this transaction changes
 	// them.
 	LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error)
+	// The same lock as LockLabelByPublicIDForTenant, for a request that names the
+	// label by primary key.
+	LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error)
 	// Lock the label row so concurrent eye-catch writes serialize, the way
 	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED

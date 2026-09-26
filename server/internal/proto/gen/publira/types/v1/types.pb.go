@@ -736,9 +736,11 @@ func (x *AccessToken) GetExpiresAt() string {
 // the credits everywhere they are shown, so the leading role leads without
 // anyone ordering each series by hand.
 type CreatorRole struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The role's primary key, which the admin API addresses it by.
+	Id            string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -787,6 +789,13 @@ func (x *CreatorRole) GetName() string {
 	return ""
 }
 
+func (x *CreatorRole) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 type Creator struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	PublicId               string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -802,8 +811,8 @@ type Creator struct {
 	// Set when this creator stands for an episode credit. It lets an editor see
 	// which rows are local additions that a later range edit must leave alone.
 	Source CreatorCreditSource `protobuf:"varint,9,opt,name=source,proto3,enum=publira.types.v1.CreatorCreditSource" json:"source,omitempty"`
-	// Set on the credits of a series the reader API returns, which is where a
-	// reader follows a credited creator from.
+	// The creator's primary key. The admin API addresses a creator by it, and
+	// the reader API sets it on a series' credits so a reader can follow them.
 	Id            string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -908,8 +917,10 @@ type Label struct {
 	Name                   string                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,3,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,4,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// The label's primary key, which the admin API addresses it by.
+	Id            string `protobuf:"bytes,5,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Label) Reset() {
@@ -968,6 +979,13 @@ func (x *Label) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *Label) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 type SeriesEyeCatchVariant struct {
@@ -1157,8 +1175,10 @@ type Genre struct {
 	// genre RPCs themselves; a genre listed on a series carries names only.
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,4,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,5,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// The genre's primary key, which the admin API addresses it by.
+	Id            string `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Genre) Reset() {
@@ -1224,6 +1244,13 @@ func (x *Genre) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *Genre) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 // A free-form label written on the series form. Tags have no console of their
@@ -2481,10 +2508,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\vAccessToken\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\tR\texpiresAt\">\n" +
+	"expires_at\x18\x02 \x01(\tR\texpiresAt\"N\n" +
 	"\vCreatorRole\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xfa\x02\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"\xfa\x02\n" +
 	"\aCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -2495,12 +2523,13 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04role\x18\b \x01(\v2\x1d.publira.types.v1.CreatorRoleR\x04role\x12=\n" +
 	"\x06source\x18\t \x01(\x0e2%.publira.types.v1.CreatorCreditSourceR\x06source\x12\x0e\n" +
 	"\x02id\x18\n" +
-	" \x01(\tR\x02idJ\x04\b\x03\x10\x04\"\xd6\x01\n" +
+	" \x01(\tR\x02idJ\x04\b\x03\x10\x04\"\xe6\x01\n" +
 	"\x05Label\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\x03 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xdb\x01\n" +
+	"\x18eye_catch_image_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12\x0e\n" +
+	"\x02id\x18\x05 \x01(\tR\x02id\"\xdb\x01\n" +
 	"\x15SeriesEyeCatchVariant\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12!\n" +
 	"\fvariant_type\x18\a \x01(\tR\vvariantType\x12\x10\n" +
@@ -2513,13 +2542,14 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x05R\x06height\"\xea\x01\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\"\xfa\x01\n" +
 	"\x05Genre\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\x04 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x05 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"-\n" +
+	"\x18eye_catch_image_variants\x18\x05 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12\x0e\n" +
+	"\x02id\x18\x06 \x01(\tR\x02id\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xb5\a\n" +
