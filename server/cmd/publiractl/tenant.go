@@ -12,6 +12,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
@@ -209,7 +211,7 @@ func setupTenantUpdate(f *commandFlags) func(context.Context, *commandEnv) error
 		})
 
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
-			params.PublicID = tenant.PublicID
+			params.ID = tenant.ID
 			change, err := params.Validate()
 			if err != nil {
 				return err
@@ -224,13 +226,13 @@ func setupTenantUpdate(f *commandFlags) func(context.Context, *commandEnv) error
 	}
 }
 
-type tenantStatusChange func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, string) (dbmodels.Tenant, error)
+type tenantStatusChange func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, uuid.UUID) (dbmodels.Tenant, error)
 
 func setupTenantStatus(f *commandFlags, change tenantStatusChange, done string) func(context.Context, *commandEnv) error {
 	ref := tenantFlag(f)
 	return func(ctx context.Context, env *commandEnv) error {
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
-			changed, err := change(ctx, tx, env.logger, auditlog.SystemPlatformActor, tenant.PublicID)
+			changed, err := change(ctx, tx, env.logger, auditlog.SystemPlatformActor, tenant.ID)
 			if err != nil {
 				return err
 			}

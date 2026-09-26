@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
@@ -27,6 +29,8 @@ const FieldTenant = "tenant"
 var (
 	ErrNotFound         = errors.New("tenant not found")
 	ErrPublicIDRequired = errors.New("public_id is required")
+	ErrTenantIDRequired = errors.New("tenant_id is required")
+	ErrTenantIDInvalid  = errors.New("tenant_id must be a UUID")
 	ErrTenantRequired   = errors.New("tenant is required")
 	// ErrNoChange refuses an update that sets nothing.
 	ErrNoChange = errors.New("name, domain, or admin_domain is required")
@@ -40,6 +44,25 @@ func ParsePublicID(raw string) (string, error) {
 		return "", &fielderr.Invalid{Field: FieldPublicID, Err: ErrPublicIDRequired}
 	}
 	return publicID, nil
+}
+
+// GetByID reads the tenant id names.
+func GetByID(ctx context.Context, q dbmodels.Querier, id uuid.UUID) (dbmodels.Tenant, error) {
+	return found(q.GetTenantByID(ctx, id))
+}
+
+// ParseID parses the tenant_id a request names a tenant by, without reading
+// anything.
+func ParseID(raw string) (uuid.UUID, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDRequired}
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDInvalid}
+	}
+	return id, nil
 }
 
 // Get reads the tenant named by its public ID.
@@ -76,10 +99,10 @@ func found(tenant dbmodels.Tenant, err error) (dbmodels.Tenant, error) {
 	return tenant, nil
 }
 
-// UpdateParams replaces the name and domains of the tenant PublicID names.
+// UpdateParams replaces the name and domains of the tenant ID names.
 // A nil field keeps what the tenant has; an AdminDomain of "" clears it.
 type UpdateParams struct {
-	PublicID    string
+	ID          uuid.UUID
 	Name        *string
 	Domain      *string
 	AdminDomain *string
@@ -87,7 +110,7 @@ type UpdateParams struct {
 
 // Change is an UpdateParams that passed [UpdateParams.Validate].
 type Change struct {
-	publicID    string
+	id          uuid.UUID
 	name        *string
 	domain      *string
 	adminDomain *sql.NullString
@@ -96,11 +119,10 @@ type Change struct {
 // Validate normalizes p, or refuses it with a [*fielderr.Invalid], without
 // reading anything.
 func (p UpdateParams) Validate() (Change, error) {
-	publicID, err := ParsePublicID(p.PublicID)
-	if err != nil {
-		return Change{}, err
+	if p.ID == uuid.Nil {
+		return Change{}, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDRequired}
 	}
-	c := Change{publicID: publicID}
+	c := Change{id: p.ID}
 	if p.Name != nil {
 		name := strings.TrimSpace(*p.Name)
 		if name == "" {
@@ -130,9 +152,9 @@ func (p UpdateParams) Validate() (Change, error) {
 // domain another tenant holds is refused with a [*fielderr.Conflict].
 func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Change) (dbmodels.Tenant, error) {
 	q := dbmodels.New(tx)
-	params := dbmodels.UpdateTenantInfoParams{PublicID: c.publicID}
+	params := dbmodels.UpdateTenantInfoParams{ID: c.id}
 	if c.name == nil || c.domain == nil || c.adminDomain == nil {
-		current, err := found(q.GetTenantByPublicID(ctx, c.publicID))
+		current, err := found(q.GetTenantByID(ctx, c.id))
 		if err != nil {
 			return dbmodels.Tenant{}, err
 		}
@@ -162,23 +184,22 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 }
 
 // Suspend stops serving the tenant inside tx and files the entry under actor.
-func Suspend(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, publicID string) (dbmodels.Tenant, error) {
-	return setStatus(ctx, tx, logger, actor, publicID, StatusSuspended, "tenant_suspended")
+func Suspend(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
+	return setStatus(ctx, tx, logger, actor, id, StatusSuspended, "tenant_suspended")
 }
 
 // Resume serves a suspended tenant again inside tx and files the entry under
 // actor.
-func Resume(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, publicID string) (dbmodels.Tenant, error) {
-	return setStatus(ctx, tx, logger, actor, publicID, StatusActive, "tenant_resumed")
+func Resume(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
+	return setStatus(ctx, tx, logger, actor, id, StatusActive, "tenant_resumed")
 }
 
-func setStatus(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, rawPublicID, status, action string) (dbmodels.Tenant, error) {
-	publicID, err := ParsePublicID(rawPublicID)
-	if err != nil {
-		return dbmodels.Tenant{}, err
+func setStatus(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID, status, action string) (dbmodels.Tenant, error) {
+	if id == uuid.Nil {
+		return dbmodels.Tenant{}, &fielderr.Invalid{Field: FieldTenantID, Err: ErrTenantIDRequired}
 	}
 	q := dbmodels.New(tx)
-	tenant, err := found(q.UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{PublicID: publicID, Status: status}))
+	tenant, err := found(q.UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{ID: id, Status: status}))
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}

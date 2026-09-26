@@ -210,10 +210,10 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	publicID := createResp.Msg.Tenant.PublicId
+	tenantID := createResp.Msg.Tenant.Id
 
 	suspendResp, err := client.SuspendTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendTenantRequest{
-		PublicId: publicID,
+		TenantId: tenantID,
 	}))
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
@@ -223,7 +223,7 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	}
 
 	resumeResp, err := client.ResumeTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ResumeTenantRequest{
-		PublicId: publicID,
+		TenantId: tenantID,
 	}))
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)

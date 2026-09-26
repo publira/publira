@@ -15,6 +15,9 @@ message Tenant {
   // IANA time zone name used for tenant wall-clock display (e.g. Asia/Tokyo).
   // Read-only here; tenant admins change it through the admin API.
   string timezone = 8;
+  // Primary key (UUID). Every request that acts on the tenant names it by
+  // this; public_id only resolves the tenant a URL names.
+  string id = 9;
   reserved 6;
 }
 
@@ -67,6 +70,7 @@ message CreateTenantResponse {
 
 message SuspendTenantRequest {
   string public_id = 1;
+  string tenant_id = 2;
 }
 
 message SuspendTenantResponse {
@@ -75,6 +79,7 @@ message SuspendTenantResponse {
 
 message ResumeTenantRequest {
   string public_id = 1;
+  string tenant_id = 2;
 }
 
 message ResumeTenantResponse {
@@ -89,6 +94,7 @@ message TenantMember {
   string role = 4;
   string status = 5;
   string created_at = 6;
+  string user_id = 7;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -102,6 +108,7 @@ message ListTenantMembersRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  string tenant_id = 5;
 }
 
 message ListTenantMembersResponse {
@@ -117,6 +124,8 @@ message AddTenantMemberRequest {
   string user_public_id = 2;
   string role = 3;
   string email = 4;
+  string tenant_id = 5;
+  string user_id = 6;
 }
 
 message AddTenantMemberResponse {
@@ -127,6 +136,8 @@ message UpdateTenantMemberRoleRequest {
   string tenant_public_id = 1;
   string user_public_id = 2;
   string role = 3;
+  string tenant_id = 4;
+  string user_id = 5;
 }
 
 message UpdateTenantMemberRoleResponse {
@@ -136,10 +147,13 @@ message UpdateTenantMemberRoleResponse {
 message RemoveTenantMemberRequest {
   string tenant_public_id = 1;
   string user_public_id = 2;
+  string tenant_id = 3;
+  string user_id = 4;
 }
 
 message RemoveTenantMemberResponse {
   string user_public_id = 1;
+  string user_id = 2;
 }
 
 message TenantAdminInvitation {
@@ -163,6 +177,7 @@ message ListTenantAdminInvitationsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  string tenant_id = 5;
 }
 
 message ListTenantAdminInvitationsResponse {
@@ -176,6 +191,7 @@ message ListTenantAdminInvitationsResponse {
 message CreateTenantAdminInvitationRequest {
   string tenant_public_id = 1;
   string email = 2;
+  string tenant_id = 3;
 }
 
 message CreateTenantAdminInvitationResponse {
@@ -186,6 +202,7 @@ message CreateTenantAdminInvitationResponse {
 message ResendTenantAdminInvitationRequest {
   string tenant_public_id = 1;
   string invitation_id = 2;
+  string tenant_id = 3;
 }
 
 message ResendTenantAdminInvitationResponse {
@@ -195,6 +212,7 @@ message ResendTenantAdminInvitationResponse {
 message CancelTenantAdminInvitationRequest {
   string tenant_public_id = 1;
   string invitation_id = 2;
+  string tenant_id = 3;
 }
 
 message CancelTenantAdminInvitationResponse {
@@ -206,6 +224,7 @@ message UpdateTenantRequest {
   string name = 2;
   string domain = 4;
   string admin_domain = 5;
+  string tenant_id = 6;
   reserved 3;
 }
 

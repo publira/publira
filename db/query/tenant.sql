@@ -55,14 +55,14 @@ RETURNING *;
 -- Update the tenant status (active / suspended).
 UPDATE tenants
 SET status = $2
-WHERE public_id = $1
+WHERE id = $1
 RETURNING *;
 
 -- name: UpdateTenantInfo :one
 -- Update the tenant name and its domains.
 UPDATE tenants
 SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
-WHERE public_id = sqlc.arg('public_id')
+WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: UpdateTenantTimezone :one

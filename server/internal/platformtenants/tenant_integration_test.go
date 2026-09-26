@@ -70,10 +70,10 @@ func TestUpdateChangesOnlyTheFieldsItIsGiven(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	publicID := created.Tenant.PublicID
+	tenantID := created.Tenant.ID
 
 	update := func(p UpdateParams) (dbmodels.Tenant, error) {
-		p.PublicID = publicID
+		p.ID = tenantID
 		c, err := p.Validate()
 		if err != nil {
 			return dbmodels.Tenant{}, err
@@ -102,7 +102,7 @@ func TestUpdateChangesOnlyTheFieldsItIsGiven(t *testing.T) {
 		t.Fatalf("after clearing = %+v, want the admin domain unset and the name kept", tenant)
 	}
 
-	if _, err := (UpdateParams{PublicID: publicID}).Validate(); !errors.Is(err, ErrNoChange) {
+	if _, err := (UpdateParams{ID: tenantID}).Validate(); !errors.Is(err, ErrNoChange) {
 		t.Fatalf("nothing to change: err = %v, want ErrNoChange", err)
 	}
 
@@ -130,7 +130,7 @@ func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 	seeded := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 
 	for _, step := range []struct {
-		change func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, string) (dbmodels.Tenant, error)
+		change func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, uuid.UUID) (dbmodels.Tenant, error)
 		status string
 	}{
 		{change: Suspend, status: StatusSuspended},
@@ -138,7 +138,7 @@ func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 	} {
 		var tenant dbmodels.Tenant
 		if err := inPlatformTx(t, pg, func(tx *sql.Tx) (err error) {
-			tenant, err = step.change(context.Background(), tx, nil, auditlog.SystemPlatformActor, seeded.PublicID)
+			tenant, err = step.change(context.Background(), tx, nil, auditlog.SystemPlatformActor, seeded.ID)
 			return err
 		}); err != nil {
 			t.Fatalf("change to %s: %v", step.status, err)
@@ -148,7 +148,7 @@ func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 		}
 	}
 	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
-		_, err := Suspend(context.Background(), tx, nil, auditlog.SystemPlatformActor, "NOSUCHTENANT")
+		_, err := Suspend(context.Background(), tx, nil, auditlog.SystemPlatformActor, uuid.Must(uuid.NewV7()))
 		return err
 	}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("unknown tenant: err = %v, want ErrNotFound", err)
@@ -221,19 +221,19 @@ func TestMemberChangesFileTheirEntries(t *testing.T) {
 	ctx := context.Background()
 
 	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
-		_, err := AddMember(ctx, tx, nil, actor, tenantmembers.AddParams{TenantID: tenant.ID, UserPublicID: reader.PublicID, Role: auth.RoleTenantEditor})
+		_, err := AddMember(ctx, tx, nil, actor, tenantmembers.AddParams{TenantID: tenant.ID, UserID: reader.ID, Role: auth.RoleTenantEditor})
 		return err
 	}); err != nil {
 		t.Fatalf("AddMember: %v", err)
 	}
 	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
-		_, err := UpdateMemberRole(ctx, tx, nil, actor, tenantmembers.UpdateRoleParams{TenantID: tenant.ID, UserPublicID: reader.PublicID, Role: auth.RoleTenantAdmin})
+		_, err := UpdateMemberRole(ctx, tx, nil, actor, tenantmembers.UpdateRoleParams{TenantID: tenant.ID, UserID: reader.ID, Role: auth.RoleTenantAdmin})
 		return err
 	}); err != nil {
 		t.Fatalf("UpdateMemberRole: %v", err)
 	}
 	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
-		_, err := RemoveMember(ctx, tx, nil, actor, tenantmembers.RemoveParams{TenantID: tenant.ID, UserPublicID: reader.PublicID})
+		_, err := RemoveMember(ctx, tx, nil, actor, tenantmembers.RemoveParams{TenantID: tenant.ID, UserID: reader.ID})
 		return err
 	}); err != nil {
 		t.Fatalf("RemoveMember: %v", err)

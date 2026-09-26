@@ -34,6 +34,7 @@ import (
 // spell them so the Connect adapter can report them as they are.
 const (
 	FieldPublicID           = "public_id"
+	FieldTenantID           = "tenant_id"
 	FieldName               = "name"
 	FieldDomain             = "domain"
 	FieldAdminDomain        = "admin_domain"
