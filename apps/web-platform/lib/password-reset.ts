@@ -100,7 +100,6 @@ export const confirmPlatformPasswordReset = async (
   locale: Locale
 ): Promise<PlatformPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
-  const normalizedPassword = newPassword.trim();
   const t = await getMessagesFor(locale);
 
   if (!normalizedToken) {
@@ -111,7 +110,7 @@ export const confirmPlatformPasswordReset = async (
     };
   }
 
-  if (!normalizedPassword) {
+  if (!newPassword.trim()) {
     return {
       message: t("platform.auth.errors.new_password_required"),
       ok: false,
@@ -122,7 +121,7 @@ export const confirmPlatformPasswordReset = async (
   try {
     const response = await apiClient.auth.confirmPasswordReset(
       {
-        newPassword: normalizedPassword,
+        newPassword,
         token: normalizedToken,
       },
       await buildClientAddressHeaders()

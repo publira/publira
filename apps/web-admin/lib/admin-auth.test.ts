@@ -352,6 +352,25 @@ describe("tenant admin invitation", () => {
     });
   });
 
+  it("sends the password with the spaces typed around it", async () => {
+    mockAcceptTenantAdminInvitation.mockResolvedValueOnce({
+      accepted: true,
+      accountCreated: true,
+    });
+
+    await acceptTenantAdminInvitation(
+      "tenant_001",
+      "token_001",
+      "en",
+      "Jane Doe",
+      "  correct horse  "
+    );
+
+    expect(mockAcceptTenantAdminInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ password: "  correct horse  " })
+    );
+  });
+
   it("translates an expired error", async () => {
     mockAcceptTenantAdminInvitation.mockRejectedValueOnce(
       new ConnectError("invitation expired", Code.FailedPrecondition)
@@ -405,6 +424,22 @@ describe("admin password reset", () => {
     await expect(
       confirmAdminPasswordReset("tenant_001", "token_001", "password123", "en")
     ).resolves.toEqual({ confirmed: true, ok: true });
+  });
+
+  it("sends the new password with the spaces typed around it", async () => {
+    mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
+
+    await confirmAdminPasswordReset(
+      "tenant_001",
+      "token_001",
+      "  correct horse  ",
+      "en"
+    );
+
+    expect(mockConfirmPasswordReset).toHaveBeenCalledWith(
+      expect.objectContaining({ newPassword: "  correct horse  " }),
+      expect.anything()
+    );
   });
 
   it("turns an expired token into the expired path", async () => {

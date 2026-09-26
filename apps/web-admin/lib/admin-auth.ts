@@ -350,7 +350,7 @@ export const acceptTenantAdminInvitation = async (
   try {
     const response = await apiClient.auth.acceptTenantAdminInvitation({
       name: name?.trim() ?? "",
-      password: password?.trim() ?? "",
+      password: password ?? "",
       tenant: { tenantId },
       token: normalizedToken,
     });
@@ -436,7 +436,6 @@ export const confirmAdminPasswordReset = async (
   locale: Locale
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
-  const normalizedPassword = newPassword.trim();
   const t = await getMessagesFor(locale);
 
   if (!tenantId.trim() || !normalizedToken) {
@@ -447,7 +446,7 @@ export const confirmAdminPasswordReset = async (
     };
   }
 
-  if (!normalizedPassword) {
+  if (!newPassword.trim()) {
     return {
       message: t("admin.auth.errors.new_password_required"),
       ok: false,
@@ -458,7 +457,7 @@ export const confirmAdminPasswordReset = async (
   try {
     const response = await apiClient.auth.confirmPasswordReset(
       {
-        newPassword: normalizedPassword,
+        newPassword,
         tenant: { tenantId },
         token: normalizedToken,
       },

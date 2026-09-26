@@ -25,23 +25,13 @@ const tokenOrEmpty = async (
   return parsed.success ? parsed.data : "";
 };
 
-const trimmedPasswordFormSchema = async (locale: Locale) => {
-  const t = await getMessagesFor(locale);
-
-  return z
-    .string({
-      error: t("admin.auth.fields.password_required"),
-    })
-    .trim()
-    .pipe(await passwordFormSchema(locale));
-};
 const confirmPasswordFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z
     .object({
-      confirmPassword: await trimmedPasswordFormSchema(locale),
-      password: await trimmedPasswordFormSchema(locale),
+      confirmPassword: await passwordFormSchema(locale),
+      password: await passwordFormSchema(locale),
       tenantId: await tenantIdFormSchema(locale),
       token: await authTokenFormSchema(locale),
     })
