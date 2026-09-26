@@ -1,4 +1,4 @@
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -23,12 +23,12 @@ const NotificationBellErrorFallback = ({ moreHref }: { moreHref: string }) => (
     </NotificationBellTrigger>
     <NotificationBellContent>
       <NotificationBellHeader unreadCount={0}>
-        <Suspense fallback={<Skeleton className="h-4 w-16" />}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.notifications.list_heading" />
         </Suspense>
       </NotificationBellHeader>
       <NotificationBellError>
-        <Suspense fallback={<Skeleton className="h-4 w-64" />}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="host.notifications.list_failed" />
         </Suspense>
       </NotificationBellError>

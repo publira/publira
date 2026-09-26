@@ -7,7 +7,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@publira/ui-components/popover";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
@@ -30,7 +30,7 @@ export const NotificationBellSkeleton = () => (
     aria-hidden="true"
     className="inline-flex size-9 items-center justify-center"
   >
-    <Skeleton className="size-5 rounded" />
+    <SkeletonLine className="size-5 rounded" />
   </span>
 );
 
