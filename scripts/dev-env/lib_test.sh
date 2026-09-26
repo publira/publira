@@ -506,6 +506,20 @@ dev_env_session_is_running "${foreign_sid}" || fail "a session outside this repo
 dev_env_signal_session KILL "${foreign_sid}"
 pass "a pid whose session no longer belongs to this repository is not signalled"
 
+# A ps that fails stands for a listing that could not be taken, which says
+# nothing about whether the session still has members.
+unlisted_run_dir="$(dev_env_profile_run_dir unlisted)"
+start_fake_service "${unlisted_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+unlisted_sid="${fake_service_sid}"
+write_stub "${test_dir}/ps-failing/ps" 'exit 1'
+if (PATH="${test_dir}/ps-failing:${PATH}" dev_env_stop_profile unlisted) > /dev/null 2>&1; then
+  fail "a stop that could not list a session's processes reported success"
+fi
+[[ -e "${unlisted_run_dir}/web.pid" ]] || fail "the pid file of a session that could not be listed was removed"
+dev_env_session_is_running "${unlisted_sid}" || fail "a session that could not be listed was reported as stopped"
+dev_env_stop_profile unlisted > /dev/null
+pass "a stop that cannot list a session's processes keeps its pid file and fails"
+
 # The run directory outlives the run: `dev_env_stop_profile` removes the pid
 # files and then cannot `rmdir` a directory that still holds the logs. Reading
 # the directory would therefore call every profile that has ever been started a

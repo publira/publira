@@ -576,16 +576,12 @@ for line in sys.stdin:
 ' "$1"
 }
 
+# Succeeds while a session has a member and fails with 1 once it has none. A
+# listing that failed says nothing about the members, so it fails with 2.
 dev_env_session_is_running() {
-  [[ -n "$(dev_env_session_members "$1")" ]]
-}
-
-# A recorded pid stands for a profile's service only while some member of its
-# session still runs from this worktree. Once the session is gone the number is
-# free for any process to take, and a session that names another worktree
-# belongs to that one.
-dev_env_session_belongs_to_repo() {
-  dev_env_session_members "$1" | grep -qF -- "${REPO_ROOT}"
+  local members
+  members="$(dev_env_session_members "$1")" || return 2
+  [[ -n "${members}" ]]
 }
 
 dev_env_signal_session() {
@@ -595,37 +591,48 @@ dev_env_signal_session() {
   done < <(dev_env_session_members "${sid}" | awk '{ print $1 }' | sort -u)
 }
 
+# Succeeds once a session is empty, fails with 1 while it still has a member
+# after the given seconds, and with 2 when its members could not be listed.
 dev_env_wait_for_session() {
-  local sid="$1" tenths=$(($2 * 10))
-  while ((tenths > 0)); do
-    dev_env_session_is_running "${sid}" || return 0
+  local sid="$1" tenths=$(($2 * 10)) status
+  while :; do
+    status=0
+    dev_env_session_is_running "${sid}" || status=$?
+    ((status != 1)) || return 0
+    ((status == 0)) || return "${status}"
+    ((tenths > 0)) || return 1
     sleep 0.1
     tenths=$((tenths - 1))
   done
-  ! dev_env_session_is_running "${sid}"
 }
 
-# Ends one session and reports whether it is gone, so that its caller can keep
-# the pid file of a session that outlived the attempt.
+# Ends one session and reports whether it is gone, with the statuses of
+# dev_env_wait_for_session, so that its caller can keep the pid file of a
+# session that outlived the attempt or could not be looked at.
+#
+# A recorded pid stands for a profile's service only while some member of its
+# session still runs from this worktree. Once the session is gone the number is
+# free for any process to take, and a session that names another worktree
+# belongs to that one.
 dev_env_stop_session() {
-  local sid="$1"
-  dev_env_session_is_running "${sid}" || return 0
-  if ! dev_env_session_belongs_to_repo "${sid}"; then
+  local sid="$1" members status=0
+  members="$(dev_env_session_members "${sid}")" || return 2
+  [[ -n "${members}" ]] || return 0
+  if ! grep -qF -- "${REPO_ROOT}" <<< "${members}"; then
     dev_env_error "not signalling session ${sid}; it no longer belongs to ${REPO_ROOT}"
     return 0
   fi
   dev_env_signal_session TERM "${sid}"
-  dev_env_wait_for_session "${sid}" "${DEV_ENV_STOP_TERM_SECONDS}" && return 0
+  dev_env_wait_for_session "${sid}" "${DEV_ENV_STOP_TERM_SECONDS}" || status=$?
+  ((status == 1)) || return "${status}"
   dev_env_signal_session KILL "${sid}"
   dev_env_wait_for_session "${sid}" "${DEV_ENV_STOP_KILL_SECONDS}"
 }
 
 dev_env_stop_profile() {
-  local name="$1" run_dir pid_file sid survivors=0
+  local name="$1" run_dir pid_file sid status survivors=0
   run_dir="$(dev_env_profile_run_dir "${name}")"
   [[ -d "${run_dir}" ]] || return 0
-  # Without it every session would read as empty and each pid file would be
-  # removed with its processes still running.
   dev_env_require_commands python3
   dev_env_stop_edge "${name}" || survivors=1
   for pid_file in "${run_dir}"/*.pid; do
@@ -638,10 +645,15 @@ dev_env_stop_profile() {
     fi
     # A pid file is removed once nothing is left in the session it names, so an
     # attempt that could not finish leaves the names a repeated stop needs.
-    if dev_env_stop_session "${sid}"; then
+    status=0
+    dev_env_stop_session "${sid}" || status=$?
+    if ((status == 0)); then
       rm -f "${pid_file}"
-    else
+    elif ((status == 1)); then
       dev_env_error "${pid_file##*/} still has processes in session ${sid}"
+      survivors=1
+    else
+      dev_env_error "keeping ${pid_file##*/}; the processes of session ${sid} could not be listed"
       survivors=1
     fi
   done
