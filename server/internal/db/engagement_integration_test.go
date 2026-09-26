@@ -436,6 +436,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 		PeriodStart:      statDate,
 		PeriodEnd:        statDate.Add(6 * 24 * time.Hour),
 		EntityType:       "series",
+		Surface:          sql.NullString{String: "web", Valid: true},
 		Items:            json.RawMessage(`[{"entity_id":"` + seed.seriesID.String() + `","score":1,"rank":1}]`),
 		AlgorithmVersion: 1,
 		ComputedAt:       time.Now().UTC(),
@@ -454,7 +455,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 
 	rows, err := tx.QueryContext(ctx, `
 		EXPLAIN SELECT * FROM content_ranking_snapshots
-		WHERE tenant_id = $1 AND genre_id IS NULL AND ranking_key = 'weekly' AND entity_type = 'series'
+		WHERE tenant_id = $1 AND genre_id IS NULL AND surface = 'web' AND ranking_key = 'weekly' AND entity_type = 'series'
 		ORDER BY computed_at DESC LIMIT 1
 	`, seed.tenantID)
 	if err != nil {
@@ -476,7 +477,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 		t.Fatalf("close explain: %v", err)
 	}
 
-	const index = "idx_content_ranking_snapshots_tenant_genre_key_computed"
+	const index = "idx_content_ranking_snapshots_tenant_genre_surface_key_computed"
 	if !strings.Contains(plan.String(), index) {
 		t.Fatalf("plan did not use %s:\n%s", index, plan.String())
 	}
@@ -791,6 +792,7 @@ func TestEngagementSnapshotQueriesRoundTrip(t *testing.T) {
 		PeriodStart:      statDate,
 		PeriodEnd:        statDate.Add(6 * 24 * time.Hour),
 		EntityType:       "series",
+		Surface:          sql.NullString{String: "web", Valid: true},
 		Items:            json.RawMessage(`[{"entity_id":"` + seed.seriesID.String() + `","score":1,"rank":1}]`),
 		AlgorithmVersion: 1,
 		ComputedAt:       time.Now().UTC(),
@@ -844,10 +846,10 @@ func TestBatchDerivedTablesRefuseWritesFromTheAPIRoles(t *testing.T) {
 		},
 		{
 			name: "content_ranking_snapshots",
-			seed: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type)
-				VALUES ($1, $2, 'daily', '2026-08-15', '2026-08-15', 'series')`, []any{uuid.Must(uuid.NewV7()), tenant}},
-			insert: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type)
-				VALUES ($1, $2, 'daily', '2026-08-16', '2026-08-16', 'series')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			seed: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface)
+				VALUES ($1, $2, 'daily', '2026-08-15', '2026-08-15', 'series', 'web')`, []any{uuid.Must(uuid.NewV7()), tenant}},
+			insert: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface)
+				VALUES ($1, $2, 'daily', '2026-08-16', '2026-08-16', 'series', 'web')`, []any{uuid.Must(uuid.NewV7()), tenant}},
 			update: statement{`UPDATE content_ranking_snapshots SET items = '[{"entity_id":"` + series.String() + `","score":9999,"rank":1}]'
 				WHERE tenant_id = $1`, []any{tenant}},
 			delete: statement{"DELETE FROM content_ranking_snapshots WHERE tenant_id = $1", []any{tenant}},

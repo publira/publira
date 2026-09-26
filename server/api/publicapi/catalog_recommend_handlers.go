@@ -49,16 +49,18 @@ type seriesRanking struct {
 	ranked bool
 }
 
-// latestSeriesRanking reads the snapshot the recommendation order is built on.
+// latestSeriesRanking reads the snapshot the recommendation order is built on,
+// the one the batch cut for the calling surface.
 //
 // A tenant that has never been ranked is not an error: it is the cold start
 // this list falls back for. Neither is a snapshot whose items are not an array
 // — the ordering is advisory, and the same series in publication order beats
 // failing the storefront over a row this repository's own batch wrote wrong.
 // It is logged, because nothing else would notice.
-func (s *apiServer) latestSeriesRanking(ctx context.Context, tenantID uuid.UUID) (seriesRanking, error) {
+func (s *apiServer) latestSeriesRanking(ctx context.Context, tenantID uuid.UUID, surface string) (seriesRanking, error) {
 	snapshot, err := s.queriesFor(ctx).GetLatestContentRankingSnapshot(ctx, dbmodels.GetLatestContentRankingSnapshotParams{
 		TenantID:   tenantID,
+		Surface:    surface,
 		RankingKey: recommendedRankingKey,
 		EntityType: seriesRankingEntityType,
 	})
@@ -248,7 +250,7 @@ func (s *apiServer) ListRecommendedSeries(
 		}
 	}
 
-	ranking, err := s.latestSeriesRanking(ctx, tenant.ID)
+	ranking, err := s.latestSeriesRanking(ctx, tenant.ID, surface)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())
 	}

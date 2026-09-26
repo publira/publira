@@ -181,7 +181,7 @@ The rebuild, purge, and royalty close work runs here as well, on the same River 
 | --- | --- |
 | `maintenance.project_episode_reads` | Files the missing `episode_complete` events for stored `episode_reads` |
 | `maintenance.aggregate_content_stats` | Rebuilds each day of `content_daily_stats` a tenant is owed |
-| `maintenance.aggregate_rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, of each day a tenant is owed |
+| `maintenance.aggregate_rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, with the series ones per surface, of each day a tenant is owed |
 | `maintenance.build_recommend_features` | Rebuilds the user and item recommend feature snapshots |
 | `maintenance.purge_content_events` | Deletes `content_events` rows past their retention window |
 | `maintenance.purge_ranking_snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |

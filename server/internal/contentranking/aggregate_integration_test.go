@@ -72,10 +72,10 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 
 	// A snapshot left by an earlier run must be replaced in place rather than
 	// joined by a second row for the same period.
-	insertStaleSnapshot(t, pg.DB, tenant.ID, DailyRankingKey, referenceDate, referenceDate, "series")
+	insertStaleSnapshot(t, pg.DB, tenant.ID, DailyRankingKey, referenceDate, referenceDate, "series", "web")
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	want := Result{TenantCount: 2, SnapshotCount: 8, ItemCount: 14}
+	want := Result{TenantCount: 2, SnapshotCount: 12, ItemCount: 22}
 	result, err := aggregator.Run(context.Background(), runOptions())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -85,7 +85,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 	}
 
 	snapshots := loadSnapshots(t, pg.DB)
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: rated.ID, Score: 44.4, ViewCount: 10, ViewerDays: 6, RatingCount: 2, RatingSum: 9, FavoriteCount: 1, LastActiveDate: referenceDate},
@@ -94,7 +94,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 		},
 	})
 	// The faded older day is what puts the viewed series ahead over a week.
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: viewed.ID, Score: 84, ViewCount: 130, ViewerDays: 52, LastActiveDate: referenceDate},
@@ -117,7 +117,7 @@ func TestRunBuildsRankingSnapshotsPerTenant(t *testing.T) {
 			{Rank: 2, EntityID: older.ID, Score: 12.4, ViewCount: 4, ViewerDays: 4, RatingCount: 2, RatingSum: 4, LastActiveDate: referenceDate},
 		},
 	})
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: otherTenant.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: otherTenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: otherSeries.ID, Score: 4, ViewCount: 2, ViewerDays: 1, LastActiveDate: referenceDate},
@@ -163,7 +163,7 @@ func TestRunTruncatesItemsToTheConfiguredLimit(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	assertSnapshot(t, loadSnapshots(t, pg.DB), snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, loadSnapshots(t, pg.DB), snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: busy.ID, Score: 17, ViewCount: 9, ViewerDays: 4, LastActiveDate: referenceDate},
@@ -194,15 +194,15 @@ func TestRunRanksTheRemainingTenantsAfterOneFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
 	}
-	if want := (Result{TenantCount: 1, SnapshotCount: 4, ItemCount: 2}); result != want {
+	if want := (Result{TenantCount: 1, SnapshotCount: 6, ItemCount: 4}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 
 	snapshots := loadSnapshots(t, pg.DB)
-	if _, ok := snapshots[snapshotKey{tenantID: broken.ID, rankingKey: DailyRankingKey, entityType: "series"}]; ok {
+	if _, ok := snapshots[snapshotKey{tenantID: broken.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}]; ok {
 		t.Fatal("the failing tenant committed a snapshot")
 	}
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: healthy.ID, rankingKey: DailyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: healthy.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: healthySeries.ID, Score: 4, ViewCount: 2, ViewerDays: 1, LastActiveDate: referenceDate},
@@ -219,12 +219,12 @@ func TestRunWritesEmptySnapshotsForATenantWithoutSignal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{TenantCount: 1, SnapshotCount: 4}); result != want {
+	if want := (Result{TenantCount: 1, SnapshotCount: 6}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	// An empty leaderboard is written as an empty array, never as null, so a
 	// reader can iterate it without a nil check.
-	assertSnapshot(t, loadSnapshots(t, pg.DB), snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series"}, snapshot{
+	assertSnapshot(t, loadSnapshots(t, pg.DB), snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", surface: "web"}, snapshot{
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate, Items: []rankingItem{},
 	})
 }
@@ -282,8 +282,9 @@ func TestRunBuildsARankingPerGenre(t *testing.T) {
 		viewCount: 50})
 
 	aggregator := New(pg.OpenPlatformDB(t))
-	// Four tenant-wide snapshots, then a daily and a weekly one per genre.
-	want := Result{TenantCount: 1, SnapshotCount: 12, ItemCount: 20}
+	// Six tenant-wide snapshots, then a daily and a weekly one per genre and
+	// surface.
+	want := Result{TenantCount: 1, SnapshotCount: 22, ItemCount: 40}
 	result, err := aggregator.Run(context.Background(), runOptions())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -293,14 +294,14 @@ func TestRunBuildsARankingPerGenre(t *testing.T) {
 	}
 
 	snapshots := loadSnapshots(t, pg.DB)
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: action.ID}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: action.ID, surface: "web"}, snapshot{
 		PeriodStart: referenceDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: duel.ID, Score: 20, ViewCount: 10, ViewerDays: 5, LastActiveDate: referenceDate},
 			{Rank: 2, EntityID: chase.ID, Score: 8, ViewCount: 4, ViewerDays: 2, LastActiveDate: referenceDate},
 		},
 	})
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", genreID: action.ID}, snapshot{
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", genreID: action.ID, surface: "web"}, snapshot{
 		PeriodStart: weeklyStartDate, PeriodEnd: referenceDate,
 		Items: []rankingItem{
 			{Rank: 1, EntityID: duel.ID, Score: 20, ViewCount: 10, ViewerDays: 5, LastActiveDate: referenceDate},
@@ -314,14 +315,14 @@ func TestRunBuildsARankingPerGenre(t *testing.T) {
 			{Rank: 2, EntityID: duel.ID, Score: 20, ViewCount: 10, ViewerDays: 5, LastActiveDate: referenceDate},
 		},
 	}
-	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: romance.ID}, romanceDaily)
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: romance.ID, surface: "web"}, romanceDaily)
 	for _, genreID := range []uuid.UUID{quiet.ID, unused.ID} {
-		assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", genreID: genreID}, snapshot{
+		assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, entityType: "series", genreID: genreID, surface: "web"}, snapshot{
 			PeriodStart: weeklyStartDate, PeriodEnd: referenceDate, Items: []rankingItem{},
 		})
 	}
 	// The tenant-wide ranking is not held to the genre rankings' rules.
-	if got := len(snapshots[snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series"}].Items); got != 6 {
+	if got := len(snapshots[snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}].Items); got != 6 {
 		t.Fatalf("tenant-wide daily series items = %d, want 6", got)
 	}
 
@@ -353,6 +354,75 @@ func TestRunBuildsARankingPerGenre(t *testing.T) {
 			t.Fatalf("the deleted genre kept its %s snapshot", key.rankingKey)
 		}
 	}
+}
+
+func TestRunRanksSeriesPerSurface(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	tenant := pg.SeedTenant(t, "RANKSURFACE1", "surface-rankings.example.com", "Surface Ranking Tenant")
+	drama := pg.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Drama"})
+	appFirst := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSURFSE01", Published: true, Availability: "app"})
+	appSecond := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSURFSE02", Published: true, Availability: "app"})
+	webOnly := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSURFSE03", Published: true, Availability: "web"})
+	both := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "RANKSURFSE04", Published: true})
+	for _, series := range []testutil.Series{appFirst, appSecond, webOnly, both} {
+		pg.SeedSeriesGenre(t, tenant.ID, series.ID, drama.ID)
+	}
+
+	// The app-only series lead on views alone and fill a two-item leaderboard
+	// by themselves.
+	for _, seed := range []struct {
+		id    uuid.UUID
+		views int64
+	}{{appFirst.ID, 100}, {appSecond.ID, 90}, {webOnly.ID, 20}, {both.ID, 10}} {
+		insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: tenant.ID, statDate: referenceDate, entityType: "series", entityID: seed.id, viewCount: seed.views})
+	}
+
+	// Every signal of this tenant belongs to a series the web may not show.
+	appTenant := pg.SeedTenant(t, "RANKSURFACE2", "app-surface-rankings.example.com", "App Surface Ranking Tenant")
+	appTitle := pg.SeedSeries(t, appTenant.ID, testutil.SeriesSeed{PublicID: "RANKSURFSE05", Published: true, Availability: "app"})
+	insertDailyStat(t, pg.DB, dailyStatSeed{tenantID: appTenant.ID, statDate: referenceDate, entityType: "series", entityID: appTitle.ID, viewCount: 5})
+
+	options := runOptions()
+	options.ItemLimit = 2
+	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), options); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	snapshots := loadSnapshots(t, pg.DB)
+	webDaily := snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate,
+		Items: []rankingItem{
+			{Rank: 1, EntityID: webOnly.ID, Score: 20, ViewCount: 20, LastActiveDate: referenceDate},
+			{Rank: 2, EntityID: both.ID, Score: 10, ViewCount: 10, LastActiveDate: referenceDate},
+		},
+	}
+	appDaily := snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate,
+		Items: []rankingItem{
+			{Rank: 1, EntityID: appFirst.ID, Score: 100, ViewCount: 100, LastActiveDate: referenceDate},
+			{Rank: 2, EntityID: appSecond.ID, Score: 90, ViewCount: 90, LastActiveDate: referenceDate},
+		},
+	}
+	for _, genreID := range []uuid.UUID{uuid.Nil, drama.ID} {
+		assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: genreID, surface: "web"}, webDaily)
+		assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "series", genreID: genreID, surface: "app"}, appDaily)
+	}
+
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: appTenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "web"}, snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate, Items: []rankingItem{},
+	})
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: appTenant.ID, rankingKey: DailyRankingKey, entityType: "series", surface: "app"}, snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate,
+		Items: []rankingItem{
+			{Rank: 1, EntityID: appTitle.ID, Score: 5, ViewCount: 5, LastActiveDate: referenceDate},
+		},
+	})
+	// Episode rankings are not read by surface and stay one per window.
+	assertSnapshot(t, snapshots, snapshotKey{tenantID: tenant.ID, rankingKey: DailyRankingKey, entityType: "episode"}, snapshot{
+		PeriodStart: referenceDate, PeriodEnd: referenceDate, Items: []rankingItem{},
+	})
 }
 
 func TestRunMintsUUIDv7Keys(t *testing.T) {
@@ -491,15 +561,15 @@ func insertDailyStat(t *testing.T, db *sql.DB, seed dailyStatSeed) {
 	}
 }
 
-func insertStaleSnapshot(t *testing.T, db *sql.DB, tenantID uuid.UUID, rankingKey, periodStart, periodEnd, entityType string) {
+func insertStaleSnapshot(t *testing.T, db *sql.DB, tenantID uuid.UUID, rankingKey, periodStart, periodEnd, entityType, surface string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version
-		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[{"rank": 1, "score": 999}]'::jsonb, $7)
-	`, uuid.Must(uuid.NewV7()), tenantID, rankingKey, periodStart, periodEnd, entityType, AlgorithmVersion); err != nil {
+			id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items, algorithm_version
+		) VALUES ($1, $2, $3, $4::date, $5::date, $6, NULLIF($7, ''), '[{"rank": 1, "score": 999}]'::jsonb, $8)
+	`, uuid.Must(uuid.NewV7()), tenantID, rankingKey, periodStart, periodEnd, entityType, surface, AlgorithmVersion); err != nil {
 		t.Fatalf("insert stale snapshot: %v", err)
 	}
 }
@@ -547,6 +617,8 @@ type snapshotKey struct {
 	entityType string
 	// genreID is uuid.Nil for the tenant-wide ranking.
 	genreID uuid.UUID
+	// surface is empty for an episode ranking, which is not cut per surface.
+	surface string
 }
 
 type rankingItem struct {
@@ -575,7 +647,7 @@ func loadSnapshots(t *testing.T, db *sql.DB) map[snapshotKey]snapshot {
 	defer cancel()
 	rows, err := db.QueryContext(ctx, `
 		SELECT tenant_id, ranking_key, entity_type, COALESCE(genre_id, '00000000-0000-0000-0000-000000000000'::uuid),
-			to_char(period_start, 'YYYY-MM-DD'), to_char(period_end, 'YYYY-MM-DD'),
+			COALESCE(surface, ''), to_char(period_start, 'YYYY-MM-DD'), to_char(period_end, 'YYYY-MM-DD'),
 			items, algorithm_version
 		FROM content_ranking_snapshots
 	`)
@@ -590,7 +662,7 @@ func loadSnapshots(t *testing.T, db *sql.DB) map[snapshotKey]snapshot {
 		var value snapshot
 		var raw []byte
 		var version int
-		if err := rows.Scan(&key.tenantID, &key.rankingKey, &key.entityType, &key.genreID,
+		if err := rows.Scan(&key.tenantID, &key.rankingKey, &key.entityType, &key.genreID, &key.surface,
 			&value.PeriodStart, &value.PeriodEnd, &raw, &version); err != nil {
 			t.Fatalf("scan ranking snapshot: %v", err)
 		}
@@ -612,11 +684,11 @@ func assertSnapshot(t *testing.T, snapshots map[snapshotKey]snapshot, key snapsh
 	t.Helper()
 	got, ok := snapshots[key]
 	if !ok {
-		t.Fatalf("missing %s %s snapshot of genre %s for tenant %s", key.rankingKey, key.entityType, key.genreID, key.tenantID)
+		t.Fatalf("missing %s %s %s snapshot of genre %s for tenant %s", key.surface, key.rankingKey, key.entityType, key.genreID, key.tenantID)
 	}
 	gotJSON, wantJSON := mustMarshal(t, got), mustMarshal(t, want)
 	if gotJSON != wantJSON {
-		t.Fatalf("%s %s snapshot of genre %s for tenant %s = %s, want %s", key.rankingKey, key.entityType, key.genreID, key.tenantID, gotJSON, wantJSON)
+		t.Fatalf("%s %s %s snapshot of genre %s for tenant %s = %s, want %s", key.surface, key.rankingKey, key.entityType, key.genreID, key.tenantID, gotJSON, wantJSON)
 	}
 }
 

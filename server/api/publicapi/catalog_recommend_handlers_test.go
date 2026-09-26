@@ -64,9 +64,9 @@ func recommendedSeriesRow(rows *sqlmock.Rows, id uuid.UUID, publicID, title stri
 
 func expectRankingSnapshotLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, items []byte) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLatestContentRankingSnapshot)).
-		WithArgs(tenantID, "weekly", "series").
+		WithArgs(tenantID, "web", "weekly", "series").
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "weekly", now, now, "series", items, int32(1), now, nil))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "weekly", now, now, "series", items, int32(1), now, nil, "web"))
 }
 
 func TestCatalogListRecommendedSeriesLeadsWithTheRanking(t *testing.T) {
@@ -186,7 +186,7 @@ func TestCatalogListRecommendedSeriesFallsBackToNewArrivals(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// A tenant whose signals have never been ranked has no snapshot row at all.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLatestContentRankingSnapshot)).
-		WithArgs(tenantID, "weekly", "series").
+		WithArgs(tenantID, "web", "weekly", "series").
 		WillReturnError(sql.ErrNoRows)
 	// An empty items array leaves every series unranked, which is the
 	// newest-first list.

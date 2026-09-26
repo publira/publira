@@ -73,7 +73,8 @@ type rankingSnapshots struct {
 }
 
 // rankingSnapshotsForPage reads the snapshot a page is built from together with
-// the period before it.
+// the period before it, both from the leaderboards the batch cut for the
+// calling surface.
 //
 // The first page takes the newest period. Every page after it is pinned to the
 // snapshot its token names, so a chart stays the chart the reader started
@@ -88,6 +89,7 @@ type rankingSnapshots struct {
 func (s *apiServer) rankingSnapshotsForPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	rankingKey string,
 	pinned uuid.NullUUID,
 ) (rankingSnapshots, error) {
@@ -97,6 +99,7 @@ func (s *apiServer) rankingSnapshotsForPage(
 		current, err := queries.GetContentRankingSnapshotByID(ctx, dbmodels.GetContentRankingSnapshotByIDParams{
 			TenantID:   tenantID,
 			ID:         pinned.UUID,
+			Surface:    surface,
 			RankingKey: rankingKey,
 			EntityType: seriesRankingEntityType,
 		})
@@ -106,11 +109,12 @@ func (s *apiServer) rankingSnapshotsForPage(
 		if err != nil {
 			return rankingSnapshots{}, err
 		}
-		return s.rankingSnapshotsPrecededBy(ctx, tenantID, rankingKey, current)
+		return s.rankingSnapshotsPrecededBy(ctx, tenantID, surface, rankingKey, current)
 	}
 
 	rows, err := queries.ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:   tenantID,
+		Surface:    surface,
 		RankingKey: rankingKey,
 		EntityType: seriesRankingEntityType,
 		Limit:      rankingSnapshotPairSize,
@@ -135,11 +139,13 @@ func (s *apiServer) rankingSnapshotsForPage(
 func (s *apiServer) rankingSnapshotsPrecededBy(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	surface string,
 	rankingKey string,
 	current dbmodels.ContentRankingSnapshot,
 ) (rankingSnapshots, error) {
 	rows, err := s.queriesFor(ctx).ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:          tenantID,
+		Surface:           surface,
 		RankingKey:        rankingKey,
 		EntityType:        seriesRankingEntityType,
 		BeforePeriodStart: sql.NullTime{Time: current.PeriodStart, Valid: true},
@@ -367,7 +373,7 @@ func (s *apiServer) ListRankedSeries(
 		}
 	}
 
-	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, rankingKey, keys.snapshotID)
+	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, surface, rankingKey, keys.snapshotID)
 	if errors.Is(err, errRankingSnapshotUnavailable) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is no longer valid"))
 	}

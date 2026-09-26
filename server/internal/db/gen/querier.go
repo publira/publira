@@ -353,7 +353,7 @@ type Querier interface {
 	// from, so a numbered chart cannot take its positions from two different runs
 	// when the batch lands mid-pagination. This is the read that pins it.
 	//
-	// ranking_key, entity_type, and the genre are checked here rather than after
+	// ranking_key, entity_type, the genre, and the surface are checked here rather than after
 	// the row comes back: an id is the only part of a token a client could put
 	// there on purpose, and a snapshot of another ranking has to be no answer
 	// rather than a chart served under the wrong heading. A snapshot the retention
@@ -409,8 +409,8 @@ type Querier interface {
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
-	// The newest snapshot for one ranking key and entity type, whichever period
-	// and algorithm version produced it. A reader on a request path cannot know
+	// The newest snapshot of one surface for one ranking key and entity type,
+	// whichever period and algorithm version produced it. A reader on a request path cannot know
 	// which day the last batch run covered, so it asks for the most recently
 	// computed row instead of naming period bounds. A bumped algorithm_version
 	// files its snapshots beside the old ones rather than replacing them, and wins
@@ -689,11 +689,11 @@ type Querier interface {
 	//   GetContentRankingSnapshot
 	//     -> idx_content_ranking_snapshots_unique
 	//   GetLatestContentRankingSnapshot
-	//     -> idx_content_ranking_snapshots_tenant_genre_key_computed
+	//     -> idx_content_ranking_snapshots_tenant_genre_surface_key_computed
 	//   GetContentRankingSnapshotByID
 	//     -> content_ranking_snapshots_pkey
 	//   ListLatestContentRankingSnapshots
-	//     -> idx_content_ranking_snapshots_tenant_genre_key_computed for the scan,
+	//     -> idx_content_ranking_snapshots_tenant_genre_surface_key_computed for the scan,
 	//        then a sort by period (see the note there)
 	//   ListRankedSeriesIDs / ListRankedSeriesIDsReversed
 	//     -> no index; expands one snapshot's items (see the note there)
@@ -1057,10 +1057,10 @@ type Querier interface {
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	// The series a page of genre tiles draws its covers from: per genre, the
-	// positions of its newest leaderboard first, then its newest published series,
-	// up to series_limit. The leaderboard only orders the genre's current members,
-	// so a series taken down, moved off the surface, re-rated, or removed from the
-	// genre since the batch ran drops out here.
+	// positions of its newest leaderboard for the surface first, then its newest
+	// published series, up to series_limit. The leaderboard only orders the genre's
+	// current members, so a series taken down, moved off the surface, re-rated, or
+	// removed from the genre since the batch ran drops out here.
 	ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error)
 	ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListGenreImageVariantsByImageIDsRow, error)
 	// Resolves the genres a series form assigned. The caller compares the row
@@ -1082,8 +1082,8 @@ type Querier interface {
 	// ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
-	// The newest computation of each period for one ranking key, newest period
-	// first. A ranking screen takes two of them: the period to show, and the one
+	// The newest computation of each period for one surface and ranking key,
+	// newest period first. A ranking screen takes two of them: the period to show, and the one
 	// before it, which is where a position's previous rank comes from.
 	//
 	// DISTINCT ON is what makes those two different periods. algorithm_version is
@@ -1104,8 +1104,8 @@ type Querier interface {
 	// NULL asks for the newest periods.
 	//
 	// No index serves the order.
-	// idx_content_ranking_snapshots_tenant_genre_key_computed narrows the scan to
-	// one tenant's ranking key, and what is left is the periods
+	// idx_content_ranking_snapshots_tenant_genre_surface_key_computed narrows the
+	// scan to one tenant's surface and ranking key, and what is left is the periods
 	// purge-content-rankings has not yet dropped — a sort over days, not over rows.
 	ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error)
 	// The backward direction of ListMyEpisodeReadsDesc.
@@ -1415,12 +1415,15 @@ type Querier interface {
 	// what the index can start from, since the pair spans both tables.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
-	// positions it recorded, restricted to the series that are still published.
+	// positions it recorded, restricted to the series that are still published on
+	// the surface.
 	//
 	// Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
 	// than from the catalogue, so an unpublished series does not move the ones
 	// behind it: it drops out and leaves its position empty. The ranks are the
-	// snapshot's own and are never renumbered here.
+	// snapshot's own and are never renumbered here. The snapshot was cut for the
+	// surface, so only a series whose availability changed since the batch ran
+	// leaves such a gap.
 	//
 	// Duplicate entity ids are folded with min() exactly as the recommendation
 	// scan folds them, which is also what makes entity_id unique in the result.

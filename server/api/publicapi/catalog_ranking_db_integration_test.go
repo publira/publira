@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/contentranking"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -31,9 +32,9 @@ func rankingPeriodDate(daysBack int) time.Time {
 }
 
 // seedPeriodRankingSnapshot files one tenant-wide snapshot under a ranking
-// key, over the single day given, in the order the ids are given. computed_at
-// follows the period, so snapshots of older periods are also the older
-// computations.
+// key, over the single day given, in the order the ids are given, for each
+// surface alike. computed_at follows the period, so snapshots of older periods
+// are also the older computations.
 func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
@@ -66,16 +67,18 @@ func (e *publicDBEnv) seedGenrePeriodRankingSnapshot(
 	}
 	items += "]"
 
-	if _, err := e.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end,
-			entity_type, items, algorithm_version, computed_at, genre_id
-		) VALUES (
-			uuidv7(), $1, $2, $3::date, $3::date,
-			'series', $4::jsonb, $5, $3::date + interval '1 day', $6
-		)
-	`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion, genreID); err != nil {
-		t.Fatalf("insert content_ranking_snapshots: %v", err)
+	for _, surface := range []string{"web", "app"} {
+		if _, err := e.PG.DB.ExecContext(context.Background(), `
+			INSERT INTO content_ranking_snapshots (
+				id, tenant_id, ranking_key, period_start, period_end,
+				entity_type, items, algorithm_version, computed_at, genre_id, surface
+			) VALUES (
+				uuidv7(), $1, $2, $3::date, $3::date,
+				'series', $4::jsonb, $5, $3::date + interval '1 day', $6, $7
+			)
+		`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion, genreID, surface); err != nil {
+			t.Fatalf("insert content_ranking_snapshots: %v", err)
+		}
 	}
 }
 
@@ -417,5 +420,117 @@ func TestDBListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T) {
 	if resp.ComputedAt != "" || resp.PeriodStart != "" || resp.PeriodEnd != "" {
 		t.Fatalf("computed_at = %q, period = %q..%q, want all empty without a snapshot",
 			resp.ComputedAt, resp.PeriodStart, resp.PeriodEnd)
+	}
+}
+
+// The batch cuts each surface a leaderboard of its own, so a tenant whose
+// leading series only the app may show still gives the web a chart in
+// consecutive positions, and each surface's genre tiles and recommendations
+// their own order.
+func TestDBRankingReadsTheLeaderboardOfTheCallingSurface(t *testing.T) {
+	env := newPublicDBEnv(t)
+	ctx := context.Background()
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	drama := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREDRAMA01", Name: "Drama", DisplayOrder: 1})
+
+	// Ranked oldest-first, so an order other than newest-first can only come
+	// from a leaderboard.
+	now := time.Now()
+	seed := func(publicID string, daysAgo int, availability string, views int64) {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:     publicID,
+			Title:        publicID,
+			Published:    true,
+			PublishedAt:  now.Add(-time.Duration(daysAgo) * 24 * time.Hour),
+			Availability: availability,
+		})
+		env.PG.SeedSeriesGenre(t, tenant.ID, series.ID, drama.ID)
+		if views == 0 {
+			return
+		}
+		if _, err := env.PG.DB.ExecContext(ctx, `
+			INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+			VALUES (uuidv7(), $1, $2::date, 'series', $3, $4)
+		`, tenant.ID, rankingPeriodDate(0).Format(time.DateOnly), series.ID, views); err != nil {
+			t.Fatalf("insert content_daily_stats: %v", err)
+		}
+	}
+	seed("APPFIRST0001", 9, "app", 100)
+	seed("APPSECOND001", 8, "app", 90)
+	seed("WEBONLY00001", 7, "web", 20)
+	seed("BOTHSURFACE1", 6, "", 10)
+	seed("UNRANKED0001", 1, "", 0)
+
+	// Two places: a leaderboard shared by both surfaces would hold only the
+	// app-only series and leave the web nothing to show.
+	options := contentranking.Options{ReferenceDate: rankingPeriodDate(0), ItemLimit: 2}
+	if _, err := contentranking.New(env.PG.OpenPlatformDB(t)).Run(ctx, options); err != nil {
+		t.Fatalf("rank: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		surface publirattypesv1.ClientSurface
+		ranked  []string
+		ordered []string
+	}{
+		{
+			name:    "web",
+			surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
+			ranked:  []string{"WEBONLY00001@1", "BOTHSURFACE1@2"},
+			ordered: []string{"WEBONLY00001", "BOTHSURFACE1", "UNRANKED0001"},
+		},
+		{
+			name:    "app",
+			surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+			ranked:  []string{"APPFIRST0001@1", "APPSECOND001@2"},
+			ordered: []string{"APPFIRST0001", "APPSECOND001", "UNRANKED0001", "BOTHSURFACE1"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// One position per page, so the second page is read from the
+			// snapshot the first one pinned.
+			first := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+				Tenant:  tenantContext(tenant),
+				Surface: tc.surface,
+				Limit:   1,
+			})
+			second := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+				Tenant:  tenantContext(tenant),
+				Surface: tc.surface,
+				Limit:   1,
+				Token:   first.NextToken,
+			})
+			ranked := append(rankedPositions(first.RankedSeries), rankedPositions(second.RankedSeries)...)
+			if !slices.Equal(ranked, tc.ranked) {
+				t.Fatalf("ranked series = %v, want %v", ranked, tc.ranked)
+			}
+			if second.NextToken != "" {
+				t.Fatalf("next_token after the last position = %q, want empty", second.NextToken)
+			}
+
+			genres, err := env.catalogClient().ListPublishedGenres(ctx, connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+				Tenant:  tenantContext(tenant),
+				Surface: tc.surface,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedGenres: %v", err)
+			}
+			if got := featuredSeriesPublicIDs(genres.Msg.Genres[0]); !slices.Equal(got, tc.ordered) {
+				t.Fatalf("Drama featured_series = %v, want %v", got, tc.ordered)
+			}
+
+			recommended := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+				Tenant:  tenantContext(tenant),
+				Surface: tc.surface,
+			})
+			got := make([]string, 0, len(recommended.Series))
+			for _, series := range recommended.Series {
+				got = append(got, series.PublicId)
+			}
+			if !slices.Equal(got, tc.ordered) {
+				t.Fatalf("recommended series = %v, want %v", got, tc.ordered)
+			}
+		})
 	}
 }

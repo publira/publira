@@ -244,10 +244,10 @@ ORDER BY g.display_order DESC,
 LIMIT sqlc.arg('limit');
 
 -- The series a page of genre tiles draws its covers from: per genre, the
--- positions of its newest leaderboard first, then its newest published series,
--- up to series_limit. The leaderboard only orders the genre's current members,
--- so a series taken down, moved off the surface, re-rated, or removed from the
--- genre since the batch ran drops out here.
+-- positions of its newest leaderboard for the surface first, then its newest
+-- published series, up to series_limit. The leaderboard only orders the genre's
+-- current members, so a series taken down, moved off the surface, re-rated, or
+-- removed from the genre since the batch ran drops out here.
 -- name: ListGenreFeaturedSeries :many
 WITH leaderboards AS (
     SELECT DISTINCT ON (crs.genre_id) crs.genre_id,
@@ -255,6 +255,7 @@ WITH leaderboards AS (
     FROM content_ranking_snapshots crs
     WHERE crs.tenant_id = sqlc.arg('tenant_id')
         AND crs.genre_id = ANY(sqlc.arg('genre_ids')::uuid[])
+        AND crs.surface = sqlc.arg('surface')::text
         AND crs.ranking_key = sqlc.arg('ranking_key')::text
         AND crs.entity_type = 'series'
     ORDER BY crs.genre_id,

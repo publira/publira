@@ -39,21 +39,23 @@ func (e *publicDBEnv) seedRankingSnapshot(t *testing.T, tenantID uuid.UUID, seri
 	e.seedRawRankingSnapshot(t, tenantID, items)
 }
 
-// seedRawRankingSnapshot files an items array verbatim, so a test can seed one
-// the batch would never write.
+// seedRawRankingSnapshot files an items array verbatim, for each surface
+// alike, so a test can seed one the batch would never write.
 func (e *publicDBEnv) seedRawRankingSnapshot(t *testing.T, tenantID uuid.UUID, items string) {
 	t.Helper()
 
-	if _, err := e.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end,
-			entity_type, items, algorithm_version, computed_at
-		) VALUES (
-			uuidv7(), $1, $2, CURRENT_DATE - 6, CURRENT_DATE,
-			'series', $3::jsonb, $4, now()
-		)
-	`, tenantID, contentranking.WeeklyRankingKey, items, contentranking.AlgorithmVersion); err != nil {
-		t.Fatalf("insert content_ranking_snapshots: %v", err)
+	for _, surface := range []string{"web", "app"} {
+		if _, err := e.PG.DB.ExecContext(context.Background(), `
+			INSERT INTO content_ranking_snapshots (
+				id, tenant_id, ranking_key, period_start, period_end,
+				entity_type, items, algorithm_version, computed_at, surface
+			) VALUES (
+				uuidv7(), $1, $2, CURRENT_DATE - 6, CURRENT_DATE,
+				'series', $3::jsonb, $4, now(), $5
+			)
+		`, tenantID, contentranking.WeeklyRankingKey, items, contentranking.AlgorithmVersion, surface); err != nil {
+			t.Fatalf("insert content_ranking_snapshots: %v", err)
+		}
 	}
 }
 

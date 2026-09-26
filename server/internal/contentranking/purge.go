@@ -90,10 +90,11 @@ func NewPurger(db *sql.DB) *Purger {
 // there. Deleting is idempotent — a second run at the same time finds nothing
 // left.
 //
-// The newest period a tenant has for a ranking key, entity type, and genre
-// always survives, whatever the cutoff says. That row is what the public site reads,
-// and a tenant whose rebuilds have stopped for longer than its retention period
-// would otherwise lose its ranking entirely rather than serve a stale one.
+// The newest period a tenant has for a ranking key, entity type, genre, and
+// surface always survives, whatever the cutoff says. That row is what the
+// public site reads, and a tenant whose rebuilds have stopped for longer than
+// its retention period would otherwise lose its ranking entirely rather than
+// serve a stale one.
 //
 // One tenant's failure does not stop the others; the run finishes what it can
 // and returns every failure together, so the exit status still reports it.
@@ -224,8 +225,8 @@ func listTenantIDs(ctx context.Context, db *sql.DB) ([]uuid.UUID, error) {
 // one of its snapshots.
 //
 // latest names the newest period the tenant still holds per ranking key,
-// entity type, and genre; the grouping keys are the leading columns of
-// idx_content_ranking_snapshots_tenant_genre_key_computed, so it can be
+// entity type, genre, and surface; the grouping keys are the leading columns of
+// idx_content_ranking_snapshots_tenant_genre_surface_key_computed, so it can be
 // answered from that index. It is re-derived on every chunk rather than read once for
 // the run, which keeps the guarantee exact even while aggregate-rankings is
 // writing a newer period underneath the purge.
@@ -234,10 +235,10 @@ WITH retention AS (
 	SELECT ranking_key, cutoff
 	FROM unnest($2::text[], $3::date[]) AS t(ranking_key, cutoff)
 ), latest AS (
-	SELECT genre_id, ranking_key, entity_type, max(period_end) AS period_end
+	SELECT genre_id, surface, ranking_key, entity_type, max(period_end) AS period_end
 	FROM content_ranking_snapshots
 	WHERE tenant_id = $1
-	GROUP BY genre_id, ranking_key, entity_type
+	GROUP BY genre_id, surface, ranking_key, entity_type
 )`
 
 // expiredSnapshots selects the tenant's rows past their retention period that
@@ -255,6 +256,7 @@ FROM content_ranking_snapshots s
 JOIN retention r ON r.ranking_key = s.ranking_key
 JOIN latest l
 	ON l.genre_id IS NOT DISTINCT FROM s.genre_id
+	AND l.surface IS NOT DISTINCT FROM s.surface
 	AND l.ranking_key = s.ranking_key
 	AND l.entity_type = s.entity_type
 WHERE s.tenant_id = $1

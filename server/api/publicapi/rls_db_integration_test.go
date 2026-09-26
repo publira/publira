@@ -276,8 +276,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("tenant config", "INSERT INTO tenant_config (tenant_id) VALUES ($1)", first.ID)
 	seed("tenant theme", "INSERT INTO tenant_themes (tenant_id) VALUES ($1)", first.ID)
 	seed("community limit overrides", "INSERT INTO tenant_community_limit_overrides (tenant_id) VALUES ($1)", first.ID)
-	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, items)
-		VALUES ($1, $2, 'daily', CURRENT_DATE, CURRENT_DATE, 'series', '[]')`, uuid.Must(uuid.NewV7()), first.ID)
+	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items)
+		VALUES ($1, $2, 'daily', CURRENT_DATE, CURRENT_DATE, 'series', 'web', '[]')`, uuid.Must(uuid.NewV7()), first.ID)
 
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	// A reader holds no tenant role, so the role row comes from a staff account.
