@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
+import 'package:publira/catalog/eye_catch.dart';
+import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/catalog/series_filter_bar.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -12,12 +14,27 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
-/// What a genre or a tag is called, and how many published series carry it.
+/// What a genre or a tag is called, how many published series carry it, and
+/// the eye-catch its header opens on.
 class Classification {
-  const Classification({required this.name, required this.seriesCount});
+  const Classification({
+    required this.id,
+    required this.name,
+    required this.seriesCount,
+    this.eyeCatchVariants = const [],
+    this.imageRequestHeaders = const {},
+  });
 
+  /// What addresses it: a genre's public id, or a tag's slug.
+  final String id;
   final String name;
   final int seriesCount;
+
+  /// Empty for a tag, which has no artwork, and for a genre with none.
+  final List<EyeCatchVariant> eyeCatchVariants;
+
+  /// Headers [eyeCatchVariants] must be fetched with.
+  final Map<String, String> imageRequestHeaders;
 }
 
 /// Reads the classification a screen is about, or `null` when the tenant has
@@ -213,7 +230,10 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
       key: ValueKey('$key-body'),
       slivers: [
         SliverToBoxAdapter(
-          child: _ClassificationHeader(classification: classification),
+          child: _ClassificationHeader(
+            kind: key,
+            classification: classification,
+          ),
         ),
         SliverToBoxAdapter(
           child: SeriesFilterBar(filter: _filter, onChanged: _changeFilter),
@@ -292,7 +312,13 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
 }
 
 class _ClassificationHeader extends StatelessWidget {
-  const _ClassificationHeader({required this.classification});
+  const _ClassificationHeader({
+    required this.kind,
+    required this.classification,
+  });
+
+  /// What [classification] is, which names its eye-catch on screen.
+  final String kind;
 
   final Classification classification;
 
@@ -305,6 +331,21 @@ class _ClassificationHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (classification.eyeCatchVariants.isNotEmpty) ...[
+            // Capped for the reason the label's banner is.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: EyeCatchCover(
+                kind: kind,
+                id: classification.id,
+                variants: classification.eyeCatchVariants,
+                requestHeaders: classification.imageRequestHeaders,
+                preferredTypes: const [eyeCatchLandscape, eyeCatchSquare],
+                aspectRatio: 16 / 9,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(classification.name, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(

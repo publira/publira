@@ -61,10 +61,12 @@ const _mosaicCells = 4;
 /// Space between the cells of the mosaic.
 const _cellGap = 2.0;
 
-/// A genre's leading covers as a 2×2 mosaic in a portrait frame, so every tile
-/// is the same size however many covers it has. The cells a genre cannot fill
-/// stay flat, and a genre with no cover to draw — no series, or none with
-/// artwork — is one flat frame carrying its name.
+/// What a genre's tile draws in its portrait frame. The eye-catch the console
+/// uploaded comes first, as its portrait cut filling the frame. Without one,
+/// the genre's leading covers stand in as a 2×2 mosaic, so every tile is the
+/// same size however many covers it has. The cells a genre cannot fill stay
+/// flat, and a genre with no cover to draw — no series, or none with artwork —
+/// is one flat frame carrying its name.
 class _GenreCovers extends StatelessWidget {
   const _GenreCovers({required this.genre});
 
@@ -72,6 +74,17 @@ class _GenreCovers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (genre.eyeCatchVariants.isNotEmpty) {
+      return EyeCatchCover(
+        kind: 'genre',
+        id: genre.id,
+        variants: genre.eyeCatchVariants,
+        requestHeaders: genre.imageRequestHeaders,
+        preferredTypes: const [eyeCatchPortrait],
+        aspectRatio: 3 / 4,
+        placeholderIcon: null,
+      );
+    }
     final covers = genre.featuredSeries.take(_mosaicCells).toList();
     if (!covers.any((series) => series.eyeCatchVariants.isNotEmpty)) {
       return _NameFrame(genre: genre);

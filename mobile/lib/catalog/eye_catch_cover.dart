@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/models/series_item.dart';
 
-/// The eye-catch of one series or label, drawn inside a box shaped by
+/// The eye-catch of one series, label, or genre, drawn inside a box shaped by
 /// [aspectRatio].
 ///
 /// The rendition is picked from what [variants] carries against the box's own
@@ -26,8 +26,8 @@ class EyeCatchCover extends StatelessWidget {
     this.placeholderIcon = Icons.collections_bookmark_outlined,
   });
 
-  /// What the artwork belongs to, `series` or `label`, which with [id] names
-  /// the image and its placeholder on screen.
+  /// What the artwork belongs to, `series`, `label`, or `genre`, which with
+  /// [id] names the image and its placeholder on screen.
   final String kind;
 
   /// Public id of what the artwork belongs to.
