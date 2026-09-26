@@ -46,34 +46,47 @@ func quietLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-// newRecordingApps points all three targets at one server that collects the
-// tags it is asked to drop and answers as answer says.
-func newRecordingApps(t *testing.T, answer func(w http.ResponseWriter)) *revalidationLog {
+// newRecordingApps starts a server for each of the named apps, points that
+// app's URL at it and leaves every other app's unset, and collects the tags
+// each one is asked to drop. Every app answers as answer says.
+func newRecordingApps(t *testing.T, answer func(w http.ResponseWriter), apps ...string) *revalidationLog {
 	t.Helper()
 	log := &revalidationLog{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var payload requestPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Errorf("decode revalidate payload: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		log.add(payload.Tags)
-		answer(w)
-	}))
-	t.Cleanup(server.Close)
-	setInternalURLs(t, server.URL, server.URL, server.URL)
+	envs := map[string]string{
+		"web-host":     webHostInternalURLEnv,
+		"web-admin":    webAdminInternalURLEnv,
+		"web-platform": webPlatformInternalURLEnv,
+	}
+	for _, env := range envs {
+		t.Setenv(env, "")
+	}
+	for _, app := range apps {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var payload requestPayload
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Errorf("decode revalidate payload: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			log.add(app, payload.Tags)
+			answer(w)
+		}))
+		t.Cleanup(server.Close)
+		t.Setenv(envs[app], server.URL)
+	}
 	return log
 }
 
 type revalidationLog struct {
 	mu   sync.Mutex
+	apps []string
 	tags [][]string
 }
 
-func (l *revalidationLog) add(tags []string) {
+func (l *revalidationLog) add(app string, tags []string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.apps = append(l.apps, app)
 	l.tags = append(l.tags, tags)
 }
 
@@ -83,8 +96,17 @@ func (l *revalidationLog) calls() int {
 	return len(l.tags)
 }
 
-// waitForCalls waits for the three apps to have been asked, since the attempt
-// no longer happens on the caller's goroutine.
+// asked returns the apps that were asked to drop tags, sorted.
+func (l *revalidationLog) asked() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	apps := slices.Clone(l.apps)
+	slices.Sort(apps)
+	return apps
+}
+
+// waitForCalls waits for the apps to have been asked, since the attempt no
+// longer happens on the caller's goroutine.
 func (l *revalidationLog) waitForCalls(t *testing.T, want int) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -195,44 +217,63 @@ func TestRecordWritesNothingWhenRevalidationIsTurnedOff(t *testing.T) {
 	}
 }
 
-// The immediate attempt is an optimization: once every app has answered, the
-// row is done and the worker has nothing left to send.
+// The immediate attempt is an optimization: once every app that is a
+// destination has answered, the row is done and the worker has nothing left to
+// send. An app without a URL is not one of them, so a deployment that runs no
+// Platform Console completes its drops all the same.
 func TestSendMarksTheInvalidationDoneOnceEveryAppAnswered(t *testing.T) {
-	apps := newRecordingApps(t, func(http.ResponseWriter) {})
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("sqlmock.New: %v", err)
+	cases := []struct {
+		name string
+		apps []string
+	}{
+		{name: "one destination", apps: []string{"web-host"}},
+		{name: "two destinations", apps: []string{"web-admin", "web-host"}},
+		{name: "three destinations", apps: []string{"web-admin", "web-host", "web-platform"}},
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			apps := newRecordingApps(t, func(http.ResponseWriter) {}, tc.apps...)
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("sqlmock.New: %v", err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
 
-	tenantID := uuid.Must(uuid.NewV7())
-	eventID := uuid.Must(uuid.NewV7())
-	mock.ExpectExec("app.current_tenant_id").WithArgs(tenantID.String()).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPendingOutboxEventDone)).WithArgs(eventID).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "event_type", "payload", "idempotency_key",
-			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
-		}).AddRow(
-			eventID, uuid.NullUUID{UUID: tenantID, Valid: true}, outbox.EventTypeNextCacheRevalidation,
-			json.RawMessage("{}"), "key", "done", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
-		))
-	// The connection is reset before it goes back to the pool.
-	mock.ExpectExec("app.current_user_id").WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("app.current_tenant_id").WillReturnResult(sqlmock.NewResult(0, 1))
+			tenantID := uuid.Must(uuid.NewV7())
+			eventID := uuid.Must(uuid.NewV7())
+			mock.ExpectExec("app.current_tenant_id").WithArgs(tenantID.String()).
+				WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPendingOutboxEventDone)).WithArgs(eventID).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"id", "tenant_id", "event_type", "payload", "idempotency_key",
+					"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
+				}).AddRow(
+					eventID, uuid.NullUUID{UUID: tenantID, Valid: true}, outbox.EventTypeNextCacheRevalidation,
+					json.RawMessage("{}"), "key", "done", int32(0), time.Now().UTC(), nil, time.Now().UTC(), time.Now().UTC(), nil,
+				))
+			// The connection is reset before it goes back to the pool.
+			mock.ExpectExec("app.current_user_id").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("app.current_tenant_id").WillReturnResult(sqlmock.NewResult(0, 1))
 
-	requester := NewRequester(RequesterConfig{Client: newTestClient(t), DB: db, Logger: quietLogger()})
-	requester.Send(context.Background(), Owed{eventID: eventID, tenantID: tenantID, tags: []string{"tenant:t:site"}})
+			requester := NewRequester(RequesterConfig{Client: newTestClient(t), DB: db, Logger: quietLogger()})
+			requester.Send(context.Background(), Owed{eventID: eventID, tenantID: tenantID, tags: []string{"tenant:t:site"}})
 
-	apps.waitForCalls(t, 3)
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if err = mock.ExpectationsWereMet(); err == nil {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
+			apps.waitForCalls(t, len(tc.apps))
+			deadline := time.Now().Add(5 * time.Second)
+			for time.Now().Before(deadline) {
+				if err = mock.ExpectationsWereMet(); err == nil {
+					break
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			if err != nil {
+				t.Fatalf("unmet SQL expectations: %v", err)
+			}
+			if got := apps.asked(); !slices.Equal(got, tc.apps) {
+				t.Fatalf("asked %v, want %v", got, tc.apps)
+			}
+		})
 	}
-	t.Fatalf("unmet SQL expectations: %v", err)
 }
 
 // A console save must not wait on an app that never answers, and the row it
@@ -278,7 +319,7 @@ func TestSendReturnsWhileAnAppHangs(t *testing.T) {
 // A requester with no database cannot complete what it sends, so it does not
 // send: the drain the record is waiting on is the one that drops the tags.
 func TestSendLeavesEverythingToTheWorkerWithoutADatabase(t *testing.T) {
-	apps := newRecordingApps(t, func(http.ResponseWriter) {})
+	apps := newRecordingApps(t, func(http.ResponseWriter) {}, "web-admin", "web-host", "web-platform")
 
 	requester := NewRequester(RequesterConfig{Client: newTestClient(t), Logger: quietLogger()})
 	requester.Send(context.Background(), Owed{

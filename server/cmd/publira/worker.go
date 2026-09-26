@@ -64,6 +64,14 @@ func runWorker() int {
 		return 1
 	}
 
+	// One client for the whole process: the periodic jobs record what they owe
+	// through it, and the handler below is what sends every recorded drop.
+	revalidateClient, err := newRevalidateClient(logger)
+	if err != nil {
+		logger.Error("failed to initialize next revalidate", "error", err)
+		return 1
+	}
+
 	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
@@ -83,9 +91,6 @@ func runWorker() int {
 	}
 	defer tickerDB.Close() //nolint:errcheck
 
-	// One client for the whole process: the periodic jobs record what they owe
-	// through it, and the handler below is what sends every recorded drop.
-	revalidateClient := newRevalidateClient(logger)
 	jobs, err := tickerjobs.New(tickerjobs.Config{
 		DB: tickerDB,
 		// No DB here on purpose: the ticker role may insert an outbox event and
@@ -215,20 +220,6 @@ func runWorker() int {
 		return 1
 	}
 	return 0
-}
-
-// newRevalidateClient builds the client that sends Next.js cache tags. A
-// deployment without a token gets a nil client, which makes every drop a no-op
-// while each job still records the boundary it passed.
-func newRevalidateClient(logger *slog.Logger) *revalidate.Client {
-	client, err := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
-	switch {
-	case err != nil:
-		logger.Warn("next revalidate is disabled", "reason", err.Error())
-	case client == nil:
-		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
-	}
-	return client
 }
 
 func workerConfig(

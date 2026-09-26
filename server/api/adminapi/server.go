@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -258,15 +257,16 @@ type API struct {
 
 // New builds the tenant console API over db, which must be the pool connected
 // as publira_admin: every handler here reads through that role's row-level
-// security.
-func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) (*API, error) {
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, nil, nil)
+// security. reval sends the cache tags its writes leave stale; a nil one turns
+// revalidation off.
+func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client) (*API, error) {
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, nil, nil)
 }
 
 // NewWithAsyncRecorder is New with an AsyncRecorder. The asynchronous writer
 // acquires a fresh tenant-scoped connection for every tenant audit entry.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder) (*API, error) {
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, recorder, nil)
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder) (*API, error) {
+	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, nil)
 }
 
 // Register mounts the publira.admin.v1 services on mux. What a mux carries is
@@ -277,7 +277,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	registerAdminRoutes(mux, a.server)
 }
 
-func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder auditlog.Recorder, mail *mailguard.Guard) (*API, error) {
+func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder auditlog.Recorder, mail *mailguard.Guard) (*API, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -291,15 +291,8 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 	if recorder == nil {
 		recorder = auditlog.New(queries, logger)
 	}
-	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
-	revalidateClient, revalidateErr := revalidate.NewClient(revalidateToken, logger)
-	if revalidateErr != nil {
-		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
-	} else if revalidateClient == nil {
-		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
-	}
 	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
-		Client:  revalidateClient,
+		Client:  reval,
 		Queries: queries,
 		DB:      db,
 		Logger:  logger,

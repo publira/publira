@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -27,15 +28,74 @@ func TestNewClientIsDisabledWithoutToken(t *testing.T) {
 	}
 }
 
-func TestNewClientRequiresEveryWebAppURL(t *testing.T) {
-	setInternalURLs(t, "http://web-host:3000", "", "http://web-platform:4100")
+// A token with nowhere to send it can only be a mistake, so the error names
+// every variable that could have been set.
+func TestNewClientRequiresAtLeastOneWebAppURL(t *testing.T) {
+	setInternalURLs(t, "", " ", "")
+
+	client, err := NewClient("token", nil)
+	if client != nil {
+		t.Fatal("NewClient() = non-nil, want nil")
+	}
+	if err == nil {
+		t.Fatal("NewClient() error = nil, want the missing URLs reported")
+	}
+	for _, env := range []string{webHostInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv} {
+		if !strings.Contains(err.Error(), env) {
+			t.Errorf("NewClient() error = %v, want it to name %s", err, env)
+		}
+	}
+}
+
+func TestNewClientRejectsAMalformedWebAppURL(t *testing.T) {
+	setInternalURLs(t, "http://web-host:3000", "web-admin:4000", "")
 
 	client, err := NewClient("token", nil)
 	if client != nil {
 		t.Fatal("NewClient() = non-nil, want nil")
 	}
 	if err == nil || !strings.Contains(err.Error(), webAdminInternalURLEnv) {
-		t.Fatalf("NewClient() error = %v, want missing %s", err, webAdminInternalURLEnv)
+		t.Fatalf("NewClient() error = %v, want %s reported", err, webAdminInternalURLEnv)
+	}
+}
+
+func TestNewClientSendsOnlyToTheWebAppsWithAURL(t *testing.T) {
+	cases := []struct {
+		name                           string
+		hostURL, adminURL, platformURL string
+		want                           []string
+	}{
+		{
+			name:    "storefront only",
+			hostURL: "http://web-host:3000",
+			want:    []string{"web-host"},
+		},
+		{
+			name:     "no platform console",
+			hostURL:  "http://web-host:3000",
+			adminURL: "http://web-admin:4000",
+			want:     []string{"web-host", "web-admin"},
+		},
+		{
+			name:        "every app",
+			hostURL:     "http://web-host:3000",
+			adminURL:    "http://web-admin:4000",
+			platformURL: "http://web-platform:4100",
+			want:        []string{"web-host", "web-admin", "web-platform"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setInternalURLs(t, tc.hostURL, tc.adminURL, tc.platformURL)
+
+			client, err := NewClient("token", nil)
+			if err != nil {
+				t.Fatalf("NewClient() error = %v", err)
+			}
+			if got := client.Destinations(); !slices.Equal(got, tc.want) {
+				t.Fatalf("Destinations() = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

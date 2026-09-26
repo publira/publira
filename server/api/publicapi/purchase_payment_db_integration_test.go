@@ -56,7 +56,7 @@ func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 
 	var logs bytes.Buffer
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
@@ -161,7 +161,7 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), readerGuards{}, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
@@ -256,7 +256,7 @@ func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), readerGuards{}, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)

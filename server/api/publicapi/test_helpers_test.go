@@ -24,9 +24,6 @@ import (
 
 func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
-	// The development environment sets PUBLIRA_REVALIDATE_TOKEN, and a server
-	// that picked it up would record an outbox event no expectation covers.
-	t.Setenv("PUBLIRA_REVALIDATE_TOKEN", "")
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
@@ -46,7 +43,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
 	t.Helper()
 
-	api, err := New(db, queries, encryptor, testutil.TokenManager())
+	api, err := New(db, queries, encryptor, testutil.TokenManager(), nil)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

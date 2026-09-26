@@ -80,7 +80,7 @@ func TestEdgeListenerServesThePublicNamespaceAndImagesAlone(t *testing.T) {
 
 func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 	publicAPI := newTestPublicAPI(t)
-	adminAPI, err := adminapi.New(nil, nil, nil, slog.Default(), nil, nil, nil)
+	adminAPI, err := adminapi.New(nil, nil, nil, slog.Default(), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("adminapi.New: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 
 func newTestPublicAPI(t *testing.T) *publicapi.API {
 	t.Helper()
-	api, err := publicapi.New(nil, nil, nil, nil)
+	api, err := publicapi.New(nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("publicapi.New: %v", err)
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -171,13 +170,14 @@ type API struct {
 // New builds the public API over db, which must be the pool connected as
 // publira_public: the row-level security every handler here relies on is that
 // role's. Both flood controls read their limits from the platform policy
-// through that same pool.
-func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager) (*API, error) {
+// through that same pool. reval sends the cache tags its writes leave stale; a
+// nil one turns revalidation off.
+func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
-	return &API{server: newAPIServer(db, queries, encryptor, tokens, logger, guards, mail)}, nil
+	return &API{server: newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail)}, nil
 }
 
 // Register mounts the publira.v1 services on mux. What a mux carries is what
@@ -192,6 +192,7 @@ func newAPIServer(
 	queries Querier,
 	encryptor emailsettings.SecretManager,
 	tokens *auth.TokenManager,
+	reval *revalidate.Client,
 	logger *slog.Logger,
 	guards readerGuards,
 	mail *mailguard.Guard,
@@ -202,16 +203,8 @@ func newAPIServer(
 	if mail == nil {
 		mail = mailguard.NewDefault()
 	}
-	// Disabled rather than fatal when the token or a target URL is missing, as
-	// the console's client is: every other RPC here answers a reader without
-	// invalidating anything, and the one removal that does is one the
-	// storefront catches up with when its cached list expires.
-	revalidateClient, revalidateErr := revalidate.NewClient(strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN")), logger)
-	if revalidateErr != nil {
-		logger.Warn("next revalidate is disabled", "reason", revalidateErr.Error())
-	}
 	revalidator := revalidate.NewRequester(revalidate.RequesterConfig{
-		Client:  revalidateClient,
+		Client:  reval,
 		Queries: queries,
 		DB:      db,
 		Logger:  logger,

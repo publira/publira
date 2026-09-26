@@ -39,7 +39,7 @@ func newRequestFormClient(t *testing.T) (publirav1connect.AuthServiceClient, sql
 		_ = db.Close()
 	})
 	server := httptest.NewServer(handlerFromServer(
-		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), slog.Default(), openReaderGuards(), openMailGuard()),
+		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard()),
 	))
 	t.Cleanup(server.Close)
 	return publirav1connect.NewAuthServiceClient(server.Client(), server.URL), mock

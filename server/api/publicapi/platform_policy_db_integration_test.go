@@ -31,7 +31,7 @@ func newPublicDBEnvWithSavedPolicy(t *testing.T, policy platformpolicy.Policy) *
 	guards := readerGuards{limiter: ratelimit.New(ratelimit.NewMemoryStore()), policy: resolver}
 	mail := mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), resolver, slog.Default())
 	server := httptest.NewServer(handlerFromServer(
-		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), slog.Default(), guards, mail),
+		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail),
 	))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}

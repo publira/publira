@@ -17,7 +17,7 @@ import (
 )
 
 // defaultSendTimeout bounds one immediate attempt. [Client] already gives each
-// request five seconds and posts to the three apps in parallel; the rest of the
+// request five seconds and posts to every app in parallel; the rest of the
 // budget is the connection the completion is written on.
 const defaultSendTimeout = 15 * time.Second
 
