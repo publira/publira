@@ -109,7 +109,7 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
   ]);
   let notificationContent = (
     <NotificationBellError>
-      <Suspense fallback={<Skeleton className="h-4 w-64" />}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
         <Message message="host.notifications.list_failed" />
       </Suspense>
     </NotificationBellError>
@@ -119,12 +119,12 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
     notificationContent = (
       <NotificationBellEmpty>
         <NotificationBellEmptyTitle>
-          <Suspense fallback={<Skeleton className="h-4 w-32" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="host.notifications.empty_title" />
           </Suspense>
         </NotificationBellEmptyTitle>
         <NotificationBellEmptyDescription>
-          <Suspense fallback={<Skeleton className="mt-1 h-4 w-56" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message message="host.notifications.empty_description" />
           </Suspense>
         </NotificationBellEmptyDescription>
@@ -182,7 +182,7 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
       </NotificationBellTrigger>
       <NotificationBellContent>
         <NotificationBellHeader unreadCount={unread.unreadCount}>
-          <Suspense fallback={<Skeleton className="h-4 w-16" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="host.notifications.list_heading" />
           </Suspense>
         </NotificationBellHeader>
@@ -671,7 +671,7 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         <Suspense
           fallback={
             <SiteLayoutFooterNote>
-              <Skeleton className="inline-block h-4 w-56 rounded-control" />
+              <SkeletonLine className="h-4 w-56" />
             </SiteLayoutFooterNote>
           }
         >
@@ -680,7 +680,7 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         <Suspense
           fallback={
             <SiteLayoutFooterCopyright>
-              <Skeleton className="inline-block h-4 w-48 rounded-control" />
+              <SkeletonLine className="h-4 w-48" />
             </SiteLayoutFooterCopyright>
           }
         >
