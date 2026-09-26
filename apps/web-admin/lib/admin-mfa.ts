@@ -22,7 +22,7 @@ import { cacheTag } from "next/cache";
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
-import type { AdminMessageKey } from "./messages";
+import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface AdminMfaSession {
@@ -105,24 +105,29 @@ const mfaCodeRejectionMessage = async (
 };
 
 /**
+ * The state of the factor an MFA call requires: enrollment needs it off,
+ * everything else needs it on.
+ */
+type MfaRequirement = "disabled" | "enabled";
+
+/**
  * Which copy stands in for a failure with no wording of its own: the
  * operation's own generic message, and what a failed precondition means for
  * this particular call.
  */
-interface MfaFailureKeys {
-  fallback: AdminMessageKey;
-  precondition: AdminMessageKey;
-}
-
-const NOT_ENABLED_KEYS: MfaFailureKeys = {
-  fallback: "admin.auth.mfa.errors.verify_failed",
-  precondition: "admin.auth.mfa.errors.not_enabled",
-};
-
-const ENROLL_KEYS: MfaFailureKeys = {
-  fallback: "admin.auth.mfa.errors.enroll_failed",
-  precondition: "admin.auth.mfa.errors.already_enabled",
-};
+const mfaFailureCopy = (
+  t: AdminMessageAccessor,
+  requires: MfaRequirement
+): { fallback: string; precondition: string } =>
+  requires === "disabled"
+    ? {
+        fallback: t("admin.auth.mfa.errors.enroll_failed"),
+        precondition: t("admin.auth.mfa.errors.already_enabled"),
+      }
+    : {
+        fallback: t("admin.auth.mfa.errors.verify_failed"),
+        precondition: t("admin.auth.mfa.errors.not_enabled"),
+      };
 
 /**
  * Wording for a failure on an RPC the *session* authorized.
@@ -134,7 +139,7 @@ const ENROLL_KEYS: MfaFailureKeys = {
 const sessionMfaFailureMessage = async (
   error: unknown,
   locale: Locale,
-  keys: MfaFailureKeys
+  requires: MfaRequirement
 ): Promise<string> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
   if (rejected) {
@@ -145,9 +150,11 @@ const sessionMfaFailureMessage = async (
   rethrowUnauthenticatedRpcError(error);
   rethrowUnclassifiedRpcError(error);
 
-  return rpcErrorMessage(error, t(keys.fallback), {
+  const copy = mfaFailureCopy(t, requires);
+
+  return rpcErrorMessage(error, copy.fallback, {
     locale,
-    overrides: { precondition: t(keys.precondition) },
+    overrides: { precondition: copy.precondition },
   });
 };
 
@@ -161,7 +168,7 @@ const sessionMfaFailureMessage = async (
 const challengeMfaFailure = async (
   error: unknown,
   locale: Locale,
-  keys: MfaFailureKeys
+  requires: MfaRequirement
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
   if (rejected) {
@@ -177,12 +184,13 @@ const challengeMfaFailure = async (
   }
 
   rethrowUnclassifiedRpcError(error);
+  const copy = mfaFailureCopy(t, requires);
 
   return {
     challengeExpired: false,
-    message: rpcErrorMessage(error, t(keys.fallback), {
+    message: rpcErrorMessage(error, copy.fallback, {
       locale,
-      overrides: { precondition: t(keys.precondition) },
+      overrides: { precondition: copy.precondition },
     }),
   };
 };
@@ -263,7 +271,7 @@ export const verifyAdminMfa = async (
     };
   } catch (error) {
     return {
-      ...(await challengeMfaFailure(error, locale, NOT_ENABLED_KEYS)),
+      ...(await challengeMfaFailure(error, locale, "enabled")),
       ok: false,
     };
   }
@@ -309,14 +317,14 @@ export const startAdminMfaEnrollment = async (
   } catch (error) {
     if (challengeToken) {
       return {
-        ...(await challengeMfaFailure(error, locale, ENROLL_KEYS)),
+        ...(await challengeMfaFailure(error, locale, "disabled")),
         ok: false,
       };
     }
 
     return {
       challengeExpired: false,
-      message: await sessionMfaFailureMessage(error, locale, ENROLL_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, "disabled"),
       ok: false,
     };
   }
@@ -352,14 +360,14 @@ export const confirmAdminMfaEnrollment = async (
   } catch (error) {
     if (challengeToken) {
       return {
-        ...(await challengeMfaFailure(error, locale, ENROLL_KEYS)),
+        ...(await challengeMfaFailure(error, locale, "disabled")),
         ok: false,
       };
     }
 
     return {
       challengeExpired: false,
-      message: await sessionMfaFailureMessage(error, locale, ENROLL_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, "disabled"),
       ok: false,
     };
   }
@@ -380,7 +388,7 @@ export const disableAdminMfa = async (
     return { ok: true };
   } catch (error) {
     return {
-      message: await sessionMfaFailureMessage(error, locale, NOT_ENABLED_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, "enabled"),
       ok: false,
     };
   }
@@ -401,7 +409,7 @@ export const regenerateAdminMfaRecoveryCodes = async (
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {
-      message: await sessionMfaFailureMessage(error, locale, NOT_ENABLED_KEYS),
+      message: await sessionMfaFailureMessage(error, locale, "enabled"),
       ok: false,
     };
   }

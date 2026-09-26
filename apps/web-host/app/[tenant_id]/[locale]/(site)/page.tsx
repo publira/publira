@@ -45,7 +45,6 @@ import type {
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
 import { getLocale } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listMyRecentSeries } from "#lib/reading-progress";
 import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
@@ -108,55 +107,6 @@ const resolveUpdatedSeriesLinkIds = (
 
   return { latestEpisodeId, seriesId };
 };
-
-/**
- * One title per section, shared by the section's own failure display and by the
- * `SectionErrorBoundary` around it: the reader sees the same sentence whether
- * the read reported a failure or something threw unexpectedly.
- */
-const SECTION_TITLES = {
-  continueReading: "host.top.continue_error",
-  creators: "host.top.featured_creators_error",
-  featuredWork: "host.top.featured_work_error",
-  freeSeries: "host.top.free_error",
-  genres: "host.top.genres_error",
-  labels: "host.top.featured_labels_error",
-  newEpisodes: "host.top.new_episodes_error",
-  recommended: "host.top.recommended_error",
-  schedule: "host.top.schedule_error",
-  updated: "host.top.updated_error",
-} as const satisfies Record<string, HostMessageKey>;
-
-/** The failure body a section renders from its own `ok: false` result. */
-const SectionReadError = ({
-  description,
-  title,
-}: {
-  description: string;
-  title: HostMessageKey;
-}) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
-        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={title} />
-        </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{description}</SectionErrorDescription>
-    </SectionErrorHeading>
-  </SectionError>
-);
-
-/** The empty state a section renders when the read succeeded with no rows. */
-const SectionEmpty = ({ message }: { message: HostMessageKey }) => (
-  <EmptyState>
-    <EmptyStateDescription>
-      <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-        <Message message={message} />
-      </Suspense>
-    </EmptyStateDescription>
-  </EmptyState>
-);
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -272,10 +222,16 @@ const ContinueReadingSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.continueReading}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.continue_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -350,10 +306,16 @@ const GenresSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.genres}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.genres_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -417,10 +379,16 @@ const WeeklyScheduleSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.schedule}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.schedule_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -459,7 +427,13 @@ const WeeklyScheduleSection = async () => {
                   series={day.series}
                 />
               ) : (
-                <SectionEmpty message="host.top.schedule_day_empty" />
+                <EmptyState>
+                  <EmptyStateDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                      <Message message="host.top.schedule_day_empty" />
+                    </Suspense>
+                  </EmptyStateDescription>
+                </EmptyState>
               )}
             </WeeklyScheduleDayPanel>
           ))}
@@ -487,10 +461,16 @@ const FeaturedWorkSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.featuredWork}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.featured_work_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -657,10 +637,16 @@ const PopularSeriesShelf = ({
 }) => {
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.recommended}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.recommended_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
@@ -681,7 +667,15 @@ const PopularSeriesShelf = ({
   }
 
   if (popular.series.length === 0) {
-    return <SectionEmpty message="host.top.recommended_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.recommended_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return (
@@ -755,17 +749,31 @@ const FreeSeriesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.freeSeries}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.free_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   const freeSeries = result.value;
 
   if (freeSeries.length === 0) {
-    return <SectionEmpty message="host.top.free_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.free_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return <SeriesShelf hideUntilConfirmed locale={locale} series={freeSeries} />;
@@ -781,17 +789,31 @@ const NewEpisodesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.newEpisodes}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.new_episodes_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   const newEpisodes = result.value;
 
   if (newEpisodes.length === 0) {
-    return <SectionEmpty message="host.top.new_episodes_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.new_episodes_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return (
@@ -868,17 +890,31 @@ const UpdatedSeriesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.updated}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.updated_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   const updatedSeries = result.value;
 
   if (updatedSeries.length === 0) {
-    return <SectionEmpty message="host.top.updated_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.updated_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return (
@@ -949,17 +985,31 @@ const FeaturedLabelsSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.labels}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.featured_labels_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   const featuredLabels = result.value;
 
   if (featuredLabels.length === 0) {
-    return <SectionEmpty message="host.top.featured_labels_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.featured_labels_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return (
@@ -985,17 +1035,31 @@ const FeaturedCreatorsSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionReadError
-        description={result.message}
-        title={SECTION_TITLES.creators}
-      />
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="host.top.featured_creators_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{result.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
     );
   }
 
   const featuredCreators = result.value;
 
   if (featuredCreators.length === 0) {
-    return <SectionEmpty message="host.top.featured_creators_empty" />;
+    return (
+      <EmptyState>
+        <EmptyStateDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+            <Message message="host.top.featured_creators_empty" />
+          </Suspense>
+        </EmptyStateDescription>
+      </EmptyState>
+    );
   }
 
   return (
@@ -1031,7 +1095,7 @@ const Page = () => (
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={SECTION_TITLES.featuredWork} />
+          <Message message="host.top.featured_work_error" />
         </Suspense>
       }
     >
@@ -1043,7 +1107,7 @@ const Page = () => (
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={SECTION_TITLES.continueReading} />
+          <Message message="host.top.continue_error" />
         </Suspense>
       }
     >
@@ -1055,7 +1119,7 @@ const Page = () => (
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={SECTION_TITLES.genres} />
+          <Message message="host.top.genres_error" />
         </Suspense>
       }
     >
@@ -1067,7 +1131,7 @@ const Page = () => (
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={SECTION_TITLES.schedule} />
+          <Message message="host.top.schedule_error" />
         </Suspense>
       }
     >
@@ -1088,7 +1152,7 @@ const Page = () => (
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message={SECTION_TITLES.newEpisodes} />
+              <Message message="host.top.new_episodes_error" />
             </Suspense>
           }
         >
@@ -1102,7 +1166,7 @@ const Page = () => (
     <SectionErrorBoundary
       title={
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={SECTION_TITLES.recommended} />
+          <Message message="host.top.recommended_error" />
         </Suspense>
       }
     >
@@ -1133,7 +1197,7 @@ const Page = () => (
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message={SECTION_TITLES.freeSeries} />
+              <Message message="host.top.free_error" />
             </Suspense>
           }
         >
@@ -1164,7 +1228,7 @@ const Page = () => (
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message={SECTION_TITLES.updated} />
+              <Message message="host.top.updated_error" />
             </Suspense>
           }
         >
@@ -1198,7 +1262,7 @@ const Page = () => (
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <Message message={SECTION_TITLES.labels} />
+                <Message message="host.top.featured_labels_error" />
               </Suspense>
             }
           >
@@ -1234,7 +1298,7 @@ const Page = () => (
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-                <Message message={SECTION_TITLES.creators} />
+                <Message message="host.top.featured_creators_error" />
               </Suspense>
             }
           >

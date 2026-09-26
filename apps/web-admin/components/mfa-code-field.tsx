@@ -51,11 +51,9 @@ export const MfaCodeField = ({
           type="text"
         />
         <FieldDescription>
-          {t(
-            allowRecoveryCode
-              ? "admin.auth.mfa.code_help"
-              : "admin.auth.mfa.code_help_totp_only"
-          )}
+          {allowRecoveryCode
+            ? t("admin.auth.mfa.code_help")
+            : t("admin.auth.mfa.code_help_totp_only")}
         </FieldDescription>
       </FieldContent>
     </Field>

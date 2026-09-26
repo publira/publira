@@ -160,9 +160,9 @@ export const NotificationList = async ({
                           : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
-                      {t(
-                        item.isRead ? "host.common.read" : "host.common.unread"
-                      )}
+                      {item.isRead
+                        ? t("host.common.read")
+                        : t("host.common.unread")}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(item.createdAt, {

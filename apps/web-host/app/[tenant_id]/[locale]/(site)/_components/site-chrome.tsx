@@ -107,10 +107,6 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
     listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     countUnreadNotifications(tenantId, locale),
   ]);
-  const unreadMessage =
-    unread.unreadCount > 0
-      ? "host.nav.notifications_unread"
-      : "host.nav.notifications_none";
   let notificationContent = (
     <NotificationBellError>
       <Suspense fallback={<Skeleton className="h-4 w-64" />}>
@@ -151,13 +147,11 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
           >
             <NotificationBellItemState>
               <Suspense fallback={null}>
-                <Message
-                  message={
-                    notification.isRead
-                      ? "host.common.read"
-                      : "host.common.unread"
-                  }
-                />
+                {notification.isRead ? (
+                  <Message message="host.common.read" />
+                ) : (
+                  <Message message="host.common.unread" />
+                )}
               </Suspense>
             </NotificationBellItemState>
             <NotificationBellItemTitle>
@@ -176,10 +170,14 @@ const HostNotificationBell = async ({ moreHref }: { moreHref: string }) => {
     <NotificationBell>
       <NotificationBellTrigger unreadCount={unread.unreadCount}>
         <Suspense fallback={null}>
-          <Message
-            message={unreadMessage}
-            values={{ count: unread.unreadCount }}
-          />
+          {unread.unreadCount > 0 ? (
+            <Message
+              message="host.nav.notifications_unread"
+              values={{ count: unread.unreadCount }}
+            />
+          ) : (
+            <Message message="host.nav.notifications_none" />
+          )}
         </Suspense>
       </NotificationBellTrigger>
       <NotificationBellContent>

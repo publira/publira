@@ -16,7 +16,7 @@ import {
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import {
   useActionState,
   useCallback,
@@ -34,24 +34,68 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { AdminClientMessageKey } from "#lib/messages";
-import {
-  paymentSettingsStatus,
-  paymentSettingsStatusCopy,
+import { paymentSettingsStatus } from "#lib/payment-settings-shared";
+import type {
+  PaymentSettingsStatus,
+  TenantPaymentSettings,
 } from "#lib/payment-settings-shared";
-import type { TenantPaymentSettings } from "#lib/payment-settings-shared";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { TenantPaymentSettingsFormState } from "../payment-types";
 
-const statusTone: Record<
-  ReturnType<typeof paymentSettingsStatus>,
-  BadgeTone
-> = {
+const statusTone: Record<PaymentSettingsStatus, BadgeTone> = {
   disabled: "muted",
   incomplete: "warning",
   ready: "success",
   unset: "muted",
+};
+
+const PaymentStatusLabel = ({ status }: { status: PaymentSettingsStatus }) => {
+  switch (status) {
+    case "disabled": {
+      return <ClientMessage message="admin.settings.payment.status.disabled" />;
+    }
+    case "incomplete": {
+      return (
+        <ClientMessage message="admin.settings.payment.status.incomplete" />
+      );
+    }
+    case "ready": {
+      return <ClientMessage message="admin.settings.payment.status.ready" />;
+    }
+    default: {
+      return <ClientMessage message="admin.settings.payment.status.unset" />;
+    }
+  }
+};
+
+const PaymentStatusDescription = ({
+  status,
+}: {
+  status: PaymentSettingsStatus;
+}) => {
+  switch (status) {
+    case "disabled": {
+      return (
+        <ClientMessage message="admin.settings.payment.status.disabled_description" />
+      );
+    }
+    case "incomplete": {
+      return (
+        <ClientMessage message="admin.settings.payment.status.incomplete_description" />
+      );
+    }
+    case "ready": {
+      return (
+        <ClientMessage message="admin.settings.payment.status.ready_description" />
+      );
+    }
+    default: {
+      return (
+        <ClientMessage message="admin.settings.payment.status.unset_description" />
+      );
+    }
+  }
 };
 
 interface TenantPaymentSettingsFormProps {
@@ -67,20 +111,21 @@ interface TenantPaymentSettingsFormProps {
 
 interface PaymentSecretFieldProps {
   canEdit: boolean;
+  /** The field's label. */
+  children: ReactNode;
   configured: boolean;
   error?: string;
   hint: string;
-  labelKey: AdminClientMessageKey;
   name: string;
   required: boolean;
 }
 
 const PaymentSecretField = ({
   canEdit,
+  children,
   configured,
   error,
   hint,
-  labelKey,
   name,
   required,
 }: PaymentSecretFieldProps) => {
@@ -104,7 +149,7 @@ const PaymentSecretField = ({
   return (
     <Field>
       <FieldLabel htmlFor={inputId} required={canEdit && required && showInput}>
-        {t(labelKey)}
+        {children}
       </FieldLabel>
       <FieldContent>
         {showInput ? (
@@ -175,13 +220,11 @@ const PaymentSettingsFields = ({
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
-  const t = useClientMessages();
   const tenantId = useTenantId();
   const enabledId = useId();
   const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
   const enabled = enabledOverride ?? settings.enabled;
   const status = paymentSettingsStatus(settings);
-  const statusCopy = paymentSettingsStatusCopy[status];
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
   const fieldErrors =
     saveState && !saveState.ok ? saveState.fieldErrors : undefined;
@@ -212,10 +255,10 @@ const PaymentSettingsFields = ({
       {loadErrorMessage ? null : (
         <div className="flex flex-wrap items-center gap-3">
           <StatusChip status={statusTone[status]}>
-            {t(statusCopy.labelKey)}
+            <PaymentStatusLabel status={status} />
           </StatusChip>
           <p className="text-sm text-muted-foreground">
-            {t(statusCopy.descriptionKey)}
+            <PaymentStatusDescription status={status} />
           </p>
         </div>
       )}
@@ -260,20 +303,22 @@ const PaymentSettingsFields = ({
           configured={settings.secretKeyConfigured}
           error={fieldErrors?.secretKey}
           hint={settings.secretKeyHint}
-          labelKey="admin.settings.payment.secret_key"
           name="secret_key"
           required={secretKeyRequired}
-        />
+        >
+          <ClientMessage message="admin.settings.payment.secret_key" />
+        </PaymentSecretField>
 
         <PaymentSecretField
           canEdit={!fieldsDisabled}
           configured={settings.webhookSecretConfigured}
           error={fieldErrors?.webhookSecret}
           hint={settings.webhookSecretHint}
-          labelKey="admin.settings.payment.webhook_secret"
           name="webhook_secret"
           required={webhookSecretRequired}
-        />
+        >
+          <ClientMessage message="admin.settings.payment.webhook_secret" />
+        </PaymentSecretField>
       </Fieldset>
 
       {webhookUrl ? (

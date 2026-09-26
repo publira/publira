@@ -159,11 +159,9 @@ export const postEpisodeCommentAction = async (
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
   return {
-    message: t(
-      result.awaitingApproval
-        ? "host.episode.comments.posted_awaiting_approval"
-        : "host.episode.comments.posted"
-    ),
+    message: result.awaitingApproval
+      ? t("host.episode.comments.posted_awaiting_approval")
+      : t("host.episode.comments.posted"),
     ok: true,
   };
 };

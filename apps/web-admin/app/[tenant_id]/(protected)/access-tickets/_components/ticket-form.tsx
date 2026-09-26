@@ -208,11 +208,9 @@ export const TicketForm = ({
                 type="text"
               />
               <FieldDescription>
-                {t(
-                  seriesItems.length === 0 && !seriesErrorMessage
-                    ? "admin.access_tickets.form.episode_id_no_series"
-                    : "admin.access_tickets.form.episode_id_description"
-                )}
+                {seriesItems.length === 0 && !seriesErrorMessage
+                  ? t("admin.access_tickets.form.episode_id_no_series")
+                  : t("admin.access_tickets.form.episode_id_description")}
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -258,11 +256,11 @@ export const TicketForm = ({
                   value={episodePublicId}
                 >
                   <ComboboxInput
-                    placeholder={t(
+                    placeholder={
                       isEpisodePending
-                        ? "admin.access_tickets.form.episode_loading"
-                        : "admin.access_tickets.form.episode_placeholder"
-                    )}
+                        ? t("admin.access_tickets.form.episode_loading")
+                        : t("admin.access_tickets.form.episode_placeholder")
+                    }
                   />
                   <ComboboxPopup>
                     <ComboboxEmpty>
@@ -291,11 +289,9 @@ export const TicketForm = ({
                   </>
                 ) : null}
                 <FieldDescription>
-                  {t(
-                    seriesPublicId === ""
-                      ? "admin.access_tickets.form.episode_needs_series"
-                      : "admin.access_tickets.form.episode_description"
-                  )}
+                  {seriesPublicId === ""
+                    ? t("admin.access_tickets.form.episode_needs_series")
+                    : t("admin.access_tickets.form.episode_description")}
                 </FieldDescription>
               </FieldContent>
             </Field>

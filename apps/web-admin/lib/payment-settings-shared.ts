@@ -1,5 +1,3 @@
-import type { AdminClientMessageKey } from "./messages";
-
 export const PAYMENT_PROVIDER_STRIPE = "stripe";
 
 export const SECRET_UPDATE_MODE_UNCHANGED = 1;
@@ -44,26 +42,4 @@ export const paymentSettingsStatus = (
     return "disabled";
   }
   return "unset";
-};
-
-export const paymentSettingsStatusCopy: Record<
-  PaymentSettingsStatus,
-  { descriptionKey: AdminClientMessageKey; labelKey: AdminClientMessageKey }
-> = {
-  disabled: {
-    descriptionKey: "admin.settings.payment.status.disabled_description",
-    labelKey: "admin.settings.payment.status.disabled",
-  },
-  incomplete: {
-    descriptionKey: "admin.settings.payment.status.incomplete_description",
-    labelKey: "admin.settings.payment.status.incomplete",
-  },
-  ready: {
-    descriptionKey: "admin.settings.payment.status.ready_description",
-    labelKey: "admin.settings.payment.status.ready",
-  },
-  unset: {
-    descriptionKey: "admin.settings.payment.status.unset_description",
-    labelKey: "admin.settings.payment.status.unset",
-  },
 };

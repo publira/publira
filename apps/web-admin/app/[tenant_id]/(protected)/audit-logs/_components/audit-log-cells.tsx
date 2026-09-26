@@ -7,7 +7,6 @@ import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import type { AdminMessageKey } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
@@ -412,12 +411,6 @@ const outcomeToneMap = {
   unknown: "muted",
 } as const;
 
-const outcomeMessageKeys = {
-  failure: "admin.audit.outcome.failure",
-  success: "admin.audit.outcome.success",
-  unknown: "admin.audit.outcome.unknown",
-} as const satisfies Record<string, AdminMessageKey>;
-
 type AuditOutcome = "failure" | "success" | "unknown";
 
 interface AuditLogDateCellProps {
@@ -526,7 +519,9 @@ export const AuditLogOutcomeCell = async ({
   return (
     <TableCell>
       <Badge tone={outcomeToneMap[outcome]}>
-        {t(outcomeMessageKeys[outcome])}
+        {outcome === "failure" && t("admin.audit.outcome.failure")}
+        {outcome === "success" && t("admin.audit.outcome.success")}
+        {outcome === "unknown" && t("admin.audit.outcome.unknown")}
       </Badge>
     </TableCell>
   );

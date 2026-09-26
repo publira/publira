@@ -14,19 +14,12 @@ import {
 } from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import type { FollowTargetKind } from "#lib/follow";
 import type { FollowListItem } from "#lib/follow-list";
 import { getLocale } from "#lib/locale";
-import type { HostMessageKey } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 import { followsListHref } from "../_lib/search-params";
 import { UnfollowButton } from "./unfollow-button";
-
-const kindLabelKey: Record<FollowTargetKind, HostMessageKey> = {
-  creator: "host.settings.follows_kind_creator",
-  series: "host.settings.follows_kind_series",
-};
 
 interface FollowListProps {
   items: FollowListItem[];
@@ -155,7 +148,9 @@ export const FollowList = async ({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      {t(kindLabelKey[item.targetKind])}
+                      {item.targetKind === "creator"
+                        ? t("host.settings.follows_kind_creator")
+                        : t("host.settings.follows_kind_series")}
                     </p>
                     <FollowTitle item={item} />
                     {item.unavailable ? (

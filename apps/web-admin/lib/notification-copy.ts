@@ -66,7 +66,7 @@ export interface NotificationDisplay {
 /**
  * How an episode is named in a description.
  *
- * `unnamedKey` is the last resort, and it differs by event: a publication
+ * `unnamed` is the last resort, and it differs by event: a publication
  * notice is about an episode that was scheduled, while a comment alert is
  * about one readers are already reading. A payload that names neither the
  * episode nor its series is a malformed one, so this is copy nobody should
@@ -76,9 +76,7 @@ export interface NotificationDisplay {
 const episodeSubject = async (
   locale: Locale,
   payload: NotificationPayload,
-  unnamedKey:
-    | "admin.notifications.events.subject_unknown"
-    | "admin.notifications.events.subject_unnamed"
+  unnamed: string
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   if (payload.episode_title && payload.series_title) {
@@ -97,7 +95,7 @@ const episodeSubject = async (
       series: payload.series_title,
     });
   }
-  return t(unnamedKey);
+  return unnamed;
 };
 
 export const notificationHref = (
@@ -160,7 +158,7 @@ export const notificationDisplay = async (
     const subject = await episodeSubject(
       locale,
       payload,
-      "admin.notifications.events.subject_unnamed"
+      t("admin.notifications.events.subject_unnamed")
     );
 
     return {
@@ -176,7 +174,7 @@ export const notificationDisplay = async (
     const subject = await episodeSubject(
       locale,
       payload,
-      "admin.notifications.events.subject_unnamed"
+      t("admin.notifications.events.subject_unnamed")
     );
 
     return {
@@ -192,7 +190,7 @@ export const notificationDisplay = async (
     const subject = await episodeSubject(
       locale,
       payload,
-      "admin.notifications.events.subject_unknown"
+      t("admin.notifications.events.subject_unknown")
     );
 
     return {
@@ -212,7 +210,7 @@ export const notificationDisplay = async (
     const subject = await episodeSubject(
       locale,
       payload,
-      "admin.notifications.events.subject_unknown"
+      t("admin.notifications.events.subject_unknown")
     );
 
     return {

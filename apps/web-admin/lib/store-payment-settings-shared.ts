@@ -1,5 +1,3 @@
-import type { AdminClientMessageKey } from "./messages";
-
 /**
  * How the tenant's app sells an episode it may sell. Strings rather than the
  * generated `AppPurchaseRoute` enum, because that is what the form posts;
@@ -62,11 +60,4 @@ export const storeStatus = (store: {
     return "disabled";
   }
   return "unset";
-};
-
-export const storeStatusLabelKey: Record<StoreStatus, AdminClientMessageKey> = {
-  disabled: "admin.settings.store_payment.status.disabled",
-  incomplete: "admin.settings.store_payment.status.incomplete",
-  ready: "admin.settings.store_payment.status.ready",
-  unset: "admin.settings.store_payment.status.unset",
 };

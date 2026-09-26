@@ -1,22 +1,9 @@
 import type { Locale } from "@publira/i18n";
 
-import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
 export type OperatorRoleTone = "info";
-
-const operatorRoleKeys = new Map<string, PlatformMessageKey>([
-  ["platform_auditor", "platform.common.roles.platform_auditor"],
-  ["platform_operator", "platform.common.roles.platform_operator"],
-  ["platform_super_admin", "platform.common.roles.platform_super_admin"],
-]);
-
-const accountStatusKeys = new Map<string, PlatformMessageKey>([
-  ["active", "platform.common.account_status.active"],
-  ["inactive", "platform.common.account_status.inactive"],
-  ["suspended", "platform.common.account_status.suspended"],
-]);
 
 /**
  * Each label takes the `locale` and reads the catalog itself. The value has to
@@ -28,28 +15,44 @@ export const getOperatorRoleLabel = async (
   role: string,
   locale: Locale
 ): Promise<string> => {
-  const key = operatorRoleKeys.get(normalizePlatformRole(role));
-  if (!key) {
-    return role;
-  }
-
   const t = await getMessagesFor(locale);
 
-  return t(key);
+  switch (normalizePlatformRole(role)) {
+    case "platform_auditor": {
+      return t("platform.common.roles.platform_auditor");
+    }
+    case "platform_operator": {
+      return t("platform.common.roles.platform_operator");
+    }
+    case "platform_super_admin": {
+      return t("platform.common.roles.platform_super_admin");
+    }
+    default: {
+      return role;
+    }
+  }
 };
 
 export const getOperatorStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = accountStatusKeys.get(status);
-  if (!key) {
-    return status;
-  }
-
   const t = await getMessagesFor(locale);
 
-  return t(key);
+  switch (status) {
+    case "active": {
+      return t("platform.common.account_status.active");
+    }
+    case "inactive": {
+      return t("platform.common.account_status.inactive");
+    }
+    case "suspended": {
+      return t("platform.common.account_status.suspended");
+    }
+    default: {
+      return status;
+    }
+  }
 };
 
 export const getOperatorRoleSelectItems = async (locale: Locale) => {

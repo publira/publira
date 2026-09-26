@@ -87,67 +87,103 @@ export const toPlatformStorageSettings = (
 });
 
 /**
+ * The message for a `STORAGE_TEST_*` reason, which the connection test answers
+ * with and the audit log records. Anything else is not a reason this console
+ * knows, and answers `undefined`.
+ */
+export const storageTestFailureMessage = async (
+  reason: string,
+  locale: Locale
+): Promise<string | undefined> => {
+  const t = await getMessagesFor(locale);
+
+  switch (reason) {
+    case "STORAGE_TEST_BUCKET_NOT_FOUND": {
+      return t("platform.storage.test.reasons.bucket_not_found");
+    }
+    case "STORAGE_TEST_CONNECTION": {
+      return t("platform.storage.test.reasons.connection");
+    }
+    case "STORAGE_TEST_CREDENTIALS": {
+      return t("platform.storage.test.reasons.credentials");
+    }
+    case "STORAGE_TEST_OBJECT_ALTERED": {
+      return t("platform.storage.test.reasons.object_altered");
+    }
+    case "STORAGE_TEST_OBJECT_MISSING": {
+      return t("platform.storage.test.reasons.object_missing");
+    }
+    case "STORAGE_TEST_PERMISSION": {
+      return t("platform.storage.test.reasons.permission");
+    }
+    case "STORAGE_TEST_TIMEOUT": {
+      return t("platform.storage.test.reasons.timeout");
+    }
+    case "STORAGE_TEST_UNKNOWN": {
+      return t("platform.storage.test.reasons.unknown");
+    }
+    default: {
+      return undefined;
+    }
+  }
+};
+
+/**
  * The generated enum numbers `PlatformStorageOperation`, listed in the order
  * the server performs them.
  */
-const storageOperations = [
-  { label: "platform.storage.test.operations.put_object", value: 1 },
-  { label: "platform.storage.test.operations.get_object", value: 2 },
-  { label: "platform.storage.test.operations.list_objects", value: 3 },
-  { label: "platform.storage.test.operations.delete_object", value: 4 },
-] as const satisfies readonly { label: PlatformMessageKey; value: number }[];
-
-const storageTestReasonKeys = {
-  STORAGE_TEST_BUCKET_NOT_FOUND:
-    "platform.storage.test.reasons.bucket_not_found",
-  STORAGE_TEST_CONNECTION: "platform.storage.test.reasons.connection",
-  STORAGE_TEST_CREDENTIALS: "platform.storage.test.reasons.credentials",
-  STORAGE_TEST_OBJECT_ALTERED: "platform.storage.test.reasons.object_altered",
-  STORAGE_TEST_OBJECT_MISSING: "platform.storage.test.reasons.object_missing",
-  STORAGE_TEST_PERMISSION: "platform.storage.test.reasons.permission",
-  STORAGE_TEST_TIMEOUT: "platform.storage.test.reasons.timeout",
-  STORAGE_TEST_UNKNOWN: "platform.storage.test.reasons.unknown",
-} as const satisfies Record<string, PlatformMessageKey>;
-
-/**
- * The catalog key for a `STORAGE_TEST_*` reason, which the connection test
- * answers with and the audit log records. Anything else is not a reason this
- * console knows.
- */
-export const storageTestReasonKey = (
-  reason: string
-): PlatformMessageKey | undefined =>
-  Object.hasOwn(storageTestReasonKeys, reason)
-    ? storageTestReasonKeys[reason as keyof typeof storageTestReasonKeys]
-    : undefined;
+const storageOperations = [1, 2, 3, 4] as const;
 
 const toCheckResults = async (
   checks: Pick<PlatformStorageCheck, "operation" | "reason" | "succeeded">[],
   locale: Locale
 ): Promise<PlatformStorageCheckResult[]> => {
   const t = await getMessagesFor(locale);
+  const operationLabel = (operation: (typeof storageOperations)[number]) => {
+    switch (operation) {
+      case 1: {
+        return t("platform.storage.test.operations.put_object");
+      }
+      case 2: {
+        return t("platform.storage.test.operations.get_object");
+      }
+      case 3: {
+        return t("platform.storage.test.operations.list_objects");
+      }
+      case 4: {
+        return t("platform.storage.test.operations.delete_object");
+      }
+      default: {
+        return String(operation);
+      }
+    }
+  };
 
-  return storageOperations.map(({ label, value }) => {
-    const check = checks.find((candidate) => candidate.operation === value);
-    if (!check) {
+  return await Promise.all(
+    storageOperations.map(async (operation) => {
+      const label = operationLabel(operation);
+      const check = checks.find(
+        (candidate) => candidate.operation === operation
+      );
+      if (!check) {
+        return {
+          detail: t("platform.storage.test.skipped"),
+          label,
+          status: "skipped" as const,
+        };
+      }
+      if (check.succeeded) {
+        return { detail: "", label, status: "succeeded" as const };
+      }
       return {
-        detail: t("platform.storage.test.skipped"),
-        label: t(label),
-        status: "skipped" as const,
+        detail:
+          (await storageTestFailureMessage(check.reason, locale)) ??
+          t("platform.storage.test.reasons.unknown"),
+        label,
+        status: "failed" as const,
       };
-    }
-    if (check.succeeded) {
-      return { detail: "", label: t(label), status: "succeeded" as const };
-    }
-    return {
-      detail: t(
-        storageTestReasonKey(check.reason) ??
-          "platform.storage.test.reasons.unknown"
-      ),
-      label: t(label),
-      status: "failed" as const,
-    };
-  });
+    })
+  );
 };
 
 /**

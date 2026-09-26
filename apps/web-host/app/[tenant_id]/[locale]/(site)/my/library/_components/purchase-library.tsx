@@ -106,9 +106,9 @@ const PurchaseCard = async ({
               : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
           }
         >
-          {t(
-            purchase.isActive ? "host.library.readable" : "host.library.expired"
-          )}
+          {purchase.isActive
+            ? t("host.library.readable")
+            : t("host.library.expired")}
         </span>
       </div>
       <dl className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
