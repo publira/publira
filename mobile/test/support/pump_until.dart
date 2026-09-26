@@ -11,8 +11,9 @@ Future<void> pumpUntilFound(
   Finder finder, {
   Duration timeout = const Duration(seconds: 10),
 }) async {
-  final end = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(end)) {
+  final clock = tester.binding.clock;
+  final end = clock.now().add(timeout);
+  while (clock.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 50));
     if (finder.evaluate().isNotEmpty) {
       return;
@@ -24,14 +25,19 @@ Future<void> pumpUntilFound(
 /// Pumps until [condition] holds, for state no widget reveals — an image
 /// request the fixture server has recorded, say, which lands after the widget
 /// that triggered it is already on screen.
+///
+/// [timeout] is measured on the binding's clock, which a widget test only
+/// moves by pumping, so a loaded machine makes the wait slower rather than
+/// making it fail.
 Future<void> pumpUntilTrue(
   WidgetTester tester,
   bool Function() condition, {
   String description = 'condition',
   Duration timeout = const Duration(seconds: 10),
 }) async {
-  final end = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(end)) {
+  final clock = tester.binding.clock;
+  final end = clock.now().add(timeout);
+  while (clock.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 50));
     if (condition()) {
       return;
@@ -127,8 +133,9 @@ Future<void> pumpUntilTrueAsync(
   String description = 'condition',
   Duration timeout = const Duration(seconds: 10),
 }) async {
-  final end = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(end)) {
+  final clock = tester.binding.clock;
+  final end = clock.now().add(timeout);
+  while (clock.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 50));
     if (await condition()) {
       return;
