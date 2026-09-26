@@ -95,7 +95,7 @@ func TestEpisodeFreeWindowOpensPublicImageAccess(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetEpisodeImagePublicAccessByIDForTenant: %v", err)
 		}
-		return row.HasPublicAccess.Valid && row.HasPublicAccess.Bool
+		return row.HasPublicAccess
 	}
 
 	if publicAccess() {

@@ -263,7 +263,7 @@ func TestEpisodeImageConvertsToWebPAndCaches(t *testing.T) {
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+			HasPublicAccess: true,
 		},
 	}
 	srv := newTestServer(t,
@@ -330,7 +330,7 @@ func TestEpisodeImageResizeQuery(t *testing.T) {
 				ObjectKey:       "episodes/page.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+				HasPublicAccess: true,
 			},
 		}},
 		store,
@@ -363,7 +363,7 @@ func TestEpisodeImageForbiddenWhenNotPublic(t *testing.T) {
 				ID:              mediaID,
 				ObjectKey:       "episodes/page.jpg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: sql.NullBool{Bool: false, Valid: true},
+				HasPublicAccess: false,
 			},
 		}},
 		&countingStore{objects: map[string]storedObject{}},
@@ -389,7 +389,7 @@ func paidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: sql.NullBool{Bool: false, Valid: true},
+			HasPublicAccess: false,
 		},
 		userRef: dbmodels.GetUserByPublicIDForTenantRow{ID: userID, PublicID: "reader-public-id", Status: "active"},
 		user: dbmodels.User{
@@ -404,7 +404,7 @@ func paidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion
 			ObjectKey:   "episodes/page.jpg",
 			ContentType: "image/jpeg",
 			IsPublished: sql.NullBool{Bool: true, Valid: true},
-			HasAccess:   sql.NullBool{Bool: true, Valid: true},
+			HasAccess:   true,
 		},
 	}
 }
@@ -546,7 +546,7 @@ func TestEpisodeImageFreeEpisodeMediaTokenGrantsNothing(t *testing.T) {
 				ObjectKey:       "episodes/page.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: isPublished, Valid: true},
-				HasPublicAccess: sql.NullBool{Bool: hasPublicAccess, Valid: true},
+				HasPublicAccess: hasPublicAccess,
 			},
 			userRefErr: sql.ErrNoRows,
 		}
@@ -637,7 +637,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 			ObjectKey:       "episodes/page.jpg",
 			ContentType:     "image/jpeg",
 			IsPublished:     sql.NullBool{Bool: true, Valid: true},
-			HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+			HasPublicAccess: true,
 		},
 		userRefErr: sql.ErrNoRows,
 	}
@@ -756,7 +756,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 	t.Run("a signed-in reader's bearer decrypts the same body", func(t *testing.T) {
 		queries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
 		queries.public.EpisodeID = episodeID
-		queries.public.HasPublicAccess = sql.NullBool{Bool: true, Valid: true}
+		queries.public.HasPublicAccess = true
 		bearer, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
 		if err != nil {
 			t.Fatalf("Issue() error = %v", err)
@@ -799,7 +799,7 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 	// rule is still what decides whether the body is served at all.
 	t.Run("the material unlocks nothing on its own", func(t *testing.T) {
 		paid := anonymousQueries
-		paid.public.HasPublicAccess = sql.NullBool{Bool: false, Valid: true}
+		paid.public.HasPublicAccess = false
 		unpublished := anonymousQueries
 		unpublished.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
 
@@ -905,9 +905,9 @@ func TestEpisodeImageMediaTokenEncryptsAfterSharedConversionCache(t *testing.T) 
 func unpublishedPaidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion int32, tenantID uuid.UUID, roles []string) stubTenantQueries {
 	q := paidEpisodeQueries(mediaID, episodeID, userID, credentialsVersion)
 	q.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
-	q.public.HasPublicAccess = sql.NullBool{Bool: false, Valid: true}
+	q.public.HasPublicAccess = false
 	q.userAccess.IsPublished = sql.NullBool{Bool: false, Valid: true}
-	q.userAccess.HasAccess = sql.NullBool{Bool: false, Valid: true}
+	q.userAccess.HasAccess = false
 	q.adminImage = dbmodels.GetEpisodeImageByIDForTenantRow{
 		ID:          mediaID,
 		EpisodeID:   episodeID,
@@ -1360,7 +1360,7 @@ func TestEpisodeImageMissingObjectIsNotPubliclyCacheable(t *testing.T) {
 				ObjectKey:       "episodes/missing.jpg",
 				ContentType:     "image/jpeg",
 				IsPublished:     sql.NullBool{Bool: true, Valid: true},
-				HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+				HasPublicAccess: true,
 			},
 		}},
 		&countingStore{objects: map[string]storedObject{}},
@@ -1447,7 +1447,7 @@ func TestEpisodeImageBoundsPublicCachingToTheFreeWindow(t *testing.T) {
 						ObjectKey:       "episodes/page.jpg",
 						ContentType:     "image/jpeg",
 						IsPublished:     sql.NullBool{Bool: true, Valid: true},
-						HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+						HasPublicAccess: true,
 						FreeUntil:       tc.freeUntil,
 					},
 					userRefErr: sql.ErrNoRows,
@@ -1563,7 +1563,7 @@ func TestEpisodeImageRefusesARatedBodyOnThePublicPath(t *testing.T) {
 						ObjectKey:       "episodes/page.jpg",
 						ContentType:     "image/jpeg",
 						IsPublished:     sql.NullBool{Bool: true, Valid: true},
-						HasPublicAccess: sql.NullBool{Bool: true, Valid: true},
+						HasPublicAccess: true,
 						AgeRating:       sql.NullString{String: tc.rating, Valid: true},
 						AgeVerification: sql.NullString{String: tc.rule, Valid: true},
 					},

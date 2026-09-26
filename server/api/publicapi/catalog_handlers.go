@@ -1146,9 +1146,9 @@ func (s *apiServer) GetEpisodeDetail(
 	includeImages := false
 	mediaToken := ""
 	// A priced episode whose free window is open is as public as one that costs
-	// nothing: the same query answers both, so the body, the token, and the
-	// access state below follow one condition.
-	freeToEveryone := row.Price == 0 || row.FreeUntil.Valid
+	// nothing: published_free_episodes answers both, so the body, the token,
+	// and the access state below follow one condition.
+	freeToEveryone := row.IsFree
 
 	// The session is resolved before any of that is acted on, because the age
 	// rule reads the birth date off it even for a body that costs nothing.
@@ -1355,7 +1355,7 @@ func episodeNeighborsFromRows(
 			Title:                neighbor.Title,
 			OrderIndex:           neighbor.OrderIndex,
 			Price:                neighbor.Price,
-			IsFree:               neighbor.IsFree.Valid && neighbor.IsFree.Bool,
+			IsFree:               neighbor.IsFree,
 			Creators:             creditsByEpisodeID[neighbor.ID],
 			PurchaseAvailability: purchaseAvailability,
 		}

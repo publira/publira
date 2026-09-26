@@ -1307,8 +1307,8 @@ type Querier interface {
 	// been taken down is not a link the storefront may offer, whichever episode
 	// was asked about.
 	//
-	// `is_free` is the same rule the body access uses, price 0 or an open free
-	// window, so a link cannot say "paid" about an episode that is free at the
+	// `is_free` reads published_free_episodes, the free half of the body access
+	// rule, so a link cannot say "paid" about an episode that is free at the
 	// moment the reader would follow it. `purchase_availability` is resolved
 	// through the series and the tenant as the episode read resolves it.
 	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)

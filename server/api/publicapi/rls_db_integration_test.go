@@ -221,7 +221,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	})
 	// A free episode as well as the priced one, so published_free_episodes has
 	// a row of its own to withhold.
-	env.PG.SeedEpisode(t, first.ID, series.ID, testutil.EpisodeSeed{
+	freeEpisode := env.PG.SeedEpisode(t, first.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEA0002",
 		Title:    "Tenant A Free Episode",
 		Status:   testutil.EpisodeStatusPublished,
@@ -283,6 +283,15 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	// A reader holds no tenant role, so the role row comes from a staff account.
 	env.PG.SeedTenantAdmin(t, first.ID, "ADMINA000001", "admin@tenant-a.example.com", "Admin")
 	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
+	// The episode above is also inside a free window, so this one is what only
+	// a grant opens.
+	purchasedEpisode := env.PG.SeedEpisode(t, first.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEA0003",
+		Title:    "Tenant A Purchased Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    300,
+	})
+	env.PG.SeedPurchase(t, first.ID, member.ID, purchasedEpisode.ID, purchasedEpisode.Price)
 	seed("store purchase intent", "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id) VALUES ($1, $2, $3, $4, $5, $6)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID, 500, "episode_500")
 	seed("held store refund", "INSERT INTO unapplied_store_refunds (tenant_id, store, store_transaction_id) VALUES ($1, 'app_store', $2)", first.ID, "2000000000000001")
 	seed("held refund", "INSERT INTO unapplied_stripe_refunds (tenant_id, stripe_payment_intent_id, refunded_amount) VALUES ($1, $2, $3)", first.ID, "pi_rls_held", 500)
@@ -336,6 +345,33 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		}
 		if visible != 0 {
 			t.Fatalf("%s rows visible without a tenant setting = %d, want 0", table.name, visible)
+		}
+	}
+
+	// reader_may_open_episode is a function rather than a relation, so it is
+	// asked about one episode of each half of the rule: a guest on the free one
+	// and the buyer on the purchased one.
+	for _, probe := range []struct {
+		name      string
+		userID    uuid.NullUUID
+		episodeID uuid.UUID
+	}{
+		{name: "free episode", episodeID: freeEpisode.ID},
+		{name: "purchased episode", userID: uuid.NullUUID{UUID: member.ID, Valid: true}, episodeID: purchasedEpisode.ID},
+	} {
+		const mayOpen = "SELECT reader_may_open_episode($1, $2, $3)"
+		var seeded, visible bool
+		if err := env.PG.DB.QueryRowContext(ctx, mayOpen, first.ID, probe.userID, probe.episodeID).Scan(&seeded); err != nil {
+			t.Fatalf("reader_may_open_episode on the %s as the owner: %v", probe.name, err)
+		}
+		if !seeded {
+			t.Fatalf("reader_may_open_episode on the %s as the owner = false, want the fail-closed check to run against an open episode", probe.name)
+		}
+		if err := db.QueryRowContext(ctx, mayOpen, first.ID, probe.userID, probe.episodeID).Scan(&visible); err != nil {
+			t.Fatalf("reader_may_open_episode on the %s: %v", probe.name, err)
+		}
+		if visible {
+			t.Fatalf("reader_may_open_episode on the %s without a tenant setting = true, want false", probe.name)
 		}
 	}
 }
