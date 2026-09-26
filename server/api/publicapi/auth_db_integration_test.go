@@ -831,14 +831,29 @@ func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testin
 // account ends on the loser's password while the winner has been told its own
 // took, and the winner's replacement token is dead on arrival. Exactly one
 // request succeeds, and the password it set is the one stored.
+//
+// The race this is about is two requests that both got past their session
+// check before either committed; one that arrives after the winner committed
+// is refused at the session instead, which is a different case. Holding the
+// row from the test until both requests wait on it is what puts both of them
+// inside the race every run, rather than only when the scheduler lets them.
 func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	token := tokenFor(t, tenant, user)
 	client := env.authClient()
 
+	held, err := env.PG.DB.Begin()
+	if err != nil {
+		t.Fatalf("begin the transaction holding the account: %v", err)
+	}
+	defer held.Rollback() //nolint:errcheck
+	if _, err := held.Exec(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, user.ID); err != nil {
+		t.Fatalf("hold the account row: %v", err)
+	}
+
 	candidates := []string{"first-new-password", "second-new-password"}
-	start := make(chan struct{})
 	results := make(chan struct {
 		password string
 		token    string
@@ -849,14 +864,13 @@ func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			<-start
 			resp, err := client.ChangePassword(context.Background(), newBearerRequest(
 				&publirav1.ChangePasswordRequest{
 					Tenant:          tenantContext(tenant),
 					CurrentPassword: testutil.SeededPassword,
 					NewPassword:     candidate,
 				},
-				tokenFor(t, tenant, user),
+				token,
 			))
 			token := ""
 			if err == nil {
@@ -869,7 +883,12 @@ func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) 
 			}{candidate, token, err}
 		}()
 	}
-	close(start)
+	// Both requests are past their session check once both wait on the row, so
+	// letting go of it leaves the lock as the only thing ordering them.
+	testutil.WaitForBlockedBackends(t, env.PG.DB, len(candidates))
+	if err := held.Rollback(); err != nil {
+		t.Fatalf("release the account row: %v", err)
+	}
 	wg.Wait()
 	close(results)
 
