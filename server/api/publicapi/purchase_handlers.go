@@ -416,14 +416,14 @@ func (s *apiServer) ProcessPaymentWebhook(
 
 	switch event := event.(type) {
 	case paymentprovider.Refunded:
-		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, event); err != nil {
+		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, err
 		}
 	case paymentprovider.PurchaseCompleted:
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("checkout tenant does not match webhook path"))
 		}
-		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, event); err != nil {
+		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	}
@@ -434,6 +434,7 @@ func (s *apiServer) recordRefund(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
+	providerID string,
 	event paymentprovider.Refunded,
 ) error {
 	// An amount is only comparable to price_at_purchase when it arrives in the
@@ -453,10 +454,11 @@ func (s *apiServer) recordRefund(
 		)
 	}
 
-	purchase, err := queries.RecordStripeRefundOnPurchase(ctx, dbmodels.RecordStripeRefundOnPurchaseParams{
-		TenantID:              tenantID,
-		StripePaymentIntentID: event.PaymentID,
-		RefundedAmount:        refundedAmount,
+	purchase, err := queries.RecordRefundOnPurchase(ctx, dbmodels.RecordRefundOnPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+		RefundedAmount:    refundedAmount,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// The purchase may simply not exist yet: a provider need order neither
@@ -464,10 +466,11 @@ func (s *apiServer) recordRefund(
 		// that creates the sale. Holding it lets that notification apply it,
 		// and a refund that belongs to no purchase of ours costs one row
 		// instead of days of retries.
-		if err := queries.HoldUnappliedStripeRefund(ctx, dbmodels.HoldUnappliedStripeRefundParams{
-			TenantID:              tenantID,
-			StripePaymentIntentID: event.PaymentID,
-			RefundedAmount:        refundedAmount,
+		if err := queries.HoldUnappliedRefund(ctx, dbmodels.HoldUnappliedRefundParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+			RefundedAmount:    refundedAmount,
 		}); err != nil {
 			return s.internalDBError(ctx, "failed to hold an unmatched refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
 		}
@@ -495,6 +498,7 @@ func (s *apiServer) createPurchase(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
+	providerID string,
 	event paymentprovider.PurchaseCompleted,
 ) error {
 	purchase := event.Purchase
@@ -519,15 +523,16 @@ func (s *apiServer) createPurchase(
 			now := time.Now().UTC()
 			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 		}
-		_, err = queries.CreatePurchaseFromStripeCheckout(ctx, dbmodels.CreatePurchaseFromStripeCheckoutParams{
-			ID:                      uuid.New(),
-			TenantID:                tenantID,
-			UserID:                  purchase.ReaderID,
-			EpisodeID:               purchase.EpisodeID,
-			PriceAtPurchase:         purchase.Price,
-			ExpiresAt:               expiresAt,
-			StripeCheckoutSessionID: sql.NullString{String: event.CheckoutID, Valid: true},
-			StripePaymentIntentID:   paymentID,
+		_, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
+			ID:                 uuid.New(),
+			TenantID:           tenantID,
+			UserID:             purchase.ReaderID,
+			EpisodeID:          purchase.EpisodeID,
+			PriceAtPurchase:    purchase.Price,
+			ExpiresAt:          expiresAt,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			ProviderPaymentID:  paymentID,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("create purchase: %w", err)
@@ -535,15 +540,16 @@ func (s *apiServer) createPurchase(
 	}
 
 	if paymentID.Valid {
-		if err := s.applyHeldRefund(ctx, queries, tenantID, paymentID.String); err != nil {
+		if err := s.applyHeldRefund(ctx, queries, tenantID, providerID, paymentID.String); err != nil {
 			return err
 		}
 	}
 
 	_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
-		ID:                      uuid.Must(uuid.NewV7()),
-		TenantID:                tenantID,
-		StripeCheckoutSessionID: event.CheckoutID,
+		ID:                 uuid.Must(uuid.NewV7()),
+		TenantID:           tenantID,
+		Provider:           providerID,
+		ProviderCheckoutID: event.CheckoutID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
@@ -560,11 +566,13 @@ func (s *apiServer) applyHeldRefund(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
+	providerID string,
 	paymentID string,
 ) error {
-	purchase, err := queries.ApplyUnappliedStripeRefundToPurchase(ctx, dbmodels.ApplyUnappliedStripeRefundToPurchaseParams{
-		TenantID:              tenantID,
-		StripePaymentIntentID: paymentID,
+	purchase, err := queries.ApplyUnappliedRefundToPurchase(ctx, dbmodels.ApplyUnappliedRefundToPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
@@ -572,9 +580,10 @@ func (s *apiServer) applyHeldRefund(
 	if err != nil {
 		return fmt.Errorf("apply held refund: %w", err)
 	}
-	if err := queries.ReleaseUnappliedStripeRefund(ctx, dbmodels.ReleaseUnappliedStripeRefundParams{
-		TenantID:              tenantID,
-		StripePaymentIntentID: paymentID,
+	if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
 	}); err != nil {
 		return fmt.Errorf("release held refund: %w", err)
 	}

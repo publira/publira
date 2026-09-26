@@ -153,10 +153,11 @@ WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
--- Projects the Stripe-confirmed purchase without trusting webhook metadata for
--- the actor or content target. purchases stays the source of truth: its user
--- is copied directly and the episode resolves its owning series. A retry is a
--- no-op after the source unique index has accepted the first event.
+-- Projects the provider-confirmed purchase, found by the checkout it was
+-- created from, without trusting webhook metadata for the actor or content
+-- target. purchases stays the source of truth: its user is copied directly and
+-- the episode resolves its owning series. A retry is a no-op after the source
+-- unique index has accepted the first event.
 --
 -- The Phase 0 daily purchase aggregate reads purchases directly. Do not mix
 -- this projection into that aggregate until its source contract moves to
@@ -190,15 +191,16 @@ JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
-    AND p.stripe_checkout_session_id = sqlc.arg('stripe_checkout_session_id')::text
+    AND p.provider = sqlc.arg('provider')::text
+    AND p.provider_checkout_id = sqlc.arg('provider_checkout_id')::text
 ON CONFLICT (tenant_id, source_table, source_id)
 WHERE source_id IS NOT NULL
 DO NOTHING
 RETURNING *;
 
 -- Projects a store purchase the way ProjectPurchaseContentEvent projects a
--- Stripe one, found by the purchase's own ID since a store purchase has no
--- Checkout Session.
+-- provider one, found by the purchase's own ID since a store purchase has no
+-- checkout.
 -- name: ProjectPurchaseContentEventByID :one
 INSERT INTO content_events (
     id,

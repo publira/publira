@@ -642,20 +642,21 @@ type PublishedFreeEpisode struct {
 }
 
 type Purchase struct {
-	ID                      uuid.UUID      `json:"id"`
-	UserID                  uuid.NullUUID  `json:"user_id"`
-	EpisodeID               uuid.UUID      `json:"episode_id"`
-	PriceAtPurchase         int32          `json:"price_at_purchase"`
-	ExpiresAt               sql.NullTime   `json:"expires_at"`
-	PurchasedAt             time.Time      `json:"purchased_at"`
-	TenantID                uuid.UUID      `json:"tenant_id"`
-	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
-	StripePaymentIntentID   sql.NullString `json:"stripe_payment_intent_id"`
-	RefundedAmount          sql.NullInt32  `json:"refunded_amount"`
-	RefundedAt              sql.NullTime   `json:"refunded_at"`
-	Store                   sql.NullString `json:"store"`
-	StoreTransactionID      sql.NullString `json:"store_transaction_id"`
-	IsTest                  bool           `json:"is_test"`
+	ID                 uuid.UUID      `json:"id"`
+	UserID             uuid.NullUUID  `json:"user_id"`
+	EpisodeID          uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	PurchasedAt        time.Time      `json:"purchased_at"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	ProviderCheckoutID sql.NullString `json:"provider_checkout_id"`
+	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
+	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt         sql.NullTime   `json:"refunded_at"`
+	Store              sql.NullString `json:"store"`
+	StoreTransactionID sql.NullString `json:"store_transaction_id"`
+	IsTest             bool           `json:"is_test"`
+	Provider           sql.NullString `json:"provider"`
 }
 
 type RoyaltyStatement struct {
@@ -1022,18 +1023,19 @@ type TenantUserRole struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 }
 
+type UnappliedRefund struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	ProviderPaymentID string        `json:"provider_payment_id"`
+	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
+	ReceivedAt        time.Time     `json:"received_at"`
+	Provider          string        `json:"provider"`
+}
+
 type UnappliedStoreRefund struct {
 	TenantID           uuid.UUID `json:"tenant_id"`
 	Store              string    `json:"store"`
 	StoreTransactionID string    `json:"store_transaction_id"`
 	ReceivedAt         time.Time `json:"received_at"`
-}
-
-type UnappliedStripeRefund struct {
-	TenantID              uuid.UUID     `json:"tenant_id"`
-	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`
-	RefundedAmount        sql.NullInt32 `json:"refunded_amount"`
-	ReceivedAt            time.Time     `json:"received_at"`
 }
 
 type User struct {

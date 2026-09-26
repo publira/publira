@@ -23,7 +23,7 @@ WHERE r.tenant_id = p.tenant_id
     AND r.store_transaction_id = p.store_transaction_id
     AND p.tenant_id = $1
     AND p.id = $2
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
 `
 
 type ApplyUnappliedStoreRefundToPurchaseParams struct {
@@ -45,13 +45,14 @@ func (q *Queries) ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg A
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -98,7 +99,7 @@ VALUES (
     $9
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at, store, store_transaction_id, is_test
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
 `
 
 type CreateStorePurchaseParams struct {
@@ -136,13 +137,14 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -205,7 +207,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 }
 
 const GetStorePurchaseByTransaction = `-- name: GetStorePurchaseByTransaction :one
-SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at, store, store_transaction_id, is_test
+SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
 FROM purchases
 WHERE tenant_id = $1
     AND store = $2::text
@@ -229,13 +231,14 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -397,7 +400,7 @@ SET refunded_amount = price_at_purchase,
 WHERE tenant_id = $1
     AND store = $2::text
     AND store_transaction_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at, store, store_transaction_id, is_test
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
 `
 
 type RecordStoreRefundOnPurchaseParams struct {
@@ -421,13 +424,14 @@ func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordSto
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }

@@ -2308,7 +2308,8 @@ JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
 WHERE p.tenant_id = $2
-    AND p.stripe_checkout_session_id = $3::text
+    AND p.provider = $3::text
+    AND p.provider_checkout_id = $4::text
 ON CONFLICT (tenant_id, source_table, source_id)
 WHERE source_id IS NOT NULL
 DO NOTHING
@@ -2316,21 +2317,28 @@ RETURNING id, tenant_id, event_type, user_id, anonymous_id, actor_key, series_id
 `
 
 type ProjectPurchaseContentEventParams struct {
-	ID                      uuid.UUID `json:"id"`
-	TenantID                uuid.UUID `json:"tenant_id"`
-	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+	ID                 uuid.UUID `json:"id"`
+	TenantID           uuid.UUID `json:"tenant_id"`
+	Provider           string    `json:"provider"`
+	ProviderCheckoutID string    `json:"provider_checkout_id"`
 }
 
-// Projects the Stripe-confirmed purchase without trusting webhook metadata for
-// the actor or content target. purchases stays the source of truth: its user
-// is copied directly and the episode resolves its owning series. A retry is a
-// no-op after the source unique index has accepted the first event.
+// Projects the provider-confirmed purchase, found by the checkout it was
+// created from, without trusting webhook metadata for the actor or content
+// target. purchases stays the source of truth: its user is copied directly and
+// the episode resolves its owning series. A retry is a no-op after the source
+// unique index has accepted the first event.
 //
 // The Phase 0 daily purchase aggregate reads purchases directly. Do not mix
 // this projection into that aggregate until its source contract moves to
 // content_events, or purchases will be counted twice.
 func (q *Queries) ProjectPurchaseContentEvent(ctx context.Context, arg ProjectPurchaseContentEventParams) (ContentEvent, error) {
-	row := q.db.QueryRowContext(ctx, ProjectPurchaseContentEvent, arg.ID, arg.TenantID, arg.StripeCheckoutSessionID)
+	row := q.db.QueryRowContext(ctx, ProjectPurchaseContentEvent,
+		arg.ID,
+		arg.TenantID,
+		arg.Provider,
+		arg.ProviderCheckoutID,
+	)
 	var i ContentEvent
 	err := row.Scan(
 		&i.ID,
@@ -2395,8 +2403,8 @@ type ProjectPurchaseContentEventByIDParams struct {
 }
 
 // Projects a store purchase the way ProjectPurchaseContentEvent projects a
-// Stripe one, found by the purchase's own ID since a store purchase has no
-// Checkout Session.
+// provider one, found by the purchase's own ID since a store purchase has no
+// checkout.
 func (q *Queries) ProjectPurchaseContentEventByID(ctx context.Context, arg ProjectPurchaseContentEventByIDParams) (ContentEvent, error) {
 	row := q.db.QueryRowContext(ctx, ProjectPurchaseContentEventByID, arg.ID, arg.TenantID, arg.PurchaseID)
 	var i ContentEvent

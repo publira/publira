@@ -140,7 +140,7 @@ func (c *contractTenant) HeldRefunds(t *testing.T) int {
 	t.Helper()
 	var count int
 	if err := c.harness.pg.DB.QueryRowContext(context.Background(),
-		`SELECT count(*) FROM unapplied_stripe_refunds WHERE tenant_id = $1`, c.purchase.TenantID,
+		`SELECT count(*) FROM unapplied_refunds WHERE tenant_id = $1`, c.purchase.TenantID,
 	).Scan(&count); err != nil {
 		t.Fatalf("count held refunds: %v", err)
 	}
