@@ -422,6 +422,17 @@ wait_for_session_members() {
   return 1
 }
 
+# A session reads as empty until its first process has called setsid, so a
+# wait for a service's exit is a wait for the recorded pid itself.
+wait_for_process_exit() {
+  local pid="$1" attempt
+  for ((attempt = 0; attempt < 100; attempt += 1)); do
+    kill -0 "${pid}" 2> /dev/null || return 0
+    sleep 0.1
+  done
+  return 1
+}
+
 chain_run_dir="$(dev_env_profile_run_dir chain)"
 start_fake_service "${chain_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
 chain_sid="${fake_service_sid}"
@@ -439,6 +450,7 @@ pass "stopping a profile ends the descendants of the pid it recorded"
 orphan_run_dir="$(dev_env_profile_run_dir orphan)"
 start_fake_service "${orphan_run_dir}" web bash -c 'set -m; bash -c "sleep 300; true" "$0" &' "${REPO_ROOT}/apps/web-host"
 orphan_sid="${fake_service_sid}"
+wait_for_process_exit "${orphan_sid}" || fail "the process that started the orphaned child did not exit"
 wait_for_session_members "${orphan_sid}" 2 || fail "the orphaned child did not outlive the process that started it"
 orphan_pgid="$(dev_env_session_members "${orphan_sid}" | awk 'NR == 1 { print $1 }')"
 [[ "${orphan_pgid}" != "${orphan_sid}" ]] || fail "the orphaned child did not leave the recorded pid's process group"
@@ -456,7 +468,7 @@ pass "stopping a profile ends processes in other process groups after the proces
 hermetic_run_dir="$(dev_env_profile_run_dir hermetic)"
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@db:5432/publira_hermetic"
 start_fake_service "${hermetic_run_dir}" env PUBLIRA_NAMED=named bash -c 'env > "$1"; true' "${REPO_ROOT}" "${test_dir}/hermetic.env"
-wait_for_session_members "${fake_service_sid}" 0 || fail "the service printing its environment did not exit"
+wait_for_process_exit "${fake_service_sid}" || fail "the service printing its environment did not exit"
 unset PUBLIRA_ADMIN_DB_URL
 expected_names="PUBLIRA_NAMED"
 for name in "${DEV_ENV_BASE_VARIABLES[@]}"; do
