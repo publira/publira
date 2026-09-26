@@ -2,8 +2,9 @@
 -- the comment they are about.
 --
 -- Expected plans:
---   GetReportableEpisodeCommentByPublicIDForTenant
---     -> episode_comments_tenant_public_id_key
+--   GetReportableEpisodeCommentForTenant
+--     -> episode_comments_tenant_id_id_key, or
+--        episode_comments_tenant_public_id_key for a public ID
 --   CreateEpisodeCommentReport
 --     -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 --   RefreshEpisodeCommentOpenReportCount
@@ -21,10 +22,10 @@
 --   RejectOpenEpisodeCommentReportsForComment
 --     -> episode_comment_reports_tenant_comment_reporter_key
 
--- name: GetReportableEpisodeCommentByPublicIDForTenant :one
+-- name: GetReportableEpisodeCommentForTenant :one
 -- The comment a reader is allowed to report: one that is published, on an
 -- episode that is itself public right now. The publication predicate is the one
--- GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+-- GetPublishedEpisodeForTenant applies, surface included, so a comment
 -- on an episode that has been unpublished since, or that the calling surface may
 -- not show, is as absent here as one that never existed.
 --
@@ -41,6 +42,7 @@
 -- staff notification the report raises names what the queue is about, and
 -- reading it here keeps the report one round trip.
 SELECT c.id,
+    c.public_id,
     c.user_id,
     c.episode_id,
     e.public_id AS episode_public_id,
@@ -55,7 +57,10 @@ FROM episode_comments c
     JOIN episode_listings el ON el.tenant_id = c.tenant_id
         AND el.episode_id = e.id
 WHERE c.tenant_id = sqlc.arg('tenant_id')
-    AND c.public_id = sqlc.arg('public_id')
+    AND (
+        c.id = sqlc.narg('id')::uuid
+        OR c.public_id = sqlc.narg('public_id')::text
+    )
     AND c.status = 'published'
     AND s.is_published = true
     AND s.published_at IS NOT NULL

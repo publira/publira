@@ -33,7 +33,7 @@ SET provider = EXCLUDED.provider,
     updated_at = NOW()
 RETURNING *;
 
--- name: GetPurchasableEpisodeByPublicIDForTenant :one
+-- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -47,7 +47,10 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-WHERE e.public_id = sqlc.arg('public_id')
+WHERE (
+        e.id = sqlc.narg('id')::uuid
+        OR e.public_id = sqlc.narg('public_id')::text
+    )
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -88,9 +91,11 @@ SELECT p.id,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM purchases p
@@ -134,9 +139,11 @@ SELECT p.id,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM purchases p

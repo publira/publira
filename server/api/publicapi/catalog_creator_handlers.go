@@ -60,6 +60,7 @@ func decodeCreatorCursorKeys(cursor pagination.Cursor) (creatorCursorKeys, error
 }
 
 func publishedCreatorFromFields(
+	id uuid.UUID,
 	publicID string,
 	name string,
 	profileText sql.NullString,
@@ -69,6 +70,7 @@ func publishedCreatorFromFields(
 	publishedSeriesCount int32,
 ) *publirav1.PublishedCreator {
 	creator := &publirav1.PublishedCreator{
+		Id:                   id.String(),
 		PublicId:             publicID,
 		Name:                 name,
 		PublishedSeriesCount: publishedSeriesCount,
@@ -88,6 +90,7 @@ func publishedCreatorFromFields(
 
 func publishedCreatorFromListRow(row dbmodels.ListPublishedCreatorsByIDsRow) *publirav1.PublishedCreator {
 	return publishedCreatorFromFields(
+		row.ID,
 		row.PublicID,
 		row.Name,
 		row.ProfileText,
@@ -98,8 +101,9 @@ func publishedCreatorFromListRow(row dbmodels.ListPublishedCreatorsByIDsRow) *pu
 	)
 }
 
-func publishedCreatorFromDetailRow(row dbmodels.GetPublishedCreatorByPublicIDRow) *publirav1.PublishedCreator {
+func publishedCreatorFromDetailRow(row dbmodels.GetPublishedCreatorForTenantRow) *publirav1.PublishedCreator {
 	return publishedCreatorFromFields(
+		row.ID,
 		row.PublicID,
 		row.Name,
 		row.ProfileText,
@@ -247,10 +251,10 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
+	row, err := s.queriesFor(ctx).GetPublishedCreatorForTenant(ctx, dbmodels.GetPublishedCreatorForTenantParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: req.Msg.PublicId,
+		PublicID: publicIDKey(req.Msg.PublicId),
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

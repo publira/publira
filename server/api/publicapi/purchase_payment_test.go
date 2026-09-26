@@ -204,8 +204,8 @@ func expectAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, route stri
 }
 
 func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeByPublicIDForTenant)).
-		WithArgs("EPISODE001", tenantID, surface).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
+		WithArgs(episodeID, nil, tenantID, surface).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }
@@ -240,9 +240,9 @@ func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.
 
 			client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 			_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-				EpisodePublicId: "EPISODE001",
-				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				Client:          tc.client,
+				EpisodeId: episodeID.String(),
+				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Client:    tc.client,
 			}, tenantID.String()))
 			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 				t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
@@ -274,9 +274,9 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
@@ -332,9 +332,9 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	if _, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
 	}, tenantID.String())); err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
@@ -359,9 +359,9 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
@@ -401,9 +401,9 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)

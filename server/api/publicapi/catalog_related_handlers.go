@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -30,20 +29,20 @@ const (
 // position that breaks a tie on it, and the publication date and id that order
 // the rest. Token rules: proto/README.md.
 //
-// The public id leads for the same reason an order name leads elsewhere: the
+// The series id leads for the same reason an order name leads elsewhere: the
 // same row sits somewhere else in another series' list, so a token from one
 // cannot be continued in another. The score and the rank are the ones the query
 // reported for that row, never values recomputed here — a token built on
 // something the scan did not sort by points at a page that does not exist.
 func encodeRelatedSeriesCursor(
 	direction pagination.Direction,
-	seriesPublicID string,
+	seriesID string,
 	sortKeys relatedSeriesSortKeys,
 	row dbmodels.ListActiveSeriesByIDsRow,
 ) string {
 	return pagination.Encode(
 		direction,
-		seriesPublicID,
+		seriesID,
 		strconv.FormatInt(int64(sortKeys.score), 10),
 		strconv.FormatInt(int64(sortKeys.sortRank), 10),
 		row.PublishedAt.Time.UTC().Format(time.RFC3339Nano),
@@ -56,12 +55,12 @@ func encodeRelatedSeriesCursor(
 // was issued.
 func encodeRelatedSeriesRecoveryToken(
 	direction pagination.Direction,
-	seriesPublicID string,
+	seriesID string,
 	keys relatedSeriesCursorKeys,
 ) string {
 	return pagination.Encode(
 		direction,
-		seriesPublicID,
+		seriesID,
 		strconv.FormatInt(int64(keys.score.Int32), 10),
 		strconv.FormatInt(int64(keys.sortRank.Int32), 10),
 		keys.publishedAt.Time.UTC().Format(time.RFC3339Nano),
@@ -80,7 +79,7 @@ type relatedSeriesCursorKeys struct {
 	inclusive   bool
 }
 
-func decodeRelatedSeriesCursorKeys(cursor pagination.Cursor, seriesPublicID string) (relatedSeriesCursorKeys, error) {
+func decodeRelatedSeriesCursorKeys(cursor pagination.Cursor, seriesID string) (relatedSeriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	if len(cursor.Keys) != 5 && len(cursor.Keys) != 6 {
 		return relatedSeriesCursorKeys{}, invalid
@@ -89,7 +88,7 @@ func decodeRelatedSeriesCursorKeys(cursor pagination.Cursor, seriesPublicID stri
 	if inclusive && cursor.Keys[5] != seriesInclusiveKey {
 		return relatedSeriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != seriesPublicID {
+	if cursor.Keys[0] != seriesID {
 		return relatedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another series"))
 	}
 	score, err := strconv.ParseInt(cursor.Keys[1], 10, 32)
@@ -215,36 +214,38 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	if seriesPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
+	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRelatedSeriesPageSize, maxRelatedSeriesPageSize)
 	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys relatedSeriesCursorKeys
-	if !cursor.IsZero() {
-		keys, err = decodeRelatedSeriesCursorKeys(cursor, seriesPublicID)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	// The subject is resolved through the same read every member-facing series
 	// RPC uses, so an unpublished, foreign, or missing series is one not_found
 	// and none of them can be told apart.
-	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: seriesPublicID,
+		ID:       seriesKey.id,
+		PublicID: seriesKey.publicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
+	}
+	subject := seriesID.String()
+	var keys relatedSeriesCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeRelatedSeriesCursorKeys(cursor, subject)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ranking, err := s.latestSeriesRanking(ctx, tenant.ID, surface)
@@ -291,12 +292,12 @@ func (s *apiServer) ListRelatedSeries(
 		if hasPrevious {
 			first := rows[0]
 			res.PreviousToken = encodeRelatedSeriesCursor(
-				pagination.Backward, seriesPublicID, sortKeysByID[first.ID], first)
+				pagination.Backward, subject, sortKeysByID[first.ID], first)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
 			res.NextToken = encodeRelatedSeriesCursor(
-				pagination.Forward, seriesPublicID, sortKeysByID[last.ID], last)
+				pagination.Forward, subject, sortKeysByID[last.ID], last)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -304,9 +305,9 @@ func (s *apiServer) ListRelatedSeries(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeRelatedSeriesRecoveryToken(pagination.Backward, seriesPublicID, keys)
+		res.PreviousToken = encodeRelatedSeriesRecoveryToken(pagination.Backward, subject, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeRelatedSeriesRecoveryToken(pagination.Forward, seriesPublicID, keys)
+		res.NextToken = encodeRelatedSeriesRecoveryToken(pagination.Forward, subject, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil

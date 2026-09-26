@@ -20,9 +20,6 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
-// subjectSeriesPublicID is the series every case here asks for neighbours of.
-const subjectSeriesPublicID = "SUBJECT00001"
-
 // scoredID is one row of the keyset scan: a series, the relatedness score it
 // was scored at, and the ranking position it sorted under.
 type scoredID struct {
@@ -40,8 +37,8 @@ func relatedSeriesIDRows(rows ...scoredID) *sqlmock.Rows {
 }
 
 func expectSubjectSeriesLookup(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
-		WithArgs(tenantID, subjectSeriesPublicID, "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
+		WithArgs(tenantID, seriesID, nil, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 }
 
@@ -96,9 +93,9 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 			sameCreator, "SAMECREATOR", "Same Creator", now))
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		Limit:          3,
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:    3,
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	if err != nil {
 		t.Fatalf("ListRelatedSeries: %v", err)
@@ -131,8 +128,8 @@ func TestCatalogListRelatedSeriesDefaultsToTheStripSize(t *testing.T) {
 		WillReturnRows(relatedSeriesIDRows())
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	if err != nil {
 		t.Fatalf("ListRelatedSeries: %v", err)
@@ -156,7 +153,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 	publishedAt := now.Add(-2 * time.Hour)
 	token := webToken(
 		pagination.Forward,
-		subjectSeriesPublicID,
+		subjectID.String(),
 		"2",
 		strconv.FormatInt(int64(unrankedSortRank), 10),
 		publishedAt.Format(time.RFC3339Nano),
@@ -184,10 +181,10 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), next, "NEXT", "Next", publishedAt))
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		Limit:          1,
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token:          token,
+		Limit:    1,
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:    token,
 	})
 	if err != nil {
 		t.Fatalf("ListRelatedSeries: %v", err)
@@ -209,10 +206,11 @@ func TestCatalogListRelatedSeriesRejectsATokenFromAnotherSeries(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
+	subjectID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	token := webToken(
 		pagination.Forward,
-		"OTHERSERIES1",
+		uuid.Must(uuid.NewV7()).String(),
 		"2",
 		strconv.FormatInt(int64(unrankedSortRank), 10),
 		now.Format(time.RFC3339Nano),
@@ -220,11 +218,12 @@ func TestCatalogListRelatedSeriesRejectsATokenFromAnotherSeries(t *testing.T) {
 	)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectSubjectSeriesLookup(mock, tenantID, subjectID)
 
 	_, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token:          token,
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:    token,
 	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
@@ -236,16 +235,17 @@ func TestCatalogListRelatedSeriesIsNotFoundWithoutAPublishedSubject(t *testing.T
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
+	subjectID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesIDByPublicID)).
-		WithArgs(tenantID, subjectSeriesPublicID, "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
+		WithArgs(tenantID, subjectID, nil, "web").
 		WillReturnError(sql.ErrNoRows)
 
 	_, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error = %v, want not_found", err)
@@ -280,7 +280,7 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 	now := time.Now().UTC()
 	token := webToken(
 		pagination.Forward,
-		subjectSeriesPublicID,
+		subjectID.String(),
 		"3",
 		"1",
 		now.Format(time.RFC3339Nano),
@@ -295,10 +295,10 @@ func TestCatalogListRelatedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 		WillReturnRows(relatedSeriesIDRows())
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{
-		Limit:          1,
-		SeriesPublicId: subjectSeriesPublicID,
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Token:          token,
+		Limit:    1,
+		SeriesId: subjectID.String(),
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:    token,
 	})
 	if err != nil {
 		t.Fatalf("ListRelatedSeries: %v", err)

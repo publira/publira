@@ -801,7 +801,10 @@ type Creator struct {
 	Role *CreatorRole `protobuf:"bytes,8,opt,name=role,proto3" json:"role,omitempty"`
 	// Set when this creator stands for an episode credit. It lets an editor see
 	// which rows are local additions that a later range edit must leave alone.
-	Source        CreatorCreditSource `protobuf:"varint,9,opt,name=source,proto3,enum=publira.types.v1.CreatorCreditSource" json:"source,omitempty"`
+	Source CreatorCreditSource `protobuf:"varint,9,opt,name=source,proto3,enum=publira.types.v1.CreatorCreditSource" json:"source,omitempty"`
+	// Set on the credits of a series the reader API returns, which is where a
+	// reader follows a credited creator from.
+	Id            string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -890,6 +893,13 @@ func (x *Creator) GetSource() CreatorCreditSource {
 		return x.Source
 	}
 	return CreatorCreditSource_CREATOR_CREDIT_SOURCE_UNSPECIFIED
+}
+
+func (x *Creator) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 type Label struct {
@@ -1321,6 +1331,7 @@ type Series struct {
 	// SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
 	// the catalog has already left out every series the caller may not show.
 	Availability  SurfaceAvailability `protobuf:"varint,21,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	Id            string              `protobuf:"bytes,22,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1488,6 +1499,13 @@ func (x *Series) GetAvailability() SurfaceAvailability {
 	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
 }
 
+func (x *Series) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -1538,6 +1556,7 @@ type Episode struct {
 	// elsewhere. A client offers the checkout only where this names its own
 	// surface, because StartEpisodeCheckout refuses it anywhere else.
 	PurchaseAvailability SurfaceAvailability `protobuf:"varint,14,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
+	Id                   string              `protobuf:"bytes,15,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1668,6 +1687,13 @@ func (x *Episode) GetPurchaseAvailability() SurfaceAvailability {
 		return x.PurchaseAvailability
 	}
 	return SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED
+}
+
+func (x *Episode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 type EpisodeImage struct {
@@ -2458,7 +2484,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"expires_at\x18\x02 \x01(\tR\texpiresAt\">\n" +
 	"\vCreatorRole\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xea\x02\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xfa\x02\n" +
 	"\aCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -2467,7 +2493,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1aicon_image_file_size_bytes\x18\x06 \x01(\x03R\x16iconImageFileSizeBytes\x121\n" +
 	"\x15icon_image_updated_at\x18\a \x01(\tR\x12iconImageUpdatedAt\x121\n" +
 	"\x04role\x18\b \x01(\v2\x1d.publira.types.v1.CreatorRoleR\x04role\x12=\n" +
-	"\x06source\x18\t \x01(\x0e2%.publira.types.v1.CreatorCreditSourceR\x06sourceJ\x04\b\x03\x10\x04\"\xd6\x01\n" +
+	"\x06source\x18\t \x01(\x0e2%.publira.types.v1.CreatorCreditSourceR\x06source\x12\x0e\n" +
+	"\x02id\x18\n" +
+	" \x01(\tR\x02idJ\x04\b\x03\x10\x04\"\xd6\x01\n" +
 	"\x05Label\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12:\n" +
@@ -2494,7 +2522,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x18eye_catch_image_variants\x18\x05 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xa5\a\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xb5\a\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -2516,7 +2544,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x12free_episode_count\x18\x12 \x01(\x05R\x10freeEpisodeCount\x12%\n" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
-	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailabilityJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x05\n" +
+	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x0e\n" +
+	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x93\x05\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2533,7 +2562,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x11reading_direction\x18\v \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
 	"\x12spread_start_index\x18\f \x01(\x05R\x10spreadStartIndex\x12I\n" +
 	"\favailability\x18\r \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
-	"\x15purchase_availability\x18\x0e \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xd9\x01\n" +
+	"\x15purchase_availability\x18\x0e \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x0e\n" +
+	"\x02id\x18\x0f \x01(\tR\x02id\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

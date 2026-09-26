@@ -12,7 +12,8 @@ import (
 )
 
 const ListPublishedEpisodeAccessInSeries = `-- name: ListPublishedEpisodeAccessInSeries :many
-SELECT e.public_id,
+SELECT e.id,
+    e.public_id,
     EXISTS (
         SELECT 1
         FROM published_free_episodes fe
@@ -51,9 +52,10 @@ type ListPublishedEpisodeAccessInSeriesParams struct {
 }
 
 type ListPublishedEpisodeAccessInSeriesRow struct {
-	PublicID       string `json:"public_id"`
-	FreeToEveryone bool   `json:"free_to_everyone"`
-	HasGrant       bool   `json:"has_grant"`
+	ID             uuid.UUID `json:"id"`
+	PublicID       string    `json:"public_id"`
+	FreeToEveryone bool      `json:"free_to_everyone"`
+	HasGrant       bool      `json:"has_grant"`
 }
 
 // Every published episode of one series with the two facts its access state is
@@ -75,7 +77,12 @@ func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg Li
 	var items []ListPublishedEpisodeAccessInSeriesRow
 	for rows.Next() {
 		var i ListPublishedEpisodeAccessInSeriesRow
-		if err := rows.Scan(&i.PublicID, &i.FreeToEveryone, &i.HasGrant); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.FreeToEveryone,
+			&i.HasGrant,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -250,10 +250,10 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 		t.Fatalf("public comments = %v, want only %s", got, kept.PublicID)
 	}
 
-	withdrawn, err := queries.WithdrawEpisodeCommentByPublicIDForUser(ctx, dbmodels.WithdrawEpisodeCommentByPublicIDForUserParams{
+	withdrawn, err := queries.WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: seed.tenantID,
 		UserID:   seed.userID,
-		PublicID: removed.PublicID,
+		ID:       uuid.NullUUID{UUID: removed.ID, Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("withdraw a removed comment: %v", err)

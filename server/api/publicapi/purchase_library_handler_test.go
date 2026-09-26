@@ -36,9 +36,11 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			now.Add(time.Hour),
 			nil,
 			now,
+			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
 			int32(3),
+			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
 		))
@@ -85,9 +87,11 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 			nil,
 			now.Add(-time.Hour),
 			now.Add(-2*time.Hour),
+			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
 			int32(3),
+			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
 		))
@@ -311,7 +315,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "expires_at", "refunded_at", "purchased_at", "episode_public_id", "episode_title", "episode_order_index", "series_public_id", "series_title",
+		"id", "price_at_purchase", "expires_at", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
@@ -322,9 +326,11 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		nil,
 		nil,
 		purchasedAt,
+		uuid.Must(uuid.NewV7()),
 		"EPISODE"+id.String(),
 		"Episode title",
 		int32(3),
+		uuid.Must(uuid.NewV7()),
 		"SERIES001",
 		"Series title",
 	)

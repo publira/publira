@@ -662,6 +662,8 @@ SELECT s.id,
     COALESCE(
         json_agg(
             json_build_object(
+                'id',
+                c.id,
                 'public_id',
                 c.public_id,
                 'name',

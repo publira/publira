@@ -102,12 +102,13 @@ func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisod
 	return episode
 }
 
-// EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow maps the episode a
+// EpisodeFromGetPublishedEpisodeForTenantRow maps the episode a
 // reader opened. It is the one mapper that carries `rating_count`, because it
 // is the one read that stands for an episode a reader is at the end of rather
 // than for a link to one.
-func EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
+func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:          row.ID.String(),
 		PublicId:    row.PublicID,
 		Title:       row.Title,
 		OrderIndex:  row.OrderIndex,
@@ -149,6 +150,7 @@ func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeri
 
 func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingProgressRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:         row.EpisodeID.String(),
 		PublicId:   row.EpisodePublicID,
 		Title:      row.EpisodeTitle,
 		OrderIndex: row.OrderIndex,
@@ -172,6 +174,7 @@ func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingPro
 // converted to this identical row type by the caller.
 func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:         row.EpisodeID.String(),
 		PublicId:   row.EpisodePublicID,
 		Title:      row.EpisodeTitle,
 		OrderIndex: row.OrderIndex,
@@ -214,13 +217,14 @@ func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmode
 	}
 }
 
-// SeriesFromGetPublishedEpisodeByPublicIDForTenantRow builds the series an
+// SeriesFromGetPublishedEpisodeForTenantRow builds the series an
 // episode detail is read under. It carries the age rating so a client can
 // interpose its confirmation before the body is shown, and fails on a stored
 // rating this build does not know rather than reporting the episode as
 // unrestricted. The eye-catch variants are the handler's to look up.
-func SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
+func SeriesFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeForTenantRow) (*publirattypesv1.Series, error) {
 	series := &publirattypesv1.Series{
+		Id:       row.SeriesID.String(),
 		PublicId: row.SeriesPublicID,
 		Title:    row.SeriesTitle,
 	}

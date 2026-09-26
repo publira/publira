@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -50,9 +49,9 @@ func (s *apiServer) MarkEpisodeAsRead(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
+	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
@@ -71,7 +70,8 @@ func (s *apiServer) MarkEpisodeAsRead(
 		ID:              readID,
 		TenantID:        tenant.ID,
 		UserID:          user.ID,
-		EpisodePublicID: publicID,
+		EpisodeID:       episodeKey.id,
+		EpisodePublicID: episodeKey.publicID,
 		Surface:         surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -236,10 +236,12 @@ func (s *apiServer) episodeReadPage(
 func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) *publirav1.MyEpisodeRead {
 	return &publirav1.MyEpisodeRead{
 		Series: &publirattypesv1.Series{
+			Id:       row.SeriesID.String(),
 			PublicId: row.SeriesPublicID,
 			Title:    row.SeriesTitle,
 		},
 		Episode: &publirattypesv1.Episode{
+			Id:         row.EpisodeID.String(),
 			PublicId:   row.EpisodePublicID,
 			Title:      row.EpisodeTitle,
 			OrderIndex: row.EpisodeOrderIndex,

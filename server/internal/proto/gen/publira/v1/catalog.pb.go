@@ -1011,7 +1011,9 @@ type GetSeriesEpisodeAccessRequest struct {
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over series_public_id.
+	SeriesId      string `protobuf:"bytes,4,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1067,12 +1069,20 @@ func (x *GetSeriesEpisodeAccessRequest) GetSurface() v1.ClientSurface {
 	return v1.ClientSurface(0)
 }
 
+func (x *GetSeriesEpisodeAccessRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
 // What the caller may do with one published episode's body.
 type SeriesEpisodeAccess struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	EpisodePublicId string                 `protobuf:"bytes,1,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// Never EPISODE_ACCESS_UNSPECIFIED.
 	Access        EpisodeAccess `protobuf:"varint,2,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
+	EpisodeId     string        `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1119,6 +1129,13 @@ func (x *SeriesEpisodeAccess) GetAccess() EpisodeAccess {
 		return x.Access
 	}
 	return EpisodeAccess_EPISODE_ACCESS_UNSPECIFIED
+}
+
+func (x *SeriesEpisodeAccess) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type GetSeriesEpisodeAccessResponse struct {
@@ -1453,6 +1470,7 @@ type PublishedCreator struct {
 	IconImageFileSizeBytes int64                  `protobuf:"varint,5,opt,name=icon_image_file_size_bytes,json=iconImageFileSizeBytes,proto3" json:"icon_image_file_size_bytes,omitempty"`
 	IconImageUpdatedAt     string                 `protobuf:"bytes,6,opt,name=icon_image_updated_at,json=iconImageUpdatedAt,proto3" json:"icon_image_updated_at,omitempty"`
 	PublishedSeriesCount   int32                  `protobuf:"varint,7,opt,name=published_series_count,json=publishedSeriesCount,proto3" json:"published_series_count,omitempty"`
+	Id                     string                 `protobuf:"bytes,8,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -1534,6 +1552,13 @@ func (x *PublishedCreator) GetPublishedSeriesCount() int32 {
 		return x.PublishedSeriesCount
 	}
 	return 0
+}
+
+func (x *PublishedCreator) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -3435,7 +3460,9 @@ type ListRelatedSeriesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over series_public_id.
+	SeriesId      string `protobuf:"bytes,6,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3503,6 +3530,13 @@ func (x *ListRelatedSeriesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListRelatedSeriesRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
 }
 
 type ListRelatedSeriesResponse struct {
@@ -3574,7 +3608,9 @@ type MarkEpisodeAsReadRequest struct {
 	// The public ID of the episode the signed-in member finished reading.
 	EpisodePublicId string `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// The client making the call. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3628,6 +3664,13 @@ func (x *MarkEpisodeAsReadRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *MarkEpisodeAsReadRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type MarkEpisodeAsReadResponse struct {
@@ -3757,7 +3800,9 @@ type SaveReadingPositionRequest struct {
 	// invalid_argument.
 	PageIndex int32 `protobuf:"varint,3,opt,name=page_index,json=pageIndex,proto3" json:"page_index,omitempty"`
 	// The client making the call. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3820,6 +3865,13 @@ func (x *SaveReadingPositionRequest) GetSurface() v1.ClientSurface {
 	return v1.ClientSurface(0)
 }
 
+func (x *SaveReadingPositionRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
 type SaveReadingPositionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Position      *ReadingPosition       `protobuf:"bytes,1,opt,name=position,proto3" json:"position,omitempty"`
@@ -3869,7 +3921,9 @@ type GetMyReadingPositionRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3925,6 +3979,13 @@ func (x *GetMyReadingPositionRequest) GetSurface() v1.ClientSurface {
 	return v1.ClientSurface(0)
 }
 
+func (x *GetMyReadingPositionRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
 type GetMyReadingPositionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unset when this member has no saved position in the episode, which is what
@@ -3976,7 +4037,9 @@ type GetMySeriesProgressRequest struct {
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over series_public_id.
+	SeriesId      string `protobuf:"bytes,4,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4030,6 +4093,13 @@ func (x *GetMySeriesProgressRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetMySeriesProgressRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
 }
 
 // The member's standing in one series: the episode they last moved in, where
@@ -4579,11 +4649,13 @@ func (x *ListMyEpisodeReadsResponse) GetNextToken() string {
 	return ""
 }
 
-// A public catalog target. The public ID is interpreted according to type.
+// A public catalog target. The ID is interpreted according to type.
 type FollowTarget struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          FollowTargetType       `protobuf:"varint,1,opt,name=type,proto3,enum=publira.v1.FollowTargetType" json:"type,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Type     FollowTargetType       `protobuf:"varint,1,opt,name=type,proto3,enum=publira.v1.FollowTargetType" json:"type,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// Takes precedence over public_id.
+	Id            string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4628,6 +4700,13 @@ func (x *FollowTarget) GetType() FollowTargetType {
 func (x *FollowTarget) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *FollowTarget) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -4956,6 +5035,7 @@ type MyFollow struct {
 	TargetType     FollowTargetType `protobuf:"varint,1,opt,name=target_type,json=targetType,proto3,enum=publira.v1.FollowTargetType" json:"target_type,omitempty"`
 	TargetPublicId string           `protobuf:"bytes,2,opt,name=target_public_id,json=targetPublicId,proto3" json:"target_public_id,omitempty"`
 	FollowedAt     string           `protobuf:"bytes,3,opt,name=followed_at,json=followedAt,proto3" json:"followed_at,omitempty"`
+	TargetId       string           `protobuf:"bytes,4,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -5007,6 +5087,13 @@ func (x *MyFollow) GetTargetPublicId() string {
 func (x *MyFollow) GetFollowedAt() string {
 	if x != nil {
 		return x.FollowedAt
+	}
+	return ""
+}
+
+func (x *MyFollow) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
 	}
 	return ""
 }
@@ -5349,7 +5436,9 @@ type RateEpisodeRequest struct {
 	// Ignored in EPISODE_RATING_MODE_SINGLE, where one press is the whole rating.
 	Presses int32 `protobuf:"varint,3,opt,name=presses,proto3" json:"presses,omitempty"`
 	// The client making the call. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5410,6 +5499,13 @@ func (x *RateEpisodeRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *RateEpisodeRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type RateEpisodeResponse struct {
@@ -5481,7 +5577,9 @@ type GetMyEpisodeRatingRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5535,6 +5633,13 @@ func (x *GetMyEpisodeRatingRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetMyEpisodeRatingRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type GetMyEpisodeRatingResponse struct {
@@ -5603,7 +5708,9 @@ type GetMySeriesRatingRequest struct {
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// Takes precedence over series_public_id.
+	SeriesId      string `protobuf:"bytes,4,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5657,6 +5764,13 @@ func (x *GetMySeriesRatingRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetMySeriesRatingRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
 }
 
 type GetMySeriesRatingResponse struct {
@@ -5718,11 +5832,13 @@ func (x *GetMySeriesRatingResponse) GetRatedEpisodeCount() int32 {
 	return 0
 }
 
-// A public catalog target. The public ID is interpreted according to type.
+// A public catalog target. The ID is interpreted according to type.
 type ContentViewTarget struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          ContentViewTargetType  `protobuf:"varint,1,opt,name=type,proto3,enum=publira.v1.ContentViewTargetType" json:"type,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Type     ContentViewTargetType  `protobuf:"varint,1,opt,name=type,proto3,enum=publira.v1.ContentViewTargetType" json:"type,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// Takes precedence over public_id.
+	Id            string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5767,6 +5883,13 @@ func (x *ContentViewTarget) GetType() ContentViewTargetType {
 func (x *ContentViewTarget) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *ContentViewTarget) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -5885,7 +6008,9 @@ type StartEpisodeCheckoutRequest struct {
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// Where Stripe should return the reader after checkout, and the surface the
 	// episode has to be sold on. Unspecified is the storefront.
-	Client        StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	Client StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5939,6 +6064,13 @@ func (x *StartEpisodeCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Cl
 		return x.Client
 	}
 	return StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED
+}
+
+func (x *StartEpisodeCheckoutRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type StartEpisodeCheckoutResponse struct {
@@ -6341,7 +6473,9 @@ type StartStorePurchaseRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// The store the app is about to charge through. Required.
-	Store         InAppPurchaseStore `protobuf:"varint,3,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
+	Store InAppPurchaseStore `protobuf:"varint,3,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
+	// Takes precedence over episode_public_id.
+	EpisodeId     string `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6395,6 +6529,13 @@ func (x *StartStorePurchaseRequest) GetStore() InAppPurchaseStore {
 		return x.Store
 	}
 	return InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED
+}
+
+func (x *StartStorePurchaseRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type StartStorePurchaseResponse struct {
@@ -6719,14 +6860,17 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x125\n" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\x120\n" +
 	"\x14required_minimum_age\x18\x03 \x01(\x05R\x12requiredMinimumAge\x12@\n" +
-	"\fcomment_mode\x18\x04 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\xbd\x01\n" +
+	"\fcomment_mode\x18\x04 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\"\xda\x01\n" +
 	"\x1dGetSeriesEpisodeAccessRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"t\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
+	"\tseries_id\x18\x04 \x01(\tR\bseriesId\"\x93\x01\n" +
 	"\x13SeriesEpisodeAccess\x12*\n" +
 	"\x11episode_public_id\x18\x01 \x01(\tR\x0fepisodePublicId\x121\n" +
-	"\x06access\x18\x02 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\"]\n" +
+	"\x06access\x18\x02 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\"]\n" +
 	"\x1eGetSeriesEpisodeAccessResponse\x12;\n" +
 	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\"\xaa\x01\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
@@ -6750,7 +6894,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"free_until\x18\x05 \x01(\tR\tfreeUntil\x12F\n" +
 	"\x10previous_episode\x18\x06 \x01(\v2\x1b.publira.v1.EpisodeNeighborR\x0fpreviousEpisode\x12>\n" +
-	"\fnext_episode\x18\a \x01(\v2\x1b.publira.v1.EpisodeNeighborR\vnextEpisode\"\xb1\x02\n" +
+	"\fnext_episode\x18\a \x01(\v2\x1b.publira.v1.EpisodeNeighborR\vnextEpisode\"\xc1\x02\n" +
 	"\x10PublishedCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -6758,7 +6902,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x0eicon_image_url\x18\x04 \x01(\tR\ficonImageUrl\x12:\n" +
 	"\x1aicon_image_file_size_bytes\x18\x05 \x01(\x03R\x16iconImageFileSizeBytes\x121\n" +
 	"\x15icon_image_updated_at\x18\x06 \x01(\tR\x12iconImageUpdatedAt\x124\n" +
-	"\x16published_series_count\x18\a \x01(\x05R\x14publishedSeriesCount\"\xbe\x01\n" +
+	"\x16published_series_count\x18\a \x01(\x05R\x14publishedSeriesCount\x12\x0e\n" +
+	"\x02id\x18\b \x01(\tR\x02id\"\xbe\x01\n" +
 	"\x1cListPublishedCreatorsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -6898,22 +7043,25 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"computedAt\x12!\n" +
 	"\fperiod_start\x18\x05 \x01(\tR\vperiodStart\x12\x1d\n" +
 	"\n" +
-	"period_end\x18\x06 \x01(\tR\tperiodEnd\"\xe4\x01\n" +
+	"period_end\x18\x06 \x01(\tR\tperiodEnd\"\x81\x02\n" +
 	"\x18ListRelatedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x93\x01\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
+	"\tseries_id\x18\x06 \x01(\tR\bseriesId\"\x93\x01\n" +
 	"\x19ListRelatedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xba\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd9\x01\n" +
 	"\x18MarkEpisodeAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"4\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"4\n" +
 	"\x19MarkEpisodeAsReadResponse\x12\x17\n" +
 	"\aread_at\x18\x01 \x01(\tR\x06readAt\"\x9a\x01\n" +
 	"\x0fReadingPosition\x12*\n" +
@@ -6923,25 +7071,30 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"page_count\x18\x03 \x01(\x05R\tpageCount\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\xdb\x01\n" +
+	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\xfa\x01\n" +
 	"\x1aSaveReadingPositionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
 	"\n" +
 	"page_index\x18\x03 \x01(\x05R\tpageIndex\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"V\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x05 \x01(\tR\tepisodeId\"V\n" +
 	"\x1bSaveReadingPositionResponse\x127\n" +
-	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xbd\x01\n" +
+	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xdc\x01\n" +
 	"\x1bGetMyReadingPositionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"W\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"W\n" +
 	"\x1cGetMyReadingPositionResponse\x127\n" +
-	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xba\x01\n" +
+	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xd7\x01\n" +
 	"\x1aGetMySeriesProgressRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x9f\x01\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
+	"\tseries_id\x18\x04 \x01(\tR\bseriesId\"\x9f\x01\n" +
 	"\x0eSeriesProgress\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x127\n" +
 	"\bposition\x18\x02 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\x12\x1f\n" +
@@ -6978,10 +7131,11 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x05reads\x18\x01 \x03(\v2\x19.publira.v1.MyEpisodeReadR\x05reads\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"]\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"m\n" +
 	"\fFollowTarget\x120\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1c.publira.v1.FollowTargetTypeR\x04type\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xc0\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"\xc0\x01\n" +
 	"\x18GetMyFollowStatusRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
 	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\x129\n" +
@@ -6999,13 +7153,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06target\x18\x02 \x01(\v2\x18.publira.v1.FollowTargetR\x06target\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"5\n" +
 	"\x10UnfollowResponse\x12!\n" +
-	"\fis_following\x18\x01 \x01(\bR\visFollowing\"\x94\x01\n" +
+	"\fis_following\x18\x01 \x01(\bR\visFollowing\"\xb1\x01\n" +
 	"\bMyFollow\x12=\n" +
 	"\vtarget_type\x18\x01 \x01(\x0e2\x1c.publira.v1.FollowTargetTypeR\n" +
 	"targetType\x12(\n" +
 	"\x10target_public_id\x18\x02 \x01(\tR\x0etargetPublicId\x12\x1f\n" +
 	"\vfollowed_at\x18\x03 \x01(\tR\n" +
-	"followedAt\"\xb6\x01\n" +
+	"followedAt\x12\x1b\n" +
+	"\ttarget_id\x18\x04 \x01(\tR\btargetId\"\xb6\x01\n" +
 	"\x14ListMyFollowsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -7028,43 +7183,51 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\aupdates\x18\x01 \x03(\v2\x18.publira.v1.FollowUpdateR\aupdates\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xce\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xed\x01\n" +
 	"\x12RateEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x18\n" +
 	"\apresses\x18\x03 \x01(\x05R\apresses\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x81\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x05 \x01(\tR\tepisodeId\"\x81\x01\n" +
 	"\x13RateEpisodeResponse\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x12!\n" +
 	"\frating_count\x18\x02 \x01(\x03R\vratingCount\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xbb\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xda\x01\n" +
 	"\x19GetMyEpisodeRatingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x88\x01\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"\x88\x01\n" +
 	"\x1aGetMyEpisodeRatingResponse\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x12!\n" +
 	"\frating_count\x18\x02 \x01(\x03R\vratingCount\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xb8\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xd5\x01\n" +
 	"\x18GetMySeriesRatingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"r\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
+	"\tseries_id\x18\x04 \x01(\tR\bseriesId\"r\n" +
 	"\x19GetMySeriesRatingResponse\x12%\n" +
 	"\x0erating_average\x18\x01 \x01(\x01R\rratingAverage\x12.\n" +
-	"\x13rated_episode_count\x18\x02 \x01(\x05R\x11ratedEpisodeCount\"g\n" +
+	"\x13rated_episode_count\x18\x02 \x01(\x05R\x11ratedEpisodeCount\"w\n" +
 	"\x11ContentViewTarget\x125\n" +
 	"\x04type\x18\x01 \x01(\x0e2!.publira.v1.ContentViewTargetTypeR\x04type\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xc5\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"\xc5\x01\n" +
 	"\x18RecordContentViewRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1b\n" +
-	"\x19RecordContentViewResponse\"\x8f\x02\n" +
+	"\x19RecordContentViewResponse\"\xae\x02\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12F\n" +
-	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\"C\n" +
+	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"C\n" +
 	"\x06Client\x12\x16\n" +
 	"\x12CLIENT_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -7100,11 +7263,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1f\n" +
-	"\x1dProcessPaymentWebhookResponse\"\xb6\x01\n" +
+	"\x1dProcessPaymentWebhookResponse\"\xd5\x01\n" +
 	"\x19StartStorePurchaseRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x124\n" +
-	"\x05store\x18\x03 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\"X\n" +
+	"\x05store\x18\x03 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"X\n" +
 	"\x1aStartStorePurchaseResponse\x12\x1b\n" +
 	"\tintent_id\x18\x01 \x01(\tR\bintentId\x12\x1d\n" +
 	"\n" +

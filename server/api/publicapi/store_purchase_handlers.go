@@ -60,9 +60,9 @@ func (s *apiServer) StartStorePurchase(
 	ctx context.Context,
 	req *connect.Request[publirav1.StartStorePurchaseRequest],
 ) (*connect.Response[publirav1.StartStorePurchaseResponse], error) {
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := callingSurface(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
 	if err != nil {
@@ -81,23 +81,24 @@ func (s *apiServer) StartStorePurchase(
 	}
 
 	queries := s.queriesFor(ctx)
-	episode, err := queries.GetPurchasableEpisodeByPublicIDForTenant(ctx, dbmodels.GetPurchasableEpisodeByPublicIDForTenantParams{
+	episode, err := queries.GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: episodePublicID,
+		ID:       episodeKey.id,
+		PublicID: episodeKey.publicID,
 		Surface:  surface,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode", episodeKey.String())
 	}
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes are not sold"))
 	}
 	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
 	if err != nil {
-		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if !soldHere {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold in the app"))
@@ -108,7 +109,7 @@ func (s *apiServer) StartStorePurchase(
 		EpisodeID: episode.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if hasPurchase {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
@@ -126,7 +127,7 @@ func (s *apiServer) StartStorePurchase(
 		ReadingPeriodHours: episode.ReadingPeriodHours,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to open a store purchase intent", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to open a store purchase intent", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	return noStorePrivateResponse(&publirav1.StartStorePurchaseResponse{
 		IntentId:  intent.ID.String(),

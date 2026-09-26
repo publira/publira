@@ -453,6 +453,7 @@ func (s *apiServer) activeSeriesRowsInOrder(
 }
 
 type creatorJSON struct {
+	ID                     string `json:"id"`
 	PublicID               string `json:"public_id"`
 	Name                   string `json:"name"`
 	RolePublicID           string `json:"role_public_id"`
@@ -467,6 +468,7 @@ type creatorJSON struct {
 // already in role priority order, so nothing here reorders them.
 func creatorFromJSON(creator creatorJSON) *publirattypesv1.Creator {
 	mapped := &publirattypesv1.Creator{
+		Id:                     creator.ID,
 		PublicId:               creator.PublicID,
 		Name:                   creator.Name,
 		ProfileText:            creator.ProfileText,
@@ -530,6 +532,7 @@ func seriesTagsFromJSON(raw []byte) ([]*publirattypesv1.Tag, error) {
 }
 
 type episodeJSON struct {
+	ID                 string  `json:"id"`
 	PublicID           string  `json:"public_id"`
 	Title              string  `json:"title"`
 	OrderIndex         int32   `json:"order_index"`
@@ -544,6 +547,7 @@ type episodeJSON struct {
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
 	item := &publirattypesv1.Series{
+		Id:               row.ID.String(),
 		PublicId:         row.PublicID,
 		Title:            row.Title,
 		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
@@ -1032,6 +1036,7 @@ func (s *apiServer) GetSeriesDetail(
 		RequiredMinimumAge: int32(requiredMinimumAge),
 		CommentMode:        commentMode,
 		Series: &publirattypesv1.Series{
+			Id:               row.ID.String(),
 			PublicId:         row.PublicID,
 			Title:            row.Title,
 			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
@@ -1088,6 +1093,7 @@ func (s *apiServer) GetSeriesDetail(
 	}
 	for _, episode := range episodes {
 		item := &publirattypesv1.Episode{
+			Id:         episode.ID,
 			PublicId:   episode.PublicID,
 			Title:      episode.Title,
 			OrderIndex: episode.OrderIndex,
@@ -1126,7 +1132,7 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId, Surface: surface})
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{TenantID: tenant.ID, PublicID: publicIDKey(req.Msg.PublicId), Surface: surface})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
@@ -1237,7 +1243,7 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 	}
 
-	series, err := protomapper.SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row)
+	series, err := protomapper.SeriesFromGetPublishedEpisodeForTenantRow(row)
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
@@ -1271,7 +1277,7 @@ func (s *apiServer) GetEpisodeDetail(
 		return nil, s.internalError(ctx, "episode neighbour holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
 
-	episode := protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row)
+	episode := protomapper.EpisodeFromGetPublishedEpisodeForTenantRow(row)
 	episode.Creators = creditsByEpisodeID[row.ID]
 	if err := protomapper.SetResolvedReadingLayout(episode, protomapper.StoredReadingLayout{
 		ReadingDirection:       row.ReadingDirection,
@@ -1324,7 +1330,7 @@ func (s *apiServer) publishedEpisodeNeighborRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
-	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
+	row dbmodels.GetPublishedEpisodeForTenantRow,
 ) ([]dbmodels.ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeNeighborsForTenant(ctx, dbmodels.ListPublishedEpisodeNeighborsForTenantParams{
 		TenantID:   tenantID,

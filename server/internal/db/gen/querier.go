@@ -484,11 +484,16 @@ type Querier interface {
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	// Returns no rows until the server has generated a key pair.
 	GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// A URL names the creator by its public ID and a reader's request by its ID;
+	// the caller passes the one it holds.
+	//
 	// Returns only the creators that hold at least one published series. The
 	// caller turns an empty result into not_found exactly as it does a missing
 	// row, so the existence of an unpublished creator does not leak.
-	GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error)
-	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
+	GetPublishedCreatorForTenant(ctx context.Context, arg GetPublishedCreatorForTenantParams) (GetPublishedCreatorForTenantRow, error)
+	// A URL names the episode by its public ID and a reader's request by its ID;
+	// the caller passes the one it holds.
+	GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error)
 	// Returns a label of the tenant that label_surfaces puts on the surface. The
 	// row comes back even when the label has no published series, because a label
 	// has no unpublished state of its own. A label that does not exist, one of
@@ -498,22 +503,23 @@ type Querier interface {
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	// A currently public series and the rating the tenant's age rule is applied
 	// to, for a read that decides access to its episodes.
-	GetPublishedSeriesAgeRatingByPublicID(ctx context.Context, arg GetPublishedSeriesAgeRatingByPublicIDParams) (GetPublishedSeriesAgeRatingByPublicIDRow, error)
+	GetPublishedSeriesAgeRating(ctx context.Context, arg GetPublishedSeriesAgeRatingParams) (GetPublishedSeriesAgeRatingRow, error)
 	// Resolves a currently public series to its internal ID and nothing else.
 	// Shared by every member-facing RPC that acts on a series (follow, rating), so
 	// they all treat a foreign, unpublished, or missing series the same way.
-	GetPublishedSeriesIDByPublicID(ctx context.Context, arg GetPublishedSeriesIDByPublicIDParams) (uuid.UUID, error)
+	GetPublishedSeriesID(ctx context.Context, arg GetPublishedSeriesIDParams) (uuid.UUID, error)
 	// The public key browsers subscribe with, read by the storefront role, which is
 	// granted only the columns named here. No rows while Web Push is not
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
-	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
+	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
 	// Reader reports on episode comments, and the open-report counter they keep on
 	// the comment they are about.
 	//
 	// Expected plans:
-	//   GetReportableEpisodeCommentByPublicIDForTenant
-	//     -> episode_comments_tenant_public_id_key
+	//   GetReportableEpisodeCommentForTenant
+	//     -> episode_comments_tenant_id_id_key, or
+	//        episode_comments_tenant_public_id_key for a public ID
 	//   CreateEpisodeCommentReport
 	//     -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 	//   RefreshEpisodeCommentOpenReportCount
@@ -532,7 +538,7 @@ type Querier interface {
 	//     -> episode_comment_reports_tenant_comment_reporter_key
 	// The comment a reader is allowed to report: one that is published, on an
 	// episode that is itself public right now. The publication predicate is the one
-	// GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+	// GetPublishedEpisodeForTenant applies, surface included, so a comment
 	// on an episode that has been unpublished since, or that the calling surface may
 	// not show, is as absent here as one that never existed.
 	//
@@ -548,7 +554,7 @@ type Querier interface {
 	// The episode and the series the joins already visit are returned with it. The
 	// staff notification the report raises names what the queue is about, and
 	// reading it here keeps the report one round trip.
-	GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error)
+	GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error)
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
 	// Totals the month's sales once each, however many creators a sale is
@@ -2260,12 +2266,12 @@ type Querier interface {
 	// is what fails when the two drift apart.
 	UpsertUserViewerPreferences(ctx context.Context, arg UpsertUserViewerPreferencesParams) (UserViewerPreference, error)
 	// Creators are public when they have at least one active series, matching
-	// GetPublishedCreatorByPublicID.
+	// GetPublishedCreatorForTenant.
 	UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error)
-	// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
+	// Matches GetPublishedEpisodeForTenant, so a draft, scheduled, or
 	// otherwise non-public episode is indistinguishable from an unfollowed one.
 	UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error)
-	// Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
+	// Matches GetPublishedSeriesID, so an unpublished series is
 	// indistinguishable from an unfollowed one.
 	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
 	// True when the user holds a grant in episode_content_grants for the episode.
@@ -2278,7 +2284,7 @@ type Querier interface {
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;
 	// audit_logs keeps what staff did and why.
-	WithdrawEpisodeCommentByPublicIDForUser(ctx context.Context, arg WithdrawEpisodeCommentByPublicIDForUserParams) (EpisodeComment, error)
+	WithdrawEpisodeCommentForUser(ctx context.Context, arg WithdrawEpisodeCommentForUserParams) (EpisodeComment, error)
 }
 
 var _ Querier = (*Queries)(nil)
