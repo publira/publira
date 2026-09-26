@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -17,11 +18,12 @@ func Invite(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err != nil {
 		return tenantmembers.Invited{}, err
 	}
-	target := invited.Email
-	if !invited.RoleGrantedImmediately {
-		target = invited.Invitation.ID.String()
+	if invited.RoleGrantedImmediately {
+		err = writeUserEntry(ctx, tx, logger, actor, "tenant_admin_invited", invited.UserID)
+	} else {
+		err = writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", invited.Invitation.ID.String())
 	}
-	if err := writeInvitationEntry(ctx, dbmodels.New(tx), logger, actor, "tenant_admin_invited", target); err != nil {
+	if err != nil {
 		return tenantmembers.Invited{}, err
 	}
 	return invited, nil
@@ -60,7 +62,7 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor a
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_created", member); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_created", member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -72,7 +74,7 @@ func AddMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor audit
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_added", member); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_added", member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -85,7 +87,7 @@ func UpdateMemberRole(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_role_updated", member); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_role_updated", member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
@@ -97,18 +99,18 @@ func RemoveMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor au
 	if err != nil {
 		return tenantmembers.Member{}, err
 	}
-	if err := writeMemberEntry(ctx, tx, logger, actor, "tenant_member_removed", member); err != nil {
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_removed", member.UserID); err != nil {
 		return tenantmembers.Member{}, err
 	}
 	return member, nil
 }
 
-// writeMemberEntry names the user, whose own row names the tenant.
-func writeMemberEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, member tenantmembers.Member) error {
+// writeUserEntry names the user, whose own row names the tenant.
+func writeUserEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, userID uuid.UUID) error {
 	if err := auditlog.WritePlatform(ctx, dbmodels.New(tx), logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     action,
 		TargetType: "user",
-		TargetID:   member.UserID.String(),
+		TargetID:   userID.String(),
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
 		return fmt.Errorf("audit %s: %w", action, err)
@@ -117,8 +119,7 @@ func writeMemberEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, acto
 }
 
 // writeInvitationEntry names the invitation, whose row carries its tenant and
-// address; a role granted to an existing user has none, so it names the
-// address, which leaves the tenant unknown (#3055).
+// address.
 func writeInvitationEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action, target string) error {
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     action,

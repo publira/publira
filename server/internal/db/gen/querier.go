@@ -1222,7 +1222,8 @@ type Querier interface {
 	// flips ASC rows back into display order. A parameterized ORDER BY cannot be
 	// read in index order, so each scan direction gets its own query.
 	// An invitation entry names the invitation, whose row carries its tenant and
-	// the invited address.
+	// the invited address; a user entry names the user, whose row carries its
+	// tenant.
 	// cursor rules: proto/README.md.
 	ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error)
 	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)

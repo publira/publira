@@ -108,13 +108,14 @@ type InviteParams struct {
 	AllowMail func(email string) error
 }
 
-// Invited is what [Invite] did: either it granted the role to a user the
-// tenant already had, or it left Invitation pending with its mail queued.
+// Invited is what [Invite] did: either it granted the role to UserID, a user
+// the tenant already had, or it left Invitation pending with its mail queued.
 type Invited struct {
-	// Email is the normalized address, which is what audit entries name.
+	// Email is the normalized address.
 	Email                  string
 	Invitation             dbmodels.TenantAdminInvitation
 	RoleGrantedImmediately bool
+	UserID                 uuid.UUID
 }
 
 // Validate refuses p without reading anything.
@@ -142,7 +143,7 @@ func Invite(ctx context.Context, tx *sql.Tx, p InviteParams) (Invited, error) {
 		if err := ReplaceRole(ctx, q, p.TenantID, user.ID, auth.RoleTenantAdmin); err != nil {
 			return Invited{}, err
 		}
-		return Invited{Email: email, RoleGrantedImmediately: true}, nil
+		return Invited{Email: email, RoleGrantedImmediately: true, UserID: user.ID}, nil
 	case !errors.Is(err, sql.ErrNoRows):
 		return Invited{}, fmt.Errorf("get user by email for tenant: %w", err)
 	}
