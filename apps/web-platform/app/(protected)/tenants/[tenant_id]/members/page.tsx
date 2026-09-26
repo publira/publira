@@ -40,14 +40,6 @@ import {
 } from "#lib/tenants";
 
 import { TenantSectionNav } from "../_components/tenant-section-nav";
-import {
-  addTenantMemberAction,
-  cancelTenantAdminInvitationAction,
-  createTenantAdminInvitationAction,
-  removeTenantMemberAction,
-  resendTenantAdminInvitationAction,
-  updateTenantMemberRoleAction,
-} from "../_lib/actions";
 import { TenantMembersManager } from "./_components/tenant-members-manager";
 import {
   buildMemberInvitationsPath,
@@ -229,9 +221,6 @@ const TenantMembersContent = async ({
           <TenantSectionNav current="members" tenantId={tenant.publicId} />
 
           <TenantMembersManager
-            addAction={addTenantMemberAction}
-            cancelInvitationAction={cancelTenantAdminInvitationAction}
-            createInvitationAction={createTenantAdminInvitationAction}
             invitationErrorMessage={
               invitationsResult.ok ? undefined : invitationsResult.message
             }
@@ -245,11 +234,8 @@ const TenantMembersContent = async ({
             }
             membersNextHref={membersNextHref}
             membersPreviousHref={membersPreviousHref}
-            removeAction={removeTenantMemberAction}
-            resendInvitationAction={resendTenantAdminInvitationAction}
             tenantId={tenant.publicId}
             timeZone={timeZone}
-            updateRoleAction={updateTenantMemberRoleAction}
           />
         </div>
       </PlatformPageContent>

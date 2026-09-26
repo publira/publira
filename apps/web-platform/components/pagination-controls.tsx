@@ -1,10 +1,10 @@
-"use client";
-
 import { Button, LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
 
 const PageControl = ({
   children,
@@ -26,9 +26,6 @@ const PageControl = ({
 /**
  * The links to the pages around the current one. `aria-label` names the list
  * they page through, since a screen can carry more than one pager.
- *
- * The tenant member manager renders it from a Client Component, so the
- * Previous and Next labels come from the catalog provider, not `<Message>`.
  */
 export const PaginationControls = ({
   "aria-label": ariaLabel,
@@ -38,15 +35,17 @@ export const PaginationControls = ({
   "aria-label": string;
   nextHref?: string;
   previousHref?: string;
-}) => {
-  const t = useClientMessages();
-
-  return (
-    <nav aria-label={ariaLabel} className="flex justify-end gap-2">
-      <PageControl href={previousHref}>
-        {t("platform.common.previous")}
-      </PageControl>
-      <PageControl href={nextHref}>{t("platform.common.next")}</PageControl>
-    </nav>
-  );
-};
+}) => (
+  <nav aria-label={ariaLabel} className="flex justify-end gap-2">
+    <PageControl href={previousHref}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+        <Message message="platform.common.previous" />
+      </Suspense>
+    </PageControl>
+    <PageControl href={nextHref}>
+      <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
+        <Message message="platform.common.next" />
+      </Suspense>
+    </PageControl>
+  </nav>
+);

@@ -1,11 +1,11 @@
-"use client";
-
 import type { Locale } from "@publira/i18n";
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -18,7 +18,6 @@ import {
   ConfirmDialogHeader,
   ConfirmDialogTitle,
   ConfirmDialogTrigger,
-  Dialog,
   DialogBackdrop,
   DialogClose,
   DialogDescription,
@@ -31,7 +30,6 @@ import {
   DialogViewport,
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import {
   SectionError,
@@ -40,6 +38,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   Table,
   TableBody,
@@ -49,16 +48,10 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { formatDate, formatDateTime } from "@publira/utils";
-import {
-  useActionState,
-  useCallback,
-  useId,
-  useState,
-  useTransition,
-} from "react";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformSection,
@@ -68,25 +61,31 @@ import {
   PlatformSections,
   PlatformSectionTitle,
 } from "#components/platform-page";
+import { getMessagesFor } from "#lib/messages";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
 } from "#lib/tenants";
 import { getEndUserStatusTone } from "#lib/user-labels";
 
+import {
+  addTenantMemberAction,
+  cancelTenantAdminInvitationAction,
+  createTenantAdminInvitationAction,
+  removeTenantMemberAction,
+  resendTenantAdminInvitationAction,
+  updateTenantMemberRoleAction,
+} from "../../_lib/actions";
+import {
+  ReportTenantMemberRemoval,
+  TenantMemberRemovals,
+} from "./tenant-member-removals";
+import {
+  CloseTenantMemberRoleDialogOnSuccess,
+  TenantMemberRoleDialog,
+} from "./tenant-member-role-dialog";
+
 interface TenantMembersManagerProps {
-  addAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  cancelInvitationAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  createInvitationAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
   invitationErrorMessage?: string;
   invitations: PlatformTenantAdminInvitation[];
   invitationsNextHref?: string;
@@ -96,20 +95,8 @@ interface TenantMembersManagerProps {
   membersErrorMessage?: string;
   membersNextHref?: string;
   membersPreviousHref?: string;
-  removeAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  resendInvitationAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
   tenantId: string;
   timeZone: string;
-  updateRoleAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
 }
 
 const invitationStatusTone = (status: string) => {
@@ -125,71 +112,43 @@ const invitationStatusTone = (status: string) => {
   return "destructive" as const;
 };
 
-interface TenantMemberRowProps {
-  locale: Locale;
-  member: PlatformTenantMemberSummary;
-  removeAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  setDeleteState: (state: FormActionState) => void;
-  tenantId: string;
-  timeZone: string;
-  updateRoleAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-}
-
-interface TenantMemberRoleDialogProps {
-  member: PlatformTenantMemberSummary;
-  tenantId: string;
-  updateRoleAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-}
-
-interface TenantMemberDeleteButtonProps {
-  removeAction: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  setDeleteState: (state: FormActionState) => void;
-  tenantId: string;
-  userPublicId: string;
-}
-
-interface TenantInvitationRowProps {
-  invitation: PlatformTenantAdminInvitation;
-  isResendPending: boolean;
-  locale: Locale;
-  onCancel: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  onResend: (invitationId: string) => void;
-  tenantId: string;
-  timeZone: string;
-}
-
 /** A member's role, worded for the operator; an unknown role shows as stored. */
 const TenantRoleLabel = ({ role }: { role: string }) => {
   switch (role) {
     case "tenant_admin": {
-      return <ClientMessage message="platform.common.roles.tenant_admin" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.roles.tenant_admin" />
+        </Suspense>
+      );
     }
     case "tenant_auditor": {
-      return <ClientMessage message="platform.common.roles.tenant_auditor" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.roles.tenant_auditor" />
+        </Suspense>
+      );
     }
     case "tenant_editor": {
-      return <ClientMessage message="platform.common.roles.tenant_editor" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.roles.tenant_editor" />
+        </Suspense>
+      );
     }
     case "tenant_member": {
-      return <ClientMessage message="platform.common.roles.tenant_member" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.roles.tenant_member" />
+        </Suspense>
+      );
     }
     case "tenant_owner": {
-      return <ClientMessage message="platform.common.roles.tenant_owner" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.roles.tenant_owner" />
+        </Suspense>
+      );
     }
     default: {
       return role;
@@ -201,16 +160,24 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
 const AccountStatusLabel = ({ status }: { status: string }) => {
   switch (status) {
     case "active": {
-      return <ClientMessage message="platform.common.account_status.active" />;
+      return (
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.account_status.active" />
+        </Suspense>
+      );
     }
     case "inactive": {
       return (
-        <ClientMessage message="platform.common.account_status.inactive" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.account_status.inactive" />
+        </Suspense>
       );
     }
     case "suspended": {
       return (
-        <ClientMessage message="platform.common.account_status.suspended" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.account_status.suspended" />
+        </Suspense>
       );
     }
     default: {
@@ -224,22 +191,30 @@ const InvitationStatusLabel = ({ status }: { status: string }) => {
   switch (status) {
     case "accepted": {
       return (
-        <ClientMessage message="platform.common.invitation_status.accepted" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.invitation_status.accepted" />
+        </Suspense>
       );
     }
     case "canceled": {
       return (
-        <ClientMessage message="platform.common.invitation_status.canceled" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.invitation_status.canceled" />
+        </Suspense>
       );
     }
     case "expired": {
       return (
-        <ClientMessage message="platform.common.invitation_status.expired" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.invitation_status.expired" />
+        </Suspense>
       );
     }
     case "pending": {
       return (
-        <ClientMessage message="platform.common.invitation_status.pending" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="platform.common.invitation_status.pending" />
+        </Suspense>
       );
     }
     default: {
@@ -270,446 +245,357 @@ const TenantRoleRadio = ({
   </label>
 );
 
-const TenantMemberDeleteButton = ({
-  removeAction,
-  setDeleteState,
-  tenantId,
-  userPublicId,
-}: TenantMemberDeleteButtonProps) => {
-  const formId = useId();
-  const [, formAction, isPending] = useActionState(
-    async (
-      previousState: FormActionState,
-      formData: FormData
-    ): Promise<FormActionState> => {
-      const state = await removeAction(previousState, formData);
-      setDeleteState(state);
-      return state;
-    },
-    null
-  );
-
-  return (
-    <form action={formAction} id={formId}>
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="member_user_public_id" type="hidden" value={userPublicId} />
-      <ConfirmDialog>
-        <ConfirmDialogTrigger
-          render={
-            <Button
-              disabled={isPending}
-              size="sm"
-              type="button"
-              variant="destructive"
-            >
-              <ActionFormIdle>
-                <ClientMessage message="platform.tenants.delete_member" />
-              </ActionFormIdle>
-              <ActionFormPending>
-                <ClientMessage message="platform.tenants.delete_member_pending" />
-              </ActionFormPending>
-            </Button>
-          }
-        />
-        <ConfirmDialogContent>
-          <ConfirmDialogHeader>
-            <ConfirmDialogTitle>
-              <ClientMessage message="platform.tenants.delete_member_title" />
-            </ConfirmDialogTitle>
-            <ConfirmDialogDescription>
-              <ClientMessage message="platform.tenants.delete_member_description" />
-            </ConfirmDialogDescription>
-          </ConfirmDialogHeader>
-          <ConfirmDialogFooter>
-            <ConfirmDialogCancel>
-              <ClientMessage message="platform.common.cancel" />
-            </ConfirmDialogCancel>
-            <ConfirmDialogAction form={formId}>
-              <ClientMessage message="platform.tenants.delete_member_action" />
-            </ConfirmDialogAction>
-          </ConfirmDialogFooter>
-        </ConfirmDialogContent>
-      </ConfirmDialog>
-    </form>
-  );
-};
-
-const TenantMemberRoleDialog = ({
+const TenantMemberRoleForm = ({
   member,
   tenantId,
-  updateRoleAction,
-}: TenantMemberRoleDialogProps) => {
-  const [open, setOpen] = useState(false);
-  // Submitting is what closes the dialog: the role is saved, so the form the
-  // operator was filling in has nothing left to show.
-  const [updateState, roleFormAction, isRolePending] = useActionState(
-    async (
-      previousState: FormActionState,
-      formData: FormData
-    ): Promise<FormActionState> => {
-      const nextState = await updateRoleAction(previousState, formData);
-      if (nextState?.ok) {
-        setOpen(false);
-      }
-      return nextState;
-    },
-    null
-  );
+}: {
+  member: PlatformTenantMemberSummary;
+  tenantId: string;
+}) => (
+  <TenantMemberRoleDialog>
+    <DialogTrigger
+      render={<Button size="sm" type="button" variant="outline" />}
+    >
+      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+        <Message message="platform.tenants.change_role" />
+      </Suspense>
+    </DialogTrigger>
+    <DialogPortal>
+      <DialogBackdrop />
+      <DialogViewport>
+        <DialogPopup>
+          <ActionForm
+            action={updateTenantMemberRoleAction}
+            className="grid gap-4"
+          >
+            <CloseTenantMemberRoleDialogOnSuccess />
+            <input name="tenant_id" type="hidden" value={tenantId} />
+            <input
+              name="member_user_public_id"
+              type="hidden"
+              value={member.userPublicId}
+            />
 
-  return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger
-        render={
-          <Button size="sm" type="button" variant="outline">
-            <ClientMessage message="platform.tenants.change_role" />
-          </Button>
-        }
-      />
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <DialogPopup>
-            <form action={roleFormAction} className="grid gap-4">
-              <input name="tenant_id" type="hidden" value={tenantId} />
-              <input
-                name="member_user_public_id"
-                type="hidden"
-                value={member.userPublicId}
-              />
-
-              <DialogHeader>
-                <DialogTitle className="text-lg font-semibold">
-                  <ClientMessage message="platform.tenants.change_role_submit" />
-                </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground">
-                  <ClientMessage
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">
+                <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+                  <Message message="platform.tenants.change_role_submit" />
+                </Suspense>
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                  <Message
                     message="platform.tenants.role_update_description"
                     values={{ email: member.email, name: member.name }}
                   />
-                </DialogDescription>
-              </DialogHeader>
+                </Suspense>
+              </DialogDescription>
+            </DialogHeader>
 
-              <Field>
-                <FieldLabel required>
-                  <ClientMessage message="platform.tenants.new_role" />
-                </FieldLabel>
-                <FieldContent>
-                  <div className="flex flex-wrap gap-2">
-                    <TenantRoleRadio
-                      defaultChecked={member.role === "tenant_admin"}
-                      value="tenant_admin"
-                    >
-                      <ClientMessage message="platform.common.roles.tenant_admin" />
-                    </TenantRoleRadio>
-                    <TenantRoleRadio
-                      defaultChecked={member.role === "tenant_editor"}
-                      value="tenant_editor"
-                    >
-                      <ClientMessage message="platform.common.roles.tenant_editor" />
-                    </TenantRoleRadio>
-                    <TenantRoleRadio
-                      defaultChecked={member.role === "tenant_auditor"}
-                      value="tenant_auditor"
-                    >
-                      <ClientMessage message="platform.common.roles.tenant_auditor" />
-                    </TenantRoleRadio>
-                  </div>
-                </FieldContent>
-              </Field>
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="platform.tenants.new_role" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <div className="flex flex-wrap gap-2">
+                  <TenantRoleRadio
+                    defaultChecked={member.role === "tenant_admin"}
+                    value="tenant_admin"
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.common.roles.tenant_admin" />
+                    </Suspense>
+                  </TenantRoleRadio>
+                  <TenantRoleRadio
+                    defaultChecked={member.role === "tenant_editor"}
+                    value="tenant_editor"
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.common.roles.tenant_editor" />
+                    </Suspense>
+                  </TenantRoleRadio>
+                  <TenantRoleRadio
+                    defaultChecked={member.role === "tenant_auditor"}
+                    value="tenant_auditor"
+                  >
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.common.roles.tenant_auditor" />
+                    </Suspense>
+                  </TenantRoleRadio>
+                </div>
+              </FieldContent>
+            </Field>
 
-              {updateState ? (
-                <FormMessage
-                  variant={updateState.ok ? "success" : "destructive"}
-                >
-                  {updateState.message}
-                </FormMessage>
-              ) : null}
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="outline" />}>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.cancel" />
+                </Suspense>
+              </DialogClose>
+              <ActionFormSubmit variant="outline">
+                <ActionFormIdle>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="platform.tenants.change_role_submit" />
+                  </Suspense>
+                </ActionFormIdle>
+                <ActionFormPending>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="platform.tenants.change_role_updating" />
+                  </Suspense>
+                </ActionFormPending>
+              </ActionFormSubmit>
+            </DialogFooter>
+          </ActionForm>
+        </DialogPopup>
+      </DialogViewport>
+    </DialogPortal>
+  </TenantMemberRoleDialog>
+);
 
-              <DialogFooter>
-                <DialogClose
-                  render={
-                    <Button type="button" variant="outline">
-                      <ClientMessage message="platform.common.cancel" />
-                    </Button>
-                  }
-                />
-                <Button
-                  disabled={isRolePending}
-                  type="submit"
-                  variant="outline"
-                >
-                  <ActionFormIdle>
-                    <ClientMessage message="platform.tenants.change_role_submit" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
-                    <ClientMessage message="platform.tenants.change_role_updating" />
-                  </ActionFormPending>
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
-  );
-};
-
-const TenantMemberRow = ({
-  locale,
-  member,
-  removeAction,
-  setDeleteState,
+/**
+ * Removes the member once the operator confirms it. A removal that goes
+ * through is reported above the list, since this row leaves it.
+ */
+const TenantMemberDeleteButton = ({
   tenantId,
-  timeZone,
-  updateRoleAction,
-}: TenantMemberRowProps) => {
-  const t = useClientMessages();
-
-  return (
-    <TableRow key={member.userPublicId || member.email}>
-      <TableCell>
-        <p className="font-medium text-foreground">{member.name}</p>
-      </TableCell>
-      <TableCell>{member.email}</TableCell>
-      <TableCell>
-        <TenantRoleLabel role={member.role} />
-      </TableCell>
-      <TableCell>
-        <Badge tone={getEndUserStatusTone(member.status)}>
-          <AccountStatusLabel status={member.status} />
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {formatDate(member.createdAt, {
-          fallback: t("platform.common.unset"),
-          locale,
-          timeZone,
-        })}
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap gap-2">
-          <TenantMemberRoleDialog
-            member={member}
-            tenantId={tenantId}
-            updateRoleAction={updateRoleAction}
-          />
-          <TenantMemberDeleteButton
-            removeAction={removeAction}
-            setDeleteState={setDeleteState}
-            tenantId={tenantId}
-            userPublicId={member.userPublicId}
-          />
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-};
-
-interface TenantInvitationsSectionProps {
-  invitationErrorMessage?: string;
-  invitations: PlatformTenantAdminInvitation[];
-  invitationsNextHref?: string;
-  invitationsPreviousHref?: string;
-  isResendPending: boolean;
-  locale: Locale;
-  onCancel: (
-    prevState: FormActionState,
-    formData: FormData
-  ) => Promise<FormActionState>;
-  onResend: (invitationId: string) => void;
+  userPublicId,
+}: {
   tenantId: string;
-  timeZone: string;
-}
-
-const TenantInvitationRow = ({
-  invitation,
-  isResendPending,
-  locale,
-  onCancel,
-  onResend,
-  tenantId,
-  timeZone,
-}: TenantInvitationRowProps) => {
-  const canOperate = invitation.status === "pending";
-  const formId = useId();
-  const [, cancelFormAction, isCancelPending] = useActionState(onCancel, null);
-
-  const handleResendClick = useCallback(() => {
-    onResend(invitation.id);
-  }, [invitation.id, onResend]);
+  userPublicId: string;
+}) => {
+  const formId = `tenant-member-remove-${userPublicId}`;
 
   return (
-    <TableRow key={invitation.id}>
-      <TableCell>{invitation.email}</TableCell>
-      <TableCell>
-        <Badge tone={invitationStatusTone(invitation.status)}>
-          <InvitationStatusLabel status={invitation.status} />
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {formatDateTime(invitation.createdAt, {
-          fallback: "-",
-          locale,
-          timeZone,
-        })}
-      </TableCell>
-      <TableCell>
-        {formatDateTime(invitation.expiresAt, {
-          fallback: "-",
-          locale,
-          timeZone,
-        })}
-      </TableCell>
-      <TableCell>
-        <form
-          action={cancelFormAction}
-          className="flex flex-wrap gap-2"
-          id={formId}
-        >
-          <input name="tenant_id" type="hidden" value={tenantId} />
-          <input name="invitation_id" type="hidden" value={invitation.id} />
-          <Button
-            disabled={!canOperate || isResendPending || isCancelPending}
-            onClick={handleResendClick}
-            size="sm"
-            type="button"
-            variant="outline"
+    <ActionForm
+      action={removeTenantMemberAction}
+      className="grid gap-1"
+      id={formId}
+      showSuccess={false}
+    >
+      <ReportTenantMemberRemoval />
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="member_user_public_id" type="hidden" value={userPublicId} />
+      <ActionFormFieldset>
+        <ConfirmDialog>
+          <ConfirmDialogTrigger
+            render={<Button size="sm" type="button" variant="destructive" />}
           >
-            <ClientMessage message="platform.tenants.resend_invite" />
-          </Button>
+            <ActionFormIdle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.tenants.delete_member" />
+              </Suspense>
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="platform.tenants.delete_member_pending" />
+              </Suspense>
+            </ActionFormPending>
+          </ConfirmDialogTrigger>
+          <ConfirmDialogContent>
+            <ConfirmDialogHeader>
+              <ConfirmDialogTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                  <Message message="platform.tenants.delete_member_title" />
+                </Suspense>
+              </ConfirmDialogTitle>
+              <ConfirmDialogDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                  <Message message="platform.tenants.delete_member_description" />
+                </Suspense>
+              </ConfirmDialogDescription>
+            </ConfirmDialogHeader>
+            <ConfirmDialogFooter>
+              <ConfirmDialogCancel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.common.cancel" />
+                </Suspense>
+              </ConfirmDialogCancel>
+              <ConfirmDialogAction form={formId}>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.tenants.delete_member_action" />
+                </Suspense>
+              </ConfirmDialogAction>
+            </ConfirmDialogFooter>
+          </ConfirmDialogContent>
+        </ConfirmDialog>
+      </ActionFormFieldset>
+    </ActionForm>
+  );
+};
+
+/**
+ * Resending and canceling are separate forms, each answering on this row: the
+ * invitation stays listed either way, with the status the change left it in.
+ */
+const TenantInvitationActions = ({
+  invitation,
+  tenantId,
+}: {
+  invitation: PlatformTenantAdminInvitation;
+  tenantId: string;
+}) => {
+  const canOperate = invitation.status === "pending";
+  const cancelFormId = `tenant-invitation-cancel-${invitation.id}`;
+
+  return (
+    <div className="flex flex-wrap items-start gap-2">
+      <ActionForm
+        action={resendTenantAdminInvitationAction}
+        className="grid gap-1"
+      >
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="invitation_id" type="hidden" value={invitation.id} />
+        <ActionFormSubmit disabled={!canOperate} size="sm" variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.tenants.resend_invite" />
+          </Suspense>
+        </ActionFormSubmit>
+      </ActionForm>
+      <ActionForm
+        action={cancelTenantAdminInvitationAction}
+        className="grid gap-1"
+        id={cancelFormId}
+      >
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="invitation_id" type="hidden" value={invitation.id} />
+        <ActionFormFieldset disabled={!canOperate}>
           <ConfirmDialog>
             <ConfirmDialogTrigger
-              render={
-                <Button
-                  disabled={!canOperate || isCancelPending || isResendPending}
-                  size="sm"
-                  type="button"
-                  variant="destructive"
-                >
-                  <ActionFormIdle>
-                    <ClientMessage message="platform.tenants.cancel_invite" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
-                    <ClientMessage message="platform.tenants.cancel_invite_pending" />
-                  </ActionFormPending>
-                </Button>
-              }
-            />
+              render={<Button size="sm" type="button" variant="destructive" />}
+            >
+              <ActionFormIdle>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="platform.tenants.cancel_invite" />
+                </Suspense>
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="platform.tenants.cancel_invite_pending" />
+                </Suspense>
+              </ActionFormPending>
+            </ConfirmDialogTrigger>
             <ConfirmDialogContent>
               <ConfirmDialogHeader>
                 <ConfirmDialogTitle>
-                  <ClientMessage message="platform.tenants.cancel_invite_title" />
+                  <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                    <Message message="platform.tenants.cancel_invite_title" />
+                  </Suspense>
                 </ConfirmDialogTitle>
                 <ConfirmDialogDescription>
-                  <ClientMessage message="platform.tenants.cancel_invite_description" />
+                  <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                    <Message message="platform.tenants.cancel_invite_description" />
+                  </Suspense>
                 </ConfirmDialogDescription>
               </ConfirmDialogHeader>
               <ConfirmDialogFooter>
                 <ConfirmDialogCancel>
-                  <ClientMessage message="platform.common.cancel" />
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="platform.common.cancel" />
+                  </Suspense>
                 </ConfirmDialogCancel>
-                <ConfirmDialogAction form={formId}>
-                  <ClientMessage message="platform.tenants.cancel_invite_action" />
+                <ConfirmDialogAction form={cancelFormId}>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="platform.tenants.cancel_invite_action" />
+                  </Suspense>
                 </ConfirmDialogAction>
               </ConfirmDialogFooter>
             </ConfirmDialogContent>
           </ConfirmDialog>
-        </form>
-      </TableCell>
-    </TableRow>
+        </ActionFormFieldset>
+      </ActionForm>
+    </div>
   );
 };
 
-const TenantInvitationsSection = ({
-  invitationErrorMessage,
+const TenantInvitationsTable = ({
   invitations,
-  invitationsNextHref,
-  invitationsPreviousHref,
-  isResendPending,
   locale,
-  onCancel,
-  onResend,
   tenantId,
   timeZone,
-}: TenantInvitationsSectionProps) => {
-  const t = useClientMessages();
-  // A failed fetch still hands an empty `invitations` array. Keeping the table
-  // header and the pager next to the error reads as "there are no invitations",
-  // so the error replaces the whole list instead of sitting on top of it.
-  if (invitationErrorMessage) {
-    return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
-            <ClientMessage message="platform.tenants.invitations_load_failed" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>
-            {invitationErrorMessage}
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
-    );
-  }
+}: {
+  invitations: PlatformTenantAdminInvitation[];
+  locale: Locale;
+  tenantId: string;
+  timeZone: string;
+}) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="platform.tenants.members_columns_email" />
+          </Suspense>
+        </TableHead>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.tenants.members_columns_status" />
+          </Suspense>
+        </TableHead>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="platform.tenants.members_columns_invited_at" />
+          </Suspense>
+        </TableHead>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="platform.tenants.members_columns_expires" />
+          </Suspense>
+        </TableHead>
+        <TableHead className="w-56">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.tenants.members_columns_actions" />
+          </Suspense>
+        </TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {invitations.length === 0 ? (
+        <TableRow>
+          <TableCell className="text-muted-foreground" colSpan={5}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <Message message="platform.tenants.invitations_empty" />
+            </Suspense>
+          </TableCell>
+        </TableRow>
+      ) : null}
 
-  return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
-              <ClientMessage message="platform.tenants.members_columns_email" />
-            </TableHead>
-            <TableHead>
-              <ClientMessage message="platform.tenants.members_columns_status" />
-            </TableHead>
-            <TableHead>
-              <ClientMessage message="platform.tenants.members_columns_invited_at" />
-            </TableHead>
-            <TableHead>
-              <ClientMessage message="platform.tenants.members_columns_expires" />
-            </TableHead>
-            <TableHead className="w-56">
-              <ClientMessage message="platform.tenants.members_columns_actions" />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {invitations.length === 0 ? (
-            <TableRow>
-              <TableCell className="text-muted-foreground" colSpan={5}>
-                <ClientMessage message="platform.tenants.invitations_empty" />
-              </TableCell>
-            </TableRow>
-          ) : null}
-
-          {invitations.map((invitation) => (
-            <TenantInvitationRow
+      {invitations.map((invitation) => (
+        <TableRow key={invitation.id}>
+          <TableCell>{invitation.email}</TableCell>
+          <TableCell>
+            <Badge tone={invitationStatusTone(invitation.status)}>
+              <InvitationStatusLabel status={invitation.status} />
+            </Badge>
+          </TableCell>
+          <TableCell>
+            {formatDateTime(invitation.createdAt, {
+              fallback: "-",
+              locale,
+              timeZone,
+            })}
+          </TableCell>
+          <TableCell>
+            {formatDateTime(invitation.expiresAt, {
+              fallback: "-",
+              locale,
+              timeZone,
+            })}
+          </TableCell>
+          <TableCell>
+            <TenantInvitationActions
               invitation={invitation}
-              isResendPending={isResendPending}
-              key={invitation.id}
-              locale={locale}
-              onCancel={onCancel}
-              onResend={onResend}
               tenantId={tenantId}
-              timeZone={timeZone}
             />
-          ))}
-        </TableBody>
-      </Table>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
 
-      <PaginationControls
-        aria-label={t("platform.tenants.invitations_pagination_aria")}
-        nextHref={invitationsNextHref}
-        previousHref={invitationsPreviousHref}
-      />
-    </>
-  );
-};
-
-export const TenantMembersManager = ({
-  addAction,
-  cancelInvitationAction,
-  createInvitationAction,
+export const TenantMembersManager = async ({
   invitationErrorMessage,
   invitations,
   invitationsNextHref,
@@ -719,51 +605,10 @@ export const TenantMembersManager = ({
   membersErrorMessage,
   membersNextHref,
   membersPreviousHref,
-  removeAction,
-  resendInvitationAction,
   tenantId,
   timeZone,
-  updateRoleAction,
 }: TenantMembersManagerProps) => {
-  const t = useClientMessages();
-  const [addState, addFormAction, isAddPending] = useActionState(
-    addAction,
-    null
-  );
-  const [inviteState, createInviteAction, isInvitePending] = useActionState(
-    createInvitationAction,
-    null
-  );
-  const [invitationActionState, setInvitationActionState] =
-    useState<FormActionState>(null);
-  const [deleteState, setDeleteState] = useState<FormActionState>(null);
-
-  const [isResendPending, startResendTransition] = useTransition();
-
-  const handleResend = useCallback(
-    (invitationId: string) => {
-      startResendTransition(async () => {
-        const formData = new FormData();
-        formData.set("tenant_id", tenantId);
-        formData.set("invitation_id", invitationId);
-        const state = await resendInvitationAction(null, formData);
-        setInvitationActionState(state);
-      });
-    },
-    [resendInvitationAction, tenantId]
-  );
-
-  const handleCancel = useCallback(
-    async (
-      previousState: FormActionState,
-      formData: FormData
-    ): Promise<FormActionState> => {
-      const state = await cancelInvitationAction(previousState, formData);
-      setInvitationActionState(state);
-      return state;
-    },
-    [cancelInvitationAction]
-  );
+  const t = await getMessagesFor(locale);
 
   return (
     <PlatformSections>
@@ -771,18 +616,27 @@ export const TenantMembersManager = ({
         <PlatformSectionHeader>
           <PlatformSectionHeading>
             <PlatformSectionTitle>
-              <ClientMessage message="platform.tenants.invite_admin_title" />
+              <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+                <Message message="platform.tenants.invite_admin_title" />
+              </Suspense>
             </PlatformSectionTitle>
             <PlatformSectionDescription>
-              <ClientMessage message="platform.tenants.invite_admin_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="platform.tenants.invite_admin_description" />
+              </Suspense>
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        <form action={createInviteAction} className="grid gap-4">
+        <ActionForm
+          action={createTenantAdminInvitationAction}
+          className="grid gap-4"
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
           <Field>
             <FieldLabel required>
-              <ClientMessage message="platform.tenants.invite_admin_email" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="platform.tenants.invite_admin_email" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input
@@ -794,124 +648,184 @@ export const TenantMembersManager = ({
             </FieldContent>
           </Field>
 
-          {inviteState ? (
-            <FormMessage variant={inviteState.ok ? "success" : "destructive"}>
-              {inviteState.message}
-            </FormMessage>
-          ) : null}
-
           <div className="flex justify-end">
-            <Button disabled={isInvitePending} type="submit" variant="outline">
+            <ActionFormSubmit variant="outline">
               <ActionFormIdle>
-                <ClientMessage message="platform.tenants.invite_admin" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="platform.tenants.invite_admin" />
+                </Suspense>
               </ActionFormIdle>
               <ActionFormPending>
-                <ClientMessage message="platform.tenants.invite_admin_pending" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="platform.tenants.invite_admin_pending" />
+                </Suspense>
               </ActionFormPending>
-            </Button>
+            </ActionFormSubmit>
           </div>
-        </form>
+        </ActionForm>
       </PlatformSection>
 
       <PlatformSection>
         <PlatformSectionHeader>
           <PlatformSectionHeading>
             <PlatformSectionTitle>
-              <ClientMessage message="platform.tenants.members_list_title" />
+              <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+                <Message message="platform.tenants.members_list_title" />
+              </Suspense>
             </PlatformSectionTitle>
             <PlatformSectionDescription>
-              <ClientMessage message="platform.tenants.members_list_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="platform.tenants.members_list_description" />
+              </Suspense>
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        {deleteState ? (
-          <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
-            {deleteState.message}
-          </FormMessage>
-        ) : null}
-        {membersErrorMessage ? (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
-                <ClientMessage message="platform.tenants.members_load_failed" />
-              </SectionErrorTitle>
-              <SectionErrorDescription>
-                {membersErrorMessage}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <ClientMessage message="platform.tenants.members_columns_name" />
-                  </TableHead>
-                  <TableHead>
-                    <ClientMessage message="platform.tenants.members_columns_email" />
-                  </TableHead>
-                  <TableHead>
-                    <ClientMessage message="platform.tenants.members_columns_role" />
-                  </TableHead>
-                  <TableHead>
-                    <ClientMessage message="platform.tenants.members_columns_status" />
-                  </TableHead>
-                  <TableHead>
-                    <ClientMessage message="platform.tenants.members_columns_created" />
-                  </TableHead>
-                  <TableHead className="w-56">
-                    <ClientMessage message="platform.tenants.members_columns_actions" />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.length === 0 ? (
+        <TenantMemberRemovals>
+          {membersErrorMessage ? (
+            <SectionError>
+              <SectionErrorHeading>
+                <SectionErrorTitle>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="platform.tenants.members_load_failed" />
+                  </Suspense>
+                </SectionErrorTitle>
+                <SectionErrorDescription>
+                  {membersErrorMessage}
+                </SectionErrorDescription>
+              </SectionErrorHeading>
+            </SectionError>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={6}>
-                      <ClientMessage message="platform.tenants.members_empty" />
-                    </TableCell>
+                    <TableHead>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="platform.tenants.members_columns_name" />
+                      </Suspense>
+                    </TableHead>
+                    <TableHead>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-24" />}
+                      >
+                        <Message message="platform.tenants.members_columns_email" />
+                      </Suspense>
+                    </TableHead>
+                    <TableHead>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="platform.tenants.members_columns_role" />
+                      </Suspense>
+                    </TableHead>
+                    <TableHead>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="platform.tenants.members_columns_status" />
+                      </Suspense>
+                    </TableHead>
+                    <TableHead>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-20" />}
+                      >
+                        <Message message="platform.tenants.members_columns_created" />
+                      </Suspense>
+                    </TableHead>
+                    <TableHead className="w-56">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="platform.tenants.members_columns_actions" />
+                      </Suspense>
+                    </TableHead>
                   </TableRow>
-                ) : null}
-                {members.map((member) => (
-                  <TenantMemberRow
-                    key={member.userPublicId || member.email}
-                    locale={locale}
-                    member={member}
-                    removeAction={removeAction}
-                    setDeleteState={setDeleteState}
-                    tenantId={tenantId}
-                    timeZone={timeZone}
-                    updateRoleAction={updateRoleAction}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-            <PaginationControls
-              aria-label={t("platform.tenants.members_pagination_aria")}
-              nextHref={membersNextHref}
-              previousHref={membersPreviousHref}
-            />
-          </>
-        )}
+                </TableHeader>
+                <TableBody>
+                  {members.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-muted-foreground" colSpan={6}>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-48" />}
+                        >
+                          <Message message="platform.tenants.members_empty" />
+                        </Suspense>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {members.map((member) => (
+                    <TableRow key={member.userPublicId || member.email}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">
+                          {member.name}
+                        </p>
+                      </TableCell>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>
+                        <TenantRoleLabel role={member.role} />
+                      </TableCell>
+                      <TableCell>
+                        <Badge tone={getEndUserStatusTone(member.status)}>
+                          <AccountStatusLabel status={member.status} />
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(member.createdAt, {
+                          fallback: t("platform.common.unset"),
+                          locale,
+                          timeZone,
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-start gap-2">
+                          <TenantMemberRoleForm
+                            member={member}
+                            tenantId={tenantId}
+                          />
+                          <TenantMemberDeleteButton
+                            tenantId={tenantId}
+                            userPublicId={member.userPublicId}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <PaginationControls
+                aria-label={t("platform.tenants.members_pagination_aria")}
+                nextHref={membersNextHref}
+                previousHref={membersPreviousHref}
+              />
+            </>
+          )}
+        </TenantMemberRemovals>
       </PlatformSection>
 
       <PlatformSection>
         <PlatformSectionHeader>
           <PlatformSectionHeading>
             <PlatformSectionTitle>
-              <ClientMessage message="platform.tenants.add_member" />
+              <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+                <Message message="platform.tenants.add_member" />
+              </Suspense>
             </PlatformSectionTitle>
             <PlatformSectionDescription>
-              <ClientMessage message="platform.tenants.add_member_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="platform.tenants.add_member_description" />
+              </Suspense>
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        <form action={addFormAction} className="grid gap-4">
+        <ActionForm action={addTenantMemberAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <Field>
             <FieldLabel required>
-              <ClientMessage message="platform.tenants.add_member_email" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="platform.tenants.add_member_email" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input
@@ -924,7 +838,9 @@ export const TenantMembersManager = ({
           </Field>
           <Field>
             <FieldLabel required>
-              <ClientMessage message="platform.common.role" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="platform.common.role" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
               <Select
@@ -932,19 +848,31 @@ export const TenantMembersManager = ({
                 items={[
                   {
                     label: (
-                      <ClientMessage message="platform.common.roles.tenant_admin" />
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="platform.common.roles.tenant_admin" />
+                      </Suspense>
                     ),
                     value: "tenant_admin",
                   },
                   {
                     label: (
-                      <ClientMessage message="platform.common.roles.tenant_editor" />
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="platform.common.roles.tenant_editor" />
+                      </Suspense>
                     ),
                     value: "tenant_editor",
                   },
                   {
                     label: (
-                      <ClientMessage message="platform.common.roles.tenant_auditor" />
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="platform.common.roles.tenant_auditor" />
+                      </Suspense>
                     ),
                     value: "tenant_auditor",
                   },
@@ -954,55 +882,69 @@ export const TenantMembersManager = ({
               />
             </FieldContent>
           </Field>
-          {addState ? (
-            <FormMessage variant={addState.ok ? "success" : "destructive"}>
-              {addState.message}
-            </FormMessage>
-          ) : null}
           <div className="flex justify-end">
-            <Button disabled={isAddPending} type="submit" variant="outline">
+            <ActionFormSubmit variant="outline">
               <ActionFormIdle>
-                <ClientMessage message="platform.tenants.add_member_submit" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="platform.tenants.add_member_submit" />
+                </Suspense>
               </ActionFormIdle>
               <ActionFormPending>
-                <ClientMessage message="platform.tenants.add_member_pending" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="platform.tenants.add_member_pending" />
+                </Suspense>
               </ActionFormPending>
-            </Button>
+            </ActionFormSubmit>
           </div>
-        </form>
+        </ActionForm>
       </PlatformSection>
 
       <PlatformSection>
         <PlatformSectionHeader>
           <PlatformSectionHeading>
             <PlatformSectionTitle>
-              <ClientMessage message="platform.tenants.invitations_title" />
+              <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+                <Message message="platform.tenants.invitations_title" />
+              </Suspense>
             </PlatformSectionTitle>
             <PlatformSectionDescription>
-              <ClientMessage message="platform.tenants.invitations_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="platform.tenants.invitations_description" />
+              </Suspense>
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        {invitationActionState ? (
-          <FormMessage
-            variant={invitationActionState.ok ? "success" : "destructive"}
-          >
-            {invitationActionState.message}
-          </FormMessage>
-        ) : null}
-
-        <TenantInvitationsSection
-          invitationErrorMessage={invitationErrorMessage}
-          invitations={invitations}
-          invitationsNextHref={invitationsNextHref}
-          invitationsPreviousHref={invitationsPreviousHref}
-          isResendPending={isResendPending}
-          locale={locale}
-          onCancel={handleCancel}
-          onResend={handleResend}
-          tenantId={tenantId}
-          timeZone={timeZone}
-        />
+        {/* A failed fetch still hands an empty `invitations` array. Keeping the
+            table header and the pager next to the error reads as "there are no
+            invitations", so the error replaces the whole list. */}
+        {invitationErrorMessage ? (
+          <SectionError>
+            <SectionErrorHeading>
+              <SectionErrorTitle>
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="platform.tenants.invitations_load_failed" />
+                </Suspense>
+              </SectionErrorTitle>
+              <SectionErrorDescription>
+                {invitationErrorMessage}
+              </SectionErrorDescription>
+            </SectionErrorHeading>
+          </SectionError>
+        ) : (
+          <>
+            <TenantInvitationsTable
+              invitations={invitations}
+              locale={locale}
+              tenantId={tenantId}
+              timeZone={timeZone}
+            />
+            <PaginationControls
+              aria-label={t("platform.tenants.invitations_pagination_aria")}
+              nextHref={invitationsNextHref}
+              previousHref={invitationsPreviousHref}
+            />
+          </>
+        )}
       </PlatformSection>
     </PlatformSections>
   );
