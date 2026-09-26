@@ -118,7 +118,7 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 	play := googleplaytest.NewServer(t)
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.Default(), guards, openMailGuard())
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard())
 	server.stores = storeClients{appStoreVerifier: signer.Verifier(), appStore: fake, googlePlay: play.Client()}
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)

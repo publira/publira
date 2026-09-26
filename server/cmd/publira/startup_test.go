@@ -35,7 +35,7 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
 		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
 		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
-	}), "server")
+	}, revalidationWithoutPlatformConsole()), "server")
 	p.WaitReady(t, "http://"+edgeAddr+"/readyz")
 	p.WaitReady(t, "http://"+internalAddr+"/readyz")
 
@@ -72,12 +72,44 @@ func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 		"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
 		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
 		"PUBLIRA_WORKER_ADDR":          addr,
-	}), "worker")
+	}, revalidationWithoutPlatformConsole()), "worker")
 	p.WaitReady(t, "http://"+addr+"/readyz")
 
 	// One check per pool: with three logins behind one process, a single "db"
 	// could not say which of them stopped answering.
 	assertReadyChecks(t, "http://"+addr+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+}
+
+// revalidationWithoutPlatformConsole is where a deployment that runs no
+// Platform Console sends cache tags: the storefront and the tenant console,
+// and no web-platform URL at all.
+func revalidationWithoutPlatformConsole() map[string]string {
+	return map[string]string{
+		"PUBLIRA_WEB_HOST_INTERNAL_URL":  "http://web-host:3000",
+		"PUBLIRA_WEB_ADMIN_INTERNAL_URL": "http://web-admin:4000",
+	}
+}
+
+// A revalidate token with no web app to send to can only be a mistake, so both
+// processes refuse to start and name the variables that would have fixed it.
+func TestRefusesARevalidateTokenWithNoDestination(t *testing.T) {
+	for _, command := range []string{"server", "worker"} {
+		t.Run(command, func(t *testing.T) {
+			code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets()), command)
+			if code == 0 {
+				t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
+			}
+			for _, env := range []string{
+				"PUBLIRA_WEB_HOST_INTERNAL_URL",
+				"PUBLIRA_WEB_ADMIN_INTERNAL_URL",
+				"PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
+			} {
+				if !strings.Contains(output, env) {
+					t.Fatalf("output does not name %s:\n%s", env, output)
+				}
+			}
+		})
+	}
 }
 
 // Without a command the binary is nothing a deployment can run, and it says

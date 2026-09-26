@@ -99,6 +99,7 @@ func (e *publicDBEnv) openAdminConsole(t *testing.T, tenant testutil.Tenant, sta
 		nil,
 		nil,
 		testutil.TokenManager(),
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)

@@ -82,6 +82,14 @@ func runServer() int {
 		return 1
 	}
 
+	// One client for the whole process, shared by the two namespaces whose
+	// writes leave a cache entry stale.
+	revalidateClient, err := newRevalidateClient(logger)
+	if err != nil {
+		logger.Error("failed to initialize next revalidate", "error", err)
+		return 1
+	}
+
 	// One pool per PostgreSQL login, because the login is what the database
 	// enforces a namespace's reach with: publira_public and publira_admin are
 	// subject to row-level security and publira_platform bypasses it. Which
@@ -121,7 +129,7 @@ func runServer() int {
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens)
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient)
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		return 1
@@ -130,7 +138,7 @@ func runServer() int {
 	smtpTester := internalsmtp.NewClient()
 
 	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, adminRecorder)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder)
 	if err != nil {
 		logger.Error("failed to initialize admin api handler", "error", err)
 		return 1

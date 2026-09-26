@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/revalidate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
@@ -73,7 +74,13 @@ func newTestHandler(
 	encryptor emailsettings.SecretManager,
 	tester internalsmtp.Tester,
 ) (http.Handler, error) {
-	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, testutil.TokenManager(), nil, openMailGuard())
+	// The client is built from the environment the way the process builds its
+	// own, which is what lets newRevalidateRecorder turn it on.
+	reval, err := revalidate.NewClient(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"), logger)
+	if err != nil {
+		return nil, err
+	}
+	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, testutil.TokenManager(), reval, nil, openMailGuard())
 	if err != nil {
 		return nil, err
 	}

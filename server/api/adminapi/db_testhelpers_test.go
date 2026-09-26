@@ -62,7 +62,7 @@ func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	api, err := newAPI(db, dbmodels.New(db), provider, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, mail)
+	api, err := newAPI(db, dbmodels.New(db), provider, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, nil, mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}

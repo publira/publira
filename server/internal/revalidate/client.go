@@ -7,16 +7,14 @@
 // sender underneath, held by the outbox handler that retries what the immediate
 // attempt could not finish.
 //
-// The three destinations are private network addresses
-// (PUBLIRA_WEB_*_INTERNAL_URL), never the public domain a browser uses and
-// never the reverse proxy: this is server-to-server traffic, and routing it
-// through the edge would make an internal cache invalidation depend on the
-// tenant domain in Host. All three are required together, because each app
-// keeps its own Redis key space under PNCH_CACHE_APP and the same tag has
-// to reach all of them. A missing or malformed URL therefore disables
-// revalidation for the whole process rather than leaving one app stale; the
-// caller logs the reason and starts anyway, since serving from a cache that
-// expires on its own is better than refusing to serve.
+// The destinations are private network addresses (PUBLIRA_WEB_*_INTERNAL_URL),
+// never the public domain a browser uses and never the reverse proxy: this is
+// server-to-server traffic, and routing it through the edge would make an
+// internal cache invalidation depend on the tenant domain in Host. Each app
+// keeps its own Redis key space under PNCH_CACHE_APP, so a tag goes to every
+// app that has a URL, and an app without one is not a destination at all: a
+// deployment that runs no Platform Console leaves its URL unset rather than
+// owing every drop to a process that does not exist.
 //
 // Tags are sent as they are, with no tenant restriction. A tag already names
 // what it invalidates, and the apps that hold it are shared by every tenant.
@@ -50,6 +48,7 @@ type Client struct {
 
 type target struct {
 	name    string
+	env     string
 	baseURL string
 }
 
@@ -65,6 +64,10 @@ const (
 	webPlatformInternalURLEnv = "PUBLIRA_WEB_PLATFORM_INTERNAL_URL"
 )
 
+// NewClient returns nil when token is empty, which turns revalidation off. With
+// a token it sends to every web app whose PUBLIRA_WEB_*_INTERNAL_URL is set,
+// and reports an error when none is or one does not parse, so the process
+// refuses to start on a configuration that can only be a mistake.
 func NewClient(token string, logger *slog.Logger) (*Client, error) {
 	normalizedToken := strings.TrimSpace(token)
 	if normalizedToken == "" {
@@ -128,32 +131,43 @@ func (c *Client) RevalidateTags(ctx context.Context, tags []string) error {
 	return errors.Join(errs...)
 }
 
-func targetsFromEnvironment() ([]target, error) {
-	targets := []target{
-		{name: "web-host", baseURL: strings.TrimSpace(os.Getenv(webHostInternalURLEnv))},
-		{name: "web-admin", baseURL: strings.TrimSpace(os.Getenv(webAdminInternalURLEnv))},
-		{name: "web-platform", baseURL: strings.TrimSpace(os.Getenv(webPlatformInternalURLEnv))},
+// Destinations names the web apps the client sends to, for the process to log
+// at startup.
+func (c *Client) Destinations() []string {
+	if c == nil {
+		return nil
 	}
-	for _, revalidationTarget := range targets {
-		if revalidationTarget.baseURL == "" {
-			return nil, fmt.Errorf("%s is required when PUBLIRA_REVALIDATE_TOKEN is configured", targetEnv(revalidationTarget.name))
-		}
-		if _, err := buildEndpoint(revalidationTarget.baseURL); err != nil {
-			return nil, fmt.Errorf("%s: %w", targetEnv(revalidationTarget.name), err)
-		}
+	names := make([]string, 0, len(c.targets))
+	for _, revalidationTarget := range c.targets {
+		names = append(names, revalidationTarget.name)
 	}
-	return targets, nil
+	return names
 }
 
-func targetEnv(name string) string {
-	switch name {
-	case "web-host":
-		return webHostInternalURLEnv
-	case "web-admin":
-		return webAdminInternalURLEnv
-	default:
-		return webPlatformInternalURLEnv
+func targetsFromEnvironment() ([]target, error) {
+	candidates := []target{
+		{name: "web-host", env: webHostInternalURLEnv},
+		{name: "web-admin", env: webAdminInternalURLEnv},
+		{name: "web-platform", env: webPlatformInternalURLEnv},
 	}
+	var targets []target
+	for _, candidate := range candidates {
+		candidate.baseURL = strings.TrimSpace(os.Getenv(candidate.env))
+		if candidate.baseURL == "" {
+			continue
+		}
+		if _, err := buildEndpoint(candidate.baseURL); err != nil {
+			return nil, fmt.Errorf("%s: %w", candidate.env, err)
+		}
+		targets = append(targets, candidate)
+	}
+	if len(targets) == 0 {
+		return nil, fmt.Errorf(
+			"PUBLIRA_REVALIDATE_TOKEN is set but none of %s, %s, or %s is",
+			webHostInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv,
+		)
+	}
+	return targets, nil
 }
 
 func buildEndpoint(baseURL string) (string, error) {

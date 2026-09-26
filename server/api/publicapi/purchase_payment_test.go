@@ -110,7 +110,7 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 
 	var logs bytes.Buffer
 	checkout := newCapturingCheckoutProvider()
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil)
 	server.paymentProviders = paymentprovider.NewRegistry(checkout)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)

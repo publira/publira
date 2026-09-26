@@ -159,7 +159,7 @@ Building requires libvips. For the details, see [cmd/publira/README.md](cmd/publ
 
 ## Internal URLs for Next.js revalidation
 
-With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `publira server` as soon as the write commits, and by `publira worker` for whatever that attempt did not finish. All three URLs are required together.
+With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `publira server` as soon as the write commits, and by `publira worker` for whatever that attempt did not finish. The tags go to every app whose URL is set, and an app without one is not a destination, so a deployment that runs no Platform Console leaves `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` unset. Both processes log their destinations at startup, and refuse to start when the token is set with none of the three, or with one that is not an absolute URL.
 
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
@@ -534,7 +534,7 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
   - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
   - web-host, web-admin, and web-platform dial it directly over the private network
 
-The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the internal URLs of every `web-*` app (`PUBLIRA_WEB_*_INTERNAL_URL`).
+The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 
