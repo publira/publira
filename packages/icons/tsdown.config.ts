@@ -4,6 +4,7 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/archive-icon.tsx",
     "src/bell-icon.tsx",
     "src/building-icon.tsx",
     "src/chart-icon.tsx",
@@ -25,6 +26,7 @@ export default defineConfig({
     "src/id-card-icon.tsx",
     "src/image-icon.tsx",
     "src/language-icon.tsx",
+    "src/lock-icon.tsx",
     "src/logout-icon.tsx",
     "src/mail-icon.tsx",
     "src/maximize-icon.tsx",

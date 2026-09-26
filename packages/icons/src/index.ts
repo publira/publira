@@ -1,3 +1,4 @@
+export { ArchiveIcon } from "./archive-icon";
 export { BellIcon } from "./bell-icon";
 export { BuildingIcon } from "./building-icon";
 export { ChartIcon } from "./chart-icon";
@@ -19,6 +20,7 @@ export { HeartIcon } from "./heart-icon";
 export { IdCardIcon } from "./id-card-icon";
 export { ImageIcon } from "./image-icon";
 export { LanguageIcon } from "./language-icon";
+export { LockIcon } from "./lock-icon";
 export { LogoutIcon } from "./logout-icon";
 export { MailIcon } from "./mail-icon";
 export { MaximizeIcon } from "./maximize-icon";

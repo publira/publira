@@ -11,6 +11,10 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./archive-icon": {
+      "types": "./dist/archive-icon.d.mts",
+      "default": "./dist/archive-icon.mjs"
+    },
     "./bell-icon": {
       "types": "./dist/bell-icon.d.mts",
       "default": "./dist/bell-icon.mjs"
@@ -94,6 +98,10 @@
     "./language-icon": {
       "types": "./dist/language-icon.d.mts",
       "default": "./dist/language-icon.mjs"
+    },
+    "./lock-icon": {
+      "types": "./dist/lock-icon.d.mts",
+      "default": "./dist/lock-icon.mjs"
     },
     "./logout-icon": {
       "types": "./dist/logout-icon.d.mts",
