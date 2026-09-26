@@ -123,7 +123,7 @@ gh stack link <backend-pr> <frontend-pr>      # bottom to top
 
 A fix belongs to the layer that owns it. Check that layer out (`gh stack down`, or `gh stack checkout <branch>`), commit there, replay the layers above with `gh stack rebase --upstack`, return with `gh stack top`, and push with `gh stack push`.
 
-Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue, and the bottom layer lands first. Once it has, `gh stack sync` notices the squash merge, rebases the remaining layer onto `main` without replaying the merged commits, and pushes it.
+Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue. A stack linked with `gh stack link` enters the queue through its top pull request, and queueing that one merges every layer beneath it along with it. Queueing the bottom layer first only adds a wait for its merge and a second `CI` run on the layer above once it is rebased, so never suggest that order. When a lower layer has already landed on its own, `gh stack sync` notices the squash merge, rebases the remaining layers onto `main` without replaying the merged commits, and pushes them.
 
 ## Commit
 
