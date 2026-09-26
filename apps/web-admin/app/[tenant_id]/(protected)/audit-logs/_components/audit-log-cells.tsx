@@ -107,6 +107,11 @@ const taxonomyActionName = (action: string) => {
     case "genres_reordered": {
       return <Message message="admin.audit.actions.genres_reordered" />;
     }
+    case "genre_eye_catch_aspect_image_uploaded": {
+      return (
+        <Message message="admin.audit.actions.genre_eye_catch_aspect_image_uploaded" />
+      );
+    }
     default: {
       return null;
     }

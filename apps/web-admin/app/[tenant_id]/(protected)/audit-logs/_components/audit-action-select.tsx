@@ -121,6 +121,12 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "genres_reordered",
             },
             {
+              label: t(
+                "admin.audit.actions.genre_eye_catch_aspect_image_uploaded"
+              ),
+              value: "genre_eye_catch_aspect_image_uploaded",
+            },
+            {
               label: t("admin.audit.actions.page_created"),
               value: "page_created",
             },

@@ -49,7 +49,13 @@ describe("GenreRenameForm", () => {
     await act(() => {
       render(
         <GenreRenameForm
-          genre={{ name: "Romance", publicId: "GENRE001", slug: "romance" }}
+          genre={{
+            eyeCatchImageUpdatedAt: "",
+            eyeCatchImageVariants: [],
+            name: "Romance",
+            publicId: "GENRE001",
+            slug: "romance",
+          }}
         />,
         {
           wrapper: EnglishConsole,

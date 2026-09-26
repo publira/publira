@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -9,6 +13,7 @@ const {
   mockListGenres,
   mockReorderGenres,
   mockUpdateGenre,
+  mockUploadGenreEyeCatchAspectImage,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
   mockCreateGenre: vi.fn(),
@@ -17,6 +22,7 @@ const {
   mockListGenres: vi.fn(),
   mockReorderGenres: vi.fn(),
   mockUpdateGenre: vi.fn(),
+  mockUploadGenreEyeCatchAspectImage: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -35,12 +41,36 @@ vi.mock("./api", () => ({
       listGenres: mockListGenres,
       reorderGenres: mockReorderGenres,
       updateGenre: mockUpdateGenre,
+      uploadGenreEyeCatchAspectImage: mockUploadGenreEyeCatchAspectImage,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
 }));
+
+/** The same failure, with the field the API names as the one it refused. */
+const invalidField = (message: string, field: string) =>
+  new ConnectError(message, Code.InvalidArgument, undefined, [
+    { desc: BadRequestSchema, value: { fieldViolations: [{ field }] } },
+  ]);
+
+/** A genre as the console maps it when the API sent no eye-catch. */
+const withoutEyeCatch = (genre: {
+  name: string;
+  publicId: string;
+  slug: string;
+}) => ({ ...genre, eyeCatchImageUpdatedAt: "", eyeCatchImageVariants: [] });
+
+const squareVariant = {
+  contentType: "image/webp",
+  fileSizeBytes: 1024,
+  height: 1200,
+  label: "square_1200w",
+  url: "https://cdn.example.com/genres/GENRE001/square.webp",
+  variantType: "square",
+  width: 1200,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -68,9 +98,21 @@ describe("listGenres", () => {
 
     expect(result).toEqual({
       genres: [
-        { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
-        { name: "Mystery", publicId: "GENRE002", slug: "mystery" },
-        { name: "Romance", publicId: "GENRE003", slug: "romance" },
+        withoutEyeCatch({
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        }),
+        withoutEyeCatch({
+          name: "Mystery",
+          publicId: "GENRE002",
+          slug: "mystery",
+        }),
+        withoutEyeCatch({
+          name: "Romance",
+          publicId: "GENRE003",
+          slug: "romance",
+        }),
       ],
       ok: true,
     });
@@ -93,6 +135,45 @@ describe("listGenres", () => {
       genres: [],
       ok: false,
       requiresSignIn: true,
+    });
+  });
+
+  it("keeps the eye-catch variants and drops one without a URL", async () => {
+    mockListGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
+          eyeCatchImageVariants: [
+            { ...squareVariant, fileSizeBytes: 1024n },
+            {
+              ...squareVariant,
+              fileSizeBytes: 0n,
+              label: "square_600w",
+              url: "",
+            },
+          ],
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const { listGenres } = await import("./genre");
+    const result = await listGenres("TENANT001", "en");
+
+    expect(result).toEqual({
+      genres: [
+        {
+          eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
+          eyeCatchImageVariants: [squareVariant],
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
+      ],
+      ok: true,
     });
   });
 
@@ -138,7 +219,11 @@ describe("createGenre", () => {
     );
 
     expect(result).toEqual({
-      genre: { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+      genre: withoutEyeCatch({
+        name: "Fantasy",
+        publicId: "GENRE001",
+        slug: "fantasy",
+      }),
       ok: true,
     });
     expect(mockCreateGenre).toHaveBeenCalledWith(
@@ -168,6 +253,179 @@ describe("updateGenre", () => {
         "Enter a genre name of at most 50 characters that holds at least one letter or number.",
       ok: false,
     });
+  });
+});
+
+describe("getGenre", () => {
+  it("picks the genre out of the tenant's list", async () => {
+    mockListGenres.mockResolvedValueOnce({
+      genres: [
+        { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+        { name: "Mystery", publicId: "GENRE002", slug: "mystery" },
+      ],
+      nextToken: "",
+    });
+
+    const { getGenre } = await import("./genre");
+    const result = await getGenre(
+      { publicId: "GENRE002", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      genre: withoutEyeCatch({
+        name: "Mystery",
+        publicId: "GENRE002",
+        slug: "mystery",
+      }),
+      ok: true,
+    });
+  });
+
+  it("answers not found for a genre the tenant does not have", async () => {
+    mockListGenres.mockResolvedValueOnce({
+      genres: [{ name: "Fantasy", publicId: "GENRE001", slug: "fantasy" }],
+      nextToken: "",
+    });
+
+    const { getGenre } = await import("./genre");
+    const result = await getGenre(
+      { publicId: "GENRE404", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ notFound: true, ok: false });
+  });
+
+  it("passes on a failed read with the login redirect it needs", async () => {
+    mockListGenres.mockRejectedValue(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { getGenre } = await import("./genre");
+    const result = await getGenre(
+      { publicId: "GENRE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+  });
+});
+
+describe("updateGenre with an eye-catch", () => {
+  it("sends the image and the delete flag beside the name", async () => {
+    mockUpdateGenre.mockResolvedValue({
+      genre: { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+    });
+
+    const { updateGenre } = await import("./genre");
+    await updateGenre(
+      {
+        clearEyeCatchImage: false,
+        eyeCatchImageContentType: "image/png",
+        eyeCatchImageData: new Uint8Array([1, 2, 3]),
+        name: "Fantasy",
+        publicId: "GENRE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateGenre).toHaveBeenCalledWith(
+      {
+        clearEyeCatchImage: false,
+        eyeCatchImageContentType: "image/png",
+        eyeCatchImageData: new Uint8Array([1, 2, 3]),
+        name: "Fantasy",
+        publicId: "GENRE001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("words a refused image as the image rather than the name", async () => {
+    mockUpdateGenre.mockRejectedValue(
+      invalidField("image is too small", "eye_catch_image_data")
+    );
+
+    const { updateGenre } = await import("./genre");
+    const result = await updateGenre(
+      {
+        eyeCatchImageData: new Uint8Array([1]),
+        name: "Fantasy",
+        publicId: "GENRE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
+      ok: false,
+    });
+  });
+});
+
+describe("uploadGenreEyeCatchAspectImage", () => {
+  it("returns the genre with the ratio it replaced", async () => {
+    mockUploadGenreEyeCatchAspectImage.mockResolvedValue({
+      genre: {
+        eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
+        eyeCatchImageVariants: [squareVariant],
+        name: "Fantasy",
+        publicId: "GENRE001",
+        slug: "fantasy",
+      },
+    });
+
+    const { uploadGenreEyeCatchAspectImage } = await import("./genre");
+    const result = await uploadGenreEyeCatchAspectImage(
+      {
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1]),
+        publicId: "GENRE001",
+        tenantId: "TENANT001",
+        variantType: "square",
+      },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      genre: { eyeCatchImageVariants: [squareVariant] },
+      ok: true,
+    });
+    expect(mockUploadGenreEyeCatchAspectImage).toHaveBeenCalledWith(
+      {
+        crop: undefined,
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1]),
+        publicId: "GENRE001",
+        tenant: { tenantId: "TENANT001" },
+        variantType: "square",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("leaves a refused image to the slot that sent it", async () => {
+    mockUploadGenreEyeCatchAspectImage.mockRejectedValue(
+      invalidField("image is too small", "image_data")
+    );
+
+    const { uploadGenreEyeCatchAspectImage } = await import("./genre");
+    const result = await uploadGenreEyeCatchAspectImage(
+      {
+        imageData: new Uint8Array([1]),
+        publicId: "GENRE001",
+        tenantId: "TENANT001",
+        variantType: "square",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ imageRejected: true, ok: false });
   });
 });
 

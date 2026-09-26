@@ -1,8 +1,12 @@
+import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+
 /** One row of the genre list, in the order the tenant put its genres in. */
 export interface GenreListItem {
   publicId: string;
   name: string;
   slug: string;
+  eyeCatchImageUpdatedAt: string;
+  eyeCatchImageVariants: EyeCatchVariantItem[];
 }
 
 /**
