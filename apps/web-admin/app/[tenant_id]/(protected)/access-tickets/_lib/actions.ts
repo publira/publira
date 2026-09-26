@@ -74,10 +74,10 @@ const revokeTicketSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    publicId: requiredTrimmedString(
+    tenantId: requiredTrimmedString(
       t("admin.access_tickets.validation.revoke_target")
     ),
-    tenantId: requiredTrimmedString(
+    ticketId: requiredTrimmedString(
       t("admin.access_tickets.validation.revoke_target")
     ),
   });
@@ -223,29 +223,29 @@ export const revokeAccessTicketAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const input = toFormDataInput(formData, {
-    publicId: { kind: "value", name: "public_id" },
     tenantId: { kind: "value", name: "tenant_id" },
+    ticketId: { kind: "value", name: "access_ticket_id" },
   });
   const schema = await revokeTicketSchema(locale);
   const parsed = schema.safeParse(input);
-  const publicId =
-    typeof input.publicId === "string" ? input.publicId.trim() : "";
+  const ticketId =
+    typeof input.ticketId === "string" ? input.ticketId.trim() : "";
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      publicId,
+      ticketId,
     };
   }
 
   const result = await withAdminSessionReauth(() =>
-    revokeAccessTicket(parsed.data.tenantId, parsed.data.publicId, locale)
+    revokeAccessTicket(parsed.data.tenantId, parsed.data.ticketId, locale)
   );
   if (!result.ok) {
     return {
       message: result.message,
       ok: false,
-      publicId: parsed.data.publicId,
+      ticketId: parsed.data.ticketId,
     };
   }
 
@@ -254,6 +254,6 @@ export const revokeAccessTicketAction = async (
   return {
     message: t("admin.access_tickets.revoked"),
     ok: true,
-    publicId: parsed.data.publicId,
+    ticketId: parsed.data.ticketId,
   };
 };

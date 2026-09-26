@@ -123,7 +123,7 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_owner", user_public_id: "USER001" })
+      formData({ role: "tenant_owner", user_id: "USER001" })
     );
 
     expect(result).toEqual({ message: "Choose a role.", ok: false });
@@ -138,7 +138,7 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_editor", user_public_id: "USER001" })
+      formData({ role: "tenant_editor", user_id: "USER001" })
     );
 
     expect(result).toEqual({ message: refusal, ok: false });
@@ -151,7 +151,7 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_auditor", user_public_id: "USER001" })
+      formData({ role: "tenant_auditor", user_id: "USER001" })
     );
 
     expect(result).toEqual({ message: "Role updated.", ok: true });
@@ -159,7 +159,7 @@ describe("updateTenantMemberRoleAction", () => {
       {
         role: "tenant_auditor",
         tenantId: "TENANT001",
-        userPublicId: "USER001",
+        userId: "USER001",
       },
       "en"
     );
@@ -171,13 +171,13 @@ describe("removeTenantMemberAction", () => {
   it("removes the member and drops the member list", async () => {
     mockRemoveMember.mockResolvedValueOnce({
       ok: true,
-      userPublicId: "USER001",
+      userId: "USER001",
     });
     const { removeTenantMemberAction } = await import("./actions");
 
     const result = await removeTenantMemberAction(
       null,
-      formData({ user_public_id: "USER001" })
+      formData({ user_id: "USER001" })
     );
 
     expect(result).toEqual({ message: "Member removed.", ok: true });

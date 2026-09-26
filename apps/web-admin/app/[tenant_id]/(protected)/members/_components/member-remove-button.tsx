@@ -28,7 +28,7 @@ import { removeTenantMemberAction } from "../_lib/actions";
 
 interface MemberRemoveButtonProps {
   name: string;
-  userPublicId: string;
+  userId: string;
 }
 
 /**
@@ -38,7 +38,7 @@ interface MemberRemoveButtonProps {
  */
 export const MemberRemoveButton = ({
   name,
-  userPublicId,
+  userId,
 }: MemberRemoveButtonProps) => {
   const tenantId = useTenantId();
   const { add } = useToastManager();
@@ -61,7 +61,7 @@ export const MemberRemoveButton = ({
   return (
     <form action={formAction} className="grid gap-1" ref={formRef}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="user_public_id" type="hidden" value={userPublicId} />
+      <input name="user_id" type="hidden" value={userId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={

@@ -48,6 +48,7 @@ describe("ChangeBirthDateButton", () => {
         birthDate="2000-01-01"
         name="Ada Lovelace"
         publicId="READER001"
+        readerId="01920000-0000-7000-8000-000000000001"
         tenantId="TENANT001"
       />
     );
@@ -78,6 +79,7 @@ describe("ChangeBirthDateButton", () => {
         birthDate="2000-01-01"
         name="Ada Lovelace"
         publicId="READER001"
+        readerId="01920000-0000-7000-8000-000000000001"
         tenantId="TENANT001"
       />
     );

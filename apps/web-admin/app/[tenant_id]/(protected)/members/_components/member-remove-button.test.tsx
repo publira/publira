@@ -45,7 +45,7 @@ const EnglishConsole = ({ children }: { children: ReactNode }) => (
 
 const renderButton = async () => {
   await act(() => {
-    render(<MemberRemoveButton name="Riley Editor" userPublicId="USER001" />, {
+    render(<MemberRemoveButton name="Riley Editor" userId="USER001" />, {
       wrapper: EnglishConsole,
     });
   });
@@ -89,7 +89,7 @@ describe("MemberRemoveButton", () => {
     await confirmRemove();
 
     const [[, formData]] = remove.mock.calls;
-    expect(formData.get("user_public_id")).toBe("USER001");
+    expect(formData.get("user_id")).toBe("USER001");
     expect(formData.get("tenant_id")).toBe("TENANT001");
   });
 

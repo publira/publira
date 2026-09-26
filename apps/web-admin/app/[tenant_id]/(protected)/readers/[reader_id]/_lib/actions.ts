@@ -18,13 +18,19 @@ import { getMessagesFor } from "#lib/messages";
 import { moderateReader, setReaderBirthDate } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
 
+/**
+ * The reader an action addresses (`reader_id`), and the public ID its page is
+ * found at (`public_id`), which the action redirects back to.
+ */
 const readerActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+  const target = requiredTrimmedString(
+    t("admin.readers.validation.target_missing")
+  );
 
   return z.object({
-    publicId: requiredTrimmedString(
-      t("admin.readers.validation.target_missing")
-    ),
+    publicId: target,
+    readerId: target,
     tenantId: requiredTrimmedString(
       t("admin.readers.validation.tenant_missing")
     ),
@@ -33,8 +39,13 @@ const readerActionSchema = async (locale: Locale) => {
 
 const readerActionFormFields = {
   publicId: { kind: "value", name: "public_id" },
+  readerId: { kind: "value", name: "reader_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
+
+/** The reader's page, with the flash flag that raises its toast. */
+const readerPage = (publicId: string, flash: string): string =>
+  `/readers/${encodeURIComponent(publicId)}?${flash}=1`;
 
 /**
  * Runs one moderation action and answers where to go next: the returned state
@@ -60,8 +71,9 @@ const moderate = async (
     };
   }
 
+  const { readerId, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    moderateReader({ action, ...parsed.data }, locale)
+    moderateReader({ action, readerId, tenantId }, locale)
   );
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };
@@ -81,7 +93,7 @@ export const suspendReaderAction = async (
   if ("state" in outcome) {
     return outcome.state;
   }
-  redirect(`/readers/${encodeURIComponent(outcome.publicId)}?suspended=1`);
+  redirect(readerPage(outcome.publicId, "suspended"));
 };
 
 export const unsuspendReaderAction = async (
@@ -92,7 +104,7 @@ export const unsuspendReaderAction = async (
   if ("state" in outcome) {
     return outcome.state;
   }
-  redirect(`/readers/${encodeURIComponent(outcome.publicId)}?unsuspended=1`);
+  redirect(readerPage(outcome.publicId, "unsuspended"));
 };
 
 const birthDateFormFields = {
@@ -119,16 +131,15 @@ export const setReaderBirthDateAction = async (
     };
   }
 
+  const { birthDate, publicId, readerId, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    setReaderBirthDate(parsed.data, locale)
+    setReaderBirthDate({ birthDate, readerId, tenantId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
-  redirect(
-    `/readers/${encodeURIComponent(parsed.data.publicId)}?birth_date_updated=1`
-  );
+  redirect(readerPage(publicId, "birth_date_updated"));
 };
 
 export const deleteReaderAction = async (

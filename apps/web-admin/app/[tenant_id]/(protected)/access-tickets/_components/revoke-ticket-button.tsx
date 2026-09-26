@@ -27,10 +27,10 @@ import { revokeAccessTicketAction } from "../_lib/actions";
 import type { RevokeAccessTicketActionState } from "../ticket-types";
 
 interface RevokeTicketButtonProps {
-  publicId: string;
+  ticketId: string;
 }
 
-export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
+export const RevokeTicketButton = ({ ticketId }: RevokeTicketButtonProps) => {
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { add } = useToastManager();
@@ -57,7 +57,7 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
   return (
     <form action={formAction} className="grid gap-1" ref={formRef}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={publicId} />
+      <input name="access_ticket_id" type="hidden" value={ticketId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -99,7 +99,7 @@ export const RevokeTicketButton = ({ publicId }: RevokeTicketButtonProps) => {
           </ConfirmDialogFooter>
         </ConfirmDialogContent>
       </ConfirmDialog>
-      {state && !state.ok && state.publicId === publicId ? (
+      {state && !state.ok && state.ticketId === ticketId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
     </form>

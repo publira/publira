@@ -15,6 +15,8 @@ export interface ReaderItem {
   /** When the account was created, as an absolute API timestamp. */
   createdAt: string;
   email: string;
+  /** The internal ID every reader action addresses the reader by. */
+  id: string;
   name: string;
   publicId: string;
   status: ReaderStatus;

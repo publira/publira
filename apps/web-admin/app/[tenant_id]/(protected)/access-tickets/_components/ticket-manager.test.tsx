@@ -46,8 +46,8 @@ vi.mock("next/link", () => ({
 // The revoke button is a client component carrying a Server Action and
 // useRouter, so all that is checked here is that the list renders one per row.
 vi.mock("./revoke-ticket-button", () => ({
-  RevokeTicketButton: ({ publicId }: { publicId: string }) => (
-    <button type="button">{`Revoke ${publicId}`}</button>
+  RevokeTicketButton: ({ ticketId }: { ticketId: string }) => (
+    <button type="button">{`Revoke ${ticketId}`}</button>
   ),
 }));
 
@@ -56,6 +56,7 @@ const ticket = (publicId: string): AccessTicketItem => ({
   episodePublicId: "EPISODE001",
   episodeTitle: "Episode 1",
   expiresAt: "",
+  id: `id-${publicId}`,
   note: "",
   publicId,
   revokedAt: "",
@@ -122,7 +123,7 @@ describe("TicketManager", () => {
 
     expect(screen.getByText("Active")).toBeDefined();
     expect(screen.getByText("For review")).toBeDefined();
-    expect(screen.getByText("Revoke TICKET001")).toBeDefined();
+    expect(screen.getByText("Revoke id-TICKET001")).toBeDefined();
   });
 
   it("renders the per-row actions and the pager on a later page", async () => {
@@ -137,7 +138,7 @@ describe("TicketManager", () => {
       })
     );
 
-    expect(screen.getByText("Revoke TICKET001")).toBeDefined();
+    expect(screen.getByText("Revoke id-TICKET001")).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Previous" }).getAttribute("href")
     ).toBe("?token=previous");

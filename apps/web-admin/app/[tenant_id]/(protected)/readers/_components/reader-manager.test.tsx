@@ -34,6 +34,7 @@ vi.mock("next/link", () => ({
 const reader = (overrides: Partial<ReaderItem> = {}): ReaderItem => ({
   createdAt: "2026-06-01T20:00:00Z",
   email: "reader@example.com",
+  id: "01920000-0000-7000-8000-000000000001",
   name: "Reader One",
   publicId: "READER00001",
   status: "active",

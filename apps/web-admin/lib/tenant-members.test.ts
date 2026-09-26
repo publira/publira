@@ -97,7 +97,7 @@ describe("listTenantMembers", () => {
           name: "Avery Admin",
           role: "tenant_admin",
           status: "active",
-          userPublicId: "USER001",
+          userId: "USER001",
         },
       ],
       nextToken: "next",
@@ -117,7 +117,7 @@ describe("listTenantMembers", () => {
           name: "Avery Admin",
           role: "tenant_admin",
           status: "active",
-          userPublicId: "USER001",
+          userId: "USER001",
         },
       ],
       nextToken: "next",
@@ -196,7 +196,7 @@ describe("updateTenantMemberRole", () => {
       const { updateTenantMemberRole } = await import("./tenant-members");
 
       const result = await updateTenantMemberRole(
-        { role: "tenant_editor", tenantId: "TENANT001", userPublicId: "U1" },
+        { role: "tenant_editor", tenantId: "TENANT001", userId: "U1" },
         locale
       );
 
@@ -214,7 +214,7 @@ describe("updateTenantMemberRole", () => {
     const { updateTenantMemberRole } = await import("./tenant-members");
 
     const result = await updateTenantMemberRole(
-      { role: "tenant_editor", tenantId: "TENANT001", userPublicId: "U1" },
+      { role: "tenant_editor", tenantId: "TENANT001", userId: "U1" },
       "en"
     );
 
@@ -233,7 +233,7 @@ describe("removeTenantMember", () => {
       const { removeTenantMember } = await import("./tenant-members");
 
       const result = await removeTenantMember(
-        { tenantId: "TENANT001", userPublicId: "U1" },
+        { tenantId: "TENANT001", userId: "U1" },
         locale
       );
 
@@ -251,7 +251,7 @@ describe("removeTenantMember", () => {
     const { removeTenantMember } = await import("./tenant-members");
 
     const result = await removeTenantMember(
-      { tenantId: "TENANT001", userPublicId: "U1" },
+      { tenantId: "TENANT001", userId: "U1" },
       "en"
     );
 

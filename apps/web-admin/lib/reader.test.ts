@@ -39,11 +39,14 @@ vi.mock("./api", () => ({
   }),
 }));
 
+const READER_ID = "01920000-0000-7000-8000-000000000001";
+
 const adminReader = {
   birthDate: "1990-04-02",
   createdAt: "2026-06-01T00:00:00Z",
   email: "reader@example.com",
   emailVerifiedAt: "2026-06-01T00:05:00Z",
+  id: READER_ID,
   name: "Reader One",
   publicId: "READER00001",
   status: "suspended",
@@ -89,6 +92,7 @@ describe("reader lib", () => {
         {
           createdAt: "2026-06-01T00:00:00Z",
           email: "reader@example.com",
+          id: READER_ID,
           name: "Reader One",
           publicId: "READER00001",
           status: "suspended",
@@ -174,6 +178,7 @@ describe("reader lib", () => {
         createdAt: "2026-06-01T00:00:00Z",
         email: "reader@example.com",
         emailVerifiedAt: "2026-06-01T00:05:00Z",
+        id: READER_ID,
         name: "Reader One",
         publicId: "READER00001",
         status: "suspended",
@@ -233,12 +238,12 @@ describe("reader lib", () => {
 
     const { moderateReader } = await import("./reader");
     const result = await moderateReader(
-      { action, publicId: "READER00001", tenantId: "TENANT001" },
+      { action, readerId: READER_ID, tenantId: "TENANT001" },
       "en"
     );
 
     expect(rpc).toHaveBeenCalledWith(
-      { publicId: "READER00001", tenant: { tenantId: "TENANT001" } },
+      { readerId: READER_ID, tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({ ok: true });
@@ -251,7 +256,7 @@ describe("reader lib", () => {
 
     const { moderateReader } = await import("./reader");
     const result = await moderateReader(
-      { action: "suspend", publicId: "READER00001", tenantId: "TENANT001" },
+      { action: "suspend", readerId: READER_ID, tenantId: "TENANT001" },
       "en"
     );
 
@@ -267,7 +272,7 @@ describe("reader lib", () => {
 
     await expect(
       moderateReader(
-        { action: "delete", publicId: "READER00001", tenantId: "TENANT001" },
+        { action: "delete", readerId: READER_ID, tenantId: "TENANT001" },
         "en"
       )
     ).rejects.toThrow();
@@ -278,7 +283,7 @@ describe("reader lib", () => {
 
     const { moderateReader } = await import("./reader");
     const result = await moderateReader(
-      { action: "delete", publicId: "READER00001", tenantId: "TENANT001" },
+      { action: "delete", readerId: READER_ID, tenantId: "TENANT001" },
       "en"
     );
 
@@ -293,14 +298,14 @@ describe("reader lib", () => {
 
       const { setReaderBirthDate } = await import("./reader");
       const result = await setReaderBirthDate(
-        { birthDate, publicId: "READER00001", tenantId: "TENANT001" },
+        { birthDate, readerId: READER_ID, tenantId: "TENANT001" },
         "en"
       );
 
       expect(mockSetReaderBirthDate).toHaveBeenCalledWith(
         {
           birthDate,
-          publicId: "READER00001",
+          readerId: READER_ID,
           tenant: { tenantId: "TENANT001" },
         },
         { headers: { Authorization: "Bearer session-token" } }
@@ -318,7 +323,7 @@ describe("reader lib", () => {
     const result = await setReaderBirthDate(
       {
         birthDate: "2999-01-01",
-        publicId: "READER00001",
+        readerId: READER_ID,
         tenantId: "TENANT001",
       },
       "en"
@@ -339,7 +344,7 @@ describe("reader lib", () => {
 
     await expect(
       setReaderBirthDate(
-        { birthDate: "", publicId: "READER00001", tenantId: "TENANT001" },
+        { birthDate: "", readerId: READER_ID, tenantId: "TENANT001" },
         "en"
       )
     ).rejects.toThrow();

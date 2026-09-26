@@ -27,7 +27,7 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface TenantMemberItem {
-  userPublicId: string;
+  userId: string;
   name: string;
   email: string;
   role: string;
@@ -72,7 +72,7 @@ export type UpdateTenantMemberRoleResult =
   | { ok: false; message: string };
 
 export type RemoveTenantMemberResult =
-  | { ok: true; userPublicId: string }
+  | { ok: true; userId: string }
   | { ok: false; message: string };
 
 /**
@@ -97,7 +97,7 @@ export const tenantAdminInvitationsCacheTag = (tenantId: string): string =>
 
 type RawTenantMember = Pick<
   TenantMember,
-  "createdAt" | "email" | "name" | "role" | "status" | "userPublicId"
+  "createdAt" | "email" | "name" | "role" | "status" | "userId"
 >;
 
 const mapTenantMember = (member: RawTenantMember): TenantMemberItem => ({
@@ -106,7 +106,7 @@ const mapTenantMember = (member: RawTenantMember): TenantMemberItem => ({
   name: member.name ?? "",
   role: member.role ?? "",
   status: member.status ?? "",
-  userPublicId: member.userPublicId ?? "",
+  userId: member.userId ?? "",
 });
 
 type RawTenantAdminInvitation = Pick<
@@ -250,7 +250,7 @@ export const listTenantAdminInvitations = async (
 };
 
 export const updateTenantMemberRole = async (
-  input: { tenantId: string; userPublicId: string; role: string },
+  input: { tenantId: string; userId: string; role: string },
   locale: Locale
 ): Promise<UpdateTenantMemberRoleResult> => {
   const [t, sessionId] = await Promise.all([
@@ -266,11 +266,11 @@ export const updateTenantMemberRole = async (
       {
         role: input.role,
         tenant: { tenantId: input.tenantId },
-        userPublicId: input.userPublicId,
+        userId: input.userId,
       },
       withSessionHeaders(sessionId)
     );
-    if (!response.member?.userPublicId?.trim()) {
+    if (!response.member?.userId?.trim()) {
       return { message: t("admin.members.role_update_failed"), ok: false };
     }
 
@@ -295,7 +295,7 @@ export const updateTenantMemberRole = async (
 };
 
 export const removeTenantMember = async (
-  input: { tenantId: string; userPublicId: string },
+  input: { tenantId: string; userId: string },
   locale: Locale
 ): Promise<RemoveTenantMemberResult> => {
   const [t, sessionId] = await Promise.all([
@@ -310,14 +310,14 @@ export const removeTenantMember = async (
     const response = await apiClient.members.removeTenantMember(
       {
         tenant: { tenantId: input.tenantId },
-        userPublicId: input.userPublicId,
+        userId: input.userId,
       },
       withSessionHeaders(sessionId)
     );
 
     return {
       ok: true,
-      userPublicId: response.userPublicId || input.userPublicId,
+      userId: response.userId || input.userId,
     };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
