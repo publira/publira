@@ -126,7 +126,7 @@ Web and Node use `turbo prune --docker` according to the [Turborepo Docker guide
 
 ### Main runtime environment variables (reference)
 
-- Web: `PORT`, `HOSTNAME` (an image default is present), **`PUBLIRA_AUTH_SECRET` (required; at least 32 bytes; leaving it unset makes session-Cookie encryption and decryption throw)**, `PUBLIRA_REDIS_URL`, and `PUBLIRA_CACHE_APP` (defaults to `APP_NAME` at build time)
+- Web: `PORT`, `HOSTNAME` (an image default is present), **`PUBLIRA_AUTH_SECRET` (required; at least 32 bytes; leaving it unset makes session-Cookie encryption and decryption throw)**, and the [`@publira/next-cache-handlers`](https://www.npmjs.com/package/@publira/next-cache-handlers) variables: `PNCH_REDIS_URL`, `PNCH_REVALIDATE_TOKEN` (the server's `PUBLIRA_REDIS_URL` and `PUBLIRA_REVALIDATE_TOKEN` values), and `PNCH_CACHE_APP` (defaults to `APP_NAME` at build time)
 - Server: **`PUBLIRA_AUTH_JWT_SECRET` (required for `server`; at least 32 bytes; without it, the process cannot start because it has no access-token signing key)**, and the `PUBLIRA_*_DB_URL` of the roles each process connects as. The binary configures its listeners; the `EXPOSE` lines are documentation metadata.
 - Node: `PORT` (default: 8080) and `HOST` (image default: `0.0.0.0`). The email renderer has no external dependencies, so it requires no other variables.
 

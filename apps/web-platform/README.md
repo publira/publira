@@ -48,7 +48,7 @@ pnpm dev --filter @publira/web-platform
 
 ### Internal cache revalidation
 
-`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PUBLIRA_REVALIDATE_TOKEN` against the `X-Revalidate-Token` header and calls `revalidateTag(tag, "max")` on the tags it receives, without restricting them by tenant ID. This path bypasses the setup check and the session authentication in `proxy.ts`. The destination is `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on the private network.
+`POST /api/v1/revalidate` is the revalidation entry point reserved for the Go server. It checks `PNCH_REVALIDATE_TOKEN`, set to the server's `PUBLIRA_REVALIDATE_TOKEN`, against the `X-Revalidate-Token` header and calls `revalidateTag(tag, "max")` on the tags it receives (`@publira/next-cache-handlers/revalidate`), without restricting them by tenant ID. This path bypasses the setup check and the session authentication in `proxy.ts`. The destination is `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on the private network.
 
 ### Distributed tracing
 

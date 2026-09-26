@@ -46,6 +46,8 @@ export PUBLIRA_WORKER_DB_URL="postgres://publira_outbox:outboxpass@127.0.0.1:${P
 export PUBLIRA_TICKER_DB_URL="postgres://publira_ticker:tickerpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_CONTENT_STATS_DB_URL="postgres://publira_content_stats:contentstatspass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:${PUBLIRA_BOOTSTRAP_REDIS_PORT}"
+# The same Redis, under the name @publira/next-cache-handlers reads in the apps.
+export PNCH_REDIS_URL="${PUBLIRA_REDIS_URL}"
 # Session cookie (JWE) key for the three Next.js apps, required and without a
 # fallback. `task dev` runs on the host, so the value the Dev Container's
 # compose file supplies is not in scope here; export one for the check.

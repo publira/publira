@@ -146,6 +146,13 @@ else
   fail "PUBLIRA_E2E_REDIS_PORT=6381 produced PUBLIRA_REDIS_URL=${port_redis}"
 fi
 
+app_redis="$(stack_env PNCH_REDIS_URL=redis://redis:6379 bash -c 'source "$1"; printf %s "$PNCH_REDIS_URL"' bash "${LIB}")"
+if [[ "${app_redis}" == "redis://127.0.0.1:6380" ]]; then
+  pass "the apps' PNCH_REDIS_URL is the E2E Redis, not the ambient one"
+else
+  fail "ambient PNCH_REDIS_URL leaked through as ${app_redis}"
+fi
+
 compute_s3_endpoint() {
   stack_env "$@" bash -c 'source "$1"; printf %s "$PUBLIRA_S3_ENDPOINT"' bash "${LIB}"
 }

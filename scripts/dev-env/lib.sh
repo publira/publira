@@ -413,6 +413,11 @@ dev_env_load_profile() {
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
+
+  # @publira/next-cache-handlers reads the Redis and the revalidation token the
+  # server shares with the web apps under names of its own.
+  export PNCH_REDIS_URL="${PUBLIRA_REDIS_URL}"
+  export PNCH_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}"
 }
 
 dev_env_selected_profile() {

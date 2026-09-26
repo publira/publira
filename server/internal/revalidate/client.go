@@ -12,7 +12,7 @@
 // never the reverse proxy: this is server-to-server traffic, and routing it
 // through the edge would make an internal cache invalidation depend on the
 // tenant domain in Host. All three are required together, because each app
-// keeps its own Redis key space under PUBLIRA_CACHE_APP and the same tag has
+// keeps its own Redis key space under PNCH_CACHE_APP and the same tag has
 // to reach all of them. A missing or malformed URL therefore disables
 // revalidation for the whole process rather than leaving one app stale; the
 // caller logs the reason and starts anyway, since serving from a cache that

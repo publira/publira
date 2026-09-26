@@ -15,8 +15,8 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "PUBLIRA_CACHE_APP=web-host next dev --port ${PORT:-3000}",
-    "start": "PUBLIRA_CACHE_APP=web-host next start",
+    "dev": "PNCH_CACHE_APP=web-host next dev --port ${PORT:-3000}",
+    "start": "PNCH_CACHE_APP=web-host next start",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit",
     "typegen": "next typegen"
@@ -30,7 +30,7 @@
     "@publira/i18n": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
-    "@publira/next-cache-handlers": "workspace:*",
+    "@publira/next-cache-handlers": "catalog:",
     "@publira/tracing": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
