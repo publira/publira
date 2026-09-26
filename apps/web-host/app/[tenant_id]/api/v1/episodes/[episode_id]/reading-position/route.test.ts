@@ -11,8 +11,7 @@ vi.mock("#lib/reading-position", () => ({
 const { POST } = await import("./route");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
-const SERIES_ID = "SR_001";
-const EPISODE_ID = "EP_001";
+const EPISODE_ID = "22222222-2222-4222-8222-222222222222";
 
 const SAME_ORIGIN_HEADERS = {
   host: "shop.example.test",
@@ -24,23 +23,18 @@ const beacon = (
   headers = SAME_ORIGIN_HEADERS
 ) =>
   new Request(
-    `https://shop.example.test/api/v1/series/${SERIES_ID}/episodes/${EPISODE_ID}/reading-position`,
+    `https://shop.example.test/api/v1/episodes/${EPISODE_ID}/reading-position`,
     { body, headers, method: "POST" }
   );
 
-const params = (overrides?: {
-  episodeId?: string;
-  seriesId?: string;
-  tenantId?: string;
-}) => ({
+const params = (overrides?: { episodeId?: string; tenantId?: string }) => ({
   params: Promise.resolve({
     episode_id: overrides?.episodeId ?? EPISODE_ID,
-    series_id: overrides?.seriesId ?? SERIES_ID,
     tenant_id: overrides?.tenantId ?? TENANT_ID,
   }),
 });
 
-describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/reading-position", () => {
+describe("POST /api/v1/episodes/[episode_id]/reading-position", () => {
   beforeEach(() => {
     mockSaveReadingPosition.mockReturnValue(Promise.resolve());
   });
@@ -50,7 +44,7 @@ describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/reading-position
 
     expect(response.status).toBe(204);
     expect(mockSaveReadingPosition).toHaveBeenCalledWith({
-      episodePublicId: EPISODE_ID,
+      episodeId: EPISODE_ID,
       pageIndex: 11,
       tenantId: TENANT_ID,
     });
@@ -60,7 +54,7 @@ describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/reading-position
     await POST(beacon(JSON.stringify({ pageIndex: 0 })), params());
 
     expect(mockSaveReadingPosition).toHaveBeenCalledWith({
-      episodePublicId: EPISODE_ID,
+      episodeId: EPISODE_ID,
       pageIndex: 0,
       tenantId: TENANT_ID,
     });
@@ -93,8 +87,8 @@ describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/reading-position
     expect(mockSaveReadingPosition).not.toHaveBeenCalled();
   });
 
-  it("saves nothing when the path names no series", async () => {
-    const response = await POST(beacon(), params({ seriesId: "  " }));
+  it("saves nothing when the path names the episode by its public ID", async () => {
+    const response = await POST(beacon(), params({ episodeId: "EP_001" }));
 
     expect(response.status).toBe(400);
     expect(mockSaveReadingPosition).not.toHaveBeenCalled();

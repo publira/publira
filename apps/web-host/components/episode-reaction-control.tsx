@@ -42,14 +42,14 @@ import { LocaleField } from "./locale-field";
  * control takes the live headcount from once they are signed in.
  */
 export const EpisodeReactionControl = async ({
-  episodePublicId,
+  episodeId,
   ratingCount,
   returnTo,
   seriesPublicId,
   size = "lg",
   tenantId,
 }: {
-  episodePublicId: string;
+  episodeId: string;
   ratingCount: number;
   returnTo: string;
   seriesPublicId: string;
@@ -59,7 +59,7 @@ export const EpisodeReactionControl = async ({
   const locale = await getLocale();
   const [defaultLocale, result] = await Promise.all([
     getTenantDefaultLocale(tenantId),
-    getMyEpisodeRating(tenantId, episodePublicId, locale),
+    getMyEpisodeRating(tenantId, episodeId, locale),
   ]);
 
   if (!result.ok) {
@@ -107,7 +107,7 @@ export const EpisodeReactionControl = async ({
         score={result.score}
       >
         <LocaleField />
-        <input name="episodePublicId" type="hidden" value={episodePublicId} />
+        <input name="episodeId" type="hidden" value={episodeId} />
         <input name="returnTo" type="hidden" value={returnTo} />
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <input name="tenantId" type="hidden" value={tenantId} />

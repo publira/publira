@@ -77,7 +77,7 @@ type CachedEpisodeRatingStatusResult = EpisodeRatingStatusResult & {
 
 const readMyEpisodeRating = async (
   tenantId: string,
-  episodePublicId: string,
+  episodeId: string,
   locale: Locale
 ): Promise<CachedEpisodeRatingStatusResult> => {
   "use cache: private";
@@ -101,7 +101,7 @@ const readMyEpisodeRating = async (
   try {
     const response = await apiClient.rating.getMyEpisodeRating(
       {
-        episodePublicId,
+        episodeId,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
@@ -154,11 +154,11 @@ const readMyEpisodeRating = async (
  */
 export const getMyEpisodeRating = async (
   tenantId: string,
-  episodePublicId: string,
+  episodeId: string,
   locale: Locale
 ): Promise<EpisodeRatingStatusResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readMyEpisodeRating(tenantId, episodePublicId, locale),
+    readMyEpisodeRating(tenantId, episodeId, locale),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(
@@ -169,7 +169,7 @@ export const getMyEpisodeRating = async (
 };
 
 export const rateEpisode = async (input: {
-  episodePublicId: string;
+  episodeId: string;
   locale: Locale;
   presses: number;
   tenantId: string;
@@ -191,7 +191,7 @@ export const rateEpisode = async (input: {
   try {
     const response = await apiClient.rating.rateEpisode(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         presses: input.presses,
         surface: ClientSurface.WEB,
         tenant: { tenantId: input.tenantId },

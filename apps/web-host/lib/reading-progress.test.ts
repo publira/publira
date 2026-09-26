@@ -31,6 +31,7 @@ vi.mock("./api-client", () => ({
 }));
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SERIES_ID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 const SERIES_PUBLIC_ID = "SERIES_001";
 const ACCESS_TOKEN = "session-token";
 
@@ -165,7 +166,7 @@ describe("getMySeriesProgress", () => {
 
   it("answers the episode the member last moved in", async () => {
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
       finishedEpisodePublicIds: [],
       ok: true,
@@ -174,7 +175,7 @@ describe("getMySeriesProgress", () => {
     });
     expect(mockGetMySeriesProgress).toHaveBeenCalledWith(
       {
-        seriesPublicId: SERIES_PUBLIC_ID,
+        seriesId: SERIES_ID,
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
       },
@@ -189,7 +190,7 @@ describe("getMySeriesProgress", () => {
     });
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toMatchObject({
       finishedEpisodePublicIds: ["EPISODE_001", "EPISODE_002"],
     });
@@ -201,7 +202,7 @@ describe("getMySeriesProgress", () => {
     });
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
       finishedEpisodePublicIds: ["EPISODE_001"],
       ok: true,
@@ -214,7 +215,7 @@ describe("getMySeriesProgress", () => {
     mockGetMySeriesProgress.mockResolvedValue({});
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
       finishedEpisodePublicIds: [],
       ok: true,
@@ -227,7 +228,7 @@ describe("getMySeriesProgress", () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
       finishedEpisodePublicIds: [],
       ok: true,
@@ -243,7 +244,7 @@ describe("getMySeriesProgress", () => {
     );
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
       finishedEpisodePublicIds: [],
       ok: true,
@@ -258,7 +259,7 @@ describe("getMySeriesProgress", () => {
     );
 
     await expect(
-      getMySeriesProgress(TENANT_ID, SERIES_PUBLIC_ID, "en")
+      getMySeriesProgress(TENANT_ID, SERIES_ID, "en")
     ).rejects.toThrow("boom");
   });
 });

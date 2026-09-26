@@ -55,7 +55,7 @@ afterEach(() => {
 const SeriesFollowButton = ({ isFollowing }: { isFollowing: boolean }) => (
   <FollowButton
     isFollowing={isFollowing}
-    publicId="SERIES01"
+    targetId="SERIES01-ID"
     returnTo="/series/SERIES01"
     targetKind="series"
     tenantId={tenantId}
@@ -134,7 +134,7 @@ describe("FollowButton", () => {
     });
     const formData: FormData = toggleFollowAction.mock.calls[0]?.[1];
     expect(formData.get("intent")).toBe("follow");
-    expect(formData.get("publicId")).toBe("SERIES01");
+    expect(formData.get("targetId")).toBe("SERIES01-ID");
     expect(screen.getByText("You are now following this series.")).toBeTruthy();
     expect(screen.getByDisplayValue("unfollow").getAttribute("name")).toBe(
       "intent"

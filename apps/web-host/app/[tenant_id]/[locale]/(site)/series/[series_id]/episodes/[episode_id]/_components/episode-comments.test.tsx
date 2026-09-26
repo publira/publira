@@ -100,13 +100,13 @@ vi.mock("./episode-comment-dialog", () => ({
 vi.mock("./comment-delete-button", () => ({
   CommentDeleteButton: ({
     "aria-label": ariaLabel,
-    commentPublicId,
+    commentId,
   }: {
     "aria-label": string;
-    commentPublicId: string;
+    commentId: string;
   }) => (
     <button aria-label={ariaLabel} type="button">
-      Delete {commentPublicId}
+      Delete {commentId}
     </button>
   ),
 }));
@@ -114,13 +114,13 @@ vi.mock("./comment-delete-button", () => ({
 vi.mock("./comment-report-button", () => ({
   CommentReportButton: ({
     "aria-label": ariaLabel,
-    commentPublicId,
+    commentId,
   }: {
     "aria-label": string;
-    commentPublicId: string;
+    commentId: string;
   }) => (
     <button aria-label={ariaLabel} type="button">
-      Report {commentPublicId}
+      Report {commentId}
     </button>
   ),
 }));
@@ -129,16 +129,16 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const viewer = { name: "Sample Member", publicId: "SeedMMBRAAA1", role: "" };
 
 const publicComment = (
-  publicId: string,
+  id: string,
   createdAt: string,
   overrides: Partial<EpisodeCommentItem> = {}
 ): EpisodeCommentItem => ({
   authorName: "Another Reader",
   authorPublicId: "OthrMMBRAAA1",
   awaitingApproval: false,
-  body: `Body of ${publicId}`,
+  body: `Body of ${id}`,
   createdAt,
-  publicId,
+  id,
   ...overrides,
 });
 
@@ -160,6 +160,7 @@ const renderSection = async (
 ) => {
   const section = await EpisodeComments({
     commentMode,
+    episodeId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     episodePublicId: "SeedEPSDAAA1",
     seriesPublicId: "SeedSERSAAA1",
     tenantId,
@@ -190,6 +191,7 @@ describe("EpisodeComments", () => {
   it("renders nothing at all where the series has commenting turned off", async () => {
     const section = await EpisodeComments({
       commentMode: "disabled",
+      episodeId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       episodePublicId: "SeedEPSDAAA1",
       seriesPublicId: "SeedSERSAAA1",
       tenantId,

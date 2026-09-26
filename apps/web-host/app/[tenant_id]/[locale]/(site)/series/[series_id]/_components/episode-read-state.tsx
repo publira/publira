@@ -23,7 +23,7 @@ import { resolveContinueOffer } from "../_lib/continue-offer";
  */
 const readSeriesProgress = async (
   tenantId: string,
-  seriesPublicId: string,
+  seriesId: string,
   locale: Locale
 ): Promise<{
   finishedEpisodePublicIds: string[];
@@ -37,7 +37,7 @@ const readSeriesProgress = async (
   };
 
   try {
-    const result = await getMySeriesProgress(tenantId, seriesPublicId, locale);
+    const result = await getMySeriesProgress(tenantId, seriesId, locale);
     return result.ok
       ? {
           finishedEpisodePublicIds: result.finishedEpisodePublicIds,
@@ -77,17 +77,17 @@ export const EpisodeReadMarkPlaceholder = () => (
 export const EpisodeReadMark = async ({
   episodePublicId,
   episodes,
-  seriesPublicId,
+  seriesId,
   tenantId,
 }: {
   episodePublicId: string;
   episodes: EpisodeItem[];
-  seriesPublicId: string;
+  seriesId: string;
   tenantId: string;
 }) => {
   const locale = await getLocale();
   const { finishedEpisodePublicIds, progress, signedIn } =
-    await readSeriesProgress(tenantId, seriesPublicId, locale);
+    await readSeriesProgress(tenantId, seriesId, locale);
 
   if (!signedIn) {
     return <EpisodeReadMarkPlaceholder />;
@@ -124,17 +124,17 @@ export const EpisodeReadMark = async ({
  */
 export const EpisodeReadMarker = async ({
   episodePublicId,
-  seriesPublicId,
+  seriesId,
   tenantId,
 }: {
   episodePublicId: string;
-  seriesPublicId: string;
+  seriesId: string;
   tenantId: string;
 }) => {
   const locale = await getLocale();
   const { finishedEpisodePublicIds } = await readSeriesProgress(
     tenantId,
-    seriesPublicId,
+    seriesId,
     locale
   );
 

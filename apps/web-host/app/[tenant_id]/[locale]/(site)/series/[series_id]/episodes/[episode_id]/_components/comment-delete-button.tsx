@@ -25,13 +25,13 @@ import { withdrawEpisodeCommentAction } from "../_lib/comment-actions";
  */
 export const CommentDeleteButton = ({
   "aria-label": ariaLabel,
-  commentPublicId,
+  commentId,
   episodePublicId,
   returnTo,
   tenantId,
 }: {
   "aria-label": string;
-  commentPublicId: string;
+  commentId: string;
   episodePublicId: string;
   returnTo: string;
   tenantId: string;
@@ -41,7 +41,7 @@ export const CommentDeleteButton = ({
     className="grid justify-items-end gap-2"
   >
     <LocaleField />
-    <input name="commentPublicId" type="hidden" value={commentPublicId} />
+    <input name="commentId" type="hidden" value={commentId} />
     <input name="episodePublicId" type="hidden" value={episodePublicId} />
     <input name="returnTo" type="hidden" value={returnTo} />
     <input name="tenantId" type="hidden" value={tenantId} />

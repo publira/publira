@@ -59,8 +59,8 @@ describe("recordContentView", () => {
     const set = cookieStore();
 
     await recordContentView({
+      id: "e0000000-0000-4000-8000-000000000001",
       kind: "episode",
-      publicId: "EP_001",
       tenantId: TENANT_ID,
     });
 
@@ -75,7 +75,10 @@ describe("recordContentView", () => {
     expect(mockRecordContentView).toHaveBeenCalledWith(
       {
         surface: ClientSurface.WEB,
-        target: { publicId: "EP_001", type: ContentViewTargetType.EPISODE },
+        target: {
+          id: "e0000000-0000-4000-8000-000000000001",
+          type: ContentViewTargetType.EPISODE,
+        },
         tenant: { tenantId: TENANT_ID },
       },
       { headers: { Cookie: `publira_aid=${written.value}` } }
@@ -86,8 +89,8 @@ describe("recordContentView", () => {
     const set = cookieStore(STORED_ACTOR_ID);
 
     await recordContentView({
+      id: "5e000000-0000-4000-8000-000000000001",
       kind: "series",
-      publicId: "SR_001",
       tenantId: TENANT_ID,
     });
 
@@ -95,7 +98,10 @@ describe("recordContentView", () => {
     expect(mockRecordContentView).toHaveBeenCalledWith(
       {
         surface: ClientSurface.WEB,
-        target: { publicId: "SR_001", type: ContentViewTargetType.SERIES },
+        target: {
+          id: "5e000000-0000-4000-8000-000000000001",
+          type: ContentViewTargetType.SERIES,
+        },
         tenant: { tenantId: TENANT_ID },
       },
       { headers: { Cookie: `publira_aid=${STORED_ACTOR_ID}` } }
@@ -108,8 +114,8 @@ describe("recordContentView", () => {
       const set = cookieStore(stored);
 
       await recordContentView({
+        id: "5e000000-0000-4000-8000-000000000001",
         kind: "series",
-        publicId: "SR_001",
         tenantId: TENANT_ID,
       });
 
@@ -123,8 +129,8 @@ describe("recordContentView", () => {
     mockResolveAccessToken.mockResolvedValue("header.payload.signature");
 
     await recordContentView({
+      id: "e0000000-0000-4000-8000-000000000001",
       kind: "episode",
-      publicId: "EP_001",
       tenantId: TENANT_ID,
     });
 
@@ -140,8 +146,8 @@ describe("recordContentView", () => {
 
     await expect(
       recordContentView({
+        id: "e0000000-0000-4000-8000-000000000001",
         kind: "episode",
-        publicId: "EP_001",
         tenantId: TENANT_ID,
       })
     ).resolves.toBeUndefined();

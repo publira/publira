@@ -164,9 +164,7 @@
     {
       "name": "The page a member stopped on",
       "web": {
-        "routes": [
-          "api/v1/series/[series_id]/episodes/[episode_id]/reading-position"
-        ],
+        "routes": ["api/v1/episodes/[episode_id]/reading-position"],
         "rpcs": ["GetMyReadingPosition", "SaveReadingPosition"]
       },
       "mobile": {
@@ -182,7 +180,7 @@
     {
       "name": "Finished-reading history",
       "web": {
-        "routes": ["api/v1/series/[series_id]/episodes/[episode_id]/read"],
+        "routes": ["api/v1/episodes/[episode_id]/read"],
         "rpcs": ["MarkEpisodeAsRead", "ListMyEpisodeReads"]
       },
       "mobile": {

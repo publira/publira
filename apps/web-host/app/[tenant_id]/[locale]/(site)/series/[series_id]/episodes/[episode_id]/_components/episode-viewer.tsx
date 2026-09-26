@@ -99,7 +99,7 @@ export const EpisodeViewer = async ({
   const [savedPageIndex, viewerPreferences] = await Promise.all([
     getMyReadingPosition({
       accessToken,
-      episodePublicId: episode.publicId,
+      episodeId: episode.id,
       tenantId,
     }),
     getMyViewerPreferences({ accessToken, tenantId }),
@@ -128,7 +128,7 @@ export const EpisodeViewer = async ({
             >
               <Suspense fallback={<EpisodeReactionSkeleton />}>
                 <EpisodeReactionControl
-                  episodePublicId={episode.publicId}
+                  episodeId={episode.id}
                   ratingCount={episode.ratingCount}
                   returnTo={episodePath(series.publicId, episode.publicId)}
                   seriesPublicId={series.publicId}
@@ -153,6 +153,7 @@ export const EpisodeViewer = async ({
                 <Suspense fallback={<EpisodeCommentsSkeleton />}>
                   <EpisodeComments
                     commentMode={commentMode}
+                    episodeId={episode.id}
                     episodePublicId={episode.publicId}
                     seriesPublicId={series.publicId}
                     tenantId={tenantId}
@@ -180,9 +181,9 @@ export const EpisodeViewer = async ({
         spreadStartIndex={episode.spreadStartIndex}
         wideViewerEnabled={viewerPreferences.wideViewerEnabled}
       >
-        <EpisodeReadRecorder episode={episode} series={series} />
+        <EpisodeReadRecorder episode={episode} />
         {accessToken ? (
-          <EpisodeReadingPositionRecorder episode={episode} series={series} />
+          <EpisodeReadingPositionRecorder episode={episode} />
         ) : null}
         <EpisodeNeighborKeyNavigation
           nextHref={nextHref}

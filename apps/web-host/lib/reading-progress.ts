@@ -206,7 +206,7 @@ export const listMyRecentSeries = async (
 export const getMySeriesProgress = cache(
   async (
     tenantId: string,
-    seriesPublicId: string,
+    seriesId: string,
     locale: Locale
   ): Promise<SeriesProgressResult> => {
     const sessionId = await resolveAccessToken();
@@ -221,7 +221,7 @@ export const getMySeriesProgress = cache(
 
     try {
       const response = await apiClient.episodeRead.getMySeriesProgress(
-        { seriesPublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
+        { seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
         buildSessionHeaders(sessionId)
       );
       return {

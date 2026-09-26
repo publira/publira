@@ -47,7 +47,7 @@ const renderUnfollowButton = () =>
   render(
     <UnfollowButton
       aria-label="Unfollow Published Series"
-      publicId="SERIES01"
+      targetId="SERIES01-ID"
       returnTo="/settings/follows"
       targetKind="series"
       tenantId={tenantId}
@@ -89,7 +89,7 @@ describe("UnfollowButton", () => {
     expect(screen.queryByRole("button")).toBeNull();
     const formData: FormData = toggleFollowAction.mock.calls[0]?.[1];
     expect(formData.get("intent")).toBe("unfollow");
-    expect(formData.get("publicId")).toBe("SERIES01");
+    expect(formData.get("targetId")).toBe("SERIES01-ID");
     expect(formData.get("targetKind")).toBe("series");
   });
 

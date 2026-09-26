@@ -42,7 +42,7 @@ export const FollowLoginLink = ({
  * own intent:
  *
  * ```tsx
- * <FollowButton isFollowing={…} publicId={…} returnTo={…} targetKind="series" tenantId={…}>
+ * <FollowButton isFollowing={…} returnTo={…} targetId={…} targetKind="series" tenantId={…}>
  *   <FollowButtonFollow aria-label={t("host.follow.follow_aria", { name })}>
  *     <ActionFormIdle>…</ActionFormIdle>
  *     <ActionFormPending>…</ActionFormPending>
@@ -56,16 +56,17 @@ export const FollowLoginLink = ({
 export const FollowButton = ({
   children,
   isFollowing,
-  publicId,
   returnTo,
+  targetId,
   targetKind,
   tenantId,
 }: {
   /** `FollowButtonFollow` and `FollowButtonUnfollow`. */
   children: ReactNode;
   isFollowing: boolean;
-  publicId: string;
   returnTo: string;
+  /** The internal ID of the series or creator this follows. */
+  targetId: string;
   targetKind: FollowTargetKind;
   tenantId: string;
 }) => (
@@ -74,8 +75,8 @@ export const FollowButton = ({
     className="grid justify-items-start gap-2"
   >
     <LocaleField />
-    <input name="publicId" type="hidden" value={publicId} />
     <input name="returnTo" type="hidden" value={returnTo} />
+    <input name="targetId" type="hidden" value={targetId} />
     <input name="targetKind" type="hidden" value={targetKind} />
     <input name="tenantId" type="hidden" value={tenantId} />
     <FollowButtonState isFollowing={isFollowing}>{children}</FollowButtonState>

@@ -299,7 +299,7 @@ const EpisodeContent = async (
       <EpisodeAgeRatingConfirmation series={series} />
       <AgeRatingGateContent>
         <div>
-          <ContentViewTracker kind="episode" publicId={episode.publicId} />
+          <ContentViewTracker id={episode.id} kind="episode" />
           {/* The reader opens the page: everything else is what the reader may
           want after finishing, so it sits below the pages rather than above
           them. */}

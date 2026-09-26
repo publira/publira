@@ -1,17 +1,13 @@
-import { routeParamString } from "@publira/utils/route-params";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { tenantIdSchema } from "#lib/auth-input";
 import { isSameOriginRequest } from "#lib/csrf";
 import { recordEpisodeRead } from "#lib/episode-reads";
-
-/** Matches the bound the catalog's own public-id fields carry. */
-const PUBLIC_ID_MAX_LENGTH = 64;
+import { recordIdSchema } from "#lib/record-id";
 
 const episodeReadPathSchema = z.object({
-  episodePublicId: routeParamString({ maxLength: PUBLIC_ID_MAX_LENGTH }),
-  seriesPublicId: routeParamString({ maxLength: PUBLIC_ID_MAX_LENGTH }),
+  episodeId: recordIdSchema,
   tenantId: tenantIdSchema,
 });
 
@@ -30,9 +26,8 @@ const noContent = () => new NextResponse(null, { status: 204 });
  *
  * Everything the write is filed under comes from the path or the session, and
  * nothing from the request body — the sender must not get to choose whose
- * catalog its read lands in, nor whose account. The series segment addresses
- * the episode the way the reader's own URL does; the RPC identifies the
- * episode by its public id alone, and the API re-checks publication and
+ * catalog its read lands in, nor whose account. The path names the episode by
+ * the ID its detail read returned, and the API re-checks publication and
  * paid-body access on the write itself.
  *
  * The same-origin check applies here for that reason: without it any page on the
@@ -40,18 +35,15 @@ const noContent = () => new NextResponse(null, { status: 204 });
  */
 export const POST = async (
   request: Request,
-  {
-    params,
-  }: RouteContext<"/[tenant_id]/api/v1/series/[series_id]/episodes/[episode_id]/read">
+  { params }: RouteContext<"/[tenant_id]/api/v1/episodes/[episode_id]/read">
 ) => {
   if (!isSameOriginRequest(request.headers)) {
     return new NextResponse(null, { status: 403 });
   }
 
-  const { episode_id, series_id, tenant_id } = await params;
+  const { episode_id, tenant_id } = await params;
   const path = episodeReadPathSchema.safeParse({
-    episodePublicId: episode_id,
-    seriesPublicId: series_id,
+    episodeId: episode_id,
     tenantId: tenant_id,
   });
   if (!path.success) {
@@ -59,7 +51,7 @@ export const POST = async (
   }
 
   await recordEpisodeRead({
-    publicId: path.data.episodePublicId,
+    episodeId: path.data.episodeId,
     tenantId: path.data.tenantId,
   });
   return noContent();

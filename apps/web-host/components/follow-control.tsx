@@ -31,14 +31,15 @@ import {
  * the session cookie does not personalize the static shell.
  */
 export const FollowControl = async ({
-  publicId,
   returnTo,
+  targetId,
   targetKind,
   targetName,
   tenantId,
 }: {
-  publicId: string;
   returnTo: string;
+  /** The internal ID of the series or creator this follows. */
+  targetId: string;
   targetKind: FollowTargetKind;
   targetName: string;
   tenantId: string;
@@ -47,7 +48,7 @@ export const FollowControl = async ({
   const [t, defaultLocale, result] = await Promise.all([
     getMessagesFor(locale),
     getTenantDefaultLocale(tenantId),
-    getMyFollowStatus(tenantId, targetKind, publicId, locale),
+    getMyFollowStatus(tenantId, targetKind, targetId, locale),
   ]);
 
   if (!result.ok) {
@@ -81,8 +82,8 @@ export const FollowControl = async ({
   return (
     <FollowButton
       isFollowing={result.isFollowing}
-      publicId={publicId}
       returnTo={returnTo}
+      targetId={targetId}
       targetKind={targetKind}
       tenantId={tenantId}
     >

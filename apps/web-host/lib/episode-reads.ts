@@ -8,7 +8,7 @@ import {
 } from "./api-client";
 
 export interface EpisodeRead {
-  publicId: string;
+  episodeId: string;
   tenantId: string;
 }
 
@@ -33,7 +33,7 @@ export interface EpisodeRead {
  * fails loudly enough to appear in the logs.
  */
 export const recordEpisodeRead = async ({
-  publicId,
+  episodeId,
   tenantId,
 }: EpisodeRead): Promise<void> => {
   const sessionId = await resolveAccessToken();
@@ -44,7 +44,7 @@ export const recordEpisodeRead = async ({
   try {
     await apiClient.episodeRead.markEpisodeAsRead(
       {
-        episodePublicId: publicId,
+        episodeId,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
       },

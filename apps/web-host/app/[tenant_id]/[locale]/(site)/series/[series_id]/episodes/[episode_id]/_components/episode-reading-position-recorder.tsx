@@ -3,7 +3,7 @@
 import { useViewerContext } from "@publira/comic-viewer";
 import { useEffect, useRef } from "react";
 
-import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
+import type { EpisodeDetail } from "#lib/catalog";
 
 import type { ReadingPositionSaver } from "../_lib/reading-position";
 import {
@@ -35,19 +35,14 @@ import {
  */
 export const EpisodeReadingPositionRecorder = ({
   episode,
-  series,
 }: {
   episode: EpisodeDetail;
-  series: EpisodeSeriesSummary;
 }) => {
   const { currentIndex, pages } = useViewerContext();
   // The viewer also holds pages of its own after the last one of the episode,
   // and the API refuses a position that names none of the episode's pages.
   const pageIndex = Math.max(0, Math.min(currentIndex, pages.length - 1));
-  const beaconPath = readingPositionBeaconPath(
-    series.publicId,
-    episode.publicId
-  );
+  const beaconPath = readingPositionBeaconPath(episode.id);
   const saverRef = useRef<ReadingPositionSaver | null>(null);
 
   useEffect(() => {

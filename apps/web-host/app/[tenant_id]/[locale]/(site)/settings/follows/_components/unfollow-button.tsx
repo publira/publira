@@ -16,14 +16,14 @@ import { toggleFollowAction } from "#lib/follow-actions";
 /** `aria-label` names the series or creator it unfollows. */
 export const UnfollowButton = ({
   "aria-label": ariaLabel,
-  publicId,
   returnTo,
+  targetId,
   targetKind,
   tenantId,
 }: {
   "aria-label": string;
-  publicId: string;
   returnTo: string;
+  targetId: string;
   targetKind: FollowTargetKind;
   tenantId: string;
 }) => (
@@ -33,8 +33,8 @@ export const UnfollowButton = ({
   >
     <LocaleField />
     <input name="intent" type="hidden" value="unfollow" />
-    <input name="publicId" type="hidden" value={publicId} />
     <input name="returnTo" type="hidden" value={returnTo} />
+    <input name="targetId" type="hidden" value={targetId} />
     <input name="targetKind" type="hidden" value={targetKind} />
     <input name="tenantId" type="hidden" value={tenantId} />
     <UntilActionSucceeds>

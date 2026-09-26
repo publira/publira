@@ -24,29 +24,45 @@ const sentBody = async (call: number): Promise<unknown> => {
 describe("ContentViewTracker", () => {
   it("reports the open page once, however often it re-renders", async () => {
     const { rerender } = render(
-      <ContentViewTracker kind="episode" publicId="EP_001" />
+      <ContentViewTracker
+        kind="episode"
+        id="e0000000-0000-4000-8000-000000000001"
+      />
     );
-    rerender(<ContentViewTracker kind="episode" publicId="EP_001" />);
+    rerender(
+      <ContentViewTracker
+        kind="episode"
+        id="e0000000-0000-4000-8000-000000000001"
+      />
+    );
 
     expect(sendBeacon).toHaveBeenCalledTimes(1);
     // The tenant comes from the segment the proxy rewrote, never the body.
     expect(sendBeacon.mock.calls[0][0]).toBe("/api/v1/views");
     await expect(sentBody(0)).resolves.toEqual({
+      id: "e0000000-0000-4000-8000-000000000001",
       kind: "episode",
-      publicId: "EP_001",
     });
   });
 
   it("reports again once the reader moves to another episode", async () => {
     const { rerender } = render(
-      <ContentViewTracker kind="episode" publicId="EP_001" />
+      <ContentViewTracker
+        kind="episode"
+        id="e0000000-0000-4000-8000-000000000001"
+      />
     );
-    rerender(<ContentViewTracker kind="episode" publicId="EP_002" />);
+    rerender(
+      <ContentViewTracker
+        kind="episode"
+        id="e0000000-0000-4000-8000-000000000002"
+      />
+    );
 
     expect(sendBeacon).toHaveBeenCalledTimes(2);
     await expect(sentBody(1)).resolves.toEqual({
+      id: "e0000000-0000-4000-8000-000000000002",
       kind: "episode",
-      publicId: "EP_002",
     });
   });
 
@@ -54,7 +70,12 @@ describe("ContentViewTracker", () => {
     sendBeacon.mockReturnValueOnce(false);
 
     expect(() =>
-      render(<ContentViewTracker kind="series" publicId="SR_001" />)
+      render(
+        <ContentViewTracker
+          kind="series"
+          id="5e000000-0000-4000-8000-000000000001"
+        />
+      )
     ).not.toThrow();
   });
 });

@@ -82,6 +82,7 @@ export const EpisodeBody = async ({
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
           appStoreUrl={appStoreUrl}
+          episodeId={episode.id}
           episodePublicId={episode.publicId}
           googlePlayUrl={googlePlayUrl}
           purchaseSurface={episode.purchaseSurface}
@@ -144,6 +145,7 @@ export const EpisodeBody = async ({
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
         appStoreUrl={appStoreUrl}
+        episodeId={episode.id}
         episodePublicId={episode.publicId}
         googlePlayUrl={googlePlayUrl}
         purchaseSurface={episode.purchaseSurface}

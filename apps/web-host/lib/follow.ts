@@ -70,15 +70,15 @@ const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   }
 };
 
-const followTargetMessage = (kind: FollowTargetKind, publicId: string) => ({
-  publicId,
+const followTargetMessage = (kind: FollowTargetKind, targetId: string) => ({
+  id: targetId,
   type: toFollowTargetType(kind),
 });
 
 const readFollowStatus = async (
   tenantId: string,
   targetKind: FollowTargetKind,
-  publicId: string,
+  targetId: string,
   locale: Locale
 ): Promise<CachedFollowStatusResult> => {
   "use cache: private";
@@ -101,7 +101,7 @@ const readFollowStatus = async (
     const response = await apiClient.follow.getMyFollowStatus(
       {
         surface: ClientSurface.WEB,
-        target: followTargetMessage(targetKind, publicId),
+        target: followTargetMessage(targetKind, targetId),
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -143,11 +143,11 @@ const readFollowStatus = async (
 export const getMyFollowStatus = async (
   tenantId: string,
   targetKind: FollowTargetKind,
-  publicId: string,
+  targetId: string,
   locale: Locale
 ): Promise<FollowStatusResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readFollowStatus(tenantId, targetKind, publicId, locale),
+    readFollowStatus(tenantId, targetKind, targetId, locale),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(
@@ -159,7 +159,7 @@ export const getMyFollowStatus = async (
 
 export const followTarget = async (input: {
   locale: Locale;
-  publicId: string;
+  targetId: string;
   targetKind: FollowTargetKind;
   tenantId: string;
 }): Promise<
@@ -180,7 +180,7 @@ export const followTarget = async (input: {
     await apiClient.follow.follow(
       {
         surface: ClientSurface.WEB,
-        target: followTargetMessage(input.targetKind, input.publicId),
+        target: followTargetMessage(input.targetKind, input.targetId),
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -202,7 +202,7 @@ export const followTarget = async (input: {
 
 export const unfollowTarget = async (input: {
   locale: Locale;
-  publicId: string;
+  targetId: string;
   targetKind: FollowTargetKind;
   tenantId: string;
 }): Promise<
@@ -223,7 +223,7 @@ export const unfollowTarget = async (input: {
     await apiClient.follow.unfollow(
       {
         surface: ClientSurface.WEB,
-        target: followTargetMessage(input.targetKind, input.publicId),
+        target: followTargetMessage(input.targetKind, input.targetId),
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)

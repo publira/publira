@@ -41,12 +41,14 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 const seriesFollow = {
   followedAt: "2026-06-02T00:00:00Z",
+  targetId: "SERIES01-ID",
   targetPublicId: "SERIES01",
   targetType: FollowTargetType.SERIES,
 };
 
 const creatorFollow = {
   followedAt: "2026-06-01T00:00:00Z",
+  targetId: "CREATOR01-ID",
   targetPublicId: "CREATOR01",
   targetType: FollowTargetType.CREATOR,
 };
@@ -127,11 +129,13 @@ describe("listMyFollows", () => {
       {
         followedAt: "2026-06-02T00:00:00Z",
         publicId: "SERIES01",
+        targetId: "SERIES01-ID",
         targetKind: "series",
       },
       {
         followedAt: "2026-06-01T00:00:00Z",
         publicId: "CREATOR01",
+        targetId: "CREATOR01-ID",
         targetKind: "creator",
       },
     ]);
@@ -156,6 +160,7 @@ describe("listMyFollows", () => {
       {
         followedAt: "2026-06-02T00:00:00Z",
         publicId: "SERIES01",
+        targetId: "SERIES01-ID",
         targetKind: "series",
       },
     ]);
@@ -233,11 +238,13 @@ describe("resolveFollowListItems", () => {
     {
       followedAt: "2026-06-02T00:00:00Z",
       publicId: "SERIES01",
+      targetId: "SERIES01-ID",
       targetKind: "series",
     },
     {
       followedAt: "2026-06-01T00:00:00Z",
       publicId: "CREATOR01",
+      targetId: "CREATOR01-ID",
       targetKind: "creator",
     },
   ];
@@ -260,6 +267,7 @@ describe("resolveFollowListItems", () => {
         followedAt: "2026-06-02T00:00:00Z",
         href: "/series/SERIES01",
         publicId: "SERIES01",
+        targetId: "SERIES01-ID",
         targetKind: "series",
         title: "Published Series",
         unavailable: false,
@@ -268,6 +276,7 @@ describe("resolveFollowListItems", () => {
         followedAt: "2026-06-01T00:00:00Z",
         href: "/creators/CREATOR01",
         publicId: "CREATOR01",
+        targetId: "CREATOR01-ID",
         targetKind: "creator",
         title: "Published Creator",
         unavailable: false,
@@ -292,6 +301,7 @@ describe("resolveFollowListItems", () => {
         followedAt: "2026-06-02T00:00:00Z",
         href: undefined,
         publicId: "SERIES01",
+        targetId: "SERIES01-ID",
         targetKind: "series",
         title: "Not currently published",
         unavailable: true,
@@ -314,6 +324,7 @@ describe("resolveFollowListItems", () => {
         followedAt: "2026-06-01T00:00:00Z",
         href: "/creators/CREATOR01",
         publicId: "CREATOR01",
+        targetId: "CREATOR01-ID",
         targetKind: "creator",
         title: "CREATOR01",
         unavailable: false,

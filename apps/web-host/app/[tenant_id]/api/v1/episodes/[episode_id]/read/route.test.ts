@@ -11,8 +11,7 @@ vi.mock("#lib/episode-reads", () => ({
 const { POST } = await import("./route");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
-const SERIES_ID = "SR_001";
-const EPISODE_ID = "EP_001";
+const EPISODE_ID = "22222222-2222-4222-8222-222222222222";
 
 const SAME_ORIGIN_HEADERS = {
   host: "shop.example.test",
@@ -20,24 +19,19 @@ const SAME_ORIGIN_HEADERS = {
 };
 
 const beacon = (headers = SAME_ORIGIN_HEADERS) =>
-  new Request(
-    `https://shop.example.test/api/v1/series/${SERIES_ID}/episodes/${EPISODE_ID}/read`,
-    { headers, method: "POST" }
-  );
+  new Request(`https://shop.example.test/api/v1/episodes/${EPISODE_ID}/read`, {
+    headers,
+    method: "POST",
+  });
 
-const params = (overrides?: {
-  episodeId?: string;
-  seriesId?: string;
-  tenantId?: string;
-}) => ({
+const params = (overrides?: { episodeId?: string; tenantId?: string }) => ({
   params: Promise.resolve({
     episode_id: overrides?.episodeId ?? EPISODE_ID,
-    series_id: overrides?.seriesId ?? SERIES_ID,
     tenant_id: overrides?.tenantId ?? TENANT_ID,
   }),
 });
 
-describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/read", () => {
+describe("POST /api/v1/episodes/[episode_id]/read", () => {
   beforeEach(() => {
     mockRecordEpisodeRead.mockReturnValue(Promise.resolve());
   });
@@ -47,7 +41,7 @@ describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/read", () => {
 
     expect(response.status).toBe(204);
     expect(mockRecordEpisodeRead).toHaveBeenCalledWith({
-      publicId: EPISODE_ID,
+      episodeId: EPISODE_ID,
       tenantId: TENANT_ID,
     });
   });
@@ -76,8 +70,8 @@ describe("POST /api/v1/series/[series_id]/episodes/[episode_id]/read", () => {
     expect(mockRecordEpisodeRead).not.toHaveBeenCalled();
   });
 
-  it("records nothing when the path names no series", async () => {
-    const response = await POST(beacon(), params({ seriesId: "  " }));
+  it("records nothing when the path names the episode by its public ID", async () => {
+    const response = await POST(beacon(), params({ episodeId: "EP_001" }));
 
     expect(response.status).toBe(400);
     expect(mockRecordEpisodeRead).not.toHaveBeenCalled();

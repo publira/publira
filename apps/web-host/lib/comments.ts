@@ -56,7 +56,7 @@ export interface EpisodeCommentItem {
   awaitingApproval: boolean;
   body: string;
   createdAt: string;
-  publicId: string;
+  id: string;
 }
 
 export interface EpisodeCommentPage {
@@ -66,6 +66,8 @@ export interface EpisodeCommentPage {
 }
 
 export interface ListEpisodeCommentsInput {
+  episodeId: string;
+  /** Keys the tag the API drops this list's cache entry by. */
   episodePublicId: string;
   /** UI locale the failure wording belongs to, and part of the cache key. */
   locale: Locale;
@@ -86,13 +88,13 @@ const emptyPage: EpisodeCommentPage = {
  */
 type RawEpisodeComment = Pick<
   EpisodeComment,
-  "authorName" | "authorPublicId" | "body" | "createdAt" | "publicId"
+  "authorName" | "authorPublicId" | "body" | "createdAt" | "id"
 >;
 
 /** The generated `MyEpisodeComment` fields {@link toOwnComment} reads. */
 type RawMyEpisodeComment = Pick<
   MyEpisodeComment,
-  "awaitingApproval" | "body" | "createdAt" | "publicId"
+  "awaitingApproval" | "body" | "createdAt" | "id"
 >;
 
 const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
@@ -101,7 +103,7 @@ const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
   awaitingApproval: false,
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
-  publicId: comment.publicId ?? "",
+  id: comment.id ?? "",
 });
 
 /**
@@ -117,7 +119,7 @@ const toOwnComment = (
   awaitingApproval: comment.awaitingApproval === true,
   body: comment.body ?? "",
   createdAt: comment.createdAt ?? "",
-  publicId: comment.publicId ?? "",
+  id: comment.id ?? "",
 });
 
 /**
@@ -141,7 +143,7 @@ export const listEpisodeComments = async (
 
   try {
     const response = await apiClient.comment.listEpisodeComments({
-      episodePublicId: input.episodePublicId,
+      episodeId: input.episodeId,
       limit: COMMENT_PAGE_SIZE,
       surface: ClientSurface.WEB,
       tenant: { tenantId },
@@ -200,7 +202,7 @@ export const listMyEpisodeComments = async (
   try {
     const response = await apiClient.comment.listMyEpisodeComments(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         limit: OWN_COMMENT_PAGE_SIZE,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
@@ -235,7 +237,7 @@ export const listMyEpisodeComments = async (
 /**
  * Newest first by absolute time, the order both lists already arrive in.
  * Unparseable timestamps sort last rather than silently becoming the epoch,
- * and the public id breaks a tie so the merged order is stable.
+ * and the id breaks a tie so the merged order is stable.
  */
 const compareNewestFirst = (
   left: EpisodeCommentItem,
@@ -248,7 +250,7 @@ const compareNewestFirst = (
     if (byTime !== 0) {
       return byTime;
     }
-    return right.publicId.localeCompare(left.publicId);
+    return right.id.localeCompare(left.id);
   }
   if (leftAt) {
     return -1;
@@ -256,7 +258,7 @@ const compareNewestFirst = (
   if (rightAt) {
     return 1;
   }
-  return right.publicId.localeCompare(left.publicId);
+  return right.id.localeCompare(left.id);
 };
 
 /**
@@ -314,9 +316,9 @@ export const mergeOwnEpisodeComments = (
     return page.comments;
   }
 
-  const published = new Set(page.comments.map((comment) => comment.publicId));
+  const published = new Set(page.comments.map((comment) => comment.id));
   const unpublished = ownComments.filter(
-    (comment) => !published.has(comment.publicId)
+    (comment) => !published.has(comment.id)
   );
   if (unpublished.length === 0) {
     return page.comments;
@@ -341,7 +343,7 @@ export const mergeOwnEpisodeComments = (
 
 export interface PostEpisodeCommentInput {
   body: string;
-  episodePublicId: string;
+  episodeId: string;
   locale: Locale;
   tenantId: string;
 }
@@ -376,7 +378,7 @@ export const postEpisodeComment = async (
     const response = await apiClient.comment.postEpisodeComment(
       {
         body: input.body,
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         surface: ClientSurface.WEB,
         tenant: { tenantId: input.tenantId },
       },
@@ -401,7 +403,7 @@ export const postEpisodeComment = async (
 };
 
 export interface WithdrawEpisodeCommentInput {
-  commentPublicId: string;
+  commentId: string;
   locale: Locale;
   tenantId: string;
 }
@@ -431,7 +433,7 @@ export const withdrawEpisodeComment = async (
   try {
     await apiClient.comment.withdrawEpisodeComment(
       {
-        commentPublicId: input.commentPublicId,
+        commentId: input.commentId,
         tenant: { tenantId: input.tenantId },
       },
       buildSessionHeaders(sessionId)
@@ -486,7 +488,7 @@ const reportReasonCodes: Record<
 };
 
 export interface ReportEpisodeCommentInput {
-  commentPublicId: string;
+  commentId: string;
   locale: Locale;
   /** The reporter's own sentence. Optional; blank is stored as no note. */
   note: string;
@@ -524,7 +526,7 @@ export const reportEpisodeComment = async (
   try {
     await apiClient.comment.reportEpisodeComment(
       {
-        commentPublicId: input.commentPublicId,
+        commentId: input.commentId,
         note: input.note,
         reason: reportReasonCodes[input.reason],
         surface: ClientSurface.WEB,

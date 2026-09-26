@@ -218,8 +218,7 @@ const historyEntry = (page: Page) =>
 const episodeReadReported = (page: Page): Promise<unknown> =>
   page.waitForResponse(
     (response) =>
-      response.request().method() === "POST" &&
-      response.url().endsWith(`/episodes/${VIEWER_EPISODE_ID}/read`)
+      response.request().method() === "POST" && response.url().endsWith("/read")
   );
 
 const pageCanvas = (page: Page, pageNumber: number) =>
@@ -476,9 +475,7 @@ test.describe("web-host episode reading", () => {
       "requestfailed",
       (request) =>
         request.method() === "POST" &&
-        request
-          .url()
-          .endsWith(`/episodes/${VIEWER_EPISODE_ID}/reading-position`)
+        request.url().endsWith("/reading-position")
     );
     await turnPages(page, 3);
     const stoppedOn = Number(await readingProgress(page).getAttribute("value"));

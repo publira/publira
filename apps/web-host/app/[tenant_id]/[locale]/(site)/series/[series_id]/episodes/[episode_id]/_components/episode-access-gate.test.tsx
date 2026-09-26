@@ -24,6 +24,7 @@ vi.mock("#components/locale-field", () => ({
 afterEach(cleanup);
 
 const props = {
+  episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   episodePublicId: "EPISODE_001",
   purchaseSurface: "all" as const,
   seriesPublicId: "SERIES_001",

@@ -29,12 +29,14 @@ const defaultFollowPageSize = 20;
  */
 type RawMyFollow = Pick<
   MyFollow,
-  "followedAt" | "targetPublicId" | "targetType"
+  "followedAt" | "targetId" | "targetPublicId" | "targetType"
 >;
 
 export interface FollowListEntry {
   followedAt: string;
   publicId: string;
+  /** The internal ID of the followed series or creator, which unfollowing takes. */
+  targetId: string;
   targetKind: FollowTargetKind;
 }
 
@@ -97,13 +99,15 @@ const throwIfUnexpected = (unexpected: boolean, message: string): void => {
 
 const mapMyFollow = (item: RawMyFollow): FollowListEntry | null => {
   const publicId = item.targetPublicId?.trim() ?? "";
+  const targetId = item.targetId?.trim() ?? "";
   const targetKind = toFollowTargetKind(item.targetType);
-  if (!(publicId && targetKind)) {
+  if (!(publicId && targetId && targetKind)) {
     return null;
   }
   return {
     followedAt: item.followedAt ?? "",
     publicId,
+    targetId,
     targetKind,
   };
 };

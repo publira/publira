@@ -65,7 +65,7 @@ export const EpisodeNextEpisodeOffer = async ({
         >
           <Suspense fallback={<FollowControlSkeleton />}>
             <FollowControl
-              publicId={series.publicId}
+              targetId={series.id}
               returnTo={episodePath(series.publicId, episodePublicId)}
               targetKind="series"
               targetName={series.title}

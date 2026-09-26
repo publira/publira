@@ -55,6 +55,7 @@ vi.mock("#components/follow-control", () => ({
 afterEach(cleanup);
 
 const series: EpisodeSeriesSummary = {
+  id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
   publicId: "SERIES_001",
   title: "Long nights",
 };

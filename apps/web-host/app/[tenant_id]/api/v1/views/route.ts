@@ -3,13 +3,14 @@ import { z } from "zod";
 
 import { tenantIdSchema } from "#lib/auth-input";
 import { isSameOriginRequest } from "#lib/csrf";
+import { recordIdSchema } from "#lib/record-id";
 import { contentViewKinds, recordContentView } from "#lib/view-events";
 
 const viewPathSchema = z.object({ tenantId: tenantIdSchema });
 
 const viewBodySchema = z.object({
+  id: recordIdSchema,
   kind: z.enum(contentViewKinds),
-  publicId: z.string().trim().min(1).max(64),
 });
 
 const noContent = () => new NextResponse(null, { status: 204 });

@@ -352,7 +352,7 @@ const CreatorDetailContent = async ({
           >
             <Suspense fallback={<FollowControlSkeleton />}>
               <FollowControl
-                publicId={creator.id}
+                targetId={creator.internalId}
                 returnTo={`/creators/${creator.id}`}
                 targetKind="creator"
                 targetName={creator.name}

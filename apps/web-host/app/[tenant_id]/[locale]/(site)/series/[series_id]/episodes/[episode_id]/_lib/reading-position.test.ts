@@ -28,15 +28,17 @@ describe("resumePageIndex", () => {
 });
 
 describe("readingPositionBeaconPath", () => {
-  it("names the episode the way the reader's own URL does", () => {
-    expect(readingPositionBeaconPath("SERIES_001", "EPISODE_001")).toBe(
-      "/api/v1/series/SERIES_001/episodes/EPISODE_001/reading-position"
+  it("names the episode by its ID", () => {
+    expect(
+      readingPositionBeaconPath("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+    ).toBe(
+      "/api/v1/episodes/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/reading-position"
     );
   });
 
   it("escapes an identifier that would otherwise change the path", () => {
-    expect(readingPositionBeaconPath("a/b", "c?d")).toBe(
-      "/api/v1/series/a%2Fb/episodes/c%3Fd/reading-position"
+    expect(readingPositionBeaconPath("a/b?c")).toBe(
+      "/api/v1/episodes/a%2Fb%3Fc/reading-position"
     );
   });
 });

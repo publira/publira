@@ -35,11 +35,8 @@ export const resumePageIndex = (
  * onto the resolved tenant, so the reader's URL carries no tenant and no
  * locale segment.
  */
-export const readingPositionBeaconPath = (
-  seriesPublicId: string,
-  episodePublicId: string
-): string =>
-  `/api/v1/series/${encodeURIComponent(seriesPublicId)}/episodes/${encodeURIComponent(episodePublicId)}/reading-position`;
+export const readingPositionBeaconPath = (episodeId: string): string =>
+  `/api/v1/episodes/${encodeURIComponent(episodeId)}/reading-position`;
 
 /** Send one position and resolve whether the server answered. */
 export const sendReadingPosition = (

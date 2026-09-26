@@ -45,7 +45,7 @@ const renderDeleteButton = () =>
   render(
     <CommentDeleteButton
       aria-label="Delete your comment from May 1"
-      commentPublicId="COMMENT01"
+      commentId="cccccccc-cccc-4ccc-8ccc-cccccccccccc"
       episodePublicId="EPISODE01"
       returnTo="/series/SERIES01/episodes/EPISODE01"
       tenantId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -70,7 +70,9 @@ describe("CommentDeleteButton", () => {
     });
     expect(screen.queryByRole("button")).toBeNull();
     const formData: FormData = withdrawEpisodeCommentAction.mock.calls[0]?.[1];
-    expect(formData.get("commentPublicId")).toBe("COMMENT01");
+    expect(formData.get("commentId")).toBe(
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    );
     expect(formData.get("episodePublicId")).toBe("EPISODE01");
     expect(formData.get("locale")).toBe("en");
   });

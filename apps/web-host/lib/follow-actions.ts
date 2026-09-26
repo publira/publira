@@ -20,19 +20,18 @@ import {
   requireFormLocale,
 } from "./locale-form";
 import { getMessagesFor } from "./messages";
+import { recordIdSchema } from "./record-id";
 
 export type FollowActionState =
   | { isFollowing: boolean; message: string; ok: true }
   | { message: string; ok: false }
   | null;
 
-const publicIdFormSchema = z.string().trim().min(1).max(64);
-
 const followFormSchema = z.object({
   intent: z.enum(["follow", "unfollow"]),
   locale: localeFormSchema,
-  publicId: publicIdFormSchema,
   returnTo: returnToFormSchema,
+  targetId: recordIdSchema,
   targetKind: z.enum(followTargetKinds),
   tenantId: tenantIdSchema,
 });
@@ -49,8 +48,8 @@ export const toggleFollowAction = async (
     toFormDataInput(formData, {
       intent: "value",
       locale: "value",
-      publicId: "value",
       returnTo: "value",
+      targetId: "value",
       targetKind: "value",
       tenantId: "value",
     })
@@ -59,7 +58,7 @@ export const toggleFollowAction = async (
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }
 
-  const { intent, locale, publicId, returnTo, targetKind, tenantId } =
+  const { intent, locale, returnTo, targetId, targetKind, tenantId } =
     parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
   const result = await withPublicSessionReauth(
@@ -67,8 +66,8 @@ export const toggleFollowAction = async (
     returnTo,
     () =>
       intent === "follow"
-        ? followTarget({ locale, publicId, targetKind, tenantId })
-        : unfollowTarget({ locale, publicId, targetKind, tenantId }),
+        ? followTarget({ locale, targetId, targetKind, tenantId })
+        : unfollowTarget({ locale, targetId, targetKind, tenantId }),
     tenantId
   );
   if (!result.ok) {

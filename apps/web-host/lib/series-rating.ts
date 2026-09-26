@@ -8,17 +8,14 @@ import {
 } from "./api-client";
 
 /** Read only within the member's Suspense island, outside the public cache. */
-export const getMySeriesRating = async (
-  tenantId: string,
-  seriesPublicId: string
-) => {
+export const getMySeriesRating = async (tenantId: string, seriesId: string) => {
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return null;
   }
   try {
     const response = await apiClient.rating.getMySeriesRating(
-      { seriesPublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
+      { seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
     return response.ratedEpisodeCount > 0 ? response.ratingAverage : null;

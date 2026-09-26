@@ -43,6 +43,7 @@ export const EpisodeCommentsSkeleton = () => <Skeleton className="h-9 w-32" />;
 export interface EpisodeCommentsProps {
   /** The series' resolved comment mode from GetSeriesDetail. */
   commentMode: SeriesCommentMode;
+  episodeId: string;
   episodePublicId: string;
   seriesPublicId: string;
   tenantId: string;
@@ -75,6 +76,7 @@ export interface EpisodeCommentsProps {
  */
 export const EpisodeComments = async ({
   commentMode,
+  episodeId,
   episodePublicId,
   seriesPublicId,
   tenantId,
@@ -93,10 +95,16 @@ export const EpisodeComments = async ({
   const episodePath = `/series/${seriesPublicId}/episodes/${episodePublicId}`;
 
   const [publicResult, ownResult] = await Promise.all([
-    listEpisodeComments(tenantId, { episodePublicId, locale, token }),
+    listEpisodeComments(tenantId, {
+      episodeId,
+      episodePublicId,
+      locale,
+      token,
+    }),
     viewer
       ? listMyEpisodeComments(tenantId, {
           author: viewer,
+          episodeId,
           episodePublicId,
           locale,
         })
@@ -143,6 +151,7 @@ export const EpisodeComments = async ({
 
   return (
     <EpisodeCommentDialog
+      episodeId={episodeId}
       episodePublicId={episodePublicId}
       initialOpen={Boolean(token)}
       prompt={
@@ -226,7 +235,7 @@ export const EpisodeComments = async ({
       {comments.length > 0 ? (
         <ol className="divide-y divide-border">
           {comments.map((comment) => (
-            <li className="py-4 first:pt-0" key={comment.publicId}>
+            <li className="py-4 first:pt-0" key={comment.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">{comment.authorName}</p>
@@ -250,7 +259,7 @@ export const EpisodeComments = async ({
                     aria-label={t("host.episode.comments.delete_aria", {
                       date: commentedAt(comment),
                     })}
-                    commentPublicId={comment.publicId}
+                    commentId={comment.id}
                     episodePublicId={episodePublicId}
                     returnTo={episodePath}
                     tenantId={tenantId}
@@ -265,7 +274,7 @@ export const EpisodeComments = async ({
                       author: comment.authorName,
                       date: commentedAt(comment),
                     })}
-                    commentPublicId={comment.publicId}
+                    commentId={comment.id}
                     returnTo={episodePath}
                     tenantId={tenantId}
                   />

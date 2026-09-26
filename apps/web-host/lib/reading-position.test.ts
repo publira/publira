@@ -28,16 +28,16 @@ vi.mock("./api-client", () => ({
 }));
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const EPISODE_PUBLIC_ID = "EPISODE_001";
+const EPISODE_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const ACCESS_TOKEN = "session-token";
 
-const target = { episodePublicId: EPISODE_PUBLIC_ID, tenantId: TENANT_ID };
+const target = { episodeId: EPISODE_ID, tenantId: TENANT_ID };
 
 describe("getMyReadingPosition", () => {
   beforeEach(() => {
     mockGetMyReadingPosition.mockResolvedValue({
       position: {
-        episodePublicId: EPISODE_PUBLIC_ID,
+        episodeId: EPISODE_ID,
         pageCount: 20,
         pageIndex: 11,
         updatedAt: "2026-09-01T00:00:00Z",
@@ -51,7 +51,7 @@ describe("getMyReadingPosition", () => {
     ).resolves.toBe(11);
     expect(mockGetMyReadingPosition).toHaveBeenCalledWith(
       {
-        episodePublicId: EPISODE_PUBLIC_ID,
+        episodeId: EPISODE_ID,
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
       },
@@ -106,7 +106,7 @@ describe("saveReadingPosition", () => {
 
     expect(mockSaveReadingPosition).toHaveBeenCalledWith(
       {
-        episodePublicId: EPISODE_PUBLIC_ID,
+        episodeId: EPISODE_ID,
         pageIndex: 11,
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },

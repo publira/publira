@@ -32,6 +32,7 @@ vi.mock("./api-client", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const episodeId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
 describe("toEpisodeReactionMode", () => {
   it("maps the multiple enum onto the five-press control", () => {
@@ -102,7 +103,7 @@ describe("getMyEpisodeRating", () => {
   it("skips the RPC for a guest and reports them as signed out", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    const result = await getMyEpisodeRating(tenantId, "EPISODE01", "en");
+    const result = await getMyEpisodeRating(tenantId, episodeId, "en");
 
     expect(result).toEqual({
       mode: "single",
@@ -121,11 +122,11 @@ describe("getMyEpisodeRating", () => {
       score: 3,
     });
 
-    const result = await getMyEpisodeRating(tenantId, "EPISODE01", "en");
+    const result = await getMyEpisodeRating(tenantId, episodeId, "en");
 
     expect(mockGetMyEpisodeRating).toHaveBeenCalledWith(
       {
-        episodePublicId: "EPISODE01",
+        episodeId,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
       },
@@ -145,7 +146,7 @@ describe("getMyEpisodeRating", () => {
       new ConnectError("expired", Code.Unauthenticated)
     );
 
-    const result = await getMyEpisodeRating(tenantId, "EPISODE01", "en");
+    const result = await getMyEpisodeRating(tenantId, episodeId, "en");
 
     expect(result).toEqual({
       mode: "single",
@@ -186,7 +187,7 @@ describe("rateEpisode", () => {
 
     await expect(
       rateEpisode({
-        episodePublicId: "EPISODE01",
+        episodeId,
         locale: "en",
         presses: 1,
         tenantId,
@@ -199,7 +200,7 @@ describe("rateEpisode", () => {
     });
     expect(mockRateEpisode).toHaveBeenCalledWith(
       {
-        episodePublicId: "EPISODE01",
+        episodeId,
         presses: 1,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
@@ -215,7 +216,7 @@ describe("rateEpisode", () => {
 
     await expect(
       rateEpisode({
-        episodePublicId: "EPISODE01",
+        episodeId,
         locale: "en",
         presses: 1,
         tenantId,

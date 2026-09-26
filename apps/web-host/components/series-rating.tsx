@@ -14,14 +14,14 @@ const formatAverage = (average: number, locale: Locale) =>
 
 export const MySeriesRating = async ({
   tenantId,
-  seriesPublicId,
+  seriesId,
   locale,
 }: {
   tenantId: string;
-  seriesPublicId: string;
+  seriesId: string;
   locale: Locale;
 }) => {
-  const average = await getMySeriesRating(tenantId, seriesPublicId);
+  const average = await getMySeriesRating(tenantId, seriesId);
   return average === null ? null : (
     <span className="tabular-nums">
       <Message

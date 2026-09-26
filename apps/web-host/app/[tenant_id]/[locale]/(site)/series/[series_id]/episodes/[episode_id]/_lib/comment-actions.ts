@@ -26,6 +26,7 @@ import {
   requireFormLocale,
 } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { recordIdSchema } from "#lib/record-id";
 
 /**
  * The body limit the API enforces, counted the same way it counts it: Unicode
@@ -57,6 +58,7 @@ const postCommentSchema = async (locale: Locale) => {
           max: MAX_COMMENT_BODY_LENGTH,
         }),
       }),
+    episodeId: recordIdSchema,
     episodePublicId: publicIdFormSchema,
     locale: localeFormSchema,
     returnTo: returnToFormSchema,
@@ -83,7 +85,7 @@ const reportCommentSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    commentPublicId: publicIdFormSchema,
+    commentId: recordIdSchema,
     locale: localeFormSchema,
     note: z
       .string()
@@ -102,7 +104,7 @@ const reportCommentSchema = async (locale: Locale) => {
 };
 
 const withdrawCommentSchema = z.object({
-  commentPublicId: publicIdFormSchema,
+  commentId: recordIdSchema,
   episodePublicId: publicIdFormSchema,
   locale: localeFormSchema,
   returnTo: returnToFormSchema,
@@ -132,6 +134,7 @@ export const postEpisodeCommentAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       body: "value",
+      episodeId: "value",
       episodePublicId: "value",
       locale: "value",
       returnTo: "value",
@@ -145,12 +148,13 @@ export const postEpisodeCommentAction = async (
     };
   }
 
-  const { body, episodePublicId, locale, returnTo, tenantId } = parsed.data;
+  const { body, episodeId, episodePublicId, locale, returnTo, tenantId } =
+    parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
-    () => postEpisodeComment({ body, episodePublicId, locale, tenantId }),
+    () => postEpisodeComment({ body, episodeId, locale, tenantId }),
     tenantId
   );
   if (!result.ok) {
@@ -178,7 +182,7 @@ export const withdrawEpisodeCommentAction = async (
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = withdrawCommentSchema.safeParse(
     toFormDataInput(formData, {
-      commentPublicId: "value",
+      commentId: "value",
       episodePublicId: "value",
       locale: "value",
       returnTo: "value",
@@ -192,13 +196,13 @@ export const withdrawEpisodeCommentAction = async (
     };
   }
 
-  const { commentPublicId, episodePublicId, locale, returnTo, tenantId } =
+  const { commentId, episodePublicId, locale, returnTo, tenantId } =
     parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
-    () => withdrawEpisodeComment({ commentPublicId, locale, tenantId }),
+    () => withdrawEpisodeComment({ commentId, locale, tenantId }),
     tenantId
   );
   if (!result.ok) {
@@ -234,7 +238,7 @@ export const reportEpisodeCommentAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      commentPublicId: "value",
+      commentId: "value",
       locale: "value",
       note: "value",
       reason: "value",
@@ -249,14 +253,12 @@ export const reportEpisodeCommentAction = async (
     };
   }
 
-  const { commentPublicId, locale, note, reason, returnTo, tenantId } =
-    parsed.data;
+  const { commentId, locale, note, reason, returnTo, tenantId } = parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
-    () =>
-      reportEpisodeComment({ commentPublicId, locale, note, reason, tenantId }),
+    () => reportEpisodeComment({ commentId, locale, note, reason, tenantId }),
     tenantId
   );
   if (!result.ok) {
