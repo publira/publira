@@ -512,3 +512,110 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func genreRowColumns() []string {
+	return []string{"id", "public_id", "name", "slug", "display_order", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}
+}
+
+func TestUploadGenreEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE001").
+		WillReturnRows(sqlmock.NewRows(genreRowColumns()).
+			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, nil, nil))
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:         "GENRE001",
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 1200, 1200),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("error code = %v, want failed_precondition (err: %v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	genreID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	genreRow := func() *sqlmock.Rows {
+		return sqlmock.NewRows(genreRowColumns()).
+			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, imageID, now)
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE001").
+		WillReturnRows(genreRow())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockGenreByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(genreID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE001").
+		WillReturnRows(genreRow())
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteGenreImageVariantsByType)).
+		WithArgs(imageID, "square").
+		WillReturnResult(sqlmock.NewResult(0, 3))
+	// square is delivered at 600 / 900 / 1200 px wide.
+	for range 3 {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateGenreImageVariant)).
+			WillReturnRows(createdImageVariantRow("genre_image_id", tenantID, imageID, "square", now))
+	}
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.TouchGenreImage)).
+		WithArgs(imageID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
+		WithArgs(tenantID, "GENRE001").
+		WillReturnRows(genreRow())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("genre_image_id")).
+			AddRow(imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:         "GENRE001",
+		VariantType:      "square",
+		ImageData:        aspectJPEG(t, 1200, 1200),
+		ImageContentType: "image/jpeg",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
+	}
+	variants := resp.Msg.Genre.GetEyeCatchImageVariants()
+	if len(variants) != 1 || variants[0].GetUrl() != "/images/genres/"+imageID.String()+"/square/1200" {
+		t.Fatalf("variants = %v, want the square variant under the genre image route", variants)
+	}
+	assertExpectations(t, mock)
+}

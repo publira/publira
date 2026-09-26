@@ -160,6 +160,26 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args: []any{mustUUID(t), first.tenantID, second.creatorImageID},
 		},
 		{
+			name:       "genre_images.genre_id",
+			constraint: "genre_images_tenant_genre_id_fkey",
+			statement:  `INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)`,
+			args:       []any{mustUUID(t), first.tenantID, second.genreID},
+		},
+		{
+			name:       "genre_image_variants.genre_image_id",
+			constraint: "genre_image_variants_tenant_genre_image_id_fkey",
+			statement: `INSERT INTO genre_image_variants
+				(id, tenant_id, genre_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+				VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/genre.webp', 'image/webp', 1, 320, 480)`,
+			args: []any{mustUUID(t), first.tenantID, second.genreImageID},
+		},
+		{
+			name:       "genres.eye_catch_image_id",
+			constraint: "genres_tenant_eye_catch_image_id_fkey",
+			statement:  `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`,
+			args:       []any{first.genreID, second.genreImageID},
+		},
+		{
 			name:       "series.label_id",
 			constraint: "series_tenant_label_id_fkey",
 			statement:  `UPDATE series SET label_id = $2 WHERE id = $1`,
@@ -232,10 +252,10 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 	}
 }
 
-// Seven of the converted references delete with SET NULL, and a composite
-// reference nulls every column it names unless it is told which one to null.
-// tenant_id is NOT NULL on all seven children, so the untold form would turn
-// deleting an image into an error instead of clearing the row that elected it.
+// A composite reference that deletes with SET NULL nulls every column it names
+// unless it is told which one to null. tenant_id is NOT NULL on every child
+// below, so the untold form would turn deleting an image into an error instead
+// of clearing the row that elected it.
 func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -254,6 +274,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	mustExec(t, ctx, db, `UPDATE tenant_themes SET logo_image_id = $2, icon_image_id = $2 WHERE tenant_id = $1`,
 		seeded.tenantID, seeded.tenantImageID)
 	mustExec(t, ctx, db, `UPDATE labels SET eye_catch_image_id = $2 WHERE id = $1`, seeded.labelID, seeded.labelImageID)
+	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
 
 	cases := []struct {
@@ -286,6 +307,13 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			deleted:  seeded.labelImageID,
 			survivor: `SELECT tenant_id, eye_catch_image_id FROM labels WHERE id = $1`,
 			owner:    seeded.labelID,
+		},
+		{
+			name:     "genres.eye_catch_image_id",
+			delete:   `DELETE FROM genre_images WHERE id = $1`,
+			deleted:  seeded.genreImageID,
+			survivor: `SELECT tenant_id, eye_catch_image_id FROM genres WHERE id = $1`,
+			owner:    seeded.genreID,
 		},
 		{
 			name:     "series.eye_catch_image_id",
@@ -341,6 +369,8 @@ type foreignKeyTenant struct {
 	creatorImageID uuid.UUID
 	labelID        uuid.UUID
 	labelImageID   uuid.UUID
+	genreID        uuid.UUID
+	genreImageID   uuid.UUID
 	tenantImageID  uuid.UUID
 	pageID         uuid.UUID
 	pageVersionID  uuid.UUID
@@ -381,6 +411,13 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	seeded.labelImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO label_images (id, tenant_id, label_id) VALUES ($1, $2, $3)`,
 		seeded.labelImageID, seeded.tenantID, seeded.labelID)
+
+	seeded.genreID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO genres (id, tenant_id, public_id, name, slug) VALUES ($1, $2, $3, $4, $5)`,
+		seeded.genreID, seeded.tenantID, prefix+"GENRE0001", prefix+" Genre", strings.ToLower(prefix)+"-genre")
+	seeded.genreImageID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)`,
+		seeded.genreImageID, seeded.tenantID, seeded.genreID)
 
 	seeded.tenantImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)`,

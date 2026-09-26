@@ -1142,9 +1142,13 @@ type Genre struct {
 	// Unique within the tenant, derived from the name. It identifies the name
 	// rather than standing in for it: two genres cannot differ by case or
 	// spacing alone.
-	Slug          string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Slug string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	// The eye-catch the console uploaded, as a label carries one. Filled by the
+	// genre RPCs themselves; a genre listed on a series carries names only.
+	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,4,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
+	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,5,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Genre) Reset() {
@@ -1196,6 +1200,20 @@ func (x *Genre) GetSlug() string {
 		return x.Slug
 	}
 	return ""
+}
+
+func (x *Genre) GetEyeCatchImageUpdatedAt() string {
+	if x != nil {
+		return x.EyeCatchImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *Genre) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
+	if x != nil {
+		return x.EyeCatchImageVariants
+	}
+	return nil
 }
 
 // A free-form label written on the series form. Tags have no console of their
@@ -2467,11 +2485,13 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x05R\x06height\"L\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\"\xea\x01\n" +
 	"\x05Genre\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x03 \x01(\tR\x04slug\"-\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12:\n" +
+	"\x1aeye_catch_image_updated_at\x18\x04 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
+	"\x18eye_catch_image_variants\x18\x05 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xa5\a\n" +
@@ -2686,25 +2706,26 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	12, // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 1: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
 	15, // 2: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	14, // 3: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	13, // 4: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	15, // 5: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	1,  // 6: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
-	2,  // 7: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	17, // 8: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	18, // 9: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
-	7,  // 10: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
-	13, // 11: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
-	3,  // 12: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
-	7,  // 13: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
-	7,  // 14: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	22, // 15: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	22, // 16: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	15, // 3: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	14, // 4: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	13, // 5: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	15, // 6: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	1,  // 7: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
+	2,  // 8: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	17, // 9: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	18, // 10: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	7,  // 11: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
+	13, // 12: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	3,  // 13: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
+	7,  // 14: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
+	7,  // 15: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	22, // 16: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	22, // 17: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

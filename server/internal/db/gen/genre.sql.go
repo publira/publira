@@ -45,7 +45,7 @@ INSERT INTO genres (
         display_order
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, tenant_id, public_id, name, slug, display_order, created_at
+RETURNING id, tenant_id, public_id, name, slug, display_order, created_at, eye_catch_image_id
 `
 
 type CreateGenreParams struct {
@@ -75,6 +75,7 @@ func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre
 		&i.Slug,
 		&i.DisplayOrder,
 		&i.CreatedAt,
+		&i.EyeCatchImageID,
 	)
 	return i, err
 }
@@ -95,8 +96,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND g.public_id = $2
 LIMIT 1
@@ -108,12 +112,14 @@ type GetGenreByPublicIDForTenantParams struct {
 }
 
 type GetGenreByPublicIDForTenantRow struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	DisplayOrder int32     `json:"display_order"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	Slug                   string        `json:"slug"`
+	DisplayOrder           int32         `json:"display_order"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
 func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error) {
@@ -126,6 +132,8 @@ func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreB
 		&i.Slug,
 		&i.DisplayOrder,
 		&i.CreatedAt,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
 	)
 	return i, err
 }
@@ -353,8 +361,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND (
         $2::uuid IS NULL
@@ -381,12 +392,14 @@ type ListGenresByTenantAscParams struct {
 }
 
 type ListGenresByTenantAscRow struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	DisplayOrder int32     `json:"display_order"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	Slug                   string        `json:"slug"`
+	DisplayOrder           int32         `json:"display_order"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
 // The genre list is read in the order the tenant put it in, so the cursor
@@ -417,6 +430,8 @@ func (q *Queries) ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTen
 			&i.Slug,
 			&i.DisplayOrder,
 			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -437,8 +452,11 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
-    g.created_at
+    g.created_at,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND (
         $2::uuid IS NULL
@@ -465,12 +483,14 @@ type ListGenresByTenantDescParams struct {
 }
 
 type ListGenresByTenantDescRow struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	DisplayOrder int32     `json:"display_order"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	Slug                   string        `json:"slug"`
+	DisplayOrder           int32         `json:"display_order"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
 func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTenantDescParams) ([]ListGenresByTenantDescRow, error) {
@@ -495,6 +515,8 @@ func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTe
 			&i.Slug,
 			&i.DisplayOrder,
 			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -515,6 +537,7 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
+    g.eye_catch_image_id,
     (
         SELECT COUNT(*)
         FROM series_genres sg
@@ -559,12 +582,13 @@ type ListPublishedGenresByTenantAscParams struct {
 }
 
 type ListPublishedGenresByTenantAscRow struct {
-	ID                   uuid.UUID `json:"id"`
-	PublicID             string    `json:"public_id"`
-	Name                 string    `json:"name"`
-	Slug                 string    `json:"slug"`
-	DisplayOrder         int32     `json:"display_order"`
-	PublishedSeriesCount int32     `json:"published_series_count"`
+	ID                   uuid.UUID     `json:"id"`
+	PublicID             string        `json:"public_id"`
+	Name                 string        `json:"name"`
+	Slug                 string        `json:"slug"`
+	DisplayOrder         int32         `json:"display_order"`
+	EyeCatchImageID      uuid.NullUUID `json:"eye_catch_image_id"`
+	PublishedSeriesCount int32         `json:"published_series_count"`
 }
 
 // The public genre list: the tenant's whole genre list, in the order the
@@ -603,6 +627,7 @@ func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPu
 			&i.Name,
 			&i.Slug,
 			&i.DisplayOrder,
+			&i.EyeCatchImageID,
 			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
@@ -624,6 +649,7 @@ SELECT g.id,
     g.name,
     g.slug,
     g.display_order,
+    g.eye_catch_image_id,
     (
         SELECT COUNT(*)
         FROM series_genres sg
@@ -668,12 +694,13 @@ type ListPublishedGenresByTenantDescParams struct {
 }
 
 type ListPublishedGenresByTenantDescRow struct {
-	ID                   uuid.UUID `json:"id"`
-	PublicID             string    `json:"public_id"`
-	Name                 string    `json:"name"`
-	Slug                 string    `json:"slug"`
-	DisplayOrder         int32     `json:"display_order"`
-	PublishedSeriesCount int32     `json:"published_series_count"`
+	ID                   uuid.UUID     `json:"id"`
+	PublicID             string        `json:"public_id"`
+	Name                 string        `json:"name"`
+	Slug                 string        `json:"slug"`
+	DisplayOrder         int32         `json:"display_order"`
+	EyeCatchImageID      uuid.NullUUID `json:"eye_catch_image_id"`
+	PublishedSeriesCount int32         `json:"published_series_count"`
 }
 
 func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListPublishedGenresByTenantDescParams) ([]ListPublishedGenresByTenantDescRow, error) {
@@ -698,6 +725,7 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 			&i.Name,
 			&i.Slug,
 			&i.DisplayOrder,
+			&i.EyeCatchImageID,
 			&i.PublishedSeriesCount,
 		); err != nil {
 			return nil, err
@@ -714,28 +742,34 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 }
 
 const LockGenresForTenant = `-- name: LockGenresForTenant :many
-SELECT id,
-    public_id,
-    name,
-    slug
-FROM genres
-WHERE tenant_id = $1
-ORDER BY display_order ASC,
-    id ASC
-FOR UPDATE
+SELECT g.id,
+    g.public_id,
+    g.name,
+    g.slug,
+    g.eye_catch_image_id,
+    gi.updated_at AS eye_catch_image_updated_at
+FROM genres g
+    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
+WHERE g.tenant_id = $1
+ORDER BY g.display_order ASC,
+    g.id ASC
+FOR UPDATE OF g
 `
 
 type LockGenresForTenantRow struct {
-	ID       uuid.UUID `json:"id"`
-	PublicID string    `json:"public_id"`
-	Name     string    `json:"name"`
-	Slug     string    `json:"slug"`
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	Slug                   string        `json:"slug"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
 // Locks every genre of the tenant and hands back the order they are in now, so
 // a reorder can check the client's expected order against a list no concurrent
-// write can move underneath it. The names come along because a reorder answers
-// with the whole list, and nothing in this transaction changes them.
+// write can move underneath it. The names and eye-catches come along because a
+// reorder answers with the whole list, and nothing in this transaction changes
+// them.
 func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, LockGenresForTenant, tenantID)
 	if err != nil {
@@ -750,6 +784,8 @@ func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) (
 			&i.PublicID,
 			&i.Name,
 			&i.Slug,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -767,18 +803,25 @@ func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) (
 const UpdateGenre = `-- name: UpdateGenre :exec
 UPDATE genres
 SET name = $2,
-    slug = $3
+    slug = $3,
+    eye_catch_image_id = $4
 WHERE id = $1
 `
 
 type UpdateGenreParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Slug string    `json:"slug"`
+	ID              uuid.UUID     `json:"id"`
+	Name            string        `json:"name"`
+	Slug            string        `json:"slug"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateGenre, arg.ID, arg.Name, arg.Slug)
+	_, err := q.db.ExecContext(ctx, UpdateGenre,
+		arg.ID,
+		arg.Name,
+		arg.Slug,
+		arg.EyeCatchImageID,
+	)
 	return err
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -108,6 +109,90 @@ func TestTouchSeriesImageMovesUpdatedAt(t *testing.T) {
 	}
 }
 
+// The genre side of the ratio isolation above, over the genre's own tables.
+func TestDeleteGenreImageVariantsByTypeLeavesTheOtherRatios(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := pg.DB
+	q := dbmodels.New(db)
+
+	tenantID := mustInsertTenant(t, ctx, db, "TENANTVAR003", "var3.example.com", "admin-var3.example.com", "Variant Tenant 3")
+	genreID := mustInsertGenre(t, ctx, db, tenantID, "GENREVAR0001")
+	imageID := mustInsertGenreImage(t, ctx, db, tenantID, genreID)
+
+	mustInsertGenreImageVariant(t, ctx, db, tenantID, imageID, "landscape", 800, 450)
+	mustInsertGenreImageVariant(t, ctx, db, tenantID, imageID, "landscape", 1600, 900)
+	mustInsertGenreImageVariant(t, ctx, db, tenantID, imageID, "portrait", 1200, 1600)
+
+	removed, err := q.DeleteGenreImageVariantsByType(ctx, dbmodels.DeleteGenreImageVariantsByTypeParams{
+		GenreImageID: imageID,
+		VariantType:  "landscape",
+	})
+	if err != nil {
+		t.Fatalf("DeleteGenreImageVariantsByType: %v", err)
+	}
+	if removed != 2 {
+		t.Fatalf("deleted %d rows, want 2", removed)
+	}
+
+	rows, err := q.ListGenreImageVariantsByImageIDs(ctx, []uuid.UUID{imageID})
+	if err != nil {
+		t.Fatalf("ListGenreImageVariantsByImageIDs: %v", err)
+	}
+	if len(rows) != 1 || rows[0].VariantType != "portrait" {
+		t.Fatalf("remaining variants = %v, want only the portrait one", rows)
+	}
+
+	mustInsertGenreImageVariant(t, ctx, db, tenantID, imageID, "landscape", 1600, 900)
+	variant, err := q.GetGenreImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams{
+		GenreImageID: imageID,
+		TenantID:     tenantID,
+		VariantType:  "landscape",
+		Width:        1600,
+	})
+	if err != nil {
+		t.Fatalf("GetGenreImageVariantByTypeAndWidthForTenant: %v", err)
+	}
+	if variant.ObjectKey != objectKeyFor("landscape", 1600) {
+		t.Fatalf("object_key = %q, want the replacement", variant.ObjectKey)
+	}
+}
+
+// A genre owns the eye-catches uploaded for it, so deleting the genre leaves
+// no image row or variant row behind.
+func TestDeletingAGenreDeletesItsEyeCatch(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := pg.DB
+	tenantID := mustInsertTenant(t, ctx, db, "TENANTVAR004", "var4.example.com", "admin-var4.example.com", "Variant Tenant 4")
+	genreID := mustInsertGenre(t, ctx, db, tenantID, "GENREVAR0002")
+	imageID := mustInsertGenreImage(t, ctx, db, tenantID, genreID)
+	mustInsertGenreImageVariant(t, ctx, db, tenantID, imageID, "portrait", 1200, 1600)
+
+	if _, err := db.ExecContext(ctx, `DELETE FROM genres WHERE id = $1`, genreID); err != nil {
+		t.Fatalf("delete genre: %v", err)
+	}
+
+	var images, variants int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM genre_images WHERE id = $1`, imageID).Scan(&images); err != nil {
+		t.Fatalf("count genre images: %v", err)
+	}
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM genre_image_variants WHERE genre_image_id = $1`, imageID).Scan(&variants); err != nil {
+		t.Fatalf("count genre image variants: %v", err)
+	}
+	if images != 0 || variants != 0 {
+		t.Fatalf("left %d image rows and %d variant rows, want none", images, variants)
+	}
+}
+
 func objectKeyFor(variantType string, width int) string {
 	return "tenants/TENANT/" + variantType + "/" + strconv.Itoa(width)
 }
@@ -140,6 +225,63 @@ func mustInsertSeriesImageVariant(t *testing.T, ctx context.Context, db *sql.DB,
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO series_image_variants (
 			id, tenant_id, series_image_id, label, variant_type,
+			storage_provider, object_key, content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, $4, $5, 's3', $6, 'image/jpeg', 4096, $7, $8)
+	`,
+		variantID, tenantID, imageID,
+		variantType, variantType,
+		objectKeyFor(variantType, int(width)),
+		width, height,
+	)
+	if err != nil {
+		t.Fatalf("insert %s variant: %v", variantType, err)
+	}
+}
+
+func mustInsertGenre(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, publicID string) uuid.UUID {
+	t.Helper()
+	genreID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO genres (id, tenant_id, public_id, name, slug) VALUES ($1, $2, $3, $4, $5)
+	`, genreID, tenantID, publicID, publicID, strings.ToLower(publicID))
+	if err != nil {
+		t.Fatalf("insert genre: %v", err)
+	}
+	return genreID
+}
+
+func mustInsertGenreImage(t *testing.T, ctx context.Context, db *sql.DB, tenantID, genreID uuid.UUID) uuid.UUID {
+	t.Helper()
+	imageID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)
+	`, imageID, tenantID, genreID)
+	if err != nil {
+		t.Fatalf("insert genre image: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, genreID, imageID)
+	if err != nil {
+		t.Fatalf("point genre at its eye catch image: %v", err)
+	}
+	return imageID
+}
+
+func mustInsertGenreImageVariant(t *testing.T, ctx context.Context, db *sql.DB, tenantID, imageID uuid.UUID, variantType string, width, height int32) {
+	t.Helper()
+	variantID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO genre_image_variants (
+			id, tenant_id, genre_image_id, label, variant_type,
 			storage_provider, object_key, content_type, file_size_bytes, width, height
 		)
 		VALUES ($1, $2, $3, $4, $5, 's3', $6, 'image/jpeg', 4096, $7, $8)

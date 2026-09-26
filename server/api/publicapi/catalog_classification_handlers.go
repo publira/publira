@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
@@ -35,6 +37,7 @@ type publishedGenreRow struct {
 	name                 string
 	slug                 string
 	displayOrder         int32
+	eyeCatchImageID      uuid.NullUUID
 	publishedSeriesCount int32
 }
 
@@ -47,6 +50,7 @@ func mapPublishedGenreAscRows(rows []dbmodels.ListPublishedGenresByTenantAscRow)
 			name:                 row.Name,
 			slug:                 row.Slug,
 			displayOrder:         row.DisplayOrder,
+			eyeCatchImageID:      row.EyeCatchImageID,
 			publishedSeriesCount: row.PublishedSeriesCount,
 		})
 	}
@@ -62,6 +66,7 @@ func mapPublishedGenreDescRows(rows []dbmodels.ListPublishedGenresByTenantDescRo
 			name:                 row.Name,
 			slug:                 row.Slug,
 			displayOrder:         row.DisplayOrder,
+			eyeCatchImageID:      row.EyeCatchImageID,
 			publishedSeriesCount: row.PublishedSeriesCount,
 		})
 	}
@@ -206,16 +211,30 @@ func (s *apiServer) ListPublishedGenres(
 	if err != nil {
 		return nil, err
 	}
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		if row.eyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
+		}
+	}
+	eyeCatches, err := s.genreEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, err
+	}
 
 	genres := make([]*publirav1.PublishedGenre, 0, len(rows))
 	for _, row := range rows {
-		genres = append(genres, &publirav1.PublishedGenre{
+		genre := &publirav1.PublishedGenre{
 			PublicId:             row.publicID,
 			Name:                 row.name,
 			Slug:                 row.slug,
 			PublishedSeriesCount: row.publishedSeriesCount,
 			FeaturedSeries:       featured[row.id],
-		})
+		}
+		if row.eyeCatchImageID.Valid {
+			genre.EyeCatchImageVariants = eyeCatches[row.eyeCatchImageID.UUID]
+		}
+		genres = append(genres, genre)
 	}
 
 	res := &publirav1.ListPublishedGenresResponse{Genres: genres}
@@ -242,6 +261,36 @@ func (s *apiServer) ListPublishedGenres(
 
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return connect.NewResponse(res), nil
+}
+
+// genreEyeCatchVariantsByImageIDs fetches the variants of the given genre
+// images.
+func (s *apiServer) genreEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListGenreImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list genre image variants", err, "image_count", len(imageIDs))
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(imageIDs))
+	for _, row := range rows {
+		mapped[row.GenreImageID] = append(mapped[row.GenreImageID], &publirattypesv1.SeriesEyeCatchVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           fmt.Sprintf("/images/genres/%s/%s/%d", row.GenreImageID.String(), row.VariantType, row.Width),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return mapped, nil
 }
 
 // tagCursorKeys is the decoded tag cursor. A tag has no id of its own in the

@@ -122,3 +122,33 @@ func TestListGenresRejectsACursorOutsideTheColumnRange(t *testing.T) {
 		assertExpectations(t, mock)
 	}
 }
+
+func TestUpdateGenreRejectsClearAndImageTogether(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateGenreRequest{
+		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId:                 "GENRE001",
+		Name:                     "Fantasy",
+		ClearEyeCatchImage:       true,
+		EyeCatchImageData:        oneByOnePNG,
+		EyeCatchImageContentType: "image/png",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.UpdateGenre(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateGenre code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertBadRequestField(t, err, "eye_catch_image_data")
+	assertExpectations(t, mock)
+}

@@ -29,6 +29,10 @@ message CreateGenreRequest {
   // The slug is derived from this, so a name that collides with an existing
   // genre on nothing but case or spacing is refused with already_exists.
   string name = 2;
+  // Cropped into every ratio of the eye-catch. Empty leaves the genre without
+  // one.
+  bytes eye_catch_image_data = 3;
+  string eye_catch_image_content_type = 4;
 }
 
 message CreateGenreResponse {
@@ -42,6 +46,11 @@ message UpdateGenreRequest {
   // Renaming re-derives the slug. The public_id does not move, so whatever
   // addresses this genre keeps addressing it.
   string name = 3;
+  // Replaces the whole eye-catch. Empty keeps the one the genre has.
+  bytes eye_catch_image_data = 4;
+  string eye_catch_image_content_type = 5;
+  // Removes the eye-catch. Refused alongside eye_catch_image_data.
+  bool clear_eye_catch_image = 6;
 }
 
 message UpdateGenreResponse {
@@ -73,10 +82,29 @@ message DeleteGenreRequest {
 
 message DeleteGenreResponse {}
 
+// Replaces the image of one aspect ratio of a genre eye-catch. The other
+// ratios keep the images they already hold.
+message UploadGenreEyeCatchAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre.
+  publira.types.v1.ImageCropRect crop = 6;
+}
+
+message UploadGenreEyeCatchAspectImageResponse {
+  publira.types.v1.Genre genre = 1;
+}
+
 service AdminGenreService {
   rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {}
   rpc CreateGenre(CreateGenreRequest) returns (CreateGenreResponse) {}
   rpc UpdateGenre(UpdateGenreRequest) returns (UpdateGenreResponse) {}
   rpc ReorderGenres(ReorderGenresRequest) returns (ReorderGenresResponse) {}
   rpc DeleteGenre(DeleteGenreRequest) returns (DeleteGenreResponse) {}
+  rpc UploadGenreEyeCatchAspectImage(UploadGenreEyeCatchAspectImageRequest) returns (UploadGenreEyeCatchAspectImageResponse) {}
 }
