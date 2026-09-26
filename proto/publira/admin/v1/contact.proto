@@ -64,13 +64,13 @@ message GetContactMessageResponse {
 
 message MarkContactMessageHandledRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // True marks the message dealt with, false puts it back among the ones still
   // waiting. The flag is stated rather than toggled, so two members of staff
   // working the same inbox cannot undo each other by pressing at once.
   bool handled = 3;
-  // The message's primary key (ContactMessage.id). Takes precedence over
-  // public_id.
+  // The message's primary key (ContactMessage.id).
   string contact_message_id = 4;
 }
 

@@ -370,9 +370,6 @@ type Querier interface {
 	// reads it before deciding and again after writing, so the caller answers from
 	// the stored row rather than from what it assumed the transition would produce.
 	GetEpisodeCommentForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByIDForTenantParams) (GetEpisodeCommentForModerationByIDForTenantRow, error)
-	// The same comment by the public identifier, for a moderation request that
-	// still names it that way.
-	GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error)
 	// One report in the shape the queue returns. A decision reads it before acting
 	// and again after writing, so the answer describes the stored rows rather than
 	// what the transition was assumed to produce.

@@ -305,22 +305,10 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	}
 }
 
-func TestDBAdminCommentModerationAcceptsThePublicIDUntilClientsMove(t *testing.T) {
+func TestDBAdminCommentModerationRefusesAMissingOrMalformedCommentID(t *testing.T) {
 	env := newAdminDBEnv(t)
-	fixture := newCommentModerationFixture(t, env, "PUB", "moderation-public-id.example.com")
+	fixture := newCommentModerationFixture(t, env, "CID", "moderation-comment-id.example.com")
 	client := env.commentClient()
-	comment := fixture.seedComment(t, "PUBPENDING01", "pending")
-
-	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-	}))
-	if err != nil {
-		t.Fatalf("ApproveComment by public_id: %v", err)
-	}
-	if approved.Msg.Comment.Id != comment.ID.String() || approved.Msg.Comment.Status != "published" {
-		t.Fatalf("approved comment = (%q, %s), want (%s, published)", approved.Msg.Comment.Id, approved.Msg.Comment.Status, comment.ID)
-	}
 
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
@@ -731,14 +719,14 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 		t.Fatalf("pending count on an empty tenant = %d, want 0", got)
 	}
 
-	mine.seedComment(t, "CNTPENDING01", "pending")
+	toApprove := mine.seedComment(t, "CNTPENDING01", "pending")
 	mine.seedComment(t, "CNTPENDING02", "pending")
 	// Every other state is work already done, so none of them is in the badge.
 	mine.seedComment(t, "CNTPUBLISH01", "published")
-	mine.seedComment(t, "CNTHIDDEN001", "published")
+	toHide := mine.seedComment(t, "CNTHIDDEN001", "published")
 	if _, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   mine.admin.tenantContext(),
-		PublicId: "CNTHIDDEN001",
+		Tenant:    mine.admin.tenantContext(),
+		CommentId: toHide.ID.String(),
 	})); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
@@ -754,8 +742,8 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 	// Approving is what empties the queue, so the count is what a moderator
 	// watches shrink as they work through it.
 	if _, err := env.commentClient().ApproveComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   mine.admin.tenantContext(),
-		PublicId: "CNTPENDING01",
+		Tenant:    mine.admin.tenantContext(),
+		CommentId: toApprove.ID.String(),
 	})); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}

@@ -345,9 +345,9 @@ func (e *publicDBEnv) restoreComment(
 	t.Helper()
 
 	req := connect.NewRequest(&publiraadminv1.RestoreCommentRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-		PublicId: publicID,
-		Reason:   "Restored for this test.",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		CommentId: e.commentID(t, tenant, publicID),
+		Reason:    "Restored for this test.",
 	})
 	req.Header().Set("Authorization", "Bearer "+console.token)
 	if _, err := console.client.RestoreComment(context.Background(), req); err != nil {

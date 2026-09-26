@@ -399,19 +399,6 @@ func TestDBContactMessageIsMarkedHandledAndPutBack(t *testing.T) {
 		t.Error("a reopened message is not back in the unhandled list")
 	}
 
-	// The public ID is still accepted until every client sends the primary key.
-	byPublicID, err := console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-		PublicId: listed.PublicId,
-		Handled:  true,
-	}, console.token))
-	if err != nil {
-		t.Fatalf("MarkContactMessageHandled by public_id: %v", err)
-	}
-	if byPublicID.Msg.Message.Id != listed.Id || byPublicID.Msg.Message.HandledAt == "" {
-		t.Errorf("marked by public_id = (%q, %q), want %q handled", byPublicID.Msg.Message.Id, byPublicID.Msg.Message.HandledAt, listed.Id)
-	}
-
 	_, err = console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ContactMessageId: "not-a-uuid",
