@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -235,5 +236,59 @@ func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
 	genres := reordered.Msg.Genres
 	if len(genres) != 2 || len(genres[0].GetEyeCatchImageVariants()) != 0 || len(genres[1].GetEyeCatchImageVariants()) != eyeCatchVariantCount {
 		t.Fatalf("reordered genres = %v, want Mystery bare and Fantasy with its eye-catch", genres)
+	}
+}
+
+// A rename writes eye_catch_image_id back, so a rename that waited behind a
+// clear must write what the clear left, not what it read before waiting.
+func TestDBUpdateGenreRenameAfterAConcurrentClearKeepsTheClear(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.genreClient()
+	ctx := context.Background()
+
+	created := createGenreWithEyeCatch(t, client, tenant, "Fantasy")
+
+	clearing, err := env.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the clearing transaction: %v", err)
+	}
+	defer clearing.Rollback() //nolint:errcheck
+	if _, err := clearing.ExecContext(ctx,
+		"UPDATE genres SET eye_catch_image_id = NULL WHERE tenant_id = $1 AND public_id = $2",
+		tenant.Tenant.ID, created.PublicId); err != nil {
+		t.Fatalf("clear the eye-catch: %v", err)
+	}
+
+	renamed := make(chan error, 1)
+	go func() {
+		_, err := client.UpdateGenre(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
+			Tenant:   tenant.tenantContext(),
+			PublicId: created.PublicId,
+			Name:     "High Fantasy",
+		}))
+		renamed <- err
+	}()
+
+	// The rename has to be waiting on the row before the clear commits, or the
+	// two would simply run one after the other.
+	deadline := time.Now().Add(10 * time.Second)
+	for env.countRows(t, "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%genres%'") == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the rename never waited on the genre row")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := clearing.Commit(); err != nil {
+		t.Fatalf("commit the clear: %v", err)
+	}
+	if err := <-renamed; err != nil {
+		t.Fatalf("UpdateGenre rename: %v", err)
+	}
+
+	if count := env.countRows(t,
+		"SELECT count(*) FROM genres WHERE tenant_id = $1 AND eye_catch_image_id IS NOT NULL", tenant.Tenant.ID,
+	); count != 0 {
+		t.Fatalf("genres pointing at an eye-catch after the rename = %d, want the clear kept", count)
 	}
 }

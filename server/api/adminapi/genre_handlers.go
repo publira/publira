@@ -223,17 +223,27 @@ func (s *adminServer) genreEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
-func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, genreID uuid.UUID, genrePublicID string, image *normalizedEyeCatchImage) (uuid.NullUUID, error) {
-	if image == nil {
-		return uuid.NullUUID{}, nil
+// genreEyeCatchVariants cuts an uploaded eye-catch into every ratio before
+// the caller opens its transaction, so a refused image costs no database work
+// and the cut does not run while the genre row is held. Nil means no upload.
+func (s *adminServer) genreEyeCatchVariants(data []byte, contentType string) ([]imageproc.Variant, error) {
+	image, err := normalizeEyeCatchImage(data, contentType, "eye_catch_image_data", "eye_catch_image_content_type")
+	if err != nil || image == nil {
+		return nil, err
 	}
 	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
-
 	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
 	if err != nil {
-		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
+	}
+	return variants, nil
+}
+
+func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, genreID uuid.UUID, genrePublicID string, variants []imageproc.Variant) (uuid.NullUUID, error) {
+	if len(variants) == 0 {
+		return uuid.NullUUID{}, nil
 	}
 
 	genreImageID, err := uuid.NewV7()
@@ -413,7 +423,7 @@ func (s *adminServer) CreateGenre(
 	if err != nil {
 		return nil, err
 	}
-	eyeCatchImage, err := normalizeEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType, "eye_catch_image_data", "eye_catch_image_content_type")
+	eyeCatchVariants, err := s.genreEyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +462,7 @@ func (s *adminServer) CreateGenre(
 		}
 		return nil, s.internalDBError(ctx, "failed to create genre", err, "tenant_id", tenant.ID.String())
 	}
-	eyeCatchImageID, err := s.createGenreEyeCatchImage(txCtx, tenant, created.ID, created.PublicID, eyeCatchImage)
+	eyeCatchImageID, err := s.createGenreEyeCatchImage(txCtx, tenant, created.ID, created.PublicID, eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -521,14 +531,11 @@ func (s *adminServer) UpdateGenre(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchImage, err := normalizeEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType, "eye_catch_image_data", "eye_catch_image_content_type")
+	eyeCatchVariants, err := s.genreEyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.genreByPublicID(ctx, tenant.ID, req.Msg.PublicId)
-	if err != nil {
-		return nil, err
-	}
+	publicID := strings.TrimSpace(req.Msg.PublicId)
 
 	// Committed with the rename, so a name another genre holds does not leave
 	// an eye-catch behind that nothing shows.
@@ -539,11 +546,28 @@ func (s *adminServer) UpdateGenre(
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
+	// Every update writes eye_catch_image_id back, so it is read behind the
+	// lock: a rename racing a clear or a replacement would otherwise restore
+	// the eye-catch the other write had just changed.
+	if _, err := s.queriesFor(txCtx).LockGenreByPublicIDForTenant(txCtx, dbmodels.LockGenreByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: publicID,
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to lock genre for update", err, "tenant_id", tenant.ID.String(), "genre_public_id", publicID)
+	}
+	current, err := s.genreByPublicID(txCtx, tenant.ID, publicID)
+	if err != nil {
+		return nil, err
+	}
+
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
-	} else if eyeCatchImage != nil {
-		eyeCatchImageID, err = s.createGenreEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
+	} else if len(eyeCatchVariants) > 0 {
+		eyeCatchImageID, err = s.createGenreEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
 		if err != nil {
 			return nil, err
 		}
