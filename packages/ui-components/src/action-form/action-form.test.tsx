@@ -342,6 +342,49 @@ describe("ActionForm", () => {
     });
   });
 
+  it("names the control and states its toggle", () => {
+    render(
+      <ActionForm action={succeed}>
+        <ActionFormSubmit aria-label="Unfollow Night Train" aria-pressed>
+          Unfollow
+        </ActionFormSubmit>
+      </ActionForm>
+    );
+
+    const button = screen.getByRole("button", {
+      name: "Unfollow Night Train",
+    });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(button.hasAttribute("aria-busy")).toBe(false);
+  });
+
+  it("marks only the control whose submission is in flight as busy", async () => {
+    const run = Promise.withResolvers<null>();
+
+    render(<TestedForm save={succeed} test={() => run.promise} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Test" }));
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole("button", { name: "Testing..." })
+          .getAttribute("aria-busy")
+      ).toBe("true");
+    });
+    expect(
+      screen.getByRole("button", { name: "Save" }).hasAttribute("aria-busy")
+    ).toBe(false);
+
+    // A transition left open would hold back every later test's Action.
+    run.resolve(null);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Test" }).hasAttribute("aria-busy")
+      ).toBe(false);
+    });
+  });
+
   it("hides the success message when showSuccess is false", async () => {
     render(
       <ActionForm action={succeed} showSuccess={false}>

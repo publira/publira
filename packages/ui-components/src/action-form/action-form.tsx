@@ -155,14 +155,13 @@ const ActionFormControlContext = createContext<ActionFormControlAction | null>(
 );
 
 /**
- * Whether the submission in flight is the one the surrounding control started.
- * A plain `<form>` reports the Action it is running; outside a control with a
- * `formAction` of its own, any submission of that form counts.
+ * Whether the submission in flight is the one `control` started, `null` naming
+ * the form's own. A plain `<form>` reports the Action it is running; outside a
+ * control with a `formAction` of its own, any submission of that form counts.
  */
-const useOwnSubmissionPending = () => {
+const useSubmissionPending = (control: ActionFormControlAction | null) => {
   const { action, pending } = useFormStatus();
   const form = useContext(ActionFormContext);
-  const control = useContext(ActionFormControlContext);
   if (!pending) {
     return false;
   }
@@ -173,7 +172,15 @@ const useOwnSubmissionPending = () => {
   return control === null || action === control;
 };
 
+/** Whether the submission in flight is the one the surrounding control started. */
+const useOwnSubmissionPending = () =>
+  useSubmissionPending(useContext(ActionFormControlContext));
+
 export interface ActionFormSubmitProps {
+  /** Names the item the control acts on where a list holds several of them. */
+  "aria-label"?: string;
+  /** The state of a toggle, such as following, the submission would change. */
+  "aria-pressed"?: boolean;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
@@ -192,6 +199,7 @@ export interface ActionFormSubmitProps {
    * form's own Action. In a plain `<form>` it is the button's `formAction`.
    */
   formAction?: ActionFormControlAction;
+  size?: ButtonProps["size"];
   variant?: ButtonProps["variant"];
 }
 
@@ -200,24 +208,33 @@ export interface ActionFormSubmitProps {
  *
  * Keeping the label in `children` lets a server-rendered `<Message />` sit at
  * the point where it is displayed, while `useFormStatus` still disables the
- * control during its Server Action. Wording that changes while the submission
- * is in flight goes in `ActionFormIdle` / `ActionFormPending`.
+ * control during its Server Action, and marks it busy while the submission it
+ * started is in flight. Wording that changes meanwhile goes in
+ * `ActionFormIdle` / `ActionFormPending`.
  */
 export const ActionFormSubmit = ({
+  "aria-label": ariaLabel,
+  "aria-pressed": ariaPressed,
   children,
   className,
   disabled,
   form: formId,
   formAction,
+  size,
   variant,
 }: ActionFormSubmitProps) => {
   const { pending } = useFormStatus();
   const form = useContext(ActionFormContext);
+  const control = formAction ?? null;
+  const busy = useSubmissionPending(control);
   const submitsThroughActionForm = form !== null && formAction !== undefined;
 
   return (
-    <ActionFormControlContext value={formAction ?? null}>
+    <ActionFormControlContext value={control}>
       <Button
+        aria-busy={busy || undefined}
+        aria-label={ariaLabel}
+        aria-pressed={ariaPressed}
         className={className}
         disabled={disabled || pending}
         form={formId}
@@ -229,6 +246,7 @@ export const ActionFormSubmit = ({
               }
             : undefined
         }
+        size={size}
         type={submitsThroughActionForm ? "button" : "submit"}
         variant={variant}
       >
