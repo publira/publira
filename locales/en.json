@@ -3964,8 +3964,7 @@
       "day_below_minute": "The daily limit for {$setting} must be at least its per-minute limit.",
       "day_below_hour": "The daily limit for {$setting} must be at least its per-hour limit.",
       "security": {
-        "tab": "Security",
-        "page_title": "Settings - Security",
+        "page_title": "Security policy",
         "heading": "Security policy",
         "page_description": "Manage sign-in and email abuse protections for the platform.",
         "title": "Security and abuse protection",
@@ -3987,8 +3986,7 @@
         "saved": "Security policy saved."
       },
       "community": {
-        "tab": "Community",
-        "page_title": "Settings - Community",
+        "page_title": "Community limits",
         "heading": "Community limits",
         "page_description": "Manage the abuse-control defaults shared by tenants.",
         "title": "Community limit defaults",
@@ -4018,8 +4016,7 @@
         "saved": "Community limits saved."
       },
       "retention": {
-        "tab": "Retention",
-        "page_title": "Settings - Retention",
+        "page_title": "Retention defaults",
         "heading": "Retention defaults",
         "page_description": "Manage how long platform data is retained when a tenant has no override.",
         "title": "Retention defaults",
@@ -4278,15 +4275,23 @@
     },
     "nav": {
       "audit_label": "Audit logs",
+      "community_label": "Community",
       "dashboard_label": "Dashboard",
+      "email_label": "Email",
+      "general_label": "General",
       "governance": "Governance",
       "operators_label": "Operators",
-      "overview": "Overview",
-      "settings_label": "Settings",
+      "platform": "Platform",
+      "policies": "Policies",
+      "retention_label": "Retention",
+      "security_label": "Security",
+      "services": "Services",
+      "storage_label": "Storage",
       "tenants_create_label": "Create tenant",
       "tenants_list_label": "Tenants",
       "tenants_section": "Tenants",
-      "users_label": "Users"
+      "users_label": "Users",
+      "webpush_label": "Web Push"
     },
     "not_found": {
       "description": "This item may have been deleted, or the URL may have changed. Choose it from a list instead.",
@@ -4410,18 +4415,16 @@
       "email_change_submit": "Send confirmation email",
       "email_change_success": "Confirmation emails were sent to both the current and new addresses. Open both links to finish the change.",
       "email_change_title": "Change email address",
-      "email_heading": "Settings",
+      "email_heading": "Email delivery",
       "email_in_use": "This email address is already in use.",
       "email_page_description": "Manage the platform default SMTP settings.",
-      "email_tab": "Email",
-      "email_title": "Settings - Email",
+      "email_title": "Email delivery",
       "encryption_none": "None",
       "encryption_required": "Select an encryption method.",
       "from_address": "From address",
-      "general_heading": "Settings",
+      "general_heading": "General settings",
       "general_page_description": "Manage defaults that apply across the platform.",
-      "general_tab": "General",
-      "general_title": "Settings - General",
+      "general_title": "General settings",
       "host": "Host",
       "load_failed": "Could not load platform settings. Please try again later.",
       "locale_required": "Select a language.",
@@ -4646,9 +4649,8 @@
       "unsuspend_title": "Unsuspend this account?"
     },
     "storage": {
-      "tab": "Storage",
-      "page_title": "Settings - Storage",
-      "heading": "Settings",
+      "page_title": "Image storage",
+      "heading": "Image storage",
       "page_description": "Manage where Publira stores uploaded images.",
       "title": "Object storage",
       "description": "Every tenant's uploaded images are stored in this one S3-compatible bucket. A saved change reaches every server within a minute, without a restart.",
@@ -4728,9 +4730,8 @@
       }
     },
     "webpush": {
-      "tab": "Web Push",
-      "page_title": "Settings - Web Push",
-      "heading": "Settings",
+      "page_title": "Browser notifications",
+      "heading": "Browser notifications",
       "page_description": "Manage the browser notifications Publira sends to readers.",
       "title": "Web Push",
       "description": "Publira signs browser notifications with a key pair it generated for this installation. The private key stays on the server and is never shown. A saved change reaches every server within a minute, without a restart.",
@@ -4750,10 +4751,8 @@
       }
     },
     "configuration": {
-      "tab": "Overview",
-      "page_title": "Settings - Overview",
-      "heading": "Settings",
-      "page_description": "See which parts of the platform are ready to use, and set up whatever is still missing.",
+      "title": "Setup status",
+      "description": "See which parts of the platform are ready to use, and set up whatever is still missing.",
       "summary_ready": "Everything the platform needs is set up. Optional features can stay off until you want them.",
       "summary_needs_setup": "Some settings the platform needs aren't set up yet. Open each item marked Needs setup to finish it.",
       "columns": {
@@ -4800,9 +4799,7 @@
         "name": "Security and data policies",
         "defaults": "The built-in sign-in, abuse-control, and data retention limits apply. Change them only if they don't suit this platform.",
         "configured": "Your saved sign-in, abuse-control, and data retention limits apply."
-      },
-      "dashboard_notice": "Some settings the platform needs aren't set up yet, so parts of it won't work.",
-      "dashboard_notice_link": "Review settings"
+      }
     }
   }
 }

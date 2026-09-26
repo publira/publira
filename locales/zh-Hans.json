@@ -3964,9 +3964,8 @@
       "day_below_minute": "The daily limit for {$setting} must be at least its per-minute limit.",
       "day_below_hour": "The daily limit for {$setting} must be at least its per-hour limit.",
       "security": {
-        "tab": "Security",
-        "page_title": "Settings - Security",
-        "heading": "Security policy",
+        "page_title": "安全策略",
+        "heading": "安全策略",
         "page_description": "Manage sign-in and email abuse protections for the platform.",
         "title": "Security and abuse protection",
         "description": "These limits protect operator and tenant accounts. Changes take effect without a restart.",
@@ -3987,9 +3986,8 @@
         "saved": "Security policy saved."
       },
       "community": {
-        "tab": "Community",
-        "page_title": "Settings - Community",
-        "heading": "Community limits",
+        "page_title": "社区限制",
+        "heading": "社区限制",
         "page_description": "Manage the abuse-control defaults shared by tenants.",
         "title": "Community limit defaults",
         "description": "Set the initial limits for every tenant.",
@@ -4018,9 +4016,8 @@
         "saved": "Community limits saved."
       },
       "retention": {
-        "tab": "Retention",
-        "page_title": "Settings - Retention",
-        "heading": "Retention defaults",
+        "page_title": "保留期限默认值",
+        "heading": "保留期限默认值",
         "page_description": "Manage how long platform data is retained when a tenant has no override.",
         "title": "Retention defaults",
         "description": "These periods apply to tenants that have not chosen their own retention settings.",
@@ -4278,15 +4275,23 @@
     },
     "nav": {
       "audit_label": "审计日志",
+      "community_label": "社区",
       "dashboard_label": "仪表盘",
+      "email_label": "邮件",
+      "general_label": "常规",
       "governance": "治理",
       "operators_label": "运营人员",
-      "overview": "概览",
-      "settings_label": "设置",
+      "platform": "平台",
+      "policies": "策略",
+      "retention_label": "保留期限",
+      "security_label": "安全",
+      "services": "外部服务",
+      "storage_label": "存储",
       "tenants_create_label": "创建租户",
       "tenants_list_label": "租户列表",
       "tenants_section": "租户",
-      "users_label": "用户"
+      "users_label": "用户",
+      "webpush_label": "Web Push"
     },
     "not_found": {
       "description": "该对象可能已被删除，或 URL 已变更。请改从列表中选择。",
@@ -4410,18 +4415,16 @@
       "email_change_submit": "发送确认邮件",
       "email_change_success": "确认邮件已发送至当前邮箱地址和新邮箱地址。请打开两个链接完成变更。",
       "email_change_title": "变更邮箱地址",
-      "email_heading": "设置",
+      "email_heading": "邮件发送",
       "email_in_use": "该邮箱地址已被使用。",
       "email_page_description": "管理平台默认的 SMTP 设置。",
-      "email_tab": "邮件",
-      "email_title": "设置 - 邮件",
+      "email_title": "邮件发送",
       "encryption_none": "无",
       "encryption_required": "请选择加密方式。",
       "from_address": "发件人地址",
-      "general_heading": "设置",
+      "general_heading": "常规设置",
       "general_page_description": "管理适用于整个平台的默认值。",
-      "general_tab": "常规",
-      "general_title": "设置 - 常规",
+      "general_title": "常规设置",
       "host": "主机",
       "load_failed": "无法加载平台设置。请稍后再试。",
       "locale_required": "请选择语言。",
@@ -4646,9 +4649,8 @@
       "unsuspend_title": "解除此账户的暂停？"
     },
     "storage": {
-      "tab": "存储",
-      "page_title": "设置 - 存储",
-      "heading": "设置",
+      "page_title": "图片存储",
+      "heading": "图片存储",
       "page_description": "管理上传图片的存储位置。",
       "title": "对象存储",
       "description": "所有租户上传的图片都存储在这一个兼容 S3 的存储桶中。保存的更改无需重启，会在一分钟内生效于所有服务器。",
@@ -4728,9 +4730,8 @@
       }
     },
     "webpush": {
-      "tab": "Web Push",
-      "page_title": "设置 - Web Push",
-      "heading": "设置",
+      "page_title": "浏览器通知",
+      "heading": "浏览器通知",
       "page_description": "管理 Publira 发送给读者的浏览器通知。",
       "title": "Web Push",
       "description": "Publira 使用为此安装生成的密钥对为浏览器通知签名。私钥始终保留在服务器上，不会显示。保存的更改无需重启，会在一分钟内生效于所有服务器。",
@@ -4750,10 +4751,8 @@
       }
     },
     "configuration": {
-      "tab": "概览",
-      "page_title": "设置 - 概览",
-      "heading": "设置",
-      "page_description": "查看平台的哪些功能已可使用，并完成尚缺的设置。",
+      "title": "设置状态",
+      "description": "查看平台的哪些功能已可使用，并完成尚缺的设置。",
       "summary_ready": "平台所需的设置均已完成。可选功能可以在需要之前保持关闭。",
       "summary_needs_setup": "平台所需的部分设置尚未完成。请打开标记为“需要设置”的项目完成设置。",
       "columns": {
@@ -4800,9 +4799,7 @@
         "name": "安全与数据策略",
         "defaults": "登录、防滥用和数据保留限制使用内置默认值。仅在不适合本平台时更改。",
         "configured": "已应用你保存的登录、防滥用和数据保留限制。"
-      },
-      "dashboard_notice": "平台所需的部分设置尚未完成，部分功能将无法使用。",
-      "dashboard_notice_link": "查看设置"
+      }
     }
   }
 }

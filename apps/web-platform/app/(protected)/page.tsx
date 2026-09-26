@@ -5,7 +5,6 @@ import {
   FigureLine,
   FigureValue,
 } from "@publira/ui-components/figure-line";
-import { FormMessage } from "@publira/ui-components/form-message";
 import {
   SectionError,
   SectionErrorDescription,
@@ -36,15 +35,17 @@ import {
   PlatformPageHeader,
   PlatformPageHeading,
   PlatformPageTitle,
+  PlatformSections,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getRequiredConfigurationState } from "#lib/configuration-status";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type { PlatformDashboardRecentEvent } from "#lib/dashboard";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+
+import { SetupStatusSection } from "./_components/setup-status";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
@@ -102,32 +103,6 @@ const buildTargetHref = (
       return null;
     }
   }
-};
-
-/** First-run guidance: the operator lands here after setup. */
-const ConfigurationNotice = async () => {
-  const locale = await getPlatformLocale();
-  const state = await getRequiredConfigurationState(locale);
-
-  if (state !== "needs_setup") {
-    return null;
-  }
-
-  return (
-    <FormMessage variant="warning">
-      <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-        <Message message="platform.configuration.dashboard_notice" />
-      </Suspense>{" "}
-      <Link
-        className="font-medium underline underline-offset-4"
-        href="/settings"
-      >
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="platform.configuration.dashboard_notice_link" />
-        </Suspense>
-      </Link>
-    </FormMessage>
-  );
 };
 
 /** The heading of the events section, whether or not the events arrived. */
@@ -351,20 +326,20 @@ const Page = () => (
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Suspense fallback={null}>
-        <ConfigurationNotice />
-      </Suspense>
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <Message message="platform.dashboard.load_failed" />
+      <PlatformSections>
+        <SetupStatusSection />
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="platform.dashboard.load_failed" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<DashboardSkeleton />}>
+            <DashboardContent />
           </Suspense>
-        }
-      >
-        <Suspense fallback={<DashboardSkeleton />}>
-          <DashboardContent />
-        </Suspense>
-      </SectionErrorBoundary>
+        </SectionErrorBoundary>
+      </PlatformSections>
     </PlatformPageContent>
   </PlatformPage>
 );

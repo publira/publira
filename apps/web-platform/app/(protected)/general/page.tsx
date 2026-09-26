@@ -1,0 +1,137 @@
+import type { Locale } from "@publira/i18n";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+  PlatformSection,
+} from "#components/platform-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getPlatformLocale } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { getPlatformSettings } from "#lib/platform-settings";
+
+import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
+import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
+
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const t = await getMessagesFor(locale);
+
+  return { title: t("platform.settings.general_title") };
+};
+
+const SettingsFormSkeleton = () => (
+  <PlatformSection>
+    <SkeletonLine className="h-5 w-40" />
+    <Skeleton className="h-9 w-full" />
+    <Skeleton className="h-9 w-40 justify-self-end" />
+  </PlatformSection>
+);
+
+interface DefaultLocaleSectionProps {
+  /** The saved value, absent when the settings read failed. */
+  initialDefaultLocale?: Locale;
+  loadErrorMessage?: string;
+}
+
+/**
+ * The card labels its options from the message catalog, so it needs the
+ * request's locale and stays behind its own `<Suspense>` boundary. The stored
+ * value comes from the settings read the screen already does, so the card adds
+ * no round trip of its own.
+ */
+const DefaultLocaleSection = ({
+  initialDefaultLocale,
+  loadErrorMessage,
+}: DefaultLocaleSectionProps) => (
+  <PlatformDefaultLocaleForm
+    initialDefaultLocale={initialDefaultLocale}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
+
+interface TimezoneSectionProps {
+  initialTimezone: string;
+  loadErrorMessage?: string;
+}
+
+const TimezoneSection = ({
+  initialTimezone,
+  loadErrorMessage,
+}: TimezoneSectionProps) => (
+  <PlatformTimezoneForm
+    initialTimezone={initialTimezone}
+    loadErrorMessage={loadErrorMessage}
+  />
+);
+
+const GeneralSettingsContent = async () => {
+  const locale = await getPlatformLocale();
+  const settingsResult = await getPlatformSettings(locale);
+
+  await redirectToLoginIfSessionRejected(settingsResult);
+
+  return (
+    <div className="grid gap-6">
+      <Suspense fallback={<SettingsFormSkeleton />}>
+        <DefaultLocaleSection
+          initialDefaultLocale={
+            settingsResult.ok ? settingsResult.defaultLocale : undefined
+          }
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+      <Suspense fallback={<SettingsFormSkeleton />}>
+        <TimezoneSection
+          initialTimezone={settingsResult.defaultTimezone}
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+        />
+      </Suspense>
+    </div>
+  );
+};
+
+const GeneralSettingsContentSkeleton = () => (
+  <div className="grid gap-6">
+    <SettingsFormSkeleton />
+    <SettingsFormSkeleton />
+  </div>
+);
+
+const PlatformGeneralSettingsPage = () => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageTitle>
+          <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
+            <Message message="platform.settings.general_heading" />
+          </Suspense>
+        </PlatformPageTitle>
+        <PlatformPageDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="platform.settings.general_page_description" />
+          </Suspense>
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <Suspense fallback={<GeneralSettingsContentSkeleton />}>
+        <GeneralSettingsContent />
+      </Suspense>
+    </PlatformPageContent>
+  </PlatformPage>
+);
+
+export default PlatformGeneralSettingsPage;

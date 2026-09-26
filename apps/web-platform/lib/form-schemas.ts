@@ -94,6 +94,19 @@ export const boundedIntFormSchema = (
   );
 
 /**
+ * The revision a settings form was rendered at, sent back so the server can
+ * refuse a save based on values another operator has since replaced.
+ */
+export const revisionFormSchema = (message: string) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z
+      .string()
+      .regex(/^\d{1,19}$/u, message)
+      .transform(BigInt)
+  );
+
+/**
  * One text field that accepts a comma- or newline-separated list. Empty
  * entries are dropped; format checks stay on the consumer.
  */

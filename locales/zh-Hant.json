@@ -3964,9 +3964,8 @@
       "day_below_minute": "The daily limit for {$setting} must be at least its per-minute limit.",
       "day_below_hour": "The daily limit for {$setting} must be at least its per-hour limit.",
       "security": {
-        "tab": "Security",
-        "page_title": "Settings - Security",
-        "heading": "Security policy",
+        "page_title": "安全性政策",
+        "heading": "安全性政策",
         "page_description": "Manage sign-in and email abuse protections for the platform.",
         "title": "Security and abuse protection",
         "description": "These limits protect operator and tenant accounts. Changes take effect without a restart.",
@@ -3987,9 +3986,8 @@
         "saved": "Security policy saved."
       },
       "community": {
-        "tab": "Community",
-        "page_title": "Settings - Community",
-        "heading": "Community limits",
+        "page_title": "社群限制",
+        "heading": "社群限制",
         "page_description": "Manage the abuse-control defaults shared by tenants.",
         "title": "Community limit defaults",
         "description": "Set the initial limits for every tenant.",
@@ -4018,9 +4016,8 @@
         "saved": "Community limits saved."
       },
       "retention": {
-        "tab": "Retention",
-        "page_title": "Settings - Retention",
-        "heading": "Retention defaults",
+        "page_title": "保留期限預設值",
+        "heading": "保留期限預設值",
         "page_description": "Manage how long platform data is retained when a tenant has no override.",
         "title": "Retention defaults",
         "description": "These periods apply to tenants that have not chosen their own retention settings.",
@@ -4278,15 +4275,23 @@
     },
     "nav": {
       "audit_label": "稽核記錄",
+      "community_label": "社群",
       "dashboard_label": "儀表板",
+      "email_label": "郵件",
+      "general_label": "一般",
       "governance": "治理",
       "operators_label": "營運人員",
-      "overview": "總覽",
-      "settings_label": "設定",
+      "platform": "平台",
+      "policies": "政策",
+      "retention_label": "保留期限",
+      "security_label": "安全性",
+      "services": "外部服務",
+      "storage_label": "儲存",
       "tenants_create_label": "建立租戶",
       "tenants_list_label": "租戶列表",
       "tenants_section": "租戶",
-      "users_label": "使用者"
+      "users_label": "使用者",
+      "webpush_label": "Web Push"
     },
     "not_found": {
       "description": "該對象可能已被刪除，或網址已變更。請改從列表中選擇。",
@@ -4410,18 +4415,16 @@
       "email_change_submit": "寄送確認郵件",
       "email_change_success": "確認郵件已寄送至目前的電子郵件地址與新的電子郵件地址。請開啟兩個連結完成變更。",
       "email_change_title": "變更電子郵件地址",
-      "email_heading": "設定",
+      "email_heading": "郵件寄送",
       "email_in_use": "該電子郵件地址已被使用。",
       "email_page_description": "管理平台預設的 SMTP 設定。",
-      "email_tab": "郵件",
-      "email_title": "設定 - 郵件",
+      "email_title": "郵件寄送",
       "encryption_none": "無",
       "encryption_required": "請選擇加密方式。",
       "from_address": "寄件人地址",
-      "general_heading": "設定",
+      "general_heading": "一般設定",
       "general_page_description": "管理適用於整個平台的預設值。",
-      "general_tab": "一般",
-      "general_title": "設定 - 一般",
+      "general_title": "一般設定",
       "host": "主機",
       "load_failed": "無法載入平台設定。請稍後再試。",
       "locale_required": "請選擇語言。",
@@ -4646,9 +4649,8 @@
       "unsuspend_title": "要解除此帳戶的暫停嗎？"
     },
     "storage": {
-      "tab": "儲存",
-      "page_title": "設定 - 儲存",
-      "heading": "設定",
+      "page_title": "圖片儲存",
+      "heading": "圖片儲存",
       "page_description": "管理上傳圖片的儲存位置。",
       "title": "物件儲存",
       "description": "所有租戶上傳的圖片都儲存在這一個相容 S3 的儲存貯體中。儲存的變更無須重新啟動，會在一分鐘內套用到所有伺服器。",
@@ -4728,9 +4730,8 @@
       }
     },
     "webpush": {
-      "tab": "Web Push",
-      "page_title": "設定 - Web Push",
-      "heading": "設定",
+      "page_title": "瀏覽器通知",
+      "heading": "瀏覽器通知",
       "page_description": "管理 Publira 傳送給讀者的瀏覽器通知。",
       "title": "Web Push",
       "description": "Publira 會以為此安裝產生的金鑰組簽署瀏覽器通知。私密金鑰始終保留在伺服器上，不會顯示。儲存的變更無須重新啟動，會在一分鐘內套用到所有伺服器。",
@@ -4750,10 +4751,8 @@
       }
     },
     "configuration": {
-      "tab": "概覽",
-      "page_title": "設定 - 概覽",
-      "heading": "設定",
-      "page_description": "查看平台的哪些功能已可使用，並完成尚缺的設定。",
+      "title": "設定狀態",
+      "description": "查看平台的哪些功能已可使用，並完成尚缺的設定。",
       "summary_ready": "平台所需的設定皆已完成。選用功能可以在需要之前保持關閉。",
       "summary_needs_setup": "平台所需的部分設定尚未完成。請開啟標示為「需要設定」的項目完成設定。",
       "columns": {
@@ -4800,9 +4799,7 @@
         "name": "安全性與資料政策",
         "defaults": "登入、防濫用與資料保留限制採用內建預設值。僅在不適合本平台時變更。",
         "configured": "已套用你儲存的登入、防濫用與資料保留限制。"
-      },
-      "dashboard_notice": "平台所需的部分設定尚未完成，部分功能將無法運作。",
-      "dashboard_notice_link": "查看設定"
+      }
     }
   }
 }

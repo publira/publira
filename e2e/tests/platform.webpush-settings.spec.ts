@@ -9,7 +9,7 @@ import {
 } from "../src/db";
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
-const WEBPUSH_PATH = "/settings/webpush";
+const WEBPUSH_PATH = "/services/webpush";
 
 const SUBJECT = "mailto:operator@publira.test";
 const INVALID_SUBJECT = "operator@publira.test";

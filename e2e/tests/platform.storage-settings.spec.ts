@@ -9,7 +9,7 @@ import {
 } from "../src/db";
 import { STACK_STORAGE, signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
-const STORAGE_PATH = "/settings/storage";
+const STORAGE_PATH = "/services/storage";
 
 const BUCKET = STACK_STORAGE.bucket;
 const REGION = STACK_STORAGE.region;

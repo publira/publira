@@ -101,7 +101,7 @@ export const PlatformUser = async () => {
           </ConsoleUserMenuRole>
         </ConsoleUserMenuIdentity>
         <ConsoleUserMenuSeparator />
-        <ConsoleUserMenuAccountLink href="/settings/account">
+        <ConsoleUserMenuAccountLink href="/account">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.shell.account_settings" />
           </Suspense>
