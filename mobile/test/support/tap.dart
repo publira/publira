@@ -25,11 +25,14 @@ import 'package:flutter_test/flutter_test.dart';
 /// built it, so there is no element to scroll to. Pass that list as
 /// [scrollable] and it is scrolled until [finder] matches; without it, the tap
 /// fails naming [finder].
+///
+/// Those frames move no clock, so the wait gives up after [maxFrames] of them
+/// rather than after a length of time a loaded machine would use up.
 Future<void> tapVisible(
   WidgetTester tester,
   Finder finder, {
   Finder? scrollable,
-  Duration timeout = const Duration(seconds: 10),
+  int maxFrames = 200,
 }) async {
   if (finder.evaluate().isEmpty) {
     if (scrollable == null) {
@@ -40,8 +43,7 @@ Future<void> tapVisible(
     await _scrollUntilMatched(tester, finder, scrollable);
   }
   final element = tester.element(finder);
-  final end = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(end)) {
+  for (var frame = 0; frame < maxFrames; frame++) {
     await Scrollable.ensureVisible(element);
     await tester.pump();
     if (!element.mounted) {
@@ -59,15 +61,17 @@ Future<void> tapVisible(
 ///
 /// A settled route can still sit under something drawn above it for a few
 /// frames, which takes the pointer instead, so this waits out the same hit test
-/// [WidgetTester.tap] would only report after sending the tap.
+/// [WidgetTester.tap] would only report after sending the tap. [timeout] is
+/// measured on the binding's clock, as `pumpUntilTrue` measures it.
 Future<void> tapReachable(
   WidgetTester tester,
   Finder finder, {
   Duration timeout = const Duration(seconds: 10),
 }) async {
-  final end = DateTime.now().add(timeout);
+  final clock = tester.binding.clock;
+  final end = clock.now().add(timeout);
   while (!_isReachable(finder)) {
-    if (!DateTime.now().isBefore(end)) {
+    if (!clock.now().isBefore(end)) {
       fail(
         'Timed out waiting for a tap on $finder to reach it; '
         '${_topHit(tester, finder)} takes the pointer instead',
