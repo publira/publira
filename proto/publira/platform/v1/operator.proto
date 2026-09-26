@@ -50,10 +50,10 @@ message CreateOperatorResponse {
 }
 
 message UpdateOperatorRoleRequest {
-  string public_id = 1;
+  reserved 1;
+  reserved "public_id";
   string role = 2;
-  // The operator's primary key (PlatformOperator.id). Takes precedence over
-  // public_id.
+  // The operator's primary key (PlatformOperator.id).
   string operator_id = 3;
 }
 
@@ -62,9 +62,9 @@ message UpdateOperatorRoleResponse {
 }
 
 message SuspendOperatorRequest {
-  string public_id = 1;
-  // The operator's primary key (PlatformOperator.id). Takes precedence over
-  // public_id.
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
   string operator_id = 2;
 }
 
@@ -73,9 +73,9 @@ message SuspendOperatorResponse {
 }
 
 message UnsuspendOperatorRequest {
-  string public_id = 1;
-  // The operator's primary key (PlatformOperator.id). Takes precedence over
-  // public_id.
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
   string operator_id = 2;
 }
 
@@ -84,9 +84,9 @@ message UnsuspendOperatorResponse {
 }
 
 message DeactivateOperatorRequest {
-  string public_id = 1;
-  // The operator's primary key (PlatformOperator.id). Takes precedence over
-  // public_id.
+  reserved 1;
+  reserved "public_id";
+  // The operator's primary key (PlatformOperator.id).
   string operator_id = 2;
 }
 

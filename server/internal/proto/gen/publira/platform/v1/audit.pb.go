@@ -174,7 +174,6 @@ type ListAuditLogsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit             int32  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	TenantPublicId    string `protobuf:"bytes,3,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	ActorUserPublicId string `protobuf:"bytes,4,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
 	Action            string `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
@@ -220,13 +219,6 @@ func (x *ListAuditLogsRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
-}
-
-func (x *ListAuditLogsRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *ListAuditLogsRequest) GetActorUserPublicId() string {
@@ -345,14 +337,13 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\vtenant_name\x18\f \x01(\tR\n" +
 	"tenantName\x12\x1f\n" +
 	"\vtarget_name\x18\r \x01(\tR\n" +
-	"targetName\"\xe0\x01\n" +
+	"targetName\"\xce\x01\n" +
 	"\x14ListAuditLogsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12(\n" +
-	"\x10tenant_public_id\x18\x03 \x01(\tR\x0etenantPublicId\x12/\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12/\n" +
 	"\x14actor_user_public_id\x18\x04 \x01(\tR\x11actorUserPublicId\x12\x16\n" +
 	"\x06action\x18\x05 \x01(\tR\x06action\x12\x14\n" +
 	"\x05token\x18\x06 \x01(\tR\x05token\x12\x1b\n" +
-	"\ttenant_id\x18\a \x01(\tR\btenantIdJ\x04\b\x02\x10\x03R\x06offset\"\xa3\x01\n" +
+	"\ttenant_id\x18\a \x01(\tR\btenantIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x06offsetR\x10tenant_public_id\"\xa3\x01\n" +
 	"\x15ListAuditLogsResponse\x12D\n" +
 	"\n" +
 	"audit_logs\x18\x01 \x03(\v2%.publira.platform.v1.PlatformAuditLogR\tauditLogs\x12%\n" +

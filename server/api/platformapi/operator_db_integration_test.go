@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -161,8 +162,8 @@ func TestDBUpdateOperatorRoleReplacesTheExistingRole(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
 	updateResp, err := client.UpdateOperatorRole(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UpdateOperatorRoleRequest{
-		PublicId: target.PublicID,
-		Role:     auth.RolePlatformAuditor,
+		OperatorId: target.ID.String(),
+		Role:       auth.RolePlatformAuditor,
 	}))
 	if err != nil {
 		t.Fatalf("UpdateOperatorRole: %v", err)
@@ -188,8 +189,8 @@ func TestDBUpdateOperatorRoleRejectsSelfDemotion(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
 	_, err := client.UpdateOperatorRole(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UpdateOperatorRoleRequest{
-		PublicId: superAdmin.PublicID,
-		Role:     auth.RolePlatformOperator,
+		OperatorId: superAdmin.ID.String(),
+		Role:       auth.RolePlatformOperator,
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdateOperatorRole code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
@@ -305,7 +306,7 @@ func TestDBOperatorNotFoundReturnsNotFound(t *testing.T) {
 	}
 
 	_, err = client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
-		PublicId: "MISSINGUSER1",
+		OperatorId: uuid.Must(uuid.NewV7()).String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendOperator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)

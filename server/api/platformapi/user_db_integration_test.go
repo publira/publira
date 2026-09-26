@@ -97,7 +97,7 @@ func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
 	}
 }
 
-func TestDBListEndUsersFiltersByStatusAndPublicIDs(t *testing.T) {
+func TestDBListEndUsersFiltersByStatusAndUserIDs(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -117,18 +117,8 @@ func TestDBListEndUsersFiltersByStatusAndPublicIDs(t *testing.T) {
 		t.Fatalf("status filter public IDs = %v, want only %q", got, suspended.PublicID)
 	}
 
-	byPublicID, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
-		PublicIds: []string{active.PublicID, active.PublicID, "  "},
-	}))
-	if err != nil {
-		t.Fatalf("ListEndUsers by public_ids: %v", err)
-	}
-	if got := endUserPublicIDs(byPublicID.Msg.Users); !slices.Equal(got, []string{active.PublicID}) {
-		t.Fatalf("public_ids filter = %v, want only %q", got, active.PublicID)
-	}
-
 	byID, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
-		UserIds: []string{byPublicID.Msg.Users[0].Id, byPublicID.Msg.Users[0].Id, "  "},
+		UserIds: []string{active.ID.String(), active.ID.String(), "  "},
 	}))
 	if err != nil {
 		t.Fatalf("ListEndUsers by user_ids: %v", err)

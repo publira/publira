@@ -95,84 +95,38 @@ func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (p
 	return tenant.PublicID, tenant.Name, nil
 }
 
-func normalizePublicIDs(values []string) []string {
-	if len(values) == 0 {
-		return nil
+func parseEndUserID(raw string) (uuid.UUID, error) {
+	id := strings.TrimSpace(raw)
+	if id == "" {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
 	}
-
-	seen := make(map[string]struct{}, len(values))
-	publicIDs := make([]string, 0, len(values))
-	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
-			continue
-		}
-		if _, ok := seen[trimmed]; ok {
-			continue
-		}
-		seen[trimmed] = struct{}{}
-		publicIDs = append(publicIDs, trimmed)
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is not an identifier"))
 	}
-
-	if len(publicIDs) == 0 {
-		return nil
-	}
-
-	return publicIDs
+	return parsed, nil
 }
 
-// endUserRef is how a request names its user: by primary key when it carries
-// one, and by public_id otherwise.
-type endUserRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
-func parseEndUserRef(rawID, rawPublicID string) (endUserRef, error) {
-	if id := strings.TrimSpace(rawID); id != "" {
-		parsed, err := uuid.Parse(id)
-		if err != nil {
-			return endUserRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is not an identifier"))
-		}
-		return endUserRef{id: parsed}, nil
-	}
-	publicID := strings.TrimSpace(rawPublicID)
-	if publicID == "" {
-		return endUserRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
-	}
-	return endUserRef{publicID: publicID}, nil
-}
-
-// ensureManageableEndUser resolves the user a request names, refusing a tenant
+// ensureManageableEndUser reads the user a request names, refusing a tenant
 // member, whom only the tenant manages.
-func (s *platformServer) ensureManageableEndUser(ctx context.Context, ref endUserRef) (endUserRef, error) {
-	resolved := ref
-	var err error
-	if ref.id != uuid.Nil {
-		var user dbmodels.User
-		user, err = s.queriesFor(ctx).GetUserByID(ctx, ref.id)
-		resolved.publicID = user.PublicID
-	} else {
-		var user dbmodels.GetUserByPublicIDRow
-		user, err = s.queriesFor(ctx).GetUserByPublicID(ctx, ref.publicID)
-		resolved.id = user.ID
-	}
+func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID uuid.UUID) (dbmodels.User, error) {
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return endUserRef{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return dbmodels.User{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return endUserRef{}, s.internalDBError(ctx, "failed to get user", err, "user_id", ref.id.String(), "public_id", ref.publicID)
+		return dbmodels.User{}, s.internalDBError(ctx, "failed to get user", err, "user_id", userID.String())
 	}
 
-	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, resolved.id)
+	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return endUserRef{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", resolved.id.String())
+		return dbmodels.User{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", user.ID.String())
 	}
 	if len(tenantRoles) > 0 {
-		return endUserRef{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
+		return dbmodels.User{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
 	}
 
-	return resolved, nil
+	return user, nil
 }
 
 // parseUserIDs reads the user_ids filter, refusing a value that is not a
@@ -212,7 +166,6 @@ func uuidStrings(ids []uuid.UUID) []string {
 type endUserQueryFilters struct {
 	createdAfter   sql.NullTime
 	createdBefore  sql.NullTime
-	publicIDs      []string
 	userIDs        []uuid.UUID
 	status         sql.NullString
 	tenantPublicID sql.NullString
@@ -230,7 +183,6 @@ func (s *platformServer) endUserPage(
 		rows, err := queries.ListEndUsersAsc(ctx, dbmodels.ListEndUsersAscParams{
 			CreatedAfter:    filters.createdAfter,
 			CreatedBefore:   filters.createdBefore,
-			PublicIds:       filters.publicIDs,
 			Ids:             filters.userIDs,
 			Status:          filters.status,
 			TenantPublicID:  filters.tenantPublicID,
@@ -249,7 +201,6 @@ func (s *platformServer) endUserPage(
 	rows, err := queries.ListEndUsersDesc(ctx, dbmodels.ListEndUsersDescParams{
 		CreatedAfter:    filters.createdAfter,
 		CreatedBefore:   filters.createdBefore,
-		PublicIds:       filters.publicIDs,
 		Ids:             filters.userIDs,
 		Status:          filters.status,
 		TenantPublicID:  filters.tenantPublicID,
@@ -306,7 +257,6 @@ func (s *platformServer) ListEndUsers(
 	filters := endUserQueryFilters{
 		createdAfter:   createdAfterFilter,
 		createdBefore:  createdBeforeFilter,
-		publicIDs:      normalizePublicIDs(req.Msg.PublicIds),
 		userIDs:        userIDs,
 		status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 		tenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
@@ -315,7 +265,6 @@ func (s *platformServer) ListEndUsers(
 		Time("created_after", createdAfterFilter.Time, createdAfterFilter.Valid).
 		Time("created_before", createdBeforeFilter.Time, createdBeforeFilter.Valid).
 		Value("status", filterStatus).
-		Values("public_ids", filters.publicIDs).
 		Values("user_ids", uuidStrings(userIDs)).
 		Value("tenant_public_id", filterTenantPublicID)
 	var keys pagination.TimeUUIDKeys
@@ -404,22 +353,22 @@ func (s *platformServer) SuspendEndUser(
 		return nil, err
 	}
 
-	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
+	userID, err := parseEndUserID(req.Msg.UserId)
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.ensureManageableEndUser(ctx, ref)
+	user, err := s.ensureManageableEndUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update the status.
 	updated, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{
-		ID:     user.id,
+		ID:     user.ID,
 		Status: userStatusSuspended,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "user_id", user.id.String())
+		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "user_id", user.ID.String())
 	}
 
 	// Invalidate the existing sessions.
@@ -457,21 +406,21 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, err
 	}
 
-	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
+	userID, err := parseEndUserID(req.Msg.UserId)
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.ensureManageableEndUser(ctx, ref)
+	user, err := s.ensureManageableEndUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	updated, err := s.queriesFor(ctx).UnsuspendUserByID(ctx, user.id)
+	updated, err := s.queriesFor(ctx).UnsuspendUserByID(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "user_id", user.id.String())
+		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "user_id", user.ID.String())
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
@@ -504,17 +453,17 @@ func (s *platformServer) DeleteEndUser(
 		return nil, err
 	}
 
-	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
+	userID, err := parseEndUserID(req.Msg.UserId)
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.ensureManageableEndUser(ctx, ref)
+	user, err := s.ensureManageableEndUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	// Delete the user row itself.
-	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.id); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.id.String())
+	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.ID.String())
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -522,12 +471,12 @@ func (s *platformServer) DeleteEndUser(
 		ActorRole:           actor.Role,
 		Action:              "user_deleted",
 		TargetType:          "user",
-		TargetID:            user.id.String(),
+		TargetID:            user.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
 		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.DeleteEndUserResponse{
-		PublicId: user.publicID,
+		PublicId: user.PublicID,
 	}), nil
 }

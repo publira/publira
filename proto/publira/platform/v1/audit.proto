@@ -26,10 +26,12 @@ message ListAuditLogsRequest {
   // Removed with the move to cursor pagination.
   reserved 2;
   reserved "offset";
+  // Replaced by tenant_id.
+  reserved 3;
+  reserved "tenant_public_id";
 
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 1;
-  string tenant_public_id = 3;
   string actor_user_public_id = 4;
   string action = 5;
   // Opaque token from a previous response. Empty for the first page.
