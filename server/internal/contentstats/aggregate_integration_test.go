@@ -382,6 +382,23 @@ func TestSourceQueriesHaveEligibleIndexes(t *testing.T) {
 			AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
 			AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')
 	`, tenant.ID, statDate, "idx_content_events_tenant_type_occurred_at")
+
+	// Every index on purchases that leads with tenant_id costs the same on an
+	// empty, never analyzed table, so which one the planner picks there is a
+	// tie-break that any new index can tip. A tenant with purchases spread over
+	// many days, analyzed, is what makes the day's range the cheaper cut.
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "PLANSERIES01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PLANEP001"})
+	buyer := pg.SeedEndUser(t, tenant.ID, "PLANBUYER001", "buyer@plan-stats.example.com", "Buyer")
+	firstDay := time.Date(2026, time.June, 1, 12, 0, 0, 0, time.UTC)
+	for day := range 200 {
+		insertPurchase(t, pg.DB, tenant.ID, buyer.ID, episode.ID, firstDay.AddDate(0, 0, day))
+	}
+	analyzeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(analyzeCtx, "ANALYZE purchases"); err != nil {
+		t.Fatalf("analyze purchases: %v", err)
+	}
 	assertPlanUsesIndex(t, pg.DB, `
 		SELECT episode_id, count(*)
 		FROM purchases
