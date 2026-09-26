@@ -212,6 +212,9 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 		t.Fatalf("pending queue = %v, want %s", got, comment.PublicID)
 	}
 	queued := queue.Comments[0]
+	if queued.Id != comment.ID.String() {
+		t.Fatalf("comment id = %q, want %s", queued.Id, comment.ID)
+	}
 	if queued.AuthorPublicId != fixture.readerPublicID {
 		t.Fatalf("author public id = %q, want %q", queued.AuthorPublicId, fixture.readerPublicID)
 	}
@@ -224,9 +227,9 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	}
 
 	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Reads fine.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Reads fine.",
 	}))
 	if err != nil {
 		t.Fatalf("ApproveComment: %v", err)
@@ -241,16 +244,16 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	// Approval is what first publishes a comment, so nothing else is waiting for
 	// it and a second approval is refused rather than repeated.
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
 	}
 
 	hidden, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Names a private address.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Names a private address.",
 	}))
 	if err != nil {
 		t.Fatalf("HideComment: %v", err)
@@ -267,16 +270,16 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	}
 
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("HideComment on a hidden comment error = %v, want failed_precondition", err)
 	}
 
 	restored, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Reported in error.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Reported in error.",
 	}))
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)
@@ -295,10 +298,40 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 	}
 
 	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("RestoreComment on a published comment error = %v, want failed_precondition", err)
+	}
+}
+
+func TestDBAdminCommentModerationAcceptsThePublicIDUntilClientsMove(t *testing.T) {
+	env := newAdminDBEnv(t)
+	fixture := newCommentModerationFixture(t, env, "PUB", "moderation-public-id.example.com")
+	client := env.commentClient()
+	comment := fixture.seedComment(t, "PUBPENDING01", "pending")
+
+	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+		Tenant:   fixture.admin.tenantContext(),
+		PublicId: comment.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("ApproveComment by public_id: %v", err)
+	}
+	if approved.Msg.Comment.Id != comment.ID.String() || approved.Msg.Comment.Status != "published" {
+		t.Fatalf("approved comment = (%q, %s), want (%s, published)", approved.Msg.Comment.Id, approved.Msg.Comment.Status, comment.ID)
+	}
+
+	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: "not-a-uuid",
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("HideComment with a malformed comment_id error = %v, want invalid_argument", err)
+	}
+	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+		Tenant: fixture.admin.tenantContext(),
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("HideComment naming no comment error = %v, want invalid_argument", err)
 	}
 }
 
@@ -310,8 +343,8 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 	tenantID := fixture.admin.Tenant.ID
 
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
@@ -344,8 +377,8 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 
 	// A second approval is refused, so it must not write a second row either.
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
 	}
@@ -354,8 +387,8 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 	}
 
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
@@ -385,15 +418,15 @@ func TestDBAdminRestoreCommentReturnsAPendingCommentToTheQueue(t *testing.T) {
 	comment := fixture.seedComment(t, "RPQPENDING01", "pending")
 
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
 
 	restored, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)
@@ -428,20 +461,20 @@ func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
 	// Only its author put it there, so no moderator takes it out again: a
 	// restore would republish text its author deleted.
 	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("RestoreComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("HideComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
@@ -462,16 +495,16 @@ func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
 	// The audit row is the only record that survives the deletion, so a purge
 	// with nothing to say for itself is refused.
 	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("PurgeComment with no reason error = %v, want invalid_argument", err)
 	}
 
 	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Court order 2026-0031.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Court order 2026-0031.",
 	})); err != nil {
 		t.Fatalf("PurgeComment: %v", err)
 	}
@@ -483,9 +516,9 @@ func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
 	}
 
 	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Court order 2026-0031.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Court order 2026-0031.",
 	})); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("PurgeComment on a purged comment error = %v, want not_found", err)
 	}
@@ -509,30 +542,30 @@ func TestDBAdminCommentModerationStopsAtTheTenantBoundary(t *testing.T) {
 	actions := map[string]func() error{
 		"ApproveComment": func() error {
 			_, err := client.ApproveComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ApproveCommentRequest{
-				Tenant:   mine.admin.tenantContext(),
-				PublicId: foreign.PublicID,
+				Tenant:    mine.admin.tenantContext(),
+				CommentId: foreign.ID.String(),
 			}))
 			return err
 		},
 		"HideComment": func() error {
 			_, err := client.HideComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.HideCommentRequest{
-				Tenant:   mine.admin.tenantContext(),
-				PublicId: foreign.PublicID,
+				Tenant:    mine.admin.tenantContext(),
+				CommentId: foreign.ID.String(),
 			}))
 			return err
 		},
 		"RestoreComment": func() error {
 			_, err := client.RestoreComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.RestoreCommentRequest{
-				Tenant:   mine.admin.tenantContext(),
-				PublicId: foreign.PublicID,
+				Tenant:    mine.admin.tenantContext(),
+				CommentId: foreign.ID.String(),
 			}))
 			return err
 		},
 		"PurgeComment": func() error {
 			_, err := client.PurgeComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.PurgeCommentRequest{
-				Tenant:   mine.admin.tenantContext(),
-				PublicId: foreign.PublicID,
-				Reason:   "Not mine to purge.",
+				Tenant:    mine.admin.tenantContext(),
+				CommentId: foreign.ID.String(),
+				Reason:    "Not mine to purge.",
 			}))
 			return err
 		},
@@ -678,8 +711,8 @@ func TestDBAdminListCommentsSaysWhetherTheAuthorIsStaff(t *testing.T) {
 	}
 
 	hidden, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: staffComment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: staffComment.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("HideComment: %v", err)
@@ -745,8 +778,8 @@ func TestDBAdminCommentModerationRequiresTheAdminRole(t *testing.T) {
 		t.Fatalf("ListComments as an editor error = %v, want permission_denied", err)
 	}
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   asEditor.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    asEditor.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ApproveComment as an editor error = %v, want permission_denied", err)
 	}
@@ -807,8 +840,8 @@ func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
 	}
 
 	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
@@ -819,14 +852,14 @@ func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
 	// A removal and the restore that undoes it leave the event where it is:
 	// the comment was public once, and it is public again for the same reason.
 	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
 	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
 	})); err != nil {
 		t.Fatalf("RestoreComment: %v", err)
 	}

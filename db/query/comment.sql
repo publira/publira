@@ -310,7 +310,7 @@ FROM episode_comments
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND status = 'pending';
 
--- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
+-- name: GetEpisodeCommentForModerationByIDForTenant :one
 -- One comment in the shape the moderation list returns. Every moderation action
 -- reads it before deciding and again after writing, so the caller answers from
 -- the stored row rather than from what it assumed the transition would produce.
@@ -334,9 +334,34 @@ FROM episode_comments c
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
 WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.id = sqlc.arg('id');
+
+-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
+-- The same comment by the public identifier, for a moderation request that
+-- still names it that way.
+SELECT c.*,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comments c
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.public_id = sqlc.arg('public_id');
 
--- name: ApproveEpisodeCommentByPublicIDForTenant :one
+-- name: ApproveEpisodeCommentByIDForTenant :one
 -- Approval is what publishes a comment posted under approval_required, so it is
 -- also where published_at is first written.
 UPDATE episode_comments
@@ -345,11 +370,11 @@ SET status = 'published',
     approved_by = sqlc.arg('approved_by')::uuid,
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id')
+    AND id = sqlc.arg('id')
     AND status = 'pending'
 RETURNING *;
 
--- name: HideEpisodeCommentByPublicIDForTenant :one
+-- name: HideEpisodeCommentByIDForTenant :one
 -- hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 -- has no staff actor to name.
 UPDATE episode_comments
@@ -359,11 +384,11 @@ SET status = 'hidden',
     hidden_reason = sqlc.arg('hidden_reason')::text,
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id')
+    AND id = sqlc.arg('id')
     AND status IN ('pending', 'published')
 RETURNING *;
 
--- name: RestoreEpisodeCommentByPublicIDForTenant :one
+-- name: RestoreEpisodeCommentByIDForTenant :one
 -- A restored comment returns to the state the removal interrupted, which
 -- published_at records: one that was already public becomes public again, and
 -- one removed while still awaiting approval goes back into that queue.
@@ -374,7 +399,7 @@ SET status = CASE WHEN published_at IS NULL THEN 'pending' ELSE 'published' END,
     hidden_reason = NULL,
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id')
+    AND id = sqlc.arg('id')
     AND status = 'hidden'
 RETURNING *;
 
@@ -396,13 +421,13 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND status <> 'withdrawn'
 RETURNING *;
 
--- name: DeleteEpisodeCommentByPublicIDForTenant :execrows
+-- name: DeleteEpisodeCommentByIDForTenant :execrows
 -- The irreversible removal staff reach for when the text must not be retained
 -- at all. It names no status: content under a legal takedown has to go whatever
 -- state it is in, and the reversible removal is a different query.
 DELETE FROM episode_comments
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id');
+    AND id = sqlc.arg('id');
 
 -- name: PurgeWithdrawnEpisodeComments :execrows
 -- The end of the retention window for a comment its author deleted. The inner

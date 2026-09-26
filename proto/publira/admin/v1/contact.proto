@@ -28,6 +28,8 @@ message ContactMessage {
   // tenant may still owe an answer to the address on it.
   string sender_public_id = 7;
   string sender_name = 8;
+  // The message's primary key, which MarkContactMessageHandled addresses it by.
+  string id = 9;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -67,6 +69,9 @@ message MarkContactMessageHandledRequest {
   // waiting. The flag is stated rather than toggled, so two members of staff
   // working the same inbox cannot undo each other by pressing at once.
   bool handled = 3;
+  // The message's primary key (ContactMessage.id). Takes precedence over
+  // public_id.
+  string contact_message_id = 4;
 }
 
 message MarkContactMessageHandledResponse {

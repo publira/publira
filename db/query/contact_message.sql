@@ -12,8 +12,8 @@
 --     -> idx_contact_messages_tenant_created_at with no status filter,
 --        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 --        idx_contact_messages_tenant_handled_created_at for 'handled'
---   SetContactMessageHandledByPublicIDForTenant
---     -> contact_messages_tenant_public_id_key
+--   SetContactMessageHandledByIDForTenant
+--     -> contact_messages_pkey
 --   ListTenantStaffContactRecipients
 --     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 
@@ -139,7 +139,7 @@ ORDER BY m.created_at ASC,
     m.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: SetContactMessageHandledByPublicIDForTenant :one
+-- name: SetContactMessageHandledByIDForTenant :one
 -- Staff stating which side of the flag a message is on.
 --
 -- The state is stated rather than toggled, so two members of staff working the
@@ -159,7 +159,7 @@ SET handled_at = CASE
         ELSE sqlc.narg('handled_by')
     END
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id')
+    AND id = sqlc.arg('id')
 RETURNING *;
 
 -- name: ListTenantStaffContactRecipients :many

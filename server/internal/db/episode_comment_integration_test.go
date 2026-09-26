@@ -52,9 +52,9 @@ func TestEpisodeCommentsRejectCrossTenantReferences(t *testing.T) {
 	if _, err := queries.CreateEpisodeComment(ctx, awaiting); err != nil {
 		t.Fatalf("pending comment insert: %v", err)
 	}
-	_, err = queries.ApproveEpisodeCommentByPublicIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByPublicIDForTenantParams{
+	_, err = queries.ApproveEpisodeCommentByIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByIDForTenantParams{
 		TenantID:   tenantA,
-		PublicID:   awaiting.PublicID,
+		ID:         awaiting.ID,
 		ApprovedBy: userB,
 	})
 	if !isForeignKeyViolation(err) || !strings.Contains(err.Error(), "episode_comments_tenant_approved_by_fkey") {
@@ -75,9 +75,9 @@ func TestDeletingAModeratorLeavesTheCommentOnItsTenant(t *testing.T) {
 	queries := dbmodels.New(pg.DB)
 
 	comment := mustCreateComment(t, ctx, queries, seed, "published", "DELHIDDEN001")
-	if _, err := queries.HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	if _, err := queries.HideEpisodeCommentByIDForTenant(ctx, dbmodels.HideEpisodeCommentByIDForTenantParams{
 		TenantID:     seed.tenantID,
-		PublicID:     comment.PublicID,
+		ID:           comment.ID,
 		HiddenBy:     nullUUID(seed.staffID),
 		HiddenReason: "staff",
 	}); err != nil {
@@ -124,9 +124,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 		t.Fatalf("pending comment published_at = %v, want NULL", approved.PublishedAt)
 	}
 
-	published, err := queries.ApproveEpisodeCommentByPublicIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByPublicIDForTenantParams{
+	published, err := queries.ApproveEpisodeCommentByIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByIDForTenantParams{
 		TenantID:   seed.tenantID,
-		PublicID:   approved.PublicID,
+		ID:         approved.ID,
 		ApprovedBy: seed.staffID,
 	})
 	if err != nil {
@@ -136,9 +136,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 		t.Fatalf("approved comment = (%s, %v), want published with a published_at", published.Status, published.PublishedAt)
 	}
 
-	hidden, err := queries.HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	hidden, err := queries.HideEpisodeCommentByIDForTenant(ctx, dbmodels.HideEpisodeCommentByIDForTenantParams{
 		TenantID:     seed.tenantID,
-		PublicID:     published.PublicID,
+		ID:           published.ID,
 		HiddenBy:     nullUUID(seed.staffID),
 		HiddenReason: "staff",
 	})
@@ -152,9 +152,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 		t.Fatalf("hidden comment published_at = %v, want the moment it went public retained", hidden.PublishedAt)
 	}
 
-	restored, err := queries.RestoreEpisodeCommentByPublicIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByPublicIDForTenantParams{
+	restored, err := queries.RestoreEpisodeCommentByIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByIDForTenantParams{
 		TenantID: seed.tenantID,
-		PublicID: hidden.PublicID,
+		ID:       hidden.ID,
 	})
 	if err != nil {
 		t.Fatalf("restore published comment: %v", err)
@@ -168,9 +168,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 
 	// The report threshold removes a comment with no staff actor to name.
 	awaiting := mustCreateComment(t, ctx, queries, seed, "pending", "MODAUTOREP01")
-	autoHidden, err := queries.HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	autoHidden, err := queries.HideEpisodeCommentByIDForTenant(ctx, dbmodels.HideEpisodeCommentByIDForTenantParams{
 		TenantID:     seed.tenantID,
-		PublicID:     awaiting.PublicID,
+		ID:           awaiting.ID,
 		HiddenReason: "auto_reports",
 	})
 	if err != nil {
@@ -180,9 +180,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 		t.Fatalf("automatic removal hidden_by = %v, want NULL", autoHidden.HiddenBy)
 	}
 
-	backToQueue, err := queries.RestoreEpisodeCommentByPublicIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByPublicIDForTenantParams{
+	backToQueue, err := queries.RestoreEpisodeCommentByIDForTenant(ctx, dbmodels.RestoreEpisodeCommentByIDForTenantParams{
 		TenantID: seed.tenantID,
-		PublicID: autoHidden.PublicID,
+		ID:       autoHidden.ID,
 	})
 	if err != nil {
 		t.Fatalf("restore pending comment: %v", err)
@@ -192,9 +192,9 @@ func TestEpisodeCommentModerationReturnsToTheInterruptedState(t *testing.T) {
 	}
 
 	// A transition that no longer applies changes nothing and reports no row.
-	_, err = queries.ApproveEpisodeCommentByPublicIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByPublicIDForTenantParams{
+	_, err = queries.ApproveEpisodeCommentByIDForTenant(ctx, dbmodels.ApproveEpisodeCommentByIDForTenantParams{
 		TenantID:   seed.tenantID,
-		PublicID:   restored.PublicID,
+		ID:         restored.ID,
 		ApprovedBy: seed.staffID,
 	})
 	if !errors.Is(err, sql.ErrNoRows) {
@@ -216,9 +216,9 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 
 	kept := mustCreateComment(t, ctx, queries, seed, "published", "WDRKEPTAAA01")
 	removed := mustCreateComment(t, ctx, queries, seed, "published", "WDRREMOVED01")
-	if _, err := queries.HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	if _, err := queries.HideEpisodeCommentByIDForTenant(ctx, dbmodels.HideEpisodeCommentByIDForTenantParams{
 		TenantID:     seed.tenantID,
-		PublicID:     removed.PublicID,
+		ID:           removed.ID,
 		HiddenBy:     nullUUID(seed.staffID),
 		HiddenReason: "staff",
 	}); err != nil {

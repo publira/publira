@@ -66,19 +66,19 @@ func (f commentModerationFixture) seedReport(
 // hideCommentAutomatically puts a comment in the state the report threshold
 // leaves it in. The threshold itself is not implemented yet, and the queue has
 // to tell that removal from a moderator's either way.
-func (f commentModerationFixture) hideCommentAutomatically(t *testing.T, publicID string) {
+func (f commentModerationFixture) hideCommentAutomatically(t *testing.T, commentID uuid.UUID) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if _, err := dbmodels.New(f.env.PG.DB).HideEpisodeCommentByPublicIDForTenant(ctx, dbmodels.HideEpisodeCommentByPublicIDForTenantParams{
+	if _, err := dbmodels.New(f.env.PG.DB).HideEpisodeCommentByIDForTenant(ctx, dbmodels.HideEpisodeCommentByIDForTenantParams{
 		TenantID:     f.admin.Tenant.ID,
-		PublicID:     publicID,
+		ID:           commentID,
 		HiddenBy:     uuid.NullUUID{},
 		HiddenReason: "auto_reports",
 	}); err != nil {
-		t.Fatalf("hide %s automatically: %v", publicID, err)
+		t.Fatalf("hide %s automatically: %v", commentID, err)
 	}
 }
 
@@ -252,7 +252,7 @@ func TestDBAdminRejectingEveryReportLeavesAnAutomaticRemovalInPlace(t *testing.T
 		comment.ID,
 		fixture.seedReporter(t, "RAUREPORT002", "rau-reporter-2@report-auto.example.com", "Reader Two"),
 		"abuse", "")
-	fixture.hideCommentAutomatically(t, comment.PublicID)
+	fixture.hideCommentAutomatically(t, comment.ID)
 
 	// The queue says which kind of removal is in force, because the two are
 	// acted on differently: one is a decision staff made, the other one they
@@ -291,12 +291,12 @@ func TestDBAdminRestoringACommentClearsTheReportsThatRemovedIt(t *testing.T) {
 		comment.ID,
 		fixture.seedReporter(t, "RREREPORT002", "rre-reporter-2@report-restore.example.com", "Reader Two"),
 		"spam", "")
-	fixture.hideCommentAutomatically(t, comment.PublicID)
+	fixture.hideCommentAutomatically(t, comment.ID)
 
 	restored, err := env.commentClient().RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
-		Tenant:   fixture.admin.tenantContext(),
-		PublicId: comment.PublicID,
-		Reason:   "Read it in full; it is within the rules.",
+		Tenant:    fixture.admin.tenantContext(),
+		CommentId: comment.ID.String(),
+		Reason:    "Read it in full; it is within the rules.",
 	}))
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)

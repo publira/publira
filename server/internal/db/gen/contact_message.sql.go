@@ -60,8 +60,8 @@ type CreateContactMessageParams struct {
 //	  -> idx_contact_messages_tenant_created_at with no status filter,
 //	     idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 //	     idx_contact_messages_tenant_handled_created_at for 'handled'
-//	SetContactMessageHandledByPublicIDForTenant
-//	  -> contact_messages_tenant_public_id_key
+//	SetContactMessageHandledByIDForTenant
+//	  -> contact_messages_pkey
 //	ListTenantStaffContactRecipients
 //	  -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 //
@@ -451,7 +451,7 @@ func (q *Queries) ListTenantStaffContactRecipients(ctx context.Context, tenantID
 	return items, nil
 }
 
-const SetContactMessageHandledByPublicIDForTenant = `-- name: SetContactMessageHandledByPublicIDForTenant :one
+const SetContactMessageHandledByIDForTenant = `-- name: SetContactMessageHandledByIDForTenant :one
 UPDATE contact_messages
 SET handled_at = CASE
         WHEN NOT $1::boolean THEN NULL
@@ -464,15 +464,15 @@ SET handled_at = CASE
         ELSE $2
     END
 WHERE tenant_id = $3
-    AND public_id = $4
+    AND id = $4
 RETURNING id, tenant_id, public_id, user_id, reply_to_email, subject, body, created_at, handled_at, handled_by
 `
 
-type SetContactMessageHandledByPublicIDForTenantParams struct {
+type SetContactMessageHandledByIDForTenantParams struct {
 	Handled   bool          `json:"handled"`
 	HandledBy uuid.NullUUID `json:"handled_by"`
 	TenantID  uuid.UUID     `json:"tenant_id"`
-	PublicID  string        `json:"public_id"`
+	ID        uuid.UUID     `json:"id"`
 }
 
 // Staff stating which side of the flag a message is on.
@@ -482,12 +482,12 @@ type SetContactMessageHandledByPublicIDForTenantParams struct {
 // the state asked for keeps the time and the actor it was first marked with:
 // what the row records is when the message was dealt with, and a second press
 // is not a second handling.
-func (q *Queries) SetContactMessageHandledByPublicIDForTenant(ctx context.Context, arg SetContactMessageHandledByPublicIDForTenantParams) (ContactMessage, error) {
-	row := q.db.QueryRowContext(ctx, SetContactMessageHandledByPublicIDForTenant,
+func (q *Queries) SetContactMessageHandledByIDForTenant(ctx context.Context, arg SetContactMessageHandledByIDForTenantParams) (ContactMessage, error) {
+	row := q.db.QueryRowContext(ctx, SetContactMessageHandledByIDForTenant,
 		arg.Handled,
 		arg.HandledBy,
 		arg.TenantID,
-		arg.PublicID,
+		arg.ID,
 	)
 	var i ContactMessage
 	err := row.Scan(

@@ -34,7 +34,7 @@ type Querier interface {
 	ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg ApplyUnappliedStoreRefundToPurchaseParams) (Purchase, error)
 	// Approval is what publishes a comment posted under approval_required, so it is
 	// also where published_at is first written.
-	ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	ApproveEpisodeCommentByIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
 	// The tenant's own threshold applied to the comment a report has just moved,
 	// in the transaction that moved it.
 	//
@@ -155,8 +155,8 @@ type Querier interface {
 	//     -> idx_contact_messages_tenant_created_at with no status filter,
 	//        idx_contact_messages_tenant_unhandled_created_at for 'unhandled',
 	//        idx_contact_messages_tenant_handled_created_at for 'handled'
-	//   SetContactMessageHandledByPublicIDForTenant
-	//     -> contact_messages_tenant_public_id_key
+	//   SetContactMessageHandledByIDForTenant
+	//     -> contact_messages_pkey
 	//   ListTenantStaffContactRecipients
 	//     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 	// One message as the public API stores it. The sender is nullable because a
@@ -270,7 +270,7 @@ type Querier interface {
 	// The irreversible removal staff reach for when the text must not be retained
 	// at all. It names no status: content under a legal takedown has to go whatever
 	// state it is in, and the reversible removal is a different query.
-	DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error)
+	DeleteEpisodeCommentByIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByIDForTenantParams) (int64, error)
 	DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
@@ -369,6 +369,9 @@ type Querier interface {
 	// One comment in the shape the moderation list returns. Every moderation action
 	// reads it before deciding and again after writing, so the caller answers from
 	// the stored row rather than from what it assumed the transition would produce.
+	GetEpisodeCommentForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByIDForTenantParams) (GetEpisodeCommentForModerationByIDForTenantRow, error)
+	// The same comment by the public identifier, for a moderation request that
+	// still names it that way.
 	GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error)
 	// One report in the shape the queue returns. A decision reads it before acting
 	// and again after writing, so the answer describes the stored rows rather than
@@ -662,7 +665,7 @@ type Querier interface {
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
-	HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
 	// Keeps a refund whose purchase is not here yet, so the notification that
 	// creates the purchase can still apply it. The provider's payment is the
 	// identity, so a repeated delivery updates the row rather than adding one.
@@ -2038,7 +2041,7 @@ type Querier interface {
 	// A restored comment returns to the state the removal interrupted, which
 	// published_at records: one that was already public becomes public again, and
 	// one removed while still awaiting approval goes back into that queue.
-	RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error)
+	RestoreEpisodeCommentByIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
 	// Hand an event back after a run that made progress and has more to do.
 	// It is due at once and charges no attempt: the retry budget is for
 	// failures, and an event large enough to need many runs is not failing.
@@ -2068,7 +2071,7 @@ type Querier interface {
 	// the state asked for keeps the time and the actor it was first marked with:
 	// what the row records is when the message was dealt with, and a second press
 	// is not a second handling.
-	SetContactMessageHandledByPublicIDForTenant(ctx context.Context, arg SetContactMessageHandledByPublicIDForTenantParams) (ContactMessage, error)
+	SetContactMessageHandledByIDForTenant(ctx context.Context, arg SetContactMessageHandledByIDForTenantParams) (ContactMessage, error)
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like a
