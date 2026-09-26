@@ -41,17 +41,38 @@ GenreFeaturedSeries featuredWithCover(String id) => GenreFeaturedSeries(
   ],
 );
 
-/// [genre] carrying [featured] on its tile.
+/// An eye-catch the console uploaded for the genre [id], cut both ways.
+List<EyeCatchVariant> genreEyeCatch(String id) => [
+  for (final (type, height) in [('portrait', 800), ('landscape', 338)])
+    EyeCatchVariant(
+      variantType: type,
+      url: Uri.parse('http://images.test/images/genres/$id/$type/600'),
+      width: 600,
+      height: height,
+    ),
+];
+
+/// [genre] carrying [featured] on its tile, and [eyeCatch] where it has one.
 PublishedGenre genreWith(
   PublishedGenre genre,
-  List<GenreFeaturedSeries> featured,
-) => PublishedGenre(
+  List<GenreFeaturedSeries> featured, {
+  List<EyeCatchVariant> eyeCatch = const [],
+}) => PublishedGenre(
   id: genre.id,
   name: genre.name,
   seriesCount: genre.seriesCount,
   featuredSeries: featured,
+  eyeCatchVariants: eyeCatch,
   imageRequestHeaders: fixtureImageHeaders,
 );
+
+/// The [NetworkImage] behind [finder], unwrapping the decode bound the cover
+/// puts around it.
+NetworkImage requestOf(WidgetTester tester, Finder finder) {
+  final image = tester.widget<Image>(finder).image;
+  final provider = image is ResizeImage ? image.imageProvider : image;
+  return provider as NetworkImage;
+}
 
 /// A series wearing both a genre and a tag, the way the series screen offers
 /// a way into each.
@@ -115,6 +136,9 @@ void main() {
 
   Finder coverOf(String seriesId) =>
       find.byKey(ValueKey('series-cover-$seriesId'));
+
+  Finder genreCoverOf(String genreId) =>
+      find.byKey(ValueKey('genre-cover-$genreId'));
 
   group('the catalog', () {
     testWidgets('offers the genres, each opening its series', (tester) async {
@@ -360,6 +384,59 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets('draws an uploaded eye-catch in place of the covers', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(fantasy, [
+          for (var index = 1; index <= 4; index++)
+            featuredWithCover('SERIES0$index'),
+        ], eyeCatch: genreEyeCatch(fantasy.id)),
+        genreWith(romance, [
+          for (var index = 1; index <= 4; index++)
+            featuredWithCover('SERIES1$index'),
+        ]),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      final cover = inGenreTile(fantasy.id, genreCoverOf(fantasy.id));
+      expect(cover, findsOneWidget);
+      final request = requestOf(tester, cover);
+      expect(
+        request.url,
+        'http://images.test/images/genres/${fantasy.id}/portrait/600',
+      );
+      expect(request.headers, fixtureImageHeaders);
+      expect(inGenreTile(fantasy.id, find.byType(Image)), findsOneWidget);
+      // A genre without one keeps its mosaic, at the same size.
+      expect(inGenreTile(romance.id, coverOf('SERIES11')), findsOneWidget);
+      expect(inGenreTile(romance.id, genreCoverOf(romance.id)), findsNothing);
+      expect(
+        tester.getSize(genreTileOf(fantasy.id)),
+        tester.getSize(genreTileOf(romance.id)),
+      );
+    });
+
+    testWidgets('draws an uploaded eye-catch for a genre with no cover', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(romance, const [], eyeCatch: genreEyeCatch(romance.id)),
+      ];
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(inGenreTile(romance.id, genreCoverOf(romance.id)), findsOneWidget);
+      expect(
+        inGenreTile(
+          romance.id,
+          find.byKey(ValueKey('genre-${romance.id}-name-frame')),
+        ),
+        findsNothing,
+      );
+    });
+
     for (final (description, featured) in [
       ('has no series to draw', const <GenreFeaturedSeries>[]),
       (
@@ -409,9 +486,32 @@ void main() {
       expect(find.text('2 published series'), findsOneWidget);
       expect(tileOf(fixtureSeries.first.id), findsOneWidget);
       expect(tileOf(taggedSeries.id), findsOneWidget);
+      expect(genreCoverOf(fantasy.id), findsNothing);
       expect(
         catalog.classifiedSeriesRequests.single.filter,
         const SeriesListFilter(),
+      );
+    });
+
+    testWidgets('opens on the eye-catch uploaded for it, above its name', (
+      tester,
+    ) async {
+      catalog.genres = [
+        genreWith(fantasy, [
+          featuredWithCover('SERIES01'),
+        ], eyeCatch: genreEyeCatch(fantasy.id)),
+      ];
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(fantasy.id));
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genre-body')));
+
+      final cover = genreCoverOf(fantasy.id);
+      expect(
+        requestOf(tester, cover).url,
+        'http://images.test/images/genres/${fantasy.id}/landscape/600',
+      );
+      expect(
+        tester.getBottomLeft(cover).dy,
+        lessThan(tester.getTopLeft(find.text('2 published series')).dy),
       );
     });
 

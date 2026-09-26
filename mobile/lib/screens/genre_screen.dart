@@ -24,7 +24,13 @@ class GenreScreen extends StatelessWidget {
         final genre = genres.where((genre) => genre.id == genreId).firstOrNull;
         return genre == null
             ? null
-            : Classification(name: genre.name, seriesCount: genre.seriesCount);
+            : Classification(
+                id: genre.id,
+                name: genre.name,
+                seriesCount: genre.seriesCount,
+                eyeCatchVariants: genre.eyeCatchVariants,
+                imageRequestHeaders: genre.imageRequestHeaders,
+              );
       },
       readSeries: (catalog, filter, token) =>
           catalog.listGenreSeries(genreId, filter: filter, token: token),

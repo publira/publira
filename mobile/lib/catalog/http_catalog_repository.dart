@@ -420,6 +420,10 @@ class HttpCatalogRepository implements CatalogRepository {
             name: _readString(json, 'name', 'genres[]'),
             seriesCount: _readCount(json, 'publishedSeriesCount', 'genres[]'),
             featuredSeries: _parseGenreFeaturedSeries(json['featuredSeries']),
+            eyeCatchVariants: _parseEyeCatchVariants(
+              json['eyeCatchImageVariants'],
+              'genres[]',
+            ),
             imageRequestHeaders: config.publicImageRequestHeaders,
           ),
         );

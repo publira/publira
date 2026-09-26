@@ -7,6 +7,7 @@ class PublishedGenre {
     required this.name,
     required this.seriesCount,
     this.featuredSeries = const [],
+    this.eyeCatchVariants = const [],
     this.imageRequestHeaders = const {},
   });
 
@@ -23,7 +24,13 @@ class PublishedGenre {
   /// tile instead.
   final List<GenreFeaturedSeries> featuredSeries;
 
-  /// Headers the covers of [featuredSeries] must be fetched with.
+  /// The eye-catch the console uploaded for the genre, in the order the API
+  /// returned its renditions. Empty for a genre with none, which is what
+  /// leaves its tile to the covers of [featuredSeries].
+  final List<EyeCatchVariant> eyeCatchVariants;
+
+  /// Headers [eyeCatchVariants] and the covers of [featuredSeries] must be
+  /// fetched with.
   final Map<String, String> imageRequestHeaders;
 }
 

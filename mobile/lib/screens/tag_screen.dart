@@ -21,7 +21,11 @@ class TagScreen extends StatelessWidget {
         final tag = await catalog.getTag(tagSlug);
         return tag == null
             ? null
-            : Classification(name: tag.name, seriesCount: tag.seriesCount);
+            : Classification(
+                id: tag.slug,
+                name: tag.name,
+                seriesCount: tag.seriesCount,
+              );
       },
       readSeries: (catalog, filter, token) =>
           catalog.listTagSeries(tagSlug, filter: filter, token: token),

@@ -814,6 +814,41 @@ void main() {
     },
   );
 
+  test(
+    'listGenres carries the eye-catch uploaded for a genre, and none for one '
+    'without',
+    () async {
+      server.genres = [
+        {
+          ...ConnectFixtureServer.seedGenres().first,
+          'eyeCatchImageVariants': [
+            {
+              'label': 'portrait_600w',
+              'variantType': 'portrait',
+              'url': '/images/genres/SeedGENRAAA1/portrait/600',
+              'contentType': 'image/webp',
+              'width': 600,
+              'height': 800,
+            },
+          ],
+        },
+        {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+      ];
+
+      final genres = await catalog.listGenres();
+
+      final eyeCatch = genres.first.eyeCatchVariants.single;
+      expect(eyeCatch.variantType, 'portrait');
+      expect(
+        eyeCatch.url.toString(),
+        '${server.baseUrl}/images/genres/SeedGENRAAA1/portrait/600',
+      );
+      expect(eyeCatch.width, 600);
+      // protojson omits an empty repeated field, which is a genre with none.
+      expect(genres.last.eyeCatchVariants, isEmpty);
+    },
+  );
+
   test('listGenres drops a cover that names no series', () async {
     server.genres = [
       {
