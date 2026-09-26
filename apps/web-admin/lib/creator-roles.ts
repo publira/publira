@@ -21,6 +21,8 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface CreatorRoleItem {
+  /** The primary key every role write addresses the role by. */
+  id: string;
   publicId: string;
   name: string;
 }
@@ -82,9 +84,10 @@ const mapErrorToMessage = (
 ): string => rpcErrorMessage(error, fallbackMessage, { locale, overrides });
 
 /** The generated `CreatorRole` fields {@link mapCreatorRole} reads. */
-type RawCreatorRole = Pick<CreatorRole, "name" | "publicId">;
+type RawCreatorRole = Pick<CreatorRole, "id" | "name" | "publicId">;
 
 const mapCreatorRole = (creatorRole: RawCreatorRole): CreatorRoleItem => ({
+  id: creatorRole.id ?? "",
   name: creatorRole.name ?? "",
   publicId: creatorRole.publicId ?? "",
 });
@@ -191,7 +194,7 @@ export const createCreatorRole = async (
       withSessionHeaders(sessionId)
     );
 
-    if (!response.creatorRole?.publicId?.trim()) {
+    if (!response.creatorRole?.id?.trim()) {
       return { message: t("admin.creator_roles.save_failed"), ok: false };
     }
 
@@ -214,12 +217,12 @@ export const createCreatorRole = async (
 /**
  * Renames one role.
  *
- * The public ID does not move, so every credit keeps the role it names: a
+ * The ID does not move, so every credit keeps the role it names: a
  * rename reaches the series form and the public site as new wording for the
  * credits that already exist.
  */
 export const updateCreatorRole = async (
-  input: { tenantId: string; publicId: string; name: string },
+  input: { tenantId: string; id: string; name: string },
   locale: Locale
 ): Promise<UpdateCreatorRoleResult> => {
   const [t, sessionId] = await Promise.all([
@@ -233,14 +236,14 @@ export const updateCreatorRole = async (
   try {
     const response = await apiClient.creatorRole.updateCreatorRole(
       {
+        creatorRoleId: input.id,
         name: input.name,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.creatorRole?.publicId?.trim()) {
+    if (!response.creatorRole?.id?.trim()) {
       return { message: t("admin.creator_roles.save_failed"), ok: false };
     }
 
@@ -263,7 +266,7 @@ export const updateCreatorRole = async (
 /**
  * Writes the tenant's role priority.
  *
- * `expectedPublicIds` is the order the screen was showing when the editor
+ * `expectedIds` is the order the screen was showing when the editor
  * pressed the button. The API locks the tenant's roles, re-reads their order,
  * and refuses with a failed precondition when it no longer matches — a console
  * left open while someone else added or moved a role therefore reports the
@@ -272,8 +275,8 @@ export const updateCreatorRole = async (
 export const reorderCreatorRoles = async (
   input: {
     tenantId: string;
-    publicIds: string[];
-    expectedPublicIds: string[];
+    ids: string[];
+    expectedIds: string[];
   },
   locale: Locale
 ): Promise<ReorderCreatorRolesResult> => {
@@ -288,8 +291,8 @@ export const reorderCreatorRoles = async (
   try {
     const response = await apiClient.creatorRole.reorderCreatorRoles(
       {
-        creatorRolePublicIds: input.publicIds,
-        expectedCreatorRolePublicIds: input.expectedPublicIds,
+        creatorRoleIds: input.ids,
+        expectedCreatorRoleIds: input.expectedIds,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -328,7 +331,7 @@ export const reorderCreatorRoles = async (
  * catalog with the count interpolated.
  */
 export const deleteCreatorRole = async (
-  input: { tenantId: string; publicId: string },
+  input: { tenantId: string; id: string },
   locale: Locale
 ): Promise<DeleteCreatorRoleResult> => {
   const [t, sessionId] = await Promise.all([
@@ -342,7 +345,7 @@ export const deleteCreatorRole = async (
   try {
     await apiClient.creatorRole.deleteCreatorRole(
       {
-        publicId: input.publicId,
+        creatorRoleId: input.id,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

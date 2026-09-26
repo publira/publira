@@ -54,7 +54,7 @@ const labelUpdateSchema = async (locale: Locale) => {
   return base.extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-    publicId: requiredTrimmedString(t("admin.labels.validation.id_missing")),
+    id: requiredTrimmedString(t("admin.labels.validation.id_missing")),
   });
 };
 const labelFormFields = {
@@ -150,7 +150,7 @@ const saveLabel = async (
         kind: "value",
         name: "current_eye_catch_image_updated_at",
       },
-      publicId: { kind: "value", name: "public_id" },
+      id: { kind: "value", name: "label_id" },
     })
   );
   if (!parsed.success) {
@@ -162,7 +162,7 @@ const saveLabel = async (
     currentEyeCatchImageUpdatedAt,
     eyeCatchImage,
     name,
-    publicId,
+    id,
     tenantId,
   } = parsed.data;
   const { eyeCatchImageContentType, eyeCatchImageData } =
@@ -174,8 +174,8 @@ const saveLabel = async (
         clearEyeCatchImage,
         eyeCatchImageContentType,
         eyeCatchImageData,
+        id,
         name,
-        publicId,
         tenantId,
       },
       locale
@@ -207,7 +207,7 @@ const saveLabel = async (
   }
 
   updateTag(`labels-${tenantId}`);
-  updateTag(`label-${tenantId}-${publicId}`);
+  updateTag(`label-${tenantId}-${result.label.publicId}`);
   // `/series` names each row's label, so a rename has to reach that list too.
   updateTag(seriesListCacheTag(tenantId));
 
@@ -253,7 +253,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 
   return z.object({
     crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
-    publicId: requiredTrimmedString(t("admin.labels.validation.id_missing")),
+    id: requiredTrimmedString(t("admin.labels.validation.id_missing")),
     tenantId: requiredTrimmedString(
       t("admin.labels.validation.tenant_missing")
     ),
@@ -264,7 +264,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 };
 const eyeCatchAspectFormFields = {
   crop: { kind: "value", name: CROP_RECT_FIELD },
-  publicId: { kind: "value", name: "public_id" },
+  id: { kind: "value", name: "label_id" },
   tenantId: { kind: "value", name: "tenant_id" },
   variantType: { kind: "value", name: "variant_type" },
 } as const;
@@ -300,7 +300,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
     return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
   }
 
-  const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
+  const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return toAspectFailure(
       t("admin.eye_catch.aspect.image_required"),
@@ -313,9 +313,9 @@ export const uploadLabelEyeCatchAspectImageAction = async (
     uploadLabelEyeCatchAspectImage(
       {
         crop,
+        id,
         imageContentType: aspectImage.type || undefined,
         imageData,
-        publicId,
         tenantId,
         variantType,
       },
@@ -330,7 +330,7 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   }
 
   updateTag(`labels-${tenantId}`);
-  updateTag(`label-${tenantId}-${publicId}`);
+  updateTag(`label-${tenantId}-${result.label.publicId}`);
 
   return {
     message: t("admin.eye_catch.aspect.uploaded"),

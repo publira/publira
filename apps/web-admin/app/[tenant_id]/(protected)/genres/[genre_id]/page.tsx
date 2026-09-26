@@ -170,7 +170,8 @@ const EditGenreFormData = async ({
       <div className="grid gap-6" key={result.genre.publicId}>
         <GenreEyeCatchForm genre={result.genre} tenantId={tenantId} />
         <EyeCatchAspectImages
-          publicId={result.genre.publicId}
+          id={result.genre.id}
+          idField="genre_id"
           uploadAction={uploadGenreEyeCatchAspectImageAction}
           variants={result.genre.eyeCatchImageVariants}
         />

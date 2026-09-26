@@ -1,6 +1,6 @@
 /** One row of the creator role list, in the tenant's own priority order. */
 export interface CreatorRoleListItem {
-  publicId: string;
+  id: string;
   name: string;
 }
 
@@ -23,7 +23,7 @@ export const CREATOR_ROLE_LIST_TITLE_ID = "creator-role-list-title";
 export type CreatorRoleRowActionState = {
   ok: boolean;
   message: string;
-  publicId: string;
+  id: string;
 } | null;
 
 /** Result of a reorder, which the list submits rather than a form. */

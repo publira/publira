@@ -42,8 +42,10 @@ type EyeCatchAspectAction = (
 ) => Promise<EyeCatchAspectActionState>;
 
 interface EyeCatchAspectImagesProps {
-  /** The series or label the ratios belong to. */
-  publicId: string;
+  /** The hidden field the upload action reads the record's ID from. */
+  idField: string;
+  /** The ID of the series, label, or genre the ratios belong to. */
+  id: string;
   /** The images the eye-catch currently holds, across every ratio. */
   variants: EyeCatchVariantItem[];
   uploadAction: EyeCatchAspectAction;
@@ -64,7 +66,8 @@ const largestVariant = (
 
 const EyeCatchAspectSlot = ({
   aspect,
-  publicId,
+  id,
+  idField,
   uploadAction,
   variants,
 }: EyeCatchAspectSlotProps) => {
@@ -207,7 +210,7 @@ const EyeCatchAspectSlot = ({
 
       <form action={formAction} className="grid gap-2" onSubmit={handleSubmit}>
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="public_id" type="hidden" value={publicId} />
+        <input name={idField} type="hidden" value={id} />
         <input name="variant_type" type="hidden" value={variantType} />
         {crop ? (
           <input
@@ -290,7 +293,8 @@ const EyeCatchAspectSlot = ({
  * above fills all four at once.
  */
 export const EyeCatchAspectImages = ({
-  publicId,
+  id,
+  idField,
   uploadAction,
   variants,
 }: EyeCatchAspectImagesProps) => {
@@ -317,8 +321,9 @@ export const EyeCatchAspectImages = ({
           {EYE_CATCH_ASPECTS.map((aspect) => (
             <EyeCatchAspectSlot
               aspect={aspect}
+              id={id}
+              idField={idField}
               key={aspect.variantType}
-              publicId={publicId}
               uploadAction={uploadAction}
               variants={variants}
             />

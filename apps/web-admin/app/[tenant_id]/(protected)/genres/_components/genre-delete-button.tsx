@@ -26,7 +26,7 @@ import { deleteGenreAction } from "../_lib/actions";
 
 interface GenreDeleteButtonProps {
   name: string;
-  publicId: string;
+  id: string;
 }
 
 /**
@@ -37,10 +37,7 @@ interface GenreDeleteButtonProps {
  * sends the editor to the series form. Success needs no message — the row it
  * was attached to is gone.
  */
-export const GenreDeleteButton = ({
-  name,
-  publicId,
-}: GenreDeleteButtonProps) => {
+export const GenreDeleteButton = ({ name, id }: GenreDeleteButtonProps) => {
   const tenantId = useTenantId();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(
@@ -51,7 +48,7 @@ export const GenreDeleteButton = ({
   return (
     <form action={formAction} className="grid gap-1" ref={formRef}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={publicId} />
+      <input name="genre_id" type="hidden" value={id} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -98,7 +95,7 @@ export const GenreDeleteButton = ({
           </ConfirmDialogFooter>
         </ConfirmDialogContent>
       </ConfirmDialog>
-      {state && !state.ok && state.publicId === publicId ? (
+      {state && !state.ok && state.id === id ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
     </form>

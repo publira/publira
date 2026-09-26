@@ -1,4 +1,7 @@
 export interface CreatorListItem {
+  /** The primary key an edit addresses the creator by. */
+  id: string;
+  /** What the creator's page is addressed by in the URL. */
   publicId: string;
   name: string;
   profileText: string;

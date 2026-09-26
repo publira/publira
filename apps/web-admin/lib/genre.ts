@@ -22,6 +22,8 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface GenreItem {
+  /** The primary key every genre write addresses the genre by. */
+  id: string;
   publicId: string;
   name: string;
   slug: string;
@@ -125,6 +127,7 @@ type RawGenre = Pick<
   Genre,
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
+  | "id"
   | "name"
   | "publicId"
   | "slug"
@@ -148,6 +151,7 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
         : [];
     }
   ),
+  id: genre.id ?? "",
   name: genre.name ?? "",
   publicId: genre.publicId ?? "",
   slug: genre.slug ?? "",
@@ -280,7 +284,7 @@ export const createGenre = async (
       withSessionHeaders(sessionId)
     );
 
-    if (!response.genre?.publicId?.trim()) {
+    if (!response.genre?.id?.trim()) {
       return { message: t("admin.genres.save_failed"), ok: false };
     }
 
@@ -303,7 +307,7 @@ export const createGenre = async (
 export const updateGenre = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     name: string;
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
@@ -325,14 +329,14 @@ export const updateGenre = async (
         clearEyeCatchImage: input.clearEyeCatchImage,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
+        genreId: input.id,
         name: input.name,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.genre?.publicId?.trim()) {
+    if (!response.genre?.id?.trim()) {
       return { message: t("admin.genres.save_failed"), ok: false };
     }
 
@@ -355,7 +359,7 @@ export const updateGenre = async (
 /**
  * Writes the tenant's genre order.
  *
- * `expectedPublicIds` is the order the screen was showing when the editor
+ * `expectedIds` is the order the screen was showing when the editor
  * pressed the button. The API locks the tenant's genres, re-reads their order,
  * and refuses with a failed precondition when it no longer matches — a console
  * left open while someone else added or moved a genre therefore reports the
@@ -364,8 +368,8 @@ export const updateGenre = async (
 export const reorderGenres = async (
   input: {
     tenantId: string;
-    publicIds: string[];
-    expectedPublicIds: string[];
+    ids: string[];
+    expectedIds: string[];
   },
   locale: Locale
 ): Promise<ReorderGenresResult> => {
@@ -380,8 +384,8 @@ export const reorderGenres = async (
   try {
     const response = await apiClient.genre.reorderGenres(
       {
-        expectedGenrePublicIds: input.expectedPublicIds,
-        genrePublicIds: input.publicIds,
+        expectedGenreIds: input.expectedIds,
+        genreIds: input.ids,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -416,7 +420,7 @@ export const reorderGenres = async (
  * told to unassign it first.
  */
 export const deleteGenre = async (
-  input: { tenantId: string; publicId: string },
+  input: { tenantId: string; id: string },
   locale: Locale
 ): Promise<DeleteGenreResult> => {
   const [t, sessionId] = await Promise.all([
@@ -430,7 +434,7 @@ export const deleteGenre = async (
   try {
     await apiClient.genre.deleteGenre(
       {
-        publicId: input.publicId,
+        genreId: input.id,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -462,7 +466,7 @@ export const deleteGenre = async (
 export const uploadGenreEyeCatchAspectImage = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     variantType: string;
     imageContentType?: string;
     imageData: Uint8Array;
@@ -483,16 +487,16 @@ export const uploadGenreEyeCatchAspectImage = async (
     const response = await apiClient.genre.uploadGenreEyeCatchAspectImage(
       {
         crop: input.crop,
+        genreId: input.id,
         imageContentType: input.imageContentType,
         imageData: input.imageData,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
         variantType: input.variantType,
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.genre?.publicId?.trim()) {
+    if (!response.genre?.id?.trim()) {
       return { message: t("admin.genres.save_failed"), ok: false };
     }
 

@@ -109,7 +109,8 @@ afterEach(() => {
 it("shows a slot for every delivered ratio", () => {
   render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[variant("portrait", 1200, 1600)]}
     />
@@ -123,7 +124,8 @@ it("shows a slot for every delivered ratio", () => {
 it("shows the size of the image a ratio currently holds", () => {
   render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[
         variant("portrait", 1200, 1600),
@@ -139,7 +141,8 @@ it("shows the size of the image a ratio currently holds", () => {
 it("marks a ratio the eye-catch holds no image for", () => {
   render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[variant("portrait", 1200, 1600)]}
     />
@@ -152,7 +155,8 @@ it("marks a ratio the eye-catch holds no image for", () => {
 it("asks for a cover image before opening the ratio slots", () => {
   render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[]}
     />
@@ -171,7 +175,8 @@ it("stops showing the picked file once the form is submitted", () => {
 
   const { container } = render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[variant("landscape", 1600, 900)]}
     />
@@ -213,10 +218,30 @@ it("stops showing the picked file once the form is submitted", () => {
   vi.unstubAllGlobals();
 });
 
+it("posts the record's ID under the field its upload action reads", () => {
+  const { container } = render(
+    <EyeCatchAspectImages
+      id="label-1"
+      idField="label_id"
+      uploadAction={action}
+      variants={[variant("landscape", 1600, 900)]}
+    />
+  );
+
+  const form = container
+    .querySelector('input[name="variant_type"][value="landscape"]')
+    ?.closest("form");
+  if (!form) {
+    throw new Error("the landscape slot has no form");
+  }
+  expect(new FormData(form).get("label_id")).toBe("label-1");
+});
+
 it("names the minimum of the ratio the API refused the image for", async () => {
   const { container } = render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={refuseImage}
       variants={[variant("landscape", 1600, 900)]}
     />
@@ -242,7 +267,8 @@ it("frames the picked file where the API would have cut it anyway", () => {
 
   const { container } = render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[variant("landscape", 1600, 900)]}
     />
@@ -271,7 +297,8 @@ it("previews the framed region rather than the whole picked file", () => {
 
   const { container } = render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       uploadAction={action}
       variants={[variant("landscape", 1600, 900)]}
     />
@@ -296,7 +323,8 @@ it("previews the framed region rather than the whole picked file", () => {
 it("closes the slot's picker while its upload is in flight", async () => {
   const { container } = render(
     <EyeCatchAspectImages
-      publicId="SERIES001"
+      id="SERIES001"
+      idField="public_id"
       // Never resolved: the assertions are about the window the upload is open in.
       uploadAction={() => Promise.withResolvers<never>().promise}
       variants={[variant("landscape", 1600, 900)]}

@@ -258,11 +258,7 @@ export const CreatorForm = ({
   return (
     <form action={formAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input
-        name="public_id"
-        type="hidden"
-        value={initialCreator?.publicId ?? ""}
-      />
+      <input name="creator_id" type="hidden" value={initialCreator?.id ?? ""} />
 
       <Fieldset className="grid gap-4" disabled={isPending}>
         <Field>

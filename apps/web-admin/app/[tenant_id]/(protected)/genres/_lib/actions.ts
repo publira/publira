@@ -49,7 +49,7 @@ const tenantIdSchema = async (locale: Locale) => {
 
   return requiredTrimmedString(t("admin.genres.validation.tenant_missing"));
 };
-const publicIdSchema = async (locale: Locale) => {
+const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return requiredTrimmedString(t("admin.genres.validation.id_missing"));
@@ -61,13 +61,13 @@ const createGenreSchema = async (locale: Locale) =>
   });
 const renameGenreSchema = async (locale: Locale) =>
   z.object({
+    id: await idSchema(locale),
     name: await nameSchema(locale),
-    publicId: await publicIdSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const deleteGenreSchema = async (locale: Locale) =>
   z.object({
-    publicId: await publicIdSchema(locale),
+    id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const genreEyeCatchSchema = async (locale: Locale) =>
@@ -75,8 +75,8 @@ const genreEyeCatchSchema = async (locale: Locale) =>
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
     eyeCatchImage: optionalFileFormSchema,
+    id: await idSchema(locale),
     name: await nameSchema(locale),
-    publicId: await publicIdSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const genreEyeCatchAspectSchema = async (locale: Locale) => {
@@ -85,7 +85,7 @@ const genreEyeCatchAspectSchema = async (locale: Locale) => {
   return z.object({
     aspectImage: optionalFileFormSchema,
     crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
-    publicId: await publicIdSchema(locale),
+    id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
     variantType: requiredTrimmedString(
       t("admin.eye_catch.aspect.variant_type_missing")
@@ -94,12 +94,12 @@ const genreEyeCatchAspectSchema = async (locale: Locale) => {
 };
 const reorderGenresSchema = async (locale: Locale) =>
   z.object({
-    expectedPublicIds: jsonStringArrayFormSchema,
-    publicIds: jsonStringArrayFormSchema,
+    expectedIds: jsonStringArrayFormSchema,
+    ids: jsonStringArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
 const rowFormFields = {
-  publicId: { kind: "value", name: "public_id" },
+  id: { kind: "value", name: "genre_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
@@ -152,28 +152,28 @@ export const renameGenreAction = async (
   if (!parsed.success) {
     // The row the message belongs to is the one that submitted, which is what
     // the form posted — a parse failure has no validated id to echo.
-    const publicId = formData.get("public_id");
+    const id = formData.get("genre_id");
     return {
+      id: typeof id === "string" ? id : "",
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      publicId: typeof publicId === "string" ? publicId : "",
     };
   }
 
-  const { name, publicId, tenantId } = parsed.data;
+  const { name, id, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    updateGenre({ name, publicId, tenantId }, locale)
+    updateGenre({ id, name, tenantId }, locale)
   );
   if (!result.ok) {
-    return { message: result.message, ok: false, publicId };
+    return { id, message: result.message, ok: false };
   }
 
   updateTag(genresCacheTag(tenantId));
 
   return {
+    id,
     message: t("admin.genres.updated"),
     ok: true,
-    publicId,
   };
 };
 
@@ -189,28 +189,28 @@ export const deleteGenreAction = async (
   ]);
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
-    const publicId = formData.get("public_id");
+    const id = formData.get("genre_id");
     return {
+      id: typeof id === "string" ? id : "",
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      publicId: typeof publicId === "string" ? publicId : "",
     };
   }
 
-  const { publicId, tenantId } = parsed.data;
+  const { id, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    deleteGenre({ publicId, tenantId }, locale)
+    deleteGenre({ id, tenantId }, locale)
   );
   if (!result.ok) {
-    return { message: result.message, ok: false, publicId };
+    return { id, message: result.message, ok: false };
   }
 
   updateTag(genresCacheTag(tenantId));
 
   return {
+    id,
     message: t("admin.genres.deleted"),
     ok: true,
-    publicId,
   };
 };
 
@@ -225,11 +225,11 @@ export const reorderGenresAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      expectedPublicIds: {
+      expectedIds: {
         kind: "value",
-        name: "expected_genre_public_ids",
+        name: "expected_genre_ids",
       },
-      publicIds: { kind: "value", name: "genre_public_ids" },
+      ids: { kind: "value", name: "genre_ids" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
@@ -243,8 +243,8 @@ export const reorderGenresAction = async (
     };
   }
 
-  const { expectedPublicIds, publicIds, tenantId } = parsed.data;
-  if (publicIds.length === 0 || publicIds.length !== expectedPublicIds.length) {
+  const { expectedIds, ids, tenantId } = parsed.data;
+  if (ids.length === 0 || ids.length !== expectedIds.length) {
     return {
       message: t("admin.genres.reorder_failed"),
       ok: false,
@@ -252,7 +252,7 @@ export const reorderGenresAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    reorderGenres({ expectedPublicIds, publicIds, tenantId }, locale)
+    reorderGenres({ expectedIds, ids, tenantId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -299,7 +299,7 @@ export const updateGenreEyeCatchAction = async (
     currentEyeCatchImageUpdatedAt,
     eyeCatchImage,
     name,
-    publicId,
+    id,
     tenantId,
   } = parsed.data;
   const eyeCatchImageData = eyeCatchImage
@@ -312,8 +312,8 @@ export const updateGenreEyeCatchAction = async (
         clearEyeCatchImage,
         eyeCatchImageContentType: eyeCatchImage?.type || undefined,
         eyeCatchImageData,
+        id,
         name,
-        publicId,
         tenantId,
       },
       locale
@@ -381,7 +381,7 @@ export const uploadGenreEyeCatchAspectImageAction = async (
     };
   }
 
-  const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
+  const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return {
       message: t("admin.eye_catch.aspect.image_required"),
@@ -395,9 +395,9 @@ export const uploadGenreEyeCatchAspectImageAction = async (
     uploadGenreEyeCatchAspectImage(
       {
         crop,
+        id,
         imageContentType: aspectImage.type || undefined,
         imageData,
-        publicId,
         tenantId,
         variantType,
       },

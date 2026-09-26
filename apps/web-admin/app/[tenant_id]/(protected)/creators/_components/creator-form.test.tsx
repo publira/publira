@@ -47,6 +47,7 @@ const creator: CreatorListItem = {
   iconImageFileSizeBytes: 0,
   iconImageUpdatedAt: "",
   iconImageUrl: "",
+  id: "creator-1",
   name: "Existing Creator",
   profileText: "Creator profile",
   publicId: "CREATOR001",

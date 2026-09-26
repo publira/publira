@@ -44,7 +44,7 @@ const creatorUpdateSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
-    publicId: requiredTrimmedString(t("admin.creators.validation.id_missing")),
+    id: requiredTrimmedString(t("admin.creators.validation.id_missing")),
   });
 };
 const creatorFormFields = {
@@ -127,7 +127,7 @@ export const updateCreatorAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,
-      publicId: { kind: "value", name: "public_id" },
+      id: { kind: "value", name: "creator_id" },
     })
   );
   if (!parsed.success) {
@@ -138,9 +138,9 @@ export const updateCreatorAction = async (
     clearIconImage,
     iconImage,
     iconImageCrop,
+    id,
     name,
     profileText,
-    publicId,
     tenantId,
   } = parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
@@ -152,9 +152,9 @@ export const updateCreatorAction = async (
         iconImageContentType,
         iconImageCrop,
         iconImageData,
+        id,
         name,
         profileText,
-        publicId,
         tenantId,
       },
       locale
@@ -166,7 +166,7 @@ export const updateCreatorAction = async (
   }
 
   updateTag(`creators-${tenantId}`);
-  updateTag(`creator-${tenantId}-${publicId}`);
+  updateTag(`creator-${tenantId}-${result.creator.publicId}`);
 
   return {
     creator: result.creator,

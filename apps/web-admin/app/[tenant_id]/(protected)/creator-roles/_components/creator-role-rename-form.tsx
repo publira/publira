@@ -47,7 +47,7 @@ export const CreatorRoleRenameForm = ({
   return (
     <form action={formAction} className="grid flex-1 gap-2">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={creatorRole.publicId} />
+      <input name="creator_role_id" type="hidden" value={creatorRole.id} />
       <div className="flex flex-wrap items-center gap-2">
         <Field className="w-full sm:max-w-xs">
           <FieldLabel className="sr-only">
@@ -77,7 +77,7 @@ export const CreatorRoleRenameForm = ({
           </ActionFormPending>
         </Button>
       </div>
-      {state && state.publicId === creatorRole.publicId ? (
+      {state && state.id === creatorRole.id ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>
           {state.message}
         </FormMessage>

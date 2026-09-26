@@ -183,7 +183,8 @@ const EditLabelFormData = async ({
           initialLabel={result.label}
         />
         <EyeCatchAspectImages
-          publicId={result.label.publicId}
+          id={result.label.id}
+          idField="label_id"
           uploadAction={uploadLabelEyeCatchAspectImageAction}
           variants={result.label.eyeCatchImageVariants}
         />

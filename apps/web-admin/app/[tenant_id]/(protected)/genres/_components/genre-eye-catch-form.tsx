@@ -24,7 +24,7 @@ export const GenreEyeCatchForm = ({
 }: GenreEyeCatchFormProps) => (
   <ActionForm action={updateGenreEyeCatchAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <input name="public_id" type="hidden" value={genre.publicId} />
+    <input name="genre_id" type="hidden" value={genre.id} />
     <input name="name" type="hidden" value={genre.name} />
     {/* A save refreshes the page with the eye-catch it stored, and the new
         timestamp remounts the field so the picked file and the delete toggle

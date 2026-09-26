@@ -81,7 +81,7 @@ export const LabelEyeCatchForm = ({
   return (
     <form action={formAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={initialLabel.publicId} />
+      <input name="label_id" type="hidden" value={initialLabel.id} />
       <input name="name" type="hidden" value={initialLabel.name} />
       <input
         name="current_eye_catch_image_updated_at"

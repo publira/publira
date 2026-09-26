@@ -25,7 +25,7 @@ interface GenreListProps {
   genres: GenreListItem[];
 }
 
-const genreId = (genre: GenreListItem): string => genre.publicId;
+const genreId = (genre: GenreListItem): string => genre.id;
 
 /** The smallest square cut of the eye-catch, which is all a row has room for. */
 const thumbnailOf = (genre: GenreListItem) =>
@@ -86,14 +86,11 @@ export const GenreList = ({ genres }: GenreListProps) => {
 
         const formData = new FormData();
         formData.set("tenant_id", tenantId);
-        formData.set(
-          "genre_public_ids",
-          JSON.stringify(nextGenres.map(genreId))
-        );
+        formData.set("genre_ids", JSON.stringify(nextGenres.map(genreId)));
         // The order the list was rendered from, so a console left open while
         // someone else moved a genre is refused rather than merged.
         formData.set(
-          "expected_genre_public_ids",
+          "expected_genre_ids",
           JSON.stringify(currentGenres.map(genreId))
         );
 
@@ -118,9 +115,9 @@ export const GenreList = ({ genres }: GenreListProps) => {
           <SortableItem
             className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
             disabled={isPending}
-            id={genre.publicId}
+            id={genre.id}
             index={index}
-            key={genre.publicId}
+            key={genre.id}
             label={genre.name}
           >
             {/* The height of the name field beside it, so the grip is level
@@ -143,7 +140,7 @@ export const GenreList = ({ genres }: GenreListProps) => {
               >
                 <ClientMessage message="admin.genres.edit_action" />
               </LinkButton>
-              <GenreDeleteButton name={genre.name} publicId={genre.publicId} />
+              <GenreDeleteButton id={genre.id} name={genre.name} />
             </div>
           </SortableItem>
         ))}

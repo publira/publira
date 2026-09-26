@@ -49,6 +49,7 @@ describe("GenreRenameForm", () => {
           genre={{
             eyeCatchImageUpdatedAt: "",
             eyeCatchImageVariants: [],
+            id: "genre-1",
             name: "Romance",
             publicId: "GENRE001",
             slug: "romance",

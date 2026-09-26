@@ -46,7 +46,7 @@ describe("CreatorRoleRenameForm", () => {
     await act(() => {
       render(
         <CreatorRoleRenameForm
-          creatorRole={{ name: "Illustrator", publicId: "ROLE001" }}
+          creatorRole={{ id: "ROLE001", name: "Illustrator" }}
         />,
         {
           wrapper: EnglishConsole,

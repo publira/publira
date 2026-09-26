@@ -39,7 +39,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ tenant_id: "TENANT001" }),
 }));
 
-const creatorRole = { name: "Original Author", publicId: "ROLE001" };
+const creatorRole = { id: "ROLE001", name: "Original Author" };
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
@@ -101,7 +101,7 @@ describe("CreatorRoleDeleteButton", () => {
   });
 
   it("posts the role the row stands for", async () => {
-    remove.mockResolvedValue({ message: "", ok: true, publicId: "ROLE001" });
+    remove.mockResolvedValue({ id: "ROLE001", message: "", ok: true });
 
     await renderButton();
     await confirmDelete();
@@ -109,7 +109,7 @@ describe("CreatorRoleDeleteButton", () => {
     const [firstCall] = remove.mock.calls;
     const [, formData] = firstCall;
 
-    expect(formData.get("public_id")).toBe("ROLE001");
+    expect(formData.get("creator_role_id")).toBe("ROLE001");
     expect(formData.get("tenant_id")).toBe("TENANT001");
   });
 
@@ -118,10 +118,10 @@ describe("CreatorRoleDeleteButton", () => {
   // nothing else on the page says so.
   it("shows the refusal when credits still name the role", async () => {
     remove.mockResolvedValue({
+      id: "ROLE001",
       message:
         "A series or an episode is still credited in this role. Re-credit them before deleting it.",
       ok: false,
-      publicId: "ROLE001",
     });
 
     await renderButton();
@@ -138,9 +138,9 @@ describe("CreatorRoleDeleteButton", () => {
   // would be attached to something that is no longer on screen.
   it("says nothing when the delete goes through", async () => {
     remove.mockResolvedValue({
+      id: "ROLE001",
       message: "Role deleted.",
       ok: true,
-      publicId: "ROLE001",
     });
 
     await renderButton();

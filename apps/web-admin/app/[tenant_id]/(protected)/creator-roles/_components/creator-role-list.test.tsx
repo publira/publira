@@ -71,9 +71,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 const creatorRoles: CreatorRoleListItem[] = [
-  { name: "Original Author", publicId: "ROLE001" },
-  { name: "Artist", publicId: "ROLE002" },
-  { name: "Writer", publicId: "ROLE003" },
+  { id: "ROLE001", name: "Original Author" },
+  { id: "ROLE002", name: "Artist" },
+  { id: "ROLE003", name: "Writer" },
 ];
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
@@ -169,14 +169,14 @@ describe("CreatorRoleList", () => {
     await waitFor(() => {
       expect(reorder).toHaveBeenCalledTimes(1);
     });
-    expect(submittedOrder("creator_role_public_ids")).toEqual([
+    expect(submittedOrder("creator_role_ids")).toEqual([
       "ROLE002",
       "ROLE001",
       "ROLE003",
     ]);
     // The order the rows were rendered from. The API refuses the write when
     // this no longer matches what the tenant's roles are in.
-    expect(submittedOrder("expected_creator_role_public_ids")).toEqual([
+    expect(submittedOrder("expected_creator_role_ids")).toEqual([
       "ROLE001",
       "ROLE002",
       "ROLE003",

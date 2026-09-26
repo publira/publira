@@ -26,6 +26,9 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
+  /** The primary key an edit addresses the creator by. */
+  id: string;
+  /** What the creator's page is addressed by in the URL. */
   publicId: string;
   name: string;
   profileText: string;
@@ -98,6 +101,7 @@ type RawCreator = Pick<
   | "iconImageFileSizeBytes"
   | "iconImageUpdatedAt"
   | "iconImageUrl"
+  | "id"
   | "name"
   | "profileText"
   | "publicId"
@@ -107,6 +111,7 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
   iconImageFileSizeBytes: Number(creator.iconImageFileSizeBytes ?? 0),
   iconImageUpdatedAt: creator.iconImageUpdatedAt ?? "",
   iconImageUrl: creator.iconImageUrl ?? "",
+  id: creator.id,
   name: creator.name,
   profileText: creator.profileText,
   publicId: creator.publicId,
@@ -320,7 +325,7 @@ export const createCreator = async (
 export const updateCreator = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     name: string;
     profileText: string;
     clearIconImage?: boolean;
@@ -346,12 +351,12 @@ export const updateCreator = async (
     const response = await apiClient.creator.updateCreator(
       {
         clearIconImage: input.clearIconImage,
+        creatorId: input.id,
         iconImageContentType: input.iconImageContentType,
         iconImageCrop: input.iconImageCrop,
         iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

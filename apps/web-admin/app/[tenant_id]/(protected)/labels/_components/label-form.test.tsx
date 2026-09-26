@@ -31,6 +31,7 @@ const render = (ui: React.ReactNode) =>
 const label: LabelListItem = {
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
+  id: "label-1",
   name: "Existing Label",
   publicId: "LABEL001",
 };
