@@ -15,8 +15,8 @@ import (
 // purchase named its provider, and the last of the migrations that moved it
 // there.
 const (
-	beforePurchaseProviderVersion = 20260925163824
-	purchaseProviderVersion       = 20260926031722
+	beforePurchaseProviderVersion = 20260926014703
+	purchaseProviderVersion       = 20260926094741
 )
 
 // providerPurchase is what the provider-neutral columns of one purchase hold.
@@ -100,6 +100,20 @@ func TestPurchaseProviderMigrationKeepsStripePurchases(t *testing.T) {
 	// An admin grant paid through no provider, and must not be claimed by one.
 	if got := readProviderPurchase(t, pg, grantID); got != (providerPurchase{}) {
 		t.Fatalf("migrated admin grant = %+v, want no provider and no ids", got)
+	}
+	// Added NOT VALID so the renames scanned nothing, the constraint has to end
+	// up validated once the backfill has given every row its provider.
+	var validated bool
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT convalidated
+		FROM pg_constraint
+		WHERE conrelid = 'purchases'::regclass
+			AND conname = 'purchases_provider_check'
+	`).Scan(&validated); err != nil {
+		t.Fatalf("read purchases_provider_check: %v", err)
+	}
+	if !validated {
+		t.Fatal("purchases_provider_check is still NOT VALID after the migrations")
 	}
 
 	var heldProvider string

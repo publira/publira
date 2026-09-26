@@ -6,9 +6,15 @@
 --
 -- The Stripe columns are renamed rather than copied, so the ids already stored
 -- stay where they are. The constraint and the index that key them by the id
--- alone stay too, until the next migrations have built their replacements
--- concurrently: dropping them here would leave a window in which a redelivered
--- notification could create a second purchase.
+-- alone stay too, until the migrations after this one have built their
+-- replacements concurrently: dropping them here would leave a window in which a
+-- redelivered notification could create a second purchase.
+--
+-- The renames hold an ACCESS EXCLUSIVE lock on purchases until this file
+-- commits, so nothing here reads or writes a row of it: the CHECK constraint is
+-- added NOT VALID, the next migration fills in the provider of the purchases
+-- already there, and the last one validates the constraint under a lock that
+-- lets reads and writes go on.
 
 -- COLUMN: purchases provider_checkout_id
 -- The provider's id of the checkout the purchase was created from. A purchase
@@ -30,17 +36,11 @@ ALTER TABLE purchases
 ALTER TABLE purchases
     ADD COLUMN provider text;
 
--- Every purchase that names a checkout was created from a Stripe one, which
--- until now was the only provider there was.
-UPDATE purchases
-SET provider = 'stripe'
-WHERE provider_checkout_id IS NOT NULL;
-
 -- CONSTRAINT: purchases purchases_provider_check
 -- A provider purchase names its checkout, only a provider purchase names a
 -- payment, and a store purchase is never a provider one.
 ALTER TABLE ONLY purchases
-    ADD CONSTRAINT purchases_provider_check CHECK ((((provider IS NULL) = (provider_checkout_id IS NULL)) AND ((provider_payment_id IS NULL) OR (provider IS NOT NULL)) AND ((provider IS NULL) OR (store IS NULL))));
+    ADD CONSTRAINT purchases_provider_check CHECK ((((provider IS NULL) = (provider_checkout_id IS NULL)) AND ((provider_payment_id IS NULL) OR (provider IS NOT NULL)) AND ((provider IS NULL) OR (store IS NULL)))) NOT VALID;
 
 -- TABLE: unapplied_refunds
 -- A refund that arrived before the purchase it reverses, kept until the
