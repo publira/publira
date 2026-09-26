@@ -49,8 +49,6 @@ vi.mock("#lib/episode-rating-actions", () => ({
   rateEpisodeAction,
 }));
 
-const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-
 const GuestReaction = ({
   href,
   ratingCount,
@@ -82,15 +80,7 @@ const SignedInReaction = ({
   score: number;
 }) => (
   <EpisodeReaction>
-    <EpisodeReactionForm
-      episodePublicId="EPISODE01"
-      mode={mode}
-      ratingCount={ratingCount}
-      returnTo="/series/SERIES01/episodes/EPISODE01"
-      score={score}
-      seriesPublicId="SERIES01"
-      tenantId={tenantId}
-    >
+    <EpisodeReactionForm mode={mode} ratingCount={ratingCount} score={score}>
       <EpisodeReactionSubmit>
         <EpisodeReactionName>
           <EpisodeReactionNameIdle>

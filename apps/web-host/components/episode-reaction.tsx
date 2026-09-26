@@ -33,7 +33,6 @@ import {
 import type { HostClientMessageKey } from "#lib/messages";
 
 import { useClientMessages } from "./client-message";
-import { LocaleField } from "./locale-field";
 import { useLocale } from "./locale-provider";
 
 /**
@@ -208,25 +207,20 @@ export const EpisodeReactionLogin = ({
 /**
  * The signed-in control. Presses are optimistic and batched into one request
  * so a burst in `multiple` mode is one `presses` value rather than a race.
+ *
+ * The caller composes what the form posts besides `presses` — the locale, the
+ * episode, and where a rejected session returns to — next to the submit slot.
  */
 export const EpisodeReactionForm = ({
   children,
-  episodePublicId,
   mode,
   ratingCount,
-  returnTo,
   score,
-  seriesPublicId,
-  tenantId,
 }: {
   children: ReactNode;
-  episodePublicId: string;
   mode: EpisodeReactionMode;
   ratingCount: number;
-  returnTo: string;
   score: number;
-  seriesPublicId: string;
-  tenantId: string;
 }) => {
   const [state, formAction] = useActionState(
     rateEpisodeAction,
@@ -292,12 +286,7 @@ export const EpisodeReactionForm = ({
         }}
         className="grid justify-items-start gap-2"
       >
-        <LocaleField />
-        <input name="episodePublicId" type="hidden" value={episodePublicId} />
         <input name="presses" type="hidden" value="1" />
-        <input name="returnTo" type="hidden" value={returnTo} />
-        <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
-        <input name="tenantId" type="hidden" value={tenantId} />
         {children}
       </form>
     </EpisodeReactionFaceContext>
