@@ -246,13 +246,10 @@ func (x *ListTenantMembersResponse) GetNextToken() string {
 // Demoting the tenant's last active tenant_admin is refused with
 // FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
 type UpdateTenantMemberRoleRequest struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	UserPublicId string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// tenant_admin | tenant_editor | tenant_auditor
-	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	// The member's internal user ID. Takes precedence over user_public_id when
-	// set.
+	Role          string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -293,13 +290,6 @@ func (x *UpdateTenantMemberRoleRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateTenantMemberRoleRequest) GetUserPublicId() string {
-	if x != nil {
-		return x.UserPublicId
-	}
-	return ""
 }
 
 func (x *UpdateTenantMemberRoleRequest) GetRole() string {
@@ -364,12 +354,9 @@ func (x *UpdateTenantMemberRoleResponse) GetMember() *TenantMember {
 // tenant. Removing the tenant's last active tenant_admin is refused with
 // FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
 type RemoveTenantMemberRequest struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	UserPublicId string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
-	// The member's internal user ID. Takes precedence over user_public_id when
-	// set.
-	UserId        string `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,13 +396,6 @@ func (x *RemoveTenantMemberRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *RemoveTenantMemberRequest) GetUserPublicId() string {
-	if x != nil {
-		return x.UserPublicId
-	}
-	return ""
 }
 
 func (x *RemoveTenantMemberRequest) GetUserId() string {
@@ -1021,18 +1001,16 @@ const file_publira_admin_v1_member_proto_rawDesc = "" +
 	"\amembers\x18\x01 \x03(\v2\x1e.publira.admin.v1.TenantMemberR\amembers\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xab\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x9b\x01\n" +
 	"\x1dUpdateTenantMemberRoleRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x17\n" +
-	"\auser_id\x18\x04 \x01(\tR\x06userId\"X\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userIdJ\x04\b\x02\x10\x03R\x0euser_public_id\"X\n" +
 	"\x1eUpdateTenantMemberRoleResponse\x126\n" +
-	"\x06member\x18\x01 \x01(\v2\x1e.publira.admin.v1.TenantMemberR\x06member\"\x93\x01\n" +
+	"\x06member\x18\x01 \x01(\v2\x1e.publira.admin.v1.TenantMemberR\x06member\"\x83\x01\n" +
 	"\x19RemoveTenantMemberRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\"[\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userIdJ\x04\b\x02\x10\x03R\x0euser_public_id\"[\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
 	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xd5\x01\n" +

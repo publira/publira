@@ -242,29 +242,15 @@ func (s *adminServer) loadAccessTicket(
 	})
 }
 
-// revokeTargetID names the ticket RevokeAccessTicket revokes: ticketID when it
-// is set, otherwise the ticket the public ID resolves to.
-func (s *adminServer) revokeTargetID(ctx context.Context, tenantID uuid.UUID, ticketID, publicID string) (uuid.UUID, error) {
-	if raw := strings.TrimSpace(ticketID); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("access_ticket_id must be a UUID"), "access_ticket_id")
-		}
-		return id, nil
+// accessTicketIDArg parses the access_ticket_id RevokeAccessTicket names.
+func accessTicketIDArg(raw string) (uuid.UUID, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("access_ticket_id is required"), "access_ticket_id")
 	}
-	resolved := strings.TrimSpace(publicID)
-	if resolved == "" {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("access_ticket_id is required"))
-	}
-	id, err := s.queriesFor(ctx).GetAccessTicketIDByPublicIDForTenant(ctx, dbmodels.GetAccessTicketIDByPublicIDForTenantParams{
-		TenantID: tenantID,
-		PublicID: resolved,
-	})
+	id, err := uuid.Parse(raw)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.Nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
-		}
-		return uuid.Nil, s.internalDBError(ctx, "failed to resolve access ticket for revoke", err, "tenant_id", tenantID.String())
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("access_ticket_id must be a UUID"), "access_ticket_id")
 	}
 	return id, nil
 }
@@ -523,7 +509,7 @@ func (s *adminServer) RevokeAccessTicket(
 		return nil, err
 	}
 
-	ticketID, err := s.revokeTargetID(ctx, tenant.ID, req.Msg.AccessTicketId, req.Msg.PublicId)
+	ticketID, err := accessTicketIDArg(req.Msg.AccessTicketId)
 	if err != nil {
 		return nil, err
 	}

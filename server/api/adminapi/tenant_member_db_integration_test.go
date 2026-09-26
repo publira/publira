@@ -604,31 +604,3 @@ func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
 		}
 	}
 }
-
-// Until every client sends user_id, a member request still resolves the member
-// a public ID names.
-func TestDBTenantMemberRPCsResolveAPublicID(t *testing.T) {
-	env := newAdminDBEnv(t)
-	tenant := env.seedTenantWithAdmin(t, "TMPTENANT001", "member-public-id.example.com", "Public", "TMPADMIN0001", "admin@member-public-id.example.com")
-	editor := env.seedMember(t, tenant, "TMPEDITOR001", "editor@member-public-id.example.com", auth.RoleTenantEditor)
-	client := env.tenantMemberClient()
-
-	updated, err := client.UpdateTenantMemberRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID, Role: auth.RoleTenantAuditor,
-	}))
-	if err != nil {
-		t.Fatalf("UpdateTenantMemberRole: %v", err)
-	}
-	if updated.Msg.Member.UserId != editor.ID.String() || updated.Msg.Member.Role != auth.RoleTenantAuditor {
-		t.Fatalf("member = %+v, want %s as auditor", updated.Msg.Member, editor.ID)
-	}
-	removed, err := client.RemoveTenantMember(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID,
-	}))
-	if err != nil {
-		t.Fatalf("RemoveTenantMember: %v", err)
-	}
-	if removed.Msg.UserId != editor.ID.String() {
-		t.Fatalf("removed user_id = %q, want %s", removed.Msg.UserId, editor.ID)
-	}
-}

@@ -44,22 +44,22 @@ func adminReaderRequest[T any](console adminReaderConsole, msg *T) *connect.Requ
 	return req
 }
 
-func (c adminReaderConsole) suspend(t *testing.T, publicID string) *publiraadminv1.AdminReader {
+func (c adminReaderConsole) suspend(t *testing.T, readerID string) *publiraadminv1.AdminReader {
 	t.Helper()
 
-	res, err := c.client.SuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.SuspendReaderRequest{Tenant: c.tenant, PublicId: publicID}))
+	res, err := c.client.SuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.SuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID}))
 	if err != nil {
-		t.Fatalf("SuspendReader %s: %v", publicID, err)
+		t.Fatalf("SuspendReader %s: %v", readerID, err)
 	}
 	return res.Msg.Reader
 }
 
-func (c adminReaderConsole) unsuspend(t *testing.T, publicID string) *publiraadminv1.AdminReader {
+func (c adminReaderConsole) unsuspend(t *testing.T, readerID string) *publiraadminv1.AdminReader {
 	t.Helper()
 
-	res, err := c.client.UnsuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.UnsuspendReaderRequest{Tenant: c.tenant, PublicId: publicID}))
+	res, err := c.client.UnsuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.UnsuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID}))
 	if err != nil {
-		t.Fatalf("UnsuspendReader %s: %v", publicID, err)
+		t.Fatalf("UnsuspendReader %s: %v", readerID, err)
 	}
 	return res.Msg.Reader
 }
@@ -85,7 +85,7 @@ func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
 	}
 	session := login.Msg.AccessToken.Token
 
-	if got := console.suspend(t, reader.PublicID); got.Status != "suspended" {
+	if got := console.suspend(t, reader.ID.String()); got.Status != "suspended" {
 		t.Fatalf("suspended reader status = %q, want suspended", got.Status)
 	}
 
@@ -97,7 +97,7 @@ func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
 		t.Fatalf("Login while suspended = %v, want failed_precondition", err)
 	}
 
-	if got := console.unsuspend(t, reader.PublicID); got.Status != "active" {
+	if got := console.unsuspend(t, reader.ID.String()); got.Status != "active" {
 		t.Fatalf("unsuspended reader status = %q, want active", got.Status)
 	}
 
@@ -124,7 +124,7 @@ func TestDBVerifyUserEmailDoesNotLiftAnAdminSuspension(t *testing.T) {
 	console := env.openAdminReaderConsole(t, tenant)
 	client := env.authClient()
 
-	console.suspend(t, pending.PublicID)
+	console.suspend(t, pending.ID.String())
 
 	if _, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
 		Tenant: tenantContext(tenant),
@@ -138,7 +138,7 @@ func TestDBVerifyUserEmailDoesNotLiftAnAdminSuspension(t *testing.T) {
 
 	// The address was confirmed all the same, so lifting the suspension leaves
 	// nothing more to wait for.
-	if got := console.unsuspend(t, pending.PublicID); got.Status != "active" {
+	if got := console.unsuspend(t, pending.ID.String()); got.Status != "active" {
 		t.Fatalf("unsuspended reader status = %q, want active", got.Status)
 	}
 	if _, err := loginReader(client, tenant, pending.Email); err != nil {
@@ -156,8 +156,8 @@ func TestDBAdminUnsuspendReturnsAnUnconfirmedReaderToInactive(t *testing.T) {
 	console := env.openAdminReaderConsole(t, tenant)
 	client := env.authClient()
 
-	console.suspend(t, pending.PublicID)
-	if got := console.unsuspend(t, pending.PublicID); got.Status != "inactive" {
+	console.suspend(t, pending.ID.String())
+	if got := console.unsuspend(t, pending.ID.String()); got.Status != "inactive" {
 		t.Fatalf("unsuspended unconfirmed reader status = %q, want inactive", got.Status)
 	}
 
@@ -191,7 +191,7 @@ func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
 
 	res, err := console.client.DeleteReader(context.Background(), adminReaderRequest(console, &publiraadminv1.DeleteReaderRequest{
 		Tenant:   console.tenant,
-		PublicId: buyer.PublicID,
+		ReaderId: buyer.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("DeleteReader: %v", err)
@@ -256,7 +256,7 @@ func TestDBAdminBirthDateCorrectionDecidesTheNextAgeGatedRead(t *testing.T) {
 		t.Helper()
 		if _, err := console.client.SetReaderBirthDate(context.Background(), adminReaderRequest(console, &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    console.tenant,
-			PublicId:  reader.PublicID,
+			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
 		})); err != nil {
 			t.Fatalf("SetReaderBirthDate %q: %v", birthDate, err)

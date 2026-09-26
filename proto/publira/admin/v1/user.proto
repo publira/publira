@@ -81,9 +81,10 @@ message GetReaderResponse {
 }
 
 message SuspendReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
-  // The reader's internal ID. Takes precedence over public_id when set.
   string reader_id = 3;
 }
 
@@ -92,9 +93,10 @@ message SuspendReaderResponse {
 }
 
 message UnsuspendReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
-  // The reader's internal ID. Takes precedence over public_id when set.
   string reader_id = 3;
 }
 
@@ -103,13 +105,14 @@ message UnsuspendReaderResponse {
 }
 
 message SetReaderBirthDateRequest {
+  reserved 2;
+  reserved "public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
   // YYYY-MM-DD, validated as a reader's own date is: a calendar date the
   // tenant's calendar has reached, and not an implausibly old one. Empty clears
   // the stored date.
   string birth_date = 3;
-  // The reader's internal ID. Takes precedence over public_id when set.
   string reader_id = 4;
 }
 
@@ -118,9 +121,10 @@ message SetReaderBirthDateResponse {
 }
 
 message DeleteReaderRequest {
+  reserved 2;
+  reserved "public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
-  // The reader's internal ID. Takes precedence over public_id when set.
   string reader_id = 3;
 }
 

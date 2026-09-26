@@ -330,7 +330,6 @@ type Querier interface {
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
-	GetAccessTicketIDByPublicIDForTenant(ctx context.Context, arg GetAccessTicketIDByPublicIDForTenantParams) (uuid.UUID, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)

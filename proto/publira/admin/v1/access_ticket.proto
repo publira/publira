@@ -69,9 +69,10 @@ message IssueAccessTicketResponse {
 }
 
 message RevokeAccessTicketRequest {
+  reserved 2;
+  reserved "public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
-  // The ticket's internal ID. Takes precedence over public_id when set.
   string access_ticket_id = 3;
 }
 

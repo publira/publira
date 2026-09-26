@@ -164,12 +164,6 @@ ORDER BY at.created_at ASC,
     at.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: GetAccessTicketIDByPublicIDForTenant :one
-SELECT id
-FROM access_tickets
-WHERE tenant_id = $1
-    AND public_id = $2;
-
 -- name: RevokeAccessTicketForTenant :one
 UPDATE access_tickets
 SET revoked_at = NOW()

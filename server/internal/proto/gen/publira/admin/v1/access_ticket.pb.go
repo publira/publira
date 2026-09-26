@@ -449,11 +449,9 @@ func (x *IssueAccessTicketResponse) GetTicket() *AdminAccessTicket {
 }
 
 type RevokeAccessTicketRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The ticket's internal ID. Takes precedence over public_id when set.
-	AccessTicketId string `protobuf:"bytes,3,opt,name=access_ticket_id,json=accessTicketId,proto3" json:"access_ticket_id,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	AccessTicketId string                 `protobuf:"bytes,3,opt,name=access_ticket_id,json=accessTicketId,proto3" json:"access_ticket_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -493,13 +491,6 @@ func (x *RevokeAccessTicketRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *RevokeAccessTicketRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *RevokeAccessTicketRequest) GetAccessTicketId() string {
@@ -599,11 +590,10 @@ const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"expires_at\x18\x04 \x01(\tR\texpiresAt\x12\x12\n" +
 	"\x04note\x18\x05 \x01(\tR\x04note\"X\n" +
 	"\x19IssueAccessTicketResponse\x12;\n" +
-	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket\"\x9b\x01\n" +
+	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket\"\x8f\x01\n" +
 	"\x19RevokeAccessTicketRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12(\n" +
-	"\x10access_ticket_id\x18\x03 \x01(\tR\x0eaccessTicketId\"Y\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
+	"\x10access_ticket_id\x18\x03 \x01(\tR\x0eaccessTicketIdJ\x04\b\x02\x10\x03R\tpublic_id\"Y\n" +
 	"\x1aRevokeAccessTicketResponse\x12;\n" +
 	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket2\xed\x02\n" +
 	"\x18AdminAccessTicketService\x12n\n" +

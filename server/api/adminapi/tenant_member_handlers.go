@@ -191,11 +191,10 @@ func (s *adminServer) UpdateTenantMemberRole(
 	defer tx.Rollback() //nolint:errcheck
 
 	member, err := tenantmembers.UpdateRole(ctx, tx, tenantmembers.UpdateRoleParams{
-		TenantID:     tenant.ID,
-		UserID:       userID,
-		UserPublicID: req.Msg.UserPublicId,
-		Role:         req.Msg.Role,
-		KeepAnAdmin:  true,
+		TenantID:    tenant.ID,
+		UserID:      userID,
+		Role:        req.Msg.Role,
+		KeepAnAdmin: true,
 	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to update tenant member role", err, "tenant_id", tenant.ID.String())
@@ -230,10 +229,9 @@ func (s *adminServer) RemoveTenantMember(
 	defer tx.Rollback() //nolint:errcheck
 
 	member, err := tenantmembers.Remove(ctx, tx, tenantmembers.RemoveParams{
-		TenantID:     tenant.ID,
-		UserID:       userID,
-		UserPublicID: req.Msg.UserPublicId,
-		KeepAnAdmin:  true,
+		TenantID:    tenant.ID,
+		UserID:      userID,
+		KeepAnAdmin: true,
 	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to remove tenant member", err, "tenant_id", tenant.ID.String())
@@ -247,12 +245,11 @@ func (s *adminServer) RemoveTenantMember(
 	return connect.NewResponse(&publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}), nil
 }
 
-// memberUserID parses the user_id a member request names, which may be blank
-// while the request names the member by public ID instead.
+// memberUserID parses the user_id a member request names.
 func memberUserID(raw string) (uuid.UUID, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return uuid.Nil, nil
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("user_id is required"), "user_id")
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
