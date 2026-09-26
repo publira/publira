@@ -518,8 +518,7 @@ type Querier interface {
 	//
 	// Expected plans:
 	//   GetReportableEpisodeCommentForTenant
-	//     -> episode_comments_tenant_id_id_key, or
-	//        episode_comments_tenant_public_id_key for a public ID
+	//     -> episode_comments_tenant_id_id_key
 	//   CreateEpisodeCommentReport
 	//     -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 	//   RefreshEpisodeCommentOpenReportCount

@@ -73,7 +73,7 @@ func (e *publicDBEnv) commentRemoval(t *testing.T, tenant testutil.Tenant, publi
 func (e *publicDBEnv) reportUntil(
 	t *testing.T,
 	tenant testutil.Tenant,
-	commentPublicID, readerPrefix string,
+	commentID, readerPrefix string,
 	reports int,
 ) {
 	t.Helper()
@@ -85,7 +85,7 @@ func (e *publicDBEnv) reportUntil(
 			readerPrefix+string(rune('a'+index))+"@example.com",
 			"Reporting Reader",
 		)
-		if err := e.reportComment(t, tenant, reader, commentPublicID, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
+		if err := e.reportComment(t, tenant, reader, commentID, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
 			t.Fatalf("report %d of %d: %v", index+1, reports, err)
 		}
 	}
@@ -99,20 +99,20 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 	env.setCommentAutoHideThreshold(t, tenant.ID, 3)
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	env.reportUntil(t, tenant, comment.PublicId, "ATHRDR", 2)
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	env.reportUntil(t, tenant, comment.Id, "ATHRDR", 2)
 
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "published" {
 		t.Fatalf("comment status one report short of the threshold = %q, want published", got.status)
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, comment.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want %s still listed one report short", got, comment.PublicId)
 	}
 	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentHidden); got != 0 {
 		t.Fatalf("comment_hidden rows one report short of the threshold = %d, want 0", got)
 	}
 
-	env.reportUntil(t, tenant, comment.PublicId, "ATHLAST", 1)
+	env.reportUntil(t, tenant, comment.Id, "ATHLAST", 1)
 
 	removal := env.commentRemoval(t, tenant, comment.PublicId)
 	if removal.status != "hidden" {
@@ -126,12 +126,12 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 	if removal.hasHiddenBy {
 		t.Fatal("hidden_by is set, want the automatic removal to name no actor")
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); containsPublicID(got, comment.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want the removed %s withheld", got, comment.PublicId)
 	}
 	// The author's own list still carries the comment unchanged: the removal
 	// is told through a notification, not by the comment changing shape.
-	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.PublicID)); !containsPublicID(got, comment.PublicId) {
+	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.ID.String())); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("the author's own comments = %v, want %s unchanged for them", got, comment.PublicId)
 	}
 	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentHidden); got != 1 {
@@ -177,17 +177,17 @@ func TestDBReportThresholdRunsWithoutATenantConfigRow(t *testing.T) {
 	env, tenant, member, series, episode := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
 	env.setSeriesCommentMode(t, series.ID, "immediate")
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
 	if got := env.countRows(t, "SELECT COUNT(*) FROM tenant_config WHERE tenant_id = $1", tenant.ID); got != 0 {
 		t.Fatalf("tenant_config rows = %d, want the tenant to have saved nothing", got)
 	}
 
-	env.reportUntil(t, tenant, comment.PublicId, "ANCRDR", 2)
+	env.reportUntil(t, tenant, comment.Id, "ANCRDR", 2)
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "published" {
 		t.Fatalf("comment status one report short of the default threshold = %q, want published", got.status)
 	}
 
-	env.reportUntil(t, tenant, comment.PublicId, "ANCLAST", 1)
+	env.reportUntil(t, tenant, comment.Id, "ANCLAST", 1)
 	removal := env.commentRemoval(t, tenant, comment.PublicId)
 	if removal.status != "hidden" {
 		t.Fatalf("comment status at the default threshold = %q, want hidden", removal.status)
@@ -205,8 +205,8 @@ func TestDBReportThresholdRecordsAnAuditEntryWithNoActor(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 	env.setCommentAutoHideThreshold(t, tenant.ID, 2)
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	env.reportUntil(t, tenant, comment.PublicId, "AUDRDR", 2)
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	env.reportUntil(t, tenant, comment.Id, "AUDRDR", 2)
 
 	if got := env.countRows(t, `
 		SELECT COUNT(*)
@@ -231,8 +231,8 @@ func TestDBReportThresholdOfZeroNeverHidesTheComment(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 	env.setCommentAutoHideThreshold(t, tenant.ID, 0)
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	env.reportUntil(t, tenant, comment.PublicId, "ATZRDR", 5)
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	env.reportUntil(t, tenant, comment.Id, "ATZRDR", 5)
 
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "published" {
 		t.Fatalf("comment status with the threshold turned off = %q, want published", got.status)
@@ -257,8 +257,8 @@ func TestDBDecidingReportsLeavesTheAutomaticRemovalStanding(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 	env.setCommentAutoHideThreshold(t, tenant.ID, 2)
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	env.reportUntil(t, tenant, comment.PublicId, "ATDRDR", 2)
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	env.reportUntil(t, tenant, comment.Id, "ATDRDR", 2)
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "hidden" {
 		t.Fatalf("comment status at the threshold = %q, want hidden", got.status)
 	}
@@ -278,7 +278,7 @@ func TestDBDecidingReportsLeavesTheAutomaticRemovalStanding(t *testing.T) {
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "hidden" || got.hiddenReason != "auto_reports" {
 		t.Fatalf("comment after the decisions = %q/%q, want hidden/auto_reports", got.status, got.hiddenReason)
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); containsPublicID(got, comment.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want the removed %s still withheld", got, comment.PublicId)
 	}
 
@@ -287,7 +287,7 @@ func TestDBDecidingReportsLeavesTheAutomaticRemovalStanding(t *testing.T) {
 	if got := env.commentRemoval(t, tenant, comment.PublicId); got.status != "published" || got.hiddenReason != "" {
 		t.Fatalf("comment after the restore = %q/%q, want published with no removal in force", got.status, got.hiddenReason)
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, comment.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want the restored %s back", got, comment.PublicId)
 	}
 }

@@ -107,7 +107,7 @@ func (f commentModerationFixture) seedComment(t *testing.T, publicID, status str
 
 // withdrawComment takes a comment down as its own author does, which is the one
 // transition no moderator can make and the one no moderator can undo.
-func (f commentModerationFixture) withdrawComment(t *testing.T, publicID string) dbmodels.EpisodeComment {
+func (f commentModerationFixture) withdrawComment(t *testing.T, commentID uuid.UUID) dbmodels.EpisodeComment {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -116,10 +116,10 @@ func (f commentModerationFixture) withdrawComment(t *testing.T, publicID string)
 	comment, err := dbmodels.New(f.env.PG.DB).WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: f.admin.Tenant.ID,
 		UserID:   f.reader,
-		PublicID: sql.NullString{String: publicID, Valid: true},
+		ID:       commentID,
 	})
 	if err != nil {
-		t.Fatalf("withdraw comment %s: %v", publicID, err)
+		t.Fatalf("withdraw comment %s: %v", commentID, err)
 	}
 	return comment
 }
@@ -432,7 +432,7 @@ func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
 	fixture := newCommentModerationFixture(t, env, "WDN", "withdrawn.example.com")
 	client := env.commentClient()
 	comment := fixture.seedComment(t, "WDNGONE00001", "published")
-	withdrawn := fixture.withdrawComment(t, comment.PublicID)
+	withdrawn := fixture.withdrawComment(t, comment.ID)
 
 	// Staff keep reading a comment its author deleted, which is what makes a
 	// report raised before the deletion still answerable, and the response says

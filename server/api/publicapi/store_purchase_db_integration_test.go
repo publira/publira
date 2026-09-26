@@ -140,9 +140,9 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 func (e *storePurchaseEnv) start(t *testing.T, token string) *publirav1.StartStorePurchaseResponse {
 	t.Helper()
 	res, err := e.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
-		Tenant:          tenantContext(e.tenant),
-		EpisodePublicId: e.episode.PublicID,
-		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+		Tenant:    tenantContext(e.tenant),
+		EpisodeId: e.episode.ID.String(),
+		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 	}, token))
 	if err != nil {
 		t.Fatalf("StartStorePurchase: %v", err)
@@ -228,9 +228,9 @@ func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testin
 		t.Fatalf("switch route: %v", err)
 	}
 	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
-		Tenant:          tenantContext(env.tenant),
-		EpisodePublicId: env.episode.PublicID,
-		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+		Tenant:    tenantContext(env.tenant),
+		EpisodeId: env.episode.ID.String(),
+		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 	}, env.token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase code = %v, want failed_precondition", connect.CodeOf(err))
@@ -539,9 +539,9 @@ func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
 		t.Fatalf("switch Google Play off: %v", err)
 	}
 	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
-		Tenant:          tenantContext(env.tenant),
-		EpisodePublicId: env.episode.PublicID,
-		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+		Tenant:    tenantContext(env.tenant),
+		EpisodeId: env.episode.ID.String(),
+		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
 	}, env.token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase through a store that is off: code = %v, want failed_precondition", connect.CodeOf(err))
@@ -558,9 +558,9 @@ func TestDBStartStorePurchaseRefusesAStoreWhoseKeyDoesNotDecrypt(t *testing.T) {
 		t.Fatalf("store a key that does not decrypt: %v", err)
 	}
 	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
-		Tenant:          tenantContext(env.tenant),
-		EpisodePublicId: env.episode.PublicID,
-		Store:           publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+		Tenant:    tenantContext(env.tenant),
+		EpisodeId: env.episode.ID.String(),
+		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 	}, env.token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase through a store whose key does not decrypt: code = %v, want failed_precondition", connect.CodeOf(err))

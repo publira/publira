@@ -11,10 +11,10 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func mySeriesRatingRequest(tenant testutil.Tenant, seriesPublicID, token string) *connect.Request[publirav1.GetMySeriesRatingRequest] {
+func mySeriesRatingRequest(tenant testutil.Tenant, seriesID, token string) *connect.Request[publirav1.GetMySeriesRatingRequest] {
 	return newBearerRequest(&publirav1.GetMySeriesRatingRequest{
-		Tenant:         tenantContext(tenant),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenantContext(tenant),
+		SeriesId: seriesID,
 	}, token)
 }
 
@@ -76,7 +76,7 @@ func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
 		t.Fatalf("rating_count before any reaction = %d, want 0", got)
 	}
 
-	if _, err := env.ratingClient().RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.PublicID, tokenFor(t, tenant, member), 1)); err != nil {
+	if _, err := env.ratingClient().RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, member), 1)); err != nil {
 		t.Fatalf("RateEpisode: %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 	otherToken := tokenFor(t, tenant, other)
 
-	none, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.PublicID, token))
+	none, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), token))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating before any reaction: %v", err)
 	}
@@ -135,19 +135,19 @@ func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
 		t.Fatalf("GetMySeriesRating before any reaction = %+v, want nothing", none.Msg)
 	}
 
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.PublicID, token, 5)); err != nil {
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.ID.String(), token, 5)); err != nil {
 		t.Fatalf("RateEpisode on the first episode: %v", err)
 	}
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, second.PublicID, token, 2)); err != nil {
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, second.ID.String(), token, 2)); err != nil {
 		t.Fatalf("RateEpisode on the second episode: %v", err)
 	}
 	// Another reader's reaction to the same series, which is none of this
 	// reader's business.
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.PublicID, otherToken, 1)); err != nil {
+	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.ID.String(), otherToken, 1)); err != nil {
 		t.Fatalf("RateEpisode as the other member: %v", err)
 	}
 
-	mine, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.PublicID, token))
+	mine, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), token))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
 		t.Fatalf("rated_episode_count = %d, want 2", mine.Msg.RatedEpisodeCount)
 	}
 
-	theirs, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.PublicID, otherToken))
+	theirs, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), otherToken))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating as the other member: %v", err)
 	}
@@ -182,16 +182,16 @@ func TestDBGetMySeriesRatingHidesSeriesTheReaderCannotSee(t *testing.T) {
 
 	client := env.ratingClient()
 	token := tokenFor(t, tenant, member)
-	for _, publicID := range []string{unpublished.PublicID, foreign.PublicID, "MISSINGSRT"} {
-		_, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, publicID, token))
+	for _, id := range []string{unpublished.ID.String(), foreign.ID.String(), uuid.NewString()} {
+		_, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, id, token))
 		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("GetMySeriesRating %s code = %v, want not_found (err=%v)", publicID, connect.CodeOf(err), err)
+			t.Fatalf("GetMySeriesRating %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
 	}
 
 	_, err := client.GetMySeriesRating(context.Background(), connect.NewRequest(&publirav1.GetMySeriesRatingRequest{
-		Tenant:         tenantContext(tenant),
-		SeriesPublicId: published.PublicID,
+		Tenant:   tenantContext(tenant),
+		SeriesId: published.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMySeriesRating without a session code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)

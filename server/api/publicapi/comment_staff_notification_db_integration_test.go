@@ -122,15 +122,15 @@ func TestDBPendingCommentsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 	second := env.PG.SeedEndUser(t, tenant.ID, "SNQREADER", "snq-reader@example.com", "Second Reader")
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "Nothing is waiting for approval.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "Nothing is waiting for approval.")
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentAwaitingApprovalNotification); got != 0 {
 		t.Fatalf("queued approval alerts under immediate = %d, want 0", got)
 	}
 
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The first one waiting.")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "A second one, minutes later.")
-	env.mustPostComment(t, tenant, second, episode.PublicID, "And another reader's.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The first one waiting.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "A second one, minutes later.")
+	env.mustPostComment(t, tenant, second, episode.ID.String(), "And another reader's.")
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentAwaitingApprovalNotification); got != 1 {
 		t.Fatalf("queued approval alerts after a burst = %d, want 1", got)
 	}
@@ -143,7 +143,7 @@ func TestDBPendingCommentsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 		Title:    "Another commented episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
-	env.mustPostComment(t, tenant, member, other.PublicID, "Waiting over here instead.")
+	env.mustPostComment(t, tenant, member, other.ID.String(), "Waiting over here instead.")
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentAwaitingApprovalNotification); got != 2 {
 		t.Fatalf("queued approval alerts across two episodes = %d, want 2", got)
 	}
@@ -159,7 +159,7 @@ func TestDBPendingCommentAlertNotifiesEveryStaffMemberOnce(t *testing.T) {
 	env.PG.SeedTenantAdmin(t, tenant.ID, "SNNSTAFF2", "snn-staff-2@example.com", "Second Moderator")
 
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "Waiting for a moderator.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "Waiting for a moderator.")
 	env.drainStaffAlerts(t, tenant, outbox.EventTypeCommentAwaitingApprovalNotification)
 
 	if got := env.notificationCount(t, tenant, outbox.NotificationTypeCommentAwaitingApproval); got != 2 {
@@ -207,10 +207,10 @@ func TestDBCommentReportsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 	second := env.PG.SeedEndUser(t, tenant.ID, "SNRREADR2", "snr-reader-2@example.com", "Another Reader")
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	other := env.mustPostComment(t, tenant, member, episode.PublicID, "And again here.")
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	other := env.mustPostComment(t, tenant, member, episode.ID.String(), "And again here.")
 
-	if err := env.reportComment(t, tenant, first, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+	if err := env.reportComment(t, tenant, first, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
 		t.Fatalf("ReportEpisodeComment: %v", err)
 	}
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentReportedNotification); got != 1 {
@@ -219,10 +219,10 @@ func TestDBCommentReportsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 
 	// A second reader's report and a report on a second comment are the same
 	// episode's queue, so neither raises another alert this hour.
-	if err := env.reportComment(t, tenant, second, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
+	if err := env.reportComment(t, tenant, second, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
 		t.Fatalf("second reader's ReportEpisodeComment: %v", err)
 	}
-	if err := env.reportComment(t, tenant, first, other.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+	if err := env.reportComment(t, tenant, first, other.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
 		t.Fatalf("ReportEpisodeComment on a second comment: %v", err)
 	}
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentReportedNotification); got != 1 {
@@ -249,8 +249,8 @@ func TestDBRepeatedCommentReportRaisesNoStaffAlert(t *testing.T) {
 	reporter := env.PG.SeedEndUser(t, tenant.ID, "SNPREADER", "snp-reader@example.com", "Reporting Reader")
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
-	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
+	if err := env.reportComment(t, tenant, reporter, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
 		t.Fatalf("ReportEpisodeComment: %v", err)
 	}
 
@@ -265,7 +265,7 @@ func TestDBRepeatedCommentReportRaisesNoStaffAlert(t *testing.T) {
 		t.Fatalf("clear queued report alerts: %v", err)
 	}
 
-	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
+	if err := env.reportComment(t, tenant, reporter, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
 		t.Fatalf("repeated ReportEpisodeComment: %v", err)
 	}
 	if got := env.staffAlertCount(t, tenant, outbox.EventTypeCommentReportedNotification); got != 0 {

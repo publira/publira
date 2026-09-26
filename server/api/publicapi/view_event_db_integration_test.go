@@ -76,17 +76,17 @@ func (e *publicDBEnv) seedPublishedEpisode(t *testing.T, tenant testutil.Tenant)
 	return series, episode
 }
 
-func episodeViewRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.RecordContentViewRequest] {
+func episodeViewRequest(tenant testutil.Tenant, id string) *connect.Request[publirav1.RecordContentViewRequest] {
 	return connect.NewRequest(&publirav1.RecordContentViewRequest{
 		Tenant: tenantContext(tenant),
-		Target: episodeViewTarget(publicID),
+		Target: episodeViewTarget(id),
 	})
 }
 
-func seriesViewRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.RecordContentViewRequest] {
+func seriesViewRequest(tenant testutil.Tenant, id string) *connect.Request[publirav1.RecordContentViewRequest] {
 	return connect.NewRequest(&publirav1.RecordContentViewRequest{
 		Tenant: tenantContext(tenant),
-		Target: seriesViewTarget(publicID),
+		Target: seriesViewTarget(id),
 	})
 }
 
@@ -103,7 +103,7 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 	series, episode := env.seedPublishedEpisode(t, tenant)
 	client := env.contentViewClient()
 
-	first, err := client.RecordContentView(context.Background(), episodeViewRequest(tenant, episode.PublicID))
+	first, err := client.RecordContentView(context.Background(), episodeViewRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("first RecordContentView: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 
 	// The same reader coming back inside the debounce window is the case the
 	// partial unique index exists for.
-	second := episodeViewRequest(tenant, episode.PublicID)
+	second := episodeViewRequest(tenant, episode.ID.String())
 	second.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
 	secondResp, err := client.RecordContentView(context.Background(), second)
 	if err != nil {
@@ -163,7 +163,7 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 	member := env.PG.SeedEndUser(t, tenant.ID, "USERVIEW0001", "viewer@example.com", "Viewer")
 	token := tokenFor(t, tenant, member)
 
-	req := episodeViewRequest(tenant, episode.PublicID)
+	req := episodeViewRequest(tenant, episode.ID.String())
 	req.Header().Set("Authorization", "Bearer "+token)
 	// A member may well be carrying an anonymous cookie from before they signed
 	// in; the member is the actor either way.
@@ -200,7 +200,7 @@ func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testi
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			req := episodeViewRequest(tenant, episode.PublicID)
+			req := episodeViewRequest(tenant, episode.ID.String())
 			req.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
 			_, errs[i] = client.RecordContentView(context.Background(), req)
 		}()
@@ -223,7 +223,7 @@ func TestDBSeriesViewEventIsRecordedForTheSeriesTarget(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, _ := env.seedPublishedEpisode(t, tenant)
 
-	resp, err := env.contentViewClient().RecordContentView(context.Background(), seriesViewRequest(tenant, series.PublicID))
+	resp, err := env.contentViewClient().RecordContentView(context.Background(), seriesViewRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
 		Title:    "Draft Episode",
 	})
 
-	_, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, draft.PublicID))
+	_, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, draft.ID.String()))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("RecordContentView on a draft code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -302,7 +302,7 @@ func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {
 
 	// The reader's own view still lands, so the table is empty above because
 	// the detail reads stopped writing, not because writing broke.
-	if _, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, episode.PublicID)); err != nil {
+	if _, err := env.contentViewClient().RecordContentView(context.Background(), episodeViewRequest(tenant, episode.ID.String())); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
 	if events := env.contentEvents(t, tenant.ID); len(events) != 1 {

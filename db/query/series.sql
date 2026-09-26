@@ -428,10 +428,7 @@ LIMIT sqlc.arg('limit');
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        s.id = sqlc.narg('id')::uuid
-        OR s.public_id = sqlc.narg('public_id')::text
-    )
+    AND s.id = sqlc.arg('id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -451,10 +448,7 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        s.id = sqlc.narg('id')::uuid
-        OR s.public_id = sqlc.narg('public_id')::text
-    )
+    AND s.id = sqlc.arg('id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()

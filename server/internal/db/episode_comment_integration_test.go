@@ -253,7 +253,7 @@ func TestWithdrawEpisodeCommentLeavesTheAuthorsOwnList(t *testing.T) {
 	withdrawn, err := queries.WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: seed.tenantID,
 		UserID:   seed.userID,
-		ID:       uuid.NullUUID{UUID: removed.ID, Valid: true},
+		ID:       removed.ID,
 	})
 	if err != nil {
 		t.Fatalf("withdraw a removed comment: %v", err)

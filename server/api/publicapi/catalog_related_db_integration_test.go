@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -103,8 +104,8 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 	env.PG.SeedSeriesCreator(t, first.ID, draft.ID, creator.ID, "")
 
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(first),
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(first),
 	})
 	assertSeriesPublicIDs(t, resp.Series, "SERIESACRE01", "SERIESALAB01", "SERIESAGEN01", "SERIESANON01")
 }
@@ -159,8 +160,8 @@ func TestDBListRelatedSeriesAddsUpGenresAndTags(t *testing.T) {
 	env.PG.SeedSeriesTag(t, tenant.ID, everything.ID, slowBurn.ID)
 
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
 	})
 	assertSeriesPublicIDs(t, resp.Series, "SERIESABOT01", "SERIESATAG02", "SERIESAGEN01")
 }
@@ -202,8 +203,8 @@ func TestDBListRelatedSeriesFallsBackToTheRankingWithoutARelation(t *testing.T) 
 	env.seedRankingSnapshot(t, tenant.ID, subject.ID, rankedFirst.ID, rankedSecond.ID)
 
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
 	})
 	assertSeriesPublicIDs(t, resp.Series, "SERIESAMID01", "SERIESAOLD01", "SERIESAUNR01")
 }
@@ -242,8 +243,8 @@ func TestDBListRelatedSeriesKeepsScoreAboveTheRanking(t *testing.T) {
 	env.seedRankingSnapshot(t, tenant.ID, popular.ID)
 
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
 	})
 	assertSeriesPublicIDs(t, resp.Series, "SERIESACRE01", "SERIESAPOP01")
 }
@@ -292,9 +293,9 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 	// Page 1 stops inside the related run, page 2 crosses out of it — the
 	// "see more" path a strip of twelve grows into.
 	first := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		Limit:          1,
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
+		Limit:    1,
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
 	})
 	assertSeriesPublicIDs(t, first.Series, "SERIESACRE01")
 	if first.PreviousToken != "" {
@@ -302,10 +303,10 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 	}
 
 	second := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		Limit:          2,
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
-		Token:          first.NextToken,
+		Limit:    2,
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
+		Token:    first.NextToken,
 	})
 	assertSeriesPublicIDs(t, second.Series, "SERIESALAB01", "SERIESANON01")
 	if second.NextToken != "" {
@@ -314,10 +315,10 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 
 	// Walking back over the same boundary has to land on the page just left.
 	back := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		Limit:          1,
-		SeriesPublicId: subject.PublicID,
-		Tenant:         tenantContext(tenant),
-		Token:          second.PreviousToken,
+		Limit:    1,
+		SeriesId: subject.ID.String(),
+		Tenant:   tenantContext(tenant),
+		Token:    second.PreviousToken,
 	})
 	assertSeriesPublicIDs(t, back.Series, "SERIESACRE01")
 }
@@ -338,18 +339,18 @@ func TestDBListRelatedSeriesHidesSeriesTheTenantCannotSee(t *testing.T) {
 	})
 
 	for _, testCase := range []struct {
-		name           string
-		tenant         testutil.Tenant
-		seriesPublicID string
+		name     string
+		tenant   testutil.Tenant
+		seriesID string
 	}{
-		{name: "another tenant's series", tenant: second, seriesPublicID: published.PublicID},
-		{name: "an unpublished series", tenant: first, seriesPublicID: draft.PublicID},
-		{name: "a series that does not exist", tenant: first, seriesPublicID: "SERIESAXXX01"},
+		{name: "another tenant's series", tenant: second, seriesID: published.ID.String()},
+		{name: "an unpublished series", tenant: first, seriesID: draft.ID.String()},
+		{name: "a series that does not exist", tenant: first, seriesID: uuid.NewString()},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := env.catalogClient().ListRelatedSeries(context.Background(), connect.NewRequest(&publirav1.ListRelatedSeriesRequest{
-				SeriesPublicId: testCase.seriesPublicID,
-				Tenant:         tenantContext(testCase.tenant),
+				SeriesId: testCase.seriesID,
+				Tenant:   tenantContext(testCase.tenant),
 			}))
 			if connect.CodeOf(err) != connect.CodeNotFound {
 				t.Fatalf("error = %v, want not_found", err)
@@ -359,8 +360,8 @@ func TestDBListRelatedSeriesHidesSeriesTheTenantCannotSee(t *testing.T) {
 
 	// The draft is invisible as a subject and as a neighbour alike.
 	resp := env.listRelatedSeries(t, &publirav1.ListRelatedSeriesRequest{
-		SeriesPublicId: published.PublicID,
-		Tenant:         tenantContext(first),
+		SeriesId: published.ID.String(),
+		Tenant:   tenantContext(first),
 	})
 	if len(resp.Series) != 0 {
 		t.Fatalf("series = %v, want none: the only other series is a draft (%s)", seriesPublicIDs(resp.Series), draft.ID)

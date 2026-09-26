@@ -1121,19 +1121,15 @@ SET status = 'withdrawn',
     updated_at = NOW()
 WHERE tenant_id = $1
     AND user_id = $2
-    AND (
-        id = $3::uuid
-        OR public_id = $4::text
-    )
+    AND id = $3
     AND status <> 'withdrawn'
 RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
 type WithdrawEpisodeCommentForUserParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	UserID   uuid.UUID      `json:"user_id"`
-	ID       uuid.NullUUID  `json:"id"`
-	PublicID sql.NullString `json:"public_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
 // The author's own deletion. It applies to a comment staff had removed too,
@@ -1141,12 +1137,7 @@ type WithdrawEpisodeCommentForUserParams struct {
 // are cleared because no removal is in force on a withdrawn row any more;
 // audit_logs keeps what staff did and why.
 func (q *Queries) WithdrawEpisodeCommentForUser(ctx context.Context, arg WithdrawEpisodeCommentForUserParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, WithdrawEpisodeCommentForUser,
-		arg.TenantID,
-		arg.UserID,
-		arg.ID,
-		arg.PublicID,
-	)
+	row := q.db.QueryRowContext(ctx, WithdrawEpisodeCommentForUser, arg.TenantID, arg.UserID, arg.ID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,

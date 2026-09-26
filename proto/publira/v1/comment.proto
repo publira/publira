@@ -44,14 +44,15 @@ message MyEpisodeComment {
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListEpisodeCommentsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
-  // Takes precedence over episode_public_id.
   string episode_id = 6;
 }
 
@@ -67,14 +68,15 @@ message ListEpisodeCommentsResponse {
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListMyEpisodeCommentsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
-  // Takes precedence over episode_public_id.
   string episode_id = 6;
 }
 
@@ -89,13 +91,14 @@ message ListMyEpisodeCommentsResponse {
 
 message PostEpisodeCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // Non-blank after trimming and at most 1000 Unicode code points. Anything
   // else is invalid_argument.
   string body = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
-  // Takes precedence over episode_public_id.
   string episode_id = 5;
 }
 
@@ -107,8 +110,9 @@ message PostEpisodeCommentResponse {
 
 message WithdrawEpisodeCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string comment_public_id = 2;
-  // Takes precedence over comment_public_id.
+  // 2 held `comment_public_id`, replaced by `comment_id`.
+  reserved 2;
+  reserved "comment_public_id";
   string comment_id = 3;
 }
 
@@ -131,7 +135,9 @@ enum CommentReportReason {
 
 message ReportEpisodeCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string comment_public_id = 2;
+  // 2 held `comment_public_id`, replaced by `comment_id`.
+  reserved 2;
+  reserved "comment_public_id";
   // Required. UNSPECIFIED is invalid_argument: a report with no reason on it
   // cannot be worked from.
   CommentReportReason reason = 3;
@@ -140,7 +146,6 @@ message ReportEpisodeCommentRequest {
   string note = 4;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
-  // Takes precedence over comment_public_id.
   string comment_id = 6;
 }
 

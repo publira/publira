@@ -70,13 +70,13 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 		mock:      mock,
 		tenantID:  uuid.Must(uuid.NewV7()),
 		seriesID:  uuid.Must(uuid.NewV7()),
-		episodeID: uuid.Must(uuid.NewV7()),
+		episodeID: viewedEpisodeID,
 	}
 
 	now := time.Now()
 	expectTenantLookup(mock, fixture.tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
-		WithArgs(fixture.tenantID, nil, "EPISODE001", "web").
+		WithArgs(fixture.tenantID, viewedEpisodeID, nil, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "order_index", "series_id", "price",
 			"reading_period_hours", "status", "scheduled_at", "published_at",
@@ -88,17 +88,17 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 	return fixture
 }
 
-func episodeViewTarget(publicID string) *publirav1.ContentViewTarget {
+func episodeViewTarget(id string) *publirav1.ContentViewTarget {
 	return &publirav1.ContentViewTarget{
-		Type:     publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE,
-		PublicId: publicID,
+		Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE,
+		Id:   id,
 	}
 }
 
-func seriesViewTarget(publicID string) *publirav1.ContentViewTarget {
+func seriesViewTarget(id string) *publirav1.ContentViewTarget {
 	return &publirav1.ContentViewTarget{
-		Type:     publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES,
-		PublicId: publicID,
+		Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES,
+		Id:   id,
 	}
 }
 
@@ -112,10 +112,13 @@ func (f *contentViewFixture) request(t *testing.T, cookie string) *connect.Respo
 	return resp
 }
 
+// viewedEpisodeID is the episode every view below is recorded for.
+var viewedEpisodeID = uuid.MustParse("01920000-0000-7000-8000-00000000e001")
+
 func newContentViewRequest(tenantID uuid.UUID, cookie string) *connect.Request[publirav1.RecordContentViewRequest] {
 	req := connect.NewRequest(&publirav1.RecordContentViewRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Target: episodeViewTarget("EPISODE001"),
+		Target: episodeViewTarget(viewedEpisodeID.String()),
 	})
 	if cookie != "" {
 		req.Header().Set("Cookie", anonymousIDCookieName+"="+cookie)
@@ -210,7 +213,7 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	seriesID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
-		WithArgs(tenantID, nil, "SERIES001", "web").
+		WithArgs(tenantID, seriesID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertDebouncedSeriesViewEvent)).
 		WithArgs(
@@ -222,7 +225,7 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 	client := publirav1connect.NewContentViewServiceClient(testServer.Client(), testServer.URL)
 	if _, err := client.RecordContentView(context.Background(), connect.NewRequest(&publirav1.RecordContentViewRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Target: seriesViewTarget("SERIES001"),
+		Target: seriesViewTarget(seriesID.String()),
 	})); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -318,6 +321,9 @@ func TestRecordContentViewSucceedsWhenTheViewEventCannotBeWritten(t *testing.T) 
 	assertPublicExpectations(t, fixture.mock)
 }
 
+// missingViewTargetID names no series and no episode.
+var missingViewTargetID = uuid.MustParse("01920000-0000-7000-8000-00000000dead")
+
 // A view is not a way to find out what exists: an unresolvable target fails
 // before anything is written, the same way FollowService and RatingService
 // answer one.
@@ -327,11 +333,12 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 		want   connect.Code
 	}{
 		"missing target":     {target: nil, want: connect.CodeInvalidArgument},
-		"blank public id":    {target: seriesViewTarget("   "), want: connect.CodeInvalidArgument},
-		"unspecified type":   {target: &publirav1.ContentViewTarget{PublicId: "SERIES001"}, want: connect.CodeInvalidArgument},
-		"unpublished series": {target: seriesViewTarget("SERIES404"), want: connect.CodeNotFound},
+		"blank id":           {target: seriesViewTarget("   "), want: connect.CodeInvalidArgument},
+		"a public id":        {target: seriesViewTarget("SERIES001"), want: connect.CodeInvalidArgument},
+		"unspecified type":   {target: &publirav1.ContentViewTarget{Id: missingViewTargetID.String()}, want: connect.CodeInvalidArgument},
+		"unpublished series": {target: seriesViewTarget(missingViewTargetID.String()), want: connect.CodeNotFound},
 		"unpublished episode": {
-			target: episodeViewTarget("EPISODE404"),
+			target: episodeViewTarget(missingViewTargetID.String()),
 			want:   connect.CodeNotFound,
 		},
 	}
@@ -344,12 +351,12 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
 				if testCase.want == connect.CodeNotFound {
 					mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
-						WithArgs(tenantID, nil, "SERIES404", "web").
+						WithArgs(tenantID, missingViewTargetID, "web").
 						WillReturnError(sql.ErrNoRows)
 				}
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
-					WithArgs(tenantID, nil, "EPISODE404", "web").
+					WithArgs(tenantID, missingViewTargetID, nil, "web").
 					WillReturnError(sql.ErrNoRows)
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_UNSPECIFIED:
 			}

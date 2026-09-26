@@ -78,40 +78,40 @@ func newMemberSurfaceFixture(t *testing.T) memberSurfaceFixture {
 		ctx := context.Background()
 		token := tokenFor(t, tenant, member)
 		for _, target := range []*publirav1.FollowTarget{
-			seriesFollowTarget(series.PublicID),
-			episodeFollowTarget(episode.PublicID),
-			creatorFollowTarget(creator.PublicID),
+			seriesFollowTarget(series.ID.String()),
+			episodeFollowTarget(episode.ID.String()),
+			creatorFollowTarget(creator.ID.String()),
 		} {
 			if _, err := env.followClient().Follow(ctx, newBearerRequest(&publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target, Surface: surface}, token)); err != nil {
-				t.Fatalf("Follow %s on its surface: %v", target.GetPublicId(), err)
+				t.Fatalf("Follow %s on its surface: %v", target.GetId(), err)
 			}
 		}
-		if _, err := env.episodeReadClient().MarkEpisodeAsRead(ctx, newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{Tenant: tenantContext(tenant), EpisodePublicId: episode.PublicID, Surface: surface}, token)); err != nil {
+		if _, err := env.episodeReadClient().MarkEpisodeAsRead(ctx, newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{Tenant: tenantContext(tenant), EpisodeId: episode.ID.String(), Surface: surface}, token)); err != nil {
 			t.Fatalf("MarkEpisodeAsRead on its surface: %v", err)
 		}
-		if _, err := env.episodeReadClient().SaveReadingPosition(ctx, newBearerRequest(&publirav1.SaveReadingPositionRequest{Tenant: tenantContext(tenant), EpisodePublicId: episode.PublicID, PageIndex: 2, Surface: surface}, token)); err != nil {
+		if _, err := env.episodeReadClient().SaveReadingPosition(ctx, newBearerRequest(&publirav1.SaveReadingPositionRequest{Tenant: tenantContext(tenant), EpisodeId: episode.ID.String(), PageIndex: 2, Surface: surface}, token)); err != nil {
 			t.Fatalf("SaveReadingPosition on its surface: %v", err)
 		}
-		if _, err := env.ratingClient().RateEpisode(ctx, newBearerRequest(&publirav1.RateEpisodeRequest{Tenant: tenantContext(tenant), EpisodePublicId: episode.PublicID, Surface: surface}, token)); err != nil {
+		if _, err := env.ratingClient().RateEpisode(ctx, newBearerRequest(&publirav1.RateEpisodeRequest{Tenant: tenantContext(tenant), EpisodeId: episode.ID.String(), Surface: surface}, token)); err != nil {
 			t.Fatalf("RateEpisode on its surface: %v", err)
 		}
 		if _, err := env.contentViewClient().RecordContentView(ctx, connect.NewRequest(&publirav1.RecordContentViewRequest{
 			Tenant:  tenantContext(tenant),
-			Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE, PublicId: episode.PublicID},
+			Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE, Id: episode.ID.String()},
 			Surface: surface,
 		})); err != nil {
 			t.Fatalf("RecordContentView on its surface: %v", err)
 		}
 		posted, err := env.commentClient().PostEpisodeComment(ctx, newBearerRequest(&publirav1.PostEpisodeCommentRequest{
-			Tenant:          tenantContext(tenant),
-			EpisodePublicId: episode.PublicID,
-			Body:            prefix + " was worth the wait.",
-			Surface:         surface,
+			Tenant:    tenantContext(tenant),
+			EpisodeId: episode.ID.String(),
+			Body:      prefix + " was worth the wait.",
+			Surface:   surface,
 		}, tokenFor(t, tenant, commenter)))
 		if err != nil {
 			t.Fatalf("PostEpisodeComment on its surface: %v", err)
 		}
-		shelf.comment = posted.Msg.Comment.GetPublicId()
+		shelf.comment = posted.Msg.Comment.GetId()
 		return shelf
 	}
 	fixture.webOnly = seed("WEB", "web", webSurface)
@@ -198,14 +198,14 @@ func TestDBMemberListsShowAWorkOnlyOnItsSurfaces(t *testing.T) {
 				t.Fatalf("ListMyPurchases = %v, want only %s", purchases.Msg.Purchases, tc.shown.episode.PublicID)
 			}
 
-			shownProgress, err := fixture.env.episodeReadClient().GetMySeriesProgress(ctx, newBearerRequest(&publirav1.GetMySeriesProgressRequest{Tenant: tenant, SeriesPublicId: tc.shown.series.PublicID, Surface: tc.surface}, token))
+			shownProgress, err := fixture.env.episodeReadClient().GetMySeriesProgress(ctx, newBearerRequest(&publirav1.GetMySeriesProgressRequest{Tenant: tenant, SeriesId: tc.shown.series.ID.String(), Surface: tc.surface}, token))
 			if err != nil {
 				t.Fatalf("GetMySeriesProgress of the shown series: %v", err)
 			}
 			if shownProgress.Msg.Progress.GetEpisode().GetPublicId() != tc.shown.episode.PublicID {
 				t.Fatalf("GetMySeriesProgress of the shown series = %v, want %s", shownProgress.Msg.Progress, tc.shown.episode.PublicID)
 			}
-			hiddenProgress, err := fixture.env.episodeReadClient().GetMySeriesProgress(ctx, newBearerRequest(&publirav1.GetMySeriesProgressRequest{Tenant: tenant, SeriesPublicId: tc.hidden.series.PublicID, Surface: tc.surface}, token))
+			hiddenProgress, err := fixture.env.episodeReadClient().GetMySeriesProgress(ctx, newBearerRequest(&publirav1.GetMySeriesProgressRequest{Tenant: tenant, SeriesId: tc.hidden.series.ID.String(), Surface: tc.surface}, token))
 			if err != nil {
 				t.Fatalf("GetMySeriesProgress of the hidden series: %v", err)
 			}
@@ -213,7 +213,7 @@ func TestDBMemberListsShowAWorkOnlyOnItsSurfaces(t *testing.T) {
 				t.Fatalf("GetMySeriesProgress of the hidden series = %v, want none", hiddenProgress.Msg.Progress)
 			}
 
-			hiddenPosition, err := fixture.env.episodeReadClient().GetMyReadingPosition(ctx, newBearerRequest(&publirav1.GetMyReadingPositionRequest{Tenant: tenant, EpisodePublicId: tc.hidden.episode.PublicID, Surface: tc.surface}, token))
+			hiddenPosition, err := fixture.env.episodeReadClient().GetMyReadingPosition(ctx, newBearerRequest(&publirav1.GetMyReadingPositionRequest{Tenant: tenant, EpisodeId: tc.hidden.episode.ID.String(), Surface: tc.surface}, token))
 			if err != nil {
 				t.Fatalf("GetMyReadingPosition of the hidden episode: %v", err)
 			}
@@ -224,7 +224,7 @@ func TestDBMemberListsShowAWorkOnlyOnItsSurfaces(t *testing.T) {
 	}
 }
 
-// A read or write of a work by public ID from a surface that may not show it
+// A read or write of a work from a surface that may not show it
 // answers not_found, exactly as it does for an unpublished work.
 func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 	fixture := newMemberSurfaceFixture(t)
@@ -243,8 +243,8 @@ func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			token := fixture.token(t)
-			episodeID := tc.hidden.episode.PublicID
-			seriesID := tc.hidden.series.PublicID
+			episodeID := tc.hidden.episode.ID.String()
+			seriesID := tc.hidden.series.ID.String()
 
 			calls := map[string]func() error{
 				"GetMyFollowStatus": func() error {
@@ -252,7 +252,7 @@ func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 					return err
 				},
 				"Follow creator": func() error {
-					_, err := fixture.env.followClient().Follow(ctx, newBearerRequest(&publirav1.FollowRequest{Tenant: tenant, Target: creatorFollowTarget(tc.hidden.creator.PublicID), Surface: tc.surface}, token))
+					_, err := fixture.env.followClient().Follow(ctx, newBearerRequest(&publirav1.FollowRequest{Tenant: tenant, Target: creatorFollowTarget(tc.hidden.creator.ID.String()), Surface: tc.surface}, token))
 					return err
 				},
 				"Unfollow": func() error {
@@ -260,29 +260,29 @@ func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 					return err
 				},
 				"MarkEpisodeAsRead": func() error {
-					_, err := fixture.env.episodeReadClient().MarkEpisodeAsRead(ctx, newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{Tenant: tenant, EpisodePublicId: episodeID, Surface: tc.surface}, token))
+					_, err := fixture.env.episodeReadClient().MarkEpisodeAsRead(ctx, newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{Tenant: tenant, EpisodeId: episodeID, Surface: tc.surface}, token))
 					return err
 				},
 				"SaveReadingPosition": func() error {
-					_, err := fixture.env.episodeReadClient().SaveReadingPosition(ctx, newBearerRequest(&publirav1.SaveReadingPositionRequest{Tenant: tenant, EpisodePublicId: episodeID, PageIndex: 1, Surface: tc.surface}, token))
+					_, err := fixture.env.episodeReadClient().SaveReadingPosition(ctx, newBearerRequest(&publirav1.SaveReadingPositionRequest{Tenant: tenant, EpisodeId: episodeID, PageIndex: 1, Surface: tc.surface}, token))
 					return err
 				},
 				"RateEpisode": func() error {
-					_, err := fixture.env.ratingClient().RateEpisode(ctx, newBearerRequest(&publirav1.RateEpisodeRequest{Tenant: tenant, EpisodePublicId: episodeID, Surface: tc.surface}, token))
+					_, err := fixture.env.ratingClient().RateEpisode(ctx, newBearerRequest(&publirav1.RateEpisodeRequest{Tenant: tenant, EpisodeId: episodeID, Surface: tc.surface}, token))
 					return err
 				},
 				"GetMyEpisodeRating": func() error {
-					_, err := fixture.env.ratingClient().GetMyEpisodeRating(ctx, newBearerRequest(&publirav1.GetMyEpisodeRatingRequest{Tenant: tenant, EpisodePublicId: episodeID, Surface: tc.surface}, token))
+					_, err := fixture.env.ratingClient().GetMyEpisodeRating(ctx, newBearerRequest(&publirav1.GetMyEpisodeRatingRequest{Tenant: tenant, EpisodeId: episodeID, Surface: tc.surface}, token))
 					return err
 				},
 				"GetMySeriesRating": func() error {
-					_, err := fixture.env.ratingClient().GetMySeriesRating(ctx, newBearerRequest(&publirav1.GetMySeriesRatingRequest{Tenant: tenant, SeriesPublicId: seriesID, Surface: tc.surface}, token))
+					_, err := fixture.env.ratingClient().GetMySeriesRating(ctx, newBearerRequest(&publirav1.GetMySeriesRatingRequest{Tenant: tenant, SeriesId: seriesID, Surface: tc.surface}, token))
 					return err
 				},
 				"RecordContentView series": func() error {
 					_, err := fixture.env.contentViewClient().RecordContentView(ctx, connect.NewRequest(&publirav1.RecordContentViewRequest{
 						Tenant:  tenant,
-						Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES, PublicId: seriesID},
+						Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES, Id: seriesID},
 						Surface: tc.surface,
 					}))
 					return err
@@ -290,29 +290,29 @@ func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 				"RecordContentView episode": func() error {
 					_, err := fixture.env.contentViewClient().RecordContentView(ctx, connect.NewRequest(&publirav1.RecordContentViewRequest{
 						Tenant:  tenant,
-						Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE, PublicId: episodeID},
+						Target:  &publirav1.ContentViewTarget{Type: publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE, Id: episodeID},
 						Surface: tc.surface,
 					}))
 					return err
 				},
 				"ListEpisodeComments": func() error {
-					_, err := fixture.env.commentClient().ListEpisodeComments(ctx, connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{Tenant: tenant, EpisodePublicId: episodeID, Surface: tc.surface}))
+					_, err := fixture.env.commentClient().ListEpisodeComments(ctx, connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{Tenant: tenant, EpisodeId: episodeID, Surface: tc.surface}))
 					return err
 				},
 				"ListMyEpisodeComments": func() error {
-					_, err := fixture.env.commentClient().ListMyEpisodeComments(ctx, newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{Tenant: tenant, EpisodePublicId: episodeID, Surface: tc.surface}, token))
+					_, err := fixture.env.commentClient().ListMyEpisodeComments(ctx, newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{Tenant: tenant, EpisodeId: episodeID, Surface: tc.surface}, token))
 					return err
 				},
 				"PostEpisodeComment": func() error {
-					_, err := fixture.env.commentClient().PostEpisodeComment(ctx, newBearerRequest(&publirav1.PostEpisodeCommentRequest{Tenant: tenant, EpisodePublicId: episodeID, Body: "Posted from the wrong place.", Surface: tc.surface}, token))
+					_, err := fixture.env.commentClient().PostEpisodeComment(ctx, newBearerRequest(&publirav1.PostEpisodeCommentRequest{Tenant: tenant, EpisodeId: episodeID, Body: "Posted from the wrong place.", Surface: tc.surface}, token))
 					return err
 				},
 				"ReportEpisodeComment": func() error {
 					_, err := fixture.env.commentClient().ReportEpisodeComment(ctx, newBearerRequest(&publirav1.ReportEpisodeCommentRequest{
-						Tenant:          tenant,
-						CommentPublicId: tc.hidden.comment,
-						Reason:          publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
-						Surface:         tc.surface,
+						Tenant:    tenant,
+						CommentId: tc.hidden.comment,
+						Reason:    publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
+						Surface:   tc.surface,
 					}, token))
 					return err
 				},

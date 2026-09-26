@@ -6,29 +6,30 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func episodeFollowTarget(publicID string) *publirav1.FollowTarget {
+func episodeFollowTarget(id string) *publirav1.FollowTarget {
 	return &publirav1.FollowTarget{
-		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE,
-		PublicId: publicID,
+		Type: publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE,
+		Id:   id,
 	}
 }
 
-func creatorFollowTarget(publicID string) *publirav1.FollowTarget {
+func creatorFollowTarget(id string) *publirav1.FollowTarget {
 	return &publirav1.FollowTarget{
-		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR,
-		PublicId: publicID,
+		Type: publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR,
+		Id:   id,
 	}
 }
 
-func seriesFollowTarget(publicID string) *publirav1.FollowTarget {
+func seriesFollowTarget(id string) *publirav1.FollowTarget {
 	return &publirav1.FollowTarget{
-		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES,
-		PublicId: publicID,
+		Type: publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES,
+		Id:   id,
 	}
 }
 
@@ -45,7 +46,7 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	request := func(target *publirav1.FollowTarget) *connect.Request[publirav1.GetMyFollowStatusRequest] {
 		return newBearerRequest(&publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member))
 	}
-	before, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.PublicID)))
+	before, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.ID.String())))
 	if err != nil {
 		t.Fatalf("GetMyFollowStatus before follow: %v", err)
 	}
@@ -63,34 +64,34 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 		}
 		return response
 	}
-	if !follow(episodeFollowTarget(episode.PublicID)).Msg.IsFollowing {
+	if !follow(episodeFollowTarget(episode.ID.String())).Msg.IsFollowing {
 		t.Fatal("episode Follow is_following = false")
 	}
 	// A duplicate is successful but still produces one durable relation.
-	follow(episodeFollowTarget(episode.PublicID))
+	follow(episodeFollowTarget(episode.ID.String()))
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_follows WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3", tenant.ID, member.ID, episode.ID); got != 1 {
 		t.Fatalf("episode follow rows = %d, want 1", got)
 	}
 	otherMember := env.PG.SeedTenantUser(t, tenant.ID, "OTHERFOLA", "other-follow-a@example.com", "Other Member", "tenant_member")
-	otherStatus, err := client.GetMyFollowStatus(context.Background(), newBearerRequest(&publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.PublicID)}, tokenFor(t, tenant, otherMember)))
+	otherStatus, err := client.GetMyFollowStatus(context.Background(), newBearerRequest(&publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())}, tokenFor(t, tenant, otherMember)))
 	if err != nil {
 		t.Fatalf("other member GetMyFollowStatus: %v", err)
 	}
 	if otherStatus.Msg.IsFollowing {
 		t.Fatal("other member can see the first member's follow")
 	}
-	if !follow(creatorFollowTarget(creator.PublicID)).Msg.IsFollowing {
+	if !follow(creatorFollowTarget(creator.ID.String())).Msg.IsFollowing {
 		t.Fatal("creator Follow is_following = false")
 	}
-	if !follow(seriesFollowTarget(series.PublicID)).Msg.IsFollowing {
+	if !follow(seriesFollowTarget(series.ID.String())).Msg.IsFollowing {
 		t.Fatal("series Follow is_following = false")
 	}
-	follow(seriesFollowTarget(series.PublicID))
+	follow(seriesFollowTarget(series.ID.String()))
 	if got := env.countRows(t, "SELECT COUNT(*) FROM series_follows WHERE tenant_id = $1 AND user_id = $2 AND series_id = $3", tenant.ID, member.ID, series.ID); got != 1 {
 		t.Fatalf("series follow rows = %d, want 1", got)
 	}
 
-	after, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.PublicID)))
+	after, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.ID.String())))
 	if err != nil {
 		t.Fatalf("GetMyFollowStatus after follow: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	}
 
 	unfollow := func() {
-		response, callErr := client.Unfollow(context.Background(), newBearerRequest(&publirav1.UnfollowRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.PublicID)}, tokenFor(t, tenant, member)))
+		response, callErr := client.Unfollow(context.Background(), newBearerRequest(&publirav1.UnfollowRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())}, tokenFor(t, tenant, member)))
 		if callErr != nil {
 			t.Fatalf("Unfollow: %v", callErr)
 		}
@@ -180,10 +181,10 @@ func TestDBFollowServiceDoesNotRevealUnavailableTargets(t *testing.T) {
 	foreignEpisode := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLD", Title: "Foreign episode", Status: testutil.EpisodeStatusPublished})
 	client := env.followClient()
 
-	for _, target := range []*publirav1.FollowTarget{episodeFollowTarget(draftEpisode.PublicID), episodeFollowTarget(foreignEpisode.PublicID), episodeFollowTarget("MISSINGFOLLO"), seriesFollowTarget(draftSeries.PublicID), seriesFollowTarget(foreignSeries.PublicID), seriesFollowTarget("MISSINGFOLLS")} {
+	for _, target := range []*publirav1.FollowTarget{episodeFollowTarget(draftEpisode.ID.String()), episodeFollowTarget(foreignEpisode.ID.String()), episodeFollowTarget(uuid.NewString()), seriesFollowTarget(draftSeries.ID.String()), seriesFollowTarget(foreignSeries.ID.String()), seriesFollowTarget(uuid.NewString())} {
 		_, err := client.Follow(context.Background(), newBearerRequest(&publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member)))
 		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("Follow %q code = %v, want not_found (err=%v)", target.PublicId, connect.CodeOf(err), err)
+			t.Fatalf("Follow %q code = %v, want not_found (err=%v)", target.Id, connect.CodeOf(err), err)
 		}
 	}
 

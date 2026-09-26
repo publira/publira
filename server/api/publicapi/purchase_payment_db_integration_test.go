@@ -125,8 +125,8 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
 	_, err = client.StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          tenantContext(tenant),
+		EpisodeId: uuid.NewString(),
+		Tenant:    tenantContext(tenant),
 	}, token))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))

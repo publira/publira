@@ -392,10 +392,7 @@ SET status = 'withdrawn',
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
-    AND (
-        id = sqlc.narg('id')::uuid
-        OR public_id = sqlc.narg('public_id')::text
-    )
+    AND id = sqlc.arg('id')
     AND status <> 'withdrawn'
 RETURNING *;
 

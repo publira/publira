@@ -134,10 +134,11 @@ message GetSeriesDetailResponse {
 
 message GetSeriesEpisodeAccessRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
+  // 2 held `series_public_id`, replaced by `series_id`.
+  reserved 2;
+  reserved "series_public_id";
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over series_public_id.
   string series_id = 4;
 }
 
@@ -614,10 +615,9 @@ message ListRankedSeriesResponse {
 // page 1.
 message ListRelatedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // The series to find neighbours for. Unpublished, cross-tenant, and missing
-  // series, and a series the calling surface may not show, are all surfaced as
-  // not_found, the way every other public read of a series is.
-  string series_public_id = 2;
+  // 2 held `series_public_id`, replaced by `series_id`.
+  reserved 2;
+  reserved "series_public_id";
   // Max items in one page. <= 0 or > 100 falls back to 12, which is what a
   // "more like this" strip on the series page and the end-of-episode panel
   // show.
@@ -626,7 +626,9 @@ message ListRelatedSeriesRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
-  // Takes precedence over series_public_id.
+  // The series to find neighbours for. Unpublished, cross-tenant, and missing
+  // series, and a series the calling surface may not show, are all surfaced as
+  // not_found, the way every other public read of a series is.
   string series_id = 6;
 }
 
@@ -720,11 +722,12 @@ service CatalogService {
 
 message MarkEpisodeAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // The public ID of the episode the signed-in member finished reading.
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over episode_public_id.
+  // The episode the signed-in member finished reading.
   string episode_id = 4;
 }
 
@@ -747,14 +750,15 @@ message ReadingPosition {
 
 message SaveReadingPositionRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // The public ID of the episode the signed-in member is reading.
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // The zero-based page the member stopped on. A page outside the episode is
   // invalid_argument.
   int32 page_index = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
-  // Takes precedence over episode_public_id.
+  // The episode the signed-in member is reading.
   string episode_id = 5;
 }
 
@@ -764,10 +768,11 @@ message SaveReadingPositionResponse {
 
 message GetMyReadingPositionRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over episode_public_id.
   string episode_id = 4;
 }
 
@@ -779,10 +784,11 @@ message GetMyReadingPositionResponse {
 
 message GetMySeriesProgressRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
+  // 2 held `series_public_id`, replaced by `series_id`.
+  reserved 2;
+  reserved "series_public_id";
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over series_public_id.
   string series_id = 4;
 }
 
@@ -931,8 +937,9 @@ enum FollowTargetType {
 // A public catalog target. The ID is interpreted according to type.
 message FollowTarget {
   FollowTargetType type = 1;
-  string public_id = 2;
-  // Takes precedence over public_id.
+  // 2 held `public_id`, replaced by `id`.
+  reserved 2;
+  reserved "public_id";
   string id = 3;
 }
 
@@ -1070,14 +1077,15 @@ enum EpisodeRatingMode {
 // and pressing again only ever raises the score towards its ceiling.
 message RateEpisodeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // How many presses this call reports, so a client that batched a burst of
   // them makes one request. <= 0 counts as one, and anything above 5 is capped.
   // Ignored in EPISODE_RATING_MODE_SINGLE, where one press is the whole rating.
   int32 presses = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
-  // Takes precedence over episode_public_id.
   string episode_id = 5;
 }
 
@@ -1093,10 +1101,11 @@ message RateEpisodeResponse {
 
 message GetMyEpisodeRatingRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over episode_public_id.
   string episode_id = 4;
 }
 
@@ -1109,10 +1118,11 @@ message GetMyEpisodeRatingResponse {
 
 message GetMySeriesRatingRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
+  // 2 held `series_public_id`, replaced by `series_id`.
+  reserved 2;
+  reserved "series_public_id";
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
-  // Takes precedence over series_public_id.
   string series_id = 4;
 }
 
@@ -1169,8 +1179,9 @@ enum ContentViewTargetType {
 // A public catalog target. The ID is interpreted according to type.
 message ContentViewTarget {
   ContentViewTargetType type = 1;
-  string public_id = 2;
-  // Takes precedence over public_id.
+  // 2 held `public_id`, replaced by `id`.
+  reserved 2;
+  reserved "public_id";
   string id = 3;
 }
 
@@ -1225,11 +1236,12 @@ message StartEpisodeCheckoutRequest {
   }
 
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // Where Stripe should return the reader after checkout, and the surface the
   // episode has to be sold on. Unspecified is the storefront.
   Client client = 3;
-  // Takes precedence over episode_public_id.
   string episode_id = 4;
 }
 
@@ -1305,10 +1317,11 @@ enum InAppPurchaseStore {
 // same episode at the same price answers the same intent.
 message StartStorePurchaseRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
+  // 2 held `episode_public_id`, replaced by `episode_id`.
+  reserved 2;
+  reserved "episode_public_id";
   // The store the app is about to charge through. Required.
   InAppPurchaseStore store = 3;
-  // Takes precedence over episode_public_id.
   string episode_id = 4;
 }
 

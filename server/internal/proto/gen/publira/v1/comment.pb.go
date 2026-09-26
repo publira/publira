@@ -262,17 +262,15 @@ func (x *MyEpisodeComment) GetId() string {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListEpisodeCommentsRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	// Takes precedence over episode_public_id.
-	EpisodeId     string `protobuf:"bytes,6,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	EpisodeId     string           `protobuf:"bytes,6,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -312,13 +310,6 @@ func (x *ListEpisodeCommentsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *ListEpisodeCommentsRequest) GetEpisodePublicId() string {
-	if x != nil {
-		return x.EpisodePublicId
-	}
-	return ""
 }
 
 func (x *ListEpisodeCommentsRequest) GetLimit() int32 {
@@ -414,17 +405,15 @@ func (x *ListEpisodeCommentsResponse) GetNextToken() string {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListMyEpisodeCommentsRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	// Takes precedence over episode_public_id.
-	EpisodeId     string `protobuf:"bytes,6,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	EpisodeId     string           `protobuf:"bytes,6,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -464,13 +453,6 @@ func (x *ListMyEpisodeCommentsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *ListMyEpisodeCommentsRequest) GetEpisodePublicId() string {
-	if x != nil {
-		return x.EpisodePublicId
-	}
-	return ""
 }
 
 func (x *ListMyEpisodeCommentsRequest) GetLimit() int32 {
@@ -565,16 +547,14 @@ func (x *ListMyEpisodeCommentsResponse) GetNextToken() string {
 }
 
 type PostEpisodeCommentRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Non-blank after trimming and at most 1000 Unicode code points. Anything
 	// else is invalid_argument.
 	Body string `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
 	// The client making the call. Unspecified is answered as the web storefront.
-	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	// Takes precedence over episode_public_id.
-	EpisodeId     string `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	EpisodeId     string           `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -614,13 +594,6 @@ func (x *PostEpisodeCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *PostEpisodeCommentRequest) GetEpisodePublicId() string {
-	if x != nil {
-		return x.EpisodePublicId
-	}
-	return ""
 }
 
 func (x *PostEpisodeCommentRequest) GetBody() string {
@@ -691,11 +664,9 @@ func (x *PostEpisodeCommentResponse) GetComment() *MyEpisodeComment {
 }
 
 type WithdrawEpisodeCommentRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	CommentPublicId string                 `protobuf:"bytes,2,opt,name=comment_public_id,json=commentPublicId,proto3" json:"comment_public_id,omitempty"`
-	// Takes precedence over comment_public_id.
-	CommentId     string `protobuf:"bytes,3,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	CommentId     string                 `protobuf:"bytes,3,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -735,13 +706,6 @@ func (x *WithdrawEpisodeCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *WithdrawEpisodeCommentRequest) GetCommentPublicId() string {
-	if x != nil {
-		return x.CommentPublicId
-	}
-	return ""
 }
 
 func (x *WithdrawEpisodeCommentRequest) GetCommentId() string {
@@ -790,9 +754,8 @@ func (*WithdrawEpisodeCommentResponse) Descriptor() ([]byte, []int) {
 }
 
 type ReportEpisodeCommentRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	CommentPublicId string                 `protobuf:"bytes,2,opt,name=comment_public_id,json=commentPublicId,proto3" json:"comment_public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Required. UNSPECIFIED is invalid_argument: a report with no reason on it
 	// cannot be worked from.
 	Reason CommentReportReason `protobuf:"varint,3,opt,name=reason,proto3,enum=publira.v1.CommentReportReason" json:"reason,omitempty"`
@@ -800,9 +763,8 @@ type ReportEpisodeCommentRequest struct {
 	// stored as no note at all.
 	Note string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
 	// The client making the call. Unspecified is answered as the web storefront.
-	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	// Takes precedence over comment_public_id.
-	CommentId     string `protobuf:"bytes,6,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
+	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	CommentId     string           `protobuf:"bytes,6,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -842,13 +804,6 @@ func (x *ReportEpisodeCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *ReportEpisodeCommentRequest) GetCommentPublicId() string {
-	if x != nil {
-		return x.CommentPublicId
-	}
-	return ""
 }
 
 func (x *ReportEpisodeCommentRequest) GetReason() CommentReportReason {
@@ -939,56 +894,51 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12+\n" +
 	"\x11awaiting_approval\x18\x04 \x01(\bR\x10awaitingApproval\x12\x0e\n" +
-	"\x02id\x18\x05 \x01(\tR\x02id\"\x87\x02\n" +
+	"\x02id\x18\x05 \x01(\tR\x02id\"\xf4\x01\n" +
 	"\x1aListEpisodeCommentsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x14\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x06 \x01(\tR\tepisodeId\"\x9b\x01\n" +
+	"episode_id\x18\x06 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"\x9b\x01\n" +
 	"\x1bListEpisodeCommentsResponse\x126\n" +
 	"\bcomments\x18\x01 \x03(\v2\x1a.publira.v1.EpisodeCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x89\x02\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xf6\x01\n" +
 	"\x1cListMyEpisodeCommentsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x14\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x06 \x01(\tR\tepisodeId\"\x9f\x01\n" +
+	"episode_id\x18\x06 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"\x9f\x01\n" +
 	"\x1dListMyEpisodeCommentsResponse\x128\n" +
 	"\bcomments\x18\x01 \x03(\v2\x1c.publira.v1.MyEpisodeCommentR\bcomments\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xee\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xdb\x01\n" +
 	"\x19PostEpisodeCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x12\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04body\x18\x03 \x01(\tR\x04body\x129\n" +
 	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x05 \x01(\tR\tepisodeId\"T\n" +
+	"episode_id\x18\x05 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"T\n" +
 	"\x1aPostEpisodeCommentResponse\x126\n" +
-	"\acomment\x18\x01 \x01(\v2\x1c.publira.v1.MyEpisodeCommentR\acomment\"\xa3\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1c.publira.v1.MyEpisodeCommentR\acomment\"\x90\x01\n" +
 	"\x1dWithdrawEpisodeCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\x12\x1d\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x03 \x01(\tR\tcommentId\" \n" +
-	"\x1eWithdrawEpisodeCommentResponse\"\xa9\x02\n" +
+	"comment_id\x18\x03 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\x11comment_public_id\" \n" +
+	"\x1eWithdrawEpisodeCommentResponse\"\x96\x02\n" +
 	"\x1bReportEpisodeCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11comment_public_id\x18\x02 \x01(\tR\x0fcommentPublicId\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x127\n" +
 	"\x06reason\x18\x03 \x01(\x0e2\x1f.publira.v1.CommentReportReasonR\x06reason\x12\x12\n" +
 	"\x04note\x18\x04 \x01(\tR\x04note\x129\n" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x06 \x01(\tR\tcommentId\"\x1e\n" +
+	"comment_id\x18\x06 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\x11comment_public_id\"\x1e\n" +
 	"\x1cReportEpisodeCommentResponse*\xc1\x01\n" +
 	"\x13CommentReportReason\x12%\n" +
 	"!COMMENT_REPORT_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +

@@ -130,8 +130,8 @@ func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
 				return req
 			}
 			resp, err := catalog.GetSeriesEpisodeAccess(context.Background(), withCaller(connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
-				Tenant:         tenantContext(tenant),
-				SeriesPublicId: series.PublicID,
+				Tenant:   tenantContext(tenant),
+				SeriesId: series.ID.String(),
 			})))
 			if err != nil {
 				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
@@ -201,8 +201,8 @@ func TestDBGetSeriesEpisodeAccessAppliesTheTenantAgeRule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
-				Tenant:         tenantContext(tenant),
-				SeriesPublicId: series.PublicID,
+				Tenant:   tenantContext(tenant),
+				SeriesId: series.ID.String(),
 			})
 			if tt.reader != nil {
 				req = newBearerRequest(req.Msg, tokenFor(t, tenant, *tt.reader))
@@ -221,16 +221,16 @@ func TestDBGetSeriesEpisodeAccessAppliesTheTenantAgeRule(t *testing.T) {
 func TestDBGetSeriesEpisodeAccessHidesSeriesTheStorefrontDoesNot(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenantA, tenantB := env.seedTwoTenants(t)
-	env.PG.SeedSeries(t, tenantA.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft", Published: false})
+	draft := env.PG.SeedSeries(t, tenantA.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft", Published: false})
 	foreign := env.PG.SeedSeries(t, tenantB.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Foreign", Published: true})
 
-	for _, publicID := range []string{"SERIESDRAFT1", foreign.PublicID, "SERIESNONE01"} {
+	for _, seriesID := range []string{draft.ID.String(), foreign.ID.String(), uuid.NewString()} {
 		_, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
-			Tenant:         tenantContext(tenantA),
-			SeriesPublicId: publicID,
+			Tenant:   tenantContext(tenantA),
+			SeriesId: seriesID,
 		}))
 		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Errorf("%s: code = %v, want not_found", publicID, connect.CodeOf(err))
+			t.Errorf("%s: code = %v, want not_found", seriesID, connect.CodeOf(err))
 		}
 	}
 }
@@ -247,8 +247,8 @@ func TestDBGetSeriesEpisodeAccessAnswersAnUnverifiableBearerAsAGuest(t *testing.
 	})
 
 	resp, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), newBearerRequest(&publirav1.GetSeriesEpisodeAccessRequest{
-		Tenant:         tenantContext(tenant),
-		SeriesPublicId: series.PublicID,
+		Tenant:   tenantContext(tenant),
+		SeriesId: series.ID.String(),
 	}, "not-a-valid-jwt"))
 	if err != nil {
 		t.Fatalf("GetSeriesEpisodeAccess: %v", err)

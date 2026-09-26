@@ -268,10 +268,7 @@ FROM episode_comments c
     JOIN episode_listings el ON el.tenant_id = c.tenant_id
         AND el.episode_id = e.id
 WHERE c.tenant_id = $1
-    AND (
-        c.id = $2::uuid
-        OR c.public_id = $3::text
-    )
+    AND c.id = $2
     AND c.status = 'published'
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -283,16 +280,15 @@ WHERE c.tenant_id = $1
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+            AND es.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetReportableEpisodeCommentForTenantParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	ID       uuid.NullUUID  `json:"id"`
-	PublicID sql.NullString `json:"public_id"`
-	Surface  string         `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetReportableEpisodeCommentForTenantRow struct {
@@ -312,8 +308,7 @@ type GetReportableEpisodeCommentForTenantRow struct {
 // Expected plans:
 //
 //	GetReportableEpisodeCommentForTenant
-//	  -> episode_comments_tenant_id_id_key, or
-//	     episode_comments_tenant_public_id_key for a public ID
+//	  -> episode_comments_tenant_id_id_key
 //	CreateEpisodeCommentReport
 //	  -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 //	RefreshEpisodeCommentOpenReportCount
@@ -350,12 +345,7 @@ type GetReportableEpisodeCommentForTenantRow struct {
 // staff notification the report raises names what the queue is about, and
 // reading it here keeps the report one round trip.
 func (q *Queries) GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentForTenant,
-		arg.TenantID,
-		arg.ID,
-		arg.PublicID,
-		arg.Surface,
-	)
+	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentForTenant, arg.TenantID, arg.ID, arg.Surface)
 	var i GetReportableEpisodeCommentForTenantRow
 	err := row.Scan(
 		&i.ID,

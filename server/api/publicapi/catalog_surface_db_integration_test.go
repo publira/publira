@@ -139,7 +139,7 @@ func TestDBCatalogShowsASeriesOnlyOnItsSurfaces(t *testing.T) {
 			}
 			assertSeries("ListRankedSeries", rankedSeries)
 
-			related, err := client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesPublicId: catalog.both.PublicID, Surface: tc.surface}))
+			related, err := client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: catalog.both.ID.String(), Surface: tc.surface}))
 			if err != nil {
 				t.Fatalf("ListRelatedSeries: %v", err)
 			}
@@ -197,9 +197,9 @@ func TestDBCatalogShowsASeriesOnlyOnItsSurfaces(t *testing.T) {
 			// so its URL says nothing about whether it exists.
 			_, err = client.GetSeriesDetail(ctx, connect.NewRequest(&publirav1.GetSeriesDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID, Surface: tc.surface}))
 			assertConnectCode(t, err, connect.CodeNotFound)
-			_, err = client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenant, SeriesPublicId: tc.hidden.PublicID, Surface: tc.surface}))
+			_, err = client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface}))
 			assertConnectCode(t, err, connect.CodeNotFound)
-			_, err = client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesPublicId: tc.hidden.PublicID, Surface: tc.surface}))
+			_, err = client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface}))
 			assertConnectCode(t, err, connect.CodeNotFound)
 			_, err = client.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID[:8] + "EP01", Surface: tc.surface}))
 			assertConnectCode(t, err, connect.CodeNotFound)
@@ -257,7 +257,7 @@ func TestDBCatalogShowsAnEpisodeOnlyOnItsSurfaces(t *testing.T) {
 				t.Fatalf("listed series = %v, want one with %d free episodes", list.Msg.Series, tc.wantFree)
 			}
 
-			access, err := client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenantContext(tenant), SeriesPublicId: series.PublicID, Surface: tc.surface}))
+			access, err := client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenantContext(tenant), SeriesId: series.ID.String(), Surface: tc.surface}))
 			if err != nil {
 				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
 			}

@@ -42,10 +42,10 @@ func (s *apiServer) resolveFollowTarget(
 	surface string,
 	target *publirav1.FollowTarget,
 ) (resolvedFollowTarget, error) {
-	if target == nil || strings.TrimSpace(target.Id) == "" && strings.TrimSpace(target.PublicId) == "" {
+	if target == nil || strings.TrimSpace(target.Id) == "" {
 		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
 	}
-	key, err := requestRecordKey("target.id", target.Id, target.PublicId)
+	targetID, err := requestRecordID("target.id", target.Id)
 	if err != nil {
 		return resolvedFollowTarget{}, err
 	}
@@ -56,8 +56,7 @@ func (s *apiServer) resolveFollowTarget(
 		row, err := queries.GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			ID:       key.id,
-			PublicID: key.publicID,
+			ID:       recordIDKey(targetID),
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetEpisode, id: row.ID}, nil
@@ -70,8 +69,7 @@ func (s *apiServer) resolveFollowTarget(
 		row, err := queries.GetPublishedCreatorForTenant(ctx, dbmodels.GetPublishedCreatorForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			ID:       key.id,
-			PublicID: key.publicID,
+			ID:       recordIDKey(targetID),
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetCreator, id: row.ID}, nil
@@ -84,8 +82,7 @@ func (s *apiServer) resolveFollowTarget(
 		row, err := queries.GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			ID:       key.id,
-			PublicID: key.publicID,
+			ID:       targetID,
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetSeries, id: row}, nil

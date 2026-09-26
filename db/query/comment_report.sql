@@ -3,8 +3,7 @@
 --
 -- Expected plans:
 --   GetReportableEpisodeCommentForTenant
---     -> episode_comments_tenant_id_id_key, or
---        episode_comments_tenant_public_id_key for a public ID
+--     -> episode_comments_tenant_id_id_key
 --   CreateEpisodeCommentReport
 --     -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 --   RefreshEpisodeCommentOpenReportCount
@@ -57,10 +56,7 @@ FROM episode_comments c
     JOIN episode_listings el ON el.tenant_id = c.tenant_id
         AND el.episode_id = e.id
 WHERE c.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        c.id = sqlc.narg('id')::uuid
-        OR c.public_id = sqlc.narg('public_id')::text
-    )
+    AND c.id = sqlc.arg('id')
     AND c.status = 'published'
     AND s.is_published = true
     AND s.published_at IS NOT NULL

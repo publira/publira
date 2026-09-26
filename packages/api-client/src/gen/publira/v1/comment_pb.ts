@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/comment.proto.
  */
 export const file_publira_v1_comment: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NvbW1lbnQucHJvdG8SCnB1YmxpcmEudjEigAEKDkVwaXNvZGVDb21tZW50EhEKCXB1YmxpY19pZBgBIAEoCRIMCgRib2R5GAIgASgJEhIKCmNyZWF0ZWRfYXQYAyABKAkSGAoQYXV0aG9yX3B1YmxpY19pZBgEIAEoCRITCgthdXRob3JfbmFtZRgFIAEoCRIKCgJpZBgGIAEoCSJuChBNeUVwaXNvZGVDb21tZW50EhEKCXB1YmxpY19pZBgBIAEoCRIMCgRib2R5GAIgASgJEhIKCmNyZWF0ZWRfYXQYAyABKAkSGQoRYXdhaXRpbmdfYXBwcm92YWwYBCABKAgSCgoCaWQYBSABKAkizAEKGkxpc3RFcGlzb2RlQ29tbWVudHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCRIwCgdzdXJmYWNlGAUgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEhIKCmVwaXNvZGVfaWQYBiABKAkidwobTGlzdEVwaXNvZGVDb21tZW50c1Jlc3BvbnNlEiwKCGNvbW1lbnRzGAEgAygLMhoucHVibGlyYS52MS5FcGlzb2RlQ29tbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIs4BChxMaXN0TXlFcGlzb2RlQ29tbWVudHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCRIwCgdzdXJmYWNlGAUgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEhIKCmVwaXNvZGVfaWQYBiABKAkiewodTGlzdE15RXBpc29kZUNvbW1lbnRzUmVzcG9uc2USLgoIY29tbWVudHMYASADKAsyHC5wdWJsaXJhLnYxLk15RXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSK7AQoZUG9zdEVwaXNvZGVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGQoRZXBpc29kZV9wdWJsaWNfaWQYAiABKAkSDAoEYm9keRgDIAEoCRIwCgdzdXJmYWNlGAQgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEhIKCmVwaXNvZGVfaWQYBSABKAkiSwoaUG9zdEVwaXNvZGVDb21tZW50UmVzcG9uc2USLQoHY29tbWVudBgBIAEoCzIcLnB1YmxpcmEudjEuTXlFcGlzb2RlQ29tbWVudCJ/Ch1XaXRoZHJhd0VwaXNvZGVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGQoRY29tbWVudF9wdWJsaWNfaWQYAiABKAkSEgoKY29tbWVudF9pZBgDIAEoCSIgCh5XaXRoZHJhd0VwaXNvZGVDb21tZW50UmVzcG9uc2Ui7gEKG1JlcG9ydEVwaXNvZGVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGQoRY29tbWVudF9wdWJsaWNfaWQYAiABKAkSLwoGcmVhc29uGAMgASgOMh8ucHVibGlyYS52MS5Db21tZW50UmVwb3J0UmVhc29uEgwKBG5vdGUYBCABKAkSMAoHc3VyZmFjZRgFIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgpjb21tZW50X2lkGAYgASgJIh4KHFJlcG9ydEVwaXNvZGVDb21tZW50UmVzcG9uc2UqwQEKE0NvbW1lbnRSZXBvcnRSZWFzb24SJQohQ09NTUVOVF9SRVBPUlRfUkVBU09OX1VOU1BFQ0lGSUVEEAASHgoaQ09NTUVOVF9SRVBPUlRfUkVBU09OX1NQQU0QARIfChtDT01NRU5UX1JFUE9SVF9SRUFTT05fQUJVU0UQAhIhCh1DT01NRU5UX1JFUE9SVF9SRUFTT05fU1BPSUxFUhADEh8KG0NPTU1FTlRfUkVQT1JUX1JFQVNPTl9PVEhFUhAEMrEECg5Db21tZW50U2VydmljZRJoChNMaXN0RXBpc29kZUNvbW1lbnRzEiYucHVibGlyYS52MS5MaXN0RXBpc29kZUNvbW1lbnRzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdEVwaXNvZGVDb21tZW50c1Jlc3BvbnNlIgASbgoVTGlzdE15RXBpc29kZUNvbW1lbnRzEigucHVibGlyYS52MS5MaXN0TXlFcGlzb2RlQ29tbWVudHNSZXF1ZXN0GikucHVibGlyYS52MS5MaXN0TXlFcGlzb2RlQ29tbWVudHNSZXNwb25zZSIAEmUKElBvc3RFcGlzb2RlQ29tbWVudBIlLnB1YmxpcmEudjEuUG9zdEVwaXNvZGVDb21tZW50UmVxdWVzdBomLnB1YmxpcmEudjEuUG9zdEVwaXNvZGVDb21tZW50UmVzcG9uc2UiABJxChZXaXRoZHJhd0VwaXNvZGVDb21tZW50EikucHVibGlyYS52MS5XaXRoZHJhd0VwaXNvZGVDb21tZW50UmVxdWVzdBoqLnB1YmxpcmEudjEuV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlc3BvbnNlIgASawoUUmVwb3J0RXBpc29kZUNvbW1lbnQSJy5wdWJsaXJhLnYxLlJlcG9ydEVwaXNvZGVDb21tZW50UmVxdWVzdBooLnB1YmxpcmEudjEuUmVwb3J0RXBpc29kZUNvbW1lbnRSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NvbW1lbnQucHJvdG8SCnB1YmxpcmEudjEigAEKDkVwaXNvZGVDb21tZW50EhEKCXB1YmxpY19pZBgBIAEoCRIMCgRib2R5GAIgASgJEhIKCmNyZWF0ZWRfYXQYAyABKAkSGAoQYXV0aG9yX3B1YmxpY19pZBgEIAEoCRITCgthdXRob3JfbmFtZRgFIAEoCRIKCgJpZBgGIAEoCSJuChBNeUVwaXNvZGVDb21tZW50EhEKCXB1YmxpY19pZBgBIAEoCRIMCgRib2R5GAIgASgJEhIKCmNyZWF0ZWRfYXQYAyABKAkSGQoRYXdhaXRpbmdfYXBwcm92YWwYBCABKAgSCgoCaWQYBSABKAkiygEKGkxpc3RFcGlzb2RlQ29tbWVudHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCRIwCgdzdXJmYWNlGAUgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEhIKCmVwaXNvZGVfaWQYBiABKAlKBAgCEANSEWVwaXNvZGVfcHVibGljX2lkIncKG0xpc3RFcGlzb2RlQ29tbWVudHNSZXNwb25zZRIsCghjb21tZW50cxgBIAMoCzIaLnB1YmxpcmEudjEuRXBpc29kZUNvbW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLMAQocTGlzdE15RXBpc29kZUNvbW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkSMAoHc3VyZmFjZRgFIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZRISCgplcGlzb2RlX2lkGAYgASgJSgQIAhADUhFlcGlzb2RlX3B1YmxpY19pZCJ7Ch1MaXN0TXlFcGlzb2RlQ29tbWVudHNSZXNwb25zZRIuCghjb21tZW50cxgBIAMoCzIcLnB1YmxpcmEudjEuTXlFcGlzb2RlQ29tbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIrkBChlQb3N0RXBpc29kZUNvbW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRib2R5GAMgASgJEjAKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USEgoKZXBpc29kZV9pZBgFIAEoCUoECAIQA1IRZXBpc29kZV9wdWJsaWNfaWQiSwoaUG9zdEVwaXNvZGVDb21tZW50UmVzcG9uc2USLQoHY29tbWVudBgBIAEoCzIcLnB1YmxpcmEudjEuTXlFcGlzb2RlQ29tbWVudCJ9Ch1XaXRoZHJhd0VwaXNvZGVDb21tZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKY29tbWVudF9pZBgDIAEoCUoECAIQA1IRY29tbWVudF9wdWJsaWNfaWQiIAoeV2l0aGRyYXdFcGlzb2RlQ29tbWVudFJlc3BvbnNlIuwBChtSZXBvcnRFcGlzb2RlQ29tbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ei8KBnJlYXNvbhgDIAEoDjIfLnB1YmxpcmEudjEuQ29tbWVudFJlcG9ydFJlYXNvbhIMCgRub3RlGAQgASgJEjAKB3N1cmZhY2UYBSABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USEgoKY29tbWVudF9pZBgGIAEoCUoECAIQA1IRY29tbWVudF9wdWJsaWNfaWQiHgocUmVwb3J0RXBpc29kZUNvbW1lbnRSZXNwb25zZSrBAQoTQ29tbWVudFJlcG9ydFJlYXNvbhIlCiFDT01NRU5UX1JFUE9SVF9SRUFTT05fVU5TUEVDSUZJRUQQABIeChpDT01NRU5UX1JFUE9SVF9SRUFTT05fU1BBTRABEh8KG0NPTU1FTlRfUkVQT1JUX1JFQVNPTl9BQlVTRRACEiEKHUNPTU1FTlRfUkVQT1JUX1JFQVNPTl9TUE9JTEVSEAMSHwobQ09NTUVOVF9SRVBPUlRfUkVBU09OX09USEVSEAQysQQKDkNvbW1lbnRTZXJ2aWNlEmgKE0xpc3RFcGlzb2RlQ29tbWVudHMSJi5wdWJsaXJhLnYxLkxpc3RFcGlzb2RlQ29tbWVudHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0RXBpc29kZUNvbW1lbnRzUmVzcG9uc2UiABJuChVMaXN0TXlFcGlzb2RlQ29tbWVudHMSKC5wdWJsaXJhLnYxLkxpc3RNeUVwaXNvZGVDb21tZW50c1JlcXVlc3QaKS5wdWJsaXJhLnYxLkxpc3RNeUVwaXNvZGVDb21tZW50c1Jlc3BvbnNlIgASZQoSUG9zdEVwaXNvZGVDb21tZW50EiUucHVibGlyYS52MS5Qb3N0RXBpc29kZUNvbW1lbnRSZXF1ZXN0GiYucHVibGlyYS52MS5Qb3N0RXBpc29kZUNvbW1lbnRSZXNwb25zZSIAEnEKFldpdGhkcmF3RXBpc29kZUNvbW1lbnQSKS5wdWJsaXJhLnYxLldpdGhkcmF3RXBpc29kZUNvbW1lbnRSZXF1ZXN0GioucHVibGlyYS52MS5XaXRoZHJhd0VwaXNvZGVDb21tZW50UmVzcG9uc2UiABJrChRSZXBvcnRFcGlzb2RlQ29tbWVudBInLnB1YmxpcmEudjEuUmVwb3J0RXBpc29kZUNvbW1lbnRSZXF1ZXN0GigucHVibGlyYS52MS5SZXBvcnRFcGlzb2RlQ29tbWVudFJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One reader comment on an episode, as every visitor of that episode sees it.
@@ -127,11 +127,6 @@ export type ListEpisodeCommentsRequest = Message<"publira.v1.ListEpisodeComments
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string episode_public_id = 2;
-   */
-  episodePublicId: string;
-
-  /**
    * Max items in one page. <= 0 or > 100 falls back to 20.
    *
    * @generated from field: int32 limit = 3;
@@ -153,8 +148,6 @@ export type ListEpisodeCommentsRequest = Message<"publira.v1.ListEpisodeComments
   surface: ClientSurface;
 
   /**
-   * Takes precedence over episode_public_id.
-   *
    * @generated from field: string episode_id = 6;
    */
   episodeId: string;
@@ -212,11 +205,6 @@ export type ListMyEpisodeCommentsRequest = Message<"publira.v1.ListMyEpisodeComm
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string episode_public_id = 2;
-   */
-  episodePublicId: string;
-
-  /**
    * Max items in one page. <= 0 or > 100 falls back to 20.
    *
    * @generated from field: int32 limit = 3;
@@ -238,8 +226,6 @@ export type ListMyEpisodeCommentsRequest = Message<"publira.v1.ListMyEpisodeComm
   surface: ClientSurface;
 
   /**
-   * Takes precedence over episode_public_id.
-   *
    * @generated from field: string episode_id = 6;
    */
   episodeId: string;
@@ -295,11 +281,6 @@ export type PostEpisodeCommentRequest = Message<"publira.v1.PostEpisodeCommentRe
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string episode_public_id = 2;
-   */
-  episodePublicId: string;
-
-  /**
    * Non-blank after trimming and at most 1000 Unicode code points. Anything
    * else is invalid_argument.
    *
@@ -315,8 +296,6 @@ export type PostEpisodeCommentRequest = Message<"publira.v1.PostEpisodeCommentRe
   surface: ClientSurface;
 
   /**
-   * Takes precedence over episode_public_id.
-   *
    * @generated from field: string episode_id = 5;
    */
   episodeId: string;
@@ -359,13 +338,6 @@ export type WithdrawEpisodeCommentRequest = Message<"publira.v1.WithdrawEpisodeC
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string comment_public_id = 2;
-   */
-  commentPublicId: string;
-
-  /**
-   * Takes precedence over comment_public_id.
-   *
    * @generated from field: string comment_id = 3;
    */
   commentId: string;
@@ -404,11 +376,6 @@ export type ReportEpisodeCommentRequest = Message<"publira.v1.ReportEpisodeComme
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string comment_public_id = 2;
-   */
-  commentPublicId: string;
-
-  /**
    * Required. UNSPECIFIED is invalid_argument: a report with no reason on it
    * cannot be worked from.
    *
@@ -432,8 +399,6 @@ export type ReportEpisodeCommentRequest = Message<"publira.v1.ReportEpisodeComme
   surface: ClientSurface;
 
   /**
-   * Takes precedence over comment_public_id.
-   *
    * @generated from field: string comment_id = 6;
    */
   commentId: string;

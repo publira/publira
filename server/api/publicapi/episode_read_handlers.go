@@ -49,7 +49,7 @@ func (s *apiServer) MarkEpisodeAsRead(
 	if err != nil {
 		return nil, err
 	}
-	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +67,11 @@ func (s *apiServer) MarkEpisodeAsRead(
 	}
 
 	read, err := s.queriesFor(ctx).MarkPublishedEpisodeAsRead(ctx, dbmodels.MarkPublishedEpisodeAsReadParams{
-		ID:              readID,
-		TenantID:        tenant.ID,
-		UserID:          user.ID,
-		EpisodeID:       episodeKey.id,
-		EpisodePublicID: episodeKey.publicID,
-		Surface:         surface,
+		ID:        readID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		EpisodeID: episodeID,
+		Surface:   surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Publication, surface, tenant, and entitlement failures deliberately

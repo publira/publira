@@ -91,14 +91,14 @@ func (e purchaseSurfaceEnv) setEpisodePurchase(t *testing.T, episodeID uuid.UUID
 
 // startCheckout answers the code a checkout from client ends with, and whether
 // it started a checkout with the provider.
-func (e purchaseSurfaceEnv) startCheckout(t *testing.T, episodePublicID string, client publirav1.StartEpisodeCheckoutRequest_Client) (connect.Code, bool) {
+func (e purchaseSurfaceEnv) startCheckout(t *testing.T, episodeID string, client publirav1.StartEpisodeCheckoutRequest_Client) (connect.Code, bool) {
 	t.Helper()
 
 	e.checkout.input = paymentprovider.CheckoutRequest{}
 	_, err := publirav1connect.NewPurchaseServiceClient(e.ts.Client(), e.ts.URL).StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: episodePublicID,
-		Tenant:          tenantContext(e.tenant),
-		Client:          client,
+		EpisodeId: episodeID,
+		Tenant:    tenantContext(e.tenant),
+		Client:    client,
 	}, e.token))
 	var code connect.Code
 	if err != nil {
@@ -143,7 +143,7 @@ func TestDBStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testin
 	}
 	for _, step := range steps {
 		step.arrange()
-		code, created := env.startCheckout(t, episode.PublicID, step.client)
+		code, created := env.startCheckout(t, episode.ID.String(), step.client)
 		if code != step.want {
 			t.Fatalf("%s: code = %v, want %v", step.name, code, step.want)
 		}
@@ -160,10 +160,10 @@ func TestDBStartEpisodeCheckoutOfAnEpisodeTheSurfaceDoesNotShowIsNotFound(t *tes
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSURFSR002", Title: "Shown Apart", Published: true})
 	episode := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP002", Status: testutil.EpisodeStatusPublished, Price: 500, Availability: "app"})
 
-	if code, created := env.startCheckout(t, episode.PublicID, checkoutFromWeb); code != connect.CodeNotFound || created {
+	if code, created := env.startCheckout(t, episode.ID.String(), checkoutFromWeb); code != connect.CodeNotFound || created {
 		t.Fatalf("storefront checkout of an app-only episode = %v (session %v), want not_found and none", code, created)
 	}
-	if code, created := env.startCheckout(t, episode.PublicID, checkoutFromApp); code != checkoutSucceeded || !created {
+	if code, created := env.startCheckout(t, episode.ID.String(), checkoutFromApp); code != checkoutSucceeded || !created {
 		t.Fatalf("app checkout of an app-only episode = %v (session %v), want success", code, created)
 	}
 }

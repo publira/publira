@@ -47,10 +47,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-WHERE (
-        e.id = sqlc.narg('id')::uuid
-        OR e.public_id = sqlc.narg('public_id')::text
-    )
+WHERE e.id = sqlc.arg('id')
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true

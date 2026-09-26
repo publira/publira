@@ -15,10 +15,10 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func episodeReadRequest(tenant testutil.Tenant, episodePublicID, token string) *connect.Request[publirav1.MarkEpisodeAsReadRequest] {
+func episodeReadRequest(tenant testutil.Tenant, episodeID, token string) *connect.Request[publirav1.MarkEpisodeAsReadRequest] {
 	return newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episodePublicID,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episodeID,
 	}, token)
 }
 
@@ -47,7 +47,7 @@ func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *t
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	first, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token))
+	first, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
 	if err != nil {
 		t.Fatalf("first MarkEpisodeAsRead: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *t
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			response, callErr := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token))
+			response, callErr := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
 			if callErr != nil {
 				errs <- callErr
 				return
@@ -129,7 +129,7 @@ func TestDBEpisodeReadServiceRequiresCurrentPublicationAndBodyAccess(t *testing.
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 	for _, episode := range []testutil.Episode{free, purchased, ticketed} {
-		response, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token))
+		response, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
 		if err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", episode.PublicID, err)
 		}
@@ -137,10 +137,10 @@ func TestDBEpisodeReadServiceRequiresCurrentPublicationAndBodyAccess(t *testing.
 			t.Fatalf("MarkEpisodeAsRead %s returned empty read_at", episode.PublicID)
 		}
 	}
-	for _, publicID := range []string{paid.PublicID, draft.PublicID, expiredTicket.PublicID, foreign.PublicID, "MISSINGREAD"} {
-		_, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, publicID, token))
+	for _, id := range []string{paid.ID.String(), draft.ID.String(), expiredTicket.ID.String(), foreign.ID.String(), uuid.NewString()} {
+		_, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token))
 		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("MarkEpisodeAsRead %s code = %v, want not_found (err=%v)", publicID, connect.CodeOf(err), err)
+			t.Fatalf("MarkEpisodeAsRead %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
 	}
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_reads WHERE tenant_id = $1 AND user_id = $2", tenant.ID, member.ID); got != 3 {
@@ -203,7 +203,7 @@ func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for range 3 {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token)); err != nil {
 			t.Fatalf("MarkEpisodeAsRead: %v", err)
 		}
 	}
@@ -257,7 +257,7 @@ func TestDBListMyEpisodeReadsPagesTheMostRecentlyFinishedFirst(t *testing.T) {
 	var finished []string
 	for _, publicID := range []string{"EPISODEREADJ", "EPISODEREADK", "EPISODEREADL"} {
 		episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: publicID, Title: publicID, Status: testutil.EpisodeStatusPublished})
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token)); err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", episode.PublicID, err)
 		}
 		finished = append(finished, episode.PublicID)
@@ -325,9 +325,9 @@ func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testi
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	for _, publicID := range []string{rented.PublicID, withdrawnEpisode.PublicID} {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, publicID, token)); err != nil {
-			t.Fatalf("MarkEpisodeAsRead %s: %v", publicID, err)
+	for _, id := range []string{rented.ID.String(), withdrawnEpisode.ID.String()} {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead %s: %v", id, err)
 		}
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(),
@@ -362,10 +362,10 @@ func TestDBListMyEpisodeReadsIsScopedToOneReaderAndTenant(t *testing.T) {
 	foreignEpisode := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADP", Title: "Foreign", Status: testutil.EpisodeStatusPublished})
 	client := env.episodeReadClient()
 
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.PublicID, tokenFor(t, tenant, reader))); err != nil {
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), tokenFor(t, tenant, reader))); err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(otherTenant, foreignEpisode.PublicID, tokenFor(t, otherTenant, foreignMember))); err != nil {
+	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(otherTenant, foreignEpisode.ID.String(), tokenFor(t, otherTenant, foreignMember))); err != nil {
 		t.Fatalf("MarkEpisodeAsRead in the other tenant: %v", err)
 	}
 
@@ -410,13 +410,13 @@ func TestDBSeriesProgressReportsTheFinishedEpisodesOfThatSeries(t *testing.T) {
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	for _, publicID := range []string{second.PublicID, first.PublicID, elsewhere.PublicID} {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, publicID, token)); err != nil {
-			t.Fatalf("MarkEpisodeAsRead %s: %v", publicID, err)
+	for _, id := range []string{second.ID.String(), first.ID.String(), elsewhere.ID.String()} {
+		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token)); err != nil {
+			t.Fatalf("MarkEpisodeAsRead %s: %v", id, err)
 		}
 	}
 
-	response, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.PublicID, token))
+	response, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}

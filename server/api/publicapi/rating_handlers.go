@@ -55,17 +55,15 @@ func (s *apiServer) resolveRatingEpisode(
 	tenantID uuid.UUID,
 	surface string,
 	rawEpisodeID string,
-	rawEpisodePublicID string,
 ) (dbmodels.GetPublishedEpisodeForTenantRow, error) {
-	key, err := requestRecordKey("episode_id", rawEpisodeID, rawEpisodePublicID)
+	episodeID, err := requestRecordID("episode_id", rawEpisodeID)
 	if err != nil {
 		return dbmodels.GetPublishedEpisodeForTenantRow{}, err
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 		TenantID: tenantID,
 		Surface:  surface,
-		ID:       key.id,
-		PublicID: key.publicID,
+		ID:       recordIDKey(episodeID),
 	})
 	if err == nil {
 		return row, nil
@@ -162,7 +160,7 @@ func (s *apiServer) GetMyEpisodeRating(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +209,7 @@ func (s *apiServer) GetMySeriesRating(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	requestedSeriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +219,7 @@ func (s *apiServer) GetMySeriesRating(
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		ID:       seriesKey.id,
-		PublicID: seriesKey.publicID,
+		ID:       requestedSeriesID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -267,7 +264,7 @@ func (s *apiServer) RateEpisode(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}

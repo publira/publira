@@ -215,12 +215,9 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-WHERE (
-        e.id = $1::uuid
-        OR e.public_id = $2::text
-    )
-    AND e.tenant_id = $3
-    AND s.tenant_id = $3
+WHERE e.id = $1
+    AND e.tenant_id = $2
+    AND s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -233,16 +230,15 @@ WHERE (
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+            AND es.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetPurchasableEpisodeForTenantParams struct {
-	ID       uuid.NullUUID  `json:"id"`
-	PublicID sql.NullString `json:"public_id"`
-	TenantID uuid.UUID      `json:"tenant_id"`
-	Surface  string         `json:"surface"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetPurchasableEpisodeForTenantRow struct {
@@ -256,12 +252,7 @@ type GetPurchasableEpisodeForTenantRow struct {
 }
 
 func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPurchasableEpisodeForTenant,
-		arg.ID,
-		arg.PublicID,
-		arg.TenantID,
-		arg.Surface,
-	)
+	row := q.db.QueryRowContext(ctx, GetPurchasableEpisodeForTenant, arg.ID, arg.TenantID, arg.Surface)
 	var i GetPurchasableEpisodeForTenantRow
 	err := row.Scan(
 		&i.ID,

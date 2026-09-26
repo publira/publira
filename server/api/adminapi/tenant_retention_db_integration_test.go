@@ -197,7 +197,7 @@ func TestDBRetentionDeadlineAndPurgeCutoffsAgree(t *testing.T) {
 		purger := commentretention.NewPurger(batchDB)
 		for _, fixture := range fixtures {
 			comment := fixture.seedComment(t, fixture.admin.Tenant.PublicID[:3]+"WITHDRAWN", "published")
-			fixture.withdrawComment(t, comment.PublicID)
+			fixture.withdrawComment(t, comment.ID)
 			listed := fixture.list(t, &publiraadminv1.ListCommentsRequest{Status: "withdrawn"})
 			if len(listed.Comments) != 1 {
 				t.Fatalf("withdrawn comments = %d, want 1", len(listed.Comments))
