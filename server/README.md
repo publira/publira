@@ -79,7 +79,7 @@ Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernet
 
 Paid episodes are sold as a one-time payment through Stripe Checkout. The URL the browser returns to does not confirm the purchase. `POST /api/v1/webhook/payment/stripe` on `web-host` receives the request on the tenant's public domain and does nothing but forward Stripe's raw body and headers to PurchaseService. The API server verifies the signature with the target tenant's enabled payment configuration and creates a row in `purchases` only when it receives `checkout.session.completed` (or `checkout.session.async_payment_succeeded` for asynchronous payments).
 
-`charge.refunded` is handled on the same endpoint and records the refund on the purchase it reverses. The event names the payment intent rather than the Checkout Session, which is why a purchase stores `stripe_payment_intent_id` when it is created. `refunded_amount` holds the amount Stripe has refunded so far, and `refunded_at` is set once that reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone. A refund whose purchase is not here yet — Stripe orders neither its events nor its retries — is kept in `unapplied_stripe_refunds` and written onto the purchase by the Checkout event that finally creates it.
+`charge.refunded` is handled on the same endpoint and records the refund on the purchase it reverses. The event names the payment intent rather than the Checkout Session, which is why a purchase stores it as `provider_payment_id` when it is created. `refunded_amount` holds the amount Stripe has refunded so far, and `refunded_at` is set once that reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone. A refund whose purchase is not here yet — Stripe orders neither its events nor its retries — is kept in `unapplied_refunds` and written onto the purchase by the Checkout event that finally creates it.
 
 Starting Checkout and verifying the webhook both use the enabled configuration in `tenant_payment_config`; without a usable one neither runs, and web-host turns the resulting `FailedPrecondition` into a 503. After a completed or cancelled purchase the reader returns to the episode URL on the tenant's `domain`.
 
@@ -97,7 +97,7 @@ In the Stripe Dashboard, register the tenant's public domain `https://<tenant-do
 stripe listen --forward-to localhost:3000/api/v1/webhook/payment/stripe
 ```
 
-Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works. A redelivered webhook does not create a duplicate purchase, thanks to the uniqueness constraint on `stripe_checkout_session_id`. An episode that already has a valid purchase does not start Checkout, and can be bought again once that purchase has expired.
+Save the `whsec_...` it prints as that tenant's webhook signing secret through `UpdateTenantPaymentSettings`. For test cards, Stripe's `4242 4242 4242 4242` with any future date and a valid CVC works. A redelivered webhook does not create a duplicate purchase, thanks to the uniqueness constraint on `(provider, provider_checkout_id)`. An episode that already has a valid purchase does not start Checkout, and can be bought again once that purchase has expired.
 
 ## Image storage configuration
 

@@ -165,7 +165,7 @@ var publicDataTables = []struct {
 	// Written by the Stripe webhook rather than read by a page, and on the same
 	// connection: a row names one tenant's payment intent and the money behind
 	// it, so it needs the isolation purchases has.
-	{name: "unapplied_stripe_refunds", count: "SELECT count(*) FROM unapplied_stripe_refunds"},
+	{name: "unapplied_refunds", count: "SELECT count(*) FROM unapplied_refunds"},
 	// Opened by the app before the store's payment sheet, and naming the reader
 	// and the price they agreed to.
 	{name: "store_purchase_intents", count: "SELECT count(*) FROM store_purchase_intents"},
@@ -294,7 +294,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	env.PG.SeedPurchase(t, first.ID, member.ID, purchasedEpisode.ID, purchasedEpisode.Price)
 	seed("store purchase intent", "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id) VALUES ($1, $2, $3, $4, $5, $6)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID, 500, "episode_500")
 	seed("held store refund", "INSERT INTO unapplied_store_refunds (tenant_id, store, store_transaction_id) VALUES ($1, 'app_store', $2)", first.ID, "2000000000000001")
-	seed("held refund", "INSERT INTO unapplied_stripe_refunds (tenant_id, stripe_payment_intent_id, refunded_amount) VALUES ($1, $2, $3)", first.ID, "pi_rls_held", 500)
+	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount) VALUES ($1, 'stripe', $2, $3)", first.ID, "pi_rls_held", 500)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("content event", "INSERT INTO content_events (id, tenant_id, event_type, user_id, series_id, debounce_bucket) VALUES ($1, $2, 'series_view', $3, $4, 0)", uuid.Must(uuid.NewV7()), first.ID, member.ID, series.ID)
 	seed("episode read", "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID)

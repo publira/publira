@@ -105,7 +105,7 @@ func (e refundWebhookEnv) heldRefundCount(t *testing.T) int {
 	var count int
 	if err := e.pg.DB.QueryRowContext(context.Background(), `
 		SELECT count(*)
-		FROM unapplied_stripe_refunds
+		FROM unapplied_refunds
 		WHERE tenant_id = $1
 	`, e.tenant.ID).Scan(&count); err != nil {
 		t.Fatalf("count held refunds: %v", err)

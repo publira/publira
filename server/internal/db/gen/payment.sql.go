@@ -13,14 +13,16 @@ import (
 	"github.com/google/uuid"
 )
 
-const ApplyUnappliedStripeRefundToPurchase = `-- name: ApplyUnappliedStripeRefundToPurchase :one
+const ApplyUnappliedRefundToPurchase = `-- name: ApplyUnappliedRefundToPurchase :one
 WITH held AS (
     SELECT r.tenant_id,
-        r.stripe_payment_intent_id,
+        r.provider,
+        r.provider_payment_id,
         r.refunded_amount
-    FROM unapplied_stripe_refunds r
+    FROM unapplied_refunds r
     WHERE r.tenant_id = $1
-        AND r.stripe_payment_intent_id = $2::text
+        AND r.provider = $2::text
+        AND r.provider_payment_id = $3::text
 ),
 refund AS (
     SELECT p.id,
@@ -30,7 +32,8 @@ refund AS (
         ) AS amount
     FROM purchases p
         JOIN held ON held.tenant_id = p.tenant_id
-            AND held.stripe_payment_intent_id = p.stripe_payment_intent_id
+            AND held.provider = p.provider
+            AND held.provider_payment_id = p.provider_payment_id
 )
 UPDATE purchases p
 SET refunded_amount = refund.amount,
@@ -40,23 +43,24 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
 `
 
-type ApplyUnappliedStripeRefundToPurchaseParams struct {
-	TenantID              uuid.UUID `json:"tenant_id"`
-	StripePaymentIntentID string    `json:"stripe_payment_intent_id"`
+type ApplyUnappliedRefundToPurchaseParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
 }
 
 // Writes a held refund onto the purchase that has since been created, by the
-// same rules RecordStripeRefundOnPurchase uses. Nothing matches when no refund
-// is held for the payment intent, which is the ordinary case.
+// same rules RecordRefundOnPurchase uses. Nothing matches when no refund is
+// held for the payment, which is the ordinary case.
 //
 // The held row is left for the caller to delete once this has committed. A
 // crash in between costs a repeat of an update that is idempotent, whereas
 // deleting here would lose the refund if the update never landed.
-func (q *Queries) ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg ApplyUnappliedStripeRefundToPurchaseParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, ApplyUnappliedStripeRefundToPurchase, arg.TenantID, arg.StripePaymentIntentID)
+func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyUnappliedRefundToPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, ApplyUnappliedRefundToPurchase, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -66,18 +70,19 @@ func (q *Queries) ApplyUnappliedStripeRefundToPurchase(ctx context.Context, arg 
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
 
-const CreatePurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheckout :one
+const CreatePurchaseFromProviderCheckout = `-- name: CreatePurchaseFromProviderCheckout :one
 WITH locked AS (
     SELECT pg_advisory_xact_lock(
         hashtextextended(
@@ -95,8 +100,9 @@ INSERT INTO purchases (
     episode_id,
     price_at_purchase,
     expires_at,
-    stripe_checkout_session_id,
-    stripe_payment_intent_id
+    provider,
+    provider_checkout_id,
+    provider_payment_id
 )
 SELECT
     $1::uuid,
@@ -106,7 +112,8 @@ SELECT
     $5::integer,
     $6::timestamptz,
     $7::text,
-    $8::text
+    $8::text,
+    $9::text
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
@@ -116,35 +123,37 @@ WHERE NOT EXISTS (
         AND g.episode_id = $4::uuid
         AND g.kind = 'purchase'
 )
-ON CONFLICT (stripe_checkout_session_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id, stripe_payment_intent_id, refunded_amount, refunded_at, store, store_transaction_id, is_test
+ON CONFLICT (provider, provider_checkout_id) DO NOTHING
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
 `
 
-type CreatePurchaseFromStripeCheckoutParams struct {
-	ID                      uuid.UUID      `json:"id"`
-	TenantID                uuid.UUID      `json:"tenant_id"`
-	UserID                  uuid.UUID      `json:"user_id"`
-	EpisodeID               uuid.UUID      `json:"episode_id"`
-	PriceAtPurchase         int32          `json:"price_at_purchase"`
-	ExpiresAt               sql.NullTime   `json:"expires_at"`
-	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
-	StripePaymentIntentID   sql.NullString `json:"stripe_payment_intent_id"`
+type CreatePurchaseFromProviderCheckoutParams struct {
+	ID                 uuid.UUID      `json:"id"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	UserID             uuid.UUID      `json:"user_id"`
+	EpisodeID          uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	Provider           string         `json:"provider"`
+	ProviderCheckoutID string         `json:"provider_checkout_id"`
+	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
 }
 
-// The advisory lock serializes different Stripe Checkout sessions for the same
-// buyer and episode. Stripe's request idempotency prevents duplicate sessions
-// in the ordinary case; this also keeps an exceptional concurrent pair from
+// The advisory lock serializes different checkouts for the same buyer and
+// episode. The provider's request idempotency prevents duplicate checkouts in
+// the ordinary case; this also keeps an exceptional concurrent pair from
 // producing two entitlements.
-func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, CreatePurchaseFromStripeCheckout,
+func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, CreatePurchaseFromProviderCheckout,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
 		arg.PriceAtPurchase,
 		arg.ExpiresAt,
-		arg.StripeCheckoutSessionID,
-		arg.StripePaymentIntentID,
+		arg.Provider,
+		arg.ProviderCheckoutID,
+		arg.ProviderPaymentID,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -155,13 +164,14 @@ func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg Crea
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
@@ -280,43 +290,51 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 	return i, err
 }
 
-const HoldUnappliedStripeRefund = `-- name: HoldUnappliedStripeRefund :exec
-INSERT INTO unapplied_stripe_refunds (
+const HoldUnappliedRefund = `-- name: HoldUnappliedRefund :exec
+INSERT INTO unapplied_refunds (
     tenant_id,
-    stripe_payment_intent_id,
+    provider,
+    provider_payment_id,
     refunded_amount
 )
 VALUES (
     $1,
     $2::text,
-    $3::integer
+    $3::text,
+    $4::integer
 )
-ON CONFLICT (tenant_id, stripe_payment_intent_id) DO
+ON CONFLICT (tenant_id, provider, provider_payment_id) DO
 UPDATE
 SET refunded_amount = CASE
-        WHEN unapplied_stripe_refunds.refunded_amount IS NULL
+        WHEN unapplied_refunds.refunded_amount IS NULL
             OR EXCLUDED.refunded_amount IS NULL THEN NULL
-        ELSE GREATEST(unapplied_stripe_refunds.refunded_amount, EXCLUDED.refunded_amount)
+        ELSE GREATEST(unapplied_refunds.refunded_amount, EXCLUDED.refunded_amount)
     END,
     received_at = NOW()
 `
 
-type HoldUnappliedStripeRefundParams struct {
-	TenantID              uuid.UUID     `json:"tenant_id"`
-	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`
-	RefundedAmount        sql.NullInt32 `json:"refunded_amount"`
+type HoldUnappliedRefundParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	Provider          string        `json:"provider"`
+	ProviderPaymentID string        `json:"provider_payment_id"`
+	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
 }
 
-// Keeps a refund whose purchase is not here yet, so the Checkout event that
-// creates the purchase can still apply it. The payment intent is the identity,
-// so a repeated delivery updates the row rather than adding one.
+// Keeps a refund whose purchase is not here yet, so the notification that
+// creates the purchase can still apply it. The provider's payment is the
+// identity, so a repeated delivery updates the row rather than adding one.
 //
 // A NULL amount means the event reported none, which is applied as a refund of
 // the whole price; it therefore outranks any number on a later merge, and
-// between two numbers the larger wins, because Stripe reports the total
+// between two numbers the larger wins, because the provider reports the total
 // refunded so far.
-func (q *Queries) HoldUnappliedStripeRefund(ctx context.Context, arg HoldUnappliedStripeRefundParams) error {
-	_, err := q.db.ExecContext(ctx, HoldUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID, arg.RefundedAmount)
+func (q *Queries) HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefundParams) error {
+	_, err := q.db.ExecContext(ctx, HoldUnappliedRefund,
+		arg.TenantID,
+		arg.Provider,
+		arg.ProviderPaymentID,
+		arg.RefundedAmount,
+	)
 	return err
 }
 
@@ -548,7 +566,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 	return items, nil
 }
 
-const RecordStripeRefundOnPurchase = `-- name: RecordStripeRefundOnPurchase :one
+const RecordRefundOnPurchase = `-- name: RecordRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,
         GREATEST(
@@ -557,7 +575,8 @@ WITH refund AS (
         ) AS amount
     FROM purchases p
     WHERE p.tenant_id = $2
-        AND p.stripe_payment_intent_id = $3::text
+        AND p.provider = $3::text
+        AND p.provider_payment_id = $4::text
 )
 UPDATE purchases p
 SET refunded_amount = refund.amount,
@@ -567,28 +586,34 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
 `
 
-type RecordStripeRefundOnPurchaseParams struct {
-	RefundedAmount        sql.NullInt32 `json:"refunded_amount"`
-	TenantID              uuid.UUID     `json:"tenant_id"`
-	StripePaymentIntentID string        `json:"stripe_payment_intent_id"`
+type RecordRefundOnPurchaseParams struct {
+	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	Provider          string        `json:"provider"`
+	ProviderPaymentID string        `json:"provider_payment_id"`
 }
 
-// Records what Stripe has refunded against one purchase, matched by the
-// payment intent the refund event names. Nothing matches when the payment
-// intent belongs to another tenant or to no purchase here, and the caller
-// reads that empty result as a delivery it has no sale for.
+// Records what the provider has refunded against one purchase, matched by the
+// payment the refund notification names. Nothing matches when the payment
+// belongs to another tenant, another provider, or no purchase here, and the
+// caller reads that empty result as a delivery it has no sale for.
 //
-// The amount Stripe reports is cumulative over every refund against the
-// charge, so GREATEST keeps an out-of-order delivery from walking it back, and
+// The amount the provider reports is cumulative over every refund against the
+// payment, so GREATEST keeps an out-of-order delivery from walking it back, and
 // an event that reports no amount at all is recorded as a refund of the whole
 // price. refunded_at follows from the amount rather than from the event:
 // it is set once the refunded total reaches what was paid, and a repeated
 // delivery of the same refund leaves the instant already stored.
-func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordStripeRefundOnPurchaseParams) (Purchase, error) {
-	row := q.db.QueryRowContext(ctx, RecordStripeRefundOnPurchase, arg.RefundedAmount, arg.TenantID, arg.StripePaymentIntentID)
+func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, RecordRefundOnPurchase,
+		arg.RefundedAmount,
+		arg.TenantID,
+		arg.Provider,
+		arg.ProviderPaymentID,
+	)
 	var i Purchase
 	err := row.Scan(
 		&i.ID,
@@ -598,30 +623,33 @@ func (q *Queries) RecordStripeRefundOnPurchase(ctx context.Context, arg RecordSt
 		&i.ExpiresAt,
 		&i.PurchasedAt,
 		&i.TenantID,
-		&i.StripeCheckoutSessionID,
-		&i.StripePaymentIntentID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
 		&i.RefundedAmount,
 		&i.RefundedAt,
 		&i.Store,
 		&i.StoreTransactionID,
 		&i.IsTest,
+		&i.Provider,
 	)
 	return i, err
 }
 
-const ReleaseUnappliedStripeRefund = `-- name: ReleaseUnappliedStripeRefund :exec
-DELETE FROM unapplied_stripe_refunds
+const ReleaseUnappliedRefund = `-- name: ReleaseUnappliedRefund :exec
+DELETE FROM unapplied_refunds
 WHERE tenant_id = $1
-    AND stripe_payment_intent_id = $2::text
+    AND provider = $2::text
+    AND provider_payment_id = $3::text
 `
 
-type ReleaseUnappliedStripeRefundParams struct {
-	TenantID              uuid.UUID `json:"tenant_id"`
-	StripePaymentIntentID string    `json:"stripe_payment_intent_id"`
+type ReleaseUnappliedRefundParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
 }
 
-func (q *Queries) ReleaseUnappliedStripeRefund(ctx context.Context, arg ReleaseUnappliedStripeRefundParams) error {
-	_, err := q.db.ExecContext(ctx, ReleaseUnappliedStripeRefund, arg.TenantID, arg.StripePaymentIntentID)
+func (q *Queries) ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error {
+	_, err := q.db.ExecContext(ctx, ReleaseUnappliedRefund, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
 	return err
 }
 
