@@ -37,7 +37,7 @@ func TestDBPlatformTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 	ctx := context.Background()
 
 	created, err := client.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: tenant.PublicID, Email: "invitee@tenant-a.example.com",
+		TenantId: tenant.ID.String(), Email: "invitee@tenant-a.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("the first CreateTenantAdminInvitation: %v", err)
@@ -52,12 +52,12 @@ func TestDBPlatformTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 	issuedTokenHash := tokenHash()
 
 	_, err = client.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: tenant.PublicID, Email: "invitee@tenant-a.example.com",
+		TenantId: tenant.ID.String(), Email: "invitee@tenant-a.example.com",
 	}))
 	requireRateLimited(t, "the second CreateTenantAdminInvitation", err)
 
 	_, err = client.ResendTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.ResendTenantAdminInvitationRequest{
-		TenantPublicId: tenant.PublicID, InvitationId: created.Msg.Invitation.Id,
+		TenantId: tenant.ID.String(), InvitationId: created.Msg.Invitation.Id,
 	}))
 	requireRateLimited(t, "ResendTenantAdminInvitation", err)
 
@@ -80,7 +80,7 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 
 	for attempt := 1; attempt <= 2; attempt++ {
 		created, err := client.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-			TenantPublicId: tenant.PublicID, Email: reader.Email,
+			TenantId: tenant.ID.String(), Email: reader.Email,
 		}))
 		if err != nil {
 			t.Fatalf("CreateTenantAdminInvitation attempt %d: %v", attempt, err)

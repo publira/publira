@@ -9,8 +9,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
@@ -60,37 +58,6 @@ func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
 	}
 	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)
-	}
-}
-
-func TestResolveTenantPublicID_FromTenantIDAliasHeader(t *testing.T) {
-	// Platform resolve accepts non-UUID strings, because public_id is not a UUID.
-	headers := http.Header{}
-	headers.Set(rpcmiddleware.TenantPublicIDHeaderName, "TENANT001")
-
-	got, err := resolveTenantPublicID("", headers)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != "TENANT001" {
-		t.Fatalf("value = %q, want TENANT001", got)
-	}
-}
-
-func TestResolveTenantPublicID_MismatchReturnsInvalidArgument(t *testing.T) {
-	headers := http.Header{}
-	headers.Set(rpcmiddleware.TenantIDHeaderName, "TENANT002")
-
-	_, err := resolveTenantPublicID("TENANT001", headers)
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
-	}
-}
-
-func TestResolveTenantPublicID_MissingReturnsInvalidArgument(t *testing.T) {
-	_, err := resolveTenantPublicID("  ", nil)
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }
 

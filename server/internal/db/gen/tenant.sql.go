@@ -393,26 +393,24 @@ const ListTenantsAsc = `-- name: ListTenantsAsc :many
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
-  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
-  AND ($3::text = '' OR status = $3::text)
+  AND ($2::text = '' OR status = $2::text)
   AND (
-    $4::uuid IS NULL
+    $3::uuid IS NULL
     OR (
-      $5::boolean
-      AND (created_at, id) >= ($6::timestamptz, $4::uuid)
+      $4::boolean
+      AND (created_at, id) >= ($5::timestamptz, $3::uuid)
     )
     OR (
-      NOT $5::boolean
-      AND (created_at, id) > ($6::timestamptz, $4::uuid)
+      NOT $4::boolean
+      AND (created_at, id) > ($5::timestamptz, $3::uuid)
     )
   )
 ORDER BY created_at ASC, id ASC
-LIMIT $7
+LIMIT $6
 `
 
 type ListTenantsAscParams struct {
 	FilterName      sql.NullString `json:"filter_name"`
-	FilterPublicID  sql.NullString `json:"filter_public_id"`
 	FilterStatus    sql.NullString `json:"filter_status"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -423,7 +421,6 @@ type ListTenantsAscParams struct {
 func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantsAsc,
 		arg.FilterName,
-		arg.FilterPublicID,
 		arg.FilterStatus,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -466,26 +463,24 @@ const ListTenantsDesc = `-- name: ListTenantsDesc :many
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
-  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
-  AND ($3::text = '' OR status = $3::text)
+  AND ($2::text = '' OR status = $2::text)
   AND (
-    $4::uuid IS NULL
+    $3::uuid IS NULL
     OR (
-      $5::boolean
-      AND (created_at, id) <= ($6::timestamptz, $4::uuid)
+      $4::boolean
+      AND (created_at, id) <= ($5::timestamptz, $3::uuid)
     )
     OR (
-      NOT $5::boolean
-      AND (created_at, id) < ($6::timestamptz, $4::uuid)
+      NOT $4::boolean
+      AND (created_at, id) < ($5::timestamptz, $3::uuid)
     )
   )
 ORDER BY created_at DESC, id DESC
-LIMIT $7
+LIMIT $6
 `
 
 type ListTenantsDescParams struct {
 	FilterName      sql.NullString `json:"filter_name"`
-	FilterPublicID  sql.NullString `json:"filter_public_id"`
 	FilterStatus    sql.NullString `json:"filter_status"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -500,7 +495,6 @@ type ListTenantsDescParams struct {
 func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantsDesc,
 		arg.FilterName,
-		arg.FilterPublicID,
 		arg.FilterStatus,
 		arg.CursorID,
 		arg.CursorInclusive,

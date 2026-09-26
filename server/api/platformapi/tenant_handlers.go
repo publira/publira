@@ -12,12 +12,14 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -57,11 +59,9 @@ func (s *platformServer) ListTenants(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
 	filterName := strings.TrimSpace(req.Msg.Name)
-	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("name", filterName).
-		Value("public_id", filterPublicID).
 		Value("status", filterStatus)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
@@ -71,7 +71,7 @@ func (s *platformServer) ListTenants(
 		}
 	}
 
-	tenants, err := s.tenantPage(ctx, filterName, filterPublicID, filterStatus, keys, cursor.Direction, limit+1)
+	tenants, err := s.tenantPage(ctx, filterName, filterStatus, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list tenants", err)
 	}
@@ -104,7 +104,7 @@ func (s *platformServer) ListTenants(
 
 func (s *platformServer) tenantPage(
 	ctx context.Context,
-	filterName, filterPublicID, filterStatus string,
+	filterName, filterStatus string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -113,7 +113,6 @@ func (s *platformServer) tenantPage(
 	if direction == pagination.Backward {
 		return queries.ListTenantsAsc(ctx, dbmodels.ListTenantsAscParams{
 			FilterName:      sql.NullString{String: filterName, Valid: true},
-			FilterPublicID:  sql.NullString{String: filterPublicID, Valid: true},
 			FilterStatus:    sql.NullString{String: filterStatus, Valid: true},
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
@@ -124,7 +123,6 @@ func (s *platformServer) tenantPage(
 
 	return queries.ListTenantsDesc(ctx, dbmodels.ListTenantsDescParams{
 		FilterName:      sql.NullString{String: filterName, Valid: true},
-		FilterPublicID:  sql.NullString{String: filterPublicID, Valid: true},
 		FilterStatus:    sql.NullString{String: filterStatus, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
@@ -223,7 +221,7 @@ func (s *platformServer) SuspendTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.SuspendTenantRequest],
 ) (*connect.Response[publirasplatformv1.SuspendTenantResponse], error) {
-	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, req.Msg.PublicId, platformtenants.Suspend, "suspend tenant")
+	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, platformtenants.Suspend, "suspend tenant")
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +234,7 @@ func (s *platformServer) ResumeTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ResumeTenantRequest],
 ) (*connect.Response[publirasplatformv1.ResumeTenantResponse], error) {
-	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, req.Msg.PublicId, platformtenants.Resume, "resume tenant")
+	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, platformtenants.Resume, "resume tenant")
 	if err != nil {
 		return nil, err
 	}
@@ -247,10 +245,10 @@ func (s *platformServer) ResumeTenant(
 
 type tenantStatusChange func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, uuid.UUID) (dbmodels.Tenant, error)
 
-func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyRequest, rawID, rawPublicID string, change tenantStatusChange, what string) (dbmodels.Tenant, error) {
-	tenantID, err := s.tenantIDFor(ctx, rawID, rawPublicID, "invalid "+what+" request")
+func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyRequest, rawID string, change tenantStatusChange, what string) (dbmodels.Tenant, error) {
+	tenantID, err := platformtenants.ParseID(rawID)
 	if err != nil {
-		return dbmodels.Tenant{}, err
+		return dbmodels.Tenant{}, s.tenantError(ctx, "invalid "+what+" request", err)
 	}
 	actor, err := s.auditActor(ctx, req)
 	if err != nil {
@@ -273,34 +271,13 @@ func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyReq
 	return tenant, nil
 }
 
-// tenantIDFor answers the tenant a write acts on: rawID when it is set, and
-// otherwise the ID of the tenant rawPublicID names.
-func (s *platformServer) tenantIDFor(ctx context.Context, rawID, rawPublicID, invalidMsg string) (uuid.UUID, error) {
-	if strings.TrimSpace(rawID) != "" {
-		id, err := platformtenants.ParseID(rawID)
-		if err != nil {
-			return uuid.Nil, s.tenantError(ctx, invalidMsg, err)
-		}
-		return id, nil
-	}
-	publicID, err := platformtenants.ParsePublicID(rawPublicID)
-	if err != nil {
-		return uuid.Nil, s.tenantError(ctx, invalidMsg, err)
-	}
-	tenant, err := platformtenants.Get(ctx, s.queriesFor(ctx), publicID)
-	if err != nil {
-		return uuid.Nil, s.tenantError(ctx, "failed to get tenant", err, "public_id", publicID)
-	}
-	return tenant.ID, nil
-}
-
 func (s *platformServer) UpdateTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateTenantRequest],
 ) (*connect.Response[publirasplatformv1.UpdateTenantResponse], error) {
-	tenantID, err := s.tenantIDFor(ctx, req.Msg.TenantId, req.Msg.PublicId, "invalid update tenant request")
+	tenantID, err := platformtenants.ParseID(req.Msg.TenantId)
 	if err != nil {
-		return nil, err
+		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
 	// The request replaces all three, so an admin_domain left empty clears it.
 	change, err := platformtenants.UpdateParams{
@@ -352,7 +329,7 @@ func (s *platformServer) ListTenantMembers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantMembersRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantMembersResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +339,7 @@ func (s *platformServer) ListTenantMembers(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	listKey := ref.scope(pagination.NewListKey("created_at_desc"))
+	listKey := pagination.NewListKey("created_at_desc").Value("tenant_id", tenantID.String())
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = listKey.DecodeTimeUUID(cursor)
@@ -371,7 +348,7 @@ func (s *platformServer) ListTenantMembers(
 		}
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -420,19 +397,18 @@ func (s *platformServer) AddTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.AddTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.AddTenantMemberResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
 	userID, err := parseUserID(req.Msg.UserId)
 	if err != nil {
-		return nil, err
+		return nil, s.tenantError(ctx, "invalid add tenant member request", err)
 	}
 	params := tenantmembers.AddParams{
-		UserID:       userID,
-		UserPublicID: req.Msg.UserPublicId,
-		Email:        req.Msg.Email,
-		Role:         req.Msg.Role,
+		UserID: userID,
+		Email:  req.Msg.Email,
+		Role:   req.Msg.Role,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid add tenant member request", err)
@@ -442,7 +418,7 @@ func (s *platformServer) AddTenantMember(
 		return nil, err
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -474,18 +450,17 @@ func (s *platformServer) UpdateTenantMemberRole(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateTenantMemberRoleRequest],
 ) (*connect.Response[publirasplatformv1.UpdateTenantMemberRoleResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	userID, err := parseUserID(req.Msg.UserId)
+	userID, err := requireUserID(req.Msg.UserId)
 	if err != nil {
-		return nil, err
+		return nil, s.tenantError(ctx, "invalid update tenant member role request", err)
 	}
 	params := tenantmembers.UpdateRoleParams{
-		UserID:       userID,
-		UserPublicID: req.Msg.UserPublicId,
-		Role:         req.Msg.Role,
+		UserID: userID,
+		Role:   req.Msg.Role,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant member role request", err)
@@ -495,7 +470,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, err
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -524,15 +499,15 @@ func (s *platformServer) RemoveTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.RemoveTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.RemoveTenantMemberResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	userID, err := parseUserID(req.Msg.UserId)
+	userID, err := requireUserID(req.Msg.UserId)
 	if err != nil {
-		return nil, err
+		return nil, s.tenantError(ctx, "invalid remove tenant member request", err)
 	}
-	params := tenantmembers.RemoveParams{UserID: userID, UserPublicID: req.Msg.UserPublicId}
+	params := tenantmembers.RemoveParams{UserID: userID}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid remove tenant member request", err)
 	}
@@ -541,7 +516,7 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, err
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -567,8 +542,8 @@ func (s *platformServer) RemoveTenantMember(
 	}), nil
 }
 
-// parseUserID parses the user_id a member request names, which may be blank
-// while the request names the user by public ID or email instead.
+// parseUserID parses the user_id a member request names, which AddTenantMember
+// leaves blank when it names the user by email instead.
 func parseUserID(raw string) (uuid.UUID, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -576,7 +551,23 @@ func parseUserID(raw string) (uuid.UUID, error) {
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id must be a valid UUID"))
+		return uuid.Nil, &fielderr.Invalid{Field: fieldUserID, Err: errUserIDInvalid}
 	}
 	return id, nil
 }
+
+// requireUserID is [parseUserID] refusing a blank user_id.
+func requireUserID(raw string) (uuid.UUID, error) {
+	id, err := parseUserID(raw)
+	if err == nil && id == uuid.Nil {
+		return uuid.Nil, &fielderr.Invalid{Field: fieldUserID, Err: errUserIDRequired}
+	}
+	return id, err
+}
+
+const fieldUserID = "user_id"
+
+var (
+	errUserIDRequired = errors.New("user_id is required")
+	errUserIDInvalid  = errors.New("user_id must be a UUID")
+)

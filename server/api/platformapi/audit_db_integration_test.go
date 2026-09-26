@@ -22,23 +22,23 @@ func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
 	const email = "invitee@example.com"
 
 	created, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: first.PublicID, Email: email,
+		TenantId: first.ID.String(), Email: email,
 	}))
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for tenant A: %v", err)
 	}
 	if _, err := tenants.ResendTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.ResendTenantAdminInvitationRequest{
-		TenantPublicId: first.PublicID, InvitationId: created.Msg.Invitation.Id,
+		TenantId: first.ID.String(), InvitationId: created.Msg.Invitation.Id,
 	})); err != nil {
 		t.Fatalf("ResendTenantAdminInvitation: %v", err)
 	}
 	if _, err := tenants.CancelTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CancelTenantAdminInvitationRequest{
-		TenantPublicId: first.PublicID, InvitationId: created.Msg.Invitation.Id,
+		TenantId: first.ID.String(), InvitationId: created.Msg.Invitation.Id,
 	})); err != nil {
 		t.Fatalf("CancelTenantAdminInvitation: %v", err)
 	}
 	if _, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: second.PublicID, Email: email,
+		TenantId: second.ID.String(), Email: email,
 	})); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for tenant B: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestDBCreateTenantAdminInvitationTakesAnAddressLongerThanAnAuditTarget(t *t
 	email := strings.Repeat("a", 64) + "@tenant-a.example.com"
 
 	if _, err := tenants.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: tenant.PublicID, Email: email,
+		TenantId: tenant.ID.String(), Email: email,
 	})); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
@@ -119,9 +119,9 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
 	ctx := context.Background()
 
-	for _, tenant := range []string{first.PublicID, second.PublicID} {
+	for _, tenant := range []string{first.ID.String(), second.ID.String()} {
 		created, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-			TenantPublicId: tenant, Email: email,
+			TenantId: tenant, Email: email,
 		}))
 		if err != nil {
 			t.Fatalf("CreateTenantAdminInvitation for %s: %v", tenant, err)
@@ -165,7 +165,7 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 
 	created, err := tenants.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: tenant.PublicID, Email: reader.Email,
+		TenantId: tenant.ID.String(), Email: reader.Email,
 	}))
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
