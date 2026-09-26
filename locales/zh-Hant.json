@@ -4070,6 +4070,7 @@
         "platform_retention": "保留期限預設值",
         "smtp_config": "SMTP 設定",
         "storage_config": "儲存設定",
+        "tenant_admin_invitation": "發給 {$email} 的管理員邀請",
         "webpush_config": "Web Push 設定"
       },
       "title": "稽核記錄",

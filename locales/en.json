@@ -4070,6 +4070,7 @@
         "platform_retention": "Retention defaults",
         "smtp_config": "SMTP settings",
         "storage_config": "Storage settings",
+        "tenant_admin_invitation": "Admin invitation for {$email}",
         "webpush_config": "Web Push settings"
       },
       "title": "Audit logs",

@@ -4070,6 +4070,7 @@
         "platform_retention": "보존 기간 기본값",
         "smtp_config": "SMTP 설정",
         "storage_config": "스토리지 설정",
+        "tenant_admin_invitation": "{$email}에게 보낸 관리자 초대",
         "webpush_config": "Web Push 설정"
       },
       "title": "감사 로그",

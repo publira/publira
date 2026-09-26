@@ -4070,6 +4070,7 @@
         "platform_retention": "保持期間の既定値",
         "smtp_config": "SMTP設定",
         "storage_config": "ストレージ設定",
+        "tenant_admin_invitation": "{$email} への管理者招待",
         "webpush_config": "Web Push 設定"
       },
       "title": "監査ログ",
