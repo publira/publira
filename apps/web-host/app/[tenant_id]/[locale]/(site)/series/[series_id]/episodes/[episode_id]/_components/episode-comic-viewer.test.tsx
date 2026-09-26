@@ -85,6 +85,36 @@ const pressViewer = () => {
   });
 };
 
+describe("EpisodeComicViewer rail", () => {
+  it("animates the track only while a turn is under way, and zooms the current slot alone", async () => {
+    const { container } = await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+
+    // The library returns the track to its resting transform once a turn has
+    // settled. A transition that is not limited to the turn animates that
+    // return as well, so the reader sees the new spread slide in twice.
+    const track = container.querySelector(".pcv-viewport-track");
+    expect(track?.className).toContain(
+      "data-[transition-state=active]:transition-transform"
+    );
+    expect(track?.className).not.toMatch(
+      /(?:^|\s)transition-transform(?:\s|$)/u
+    );
+
+    const pageSet = container.querySelector(".pcv-viewport-page-set");
+    expect(pageSet?.className).toContain(
+      "data-[rail-slot=current]:[transform:"
+    );
+    expect(pageSet?.className).not.toMatch(/(?:^|\s)\[transform:/u);
+  });
+});
+
 describe("EpisodeComicViewer wide viewer", () => {
   it("widens on the control, marks itself, and hands the choice to the server", async () => {
     const saveWideViewer = vi.fn(() => Promise.resolve());
