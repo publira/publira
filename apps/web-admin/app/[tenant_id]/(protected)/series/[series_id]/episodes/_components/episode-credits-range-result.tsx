@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { EpisodeCreditUnchangedReasonValue } from "#lib/episode";
 
 import type {
@@ -8,25 +8,32 @@ import type {
   BulkEditEpisodeCreditsActionState,
 } from "../episode-types";
 
-const reasonMessageKey = (
-  reason: EpisodeCreditUnchangedReasonValue
-):
-  | "admin.series.episodes.credits.reason_already_credited"
-  | "admin.series.episodes.credits.reason_not_credited"
-  | "admin.series.episodes.credits.reason_credited_on_the_episode"
-  | "admin.series.episodes.credits.reason_unspecified" => {
+/** Why the server left one episode alone, in the reader's language. */
+const UnchangedReason = ({
+  reason,
+}: {
+  reason: EpisodeCreditUnchangedReasonValue;
+}) => {
   switch (reason) {
     case "already_credited": {
-      return "admin.series.episodes.credits.reason_already_credited";
+      return (
+        <ClientMessage message="admin.series.episodes.credits.reason_already_credited" />
+      );
     }
     case "not_credited": {
-      return "admin.series.episodes.credits.reason_not_credited";
+      return (
+        <ClientMessage message="admin.series.episodes.credits.reason_not_credited" />
+      );
     }
     case "credited_on_the_episode": {
-      return "admin.series.episodes.credits.reason_credited_on_the_episode";
+      return (
+        <ClientMessage message="admin.series.episodes.credits.reason_credited_on_the_episode" />
+      );
     }
     default: {
-      return "admin.series.episodes.credits.reason_unspecified";
+      return (
+        <ClientMessage message="admin.series.episodes.credits.reason_unspecified" />
+      );
     }
   }
 };
@@ -85,7 +92,7 @@ export const EpisodeCreditsRangeResult = ({
               <li key={episode.episodePublicId}>
                 {labelFor(episode.episodePublicId)}
                 {" — "}
-                {t(reasonMessageKey(episode.reason))}
+                <UnchangedReason reason={episode.reason} />
               </li>
             ))}
           </ul>

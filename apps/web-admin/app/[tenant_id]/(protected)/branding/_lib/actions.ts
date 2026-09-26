@@ -7,8 +7,8 @@ import {
   findThemeTextContrastIssues,
   THEME_TEXT_CONTRAST_MIN_RATIO,
 } from "@publira/utils/theme-contrast";
+import type { ThemeContrastPair } from "@publira/utils/theme-contrast";
 import { tenantThemeFontFamilySchema } from "@publira/utils/theme-css-variables";
-import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
-import type { AdminMessageKey } from "#lib/locale";
+import type { AdminMessageAccessor } from "#lib/messages";
 import { getMessagesFor } from "#lib/messages";
 import {
   deleteTenantIcon,
@@ -82,41 +82,95 @@ const tenantThemeSchema = async (locale: Locale) => {
     warningForegroundColor: await hexColorCodeSchema(locale),
   });
 };
-const themeColorLabelKeys: Record<keyof TenantThemeColors, AdminMessageKey> = {
-  accentColor: "admin.settings.theme.colors.accent.label",
-  accentForegroundColor: "admin.settings.theme.colors.accent_foreground.label",
-  backgroundColor: "admin.settings.theme.colors.background.label",
-  borderColor: "admin.settings.theme.colors.border.label",
-  cardColor: "admin.settings.theme.colors.card.label",
-  cardForegroundColor: "admin.settings.theme.colors.card_foreground.label",
-  destructiveColor: "admin.settings.theme.colors.destructive.label",
-  destructiveForegroundColor:
-    "admin.settings.theme.colors.destructive_foreground.label",
-  foregroundColor: "admin.settings.theme.colors.foreground.label",
-  infoColor: "admin.settings.theme.colors.info.label",
-  infoForegroundColor: "admin.settings.theme.colors.info_foreground.label",
-  inputColor: "admin.settings.theme.colors.input.label",
-  mutedColor: "admin.settings.theme.colors.muted.label",
-  mutedForegroundColor: "admin.settings.theme.colors.muted_foreground.label",
-  popoverColor: "admin.settings.theme.colors.popover.label",
-  popoverForegroundColor:
-    "admin.settings.theme.colors.popover_foreground.label",
-  primaryColor: "admin.settings.theme.colors.primary.label",
-  primaryForegroundColor:
-    "admin.settings.theme.colors.primary_foreground.label",
-  ringColor: "admin.settings.theme.colors.ring.label",
-  secondaryColor: "admin.settings.theme.colors.secondary.label",
-  secondaryForegroundColor:
-    "admin.settings.theme.colors.secondary_foreground.label",
-  successColor: "admin.settings.theme.colors.success.label",
-  successForegroundColor:
-    "admin.settings.theme.colors.success_foreground.label",
-  surfaceColor: "admin.settings.theme.colors.surface.label",
-  surfaceForegroundColor:
-    "admin.settings.theme.colors.surface_foreground.label",
-  warningColor: "admin.settings.theme.colors.warning.label",
-  warningForegroundColor:
-    "admin.settings.theme.colors.warning_foreground.label",
+
+/**
+ * The labels the two fields of a contrast pair carry on the form, keyed by the
+ * pair's background. Every pair `findThemeTextContrastIssues` reports has a
+ * case here; a pair it does not know is named by its field names.
+ */
+const themeContrastPairLabels = (
+  pair: ThemeContrastPair,
+  t: AdminMessageAccessor
+): { background: string; foreground: string } => {
+  switch (pair.background) {
+    case "primaryColor": {
+      return {
+        background: t("admin.settings.theme.colors.primary.label"),
+        foreground: t("admin.settings.theme.colors.primary_foreground.label"),
+      };
+    }
+    case "secondaryColor": {
+      return {
+        background: t("admin.settings.theme.colors.secondary.label"),
+        foreground: t("admin.settings.theme.colors.secondary_foreground.label"),
+      };
+    }
+    case "accentColor": {
+      return {
+        background: t("admin.settings.theme.colors.accent.label"),
+        foreground: t("admin.settings.theme.colors.accent_foreground.label"),
+      };
+    }
+    case "backgroundColor": {
+      return {
+        background: t("admin.settings.theme.colors.background.label"),
+        foreground: t("admin.settings.theme.colors.foreground.label"),
+      };
+    }
+    case "surfaceColor": {
+      return {
+        background: t("admin.settings.theme.colors.surface.label"),
+        foreground: t("admin.settings.theme.colors.surface_foreground.label"),
+      };
+    }
+    case "cardColor": {
+      return {
+        background: t("admin.settings.theme.colors.card.label"),
+        foreground: t("admin.settings.theme.colors.card_foreground.label"),
+      };
+    }
+    case "popoverColor": {
+      return {
+        background: t("admin.settings.theme.colors.popover.label"),
+        foreground: t("admin.settings.theme.colors.popover_foreground.label"),
+      };
+    }
+    case "mutedColor": {
+      return {
+        background: t("admin.settings.theme.colors.muted.label"),
+        foreground: t("admin.settings.theme.colors.muted_foreground.label"),
+      };
+    }
+    case "successColor": {
+      return {
+        background: t("admin.settings.theme.colors.success.label"),
+        foreground: t("admin.settings.theme.colors.success_foreground.label"),
+      };
+    }
+    case "warningColor": {
+      return {
+        background: t("admin.settings.theme.colors.warning.label"),
+        foreground: t("admin.settings.theme.colors.warning_foreground.label"),
+      };
+    }
+    case "destructiveColor": {
+      return {
+        background: t("admin.settings.theme.colors.destructive.label"),
+        foreground: t(
+          "admin.settings.theme.colors.destructive_foreground.label"
+        ),
+      };
+    }
+    case "infoColor": {
+      return {
+        background: t("admin.settings.theme.colors.info.label"),
+        foreground: t("admin.settings.theme.colors.info_foreground.label"),
+      };
+    }
+    default: {
+      return { background: pair.background, foreground: pair.foreground };
+    }
+  }
 };
 
 /**
@@ -247,10 +301,11 @@ const mapThemeContrastFieldErrors = async (
 
   return Object.fromEntries(
     issues.flatMap((issue) => {
+      const labels = themeContrastPairLabels(issue, t);
       const message = t("admin.settings.theme.validation.contrast", {
         actual: issue.ratio.toFixed(2),
-        background: t(themeColorLabelKeys[issue.background]),
-        foreground: t(themeColorLabelKeys[issue.foreground]),
+        background: labels.background,
+        foreground: labels.foreground,
         minimum: String(THEME_TEXT_CONTRAST_MIN_RATIO),
       });
       return [
@@ -382,9 +437,9 @@ export const updateTenantIconAction = async (
 
   return {
     icon: result.icon,
-    message: t(
-      isDelete ? "admin.settings.icon.deleted" : "admin.settings.icon.saved"
-    ),
+    message: isDelete
+      ? t("admin.settings.icon.deleted")
+      : t("admin.settings.icon.saved"),
     ok: true,
   };
 };
@@ -447,9 +502,9 @@ export const updateTenantLogoAction = async (
 
   return {
     logo: result.logo,
-    message: t(
-      isDelete ? "admin.settings.logo.deleted" : "admin.settings.logo.saved"
-    ),
+    message: isDelete
+      ? t("admin.settings.logo.deleted")
+      : t("admin.settings.logo.saved"),
     ok: true,
   };
 };

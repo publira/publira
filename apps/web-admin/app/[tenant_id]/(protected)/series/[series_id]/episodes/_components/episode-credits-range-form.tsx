@@ -150,15 +150,14 @@ const creditSelectionPreview = (input: {
       ),
     });
   }
-  const previewKey =
-    input.operation === "add"
-      ? "admin.series.episodes.credits.preview_add"
-      : "admin.series.episodes.credits.preview_remove";
-  return input.t(previewKey, {
+  const values = {
     count,
     creator: optionName(input.creators, input.credit.creatorPublicId),
     role: optionName(input.creatorRoles, input.credit.rolePublicId),
-  });
+  };
+  return input.operation === "add"
+    ? input.t("admin.series.episodes.credits.preview_add", values)
+    : input.t("admin.series.episodes.credits.preview_remove", values);
 };
 
 export interface EpisodeCreditsRangeFormProps {

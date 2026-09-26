@@ -67,11 +67,9 @@ export const EyeCatchImageField = ({
             >
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">
-                  {t(
-                    clearEyeCatchImage
-                      ? "admin.eye_catch.pending_delete"
-                      : "admin.eye_catch.select_prompt"
-                  )}
+                  {clearEyeCatchImage
+                    ? t("admin.eye_catch.pending_delete")
+                    : t("admin.eye_catch.select_prompt")}
                 </p>
               </div>
             </button>
@@ -99,11 +97,9 @@ export const EyeCatchImageField = ({
                 onClick={onDeleteToggle}
                 type="button"
               >
-                {t(
-                  clearEyeCatchImage
-                    ? "admin.eye_catch.undo_delete"
-                    : "admin.eye_catch.delete_current"
-                )}
+                {clearEyeCatchImage
+                  ? t("admin.eye_catch.undo_delete")
+                  : t("admin.eye_catch.delete_current")}
               </button>
             </div>
           ) : null}

@@ -33,13 +33,6 @@ interface ImageCropFrameProps {
 /** The corners, clockwise from the top left. */
 const CROP_CORNERS: readonly CropCorner[] = ["nw", "ne", "se", "sw"];
 
-const CORNER_LABEL_KEYS = {
-  ne: "admin.image_crop.resize_top_right",
-  nw: "admin.image_crop.resize_top_left",
-  se: "admin.image_crop.resize_bottom_right",
-  sw: "admin.image_crop.resize_bottom_left",
-} as const;
-
 /**
  * How far one arrow key press moves the frame: a hundredth of the image, so a
  * press is a visible nudge whatever the file's size, and never below a pixel.
@@ -86,6 +79,22 @@ export const ImageCropFrame = ({
     throw new Error("AdminLocaleProvider is required.");
   }
   const t = useClientMessages();
+  const cornerLabel = (corner: CropCorner): string => {
+    switch (corner) {
+      case "ne": {
+        return t("admin.image_crop.resize_top_right");
+      }
+      case "nw": {
+        return t("admin.image_crop.resize_top_left");
+      }
+      case "se": {
+        return t("admin.image_crop.resize_bottom_right");
+      }
+      default: {
+        return t("admin.image_crop.resize_bottom_left");
+      }
+    }
+  };
   const imageRef = useRef<HTMLImageElement>(null);
   /**
    * What the pointer is dragging, and where it grabbed the frame. It is read
@@ -239,7 +248,7 @@ export const ImageCropFrame = ({
 
           {CROP_CORNERS.map((corner) => (
             <button
-              aria-label={t(CORNER_LABEL_KEYS[corner])}
+              aria-label={cornerLabel(corner)}
               className={cn(
                 "pointer-events-auto absolute size-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-white bg-blue-500 focus-visible:outline-4 focus-visible:outline-blue-400",
                 corner === "ne" || corner === "sw"

@@ -28,12 +28,10 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { ClientMessage } from "#components/client-message";
-import type { AdminClientMessageKey } from "#lib/messages";
 import type { StorePaymentSettingsFieldErrors } from "#lib/store-payment-settings";
 import {
   isAppPurchaseRouteValue,
   storeStatus,
-  storeStatusLabelKey,
 } from "#lib/store-payment-settings-shared";
 import type {
   StoreStatus,
@@ -50,20 +48,63 @@ const statusTone: Record<StoreStatus, BadgeTone> = {
   unset: "muted",
 };
 
-const statusDescriptionKey: Record<StoreStatus, AdminClientMessageKey> = {
-  disabled: "admin.settings.store_payment.status.disabled_description",
-  incomplete: "admin.settings.store_payment.status.incomplete_description",
-  ready: "admin.settings.store_payment.status.ready_description",
-  unset: "admin.settings.store_payment.status.unset_description",
+const StoreStatusLabel = ({ status }: { status: StoreStatus }) => {
+  switch (status) {
+    case "disabled": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.disabled" />
+      );
+    }
+    case "incomplete": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.incomplete" />
+      );
+    }
+    case "ready": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.ready" />
+      );
+    }
+    default: {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.unset" />
+      );
+    }
+  }
+};
+
+const StoreStatusDescription = ({ status }: { status: StoreStatus }) => {
+  switch (status) {
+    case "disabled": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.disabled_description" />
+      );
+    }
+    case "incomplete": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.incomplete_description" />
+      );
+    }
+    case "ready": {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.ready_description" />
+      );
+    }
+    default: {
+      return (
+        <ClientMessage message="admin.settings.store_payment.status.unset_description" />
+      );
+    }
+  }
 };
 
 const StoreStatusLine = ({ status }: { status: StoreStatus }) => (
   <div className="flex flex-wrap items-center gap-3">
     <StatusChip status={statusTone[status]}>
-      <ClientMessage message={storeStatusLabelKey[status]} />
+      <StoreStatusLabel status={status} />
     </StatusChip>
     <p className="text-sm text-muted-foreground">
-      <ClientMessage message={statusDescriptionKey[status]} />
+      <StoreStatusDescription status={status} />
     </p>
   </div>
 );

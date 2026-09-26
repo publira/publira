@@ -22,7 +22,6 @@ export {
   emptyTenantPaymentSettings,
   PAYMENT_PROVIDER_STRIPE,
   paymentSettingsStatus,
-  paymentSettingsStatusCopy,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
 } from "./payment-settings-shared";

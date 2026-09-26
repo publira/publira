@@ -222,11 +222,9 @@ const MfaStatusSummary = ({ status }: MfaSettingsCardProps) => {
   return (
     <div className="grid gap-1">
       <p className="text-sm text-foreground">
-        {t(
-          status.enabled
-            ? "admin.settings.mfa.status_enabled"
-            : "admin.settings.mfa.status_disabled"
-        )}
+        {status.enabled
+          ? t("admin.settings.mfa.status_enabled")
+          : t("admin.settings.mfa.status_disabled")}
       </p>
       {status.required ? (
         <p className="text-xs text-muted-foreground">

@@ -41,10 +41,12 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { AdminClientMessageKey } from "#lib/messages";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { ThemeSettingsActionState } from "../branding-types";
+import type {
+  ThemeSettingsActionState,
+  ThemeSettingsFieldErrors,
+} from "../branding-types";
 import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
 interface ThemeSettingsFormProps {
@@ -100,229 +102,35 @@ const ColorSwatchInput = ({ name, value, onChange }: ColorSwatchInputProps) => {
 type ColorKey = keyof TenantThemeColors;
 type FontFamilyKey = keyof TenantThemeFontFamilies;
 
-interface ColorFieldConfig {
-  key: ColorKey;
-  formName: string;
-  labelKey: AdminClientMessageKey;
-  descriptionKey?: AdminClientMessageKey;
-  inlineWithNext?: boolean;
-}
+/**
+ * A color field's control: the swatch for `field`, the description the caller
+ * writes as `children`, and the error the Action returned for that field.
+ */
+const ThemeColorControl = ({
+  children,
+  errors,
+  field,
+  name,
+  onChange,
+  theme,
+}: {
+  children: ReactNode;
+  errors: ThemeSettingsFieldErrors | undefined;
+  field: ColorKey;
+  name: string;
+  onChange: ColorSwatchInputProps["onChange"];
+  theme: TenantTheme;
+}) => {
+  const error = errors?.[field];
 
-const colorGroups: {
-  titleKey: AdminClientMessageKey;
-  descriptionKey: AdminClientMessageKey;
-  fields: ColorFieldConfig[];
-}[] = [
-  {
-    descriptionKey: "admin.settings.theme.groups.brand.description",
-    fields: [
-      {
-        descriptionKey: "admin.settings.theme.colors.primary.description",
-        formName: "primary_color",
-        inlineWithNext: true,
-        key: "primaryColor",
-        labelKey: "admin.settings.theme.colors.primary.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.primary_foreground.description",
-        formName: "primary_foreground_color",
-        key: "primaryForegroundColor",
-        labelKey: "admin.settings.theme.colors.primary_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.secondary.description",
-        formName: "secondary_color",
-        inlineWithNext: true,
-        key: "secondaryColor",
-        labelKey: "admin.settings.theme.colors.secondary.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.secondary_foreground.description",
-        formName: "secondary_foreground_color",
-        key: "secondaryForegroundColor",
-        labelKey: "admin.settings.theme.colors.secondary_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.accent.description",
-        formName: "accent_color",
-        inlineWithNext: true,
-        key: "accentColor",
-        labelKey: "admin.settings.theme.colors.accent.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.accent_foreground.description",
-        formName: "accent_foreground_color",
-        key: "accentForegroundColor",
-        labelKey: "admin.settings.theme.colors.accent_foreground.label",
-      },
-    ],
-    titleKey: "admin.settings.theme.groups.brand.title",
-  },
-  {
-    descriptionKey: "admin.settings.theme.groups.surface.description",
-    fields: [
-      {
-        descriptionKey: "admin.settings.theme.colors.background.description",
-        formName: "background_color",
-        inlineWithNext: true,
-        key: "backgroundColor",
-        labelKey: "admin.settings.theme.colors.background.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.foreground.description",
-        formName: "foreground_color",
-        key: "foregroundColor",
-        labelKey: "admin.settings.theme.colors.foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.surface.description",
-        formName: "surface_color",
-        inlineWithNext: true,
-        key: "surfaceColor",
-        labelKey: "admin.settings.theme.colors.surface.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.surface_foreground.description",
-        formName: "surface_foreground_color",
-        key: "surfaceForegroundColor",
-        labelKey: "admin.settings.theme.colors.surface_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.card.description",
-        formName: "card_color",
-        inlineWithNext: true,
-        key: "cardColor",
-        labelKey: "admin.settings.theme.colors.card.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.card_foreground.description",
-        formName: "card_foreground_color",
-        key: "cardForegroundColor",
-        labelKey: "admin.settings.theme.colors.card_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.popover.description",
-        formName: "popover_color",
-        inlineWithNext: true,
-        key: "popoverColor",
-        labelKey: "admin.settings.theme.colors.popover.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.popover_foreground.description",
-        formName: "popover_foreground_color",
-        key: "popoverForegroundColor",
-        labelKey: "admin.settings.theme.colors.popover_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.muted.description",
-        formName: "muted_color",
-        inlineWithNext: true,
-        key: "mutedColor",
-        labelKey: "admin.settings.theme.colors.muted.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.muted_foreground.description",
-        formName: "muted_foreground_color",
-        key: "mutedForegroundColor",
-        labelKey: "admin.settings.theme.colors.muted_foreground.label",
-      },
-    ],
-    titleKey: "admin.settings.theme.groups.surface.title",
-  },
-  {
-    descriptionKey: "admin.settings.theme.groups.ui.description",
-    fields: [
-      {
-        descriptionKey: "admin.settings.theme.colors.border.description",
-        formName: "border_color",
-        key: "borderColor",
-        labelKey: "admin.settings.theme.colors.border.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.input.description",
-        formName: "input_color",
-        key: "inputColor",
-        labelKey: "admin.settings.theme.colors.input.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.ring.description",
-        formName: "ring_color",
-        key: "ringColor",
-        labelKey: "admin.settings.theme.colors.ring.label",
-      },
-    ],
-    titleKey: "admin.settings.theme.groups.ui.title",
-  },
-  {
-    descriptionKey: "admin.settings.theme.groups.status.description",
-    fields: [
-      {
-        descriptionKey: "admin.settings.theme.colors.success.description",
-        formName: "success_color",
-        inlineWithNext: true,
-        key: "successColor",
-        labelKey: "admin.settings.theme.colors.success.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.success_foreground.description",
-        formName: "success_foreground_color",
-        key: "successForegroundColor",
-        labelKey: "admin.settings.theme.colors.success_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.warning.description",
-        formName: "warning_color",
-        inlineWithNext: true,
-        key: "warningColor",
-        labelKey: "admin.settings.theme.colors.warning.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.warning_foreground.description",
-        formName: "warning_foreground_color",
-        key: "warningForegroundColor",
-        labelKey: "admin.settings.theme.colors.warning_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.destructive.description",
-        formName: "destructive_color",
-        inlineWithNext: true,
-        key: "destructiveColor",
-        labelKey: "admin.settings.theme.colors.destructive.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.destructive_foreground.description",
-        formName: "destructive_foreground_color",
-        key: "destructiveForegroundColor",
-        labelKey: "admin.settings.theme.colors.destructive_foreground.label",
-      },
-      {
-        descriptionKey: "admin.settings.theme.colors.info.description",
-        formName: "info_color",
-        inlineWithNext: true,
-        key: "infoColor",
-        labelKey: "admin.settings.theme.colors.info.label",
-      },
-      {
-        descriptionKey:
-          "admin.settings.theme.colors.info_foreground.description",
-        formName: "info_foreground_color",
-        key: "infoForegroundColor",
-        labelKey: "admin.settings.theme.colors.info_foreground.label",
-      },
-    ],
-    titleKey: "admin.settings.theme.groups.status.title",
-  },
-];
+  return (
+    <FieldContent>
+      <ColorSwatchInput name={name} onChange={onChange} value={theme[field]} />
+      {children}
+      {error ? <FormMessage variant="destructive">{error}</FormMessage> : null}
+    </FieldContent>
+  );
+};
 
 const applyThemePreview = (theme: TenantTheme) => {
   if (typeof document === "undefined") {
@@ -340,7 +148,6 @@ export const ThemeSettingsForm = ({
   initialTheme,
   preview,
 }: ThemeSettingsFormProps) => {
-  const t = useClientMessages();
   const tenantId = useTenantId();
   // Seeded once per mount; submitting is what replaces it, with the palette the
   // server stored — normalization included, so the pickers show what a reload
@@ -468,106 +275,521 @@ export const ThemeSettingsForm = ({
                 </div>
               </AdminSection>
 
-              {colorGroups.map((group) => (
-                <AdminSection key={group.titleKey}>
-                  <AdminSectionHeader>
-                    <AdminSectionHeading>
-                      <AdminSectionTitle>{t(group.titleKey)}</AdminSectionTitle>
-                      <AdminSectionDescription>
-                        {t(group.descriptionKey)}
-                      </AdminSectionDescription>
-                    </AdminSectionHeading>
-                  </AdminSectionHeader>
-                  <div className="grid gap-5 sm:max-w-3xl">
-                    {group.fields.map((field, index) => {
-                      if (
-                        index > 0 &&
-                        group.fields[index - 1]?.inlineWithNext
-                      ) {
-                        return null;
-                      }
-
-                      if (field.inlineWithNext && group.fields[index + 1]) {
-                        const pair = group.fields[index + 1];
-                        return (
-                          <div
-                            className="grid gap-5 md:grid-cols-2"
-                            key={`${field.key}-${pair.key}`}
-                          >
-                            <Field>
-                              <FieldLabel required>
-                                {t(field.labelKey)}
-                              </FieldLabel>
-                              <FieldContent>
-                                <ColorSwatchInput
-                                  name={field.formName}
-                                  onChange={createHandler(field.key)}
-                                  value={theme[field.key]}
-                                />
-                                {field.descriptionKey ? (
-                                  <FieldDescription>
-                                    {t(field.descriptionKey)}
-                                  </FieldDescription>
-                                ) : null}
-                                {fieldErrors?.[field.key] ? (
-                                  <FormMessage variant="destructive">
-                                    {fieldErrors[field.key]}
-                                  </FormMessage>
-                                ) : null}
-                              </FieldContent>
-                            </Field>
-                            <Field>
-                              <FieldLabel required>
-                                {t(pair.labelKey)}
-                              </FieldLabel>
-                              <FieldContent>
-                                <ColorSwatchInput
-                                  name={pair.formName}
-                                  onChange={createHandler(pair.key)}
-                                  value={theme[pair.key]}
-                                />
-                                {pair.descriptionKey ? (
-                                  <FieldDescription>
-                                    {t(pair.descriptionKey)}
-                                  </FieldDescription>
-                                ) : null}
-                                {fieldErrors?.[pair.key] ? (
-                                  <FormMessage variant="destructive">
-                                    {fieldErrors[pair.key]}
-                                  </FormMessage>
-                                ) : null}
-                              </FieldContent>
-                            </Field>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <Field key={field.key}>
-                          <FieldLabel required>{t(field.labelKey)}</FieldLabel>
-                          <FieldContent>
-                            <ColorSwatchInput
-                              name={field.formName}
-                              onChange={createHandler(field.key)}
-                              value={theme[field.key]}
-                            />
-                            {field.descriptionKey ? (
-                              <FieldDescription>
-                                {t(field.descriptionKey)}
-                              </FieldDescription>
-                            ) : null}
-                            {fieldErrors?.[field.key] ? (
-                              <FormMessage variant="destructive">
-                                {fieldErrors[field.key]}
-                              </FormMessage>
-                            ) : null}
-                          </FieldContent>
-                        </Field>
-                      );
-                    })}
+              <AdminSection>
+                <AdminSectionHeader>
+                  <AdminSectionHeading>
+                    <AdminSectionTitle>
+                      <ClientMessage message="admin.settings.theme.groups.brand.title" />
+                    </AdminSectionTitle>
+                    <AdminSectionDescription>
+                      <ClientMessage message="admin.settings.theme.groups.brand.description" />
+                    </AdminSectionDescription>
+                  </AdminSectionHeading>
+                </AdminSectionHeader>
+                <div className="grid gap-5 sm:max-w-3xl">
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.primary.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="primaryColor"
+                        name="primary_color"
+                        onChange={createHandler("primaryColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.primary.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.primary_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="primaryForegroundColor"
+                        name="primary_foreground_color"
+                        onChange={createHandler("primaryForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.primary_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
                   </div>
-                </AdminSection>
-              ))}
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.secondary.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="secondaryColor"
+                        name="secondary_color"
+                        onChange={createHandler("secondaryColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.secondary.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.secondary_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="secondaryForegroundColor"
+                        name="secondary_foreground_color"
+                        onChange={createHandler("secondaryForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.secondary_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.accent.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="accentColor"
+                        name="accent_color"
+                        onChange={createHandler("accentColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.accent.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.accent_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="accentForegroundColor"
+                        name="accent_foreground_color"
+                        onChange={createHandler("accentForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.accent_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                </div>
+              </AdminSection>
+
+              <AdminSection>
+                <AdminSectionHeader>
+                  <AdminSectionHeading>
+                    <AdminSectionTitle>
+                      <ClientMessage message="admin.settings.theme.groups.surface.title" />
+                    </AdminSectionTitle>
+                    <AdminSectionDescription>
+                      <ClientMessage message="admin.settings.theme.groups.surface.description" />
+                    </AdminSectionDescription>
+                  </AdminSectionHeading>
+                </AdminSectionHeader>
+                <div className="grid gap-5 sm:max-w-3xl">
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.background.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="backgroundColor"
+                        name="background_color"
+                        onChange={createHandler("backgroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.background.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="foregroundColor"
+                        name="foreground_color"
+                        onChange={createHandler("foregroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.surface.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="surfaceColor"
+                        name="surface_color"
+                        onChange={createHandler("surfaceColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.surface.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.surface_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="surfaceForegroundColor"
+                        name="surface_foreground_color"
+                        onChange={createHandler("surfaceForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.surface_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.card.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="cardColor"
+                        name="card_color"
+                        onChange={createHandler("cardColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.card.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.card_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="cardForegroundColor"
+                        name="card_foreground_color"
+                        onChange={createHandler("cardForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.card_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.popover.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="popoverColor"
+                        name="popover_color"
+                        onChange={createHandler("popoverColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.popover.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.popover_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="popoverForegroundColor"
+                        name="popover_foreground_color"
+                        onChange={createHandler("popoverForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.popover_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.muted.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="mutedColor"
+                        name="muted_color"
+                        onChange={createHandler("mutedColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.muted.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.muted_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="mutedForegroundColor"
+                        name="muted_foreground_color"
+                        onChange={createHandler("mutedForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.muted_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                </div>
+              </AdminSection>
+
+              <AdminSection>
+                <AdminSectionHeader>
+                  <AdminSectionHeading>
+                    <AdminSectionTitle>
+                      <ClientMessage message="admin.settings.theme.groups.ui.title" />
+                    </AdminSectionTitle>
+                    <AdminSectionDescription>
+                      <ClientMessage message="admin.settings.theme.groups.ui.description" />
+                    </AdminSectionDescription>
+                  </AdminSectionHeading>
+                </AdminSectionHeader>
+                <div className="grid gap-5 sm:max-w-3xl">
+                  <Field>
+                    <FieldLabel required>
+                      <ClientMessage message="admin.settings.theme.colors.border.label" />
+                    </FieldLabel>
+                    <ThemeColorControl
+                      errors={fieldErrors}
+                      field="borderColor"
+                      name="border_color"
+                      onChange={createHandler("borderColor")}
+                      theme={theme}
+                    >
+                      <FieldDescription>
+                        <ClientMessage message="admin.settings.theme.colors.border.description" />
+                      </FieldDescription>
+                    </ThemeColorControl>
+                  </Field>
+                  <Field>
+                    <FieldLabel required>
+                      <ClientMessage message="admin.settings.theme.colors.input.label" />
+                    </FieldLabel>
+                    <ThemeColorControl
+                      errors={fieldErrors}
+                      field="inputColor"
+                      name="input_color"
+                      onChange={createHandler("inputColor")}
+                      theme={theme}
+                    >
+                      <FieldDescription>
+                        <ClientMessage message="admin.settings.theme.colors.input.description" />
+                      </FieldDescription>
+                    </ThemeColorControl>
+                  </Field>
+                  <Field>
+                    <FieldLabel required>
+                      <ClientMessage message="admin.settings.theme.colors.ring.label" />
+                    </FieldLabel>
+                    <ThemeColorControl
+                      errors={fieldErrors}
+                      field="ringColor"
+                      name="ring_color"
+                      onChange={createHandler("ringColor")}
+                      theme={theme}
+                    >
+                      <FieldDescription>
+                        <ClientMessage message="admin.settings.theme.colors.ring.description" />
+                      </FieldDescription>
+                    </ThemeColorControl>
+                  </Field>
+                </div>
+              </AdminSection>
+
+              <AdminSection>
+                <AdminSectionHeader>
+                  <AdminSectionHeading>
+                    <AdminSectionTitle>
+                      <ClientMessage message="admin.settings.theme.groups.status.title" />
+                    </AdminSectionTitle>
+                    <AdminSectionDescription>
+                      <ClientMessage message="admin.settings.theme.groups.status.description" />
+                    </AdminSectionDescription>
+                  </AdminSectionHeading>
+                </AdminSectionHeader>
+                <div className="grid gap-5 sm:max-w-3xl">
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.success.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="successColor"
+                        name="success_color"
+                        onChange={createHandler("successColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.success.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.success_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="successForegroundColor"
+                        name="success_foreground_color"
+                        onChange={createHandler("successForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.success_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.warning.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="warningColor"
+                        name="warning_color"
+                        onChange={createHandler("warningColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.warning.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.warning_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="warningForegroundColor"
+                        name="warning_foreground_color"
+                        onChange={createHandler("warningForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.warning_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.destructive.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="destructiveColor"
+                        name="destructive_color"
+                        onChange={createHandler("destructiveColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.destructive.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.destructive_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="destructiveForegroundColor"
+                        name="destructive_foreground_color"
+                        onChange={createHandler("destructiveForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.destructive_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.info.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="infoColor"
+                        name="info_color"
+                        onChange={createHandler("infoColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.info.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                    <Field>
+                      <FieldLabel required>
+                        <ClientMessage message="admin.settings.theme.colors.info_foreground.label" />
+                      </FieldLabel>
+                      <ThemeColorControl
+                        errors={fieldErrors}
+                        field="infoForegroundColor"
+                        name="info_foreground_color"
+                        onChange={createHandler("infoForegroundColor")}
+                        theme={theme}
+                      >
+                        <FieldDescription>
+                          <ClientMessage message="admin.settings.theme.colors.info_foreground.description" />
+                        </FieldDescription>
+                      </ThemeColorControl>
+                    </Field>
+                  </div>
+                </div>
+              </AdminSection>
             </Fieldset>
 
             {state ? (
