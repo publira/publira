@@ -178,27 +178,33 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 const DeleteTenantReader = `-- name: DeleteTenantReader :one
 DELETE FROM users
 WHERE users.tenant_id = $1
-    AND users.public_id = $2
+    AND users.id = $2
     AND NOT EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
         WHERE tur.user_id = users.id
     )
-RETURNING users.id
+RETURNING users.id,
+    users.public_id
 `
 
 type DeleteTenantReaderParams struct {
 	TenantID uuid.NullUUID `json:"tenant_id"`
-	PublicID string        `json:"public_id"`
+	ID       uuid.UUID     `json:"id"`
+}
+
+type DeleteTenantReaderRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
 }
 
 // Hard delete, as DeleteUserByID. A staff account and another tenant's are no
 // rows.
-func (q *Queries) DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, DeleteTenantReader, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error) {
+	row := q.db.QueryRowContext(ctx, DeleteTenantReader, arg.TenantID, arg.ID)
+	var i DeleteTenantReaderRow
+	err := row.Scan(&i.ID, &i.PublicID)
+	return i, err
 }
 
 const DeleteTenantUserRolesByUserID = `-- name: DeleteTenantUserRolesByUserID :exec
@@ -220,6 +226,59 @@ WHERE id = $1
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, DeleteUserByID, id)
 	return err
+}
+
+const GetTenantReaderByID = `-- name: GetTenantReaderByID :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    u.birth_date
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+`
+
+type GetTenantReaderByIDParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	ID       uuid.UUID     `json:"id"`
+}
+
+type GetTenantReaderByIDRow struct {
+	ID              uuid.UUID    `json:"id"`
+	PublicID        string       `json:"public_id"`
+	Name            string       `json:"name"`
+	Email           string       `json:"email"`
+	Status          string       `json:"status"`
+	CreatedAt       time.Time    `json:"created_at"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+	BirthDate       sql.NullTime `json:"birth_date"`
+}
+
+// GetTenantReaderByPublicID keyed by the primary key. A staff account and an
+// account of another tenant are both no rows.
+func (q *Queries) GetTenantReaderByID(ctx context.Context, arg GetTenantReaderByIDParams) (GetTenantReaderByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantReaderByID, arg.TenantID, arg.ID)
+	var i GetTenantReaderByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.BirthDate,
+	)
+	return i, err
 }
 
 const GetTenantReaderByPublicID = `-- name: GetTenantReaderByPublicID :one
@@ -1450,7 +1509,7 @@ const SetTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one
 UPDATE users
 SET birth_date = $1::date
 WHERE users.tenant_id = $2
-    AND users.public_id = $3
+    AND users.id = $3
     AND users.birth_date IS DISTINCT FROM $1::date
     AND NOT EXISTS (
         SELECT 1
@@ -1470,7 +1529,7 @@ RETURNING users.id,
 type SetTenantReaderBirthDateParams struct {
 	BirthDate sql.NullTime  `json:"birth_date"`
 	TenantID  uuid.NullUUID `json:"tenant_id"`
-	PublicID  string        `json:"public_id"`
+	ID        uuid.UUID     `json:"id"`
 }
 
 type SetTenantReaderBirthDateRow struct {
@@ -1488,7 +1547,7 @@ type SetTenantReaderBirthDateRow struct {
 // SetUserBirthDateByID. Writing the date already stored is no rows, like a
 // staff account and another tenant's.
 func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantReaderBirthDateParams) (SetTenantReaderBirthDateRow, error) {
-	row := q.db.QueryRowContext(ctx, SetTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, SetTenantReaderBirthDate, arg.BirthDate, arg.TenantID, arg.ID)
 	var i SetTenantReaderBirthDateRow
 	err := row.Scan(
 		&i.ID,
@@ -1544,7 +1603,7 @@ UPDATE users
 SET status = 'suspended',
     credentials_version = credentials_version + 1
 WHERE users.tenant_id = $1
-    AND users.public_id = $2
+    AND users.id = $2
     AND users.status <> 'suspended'
     AND NOT EXISTS (
         SELECT 1
@@ -1563,7 +1622,7 @@ RETURNING users.id,
 
 type SuspendTenantReaderParams struct {
 	TenantID uuid.NullUUID `json:"tenant_id"`
-	PublicID string        `json:"public_id"`
+	ID       uuid.UUID     `json:"id"`
 }
 
 type SuspendTenantReaderRow struct {
@@ -1580,7 +1639,7 @@ type SuspendTenantReaderRow struct {
 // Suspends a reader and invalidates the sessions they hold. A reader who is
 // already suspended is no rows, like a staff account and another tenant's.
 func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantReaderParams) (SuspendTenantReaderRow, error) {
-	row := q.db.QueryRowContext(ctx, SuspendTenantReader, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, SuspendTenantReader, arg.TenantID, arg.ID)
 	var i SuspendTenantReaderRow
 	err := row.Scan(
 		&i.ID,
@@ -1599,7 +1658,7 @@ const UnsuspendTenantReader = `-- name: UnsuspendTenantReader :one
 UPDATE users
 SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
 WHERE users.tenant_id = $1
-    AND users.public_id = $2
+    AND users.id = $2
     AND users.status = 'suspended'
     AND NOT EXISTS (
         SELECT 1
@@ -1618,7 +1677,7 @@ RETURNING users.id,
 
 type UnsuspendTenantReaderParams struct {
 	TenantID uuid.NullUUID `json:"tenant_id"`
-	PublicID string        `json:"public_id"`
+	ID       uuid.UUID     `json:"id"`
 }
 
 type UnsuspendTenantReaderRow struct {
@@ -1635,7 +1694,7 @@ type UnsuspendTenantReaderRow struct {
 // A reader who never confirmed their address goes back to inactive, the state
 // VerifyUserEmail activates. A reader who is not suspended is no rows.
 func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenantReaderParams) (UnsuspendTenantReaderRow, error) {
-	row := q.db.QueryRowContext(ctx, UnsuspendTenantReader, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, UnsuspendTenantReader, arg.TenantID, arg.ID)
 	var i UnsuspendTenantReaderRow
 	err := row.Scan(
 		&i.ID,

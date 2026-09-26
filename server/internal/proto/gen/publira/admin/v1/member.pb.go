@@ -34,6 +34,7 @@ type TenantMember struct {
 	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	// RFC3339
 	CreatedAt     string `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UserId        string `protobuf:"bytes,7,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,6 +107,13 @@ func (x *TenantMember) GetStatus() string {
 func (x *TenantMember) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *TenantMember) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -242,7 +250,10 @@ type UpdateTenantMemberRoleRequest struct {
 	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	UserPublicId string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	// tenant_admin | tenant_editor | tenant_auditor
-	Role          string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// The member's internal user ID. Takes precedence over user_public_id when
+	// set.
+	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,6 +309,13 @@ func (x *UpdateTenantMemberRoleRequest) GetRole() string {
 	return ""
 }
 
+func (x *UpdateTenantMemberRoleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type UpdateTenantMemberRoleResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Member        *TenantMember          `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
@@ -346,9 +364,12 @@ func (x *UpdateTenantMemberRoleResponse) GetMember() *TenantMember {
 // tenant. Removing the tenant's last active tenant_admin is refused with
 // FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
 type RemoveTenantMemberRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	UserPublicId  string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Tenant       *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	UserPublicId string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	// The member's internal user ID. Takes precedence over user_public_id when
+	// set.
+	UserId        string `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -397,9 +418,17 @@ func (x *RemoveTenantMemberRequest) GetUserPublicId() string {
 	return ""
 }
 
+func (x *RemoveTenantMemberRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type RemoveTenantMemberResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserPublicId  string                 `protobuf:"bytes,1,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -437,6 +466,13 @@ func (*RemoveTenantMemberResponse) Descriptor() ([]byte, []int) {
 func (x *RemoveTenantMemberResponse) GetUserPublicId() string {
 	if x != nil {
 		return x.UserPublicId
+	}
+	return ""
+}
+
+func (x *RemoveTenantMemberResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -967,7 +1003,7 @@ var File_publira_admin_v1_member_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_member_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/member.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xa9\x01\n" +
+	"\x1dpublira/admin/v1/member.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xc2\x01\n" +
 	"\fTenantMember\x12$\n" +
 	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -975,7 +1011,8 @@ const file_publira_admin_v1_member_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x7f\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\auser_id\x18\a \x01(\tR\x06userId\"\x7f\n" +
 	"\x18ListTenantMembersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -984,18 +1021,21 @@ const file_publira_admin_v1_member_proto_rawDesc = "" +
 	"\amembers\x18\x01 \x03(\v2\x1e.publira.admin.v1.TenantMemberR\amembers\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x92\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xab\x01\n" +
 	"\x1dUpdateTenantMemberRoleRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"X\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"X\n" +
 	"\x1eUpdateTenantMemberRoleResponse\x126\n" +
-	"\x06member\x18\x01 \x01(\v2\x1e.publira.admin.v1.TenantMemberR\x06member\"z\n" +
+	"\x06member\x18\x01 \x01(\v2\x1e.publira.admin.v1.TenantMemberR\x06member\"\x93\x01\n" +
 	"\x19RemoveTenantMemberRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\"B\n" +
+	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"[\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
-	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"\xd5\x01\n" +
+	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xd5\x01\n" +
 	"\x15TenantAdminInvitation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x16\n" +

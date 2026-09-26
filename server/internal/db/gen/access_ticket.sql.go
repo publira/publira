@@ -75,7 +75,7 @@ func (q *Queries) CreateAccessTicket(ctx context.Context, arg CreateAccessTicket
 	return i, err
 }
 
-const GetAccessTicketByPublicIDForTenant = `-- name: GetAccessTicketByPublicIDForTenant :one
+const GetAccessTicketForTenant = `-- name: GetAccessTicketForTenant :one
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -98,16 +98,16 @@ FROM access_tickets at
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
-    AND at.public_id = $2
+    AND at.id = $2
 LIMIT 1
 `
 
-type GetAccessTicketByPublicIDForTenantParams struct {
+type GetAccessTicketForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
-type GetAccessTicketByPublicIDForTenantRow struct {
+type GetAccessTicketForTenantRow struct {
 	ID              uuid.UUID      `json:"id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	PublicID        string         `json:"public_id"`
@@ -127,9 +127,9 @@ type GetAccessTicketByPublicIDForTenantRow struct {
 	CreatedAt       time.Time      `json:"created_at"`
 }
 
-func (q *Queries) GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i GetAccessTicketByPublicIDForTenantRow
+func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetAccessTicketForTenant, arg.TenantID, arg.ID)
+	var i GetAccessTicketForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -150,6 +150,25 @@ func (q *Queries) GetAccessTicketByPublicIDForTenant(ctx context.Context, arg Ge
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const GetAccessTicketIDByPublicIDForTenant = `-- name: GetAccessTicketIDByPublicIDForTenant :one
+SELECT id
+FROM access_tickets
+WHERE tenant_id = $1
+    AND public_id = $2
+`
+
+type GetAccessTicketIDByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) GetAccessTicketIDByPublicIDForTenant(ctx context.Context, arg GetAccessTicketIDByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetAccessTicketIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const GetNonRevokedAccessTicketForUserEpisode = `-- name: GetNonRevokedAccessTicketForUserEpisode :one
@@ -480,11 +499,11 @@ func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAc
 	return items, nil
 }
 
-const RevokeAccessTicketByPublicIDForTenant = `-- name: RevokeAccessTicketByPublicIDForTenant :one
+const RevokeAccessTicketForTenant = `-- name: RevokeAccessTicketForTenant :one
 UPDATE access_tickets
 SET revoked_at = NOW()
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
     AND revoked_at IS NULL
 RETURNING id,
     tenant_id,
@@ -498,13 +517,13 @@ RETURNING id,
     created_at
 `
 
-type RevokeAccessTicketByPublicIDForTenantParams struct {
+type RevokeAccessTicketForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
-func (q *Queries) RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error) {
-	row := q.db.QueryRowContext(ctx, RevokeAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
+func (q *Queries) RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error) {
+	row := q.db.QueryRowContext(ctx, RevokeAccessTicketForTenant, arg.TenantID, arg.ID)
 	var i AccessTicket
 	err := row.Scan(
 		&i.ID,

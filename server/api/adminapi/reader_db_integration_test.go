@@ -201,7 +201,7 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 		t.Fatalf("GetReader: %v", err)
 	}
 	got := res.Msg.Reader
-	if got.PublicId != reader.PublicID || got.Name != "Reader" || got.Email != "reader@reader-get.example.com" || got.Status != "active" {
+	if got.Id != reader.ID.String() || got.PublicId != reader.PublicID || got.Name != "Reader" || got.Email != "reader@reader-get.example.com" || got.Status != "active" {
 		t.Fatalf("reader = %+v, want the seeded active reader", got)
 	}
 	if got.CreatedAt == "" || got.EmailVerifiedAt == "" || got.BirthDate != "2000-01-02" {
@@ -241,25 +241,25 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 	}
 	if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SuspendReaderRequest{
 		Tenant:   asEditor.tenantContext(),
-		PublicId: reader.PublicID,
+		ReaderId: reader.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendReader as an editor error = %v, want permission_denied", err)
 	}
 	if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.UnsuspendReaderRequest{
 		Tenant:   asEditor.tenantContext(),
-		PublicId: reader.PublicID,
+		ReaderId: reader.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("UnsuspendReader as an editor error = %v, want permission_denied", err)
 	}
 	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.DeleteReaderRequest{
 		Tenant:   asEditor.tenantContext(),
-		PublicId: reader.PublicID,
+		ReaderId: reader.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteReader as an editor error = %v, want permission_denied", err)
 	}
 	if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SetReaderBirthDateRequest{
 		Tenant:    asEditor.tenantContext(),
-		PublicId:  reader.PublicID,
+		ReaderId:  reader.ID.String(),
 		BirthDate: "1990-01-01",
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SetReaderBirthDate as an editor error = %v, want permission_denied", err)
@@ -303,7 +303,7 @@ func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
 		t.Helper()
 		res, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
-			PublicId: reader.PublicID,
+			ReaderId: reader.ID.String(),
 		}))
 		if err != nil {
 			t.Fatalf("SuspendReader: %v", err)
@@ -314,7 +314,7 @@ func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
 		t.Helper()
 		res, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
-			PublicId: reader.PublicID,
+			ReaderId: reader.ID.String(),
 		}))
 		if err != nil {
 			t.Fatalf("UnsuspendReader: %v", err)
@@ -355,7 +355,7 @@ func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDLREADER001", "reader@reader-delete.example.com", "Reader")
 	client := env.userClient()
 
-	req := &publiraadminv1.DeleteReaderRequest{Tenant: admin.tenantContext(), PublicId: reader.PublicID}
+	req := &publiraadminv1.DeleteReaderRequest{Tenant: admin.tenantContext(), ReaderId: reader.ID.String()}
 	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, req)); err != nil {
 		t.Fatalf("DeleteReader: %v", err)
 	}
@@ -390,7 +390,7 @@ func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {
 		t.Helper()
 		res, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
-			PublicId:  reader.PublicID,
+			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
 		}))
 		if err != nil {
@@ -438,7 +438,7 @@ func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) 
 	for _, birthDate := range []string{"1995-3-4", "1995-02-30", "04/03/1995", future, "1800-01-01"} {
 		_, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
-			PublicId:  reader.PublicID,
+			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -463,31 +463,31 @@ func TestDBAdminReaderActionsLeaveStaffAndOtherTenantsAlone(t *testing.T) {
 	outsider := env.PG.SeedEndUser(t, other.Tenant.ID, "RSOREADER001", "reader@reader-scope-other.example.com", "Outsider")
 	client := env.userClient()
 
-	for _, publicID := range []string{editor.PublicID, outsider.PublicID, admin.User.PublicID, "NOSUCHREADER"} {
+	for _, readerID := range []string{editor.ID.String(), outsider.ID.String(), admin.User.ID.String(), uuid.Must(uuid.NewV7()).String()} {
 		if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
-			PublicId: publicID,
+			ReaderId: readerID,
 		})); connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("SuspendReader %s error = %v, want not_found", publicID, err)
+			t.Fatalf("SuspendReader %s error = %v, want not_found", readerID, err)
 		}
 		if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
-			PublicId: publicID,
+			ReaderId: readerID,
 		})); connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("UnsuspendReader %s error = %v, want not_found", publicID, err)
+			t.Fatalf("UnsuspendReader %s error = %v, want not_found", readerID, err)
 		}
 		if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
 			Tenant:   admin.tenantContext(),
-			PublicId: publicID,
+			ReaderId: readerID,
 		})); connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("DeleteReader %s error = %v, want not_found", publicID, err)
+			t.Fatalf("DeleteReader %s error = %v, want not_found", readerID, err)
 		}
 		if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
-			PublicId:  publicID,
+			ReaderId:  readerID,
 			BirthDate: "1990-01-01",
 		})); connect.CodeOf(err) != connect.CodeNotFound {
-			t.Fatalf("SetReaderBirthDate %s error = %v, want not_found", publicID, err)
+			t.Fatalf("SetReaderBirthDate %s error = %v, want not_found", readerID, err)
 		}
 	}
 
@@ -539,5 +539,35 @@ func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {
 	}
 	if got := adminCommentPublicIDs(fixture.list(t, &publiraadminv1.ListCommentsRequest{AuthorPublicId: "NOSUCHREADER"}).Comments); len(got) != 0 {
 		t.Fatalf("unknown author list = %v, want an empty page", got)
+	}
+}
+
+// Until every client sends reader_id, a reader action still resolves the
+// reader a public ID names.
+func TestDBAdminReaderActionsResolveAPublicID(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RPITENANT001", "reader-public-id.example.com", "Public", "RPIADMIN0001", "admin@reader-public-id.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RPIREADER001", "reader@reader-public-id.example.com", "Reader")
+	client := env.userClient()
+
+	res, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		Tenant:   admin.tenantContext(),
+		PublicId: reader.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("SuspendReader: %v", err)
+	}
+	if res.Msg.Reader.Id != reader.ID.String() || res.Msg.Reader.Status != "suspended" {
+		t.Fatalf("reader = %+v, want %s suspended", res.Msg.Reader, reader.ID)
+	}
+	deleted, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		PublicId: reader.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("DeleteReader: %v", err)
+	}
+	if deleted.Msg.ReaderId != reader.ID.String() || deleted.Msg.PublicId != reader.PublicID {
+		t.Fatalf("DeleteReader response = %+v, want %s / %s", deleted.Msg, reader.ID, reader.PublicID)
 	}
 }

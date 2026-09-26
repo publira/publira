@@ -86,11 +86,11 @@ func TestDBTenantMemberRPCsRefuseSessionsThatAreNotTenantAdmin(t *testing.T) {
 				return err
 			},
 			"UpdateTenantMemberRole": func() error {
-				_, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(as, &publiraadminv1.UpdateTenantMemberRoleRequest{Tenant: as.tenantContext(), UserPublicId: seat.PublicID, Role: auth.RoleTenantAdmin}))
+				_, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(as, &publiraadminv1.UpdateTenantMemberRoleRequest{Tenant: as.tenantContext(), UserId: seat.ID.String(), Role: auth.RoleTenantAdmin}))
 				return err
 			},
 			"RemoveTenantMember": func() error {
-				_, err := client.RemoveTenantMember(ctx, newAdminDBRequest(as, &publiraadminv1.RemoveTenantMemberRequest{Tenant: as.tenantContext(), UserPublicId: tenant.User.PublicID}))
+				_, err := client.RemoveTenantMember(ctx, newAdminDBRequest(as, &publiraadminv1.RemoveTenantMemberRequest{Tenant: as.tenantContext(), UserId: tenant.User.ID.String()}))
 				return err
 			},
 			"ListTenantAdminInvitations": func() error {
@@ -159,13 +159,13 @@ func TestDBTenantMemberRPCsStayInsideTheCallingTenant(t *testing.T) {
 	}
 
 	_, err = client.UpdateTenantMemberRole(ctx, newAdminDBRequest(first, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: first.tenantContext(), UserPublicId: secondEditor.PublicID, Role: auth.RoleTenantAdmin,
+		Tenant: first.tenantContext(), UserId: secondEditor.ID.String(), Role: auth.RoleTenantAdmin,
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateTenantMemberRole on tenant B's member: code = %v, want not_found", connect.CodeOf(err))
 	}
 	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(first, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: first.tenantContext(), UserPublicId: secondEditor.PublicID,
+		Tenant: first.tenantContext(), UserId: secondEditor.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("RemoveTenantMember on tenant B's member: code = %v, want not_found", connect.CodeOf(err))
@@ -198,11 +198,11 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: tenant.User.PublicID, Role: auth.RoleTenantEditor,
+		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(), Role: auth.RoleTenantEditor,
 	}))
 	requireLastTenantAdminRefusal(t, err)
 	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: tenant.User.PublicID,
+		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
 	}))
 	requireLastTenantAdminRefusal(t, err)
 
@@ -213,13 +213,13 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 		t.Fatalf("suspend second admin: %v", err)
 	}
 	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: tenant.User.PublicID,
+		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
 	}))
 	requireLastTenantAdminRefusal(t, err)
 
 	second := env.seedMember(t, tenant, "TASECOND", "second@tenant-a.example.com", auth.RoleTenantAdmin)
 	updated, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: second.PublicID, Role: auth.RoleTenantAuditor,
+		Tenant: tenant.tenantContext(), UserId: second.ID.String(), Role: auth.RoleTenantAuditor,
 	}))
 	if err != nil {
 		t.Fatalf("demote the second admin: %v", err)
@@ -228,18 +228,18 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 		t.Fatalf("member.role = %q, want %q", updated.Msg.Member.Role, auth.RoleTenantAuditor)
 	}
 	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: tenant.User.PublicID,
+		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
 	}))
 	requireLastTenantAdminRefusal(t, err)
 
 	// With another active administrator left, the caller may step down.
 	if _, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: second.PublicID, Role: auth.RoleTenantAdmin,
+		Tenant: tenant.tenantContext(), UserId: second.ID.String(), Role: auth.RoleTenantAdmin,
 	})); err != nil {
 		t.Fatalf("promote the second admin back: %v", err)
 	}
 	if _, err := client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: tenant.User.PublicID,
+		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
 	})); err != nil {
 		t.Fatalf("remove self with another admin left: %v", err)
 	}
@@ -259,12 +259,12 @@ func TestDBTenantMemberChangesAreAuditedUnderTheActingAdmin(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID, Role: auth.RoleTenantAuditor,
+		Tenant: tenant.tenantContext(), UserId: editor.ID.String(), Role: auth.RoleTenantAuditor,
 	})); err != nil {
 		t.Fatalf("UpdateTenantMemberRole: %v", err)
 	}
 	if _, err := client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
-		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID,
+		Tenant: tenant.tenantContext(), UserId: editor.ID.String(),
 	})); err != nil {
 		t.Fatalf("RemoveTenantMember: %v", err)
 	}
@@ -602,5 +602,33 @@ func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
 		if !created.Msg.RoleGrantedImmediately {
 			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created.Msg)
 		}
+	}
+}
+
+// Until every client sends user_id, a member request still resolves the member
+// a public ID names.
+func TestDBTenantMemberRPCsResolveAPublicID(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TMPTENANT001", "member-public-id.example.com", "Public", "TMPADMIN0001", "admin@member-public-id.example.com")
+	editor := env.seedMember(t, tenant, "TMPEDITOR001", "editor@member-public-id.example.com", auth.RoleTenantEditor)
+	client := env.tenantMemberClient()
+
+	updated, err := client.UpdateTenantMemberRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
+		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID, Role: auth.RoleTenantAuditor,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateTenantMemberRole: %v", err)
+	}
+	if updated.Msg.Member.UserId != editor.ID.String() || updated.Msg.Member.Role != auth.RoleTenantAuditor {
+		t.Fatalf("member = %+v, want %s as auditor", updated.Msg.Member, editor.ID)
+	}
+	removed, err := client.RemoveTenantMember(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+		Tenant: tenant.tenantContext(), UserPublicId: editor.PublicID,
+	}))
+	if err != nil {
+		t.Fatalf("RemoveTenantMember: %v", err)
+	}
+	if removed.Msg.UserId != editor.ID.String() {
+		t.Fatalf("removed user_id = %q, want %s", removed.Msg.UserId, editor.ID)
 	}
 }
