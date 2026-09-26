@@ -44,7 +44,7 @@ Loopback only: none of these services authenticates a caller, so they are never 
 
 ### Running `task setup` / `task dev` on the host
 
-The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.jsonc` passes `PUBLIRA_*` through, so exported values reach `task dev` as is.
+The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network. Outside the Dev Container, point them at loopback instead. `turbo.jsonc` passes `PUBLIRA_*` and `PNCH_*` through, so exported values reach `task dev` as is.
 
 ```bash
 export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
@@ -52,6 +52,8 @@ export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:543
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:5432/publira?sslmode=disable"
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:5432/publira?sslmode=disable"
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+# The same Redis for the web apps' @publira/next-cache-handlers
+export PNCH_REDIS_URL="redis://127.0.0.1:6379"
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
 export PUBLIRA_S3_BUCKET="publira"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"

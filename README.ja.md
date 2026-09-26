@@ -44,7 +44,7 @@ Dev Container も同じファイルを起動します。`.devcontainer/devcontai
 
 ### ホストで `task setup` / `task dev` を動かす
 
-`server/config` / `server/cmd/*` / `db/Taskfile.yaml` の既定値は Compose のサービス名（`db:5432`、`redis:6379`、`http://rustfs:9000`）を指しており、これは Compose ネットワークの中でしか解決できません。Dev Container の外ではループバックへ向け直してください。`turbo.jsonc` が `PUBLIRA_*` を通すので、export した値はそのまま `task dev` に届きます。
+`server/config` / `server/cmd/*` / `db/Taskfile.yaml` の既定値は Compose のサービス名（`db:5432`、`redis:6379`、`http://rustfs:9000`）を指しており、これは Compose ネットワークの中でしか解決できません。Dev Container の外ではループバックへ向け直してください。`turbo.jsonc` が `PUBLIRA_*` と `PNCH_*` を通すので、export した値はそのまま `task dev` に届きます。
 
 ```bash
 export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
@@ -52,6 +52,8 @@ export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:543
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:5432/publira?sslmode=disable"
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:5432/publira?sslmode=disable"
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+# web アプリの @publira/next-cache-handlers が使う同じ Redis
+export PNCH_REDIS_URL="redis://127.0.0.1:6379"
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
 export PUBLIRA_S3_BUCKET="publira"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
