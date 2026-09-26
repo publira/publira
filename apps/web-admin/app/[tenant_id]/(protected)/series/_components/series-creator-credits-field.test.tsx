@@ -13,7 +13,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { SeriesCreatorCredit } from "../series-types";
 import { SeriesCreatorCreditsField } from "./series-creator-credits-field";
@@ -109,9 +109,9 @@ const render = (
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        <AdminLocaleTestProvider locale="en">
           {children}
-        </AdminLocaleProvider>
+        </AdminLocaleTestProvider>
       ),
     }
   );

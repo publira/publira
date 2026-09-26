@@ -4,10 +4,9 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useContext, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -41,10 +40,6 @@ const LabelFormSubmitLabel = ({
 };
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

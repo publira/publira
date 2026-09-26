@@ -17,15 +17,9 @@ import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { useActionState, useCallback, useMemo, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -52,10 +46,7 @@ export const AnnouncementForm = ({
   timeZone,
   action,
 }: AnnouncementFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

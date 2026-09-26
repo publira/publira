@@ -30,10 +30,10 @@ import {
   TabsTab,
 } from "@publira/ui-components/tabs";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useContext, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -97,10 +97,7 @@ const PublicationStatus = ({
   timeZone,
   unpublishAction,
 }: PublicationStatusProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const isPublished = Boolean(page.publishedVersionId);
@@ -172,10 +169,7 @@ export const PageWorkspace = ({
   timeZone,
   unpublishAction,
 }: PageWorkspaceProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [saveState, saveFormAction, isSavePending] = useActionState(

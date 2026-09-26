@@ -6,9 +6,8 @@ import {
 } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useContext } from "react";
+import { useActionState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 
 import {
@@ -25,10 +24,6 @@ export const MarkNotificationAsReadButton = ({
   notificationId: string;
   tenantId: string;
 }) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const [state, formAction, isPending] = useActionState(
     markNotificationAsReadAction,
@@ -67,10 +62,6 @@ export const MarkAllNotificationsAsReadButton = ({
 }: {
   tenantId: string;
 }) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const [state, formAction, isPending] = useActionState(
     markAllNotificationsAsReadAction,
     null

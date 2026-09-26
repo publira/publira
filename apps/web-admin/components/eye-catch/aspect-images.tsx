@@ -9,9 +9,8 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, ReactEventHandler } from "react";
-import { useActionState, useContext, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -69,10 +68,6 @@ const EyeCatchAspectSlot = ({
   uploadAction,
   variants,
 }: EyeCatchAspectSlotProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { minHeight, minWidth, variantType } = aspect;
@@ -299,10 +294,6 @@ export const EyeCatchAspectImages = ({
   uploadAction,
   variants,
 }: EyeCatchAspectImagesProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
 
   return (

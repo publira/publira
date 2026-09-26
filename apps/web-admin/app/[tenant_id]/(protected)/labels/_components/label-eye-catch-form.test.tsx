@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -12,7 +11,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
 import { LabelEyeCatchForm } from "./label-eye-catch-form";
@@ -22,9 +21,7 @@ vi.mock("#lib/use-tenant-id", () => ({
 }));
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
+  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
 
 const label: LabelListItem = {

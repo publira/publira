@@ -30,7 +30,7 @@ The shell `web-admin` and `web-platform` share: a sidebar, a 48px header, and th
 - The user menu: `ConsoleUserMenu` and its parts — `ConsoleUserMenuTrigger` / `ConsoleUserMenuInitial`, `ConsoleUserMenuContent`, `ConsoleUserMenuIdentity` / `ConsoleUserMenuName` / `ConsoleUserMenuPublicId` / `ConsoleUserMenuRole`, `ConsoleUserMenuSeparator`, `ConsoleUserMenuAccountLink`, `ConsoleUserMenuLogout` / `ConsoleUserMenuLogoutButton`
 - A page: `ConsolePage`, `ConsolePageHeader` / `ConsolePageHeading` / `ConsolePageTitle` / `ConsolePageDescription` / `ConsolePageContext`, `ConsolePageActions`, `ConsolePageContent`
 - A section of a page: `ConsoleSections`, `ConsoleSection`, `ConsoleSectionHeader` / `ConsoleSectionHeading` / `ConsoleSectionTitle` / `ConsoleSectionDescription`, `ConsoleSectionActions`
-- The skeletons: `ConsoleLayoutSkeleton`, `ConsoleSidebarSkeleton`, `ConsoleHeaderSkeleton`, `ConsoleHeaderUserSkeleton`
+- The skeletons: `ConsoleHeaderSkeleton`, `ConsoleHeaderUserSkeleton`
 
 ### `@publira/layouts/auth-screen` — the authentication screens
 

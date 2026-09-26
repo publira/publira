@@ -13,8 +13,8 @@ import { WEB_ADMIN_BASE_URL } from "../src/urls";
  * on a **direct hit**, not only on a client navigation.
  *
  * Which boundary catches it differs from web-host, and that is the point of
- * asserting it here. The console reads its session and tenant in
- * `(protected)/layout.tsx`, so an admin API outage fails that layout — above
+ * asserting it here. The console chrome `(protected)/layout.tsx` renders reads
+ * the session and tenant, so an admin API outage fails that layout — above
  * `(protected)/error.tsx` — and `app/[tenant_id]/error.tsx` takes over with no
  * console chrome around it. A failure inside a page instead is caught by the
  * `SectionErrorBoundary` around that section, which

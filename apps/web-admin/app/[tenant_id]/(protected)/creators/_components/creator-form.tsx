@@ -13,15 +13,8 @@ import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
 import type { ChangeEventHandler, ReactEventHandler } from "react";
-import {
-  useActionState,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { CropAspect, CropSource } from "#components/image-crop/crop";
 import {
@@ -55,10 +48,6 @@ interface IconImageFieldProps {
 }
 
 const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
   const hasExistingIconImage = iconImageUrl.length > 0;
@@ -232,10 +221,6 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

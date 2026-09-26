@@ -14,7 +14,7 @@ import {
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { EyeCatchAspectImages } from "./aspect-images";
 import type { EyeCatchVariantItem } from "./types";
@@ -51,9 +51,7 @@ const refuseImage = () =>
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-        {children}
-      </AdminLocaleProvider>
+      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 

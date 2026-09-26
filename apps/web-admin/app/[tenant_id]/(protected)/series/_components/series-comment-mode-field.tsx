@@ -7,9 +7,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useContext, useId, useMemo } from "react";
+import { useCallback, useId, useMemo } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isSeriesCommentMode } from "#lib/series-comment-mode";
 import type { SeriesCommentMode } from "#lib/series-comment-mode";
@@ -27,10 +26,6 @@ const TenantDefaultOptionLabel = ({
 }: {
   tenantCommentMode: TenantCommentMode;
 }) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
 
   // The tenant's own wording is written into another message, so each branch

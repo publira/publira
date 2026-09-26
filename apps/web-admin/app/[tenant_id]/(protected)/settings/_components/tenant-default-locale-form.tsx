@@ -15,9 +15,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
-import { useActionState, useContext, useState } from "react";
+import { useActionState, useState } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import {
   AdminSection,
   AdminSectionDescription,
@@ -54,10 +53,6 @@ export const TenantDefaultLocaleForm = ({
   loadErrorMessage,
   options,
 }: TenantDefaultLocaleFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

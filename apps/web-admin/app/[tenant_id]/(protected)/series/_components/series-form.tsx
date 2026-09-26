@@ -25,7 +25,6 @@ import Image from "next/image";
 import {
   useActionState,
   useCallback,
-  useContext,
   useEffect,
   useId,
   useMemo,
@@ -33,7 +32,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
+import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
@@ -176,10 +175,6 @@ const LabelField = ({
   onComboboxChange,
   onFallbackChange,
 }: LabelFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   // Combobox renders its own input instead of a Field control, so the label
   // needs an id to point at. The fallback Input is a Field control and wires
@@ -259,10 +254,6 @@ const EyeCatchImageField = ({
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const hasPreviewImage = previewImageUrl.length > 0;
 
@@ -443,10 +434,7 @@ export const SeriesForm = ({
   tenantPurchaseAvailability,
   timeZone,
 }: SeriesFormProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
+  const locale = useAdminLocale();
   const t = useClientMessages();
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);

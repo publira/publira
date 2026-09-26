@@ -34,34 +34,6 @@ export const ConsoleHeaderSkeleton = () => (
   </header>
 );
 
-export const ConsoleSidebarSkeleton = () => (
-  <aside
-    aria-hidden="true"
-    className="hidden w-60 flex-col border-r border-border bg-surface px-3 py-4 lg:flex"
-  >
-    <div className="grid gap-3 px-3">
-      <Skeleton className="h-6 w-32 rounded-control" />
-      <Skeleton className="h-4 w-24 rounded-control" />
-    </div>
-    <div className="mt-6 grid gap-2 px-3">
-      <Skeleton className="h-4 w-20 rounded-control" />
-      <Skeleton className="h-40 w-full rounded-control" />
-    </div>
-  </aside>
-);
-
-export const ConsoleLayoutSkeleton = () => (
-  <div className="flex min-h-dvh bg-background text-foreground">
-    <ConsoleSidebarSkeleton />
-    <ConsoleLayoutContent>
-      <ConsoleHeaderSkeleton />
-      <ConsoleLayoutMain>
-        <div className="p-8" />
-      </ConsoleLayoutMain>
-    </ConsoleLayoutContent>
-  </div>
-);
-
 export const ConsoleHeaderUserSkeleton = () => (
   <Skeleton className="size-9 rounded-control" />
 );

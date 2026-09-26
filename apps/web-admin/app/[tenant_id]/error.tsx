@@ -19,9 +19,9 @@ import {
 
 /**
  * Error boundary for the tenant segment itself. It catches what
- * `(protected)/error.tsx` cannot: failures raised while rendering
- * `(protected)/layout.tsx` — `getTenantId()`, `getTenantForSession()` — and the
- * unauthenticated routes (`/login`, `/accept-invite`, …) that sit directly
+ * `(protected)/error.tsx` cannot: failures raised by the console chrome
+ * `(protected)/layout.tsx` renders — `getTenantId()`, `getTenantForSession()` —
+ * and the unauthenticated routes (`/login`, `/accept-invite`, …) that sit directly
  * under `[tenant_id]` with no group layout of their own.
  *
  * Because the failing layout is what supplies the sidebar and header, this
@@ -37,8 +37,8 @@ import {
  * Measured against `next dev` by throwing from `(protected)/layout.tsx`: a
  * direct hit renders this screen, with no console chrome, as intended. The
  * production build was measured the same way an admin API outage
- * exercises it — `(protected)/layout.tsx` reads session and tenant, so the
- * outage fails that layout and this screen answers a direct hit with HTTP 200,
+ * exercises it — the chrome reads session and tenant, so the outage fails that
+ * layout and this screen answers a direct hit with HTTP 200,
  * and Retry recovers once the API is back
  * (`e2e/tests/admin.error-boundary.spec.ts`). The limit is the one
  * `(protected)/error.tsx` records: a throw in the first synchronous pass, before

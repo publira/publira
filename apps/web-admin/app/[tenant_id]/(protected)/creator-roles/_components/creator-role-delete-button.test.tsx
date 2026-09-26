@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -13,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { CreatorRoleRowActionState } from "../creator-role-types";
 import { CreatorRoleDeleteButton } from "./creator-role-delete-button";
@@ -43,9 +42,7 @@ vi.mock("next/navigation", () => ({
 const creatorRole = { name: "Original Author", publicId: "ROLE001" };
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-    {children}
-  </AdminLocaleProvider>
+  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
 
 const renderButton = async () => {

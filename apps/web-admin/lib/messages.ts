@@ -35,7 +35,7 @@ export type AdminClientMessageKey = MessageKey<AdminClientMessages>;
 /** What `useClientMessages()` answers with. */
 export type AdminClientMessageAccessor = MessageAccessor<AdminClientMessages>;
 
-/** The {@link AdminClientMessages} for `locale`, to seed `AdminLocaleProvider`. */
+/** The {@link AdminClientMessages} for `locale`, which `AdminLocaleProvider` hands down. */
 export const loadAdminClientMessages = async (
   locale: Locale
 ): Promise<AdminClientMessages> => {

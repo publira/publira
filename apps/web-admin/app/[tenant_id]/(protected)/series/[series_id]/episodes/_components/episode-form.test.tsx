@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -11,7 +10,7 @@ import {
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeForm } from "./episode-form";
@@ -25,9 +24,7 @@ const action = () => Promise.resolve(null);
 const render = (ui: React.ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
-      <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
-        {children}
-      </AdminLocaleProvider>
+      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 

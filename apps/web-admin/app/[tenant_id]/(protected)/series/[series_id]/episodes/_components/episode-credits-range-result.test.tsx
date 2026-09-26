@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 
-import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, render as renderBase, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { EpisodeCreditsRangeResult } from "./episode-credits-range-result";
 
@@ -20,9 +19,9 @@ const render = (
     <EpisodeCreditsRangeResult episodes={episodes} result={result} />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        <AdminLocaleTestProvider locale="en">
           {children}
-        </AdminLocaleProvider>
+        </AdminLocaleTestProvider>
       ),
     }
   );

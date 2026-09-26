@@ -2,9 +2,8 @@
 
 import { cn } from "@publira/utils";
 import type { KeyboardEvent, PointerEvent, ReactEventHandler } from "react";
-import { useContext, useRef } from "react";
+import { useRef } from "react";
 
-import { AdminLocaleContext } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import type { CropRect } from "#lib/crop-rect";
 
@@ -74,10 +73,6 @@ export const ImageCropFrame = ({
   onImageLoad,
   source,
 }: ImageCropFrameProps) => {
-  const locale = useContext(AdminLocaleContext);
-  if (locale === null) {
-    throw new Error("AdminLocaleProvider is required.");
-  }
   const t = useClientMessages();
   const cornerLabel = (corner: CropCorner): string => {
     switch (corner) {

@@ -29,7 +29,7 @@ import { Message } from "#components/message";
  * them, and only one of them lands here:
  *
  * - **Not signed in** — `proxy.ts` redirects to `/login` before the route
- *   renders, and `(protected)/layout.tsx` redirects again when the session no
+ *   renders, and the console chrome redirects again when the session no
  *   longer resolves to a tenant user. An operator whose session expired wants
  *   the login form, not a 401 page.
  * - **Signed in, resource not visible** — the server answers `not_found` and

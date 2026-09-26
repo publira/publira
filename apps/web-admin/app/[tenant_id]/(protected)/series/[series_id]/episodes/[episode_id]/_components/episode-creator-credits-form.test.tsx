@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
-import { sharedCatalog } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -11,7 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleProvider } from "#components/admin-locale-context";
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type {
   EpisodeCreatorCredit,
@@ -91,9 +90,9 @@ const renderForm = (
     />,
     {
       wrapper: ({ children }) => (
-        <AdminLocaleProvider locale="en" messages={sharedCatalog("en")}>
+        <AdminLocaleTestProvider locale="en">
           {children}
-        </AdminLocaleProvider>
+        </AdminLocaleTestProvider>
       ),
     }
   );
