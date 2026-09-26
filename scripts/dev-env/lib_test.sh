@@ -7,11 +7,16 @@ source "${SCRIPT_DIR}/lib.sh"
 
 test_dir="$(mktemp -d)"
 started_groups=()
+started_sessions=()
 cleanup() {
-  local pgid
+  local pgid sid
   for pgid in "${started_groups[@]:-}"; do
     [[ -n "${pgid}" ]] || continue
     kill -s KILL -- "-${pgid}" 2> /dev/null || true
+  done
+  for sid in "${started_sessions[@]:-}"; do
+    [[ -n "${sid}" ]] || continue
+    dev_env_signal_session KILL "${sid}"
   done
   rm -rf "${test_dir}"
 }
@@ -393,25 +398,25 @@ pass "the development encryption key is one AES-256 key named by the primary key
 # A service is represented by a shell that keeps a `sleep` child, the shape the
 # pnpm-launched services have: the recorded pid is not the process a stop has
 # to reach. The shell's $0 carries this repository so that the ownership check
-# recognizes the group.
-fake_service_pgid=""
+# recognizes the session.
+fake_service_sid=""
 start_fake_service() {
   local run_dir="$1" process_name="$2"
   shift 2
   mkdir -p "${run_dir}"
   dev_env_start_background "${run_dir}" "${process_name}" "$@"
-  fake_service_pgid="$(< "${run_dir}/${process_name}.pid")"
-  started_groups+=("${fake_service_pgid}")
+  fake_service_sid="$(< "${run_dir}/${process_name}.pid")"
+  started_sessions+=("${fake_service_sid}")
 }
 
-count_process_group_members() {
-  dev_env_process_group_commands "$1" | grep -c . || true
+count_session_members() {
+  dev_env_session_members "$1" | grep -c . || true
 }
 
-wait_for_process_group_members() {
-  local pgid="$1" expected="$2" attempt
+wait_for_session_members() {
+  local sid="$1" expected="$2" attempt
   for ((attempt = 0; attempt < 100; attempt += 1)); do
-    [[ "$(count_process_group_members "${pgid}")" == "${expected}" ]] && return 0
+    [[ "$(count_session_members "${sid}")" == "${expected}" ]] && return 0
     sleep 0.1
   done
   return 1
@@ -419,14 +424,31 @@ wait_for_process_group_members() {
 
 chain_run_dir="$(dev_env_profile_run_dir chain)"
 start_fake_service "${chain_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
-chain_pgid="${fake_service_pgid}"
-wait_for_process_group_members "${chain_pgid}" 2 || fail "the started service did not reach a process group of its own"
+chain_sid="${fake_service_sid}"
+wait_for_session_members "${chain_sid}" 2 || fail "the started service did not reach a session of its own"
 dev_env_stop_profile chain > /dev/null
-if dev_env_process_group_is_running "${chain_pgid}"; then
+if dev_env_session_is_running "${chain_sid}"; then
   fail "a descendant of the recorded pid survived the stop"
 fi
 [[ ! -e "${chain_run_dir}/web.pid" ]] || fail "the pid file of a stopped process was kept"
 pass "stopping a profile ends the descendants of the pid it recorded"
+
+# The shape turbo gives a Node.js service: the process holding the port runs in
+# a process group of its own, and the process that started it may exit first,
+# leaving it with no parent from the recorded pid.
+orphan_run_dir="$(dev_env_profile_run_dir orphan)"
+start_fake_service "${orphan_run_dir}" web bash -c 'set -m; bash -c "sleep 300; true" "$0" &' "${REPO_ROOT}/apps/web-host"
+orphan_sid="${fake_service_sid}"
+wait_for_session_members "${orphan_sid}" 2 || fail "the orphaned child did not outlive the process that started it"
+orphan_pgid="$(dev_env_session_members "${orphan_sid}" | awk 'NR == 1 { print $1 }')"
+[[ "${orphan_pgid}" != "${orphan_sid}" ]] || fail "the orphaned child did not leave the recorded pid's process group"
+dev_env_profile_has_running_processes orphan || fail "a profile with an orphaned child running was not reported as running"
+dev_env_stop_profile orphan > /dev/null
+if dev_env_session_is_running "${orphan_sid}"; then
+  fail "a process in a process group of its own survived the stop"
+fi
+[[ ! -e "${orphan_run_dir}/web.pid" ]] || fail "the pid file of a stopped session was kept"
+pass "stopping a profile ends processes in other process groups after the process that started them exits"
 
 # A service's environment is what its line names plus the base variables; a
 # value this shell exports, the way a loaded profile exports each of its own,
@@ -434,7 +456,7 @@ pass "stopping a profile ends the descendants of the pid it recorded"
 hermetic_run_dir="$(dev_env_profile_run_dir hermetic)"
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@db:5432/publira_hermetic"
 start_fake_service "${hermetic_run_dir}" env PUBLIRA_NAMED=named bash -c 'env > "$1"; true' "${REPO_ROOT}" "${test_dir}/hermetic.env"
-wait_for_process_group_members "${fake_service_pgid}" 0 || fail "the service printing its environment did not exit"
+wait_for_session_members "${fake_service_sid}" 0 || fail "the service printing its environment did not exit"
 unset PUBLIRA_ADMIN_DB_URL
 expected_names="PUBLIRA_NAMED"
 for name in "${DEV_ENV_BASE_VARIABLES[@]}"; do
@@ -450,10 +472,10 @@ pass "a service is started with only the variables its line names and the base o
 
 finished_run_dir="$(dev_env_profile_run_dir finished)"
 start_fake_service "${finished_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
-finished_pgid="${fake_service_pgid}"
-wait_for_process_group_members "${finished_pgid}" 2 || fail "the started service did not reach a process group of its own"
-kill -s KILL -- "-${finished_pgid}"
-wait_for_process_group_members "${finished_pgid}" 0 || fail "the killed process group did not exit"
+finished_sid="${fake_service_sid}"
+wait_for_session_members "${finished_sid}" 2 || fail "the started service did not reach a session of its own"
+dev_env_signal_session KILL "${finished_sid}"
+wait_for_session_members "${finished_sid}" 0 || fail "the killed session did not exit"
 dev_env_stop_profile finished > /dev/null
 [[ ! -e "${finished_run_dir}/web.pid" ]] || fail "the pid file of a process that is already gone was kept"
 pass "a stop removes the pid file of a process an earlier stop already ended"
@@ -465,12 +487,12 @@ pass "a pid file that does not name a process is removed"
 
 foreign_run_dir="$(dev_env_profile_run_dir foreign)"
 start_fake_service "${foreign_run_dir}" web sleep 300
-foreign_pgid="${fake_service_pgid}"
+foreign_sid="${fake_service_sid}"
 dev_env_stop_profile foreign > /dev/null 2>&1
-dev_env_process_group_is_running "${foreign_pgid}" || fail "a process group outside this repository was signalled"
+dev_env_session_is_running "${foreign_sid}" || fail "a session outside this repository was signalled"
 [[ ! -e "${foreign_run_dir}/web.pid" ]] || fail "the pid file of a pid taken over by another process was kept"
-kill -s KILL -- "-${foreign_pgid}"
-pass "a pid whose process group no longer belongs to this repository is not signalled"
+dev_env_signal_session KILL "${foreign_sid}"
+pass "a pid whose session no longer belongs to this repository is not signalled"
 
 # The run directory outlives the run: `dev_env_stop_profile` removes the pid
 # files and then cannot `rmdir` a directory that still holds the logs. Reading

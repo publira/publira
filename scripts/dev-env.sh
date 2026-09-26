@@ -94,7 +94,9 @@ start_profile() {
   done
   # The edge comes first, ahead of the migrations and the build: it is the one
   # part of a profile Docker has to be there for, and a start that fails here
-  # has nothing running yet to shut down by hand.
+  # has nothing running yet to shut down by hand. Python is looked up with it,
+  # because every service after the edge is started through it.
+  dev_env_require_commands python3
   dev_env_start_edge "${name}"
   init_profile "${name}"
   task -d "${REPO_ROOT}" server:build

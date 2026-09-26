@@ -426,7 +426,7 @@ dev_env_selected_profile() {
   printf '%s\n' "${selected}"
 }
 
-# Seconds a stopped process group is given to exit after SIGTERM, and then
+# Seconds a stopped session is given to exit after SIGTERM, and then
 # after the SIGKILL that follows it.
 DEV_ENV_STOP_TERM_SECONDS=10
 DEV_ENV_STOP_KILL_SECONDS=5
@@ -530,91 +530,118 @@ DEV_ENV_BASE_VARIABLES=(
 # assignments and then its command, run under `env -i` so that nothing but
 # those and DEV_ENV_BASE_VARIABLES reaches it.
 #
-# That pid is also the id of a process group holding nothing else, because job
-# control puts a background job in a group of its own, and
-# dev_env_stop_process_group signals the group rather than the single pid.
-# The distinction is what stops the pnpm-launched services: their recorded pid
-# heads a chain (`pnpm` -> `sh -c` -> `next dev` -> `next-server`) whose last
-# link is the one holding the port, and it outlives a signal to the pid alone.
+# That pid is also the id of a session holding nothing else, and
+# dev_env_stop_session signals every process group in it rather than the pid
+# alone. A process group is not enough: pnpm, turbo, and the `sh -c` each of
+# them runs put their children in groups of their own, so the `next-server`
+# holding a port is several groups away from the recorded pid, and a session
+# is the one grouping they all stay in after their parents exit.
 dev_env_start_background() {
   local run_dir="$1" process_name="$2" pid name inherited=()
   shift 2
   for name in "${DEV_ENV_BASE_VARIABLES[@]}"; do
     [[ -z "${!name+set}" ]] || inherited+=("${name}=${!name}")
   done
-  set -m
-  nohup env -i "${inherited[@]}" "$@" > "${run_dir}/${process_name}.log" 2>&1 < /dev/null &
+  # Python stands in for setsid(1), which macOS lacks. It hands on the default
+  # disposition of the signals that it and this shell's background jobs ignore,
+  # since an ignored signal stays ignored across exec.
+  python3 -c '
+import os, signal, sys
+os.setsid()
+for number in (signal.SIGINT, signal.SIGQUIT, signal.SIGPIPE, signal.SIGXFSZ):
+    signal.signal(number, signal.SIG_DFL)
+os.execvp(sys.argv[1], sys.argv[1:])
+' env -i "${inherited[@]}" "$@" > "${run_dir}/${process_name}.log" 2>&1 < /dev/null &
   pid="$!"
-  set +m
   # The pid file is the only handle the profile keeps, so the job is dropped
   # from this shell rather than reported back over whatever it prints next.
   disown "%%"
   printf '%s\n' "${pid}" > "${run_dir}/${process_name}.pid"
 }
 
-dev_env_process_group_is_running() {
-  kill -0 -- "-$1" 2> /dev/null
+# Prints "<pgid> <command line>" for every process in a session. ps's session
+# column is `sid` on Linux and a kernel address on macOS, so each process's
+# session is asked of getsid(2) instead.
+dev_env_session_members() {
+  ps -A -o pid=,pgid=,args= 2> /dev/null | python3 -c '
+import os, sys
+sid = int(sys.argv[1])
+for line in sys.stdin:
+    pid, pgid, args = (line.split(None, 2) + [""])[:3]
+    try:
+        if os.getsid(int(pid)) == sid:
+            print(pgid, args.rstrip("\n"))
+    except OSError:
+        pass
+' "$1"
 }
 
-# Prints the command line of every process in a process group. `ps -A -o
-# pgid=,args=` is the portable spelling; pgrep's process group selector takes
-# a different option letter on the BSD side.
-dev_env_process_group_commands() {
-  ps -A -o pgid=,args= 2> /dev/null | awk -v pgid="$1" '$1 == pgid { $1 = ""; print }'
+dev_env_session_is_running() {
+  [[ -n "$(dev_env_session_members "$1")" ]]
 }
 
 # A recorded pid stands for a profile's service only while some member of its
-# group still runs from this worktree. Once the group is gone the number is
-# free for any process to take, and a group that names another worktree
+# session still runs from this worktree. Once the session is gone the number is
+# free for any process to take, and a session that names another worktree
 # belongs to that one.
-dev_env_process_group_belongs_to_repo() {
-  dev_env_process_group_commands "$1" | grep -qF -- "${REPO_ROOT}"
+dev_env_session_belongs_to_repo() {
+  dev_env_session_members "$1" | grep -qF -- "${REPO_ROOT}"
 }
 
-dev_env_wait_for_process_group() {
-  local pgid="$1" tenths=$(($2 * 10))
+dev_env_signal_session() {
+  local signal="$1" sid="$2" pgid
+  while read -r pgid; do
+    kill -s "${signal}" -- "-${pgid}" 2> /dev/null || true
+  done < <(dev_env_session_members "${sid}" | awk '{ print $1 }' | sort -u)
+}
+
+dev_env_wait_for_session() {
+  local sid="$1" tenths=$(($2 * 10))
   while ((tenths > 0)); do
-    dev_env_process_group_is_running "${pgid}" || return 0
+    dev_env_session_is_running "${sid}" || return 0
     sleep 0.1
     tenths=$((tenths - 1))
   done
-  ! dev_env_process_group_is_running "${pgid}"
+  ! dev_env_session_is_running "${sid}"
 }
 
-# Ends one process group and reports whether it is gone, so that its caller
-# can keep the pid file of a group that outlived the attempt.
-dev_env_stop_process_group() {
-  local pgid="$1"
-  dev_env_process_group_is_running "${pgid}" || return 0
-  if ! dev_env_process_group_belongs_to_repo "${pgid}"; then
-    dev_env_error "not signalling process group ${pgid}; it no longer belongs to ${REPO_ROOT}"
+# Ends one session and reports whether it is gone, so that its caller can keep
+# the pid file of a session that outlived the attempt.
+dev_env_stop_session() {
+  local sid="$1"
+  dev_env_session_is_running "${sid}" || return 0
+  if ! dev_env_session_belongs_to_repo "${sid}"; then
+    dev_env_error "not signalling session ${sid}; it no longer belongs to ${REPO_ROOT}"
     return 0
   fi
-  kill -s TERM -- "-${pgid}" 2> /dev/null || true
-  dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_TERM_SECONDS}" && return 0
-  kill -s KILL -- "-${pgid}" 2> /dev/null || true
-  dev_env_wait_for_process_group "${pgid}" "${DEV_ENV_STOP_KILL_SECONDS}"
+  dev_env_signal_session TERM "${sid}"
+  dev_env_wait_for_session "${sid}" "${DEV_ENV_STOP_TERM_SECONDS}" && return 0
+  dev_env_signal_session KILL "${sid}"
+  dev_env_wait_for_session "${sid}" "${DEV_ENV_STOP_KILL_SECONDS}"
 }
 
 dev_env_stop_profile() {
-  local name="$1" run_dir pid_file pgid survivors=0
+  local name="$1" run_dir pid_file sid survivors=0
   run_dir="$(dev_env_profile_run_dir "${name}")"
   [[ -d "${run_dir}" ]] || return 0
+  # Without it every session would read as empty and each pid file would be
+  # removed with its processes still running.
+  dev_env_require_commands python3
   dev_env_stop_edge "${name}" || survivors=1
   for pid_file in "${run_dir}"/*.pid; do
     [[ -f "${pid_file}" ]] || continue
-    pgid="$(< "${pid_file}")"
-    if [[ ! "${pgid}" =~ ^[0-9]+$ ]]; then
+    sid="$(< "${pid_file}")"
+    if [[ ! "${sid}" =~ ^[0-9]+$ ]]; then
       dev_env_error "removing ${pid_file}; it does not name a process"
       rm -f "${pid_file}"
       continue
     fi
-    # A pid file is removed once nothing is left under the pid it names, so an
+    # A pid file is removed once nothing is left in the session it names, so an
     # attempt that could not finish leaves the names a repeated stop needs.
-    if dev_env_stop_process_group "${pgid}"; then
+    if dev_env_stop_session "${sid}"; then
       rm -f "${pid_file}"
     else
-      dev_env_error "${pid_file##*/} still has processes in group ${pgid}"
+      dev_env_error "${pid_file##*/} still has processes in session ${sid}"
       survivors=1
     fi
   done
