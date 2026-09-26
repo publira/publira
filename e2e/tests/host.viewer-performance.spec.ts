@@ -39,9 +39,25 @@ const BUDGET = {
   turnResponseMs: 200,
 } as const;
 
+/**
+ * How long after the new spread is drawn the track is watched for a second
+ * slide: the turn's transition is 260ms, plus slack for a slow frame.
+ */
+const TRACK_SETTLE_MS = 600;
+
 interface ViewerTurnMetrics {
   pageReadyMs: number | null;
   responseMs: number | null;
+  /** `performance.now()` once both of the above are known. */
+  settledAtMs: number | null;
+  /**
+   * `transitionend` events the rail's track fired for its transform since the
+   * turn was armed. A turn slides the track once, so this is `1` after it
+   * settles; a second one means the track animated its way back to rest after
+   * the new spread was already on screen, which a reader sees as the page
+   * advancing and then sliding in again.
+   */
+  trackTransitions: number;
 }
 
 interface ViewerMetrics {
@@ -84,9 +100,27 @@ const installViewerMetrics = (progressLabel: string) => {
     firstPageDrawnMs: null,
     layoutShiftSupported:
       PerformanceObserver.supportedEntryTypes.includes("layout-shift"),
-    turn: { pageReadyMs: null, responseMs: null },
+    turn: {
+      pageReadyMs: null,
+      responseMs: null,
+      settledAtMs: null,
+      trackTransitions: 0,
+    },
   };
   window.__publiraViewerMetrics = metrics;
+
+  // The library gives its track this class whatever `className` the app adds,
+  // and `transitionend` bubbles, so one listener on the document covers a
+  // track mounted after this script ran.
+  document.addEventListener("transitionend", (event) => {
+    if (
+      event.propertyName === "transform" &&
+      event.target instanceof Element &&
+      event.target.classList.contains("pcv-viewport-track")
+    ) {
+      metrics.turn.trackTransitions += 1;
+    }
+  });
 
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
@@ -131,7 +165,12 @@ const installViewerMetrics = (progressLabel: string) => {
   });
 
   metrics.armTurn = (targetPageLabel: string) => {
-    metrics.turn = { pageReadyMs: null, responseMs: null };
+    metrics.turn = {
+      pageReadyMs: null,
+      responseMs: null,
+      settledAtMs: null,
+      trackTransitions: 0,
+    };
     const before = readProgress();
 
     // Timed from the keydown itself rather than from this call, so the round
@@ -149,10 +188,13 @@ const installViewerMetrics = (progressLabel: string) => {
             metrics.turn.pageReadyMs = elapsed;
           }
           if (
-            (metrics.turn.responseMs !== null &&
-              metrics.turn.pageReadyMs !== null) ||
-            elapsed > TURN_TIMEOUT_MS
+            metrics.turn.responseMs !== null &&
+            metrics.turn.pageReadyMs !== null
           ) {
+            metrics.turn.settledAtMs = performance.now();
+            return;
+          }
+          if (elapsed > TURN_TIMEOUT_MS) {
             return;
           }
           requestAnimationFrame(tick);
@@ -198,6 +240,17 @@ const readOneSpread = async (page: Page) => {
       turn.responseMs !== null
     );
   });
+  // A second slide of the track would start once the turn has settled and
+  // last as long as the turn's own transition, so the count is read only after
+  // that much time has passed with the new spread on screen.
+  await page.waitForFunction((settleMs) => {
+    const turn = window.__publiraViewerMetrics?.turn;
+    return (
+      turn?.settledAtMs !== undefined &&
+      turn.settledAtMs !== null &&
+      performance.now() - turn.settledAtMs >= settleMs
+    );
+  }, TRACK_SETTLE_MS);
 
   return await page.evaluate(() => {
     const metrics = window.__publiraViewerMetrics;
@@ -207,6 +260,7 @@ const readOneSpread = async (page: Page) => {
       layoutShiftSupported: metrics?.layoutShiftSupported ?? false,
       turnPageReadyMs: metrics?.turn.pageReadyMs ?? null,
       turnResponseMs: metrics?.turn.responseMs ?? null,
+      turnTrackTransitions: metrics?.turn.trackTransitions ?? 0,
     };
   });
 };
@@ -247,6 +301,7 @@ test.describe("web-host viewer rendering performance", () => {
     expect(measured.layoutShiftSupported, "layout-shift is observable").toBe(
       true
     );
+    expect(measured.turnTrackTransitions, "track slides per page turn").toBe(1);
 
     expect
       .soft(measured.firstPageDrawnMs, "first page drawn (ms)")
