@@ -20,6 +20,7 @@ const createOperator = (
   $typeName: "publira.platform.v1.PlatformOperator",
   createdAt: "2026-08-01T00:00:00Z",
   email: "operator@example.com",
+  id: "0199a3c0-0000-7000-8000-000000000001",
   name: "Taylor Reed",
   publicId: "OPERATOR001",
   role: "platform_operator",

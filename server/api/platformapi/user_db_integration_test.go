@@ -126,6 +126,16 @@ func TestDBListEndUsersFiltersByStatusAndPublicIDs(t *testing.T) {
 	if got := endUserPublicIDs(byPublicID.Msg.Users); !slices.Equal(got, []string{active.PublicID}) {
 		t.Fatalf("public_ids filter = %v, want only %q", got, active.PublicID)
 	}
+
+	byID, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+		UserIds: []string{byPublicID.Msg.Users[0].Id, byPublicID.Msg.Users[0].Id, "  "},
+	}))
+	if err != nil {
+		t.Fatalf("ListEndUsers by user_ids: %v", err)
+	}
+	if got := endUserPublicIDs(byID.Msg.Users); !slices.Equal(got, []string{active.PublicID}) {
+		t.Fatalf("user_ids filter = %v, want only %q", got, active.PublicID)
+	}
 }
 
 func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
@@ -136,7 +146,7 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	suspendResp, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
@@ -151,7 +161,7 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 	}
 
 	unsuspendResp, err := client.UnsuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UnsuspendEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
@@ -181,12 +191,12 @@ func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	if _, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	})); err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
 	}
 	unsuspendResp, err := client.UnsuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UnsuspendEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
@@ -236,12 +246,12 @@ func TestDBEndUserOperationsRejectTenantMembers(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 
 	if _, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
-		PublicId: member.PublicID,
+		UserId: member.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendEndUser code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
 	if _, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
-		PublicId: member.PublicID,
+		UserId: member.ID.String(),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteEndUser code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
@@ -268,7 +278,7 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	deleteResp, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("DeleteEndUser: %v", err)
@@ -313,7 +323,7 @@ func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	if _, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
-		PublicId: reader.PublicID,
+		UserId: reader.ID.String(),
 	})); err != nil {
 		t.Fatalf("DeleteEndUser for a reader who bought an episode: %v", err)
 	}
@@ -364,10 +374,7 @@ func setUserStatus(t *testing.T, pg *testutil.PostgresEnv, publicID, status stri
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := dbmodels.New(pg.DB).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
-		PublicID: publicID,
-		Status:   status,
-	}); err != nil {
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE users SET status = $2 WHERE public_id = $1`, publicID, status); err != nil {
 		t.Fatalf("UpdateUserStatus %s: %v", publicID, err)
 	}
 }

@@ -88,6 +88,7 @@ WHERE NOT EXISTS (
         OR u.status = sqlc.narg('status')::text
     )
     AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
+    AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
     AND (
         sqlc.narg('tenant_public_id')::text IS NULL
         OR sqlc.narg('tenant_public_id')::text = ''
@@ -131,6 +132,7 @@ WHERE NOT EXISTS (
         OR u.status = sqlc.narg('status')::text
     )
     AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
+    AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
     AND (
         sqlc.narg('tenant_public_id')::text IS NULL
         OR sqlc.narg('tenant_public_id')::text = ''
@@ -581,18 +583,12 @@ WHERE u.tenant_id = $1
     AND u.public_id = $2
 LIMIT 1;
 
--- name: UpdateUserStatus :one
-UPDATE users
-SET status = $2
-WHERE public_id = $1
-RETURNING *;
-
--- name: UnsuspendUser :one
+-- name: UnsuspendUserByID :one
 -- A user who never confirmed their address goes back to inactive, the state
 -- VerifyUserEmail activates.
 UPDATE users
 SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
-WHERE public_id = $1
+WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserStatusByID :one

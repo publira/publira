@@ -120,6 +120,59 @@ func (q *Queries) DeletePlatformUserRolesByPlatformUserID(ctx context.Context, p
 	return err
 }
 
+const GetPlatformOperatorByID = `-- name: GetPlatformOperatorByID :one
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.platform_user_id = pu.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE pu.id = $1
+LIMIT 1
+`
+
+type GetPlatformOperatorByIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (q *Queries) GetPlatformOperatorByID(ctx context.Context, id uuid.UUID) (GetPlatformOperatorByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPlatformOperatorByID, id)
+	var i GetPlatformOperatorByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.Name,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const GetPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
 SELECT pu.id,
     pu.public_id,
@@ -633,20 +686,20 @@ func (q *Queries) UpdatePlatformUserPasswordHashByID(ctx context.Context, arg Up
 	return i, err
 }
 
-const UpdatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
+const UpdatePlatformUserStatusByID = `-- name: UpdatePlatformUserStatusByID :one
 UPDATE platform_users
 SET status = $2
-WHERE public_id = $1
+WHERE id = $1
 RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
 `
 
-type UpdatePlatformUserStatusParams struct {
-	PublicID string `json:"public_id"`
-	Status   string `json:"status"`
+type UpdatePlatformUserStatusByIDParams struct {
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
 }
 
-func (q *Queries) UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error) {
-	row := q.db.QueryRowContext(ctx, UpdatePlatformUserStatus, arg.PublicID, arg.Status)
+func (q *Queries) UpdatePlatformUserStatusByID(ctx context.Context, arg UpdatePlatformUserStatusByIDParams) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, UpdatePlatformUserStatusByID, arg.ID, arg.Status)
 	var i PlatformUser
 	err := row.Scan(
 		&i.ID,

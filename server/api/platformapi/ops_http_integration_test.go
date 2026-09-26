@@ -57,7 +57,7 @@ func TestListAuditLogs(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
 			AddRow(uuid.Must(uuid.NewV7()), actorID1, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, "203.0.113.10", now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One").
 			AddRow(uuid.Must(uuid.NewV7()), actorID2, "platform_super_admin", "operator_updated", "operator", targetOperatorID.String(), "success", nil, nil, now.Add(-time.Minute), "Operator Two", "PLATUSER002", "", "", "PLATUSER003", "Operator Three"))
@@ -88,7 +88,7 @@ func TestListAuditLogsWithFilters(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{String: "PLATUSER001", Valid: true}, sql.NullString{String: "TENANT001", Valid: true}, sql.NullString{String: "tenant_created", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(11)).
+		WithArgs(sql.NullString{String: "PLATUSER001", Valid: true}, sql.NullString{String: "TENANT001", Valid: true}, uuid.NullUUID{}, sql.NullString{String: "tenant_created", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(11)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}).
 			AddRow(uuid.Must(uuid.NewV7()), actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(), "success", nil, nil, now, "Operator One", "PLATUSER001", "Tenant One", "TENANT001", "TENANT001", "Tenant One"))
 
@@ -116,7 +116,7 @@ func TestListAuditLogsOutOfRangeLimitFallsBackToDefault(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_platform_user_id", "actor_role", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "actor_public_id", "tenant_name", "tenant_public_id", "target_public_id", "target_name"}))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
@@ -153,7 +153,7 @@ func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
@@ -191,7 +191,7 @@ func TestListAuditLogsFollowsNextToken(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
+		WithArgs(sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(platformAuditLogColumns().AddRow(
 			resultID, actorID, "platform_operator", "tenant_created", "tenant", tenantID.String(),
 			"success", nil, nil, resultAt, "Operator One", "PLATUSER001",
@@ -388,7 +388,7 @@ func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformAuditLogsDesc)).
-		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(sql.NullString{}, sql.NullString{}, uuid.NullUUID{}, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "platform_audit_logs" does not exist`))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)

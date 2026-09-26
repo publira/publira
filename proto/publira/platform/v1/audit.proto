@@ -34,6 +34,8 @@ message ListAuditLogsRequest {
   string action = 5;
   // Opaque token from a previous response. Empty for the first page.
   string token = 6;
+  // Restricts the list to entries about this tenant, by primary key.
+  string tenant_id = 7;
 }
 
 message ListAuditLogsResponse {

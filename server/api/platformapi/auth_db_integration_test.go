@@ -90,7 +90,7 @@ func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 	issuedToken := loginResp.Msg.AccessToken.Token
 
 	suspendResp, err := operatorClient.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)

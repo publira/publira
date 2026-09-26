@@ -464,6 +464,7 @@ type Querier interface {
 	// the same answer as a signed-in reader and the site caches it once per tenant.
 	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
+	GetPlatformOperatorByID(ctx context.Context, id uuid.UUID) (GetPlatformOperatorByIDRow, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	// Returns no rows when the platform has never saved its policy, which the
 	// server answers with its built-in defaults.
@@ -2108,7 +2109,7 @@ type Querier interface {
 	UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenantReaderParams) (UnsuspendTenantReaderRow, error)
 	// A user who never confirmed their address goes back to inactive, the state
 	// VerifyUserEmail activates.
-	UnsuspendUser(ctx context.Context, publicID string) (User, error)
+	UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error
@@ -2144,7 +2145,7 @@ type Querier interface {
 	UpdatePlatformStorageConfig(ctx context.Context, arg UpdatePlatformStorageConfigParams) (PlatformStorageConfig, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
-	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
+	UpdatePlatformUserStatusByID(ctx context.Context, arg UpdatePlatformUserStatusByIDParams) (PlatformUser, error)
 	UpdatePlatformWebPushSubject(ctx context.Context, subject string) (PlatformWebpushConfig, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error
@@ -2168,7 +2169,6 @@ type Querier interface {
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
 	UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error)
 	UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error)
-	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	// Daily stats are full-day replacements. Upsert keeps a single row per
 	// (tenant, date, entity). rating_count / rating_sum are that day's flow — the

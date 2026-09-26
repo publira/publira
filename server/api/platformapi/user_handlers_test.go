@@ -34,7 +34,8 @@ func getTenantByUserIDColumns() []string {
 	return []string{"id", "public_id", "name", "created_at"}
 }
 
-// The users columns UpdateUserStatus and UnsuspendUser return.
+// The users columns GetUserByID, UpdateUserStatusByID and UnsuspendUserByID
+// return.
 func updateUserStatusResultColumns() []string {
 	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date"}
 }
@@ -159,10 +160,10 @@ func TestSuspendEndUser(t *testing.T) {
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
 	// ensureManageableEndUser: read the user.
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
-		WithArgs("EUSER00001").
-		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
-			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
 	// ensureManageableEndUser: check tenant membership, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
@@ -170,8 +171,8 @@ func TestSuspendEndUser(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
 	// Update the status to suspended.
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatus)).
-		WithArgs("EUSER00001", "suspended").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatusByID)).
+		WithArgs(endUserID, "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil))
 
@@ -188,7 +189,7 @@ func TestSuspendEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{PublicId: "EUSER00001"}))
+	resp, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()}))
 	if err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
 	}
@@ -208,17 +209,17 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
-		WithArgs("PLATUSER002").
-		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
-			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
+			AddRow(endUserID, "PLATUSER002", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
 	// Refused because the user holds a tenant role.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
-	_, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{PublicId: "PLATUSER002"}))
+	_, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendEndUser code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -234,17 +235,17 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
-		WithArgs("EUSER00001").
-		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
-			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "suspended", nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnsuspendUser)).
-		WithArgs("EUSER00001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnsuspendUserByID)).
+		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
 			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
@@ -254,7 +255,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.UnsuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendEndUserRequest{PublicId: "EUSER00001"}))
+	resp, err := server.UnsuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendEndUserRequest{UserId: endUserID.String()}))
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
 	}
@@ -299,10 +300,10 @@ func TestDeleteEndUser(t *testing.T) {
 
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicID)).
-		WithArgs("EUSER00001").
-		WillReturnRows(sqlmock.NewRows(endUserGetByPublicIDColumns()).
-			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
@@ -314,7 +315,7 @@ func TestDeleteEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.DeleteEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeleteEndUserRequest{PublicId: "EUSER00001"}))
+	resp, err := server.DeleteEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeleteEndUserRequest{UserId: endUserID.String()}))
 	if err != nil {
 		t.Fatalf("DeleteEndUser: %v", err)
 	}
@@ -380,7 +381,7 @@ func TestListEndUsersFirstPageReportsNextToken(t *testing.T) {
 			olderID, "EUSER00002", "Older", olderAt),
 		extraID, "EUSER00003", "Extra", now.Add(-3*time.Minute))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
 	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{Limit: 2}))
@@ -419,7 +420,7 @@ func TestListEndUsersFollowsPreviousTokenBackwards(t *testing.T) {
 		addEndUserRow(sqlmock.NewRows(listEndUsersResultColumns()), olderID, "EUSER00002", "Older", olderAt),
 		newerID, "EUSER00001", "Newer", now.Add(-time.Minute))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersAsc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
 	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{
@@ -455,7 +456,7 @@ func TestListEndUsersEmptyPageKeepsAWayBack(t *testing.T) {
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
-		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
+		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()))
 
 	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{
