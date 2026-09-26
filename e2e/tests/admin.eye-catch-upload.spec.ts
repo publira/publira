@@ -529,4 +529,70 @@ test.describe("admin eye-catch upload", () => {
     await expect(genreRow(page, name)).toBeVisible();
     await expect(thumbnail).toHaveCount(0);
   });
+
+  /**
+   * The storefront draws a genre's eye-catch in place of the covers its tile
+   * would otherwise show, and in the header of the genre's own page. The admin
+   * API drops the storefront's cache tags out of band from the response the
+   * console has already rendered, so each public read is a poll rather than a
+   * single request after a fixed wait.
+   */
+  test("a genre's eye-catch reaches the storefront's genre list and genre page, and clearing it takes it back off", async ({
+    page,
+  }) => {
+    const name = `E2E Storefront Genre ${uniqueSuffix()}`;
+    createdGenreNames.push(name);
+    await createGenreViaUi(page, name);
+
+    // The storefront addresses a genre by the public id the console keeps in
+    // the row's Edit link rather than on screen.
+    const editHref = await genreRow(page, name)
+      .getByRole("link", { name: "Edit" })
+      .getAttribute("href");
+    const genreId = editHref?.split("/").at(-1) ?? "";
+    expect(genreId).not.toBe("");
+    const openEyeCatchTab = async (): Promise<void> => {
+      await page.goto(adminUrl("/genres"));
+      await genreRow(page, name).getByRole("link", { name: "Edit" }).click();
+      await page.getByRole("link", { name: "Cover image" }).click();
+    };
+
+    await openEyeCatchTab();
+    await uploadEyeCatchSource(page, "genre_eye_catch_image");
+
+    // The genre carries no series, so without its eye-catch the tile is one
+    // flat frame, and any image in it is the one the console uploaded.
+    const tileImages = page
+      .getByRole("link", { name })
+      .locator('img[src^="/images/"]');
+    await expect(async () => {
+      await page.goto(edgeUrl(hostPath("/genres")));
+      await expect(tileImages).toHaveAttribute(
+        "src",
+        /^\/images\/genres\/[^/]+\/portrait\/\d+/u,
+        { timeout: 5000 }
+      );
+    }).toPass({ timeout: 60_000 });
+
+    await page.goto(edgeUrl(hostPath(`/genres/${genreId}`)));
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+    await expect(
+      page.getByRole("main").locator('img[src^="/images/genres/"]')
+    ).toHaveAttribute("src", /^\/images\/genres\/[^/]+\/landscape\/\d+/u);
+
+    await openEyeCatchTab();
+    await page
+      .getByRole("button", { name: "Delete the current eye-catch image" })
+      .click();
+    await page.getByRole("button", { name: "Update cover image" }).click();
+    await expectMessage(page, "Cover image updated.");
+
+    await expect(async () => {
+      await page.goto(edgeUrl(hostPath("/genres")));
+      await expect(page.getByRole("link", { name })).toBeVisible({
+        timeout: 5000,
+      });
+      await expect(tileImages).toHaveCount(0, { timeout: 5000 });
+    }).toPass({ timeout: 60_000 });
+  });
 });

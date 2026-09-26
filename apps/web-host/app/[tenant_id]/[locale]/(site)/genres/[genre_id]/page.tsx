@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -320,16 +321,28 @@ const GenreDetailContent = async ({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">
-      <div className="grid gap-2">
-        <h1 className="font-serif text-3xl leading-tight">{genre.name}</h1>
-        <p className="text-sm text-muted-foreground tabular-nums">
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message
-              message="host.common.series_count"
-              values={{ count: genre.publishedSeriesCount }}
+      <div className="grid gap-4">
+        {genre.eyeCatchImageVariants && (
+          <span className="block overflow-hidden rounded-surface bg-muted">
+            <EyeCatchPicture
+              alt=""
+              imgClassName="aspect-video size-full object-cover"
+              sizes="(max-width: 1200px) 100vw, 1152px"
+              variants={genre.eyeCatchImageVariants}
             />
-          </Suspense>
-        </p>
+          </span>
+        )}
+        <div className="grid gap-2">
+          <h1 className="font-serif text-3xl leading-tight">{genre.name}</h1>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message
+                message="host.common.series_count"
+                values={{ count: genre.publishedSeriesCount }}
+              />
+            </Suspense>
+          </p>
+        </div>
       </div>
 
       <Suspense fallback={<SeriesFilterFormSkeleton />}>
