@@ -53,6 +53,7 @@ import { storageTestReasonKey } from "#lib/storage-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 import { AuditActionName } from "./_components/audit-action-name";
+import { AuditLogTarget } from "./_components/audit-log-target";
 import {
   buildAuditLogsPath,
   parseAuditLogFilters,
@@ -111,21 +112,6 @@ const getOutcomeTone = (
     }
   }
 };
-
-const buildTargetLabel = (targetType: string, targetId: string): string => {
-  if (targetType && targetId) {
-    return `${targetType}: ${targetId}`;
-  }
-  return targetId || targetType || "-";
-};
-
-const isOperatorTargetType = (targetType: string): boolean =>
-  targetType === "operator";
-
-const isUserTargetType = (targetType: string): boolean => targetType === "user";
-
-const isTenantTargetType = (targetType: string): boolean =>
-  targetType === "tenant";
 
 const buildEmptyMessage = async (
   hasFilter: boolean,
@@ -257,95 +243,6 @@ const AuditLogsPagination = async ({
   );
 };
 
-/**
- * The name of a platform-wide setting target. Each is recorded with the fixed
- * target ID `platform`, so the name alone says what the entry touched.
- */
-const settingsTargetName = (targetType: string) => {
-  switch (targetType) {
-    case "platform_config": {
-      return <Message message="platform.audit.targets.platform_config" />;
-    }
-    case "platform_policy": {
-      return <Message message="platform.audit.targets.platform_policy" />;
-    }
-    case "platform_retention": {
-      return <Message message="platform.audit.targets.platform_retention" />;
-    }
-    case "smtp_config": {
-      return <Message message="platform.audit.targets.smtp_config" />;
-    }
-    case "storage_config": {
-      return <Message message="platform.audit.targets.storage_config" />;
-    }
-    case "webpush_config": {
-      return <Message message="platform.audit.targets.webpush_config" />;
-    }
-    default: {
-      return null;
-    }
-  }
-};
-
-const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
-  if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
-    return (
-      <Link
-        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        href={`/operators/${log.targetPublicId}`}
-      >
-        {log.targetName || log.targetPublicId}
-      </Link>
-    );
-  }
-
-  if (log.targetPublicId && isUserTargetType(log.targetType)) {
-    return (
-      <Link
-        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        href={`/users/${log.targetPublicId}`}
-      >
-        {log.targetName || log.targetPublicId}
-      </Link>
-    );
-  }
-
-  if (log.tenantId) {
-    return (
-      <Link
-        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        href={`/tenants/${log.tenantId}`}
-      >
-        {log.targetName || log.tenantName || log.tenantId}
-      </Link>
-    );
-  }
-
-  if (log.targetPublicId && isTenantTargetType(log.targetType)) {
-    return (
-      <Link
-        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        href={`/tenants/${log.targetPublicId}`}
-      >
-        {log.targetName || log.targetPublicId}
-      </Link>
-    );
-  }
-
-  const settingsTarget = settingsTargetName(log.targetType);
-  if (settingsTarget) {
-    return (
-      <p>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          {settingsTarget}
-        </Suspense>
-      </p>
-    );
-  }
-
-  return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
-};
-
 const auditLogReason = (
   log: PlatformAuditLogSummary,
   locale: Locale,
@@ -454,7 +351,7 @@ const AuditLogsTableBody = async ({
           </TableCell>
           <TableCell>
             <div className="grid gap-1">
-              {renderAuditLogTarget(log)}
+              <AuditLogTarget log={log} />
               {auditLogReason(log, locale, t) ? (
                 <p className="text-xs text-muted-foreground">
                   {auditLogReason(log, locale, t)}

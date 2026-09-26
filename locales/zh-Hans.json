@@ -4070,6 +4070,7 @@
         "platform_retention": "保留期限默认值",
         "smtp_config": "SMTP 设置",
         "storage_config": "存储设置",
+        "tenant_admin_invitation": "发给 {$email} 的管理员邀请",
         "webpush_config": "Web Push 设置"
       },
       "title": "审计日志",
