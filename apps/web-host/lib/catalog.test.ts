@@ -1287,6 +1287,57 @@ describe("catalog.listPublishedGenres", () => {
     ]);
   });
 
+  it("Carries the eye-catch the console uploaded, and none for a genre without one", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          eyeCatchImageVariants: [
+            {
+              contentType: "image/webp",
+              fileSizeBytes: 2048n,
+              height: 1600,
+              label: "1200",
+              url: "/images/genres/GENRE01/portrait/1200",
+              variantType: "portrait",
+              width: 1200,
+            },
+          ],
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 2,
+          slug: "fantasy",
+        },
+        {
+          eyeCatchImageVariants: [],
+          name: "Romance",
+          publicId: "SeedGENRAAA2",
+          publishedSeriesCount: 0,
+          slug: "romance",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(
+      result.ok && result.value.map((genre) => genre.eyeCatchImageVariants)
+    ).toStrictEqual([
+      [
+        {
+          contentType: "image/webp",
+          fileSizeBytes: 2048,
+          height: 1600,
+          label: "1200",
+          url: "/images/genres/GENRE01/portrait/1200",
+          variantType: "portrait",
+          width: 1200,
+        },
+      ],
+      undefined,
+    ]);
+  });
+
   it("Drops a cover that names no series", async () => {
     mockListPublishedGenres.mockResolvedValueOnce({
       genres: [

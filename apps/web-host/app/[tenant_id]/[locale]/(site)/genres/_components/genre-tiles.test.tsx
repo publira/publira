@@ -61,6 +61,27 @@ const cover = (publicId: string): GenreFeaturedSeriesItem => ({
   publicId,
 });
 
+const eyeCatch = [
+  {
+    contentType: "image/webp",
+    fileSizeBytes: 2048,
+    height: 1600,
+    label: "1200",
+    url: "/images/genres/GENRE01/landscape/1200",
+    variantType: "landscape",
+    width: 1200,
+  },
+  {
+    contentType: "image/webp",
+    fileSizeBytes: 1024,
+    height: 800,
+    label: "600",
+    url: "/images/genres/GENRE01/portrait/600",
+    variantType: "portrait",
+    width: 600,
+  },
+];
+
 const genre = (
   overrides: Partial<PublishedGenreItem> = {}
 ): PublishedGenreItem => ({
@@ -181,6 +202,45 @@ describe("GenreTiles", () => {
     ];
     expect(flat).toHaveLength(1);
     expect(flat[0]?.textContent).toBe("Fantasy");
+  });
+
+  it("Draws the uploaded eye-catch's portrait cut in place of the covers", () => {
+    render(
+      <GenreTiles
+        genres={[
+          genre({
+            eyeCatchImageVariants: eyeCatch,
+            featuredSeries: [cover("SERIES01"), cover("SERIES02")],
+          }),
+        ]}
+      />
+    );
+
+    const link = tileLink(/Fantasy\s*12 published series/u);
+    const images = [...link.querySelectorAll("img")];
+    expect(images.map((image) => image.getAttribute("src"))).toStrictEqual([
+      "/images/genres/GENRE01/portrait/600",
+    ]);
+    expect(images[0]?.getAttribute("alt")).toBe("");
+    expect(link.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
+  });
+
+  it("Draws the uploaded eye-catch for a genre with no cover of its own", () => {
+    render(
+      <GenreTiles
+        genres={[
+          genre({ eyeCatchImageVariants: eyeCatch, publishedSeriesCount: 0 }),
+        ]}
+      />
+    );
+
+    const link = tileLink(/Fantasy\s*0 published series/u);
+    expect(
+      [...link.querySelectorAll("img")].map((image) =>
+        image.getAttribute("src")
+      )
+    ).toStrictEqual(["/images/genres/GENRE01/portrait/600"]);
+    expect(link.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
   });
 
   it("Puts the genre's name in one flat frame when it has no cover", () => {

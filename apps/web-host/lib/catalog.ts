@@ -749,6 +749,11 @@ export interface GenreFeaturedSeriesItem {
 
 /** One genre the tenant curates, beside how many of its series are published. */
 export interface PublishedGenreItem {
+  /**
+   * The eye-catch the console uploaded for the genre, which a screen draws in
+   * place of its covers. `undefined` when the genre has none.
+   */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   featuredSeries: GenreFeaturedSeriesItem[];
   publicId: string;
   name: string;
@@ -788,12 +793,18 @@ const toGenreFeaturedSeriesItem = (
 /** The generated `PublishedGenre` fields {@link toPublishedGenreItem} reads. */
 type RawPublishedGenre = Pick<
   PublishedGenre,
-  "featuredSeries" | "name" | "publicId" | "publishedSeriesCount" | "slug"
+  | "eyeCatchImageVariants"
+  | "featuredSeries"
+  | "name"
+  | "publicId"
+  | "publishedSeriesCount"
+  | "slug"
 >;
 
 const toPublishedGenreItem = (
   genre: RawPublishedGenre
 ): PublishedGenreItem => ({
+  eyeCatchImageVariants: toEyeCatchImageVariants(genre.eyeCatchImageVariants),
   featuredSeries: (genre.featuredSeries ?? []).flatMap(
     toGenreFeaturedSeriesItem
   ),
@@ -833,9 +844,9 @@ export const listPublishedGenres = async (
   }
 
   const normalizedTenantId = tenantId.trim();
-  // The tag the admin console drops when a genre is created, renamed, or
-  // reordered, and when a series changes the genres it carries, its cover, or
-  // whether it is published.
+  // The tag the admin console drops when a genre is created, renamed,
+  // reordered, or given or cleared of its eye-catch, and when a series changes
+  // the genres it carries, its cover, or whether it is published.
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
 
   const genres: PublishedGenreItem[] = [];
