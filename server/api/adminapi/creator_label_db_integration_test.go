@@ -325,6 +325,43 @@ func TestDBCreateLabelWithAnUnusableImageLeavesNoLabel(t *testing.T) {
 	}
 }
 
+// A create whose eye-catch the object store refuses part-way must not leave
+// the label or its image rows behind.
+func TestDBCreateLabelWhoseEyeCatchTheStoreRefusesLeavesNoLabel(t *testing.T) {
+	store := &refusingStorageProvider{}
+	store.refuse.Store(true)
+	env := newAdminDBEnvWithStorage(t, store)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	labels := env.labelClient()
+
+	request := func() *connect.Request[publiraadminv1.CreateLabelRequest] {
+		return newAdminDBRequest(tenant, &publiraadminv1.CreateLabelRequest{
+			Tenant:                   tenant.tenantContext(),
+			Name:                     "Shonen",
+			EyeCatchImageData:        aspectJPEG(t, 2400, 3200),
+			EyeCatchImageContentType: "image/jpeg",
+		})
+	}
+
+	if _, err := labels.CreateLabel(context.Background(), request()); connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateLabel with the store refusing error = %v, want internal", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM labels WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("labels after the refused create = %d, want 0", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM label_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("label_images after the refused create = %d, want 0", count)
+	}
+
+	store.refuse.Store(false)
+	if _, err := labels.CreateLabel(context.Background(), request()); err != nil {
+		t.Fatalf("CreateLabel once the store accepts: %v", err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM labels WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("labels after the retry = %d, want 1", count)
+	}
+}
+
 // An update that fails on its eye-catch keeps the label as it was and leaves no
 // image row that nothing points at.
 func TestDBUpdateLabelWithAnUnusableImageLeavesNoImage(t *testing.T) {

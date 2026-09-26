@@ -274,16 +274,9 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
 }
 
-func normalizeLabelEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
-	return normalizeSeriesEyeCatchImage(data, contentType)
-}
-
-func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, image *normalizedEyeCatchImage) (uuid.NullUUID, error) {
-	if image == nil {
+func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, variants []imageproc.Variant) (uuid.NullUUID, error) {
+	if len(variants) == 0 {
 		return uuid.NullUUID{}, nil
-	}
-	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
 	labelImageID, err := uuid.NewV7()
@@ -298,11 +291,6 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 	})
 	if err != nil {
 		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image", err, "tenant_id", tenant.ID.String(), "label_id", labelID.String())
-	}
-
-	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
-	if err != nil {
-		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 
 	store, err := storage.Pin(ctx, s.storage)
@@ -879,7 +867,7 @@ func (s *adminServer) CreateLabel(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -908,7 +896,7 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create label", err, "tenant_id", tenant.ID.String())
 	}
-	eyeCatchImageID, err := s.createLabelEyeCatchImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchImage)
+	eyeCatchImageID, err := s.createLabelEyeCatchImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -971,7 +959,7 @@ func (s *adminServer) UpdateLabel(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -994,8 +982,8 @@ func (s *adminServer) UpdateLabel(
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
-	} else if eyeCatchImage != nil {
-		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
+	} else if len(eyeCatchVariants) > 0 {
+		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
