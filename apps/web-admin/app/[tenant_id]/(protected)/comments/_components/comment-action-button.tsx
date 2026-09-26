@@ -29,7 +29,7 @@ export type PlainCommentAction = "approve" | "restore";
 
 interface CommentActionButtonProps {
   action: PlainCommentAction;
-  publicId: string;
+  commentId: string;
 }
 
 /** What the toast says once the action has landed. */
@@ -42,7 +42,7 @@ const ActionDone = ({ action }: { action: PlainCommentAction }) =>
 
 export const CommentActionButton = ({
   action,
-  publicId,
+  commentId,
 }: CommentActionButtonProps) => {
   const tenantId = useTenantId();
   const { add } = useToastManager();
@@ -68,7 +68,7 @@ export const CommentActionButton = ({
   return (
     <form action={formAction} className="grid gap-1">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={publicId} />
+      <input name="comment_id" type="hidden" value={commentId} />
       <Button
         disabled={isPending}
         size="sm"
@@ -95,7 +95,7 @@ export const CommentActionButton = ({
           </>
         )}
       </Button>
-      {state && !state.ok && state.publicId === publicId ? (
+      {state && !state.ok && state.commentId === commentId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
     </form>

@@ -212,15 +212,15 @@ export const CommentStateNotes = ({
 export const CommentRowActions = ({ comment }: { comment: CommentItem }) => (
   <div className="grid gap-2">
     {comment.status === "pending" ? (
-      <CommentActionButton action="approve" publicId={comment.publicId} />
+      <CommentActionButton action="approve" commentId={comment.id} />
     ) : null}
     {comment.status === "hidden" ? (
-      <CommentActionButton action="restore" publicId={comment.publicId} />
+      <CommentActionButton action="restore" commentId={comment.id} />
     ) : null}
     {comment.status === "pending" || comment.status === "published" ? (
-      <CommentReasonDialog action="hide" publicId={comment.publicId} />
+      <CommentReasonDialog action="hide" commentId={comment.id} />
     ) : null}
-    <CommentReasonDialog action="purge" publicId={comment.publicId} />
+    <CommentReasonDialog action="purge" commentId={comment.id} />
   </div>
 );
 
@@ -308,7 +308,7 @@ const CommentListBody = ({
       </TableHeader>
       <TableBody>
         {comments.map((comment) => (
-          <TableRow key={comment.publicId}>
+          <TableRow key={comment.id}>
             <TableCell>
               <div className="grid gap-1">
                 <StatusChip status={commentStatusTone(comment.status)}>

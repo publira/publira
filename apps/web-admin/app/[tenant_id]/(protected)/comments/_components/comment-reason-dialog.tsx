@@ -42,7 +42,7 @@ export type ReasonCommentAction = "hide" | "purge";
 
 interface CommentReasonDialogProps {
   action: ReasonCommentAction;
-  publicId: string;
+  commentId: string;
 }
 
 /** What the toast says once the removal has landed. */
@@ -55,7 +55,7 @@ const ReasonActionDone = ({ action }: { action: ReasonCommentAction }) =>
 
 export const CommentReasonDialog = ({
   action,
-  publicId,
+  commentId,
 }: CommentReasonDialogProps) => {
   const t = useClientMessages();
   const tenantId = useTenantId();
@@ -64,7 +64,7 @@ export const CommentReasonDialog = ({
   // dialogs of one row — and every other row on the screen — apart. `useId` is
   // avoided on purpose: its value carries characters an `id` reference does not
   // need to be tested against.
-  const formId = `comment-${action}-${publicId}`;
+  const formId = `comment-${action}-${commentId}`;
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(
     async (
@@ -89,7 +89,7 @@ export const CommentReasonDialog = ({
     // inside the popup instead would race the unmount for the submit.
     <form action={formAction} className="grid gap-1" id={formId} ref={formRef}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={publicId} />
+      <input name="comment_id" type="hidden" value={commentId} />
       <Dialog>
         <DialogTrigger
           render={
@@ -189,7 +189,7 @@ export const CommentReasonDialog = ({
           </DialogViewport>
         </DialogPortal>
       </Dialog>
-      {state && !state.ok && state.publicId === publicId ? (
+      {state && !state.ok && state.commentId === commentId ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
     </form>

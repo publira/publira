@@ -105,8 +105,8 @@ type RawComment = Pick<
   | "episodeTitle"
   | "hiddenAt"
   | "hiddenReason"
+  | "id"
   | "openReportCount"
-  | "publicId"
   | "publishedAt"
   | "purgeDueAt"
   | "seriesPublicId"
@@ -164,8 +164,8 @@ const mapComment = (item: RawComment): CommentItem => ({
   episodeTitle: item.episodeTitle ?? "",
   hiddenAt: item.hiddenAt ?? "",
   hiddenReason: toHiddenReason(item.hiddenReason ?? ""),
+  id: item.id ?? "",
   openReportCount: item.openReportCount ?? 0,
-  publicId: item.publicId ?? "",
   publishedAt: item.publishedAt ?? "",
   purgeDueAt: item.purgeDueAt ?? "",
   seriesPublicId: item.seriesPublicId ?? "",
@@ -192,8 +192,8 @@ const missingReportedComment: CommentItem = {
   episodeTitle: "",
   hiddenAt: "",
   hiddenReason: "unknown",
+  id: "",
   openReportCount: 0,
-  publicId: "",
   publishedAt: "",
   purgeDueAt: "",
   seriesPublicId: "",
@@ -454,7 +454,7 @@ export type CommentModerationAction = "approve" | "hide" | "purge" | "restore";
 
 export interface ModerateCommentInput {
   action: CommentModerationAction;
-  publicId: string;
+  commentId: string;
   /** Recorded on the audit log row. Required for a purge, optional otherwise. */
   reason: string;
   tenantId: string;
@@ -469,7 +469,7 @@ const callModeration = async (
   sessionId: string
 ): Promise<void> => {
   const request = {
-    publicId: input.publicId,
+    commentId: input.commentId,
     reason: input.reason,
     tenant: { tenantId: input.tenantId },
   };
@@ -541,6 +541,6 @@ export const moderateComment = async (
 
 /** A moderation failure, addressed to the row it came from. */
 export const commentActionFailure = (
-  publicId: string,
+  commentId: string,
   message: string
-): CommentActionState => ({ message, ok: false, publicId });
+): CommentActionState => ({ commentId, message, ok: false });

@@ -54,11 +54,13 @@ export const ContactMessageDetail = ({
         <AdminSectionActions>
           {status === "handled" ? (
             <ReopenMessageButton
+              contactMessageId={contactMessage.id}
               publicId={contactMessage.publicId}
               tenantId={tenantId}
             />
           ) : (
             <MarkHandledButton
+              contactMessageId={contactMessage.id}
               publicId={contactMessage.publicId}
               tenantId={tenantId}
             />

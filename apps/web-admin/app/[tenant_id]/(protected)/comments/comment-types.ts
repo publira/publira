@@ -72,7 +72,7 @@ export interface CommentItem {
   /** Empty in every state but `hidden`. */
   hiddenAt: string;
   hiddenReason: CommentHiddenReason;
-  publicId: string;
+  id: string;
   /** When the comment first became publicly readable; empty if it never did. */
   publishedAt: string;
   /** Deadline of the retention purge, set only on a withdrawn comment. */
@@ -154,20 +154,20 @@ export type CountPendingCommentsResult =
 /**
  * What one moderation action reports back to the row it was submitted from.
  *
- * `publicId` is what lets a row show only its own failure: every row on the
+ * `commentId` is what lets a row show only its own failure: every row on the
  * screen submits to the same Action, and a message with no owner would appear
  * under all of them.
  */
 export type CommentActionState = {
+  commentId: string;
   message: string;
   ok: boolean;
-  publicId: string;
 } | null;
 
 /**
  * What one report decision reports back to the row it was submitted from.
  *
- * Keyed by `reportId` rather than by the comment's `publicId` for the reason
+ * Keyed by `reportId` rather than by the comment's `commentId` for the reason
  * {@link CommentActionState} is keyed at all: a comment several readers
  * reported is several rows in the queue, and a failure has to appear under the
  * one that was pressed.

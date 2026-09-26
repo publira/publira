@@ -38,7 +38,7 @@ const moderationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    publicId: requiredTrimmedString(
+    commentId: requiredTrimmedString(
       t("admin.comments.validation.target_missing")
     ),
     reason: optionalTrimmedString(1000),
@@ -48,7 +48,7 @@ const moderationSchema = async (locale: Locale) => {
   });
 };
 const moderationFormFields = {
-  publicId: { kind: "value", name: "public_id" },
+  commentId: { kind: "value", name: "comment_id" },
   reason: "value",
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
@@ -71,19 +71,19 @@ const moderate = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const input = toFormDataInput(formData, moderationFormFields);
-  const publicId =
-    typeof input.publicId === "string" ? input.publicId.trim() : "";
+  const commentId =
+    typeof input.commentId === "string" ? input.commentId.trim() : "";
   const schema = await moderationSchema(locale);
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return commentActionFailure(
-      publicId,
+      commentId,
       toFormErrorMessage(parsed.error, { locale })
     );
   }
   if (options.requireReason === true && parsed.data.reason === "") {
     return commentActionFailure(
-      parsed.data.publicId,
+      parsed.data.commentId,
       t("admin.comments.validation.reason_required")
     );
   }
@@ -92,7 +92,7 @@ const moderate = async (
     moderateComment(
       {
         action,
-        publicId: parsed.data.publicId,
+        commentId: parsed.data.commentId,
         reason: parsed.data.reason,
         tenantId: parsed.data.tenantId,
       },
@@ -100,14 +100,14 @@ const moderate = async (
     )
   );
   if (!result.ok) {
-    return commentActionFailure(parsed.data.publicId, result.message);
+    return commentActionFailure(parsed.data.commentId, result.message);
   }
 
   // Both reads are uncached (see `lib/comment.ts`), so there is no tag to
   // drop: the route is re-rendered instead, which is also what brings the
   // layout's queue badge back with the new count.
   refresh();
-  return { message: "", ok: true, publicId: parsed.data.publicId };
+  return { commentId: parsed.data.commentId, message: "", ok: true };
 };
 
 // Every exported Action is written `async` rather than as an arrow returning

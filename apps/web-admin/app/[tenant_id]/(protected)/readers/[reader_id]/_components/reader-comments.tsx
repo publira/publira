@@ -165,7 +165,7 @@ export const ReaderComments = async ({
           </TableHeader>
           <TableBody>
             {comments.map((comment) => (
-              <TableRow key={comment.publicId}>
+              <TableRow key={comment.id}>
                 <TableCell>
                   <div className="grid gap-1">
                     <StatusChip status={commentStatusTone(comment.status)}>

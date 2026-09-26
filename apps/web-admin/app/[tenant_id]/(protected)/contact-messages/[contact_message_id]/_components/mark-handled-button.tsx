@@ -12,6 +12,7 @@ import { Message } from "#components/message";
 import { markContactMessageHandledAction } from "../_lib/actions";
 
 interface MarkHandledButtonProps {
+  contactMessageId: string;
   publicId: string;
   tenantId: string;
 }
@@ -21,11 +22,13 @@ interface MarkHandledButtonProps {
  * and putting the message back among the waiting undoes it.
  */
 export const MarkHandledButton = ({
+  contactMessageId,
   publicId,
   tenantId,
 }: MarkHandledButtonProps) => (
   <ActionForm action={markContactMessageHandledAction} className="grid gap-1">
     <input name="tenant_id" type="hidden" value={tenantId} />
+    <input name="contact_message_id" type="hidden" value={contactMessageId} />
     <input name="public_id" type="hidden" value={publicId} />
     <ActionFormSubmit>
       <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>

@@ -37,6 +37,7 @@ const contactMessage = (
   body: "The second episode will not open for me.",
   createdAt: "2026-06-01T20:00:00Z",
   handledAt: "",
+  id: "018f0f80-0003-7000-8000-000000000001",
   publicId: "CONTACT0001",
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
