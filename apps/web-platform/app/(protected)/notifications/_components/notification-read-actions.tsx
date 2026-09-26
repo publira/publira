@@ -1,8 +1,7 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 
 import {
@@ -19,49 +18,31 @@ export const MarkNotificationAsReadButton = ({
   "aria-label": string;
   children: ReactNode;
   notificationId: string;
-}) => {
-  const [state, formAction, isPending] = useActionState(
-    markNotificationAsReadAction,
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-1">
-      <input name="notification_id" type="hidden" value={notificationId} />
-      <Button
-        aria-label={ariaLabel}
-        disabled={isPending}
-        size="sm"
-        type="submit"
-        variant="outline"
-      >
-        {children}
-      </Button>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+}) => (
+  <ActionForm
+    action={markNotificationAsReadAction}
+    className="grid justify-items-end gap-1"
+    showSuccess={false}
+  >
+    <input name="notification_id" type="hidden" value={notificationId} />
+    <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
+      {children}
+    </ActionFormSubmit>
+  </ActionForm>
+);
 
 export const MarkAllNotificationsAsReadButton = ({
   children,
 }: {
   children: ReactNode;
-}) => {
-  const [state, formAction, isPending] = useActionState(
-    markAllNotificationsAsReadAction,
-    null
-  );
-
-  return (
-    <form action={formAction} className="grid justify-items-end gap-1">
-      <Button disabled={isPending} size="sm" type="submit" variant="outline">
-        {children}
-      </Button>
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-    </form>
-  );
-};
+}) => (
+  <ActionForm
+    action={markAllNotificationsAsReadAction}
+    className="grid justify-items-end gap-1"
+    showSuccess={false}
+  >
+    <ActionFormSubmit size="sm" variant="outline">
+      {children}
+    </ActionFormSubmit>
+  </ActionForm>
+);

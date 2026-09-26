@@ -19,7 +19,6 @@ import { getMessagesFor } from "#lib/messages";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsNavigation } from "../_components/settings-navigation";
-import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
 import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
@@ -70,7 +69,6 @@ const TimezoneSection = ({
   loadErrorMessage,
 }: TimezoneSectionProps) => (
   <PlatformTimezoneForm
-    action={updatePlatformDefaultTimezoneAction}
     initialTimezone={initialTimezone}
     loadErrorMessage={loadErrorMessage}
   />

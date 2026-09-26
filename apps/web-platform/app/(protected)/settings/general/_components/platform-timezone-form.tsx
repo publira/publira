@@ -1,14 +1,12 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
 import {
-  Combobox,
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
   ComboboxEmpty,
-  ComboboxInput,
   ComboboxItems,
   ComboboxPopup,
 } from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -16,10 +14,10 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { listSupportedTimeZones } from "@publira/utils";
-import { useActionState, useMemo, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
 import {
   PlatformSection,
   PlatformSectionDescription,
@@ -28,84 +26,67 @@ import {
   PlatformSectionTitle,
 } from "#components/platform-page";
 
-import type { PlatformDefaultTimezoneActionState } from "../../_lib/actions";
+import { updatePlatformDefaultTimezoneAction } from "../../_lib/actions";
+import { PlatformTimezoneCombobox } from "./platform-timezone-combobox";
 
 interface PlatformTimezoneFormProps {
-  action: (
-    prevState: PlatformDefaultTimezoneActionState,
-    formData: FormData
-  ) => Promise<PlatformDefaultTimezoneActionState>;
   initialTimezone: string;
   loadErrorMessage?: string;
 }
 
 export const PlatformTimezoneForm = ({
-  action,
   initialTimezone,
   loadErrorMessage,
 }: PlatformTimezoneFormProps) => {
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [timezone, setTimezone] = useState(initialTimezone);
-
   // A failed read hands the form `DEFAULT_TIME_ZONE` as a stand-in, not the
   // stored value, so saving from that state would overwrite the real default
   // with the fallback. Editing stays closed until the read succeeds.
   const hasLoadError = Boolean(loadErrorMessage);
-
-  const items = useMemo<ComboboxItem[]>(() => {
-    const zones = listSupportedTimeZones();
-    // A stored alias (`Asia/Calcutta`) is valid but is not always enumerated by
-    // the runtime's ICU build, so keep it selectable instead of dropping it.
-    const values =
-      !initialTimezone || zones.includes(initialTimezone)
-        ? zones
-        : [initialTimezone, ...zones];
-
-    return values.map((zone) => ({ label: zone, value: zone }));
-  }, [initialTimezone]);
-
-  const t = useClientMessages();
 
   return (
     <PlatformSection>
       <PlatformSectionHeader>
         <PlatformSectionHeading>
           <PlatformSectionTitle>
-            <ClientMessage message="platform.settings.default_timezone_title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+              <Message message="platform.settings.default_timezone_title" />
+            </Suspense>
           </PlatformSectionTitle>
           <PlatformSectionDescription>
-            <ClientMessage message="platform.settings.default_timezone_description" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+              <Message message="platform.settings.default_timezone_description" />
+            </Suspense>
           </PlatformSectionDescription>
         </PlatformSectionHeading>
       </PlatformSectionHeader>
-      <form action={formAction} className="grid gap-4 sm:max-w-lg">
-        <input name="default_timezone" type="hidden" value={timezone} />
-
+      <ActionForm
+        action={updatePlatformDefaultTimezoneAction}
+        className="grid gap-4 sm:max-w-lg"
+      >
         <Field>
           <FieldLabel>
-            <ClientMessage message="platform.settings.default_timezone_label" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.settings.default_timezone_label" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
-            <Combobox
+            <PlatformTimezoneCombobox
               disabled={hasLoadError}
-              items={items}
-              onValueChange={setTimezone}
-              value={timezone}
+              initialTimezone={initialTimezone}
             >
-              <ComboboxInput
-                placeholder={t(
-                  "platform.settings.default_timezone_placeholder"
-                )}
-              />
               <ComboboxPopup>
                 <ComboboxEmpty>
-                  <ClientMessage message="platform.settings.default_timezone_empty" />
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message message="platform.settings.default_timezone_empty" />
+                  </Suspense>
                 </ComboboxEmpty>
                 <ComboboxItems />
               </ComboboxPopup>
-            </Combobox>
+            </PlatformTimezoneCombobox>
             <FieldDescription>
-              <ClientMessage message="platform.settings.default_timezone_help" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="platform.settings.default_timezone_help" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -113,22 +94,20 @@ export const PlatformTimezoneForm = ({
         {loadErrorMessage ? (
           <FormMessage variant="destructive">
             {loadErrorMessage}
-            <ClientMessage message="platform.settings.default_timezone_reload" />
-          </FormMessage>
-        ) : null}
-
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.settings.default_timezone_reload" />
+            </Suspense>
           </FormMessage>
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={hasLoadError || isPending} type="submit">
-            <ClientMessage message="platform.settings.default_timezone_save" />
-          </Button>
+          <ActionFormSubmit disabled={hasLoadError}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.settings.default_timezone_save" />
+            </Suspense>
+          </ActionFormSubmit>
         </div>
-      </form>
+      </ActionForm>
     </PlatformSection>
   );
 };
