@@ -89,8 +89,8 @@ export const seriesListCacheTag = (tenantId: string): string =>
  * never twice under the same one.
  */
 export interface SeriesCreatorCredit {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
   /**
    * The share of each episode's sales this credit is baked onto new episodes
    * with, in basis points. 0 on a read that returns no credit records — the
@@ -100,12 +100,13 @@ export interface SeriesCreatorCredit {
 }
 
 export interface SeriesItem {
+  id: string;
   publicId: string;
   title: string;
   synopsis: string;
   readingPeriodHours: number;
   publishedAt: string;
-  labelPublicId: string;
+  labelId: string;
   labelName: string;
   /**
    * In role priority order, then the order the editor gave within a role —
@@ -123,7 +124,7 @@ export interface SeriesItem {
   scheduleWeekdays: number[];
   ageRating: SeriesAgeRatingValue;
   /** In the tenant's genre order, which is the order the picker offers. */
-  genrePublicIds: string[];
+  genreIds: string[];
   tagNames: string[];
   eyeCatchImageVariants: {
     variantType: string;
@@ -256,6 +257,7 @@ type RawSeries = Pick<
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
   | "genres"
+  | "id"
   | "isPublished"
   | "label"
   | "publicId"
@@ -361,11 +363,11 @@ const WEEKDAY_COUNT = 7;
 
 type SeriesCreatorCreditRecord = Pick<
   SeriesCreatorCreditMessage,
-  "creatorPublicId" | "rolePublicId" | "shareBps"
+  "creatorId" | "roleId" | "shareBps"
 >;
 
-const creditKey = (creatorPublicId: string, rolePublicId: string): string =>
-  `${creatorPublicId}\u0000${rolePublicId}`;
+const creditKey = (creatorId: string, roleId: string): string =>
+  `${creatorId}\u0000${roleId}`;
 
 /**
  * `creditRecords` is where the shares come from: `Creator` carries none,
@@ -378,7 +380,7 @@ const mapSeries = (
 ): SeriesItem => {
   const shares = new Map(
     creditRecords.map((record) => [
-      creditKey(record.creatorPublicId.trim(), record.rolePublicId.trim()),
+      creditKey(record.creatorId.trim(), record.roleId.trim()),
       record.shareBps,
     ])
   );
@@ -390,17 +392,16 @@ const mapSeries = (
       toSurfaceAvailabilityValue(series.availability) ||
       DEFAULT_SURFACE_AVAILABILITY,
     creatorCredits: (series.creators ?? []).flatMap((creator) => {
-      const creatorPublicId = creator.publicId.trim();
+      const creatorId = creator.id.trim();
       // A credit written before roles existed states none. It is kept, so the
       // person stays credited and the form is where a role is chosen for them.
-      const rolePublicId = creator.role?.publicId?.trim() ?? "";
-      return creatorPublicId.length > 0
+      const roleId = creator.role?.id?.trim() ?? "";
+      return creatorId.length > 0
         ? [
             {
-              creatorPublicId,
-              rolePublicId,
-              shareBps:
-                shares.get(creditKey(creatorPublicId, rolePublicId)) ?? 0,
+              creatorId,
+              roleId,
+              shareBps: shares.get(creditKey(creatorId, roleId)) ?? 0,
             },
           ]
         : [];
@@ -422,13 +423,14 @@ const mapSeries = (
           : [];
       }
     ),
-    genrePublicIds: (series.genres ?? []).flatMap((genre) => {
-      const publicId = genre.publicId?.trim() ?? "";
-      return publicId.length > 0 ? [publicId] : [];
+    genreIds: (series.genres ?? []).flatMap((genre) => {
+      const id = genre.id?.trim() ?? "";
+      return id.length > 0 ? [id] : [];
     }),
+    id: series.id,
     isPublished: series.isPublished ?? false,
+    labelId: series.label?.id?.trim() ?? "",
     labelName: series.label?.name?.trim() ?? "",
-    labelPublicId: series.label?.publicId?.trim() ?? "",
     publicId: series.publicId,
     publishedAt: series.publishedAt ?? "",
     readingPeriodHours: series.readingPeriodHours ?? 0,
@@ -712,7 +714,7 @@ type SeriesListingInput = {
  * whole, so a save without them would clear them.
  */
 interface SeriesTaxonomyInput {
-  genrePublicIds: string[];
+  genreIds: string[];
   tagNames: string[];
 }
 
@@ -720,7 +722,7 @@ export const createSeries = async (
   input: {
     tenantId: string;
     title: string;
-    labelPublicId: string;
+    labelId: string;
     creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
     publishedAt?: string;
@@ -753,9 +755,9 @@ export const createSeries = async (
         creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
-        genrePublicIds: input.genrePublicIds,
+        genreIds: input.genreIds,
         isPublished: input.isPublished,
-        labelPublicId: input.labelPublicId,
+        labelId: input.labelId,
         publishedAt: input.publishedAt,
         purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
           input.purchaseAvailability
@@ -804,9 +806,9 @@ export const createSeries = async (
 export const updateSeries = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     title: string;
-    labelPublicId: string;
+    labelId: string;
     creatorCredits: SeriesCreatorCredit[];
     isPublished: boolean;
     publishedAt?: string;
@@ -857,10 +859,9 @@ export const updateSeries = async (
         creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
-        genrePublicIds: input.genrePublicIds,
+        genreIds: input.genreIds,
         isPublished: input.isPublished,
-        labelPublicId: input.labelPublicId,
-        publicId: input.publicId,
+        labelId: input.labelId,
         publishedAt: input.publishedAt,
         purchaseAvailability:
           input.purchaseAvailability === undefined
@@ -871,6 +872,7 @@ export const updateSeries = async (
             ? undefined
             : READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
+        seriesId: input.id,
         spreadStartIndex: input.spreadStartIndex,
         status:
           input.status === undefined
@@ -934,7 +936,7 @@ export type SeriesEyeCatchAspectResult =
 export const uploadSeriesEyeCatchAspectImage = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     variantType: string;
     imageContentType?: string;
     imageData: Uint8Array;
@@ -960,7 +962,7 @@ export const uploadSeriesEyeCatchAspectImage = async (
         crop: input.crop,
         imageContentType: input.imageContentType,
         imageData: input.imageData,
-        publicId: input.publicId,
+        seriesId: input.id,
         tenant: { tenantId: input.tenantId },
         variantType: input.variantType,
       },

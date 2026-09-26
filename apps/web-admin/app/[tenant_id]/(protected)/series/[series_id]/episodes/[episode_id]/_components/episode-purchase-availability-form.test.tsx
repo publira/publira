@@ -50,6 +50,7 @@ const renderForm = (
   render(
     <EpisodePurchaseAvailabilityForm
       action={action}
+      episodeId="EP001-ID"
       episodePublicId="EP001"
       seriesPublicId="SERIES001"
       tenantId="TENANT001"
@@ -121,6 +122,7 @@ describe("EpisodePurchaseAvailabilityForm", () => {
     render(
       <EpisodePurchaseAvailabilityForm
         action={() => save.promise}
+        episodeId="EP001-ID"
         episodePublicId="EP001"
         initialPurchaseAvailability="web"
         seriesPurchaseAvailability="all"

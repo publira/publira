@@ -1471,6 +1471,7 @@
         "image_alt": "第 {$index} 页",
         "image_reorder_action": "调整第 {$position} 页的顺序",
         "image_list_error": "无法显示页面图片",
+        "pages_error": "无法显示页面上传",
         "schedule_error": "无法显示发布设置",
         "schedule_title": "publish_at 设置",
         "schedule_description": "更新预约发布的时间。提交空值即可清除预约。",

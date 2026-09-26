@@ -196,6 +196,7 @@ const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
   return (
     <EpisodeScheduleForm
       action={updateEpisodeScheduleAction}
+      episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       scheduledAt={episodeResult.episode.scheduledAt}
       seriesPublicId={context.seriesId}
@@ -231,6 +232,7 @@ const EpisodeAvailabilitySection = async ({
   return (
     <EpisodeAvailabilityForm
       action={updateEpisodeAvailabilityAction}
+      episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       initialAvailability={episodeResult.episode.availability}
       key={`${context.episodeId}:${episodeResult.episode.availability}`}
@@ -278,6 +280,7 @@ const EpisodePurchaseAvailabilitySection = async ({
   return (
     <EpisodePurchaseAvailabilityForm
       action={updateEpisodePurchaseAvailabilityAction}
+      episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       initialPurchaseAvailability={episodeResult.purchaseAvailability}
       key={`${context.episodeId}:purchase:${episodeResult.purchaseAvailability}`}
@@ -296,20 +299,35 @@ const EpisodePurchaseAvailabilitySection = async ({
 };
 
 const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
-  const { episodeId, locale, seriesId, tenantId } =
-    await resolveEditEpisodeContext(params);
-  const [creditsResult, creatorsResult, creatorRolesResult] = await Promise.all(
+  const context = await resolveEditEpisodeContext(params);
+  const { locale, tenantId } = context;
+  const [episodeResult, creatorsResult, creatorRolesResult] = await Promise.all(
     [
-      listEpisodeCredits({ episodePublicId: episodeId, tenantId }, locale),
+      loadEpisode(context),
       listAllCreators(tenantId, locale),
       listCreatorRoles(tenantId, locale),
     ]
   );
   await redirectToLoginIfSessionRejected(
-    creditsResult,
+    episodeResult,
     creatorsResult,
     creatorRolesResult
   );
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.credits_error" />}
+      />
+    );
+  }
+
+  const creditsResult = await listEpisodeCredits(
+    { episodeId: episodeResult.episode.id, tenantId },
+    locale
+  );
+  await redirectToLoginIfSessionRejected(creditsResult);
 
   if (!creditsResult.ok) {
     return (
@@ -325,31 +343,72 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
       action={replaceEpisodeCreditsAction}
       creatorRoles={creatorRolesResult.creatorRoles}
       creators={creatorsResult.creators}
-      episodePublicId={episodeId}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
       initialCredits={creditsResult.credits}
-      seriesPublicId={seriesId}
+      seriesPublicId={context.seriesId}
     />
   );
 };
 
 const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
-  const { episodeId, seriesId } = await resolveEditEpisodeContext(params);
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, seriesResult] = await Promise.all([
+    loadEpisode(context),
+    getSeries(
+      { publicId: context.seriesId, tenantId: context.tenantId },
+      context.locale
+    ),
+  ]);
+  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.pages_error" />}
+      />
+    );
+  }
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+    return (
+      <EpisodeSectionError
+        message={seriesResult.message}
+        title={<Message message="admin.series.episodes.pages_error" />}
+      />
+    );
+  }
 
   return (
     <EpisodePagesForm
       action={uploadEpisodePagesAction}
-      episodePublicId={episodeId}
-      seriesPublicId={seriesId}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
+      seriesId={seriesResult.series.id}
+      seriesPublicId={context.seriesId}
     />
   );
 };
 
 const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
-  const { episodeId, locale, seriesId, tenantId } =
-    await resolveEditEpisodeContext(params);
+  const context = await resolveEditEpisodeContext(params);
+  const episodeResult = await loadEpisode(context);
+  await redirectToLoginIfSessionRejected(episodeResult);
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.image_list_error" />}
+      />
+    );
+  }
+
   const imagesResult = await listEpisodeImages(
-    { episodePublicId: episodeId, tenantId },
-    locale
+    { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
+    context.locale
   );
   await redirectToLoginIfSessionRejected(imagesResult);
 
@@ -377,10 +436,11 @@ const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
 
   return (
     <EpisodeImagesSortableGrid
-      episodePublicId={episodeId}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
       images={imagesResult.images}
       reorderAction={reorderEpisodeImagesAction}
-      seriesPublicId={seriesId}
+      seriesPublicId={context.seriesId}
     />
   );
 };
@@ -389,22 +449,14 @@ const EpisodeReadingLayoutSection = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
-  const [episodeResult, imagesResult, seriesResult] = await Promise.all([
+  const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
-    listEpisodeImages(
-      { episodePublicId: context.episodeId, tenantId: context.tenantId },
-      context.locale
-    ),
     getSeries(
       { publicId: context.seriesId, tenantId: context.tenantId },
       context.locale
     ),
   ]);
-  await redirectToLoginIfSessionRejected(
-    episodeResult,
-    imagesResult,
-    seriesResult
-  );
+  await redirectToLoginIfSessionRejected(episodeResult, seriesResult);
 
   if (!episodeResult.ok) {
     return (
@@ -415,9 +467,16 @@ const EpisodeReadingLayoutSection = async ({
     );
   }
 
+  const imagesResult = await listEpisodeImages(
+    { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
+    context.locale
+  );
+  await redirectToLoginIfSessionRejected(imagesResult);
+
   return (
     <EpisodeReadingLayoutForm
       action={updateEpisodeLayoutAction}
+      episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       initialLayout={episodeResult.layout}
       key={`${context.episodeId}:${episodeResult.layout.readingDirection}:${episodeResult.layout.spreadStartIndex ?? ""}`}

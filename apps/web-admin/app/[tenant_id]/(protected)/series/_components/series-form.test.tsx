@@ -61,30 +61,29 @@ const render = (ui: React.ReactNode) =>
     ),
   });
 
-const labels = [{ name: "Label A", publicId: "LABEL001" }];
-const creators = [{ name: "Creator A", publicId: "CREATOR001" }];
+const labels = [{ id: "LABEL001", name: "Label A" }];
+const creators = [{ id: "CREATOR001", name: "Creator A" }];
 const creatorRoles = [
-  { name: "Original Author", publicId: "ROLE001" },
-  { name: "Artist", publicId: "ROLE002" },
+  { id: "ROLE001", name: "Original Author" },
+  { id: "ROLE002", name: "Artist" },
 ];
 const genres = [
-  { name: "Fantasy", publicId: "GENRE001" },
-  { name: "Mystery", publicId: "GENRE002" },
+  { id: "GENRE001", name: "Fantasy" },
+  { id: "GENRE002", name: "Mystery" },
 ];
 const tagSuggestions = ["seaside", "letterpress"];
 
 const series: SeriesListItem = {
   ageRating: "r15",
   availability: "app",
-  creatorCredits: [
-    { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
-  ],
+  creatorCredits: [{ creatorId: "CREATOR001", roleId: "ROLE002", shareBps: 0 }],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
-  genrePublicIds: ["GENRE002"],
+  genreIds: ["GENRE002"],
+  id: "SERIES001-ID",
   isPublished: false,
+  labelId: "LABEL001",
   labelName: "Label A",
-  labelPublicId: "LABEL001",
   publicId: "SERIES001",
   publishedAt: "",
   readingPeriodHours: 72,
@@ -224,10 +223,10 @@ it("opens on the classification the series carries", () => {
   expect(posted("status")).toEqual(["hiatus"]);
   expect(posted("age_rating")).toEqual(["r15"]);
   expect(posted("schedule_weekdays")).toEqual(["1", "4"]);
-  expect(posted("genre_public_ids")).toEqual(["GENRE002"]);
+  expect(posted("genre_ids")).toEqual(["GENRE002"]);
   expect(posted("creator_credits")).toEqual([
     JSON.stringify([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE002", shareBps: 0 },
     ]),
   ]);
   expect(posted("tag_names")).toEqual(["letterpress"]);
@@ -467,13 +466,13 @@ it("disables the save while the credit shares pass 100%", () => {
         ...series,
         creatorCredits: [
           {
-            creatorPublicId: "CREATOR001",
-            rolePublicId: "ROLE001",
+            creatorId: "CREATOR001",
+            roleId: "ROLE001",
             shareBps: 0,
           },
           {
-            creatorPublicId: "CREATOR001",
-            rolePublicId: "ROLE002",
+            creatorId: "CREATOR001",
+            roleId: "ROLE002",
             shareBps: 0,
           },
         ],

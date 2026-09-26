@@ -1471,6 +1471,7 @@
         "image_alt": "Page {$index}",
         "image_reorder_action": "Reorder page {$position}",
         "image_list_error": "Could not display page images",
+        "pages_error": "Could not display the page upload",
         "schedule_error": "Could not display publishing settings",
         "schedule_title": "publish_at settings",
         "schedule_description": "Update the scheduled publication time. Leave blank to clear the schedule.",

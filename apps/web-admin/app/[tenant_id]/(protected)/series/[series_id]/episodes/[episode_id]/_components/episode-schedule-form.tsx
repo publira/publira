@@ -26,6 +26,7 @@ import type { EpisodeEditActionState } from "../episode-edit-types";
 
 interface EpisodeScheduleFormProps {
   seriesPublicId: string;
+  episodeId: string;
   episodePublicId: string;
   scheduledAt?: string;
   action: (
@@ -37,6 +38,7 @@ interface EpisodeScheduleFormProps {
 
 export const EpisodeScheduleForm = ({
   seriesPublicId,
+  episodeId,
   episodePublicId,
   scheduledAt = "",
   action,
@@ -71,6 +73,7 @@ export const EpisodeScheduleForm = ({
       <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
+        <input name="episode_id" type="hidden" value={episodeId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
         <Fieldset disabled={isPending}>

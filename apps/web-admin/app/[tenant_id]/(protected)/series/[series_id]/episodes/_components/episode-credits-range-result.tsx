@@ -54,14 +54,13 @@ export const EpisodeCreditsRangeResult = ({
 }: EpisodeCreditsRangeResultProps) => {
   const t = useClientMessages();
   const titleById = new Map(
-    episodes.map((episode) => [episode.publicId, episode.title])
+    episodes.map((episode) => [episode.id, episode.title])
   );
-  const labelFor = (publicId: string): string =>
-    titleById.get(publicId) ?? publicId;
+  const labelFor = (id: string): string => titleById.get(id) ?? id;
 
   return (
     <div className="grid gap-4">
-      {result.changedEpisodePublicIds.length === 0 ? (
+      {result.changedEpisodeIds.length === 0 ? (
         <p className="text-sm text-foreground">
           {t("admin.series.episodes.credits.result_none_changed")}
         </p>
@@ -69,12 +68,12 @@ export const EpisodeCreditsRangeResult = ({
         <section className="grid gap-2">
           <h3 className="text-sm font-medium text-foreground">
             {t("admin.series.episodes.credits.result_changed", {
-              count: String(result.changedEpisodePublicIds.length),
+              count: String(result.changedEpisodeIds.length),
             })}
           </h3>
           <ul className="grid gap-1 text-sm text-foreground">
-            {result.changedEpisodePublicIds.map((publicId) => (
-              <li key={publicId}>{labelFor(publicId)}</li>
+            {result.changedEpisodeIds.map((id) => (
+              <li key={id}>{labelFor(id)}</li>
             ))}
           </ul>
         </section>
@@ -89,8 +88,8 @@ export const EpisodeCreditsRangeResult = ({
           </h3>
           <ul className="grid gap-1 text-sm text-foreground">
             {result.unchangedEpisodes.map((episode) => (
-              <li key={episode.episodePublicId}>
-                {labelFor(episode.episodePublicId)}
+              <li key={episode.episodeId}>
+                {labelFor(episode.episodeId)}
                 {" — "}
                 <UnchangedReason reason={episode.reason} />
               </li>

@@ -104,9 +104,9 @@ const seriesInput: Parameters<typeof createSeries>[0] = {
   creatorCredits: [],
   eyeCatchImageContentType: "image/png",
   eyeCatchImageData: image,
-  genrePublicIds: [],
+  genreIds: [],
   isPublished: false,
-  labelPublicId: "LABEL001",
+  labelId: "LABEL001",
   purchaseAvailability: "",
   readingDirection: "rtl",
   readingPeriodHours: 24,
@@ -136,7 +136,7 @@ const surfaces: UploadSurface[] = [
       const { uploadEpisodePages } = await import("./episode");
       return uploadEpisodePages(
         {
-          episodePublicId: "EPISODE001",
+          episodeId: "EPISODE001-ID",
           pages: [new File([image], "001.png", { type: "image/png" })],
           tenantId: "TENANT001",
         },
@@ -155,8 +155,8 @@ const surfaces: UploadSurface[] = [
           archive: new File([image], "episode.zip", {
             type: "application/zip",
           }),
-          episodePublicId: "EPISODE001",
-          seriesPublicId: "SERIES001",
+          episodeId: "EPISODE001-ID",
+          seriesId: "SERIES001-ID",
           tenantId: "TENANT001",
         },
         locale
@@ -178,7 +178,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUpdateSeries,
     upload: async (locale) => {
       const { updateSeries } = await import("./series");
-      return updateSeries({ ...seriesInput, publicId: "SERIES001" }, locale);
+      return updateSeries({ ...seriesInput, id: "SERIES001-ID" }, locale);
     },
   },
   {
@@ -189,8 +189,8 @@ const surfaces: UploadSurface[] = [
       const { uploadSeriesEyeCatchAspectImage } = await import("./series");
       return uploadSeriesEyeCatchAspectImage(
         {
+          id: "SERIES001-ID",
           imageData: image,
-          publicId: "SERIES001",
           tenantId: "TENANT001",
           variantType: "square",
         },

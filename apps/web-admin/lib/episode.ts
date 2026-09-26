@@ -49,6 +49,7 @@ import {
 } from "./surface-availability-enum";
 
 export interface EpisodeItem {
+  id: string;
   publicId: string;
   title: string;
   orderIndex: number;
@@ -162,8 +163,8 @@ export type ReorderEpisodeImagesResult =
   | { ok: false; message: string };
 
 export interface EpisodeCreditPair {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
 }
 
 export type BulkEpisodeCreditOperation =
@@ -179,21 +180,21 @@ export type EpisodeCreditUnchangedReasonValue =
   | "unspecified";
 
 export interface UnchangedEpisodeCreditItem {
-  episodePublicId: string;
+  episodeId: string;
   reason: EpisodeCreditUnchangedReasonValue;
 }
 
 export type BulkEditEpisodeCreditsResult =
   | {
       ok: true;
-      changedEpisodePublicIds: string[];
+      changedEpisodeIds: string[];
       unchangedEpisodes: UnchangedEpisodeCreditItem[];
     }
   | { ok: false; message: string };
 
 export interface EpisodeCreatorCreditItem {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
   /** The share of this episode's sales the credit is paid, in basis points. */
   shareBps: number;
   source: CreatorCreditSource;
@@ -247,6 +248,7 @@ const mapReorderErrorToMessage = async (
 type RawEpisode = Pick<
   Episode,
   | "availability"
+  | "id"
   | "orderIndex"
   | "price"
   | "publicId"
@@ -262,13 +264,14 @@ type RawEpisode = Pick<
  * Every Action that changes what the edit screen shows of that episode clears
  * it, which carries the change back to the screen that submitted.
  */
-export const episodeCacheTag = (tenantId: string, publicId: string): string =>
-  `episode-${tenantId}-${publicId}`;
+export const episodeCacheTag = (tenantId: string, episodeId: string): string =>
+  `episode-${tenantId}-${episodeId}`;
 
 const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   // A value naming none of the three is reported by the reads that open a
   // form on it; a list only loses the mark on that row.
   availability: toSurfaceAvailabilityValue(episode.availability) ?? "",
+  id: episode.id,
   orderIndex: episode.orderIndex,
   price: episode.price,
   publicId: episode.publicId,
@@ -322,15 +325,15 @@ const mapEpisodeImage = (image: RawEpisodeImage): EpisodeImageItem => ({
   width: image.width,
 });
 
-type RawEpisodeCredit = Pick<Creator, "publicId" | "role" | "source">;
+type RawEpisodeCredit = Pick<Creator, "id" | "role" | "source">;
 
 type EpisodeCreditShareRecord = Pick<
   EpisodeCreatorCreditItem,
-  "creatorPublicId" | "rolePublicId" | "shareBps"
+  "creatorId" | "roleId" | "shareBps"
 >;
 
-const creditKey = (creatorPublicId: string, rolePublicId: string): string =>
-  `${creatorPublicId}\u0000${rolePublicId}`;
+const creditKey = (creatorId: string, roleId: string): string =>
+  `${creatorId}\u0000${roleId}`;
 
 /**
  * `Creator` carries who and in what role, and the records carry the share:
@@ -342,23 +345,23 @@ const mapEpisodeCredits = (
 ): EpisodeCreatorCreditItem[] => {
   const shares = new Map(
     records.map((record) => [
-      creditKey(record.creatorPublicId, record.rolePublicId),
+      creditKey(record.creatorId, record.roleId),
       record.shareBps,
     ])
   );
   return creators.map((credit) => {
-    const rolePublicId = credit.role?.publicId ?? "";
+    const roleId = credit.role?.id ?? "";
     return {
-      creatorPublicId: credit.publicId,
-      rolePublicId,
-      shareBps: shares.get(creditKey(credit.publicId, rolePublicId)) ?? 0,
+      creatorId: credit.id,
+      roleId,
+      shareBps: shares.get(creditKey(credit.id, roleId)) ?? 0,
       source: credit.source,
     };
   });
 };
 
 export const listEpisodeCredits = async (
-  input: { tenantId: string; episodePublicId: string },
+  input: { tenantId: string; episodeId: string },
   locale: Locale
 ): Promise<ListEpisodeCreditsResult> => {
   const [t, sessionId] = await Promise.all([
@@ -375,7 +378,7 @@ export const listEpisodeCredits = async (
   try {
     const response = await apiClient.series.listEpisodeCredits(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -404,7 +407,7 @@ export const listEpisodeCredits = async (
 export const replaceEpisodeCredits = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
     creatorCredits: EpisodeCreditShareRecord[];
   },
   locale: Locale
@@ -420,7 +423,7 @@ export const replaceEpisodeCredits = async (
     const response = await apiClient.series.replaceEpisodeCredits(
       {
         creatorCredits: input.creatorCredits,
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -488,8 +491,8 @@ const mapEpisodeUploadErrorMessage = async (
 
 const uploadArchive = async (input: {
   archive: File;
-  episodePublicId: string;
-  seriesPublicId?: string;
+  episodeId: string;
+  seriesId?: string;
   tenantId: string;
   sessionId: string;
 }) => {
@@ -497,8 +500,8 @@ const uploadArchive = async (input: {
     archiveContentType: input.archive.type || "application/octet-stream",
     archiveData: new Uint8Array(await input.archive.arrayBuffer()),
     archiveFilename: input.archive.name,
-    episodePublicId: input.episodePublicId,
-    seriesPublicId: input.seriesPublicId ?? "",
+    episodeId: input.episodeId,
+    seriesId: input.seriesId ?? "",
     tenant: { tenantId: input.tenantId },
   } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
 
@@ -510,13 +513,13 @@ const uploadArchive = async (input: {
 
 const uploadPages = async (input: {
   pages: File[];
-  episodePublicId: string;
+  episodeId: string;
   tenantId: string;
   sessionId: string;
 }) =>
   apiClient.series.uploadEpisodeImages(
     {
-      episodePublicId: input.episodePublicId,
+      episodeId: input.episodeId,
       images: await Promise.all(
         input.pages.map(async (page, index) => ({
           contentType: page.type || "application/octet-stream",
@@ -533,7 +536,7 @@ const uploadPages = async (input: {
 export const createEpisode = async (
   input: {
     tenantId: string;
-    seriesPublicId: string;
+    seriesId: string;
     title: string;
     price: number;
     readingPeriodHours: number;
@@ -568,7 +571,7 @@ export const createEpisode = async (
         ),
         readingPeriodHours: input.readingPeriodHours,
         scheduledAt: input.publishAt,
-        seriesPublicId: input.seriesPublicId,
+        seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
         title: input.title,
       },
@@ -610,7 +613,7 @@ export const createEpisode = async (
 export const listEpisodes = async (
   input: {
     tenantId: string;
-    seriesPublicId: string;
+    seriesId: string;
   } & CursorPageOptions,
   locale: Locale
 ): Promise<ListEpisodesResult> => {
@@ -632,7 +635,7 @@ export const listEpisodes = async (
     const response = await apiClient.series.listEpisodes(
       {
         ...cursorPageRequest(input),
-        seriesPublicId: input.seriesPublicId,
+        seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -672,7 +675,7 @@ export const listEpisodes = async (
  */
 export const listAllEpisodes = async (
   input: {
-    seriesPublicId: string;
+    seriesId: string;
     tenantId: string;
   },
   locale: Locale
@@ -698,7 +701,7 @@ export const listAllEpisodes = async (
         const response = await apiClient.series.listEpisodes(
           {
             limit,
-            seriesPublicId: input.seriesPublicId,
+            seriesId: input.seriesId,
             tenant: { tenantId: input.tenantId },
             token,
           },
@@ -756,7 +759,6 @@ export const getEpisode = async (
   locale: Locale
 ): Promise<GetEpisodeResult> => {
   "use cache: private";
-  cacheTag(episodeCacheTag(input.tenantId, input.publicId));
 
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
@@ -798,6 +800,7 @@ export const getEpisode = async (
       };
     }
 
+    cacheTag(episodeCacheTag(input.tenantId, response.episode.id));
     return {
       episode: mapEpisode(response.episode),
       layout,
@@ -824,7 +827,7 @@ export const getEpisode = async (
 export const updateEpisodePublishSchedule = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
     publishAt: string;
   },
   locale: Locale
@@ -843,7 +846,7 @@ export const updateEpisodePublishSchedule = async (
   try {
     const response = await apiClient.series.updateEpisodePublishSchedule(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         scheduledAt: input.publishAt,
         tenant: { tenantId: input.tenantId },
       },
@@ -879,7 +882,7 @@ export const updateEpisodePublishSchedule = async (
 export const updateEpisodeAvailability = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
     availability: EpisodeAvailabilityOverride;
   },
   locale: Locale
@@ -901,7 +904,7 @@ export const updateEpisodeAvailability = async (
         availability: input.availability
           ? SURFACE_AVAILABILITY_ENUM[input.availability]
           : undefined,
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -936,7 +939,7 @@ export const updateEpisodeAvailability = async (
 export const updateEpisodePurchaseAvailability = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
     purchaseAvailability: PurchaseAvailabilityOverride;
   },
   locale: Locale
@@ -955,7 +958,7 @@ export const updateEpisodePurchaseAvailability = async (
   try {
     const response = await apiClient.series.updateEpisodePurchaseAvailability(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
           input.purchaseAvailability
         ),
@@ -996,7 +999,7 @@ export const updateEpisodePurchaseAvailability = async (
 export const updateEpisodeLayout = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
   } & EpisodeReadingLayoutOverrides,
   locale: Locale
 ): Promise<UpdateEpisodeLayoutResult> => {
@@ -1014,7 +1017,7 @@ export const updateEpisodeLayout = async (
   try {
     const response = await apiClient.series.updateEpisodeLayout(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         readingDirection: input.readingDirection
           ? READING_DIRECTION_ENUM[input.readingDirection]
           : undefined,
@@ -1064,8 +1067,8 @@ export const updateEpisodeLayout = async (
 export const uploadEpisodePages = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
-    seriesPublicId?: string;
+    episodeId: string;
+    seriesId?: string;
     pages?: File[];
     archive?: File;
   },
@@ -1093,13 +1096,13 @@ export const uploadEpisodePages = async (
     const response = input.archive
       ? await uploadArchive({
           archive: input.archive,
-          episodePublicId: input.episodePublicId,
-          seriesPublicId: input.seriesPublicId,
+          episodeId: input.episodeId,
+          seriesId: input.seriesId,
           sessionId,
           tenantId: input.tenantId,
         })
       : await uploadPages({
-          episodePublicId: input.episodePublicId,
+          episodeId: input.episodeId,
           pages: input.pages ?? [],
           sessionId,
           tenantId: input.tenantId,
@@ -1122,12 +1125,12 @@ export const uploadEpisodePages = async (
 export const listEpisodeImages = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
   },
   locale: Locale
 ): Promise<ListEpisodeImagesResult> => {
   "use cache: private";
-  cacheTag(episodeCacheTag(input.tenantId, input.episodePublicId));
+  cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
 
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
@@ -1145,7 +1148,7 @@ export const listEpisodeImages = async (
   try {
     const response = await apiClient.series.listEpisodeImages(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -1173,9 +1176,9 @@ export const listEpisodeImages = async (
 const reorderEpisodes = async (
   input: {
     tenantId: string;
-    seriesPublicId: string;
-    episodePublicIds: string[];
-    expectedEpisodePublicIds: string[];
+    seriesId: string;
+    episodeIds: string[];
+    expectedEpisodeIds: string[];
   },
   locale: Locale
 ): Promise<ReorderEpisodesResult> => {
@@ -1190,7 +1193,7 @@ const reorderEpisodes = async (
     };
   }
 
-  if (input.episodePublicIds.length === 0) {
+  if (input.episodeIds.length === 0) {
     return {
       message: t("admin.series.episodes.validation.no_episodes_to_sort"),
       ok: false,
@@ -1200,9 +1203,9 @@ const reorderEpisodes = async (
   try {
     const response = await apiClient.series.reorderEpisodes(
       {
-        episodePublicIds: input.episodePublicIds,
-        expectedEpisodePublicIds: input.expectedEpisodePublicIds,
-        seriesPublicId: input.seriesPublicId,
+        episodeIds: input.episodeIds,
+        expectedEpisodeIds: input.expectedEpisodeIds,
+        seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
@@ -1229,7 +1232,7 @@ const reorderEpisodes = async (
  * episode keeps its position and the page's rows are refilled, in their new
  * order, into the slots that page already occupied.
  *
- * `currentPagePublicIds` is the order the page was showing when the drag
+ * `currentPageIds` is the order the page was showing when the drag
  * started, and it is checked against the series before anything is written: the
  * page's rows must still sit in one unbroken run of slots, in exactly that
  * order. Comparing ids alone is not enough. If someone else moves an episode
@@ -1246,34 +1249,34 @@ const reorderEpisodes = async (
  * The check is against the order this request read back, so it closes the
  * window the page was on screen for. The remaining window — between that
  * read and the write — is closed by sending the read order as
- * `expectedEpisodePublicIds`. The server locks the series, compares, and
+ * `expectedEpisodeIds`. The server locks the series, compares, and
  * rejects the write when it no longer matches.
  */
 export const mergeEpisodeOrder = (
-  seriesPublicIds: readonly string[],
-  currentPagePublicIds: readonly string[],
-  nextPagePublicIds: readonly string[]
+  seriesEpisodeIds: readonly string[],
+  currentPageIds: readonly string[],
+  nextPageIds: readonly string[]
 ): string[] | null => {
   if (
-    nextPagePublicIds.length === 0 ||
-    currentPagePublicIds.length !== nextPagePublicIds.length
+    nextPageIds.length === 0 ||
+    currentPageIds.length !== nextPageIds.length
   ) {
     return null;
   }
 
-  const pagePublicIdSet = new Set(nextPagePublicIds);
-  if (pagePublicIdSet.size !== nextPagePublicIds.length) {
+  const pageIdSet = new Set(nextPageIds);
+  if (pageIdSet.size !== nextPageIds.length) {
     return null;
   }
 
   const slots: number[] = [];
-  for (const [index, publicId] of seriesPublicIds.entries()) {
-    if (pagePublicIdSet.has(publicId)) {
+  for (const [index, id] of seriesEpisodeIds.entries()) {
+    if (pageIdSet.has(id)) {
       slots.push(index);
     }
   }
 
-  if (slots.length !== nextPagePublicIds.length) {
+  if (slots.length !== nextPageIds.length) {
     return null;
   }
 
@@ -1286,33 +1289,33 @@ export const mergeEpisodeOrder = (
 
   if (
     slots.some(
-      (slot, index) => seriesPublicIds[slot] !== currentPagePublicIds[index]
+      (slot, index) => seriesEpisodeIds[slot] !== currentPageIds[index]
     )
   ) {
     return null;
   }
 
-  const merged = [...seriesPublicIds];
+  const merged = [...seriesEpisodeIds];
   for (const [index, slot] of slots.entries()) {
-    merged[slot] = nextPagePublicIds[index];
+    merged[slot] = nextPageIds[index];
   }
 
   return merged;
 };
 
-const listSeriesEpisodePublicIds = async (input: {
+const listSeriesEpisodeIds = async (input: {
   sessionId: string;
   tenantId: string;
-  seriesPublicId: string;
+  seriesId: string;
 }): Promise<string[] | null> => {
-  const publicIds: string[] = [];
+  const ids: string[] = [];
 
   const stop = await forEachPageWithToken<string>(
     async (token, limit) => {
       const response = await apiClient.series.listEpisodes(
         {
           limit,
-          seriesPublicId: input.seriesPublicId,
+          seriesId: input.seriesId,
           tenant: { tenantId: input.tenantId },
           token,
         },
@@ -1320,19 +1323,19 @@ const listSeriesEpisodePublicIds = async (input: {
       );
 
       return {
-        items: (response.episodes ?? []).map((episode) => episode.publicId),
+        items: (response.episodes ?? []).map((episode) => episode.id),
         nextToken: response.nextToken ?? "",
       };
     },
     (items) => {
-      publicIds.push(...items);
+      ids.push(...items);
     },
     { pageSize: reorderScanPageSize }
   );
 
   // A walk that stopped on a bound saw only part of the series, and a partial
   // order would move every episode it never read. Better to give up.
-  return stop === "completed" ? publicIds : null;
+  return stop === "completed" ? ids : null;
 };
 
 /**
@@ -1343,16 +1346,16 @@ const listSeriesEpisodePublicIds = async (input: {
  * paginated screen only holds one page of it. So the series' current order is
  * read back here and the page is merged into it before the RPC is called.
  *
- * `currentEpisodePublicIds` is the page's order as the screen was showing it,
+ * `currentEpisodeIds` is the page's order as the screen was showing it,
  * and the merge writes nothing unless the series still agrees with it — see
  * `mergeEpisodeOrder`.
  */
 export const reorderEpisodePage = async (
   input: {
     tenantId: string;
-    seriesPublicId: string;
-    currentEpisodePublicIds: string[];
-    episodePublicIds: string[];
+    seriesId: string;
+    currentEpisodeIds: string[];
+    episodeIds: string[];
   },
   locale: Locale
 ): Promise<ReorderEpisodesResult> => {
@@ -1367,17 +1370,17 @@ export const reorderEpisodePage = async (
     };
   }
 
-  if (input.episodePublicIds.length === 0) {
+  if (input.episodeIds.length === 0) {
     return {
       message: t("admin.series.episodes.validation.no_episodes_to_sort"),
       ok: false,
     };
   }
 
-  let seriesPublicIds: string[] | null;
+  let seriesEpisodeIds: string[] | null;
   try {
-    seriesPublicIds = await listSeriesEpisodePublicIds({
-      seriesPublicId: input.seriesPublicId,
+    seriesEpisodeIds = await listSeriesEpisodeIds({
+      seriesId: input.seriesId,
       sessionId,
       tenantId: input.tenantId,
     });
@@ -1394,19 +1397,19 @@ export const reorderEpisodePage = async (
     };
   }
 
-  if (!seriesPublicIds) {
+  if (!seriesEpisodeIds) {
     return {
       message: t("admin.series.episodes.reorder_too_many"),
       ok: false,
     };
   }
 
-  const episodePublicIds = mergeEpisodeOrder(
-    seriesPublicIds,
-    input.currentEpisodePublicIds,
-    input.episodePublicIds
+  const episodeIds = mergeEpisodeOrder(
+    seriesEpisodeIds,
+    input.currentEpisodeIds,
+    input.episodeIds
   );
-  if (!episodePublicIds) {
+  if (!episodeIds) {
     return {
       message: t("admin.series.episodes.reorder_conflict"),
       ok: false,
@@ -1415,9 +1418,9 @@ export const reorderEpisodePage = async (
 
   return await reorderEpisodes(
     {
-      episodePublicIds,
-      expectedEpisodePublicIds: seriesPublicIds,
-      seriesPublicId: input.seriesPublicId,
+      episodeIds,
+      expectedEpisodeIds: seriesEpisodeIds,
+      seriesId: input.seriesId,
       tenantId: input.tenantId,
     },
     locale
@@ -1427,7 +1430,7 @@ export const reorderEpisodePage = async (
 export const reorderEpisodeImages = async (
   input: {
     tenantId: string;
-    episodePublicId: string;
+    episodeId: string;
     imageIds: string[];
   },
   locale: Locale
@@ -1453,7 +1456,7 @@ export const reorderEpisodeImages = async (
   try {
     const response = await apiClient.series.reorderEpisodeImages(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         imageIds: input.imageIds,
         tenant: { tenantId: input.tenantId },
       },
@@ -1550,8 +1553,8 @@ const mapBulkCreditErrorToMessage = async (
 export const bulkEditEpisodeCredits = async (
   input: {
     tenantId: string;
-    seriesPublicId: string;
-    episodePublicIds: string[];
+    seriesId: string;
+    episodeIds: string[];
     operation: BulkEpisodeCreditOperation;
   },
   locale: Locale
@@ -1570,19 +1573,19 @@ export const bulkEditEpisodeCredits = async (
   try {
     const response = await apiClient.series.bulkEditEpisodeCredits(
       {
-        episodePublicIds: input.episodePublicIds,
+        episodeIds: input.episodeIds,
         operation: toBulkCreditOperation(input.operation),
-        seriesPublicId: input.seriesPublicId,
+        seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
     return {
-      changedEpisodePublicIds: response.changedEpisodePublicIds ?? [],
+      changedEpisodeIds: response.changedEpisodeIds ?? [],
       ok: true,
       unchangedEpisodes: (response.unchangedEpisodes ?? []).map((episode) => ({
-        episodePublicId: episode.episodePublicId,
+        episodeId: episode.episodeId,
         reason: toUnchangedReason(episode.reason),
       })),
     };

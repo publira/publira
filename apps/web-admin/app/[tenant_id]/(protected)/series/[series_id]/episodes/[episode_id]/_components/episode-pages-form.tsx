@@ -29,7 +29,9 @@ import { useTenantId } from "#lib/use-tenant-id";
 import type { EpisodeEditActionState } from "../episode-edit-types";
 
 interface EpisodePagesFormProps {
+  seriesId: string;
   seriesPublicId: string;
+  episodeId: string;
   episodePublicId: string;
   action: (
     prevState: EpisodeEditActionState,
@@ -38,7 +40,9 @@ interface EpisodePagesFormProps {
 }
 
 export const EpisodePagesForm = ({
+  seriesId,
   seriesPublicId,
+  episodeId,
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
@@ -162,7 +166,9 @@ export const EpisodePagesForm = ({
       </AdminSectionHeader>
       <form action={formAction} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
+        <input name="series_id" type="hidden" value={seriesId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
+        <input name="episode_id" type="hidden" value={episodeId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
         <input name="upload_mode" type="hidden" value={uploadMode} />
 

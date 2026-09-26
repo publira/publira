@@ -13,10 +13,10 @@ export const MAX_BULK_EPISODE_CREDIT_EPISODES = 1000;
  * were checked, so the RPC is given public ids, and this walk is what
  * puts them back into reading order.
  */
-export const episodesSelectedInReadingOrder = <T extends { publicId: string }>(
+export const episodesSelectedInReadingOrder = <T extends { id: string }>(
   episodes: readonly T[],
-  selectedPublicIds: readonly string[]
+  selectedIds: readonly string[]
 ): T[] => {
-  const selected = new Set(selectedPublicIds);
-  return episodes.filter((episode) => selected.has(episode.publicId));
+  const selected = new Set(selectedIds);
+  return episodes.filter((episode) => selected.has(episode.id));
 };

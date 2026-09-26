@@ -8,6 +8,7 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import { EpisodeCreditsRangeResult } from "./episode-credits-range-result";
 
 const episodes = Array.from({ length: 40 }, (_, index) => ({
+  id: `EP${String(index + 1).padStart(2, "0")}-ID`,
   publicId: `EP${String(index + 1).padStart(2, "0")}`,
   title: `Episode ${index + 1}`,
 }));
@@ -31,7 +32,7 @@ afterEach(cleanup);
 describe("EpisodeCreditsRangeResult", () => {
   it("lists the episodes the operation wrote on, in the order they were changed", () => {
     render({
-      changedEpisodePublicIds: ["EP01", "EP02", "EP11"],
+      changedEpisodeIds: ["EP01-ID", "EP02-ID", "EP11-ID"],
       ok: true,
       unchangedEpisodes: [],
     });
@@ -45,12 +46,12 @@ describe("EpisodeCreditsRangeResult", () => {
 
   it("lists skipped episodes with the reason the server gave", () => {
     render({
-      changedEpisodePublicIds: ["EP01"],
+      changedEpisodeIds: ["EP01-ID"],
       ok: true,
       unchangedEpisodes: [
-        { episodePublicId: "EP07", reason: "credited_on_the_episode" },
-        { episodePublicId: "EP08", reason: "not_credited" },
-        { episodePublicId: "EP09", reason: "already_credited" },
+        { episodeId: "EP07-ID", reason: "credited_on_the_episode" },
+        { episodeId: "EP08-ID", reason: "not_credited" },
+        { episodeId: "EP09-ID", reason: "already_credited" },
       ],
     });
 
@@ -64,11 +65,9 @@ describe("EpisodeCreditsRangeResult", () => {
 
   it("says nothing changed when every selected episode was skipped", () => {
     render({
-      changedEpisodePublicIds: [],
+      changedEpisodeIds: [],
       ok: true,
-      unchangedEpisodes: [
-        { episodePublicId: "EP01", reason: "already_credited" },
-      ],
+      unchangedEpisodes: [{ episodeId: "EP01-ID", reason: "already_credited" }],
     });
 
     expect(screen.getByText("No episodes were changed.")).toBeDefined();

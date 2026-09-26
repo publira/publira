@@ -75,7 +75,7 @@ import {
 } from "./series-reading-layout-fields";
 
 interface LabelOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 
@@ -161,7 +161,7 @@ const SeriesFormSubmitButton = ({
 interface LabelFieldProps {
   labelItems: ComboboxItem[];
   labelsErrorMessage?: string;
-  selectedLabelPublicId: string;
+  selectedLabelId: string;
   useLabelFallbackInput: boolean;
   onComboboxChange: (nextValue: string) => void;
   onFallbackChange: ChangeEventHandler<HTMLInputElement>;
@@ -170,7 +170,7 @@ interface LabelFieldProps {
 const LabelField = ({
   labelItems,
   labelsErrorMessage,
-  selectedLabelPublicId,
+  selectedLabelId,
   useLabelFallbackInput,
   onComboboxChange,
   onFallbackChange,
@@ -197,12 +197,12 @@ const LabelField = ({
         {useLabelFallbackInput ? (
           <>
             <Input
-              name="label_public_id"
+              name="label_id"
               onChange={onFallbackChange}
               placeholder={t("admin.series.form.label_fallback_placeholder")}
               required
               type="text"
-              value={selectedLabelPublicId}
+              value={selectedLabelId}
             />
             <FieldDescription>
               <ClientMessage message="admin.series.form.label_fallback_description" />
@@ -214,7 +214,7 @@ const LabelField = ({
               id={comboboxId}
               items={labelItems}
               onValueChange={onComboboxChange}
-              value={selectedLabelPublicId}
+              value={selectedLabelId}
             >
               <ComboboxInput
                 placeholder={t("admin.series.form.label_placeholder")}
@@ -227,11 +227,7 @@ const LabelField = ({
               </ComboboxPopup>
             </Combobox>
 
-            <input
-              name="label_public_id"
-              type="hidden"
-              value={selectedLabelPublicId}
-            />
+            <input name="label_id" type="hidden" value={selectedLabelId} />
 
             <FieldDescription>
               <ClientMessage message="admin.series.form.label_description" />
@@ -320,8 +316,8 @@ const useSeriesFormState = ({
 >) => {
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' label.
-  const [selectedLabelPublicId, setSelectedLabelPublicId] = useState(
-    initialSeries?.labelPublicId ?? ""
+  const [selectedLabelId, setSelectedLabelId] = useState(
+    initialSeries?.labelId ?? ""
   );
   const [status, setStatus] = useState(
     () => initialSeries?.status ?? DEFAULT_SERIES_STATUS
@@ -335,8 +331,8 @@ const useSeriesFormState = ({
   const [availability, setAvailability] = useState(
     () => initialSeries?.availability ?? DEFAULT_SURFACE_AVAILABILITY
   );
-  const [selectedGenrePublicIds, setSelectedGenrePublicIds] = useState(
-    () => initialSeries?.genrePublicIds ?? []
+  const [selectedGenreIds, setSelectedGenreIds] = useState(
+    () => initialSeries?.genreIds ?? []
   );
   const [tagNames, setTagNames] = useState(() => initialSeries?.tagNames ?? []);
   const [commentMode, setCommentMode] = useState<SeriesCommentMode>(
@@ -364,7 +360,7 @@ const useSeriesFormState = ({
   const handleLabelFallbackInputChange = useCallback<
     ChangeEventHandler<HTMLInputElement>
   >((event) => {
-    setSelectedLabelPublicId(event.currentTarget.value);
+    setSelectedLabelId(event.currentTarget.value);
   }, []);
 
   const handleEyeCatchImageFileChange = useCallback<
@@ -395,16 +391,16 @@ const useSeriesFormState = ({
     purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
-    selectedGenrePublicIds,
-    selectedLabelPublicId,
+    selectedGenreIds,
+    selectedLabelId,
     setAgeRating,
     setAvailability,
     setCommentMode,
     setPurchaseAvailability,
     setReadingDirection,
     setScheduleWeekdays,
-    setSelectedGenrePublicIds,
-    setSelectedLabelPublicId,
+    setSelectedGenreIds,
+    setSelectedLabelId,
     setStatus,
     setTagNames,
     status,
@@ -446,7 +442,7 @@ export const SeriesForm = ({
       labels
         .map((label) => ({
           label: label.name,
-          value: label.publicId,
+          value: label.id,
         }))
         .toSorted((a, b) =>
           a.label.localeCompare(b.label, toIntlLocale(locale))
@@ -463,16 +459,16 @@ export const SeriesForm = ({
     purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
-    selectedGenrePublicIds,
-    selectedLabelPublicId,
+    selectedGenreIds,
+    selectedLabelId,
     setAgeRating,
     setAvailability,
     setCommentMode,
     setPurchaseAvailability,
     setReadingDirection,
     setScheduleWeekdays,
-    setSelectedGenrePublicIds,
-    setSelectedLabelPublicId,
+    setSelectedGenreIds,
+    setSelectedLabelId,
     setStatus,
     setTagNames,
     status,
@@ -503,11 +499,16 @@ export const SeriesForm = ({
   return (
     <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input
-        name="public_id"
-        type="hidden"
-        value={initialSeries?.publicId ?? ""}
-      />
+      {initialSeries ? (
+        <>
+          <input
+            name="public_id"
+            type="hidden"
+            value={initialSeries.publicId}
+          />
+          <input name="series_id" type="hidden" value={initialSeries.id} />
+        </>
+      ) : null}
 
       <Fieldset className="grid gap-4" disabled={isPending}>
         <Field>
@@ -572,9 +573,9 @@ export const SeriesForm = ({
         <LabelField
           labelItems={labelItems}
           labelsErrorMessage={labelsErrorMessage}
-          onComboboxChange={setSelectedLabelPublicId}
+          onComboboxChange={setSelectedLabelId}
           onFallbackChange={handleLabelFallbackInputChange}
-          selectedLabelPublicId={selectedLabelPublicId}
+          selectedLabelId={selectedLabelId}
           useLabelFallbackInput={useLabelFallbackInput}
         />
 
@@ -628,8 +629,8 @@ export const SeriesForm = ({
         <SeriesGenreField
           genres={genres}
           genresErrorMessage={genresErrorMessage}
-          onChange={setSelectedGenrePublicIds}
-          value={selectedGenrePublicIds}
+          onChange={setSelectedGenreIds}
+          value={selectedGenreIds}
         />
 
         <SeriesTagField

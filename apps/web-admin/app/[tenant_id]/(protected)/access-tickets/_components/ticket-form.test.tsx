@@ -81,8 +81,16 @@ const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
 
 const action = () => Promise.resolve({ message: "", ok: false });
 
-const seriesA = { publicId: "SERIES001", title: "Series A" };
-const seriesB = { publicId: "SERIES002", title: "Series B" };
+const seriesA = {
+  id: "SERIES001-ID",
+  publicId: "SERIES001",
+  title: "Series A",
+};
+const seriesB = {
+  id: "SERIES002-ID",
+  publicId: "SERIES002",
+  title: "Series B",
+};
 
 const seriesCombobox = () => screen.getByLabelText(/Series/u);
 const episodeCombobox = () => screen.getByLabelText(/^Episode/u);

@@ -23,6 +23,7 @@ import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availabilit
 import { PublishAtInput } from "./publish-at-input";
 
 interface EpisodeFormProps {
+  seriesId: string;
   seriesPublicId: string;
   action: (
     prevState: EpisodeActionState,
@@ -42,6 +43,7 @@ interface EpisodeFormProps {
 }
 
 export const EpisodeForm = ({
+  seriesId,
   seriesPublicId,
   action,
   seriesAvailability,
@@ -71,6 +73,7 @@ export const EpisodeForm = ({
   return (
     <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
       <Fieldset className="grid gap-4" disabled={isPending}>

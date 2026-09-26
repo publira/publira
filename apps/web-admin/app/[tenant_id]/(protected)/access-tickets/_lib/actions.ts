@@ -87,7 +87,7 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    seriesPublicId: requiredTrimmedString(
+    seriesId: requiredTrimmedString(
       t("admin.access_tickets.validation.series_required")
     ),
     tenantId: requiredTrimmedString(
@@ -174,14 +174,14 @@ export const issueAccessTicketAction = async (
 
 export const listEpisodeOptionsAction = async (
   tenantId: string,
-  seriesPublicId: string,
+  seriesId: string,
   locale: Locale
 ): Promise<ListTicketEpisodeOptionsResult> => {
   // This Server Action only reads episode options; the same-origin check
   // applies to mutations.
   const schema = await listEpisodeOptionsSchema(locale);
   const parsed = schema.safeParse({
-    seriesPublicId,
+    seriesId,
     tenantId,
   });
   if (!parsed.success) {
@@ -194,7 +194,7 @@ export const listEpisodeOptionsAction = async (
 
   const result = await listAllEpisodes(
     {
-      seriesPublicId: parsed.data.seriesPublicId,
+      seriesId: parsed.data.seriesId,
       tenantId: parsed.data.tenantId,
     },
     locale

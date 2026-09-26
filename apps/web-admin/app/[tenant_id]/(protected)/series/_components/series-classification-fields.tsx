@@ -39,7 +39,7 @@ import type {
 } from "#lib/series-classification";
 
 export interface GenreOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 
@@ -253,7 +253,7 @@ export const SeriesGenreField = ({
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
   const items = useMemo<MultiComboboxItem[]>(
-    () => genres.map((genre) => ({ label: genre.name, value: genre.publicId })),
+    () => genres.map((genre) => ({ label: genre.name, value: genre.id })),
     [genres]
   );
 
@@ -310,13 +310,8 @@ export const SeriesGenreField = ({
           </MultiCombobox>
         )}
 
-        {value.map((publicId) => (
-          <input
-            key={publicId}
-            name="genre_public_ids"
-            type="hidden"
-            value={publicId}
-          />
+        {value.map((id) => (
+          <input key={id} name="genre_ids" type="hidden" value={id} />
         ))}
 
         <FieldDescription>

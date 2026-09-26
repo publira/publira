@@ -64,6 +64,7 @@ vi.mock("./api", () => ({
 }));
 
 const episode = (publicId: string, orderIndex: number) => ({
+  id: `${publicId}-ID`,
   orderIndex,
   price: 0,
   publicId,
@@ -91,7 +92,7 @@ describe("listEpisodes", () => {
     const result = await listEpisodes(
       {
         limit: 20,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
         token: "current-page",
       },
@@ -101,7 +102,7 @@ describe("listEpisodes", () => {
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
         limit: 20,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
       },
@@ -120,7 +121,7 @@ describe("listEpisodes", () => {
     const { listEpisodes } = await import("./episode");
     const result = await listEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -129,7 +130,7 @@ describe("listEpisodes", () => {
     expect(mockListEpisodes).toHaveBeenCalledWith(
       {
         limit: 20,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
@@ -152,7 +153,7 @@ describe("listEpisodes", () => {
     const { listEpisodes } = await import("./episode");
     const result = await listEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -172,7 +173,7 @@ describe("listEpisodes", () => {
     const { listEpisodes } = await import("./episode");
     const result = await listEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
         token: "current-page",
       },
@@ -206,7 +207,7 @@ describe("listAllEpisodes", () => {
     const { listAllEpisodes } = await import("./episode");
     const result = await listAllEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -216,7 +217,7 @@ describe("listAllEpisodes", () => {
       1,
       {
         limit: 100,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
         token: "",
       },
@@ -237,7 +238,7 @@ describe("listAllEpisodes", () => {
     const { listAllEpisodes } = await import("./episode");
     const result = await listAllEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -264,7 +265,7 @@ describe("listAllEpisodes", () => {
     const { listAllEpisodes } = await import("./episode");
     const result = await listAllEpisodes(
       {
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -305,6 +306,7 @@ describe("getEpisode", () => {
     expect(result).toEqual({
       episode: {
         availability: "",
+        id: "EPISODE001-ID",
         orderIndex: 1,
         price: 0,
         publicId: "EPISODE001",
@@ -422,7 +424,7 @@ describe("the surfaces an episode is shown on", () => {
 
     const { listEpisodes } = await import("./episode");
     const result = await listEpisodes(
-      { seriesPublicId: "SERIES001", tenantId: "TENANT001" },
+      { seriesId: "SERIES001", tenantId: "TENANT001" },
       "en"
     );
 
@@ -463,7 +465,7 @@ describe("the surfaces an episode is shown on", () => {
         publishAt: "",
         purchaseAvailability: "",
         readingPeriodHours: 0,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
       },
@@ -487,7 +489,7 @@ describe("the surfaces an episode is shown on", () => {
         publishAt: "",
         purchaseAvailability: "",
         readingPeriodHours: 0,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
       },
@@ -512,7 +514,7 @@ describe("the surfaces an episode is shown on", () => {
     const result = await updateEpisodeAvailability(
       {
         availability: "app",
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         tenantId: "TENANT001",
       },
       "en"
@@ -521,7 +523,7 @@ describe("the surfaces an episode is shown on", () => {
     expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
       {
         availability: SurfaceAvailability.APP,
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -540,7 +542,7 @@ describe("the surfaces an episode is shown on", () => {
     const result = await updateEpisodeAvailability(
       {
         availability: "",
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         tenantId: "TENANT001",
       },
       "en"
@@ -625,7 +627,7 @@ describe("where an episode may be bought", () => {
         publishAt: "",
         purchaseAvailability: "app",
         readingPeriodHours: 0,
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
       },
@@ -649,7 +651,7 @@ describe("where an episode may be bought", () => {
     const { updateEpisodePurchaseAvailability } = await import("./episode");
     const result = await updateEpisodePurchaseAvailability(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         purchaseAvailability: "web",
         tenantId: "TENANT001",
       },
@@ -658,7 +660,7 @@ describe("where an episode may be bought", () => {
 
     expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         purchaseAvailability: SurfaceAvailability.WEB,
         tenant: { tenantId: "TENANT001" },
       },
@@ -676,7 +678,7 @@ describe("where an episode may be bought", () => {
     const { updateEpisodePurchaseAvailability } = await import("./episode");
     const result = await updateEpisodePurchaseAvailability(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         purchaseAvailability: "",
         tenantId: "TENANT001",
       },
@@ -704,7 +706,7 @@ describe("updateEpisodeLayout", () => {
     const { updateEpisodeLayout } = await import("./episode");
     const result = await updateEpisodeLayout(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         readingDirection: "ltr",
         spreadStartIndex: 0,
         tenantId: "TENANT001",
@@ -714,7 +716,7 @@ describe("updateEpisodeLayout", () => {
 
     expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         readingDirection: ReadingDirection.LEFT_TO_RIGHT,
         spreadStartIndex: 0,
         tenant: { tenantId: "TENANT001" },
@@ -738,7 +740,7 @@ describe("updateEpisodeLayout", () => {
     const { updateEpisodeLayout } = await import("./episode");
     await updateEpisodeLayout(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         readingDirection: "",
         tenantId: "TENANT001",
       },
@@ -747,7 +749,7 @@ describe("updateEpisodeLayout", () => {
 
     expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         readingDirection: undefined,
         spreadStartIndex: undefined,
         tenant: { tenantId: "TENANT001" },
@@ -774,7 +776,7 @@ describe("updateEpisodeLayout", () => {
     const { updateEpisodeLayout } = await import("./episode");
     const result = await updateEpisodeLayout(
       {
-        episodePublicId: "EPISODE001",
+        episodeId: "EPISODE001",
         readingDirection: "",
         spreadStartIndex: 12,
         tenantId: "TENANT001",
@@ -858,9 +860,9 @@ describe("reorderEpisodePage", () => {
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage(
       {
-        currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
-        episodePublicIds: ["EPISODE004", "EPISODE003"],
-        seriesPublicId: "SERIES001",
+        currentEpisodeIds: ["EPISODE003-ID", "EPISODE004-ID"],
+        episodeIds: ["EPISODE004-ID", "EPISODE003-ID"],
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -869,19 +871,19 @@ describe("reorderEpisodePage", () => {
     expect(result.ok).toBe(true);
     expect(mockReorderEpisodes).toHaveBeenCalledWith(
       {
-        episodePublicIds: [
-          "EPISODE001",
-          "EPISODE002",
-          "EPISODE004",
-          "EPISODE003",
+        episodeIds: [
+          "EPISODE001-ID",
+          "EPISODE002-ID",
+          "EPISODE004-ID",
+          "EPISODE003-ID",
         ],
-        expectedEpisodePublicIds: [
-          "EPISODE001",
-          "EPISODE002",
-          "EPISODE003",
-          "EPISODE004",
+        expectedEpisodeIds: [
+          "EPISODE001-ID",
+          "EPISODE002-ID",
+          "EPISODE003-ID",
+          "EPISODE004-ID",
         ],
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -897,9 +899,9 @@ describe("reorderEpisodePage", () => {
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage(
       {
-        currentEpisodePublicIds: ["EPISODE002"],
-        episodePublicIds: ["EPISODE002"],
-        seriesPublicId: "SERIES001",
+        currentEpisodeIds: ["EPISODE002-ID"],
+        episodeIds: ["EPISODE002-ID"],
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -925,9 +927,9 @@ describe("reorderEpisodePage", () => {
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage(
       {
-        currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
-        episodePublicIds: ["EPISODE004", "EPISODE003"],
-        seriesPublicId: "SERIES001",
+        currentEpisodeIds: ["EPISODE003-ID", "EPISODE004-ID"],
+        episodeIds: ["EPISODE004-ID", "EPISODE003-ID"],
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -949,9 +951,9 @@ describe("reorderEpisodePage", () => {
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage(
       {
-        currentEpisodePublicIds: ["EPISODE001", "EPISODE002"],
-        episodePublicIds: ["EPISODE002", "EPISODE001"],
-        seriesPublicId: "SERIES001",
+        currentEpisodeIds: ["EPISODE001-ID", "EPISODE002-ID"],
+        episodeIds: ["EPISODE002-ID", "EPISODE001-ID"],
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -972,9 +974,9 @@ describe("reorderEpisodePage", () => {
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage(
       {
-        currentEpisodePublicIds: ["EPISODE001"],
-        episodePublicIds: ["EPISODE001"],
-        seriesPublicId: "SERIES001",
+        currentEpisodeIds: ["EPISODE001-ID"],
+        episodeIds: ["EPISODE001-ID"],
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -990,15 +992,16 @@ describe("listEpisodeCredits", () => {
     mockListEpisodeCredits.mockResolvedValue({
       creatorCredits: [
         {
-          creatorPublicId: "CREATOR_B",
-          rolePublicId: "ROLE_ARTIST",
+          creatorId: "CREATOR_B",
+          roleId: "ROLE_ARTIST",
           shareBps: 3333,
         },
       ],
       creators: [
         {
-          publicId: "CREATOR_B",
-          role: { publicId: "ROLE_ARTIST" },
+          id: "CREATOR_B",
+          publicId: "CREATOR_B_PUBLIC",
+          role: { id: "ROLE_ARTIST", publicId: "ROLE_ARTIST_PUBLIC" },
           source: CreatorCreditSource.SERIES,
         },
       ],
@@ -1006,15 +1009,15 @@ describe("listEpisodeCredits", () => {
 
     const { listEpisodeCredits } = await import("./episode");
     const result = await listEpisodeCredits(
-      { episodePublicId: "EP01", tenantId: "TENANT001" },
+      { episodeId: "EP01", tenantId: "TENANT001" },
       "en"
     );
 
     expect(result).toEqual({
       credits: [
         {
-          creatorPublicId: "CREATOR_B",
-          rolePublicId: "ROLE_ARTIST",
+          creatorId: "CREATOR_B",
+          roleId: "ROLE_ARTIST",
           shareBps: 3333,
           source: CreatorCreditSource.SERIES,
         },
@@ -1027,20 +1030,20 @@ describe("listEpisodeCredits", () => {
 describe("bulkEditEpisodeCredits", () => {
   it("sends the composed public ids and the replace operation", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValue({
-      changedEpisodePublicIds: ["EP01", "EP02"],
-      unchangedEpisodes: [{ episodePublicId: "EP03", reason: 3 }],
+      changedEpisodeIds: ["EP01", "EP02"],
+      unchangedEpisodes: [{ episodeId: "EP03", reason: 3 }],
     });
 
     const { bulkEditEpisodeCredits } = await import("./episode");
     const result = await bulkEditEpisodeCredits(
       {
-        episodePublicIds: ["EP01", "EP02", "EP03"],
+        episodeIds: ["EP01", "EP02", "EP03"],
         operation: {
-          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
-          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          from: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+          to: { creatorId: "CREATOR_C", roleId: "ROLE_ARTIST" },
           type: "replace",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -1048,25 +1051,25 @@ describe("bulkEditEpisodeCredits", () => {
 
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       {
-        episodePublicIds: ["EP01", "EP02", "EP03"],
+        episodeIds: ["EP01", "EP02", "EP03"],
         operation: {
           case: "replace",
           value: {
-            from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
-            to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+            from: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+            to: { creatorId: "CREATOR_C", roleId: "ROLE_ARTIST" },
           },
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({
-      changedEpisodePublicIds: ["EP01", "EP02"],
+      changedEpisodeIds: ["EP01", "EP02"],
       ok: true,
       unchangedEpisodes: [
         {
-          episodePublicId: "EP03",
+          episodeId: "EP03",
           reason: "credited_on_the_episode",
         },
       ],
@@ -1081,13 +1084,13 @@ describe("bulkEditEpisodeCredits", () => {
     const { bulkEditEpisodeCredits } = await import("./episode");
     const result = await bulkEditEpisodeCredits(
       {
-        episodePublicIds: ["EP01"],
+        episodeIds: ["EP01"],
         operation: {
-          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
-          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          from: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+          to: { creatorId: "CREATOR_C", roleId: "ROLE_ARTIST" },
           type: "replace",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -1102,20 +1105,20 @@ describe("bulkEditEpisodeCredits", () => {
 
   it("sends a set-share with the share on the credit", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValue({
-      changedEpisodePublicIds: ["EP01"],
+      changedEpisodeIds: ["EP01"],
       unchangedEpisodes: [],
     });
 
     const { bulkEditEpisodeCredits } = await import("./episode");
     await bulkEditEpisodeCredits(
       {
-        episodePublicIds: ["EP01"],
+        episodeIds: ["EP01"],
         operation: {
-          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          credit: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
           shareBps: 3333,
           type: "set_share",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"
@@ -1127,8 +1130,8 @@ describe("bulkEditEpisodeCredits", () => {
           case: "setShare",
           value: {
             credit: {
-              creatorPublicId: "CREATOR_B",
-              rolePublicId: "ROLE_ARTIST",
+              creatorId: "CREATOR_B",
+              roleId: "ROLE_ARTIST",
               shareBps: 3333,
             },
           },
@@ -1151,13 +1154,13 @@ describe("bulkEditEpisodeCredits", () => {
     const { bulkEditEpisodeCredits } = await import("./episode");
     const result = await bulkEditEpisodeCredits(
       {
-        episodePublicIds: ["EP01"],
+        episodeIds: ["EP01"],
         operation: {
-          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          credit: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
           shareBps: 6000,
           type: "set_share",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001",
         tenantId: "TENANT001",
       },
       "en"

@@ -67,6 +67,9 @@ const createEpisodeSchema = async (locale: Locale) => {
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
+    seriesId: requiredTrimmedString(
+      t("admin.series.episodes.validation.series_missing")
+    ),
     seriesPublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.series_missing")
     ),
@@ -84,7 +87,7 @@ const reorderEpisodesSchema = async (locale: Locale) => {
   return z.object({
     currentEpisodeIds: jsonStringArrayFormSchema,
     orderedEpisodeIds: jsonStringArrayFormSchema,
-    seriesPublicId: requiredTrimmedString(
+    seriesId: requiredTrimmedString(
       t("admin.series.episodes.validation.sort_data_missing")
     ),
     tenantId: requiredTrimmedString(
@@ -149,6 +152,7 @@ export const createEpisodeAction = async (
       publishAt: { kind: "value", name: "publish_at" },
       purchaseAvailability: { kind: "value", name: "purchase_availability" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+      seriesId: { kind: "value", name: "series_id" },
       seriesPublicId: { kind: "value", name: "series_public_id" },
       tenantId: { kind: "value", name: "tenant_id" },
       title: "value",
@@ -178,7 +182,7 @@ export const createEpisodeAction = async (
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingPeriodHours: parsed.data.readingPeriodHours,
-        seriesPublicId: parsed.data.seriesPublicId,
+        seriesId: parsed.data.seriesId,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
       },
@@ -208,9 +212,9 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },
-      orderedEpisodeIds: { kind: "value", name: "ordered_episode_public_ids" },
-      seriesPublicId: { kind: "value", name: "series_public_id" },
+      currentEpisodeIds: { kind: "value", name: "current_episode_ids" },
+      orderedEpisodeIds: { kind: "value", name: "ordered_episode_ids" },
+      seriesId: { kind: "value", name: "series_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
@@ -246,9 +250,9 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   const reordered = await withAdminSessionReauth(() =>
     reorderEpisodePage(
       {
-        currentEpisodePublicIds: parsed.data.currentEpisodeIds,
-        episodePublicIds: parsed.data.orderedEpisodeIds,
-        seriesPublicId: parsed.data.seriesPublicId,
+        currentEpisodeIds: parsed.data.currentEpisodeIds,
+        episodeIds: parsed.data.orderedEpisodeIds,
+        seriesId: parsed.data.seriesId,
         tenantId: parsed.data.tenantId,
       },
       locale
@@ -282,23 +286,23 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
 
   return z
     .object({
-      creatorPublicId: optionalTrimmedString(),
-      episodePublicIds: jsonStringArrayFormSchema,
-      fromCreatorPublicId: optionalTrimmedString(),
-      fromRolePublicId: optionalTrimmedString(),
+      creatorId: optionalTrimmedString(),
+      episodeIds: jsonStringArrayFormSchema,
+      fromCreatorId: optionalTrimmedString(),
+      fromRoleId: optionalTrimmedString(),
       operation: requiredTrimmedString(
         t("admin.series.episodes.credits.validation.operation_required")
       ),
-      rolePublicId: optionalTrimmedString(),
-      seriesPublicId: requiredTrimmedString(
+      roleId: optionalTrimmedString(),
+      seriesId: requiredTrimmedString(
         t("admin.series.episodes.validation.series_missing")
       ),
       share: optionalTrimmedString(),
       tenantId: requiredTrimmedString(
         t("admin.series.episodes.validation.tenant_missing")
       ),
-      toCreatorPublicId: optionalTrimmedString(),
-      toRolePublicId: optionalTrimmedString(),
+      toCreatorId: optionalTrimmedString(),
+      toRoleId: optionalTrimmedString(),
     })
     .superRefine((value, ctx) => {
       if (!isBulkCreditOperationType(value.operation)) {
@@ -314,43 +318,40 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
 
       if (value.operation === "replace") {
         if (
-          value.fromCreatorPublicId.length === 0 ||
-          value.fromRolePublicId.length === 0 ||
-          value.toCreatorPublicId.length === 0 ||
-          value.toRolePublicId.length === 0
+          value.fromCreatorId.length === 0 ||
+          value.fromRoleId.length === 0 ||
+          value.toCreatorId.length === 0 ||
+          value.toRoleId.length === 0
         ) {
           ctx.addIssue({
             code: "custom",
             message: t(
               "admin.series.episodes.credits.validation.credit_required"
             ),
-            path: ["fromCreatorPublicId"],
+            path: ["fromCreatorId"],
           });
         }
         if (
-          value.fromCreatorPublicId === value.toCreatorPublicId &&
-          value.fromRolePublicId === value.toRolePublicId &&
-          value.fromCreatorPublicId.length > 0
+          value.fromCreatorId === value.toCreatorId &&
+          value.fromRoleId === value.toRoleId &&
+          value.fromCreatorId.length > 0
         ) {
           ctx.addIssue({
             code: "custom",
             message: t("admin.series.episodes.credits.validation.replace_same"),
-            path: ["toCreatorPublicId"],
+            path: ["toCreatorId"],
           });
         }
         return;
       }
 
-      if (
-        value.creatorPublicId.length === 0 ||
-        value.rolePublicId.length === 0
-      ) {
+      if (value.creatorId.length === 0 || value.roleId.length === 0) {
         ctx.addIssue({
           code: "custom",
           message: t(
             "admin.series.episodes.credits.validation.credit_required"
           ),
-          path: ["creatorPublicId"],
+          path: ["creatorId"],
         });
       }
       // An empty box names no share to set, so set-share needs a value.
@@ -377,22 +378,22 @@ const toBulkCreditOperation = (
   if (parsed.operation === "replace") {
     return {
       from: {
-        creatorPublicId: parsed.fromCreatorPublicId,
-        rolePublicId: parsed.fromRolePublicId,
+        creatorId: parsed.fromCreatorId,
+        roleId: parsed.fromRoleId,
       },
       to: {
-        creatorPublicId: parsed.toCreatorPublicId,
-        rolePublicId: parsed.toRolePublicId,
+        creatorId: parsed.toCreatorId,
+        roleId: parsed.toRoleId,
       },
       type: "replace",
     };
   }
-  if (parsed.creatorPublicId.length === 0 || parsed.rolePublicId.length === 0) {
+  if (parsed.creatorId.length === 0 || parsed.roleId.length === 0) {
     return undefined;
   }
   const credit = {
-    creatorPublicId: parsed.creatorPublicId,
-    rolePublicId: parsed.rolePublicId,
+    creatorId: parsed.creatorId,
+    roleId: parsed.roleId,
   };
   if (parsed.operation === "set_share") {
     const shareBps = sharePercentToBps(parsed.share);
@@ -407,7 +408,7 @@ const listEpisodeCreditRangeOptionsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    seriesPublicId: requiredTrimmedString(
+    seriesId: requiredTrimmedString(
       t("admin.series.episodes.validation.series_missing")
     ),
     tenantId: requiredTrimmedString(
@@ -418,12 +419,12 @@ const listEpisodeCreditRangeOptionsSchema = async (locale: Locale) => {
 
 export const listEpisodeCreditRangeOptionsAction = async (
   tenantId: string,
-  seriesPublicId: string,
+  seriesId: string,
   locale: Locale
 ): Promise<ListEpisodeCreditRangeCatalogResult> => {
   const schema = await listEpisodeCreditRangeOptionsSchema(locale);
   const parsed = schema.safeParse({
-    seriesPublicId,
+    seriesId,
     tenantId,
   });
   if (!parsed.success) {
@@ -440,7 +441,7 @@ export const listEpisodeCreditRangeOptionsAction = async (
     await Promise.all([
       listAllEpisodes(
         {
-          seriesPublicId: parsed.data.seriesPublicId,
+          seriesId: parsed.data.seriesId,
           tenantId: parsed.data.tenantId,
         },
         locale
@@ -460,14 +461,15 @@ export const listEpisodeCreditRangeOptionsAction = async (
       ? undefined
       : creatorRolesResult.message,
     creators: creatorsResult.creators.map((creator) => ({
+      id: creator.id,
       name: creator.name,
-      publicId: creator.publicId,
     })),
     creatorsErrorMessage: creatorsResult.ok
       ? undefined
       : creatorsResult.message,
     episodes: episodesResult.ok
       ? episodesResult.episodes.map((episode) => ({
+          id: episode.id,
           publicId: episode.publicId,
           title: episode.title,
         }))
@@ -490,17 +492,17 @@ export const bulkEditEpisodeCreditsAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      creatorPublicId: { kind: "value", name: "creator_public_id" },
-      episodePublicIds: { kind: "value", name: "episode_public_ids" },
-      fromCreatorPublicId: { kind: "value", name: "from_creator_public_id" },
-      fromRolePublicId: { kind: "value", name: "from_role_public_id" },
+      creatorId: { kind: "value", name: "creator_id" },
+      episodeIds: { kind: "value", name: "episode_ids" },
+      fromCreatorId: { kind: "value", name: "from_creator_id" },
+      fromRoleId: { kind: "value", name: "from_role_id" },
       operation: "value",
-      rolePublicId: { kind: "value", name: "role_public_id" },
-      seriesPublicId: { kind: "value", name: "series_public_id" },
+      roleId: { kind: "value", name: "role_id" },
+      seriesId: { kind: "value", name: "series_id" },
       share: "value",
       tenantId: { kind: "value", name: "tenant_id" },
-      toCreatorPublicId: { kind: "value", name: "to_creator_public_id" },
-      toRolePublicId: { kind: "value", name: "to_role_public_id" },
+      toCreatorId: { kind: "value", name: "to_creator_id" },
+      toRoleId: { kind: "value", name: "to_role_id" },
     })
   );
   if (!parsed.success) {
@@ -520,7 +522,7 @@ export const bulkEditEpisodeCreditsAction = async (
 
   const listed = await listAllEpisodes(
     {
-      seriesPublicId: parsed.data.seriesPublicId,
+      seriesId: parsed.data.seriesId,
       tenantId: parsed.data.tenantId,
     },
     locale
@@ -535,7 +537,7 @@ export const bulkEditEpisodeCreditsAction = async (
 
   const selected = episodesSelectedInReadingOrder(
     listed.episodes,
-    parsed.data.episodePublicIds
+    parsed.data.episodeIds
   );
   if (selected.length === 0) {
     return {
@@ -555,9 +557,9 @@ export const bulkEditEpisodeCreditsAction = async (
   return await withAdminSessionReauth(() =>
     bulkEditEpisodeCredits(
       {
-        episodePublicIds: selected.map((episode) => episode.publicId),
+        episodeIds: selected.map((episode) => episode.id),
         operation,
-        seriesPublicId: parsed.data.seriesPublicId,
+        seriesId: parsed.data.seriesId,
         tenantId: parsed.data.tenantId,
       },
       locale

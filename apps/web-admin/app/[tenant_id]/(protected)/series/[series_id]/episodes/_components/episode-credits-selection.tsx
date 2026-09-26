@@ -12,8 +12,8 @@ import type { ReactNode } from "react";
 interface EpisodeCreditsSelectionValue {
   clear: () => void;
   selectedIds: ReadonlySet<string>;
-  selectMany: (publicIds: readonly string[], selected: boolean) => void;
-  toggle: (publicId: string, selected: boolean) => void;
+  selectMany: (ids: readonly string[], selected: boolean) => void;
+  toggle: (id: string, selected: boolean) => void;
 }
 
 const EpisodeCreditsSelectionContext =
@@ -44,27 +44,27 @@ export const EpisodeCreditsSelectionProvider = ({
     setSelectedIds(new Set());
   }, []);
 
-  const toggle = useCallback((publicId: string, selected: boolean) => {
+  const toggle = useCallback((id: string, selected: boolean) => {
     setSelectedIds((current) => {
       const next = new Set(current);
       if (selected) {
-        next.add(publicId);
+        next.add(id);
       } else {
-        next.delete(publicId);
+        next.delete(id);
       }
       return next;
     });
   }, []);
 
   const selectMany = useCallback(
-    (publicIds: readonly string[], selected: boolean) => {
+    (ids: readonly string[], selected: boolean) => {
       setSelectedIds((current) => {
         const next = new Set(current);
-        for (const publicId of publicIds) {
+        for (const id of ids) {
           if (selected) {
-            next.add(publicId);
+            next.add(id);
           } else {
-            next.delete(publicId);
+            next.delete(id);
           }
         }
         return next;

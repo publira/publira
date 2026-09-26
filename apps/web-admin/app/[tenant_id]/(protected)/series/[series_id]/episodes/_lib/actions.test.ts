@@ -63,6 +63,7 @@ vi.mock("#lib/tenant-timezone", () => ({
 const createEpisodeFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
+  formData.set("series_id", "SERIES001-ID");
   formData.set("series_public_id", "SERIES001");
   formData.set("title", "Episode title");
   formData.set("price", "0");
@@ -202,6 +203,7 @@ describe("episode create actions", () => {
 });
 
 const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
+  id: `EP${String(index + 1).padStart(2, "0")}-ID`,
   publicId: `EP${String(index + 1).padStart(2, "0")}`,
   title: `Episode ${index + 1}`,
 }));
@@ -209,26 +211,24 @@ const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
 const bulkCreditFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
-  formData.set("series_public_id", "SERIES001");
+  formData.set("series_id", "SERIES001-ID");
   formData.set("operation", "replace");
   formData.set(
-    "episode_public_ids",
-    JSON.stringify(
-      fortyEpisodes.slice(0, 11).map((episode) => episode.publicId)
-    )
+    "episode_ids",
+    JSON.stringify(fortyEpisodes.slice(0, 11).map((episode) => episode.id))
   );
-  formData.set("from_creator_public_id", "CREATOR_B");
-  formData.set("from_role_public_id", "ROLE_ARTIST");
-  formData.set("to_creator_public_id", "CREATOR_C");
-  formData.set("to_role_public_id", "ROLE_ARTIST");
+  formData.set("from_creator_id", "CREATOR_B");
+  formData.set("from_role_id", "ROLE_ARTIST");
+  formData.set("to_creator_id", "CREATOR_C");
+  formData.set("to_role_id", "ROLE_ARTIST");
   return formData;
 };
 
 const setShareFormData = (share: string): FormData => {
   const formData = bulkCreditFormData();
   formData.set("operation", "set_share");
-  formData.set("creator_public_id", "CREATOR_B");
-  formData.set("role_public_id", "ROLE_ARTIST");
+  formData.set("creator_id", "CREATOR_B");
+  formData.set("role_id", "ROLE_ARTIST");
   formData.set("share", share);
   return formData;
 };
@@ -246,9 +246,9 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("resolves the checked episodes of a 40-episode series and sends only those public ids", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: fortyEpisodes
+      changedEpisodeIds: fortyEpisodes
         .slice(0, 11)
-        .map((episode) => episode.publicId),
+        .map((episode) => episode.id),
       ok: true,
       unchangedEpisodes: [],
     });
@@ -261,15 +261,13 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       {
-        episodePublicIds: fortyEpisodes
-          .slice(0, 11)
-          .map((episode) => episode.publicId),
+        episodeIds: fortyEpisodes.slice(0, 11).map((episode) => episode.id),
         operation: {
-          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
-          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          from: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+          to: { creatorId: "CREATOR_C", roleId: "ROLE_ARTIST" },
           type: "replace",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "SERIES001-ID",
         tenantId: "TENANT001",
       },
       "en"
@@ -280,22 +278,22 @@ describe("bulkEditEpisodeCreditsAction", () => {
     if (!result?.ok) {
       return;
     }
-    expect(result.changedEpisodePublicIds).toHaveLength(11);
-    expect(result.changedEpisodePublicIds.at(-1)).toBe("EP11");
-    expect(result.changedEpisodePublicIds.includes("EP12")).toBe(false);
+    expect(result.changedEpisodeIds).toHaveLength(11);
+    expect(result.changedEpisodeIds.at(-1)).toBe("EP11-ID");
+    expect(result.changedEpisodeIds.includes("EP12-ID")).toBe(false);
   });
 
   it("sends a sparse selection in reading order and drops ids that are not on the series", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: ["EP01", "EP07", "EP11"],
+      changedEpisodeIds: ["EP01-ID", "EP07-ID", "EP11-ID"],
       ok: true,
       unchangedEpisodes: [],
     });
 
     const formData = bulkCreditFormData();
     formData.set(
-      "episode_public_ids",
-      JSON.stringify(["EP11", "MISSING", "EP01", "EP07"])
+      "episode_ids",
+      JSON.stringify(["EP11-ID", "MISSING", "EP01-ID", "EP07-ID"])
     );
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
@@ -303,7 +301,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       expect.objectContaining({
-        episodePublicIds: ["EP01", "EP07", "EP11"],
+        episodeIds: ["EP01-ID", "EP07-ID", "EP11-ID"],
       }),
       "en"
     );
@@ -312,7 +310,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("refuses when nothing checked is on the series", async () => {
     const formData = bulkCreditFormData();
-    formData.set("episode_public_ids", JSON.stringify(["MISSING"]));
+    formData.set("episode_ids", JSON.stringify(["MISSING"]));
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
     const result = await bulkEditEpisodeCreditsAction(null, formData);
@@ -326,7 +324,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("sends a set-share with the typed percentage in basis points", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: ["EP01"],
+      changedEpisodeIds: ["EP01"],
       ok: true,
       unchangedEpisodes: [],
     });
@@ -337,7 +335,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: {
-          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          credit: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
           shareBps: 3333,
           type: "set_share",
         },

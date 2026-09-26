@@ -29,6 +29,7 @@ interface EpisodeAvailabilityFormProps {
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
+  episodeId: string;
   episodePublicId: string;
   /**
    * What the episode states of its own. Seeded once per mount: the page keys
@@ -42,6 +43,7 @@ interface EpisodeAvailabilityFormProps {
 
 export const EpisodeAvailabilityForm = ({
   action,
+  episodeId,
   episodePublicId,
   initialAvailability,
   seriesAvailability,
@@ -66,6 +68,7 @@ export const EpisodeAvailabilityForm = ({
     <ActionForm action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
+      <input name="episode_id" type="hidden" value={episodeId} />
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
       <ActionFormFieldset>

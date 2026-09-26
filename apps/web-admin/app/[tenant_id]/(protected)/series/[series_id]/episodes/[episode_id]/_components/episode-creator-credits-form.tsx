@@ -36,11 +36,11 @@ import type {
 } from "../episode-edit-types";
 
 interface CreatorOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 interface CreatorRoleOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 interface CreditEditorRow extends Omit<EpisodeCreatorCredit, "shareBps"> {
@@ -50,7 +50,7 @@ interface CreditEditorRow extends Omit<EpisodeCreatorCredit, "shareBps"> {
 }
 
 const isComplete = (row: CreditEditorRow) =>
-  row.creatorPublicId.length > 0 && row.rolePublicId.length > 0;
+  row.creatorId.length > 0 && row.roleId.length > 0;
 
 const EpisodeCreditRow = ({
   creators,
@@ -82,10 +82,10 @@ const EpisodeCreditRow = ({
           <Combobox
             id={creatorId}
             items={creators}
-            onValueChange={(creatorPublicId) =>
-              onChange({ ...row, creatorPublicId })
+            onValueChange={(nextCreatorId) =>
+              onChange({ ...row, creatorId: nextCreatorId })
             }
-            value={row.creatorPublicId}
+            value={row.creatorId}
           >
             <ComboboxInput />
             <ComboboxPopup>
@@ -108,8 +108,10 @@ const EpisodeCreditRow = ({
           <Combobox
             id={roleId}
             items={roles}
-            onValueChange={(rolePublicId) => onChange({ ...row, rolePublicId })}
-            value={row.rolePublicId}
+            onValueChange={(nextRoleId) =>
+              onChange({ ...row, roleId: nextRoleId })
+            }
+            value={row.roleId}
           >
             <ComboboxInput />
             <ComboboxPopup>
@@ -154,6 +156,7 @@ export const EpisodeCreatorCreditsForm = ({
   action,
   creatorRoles,
   creators,
+  episodeId,
   episodePublicId,
   initialCredits,
   seriesPublicId,
@@ -164,6 +167,7 @@ export const EpisodeCreatorCreditsForm = ({
   ) => Promise<EpisodeEditActionState>;
   creatorRoles: CreatorRoleOption[];
   creators: CreatorOption[];
+  episodeId: string;
   episodePublicId: string;
   initialCredits: EpisodeCreatorCredit[];
   seriesPublicId: string;
@@ -182,21 +186,20 @@ export const EpisodeCreatorCreditsForm = ({
     () =>
       creators.map((creator) => ({
         label: creator.name,
-        value: creator.publicId,
+        value: creator.id,
       })),
     [creators]
   );
   const roleItems = useMemo<ComboboxItem[]>(
-    () =>
-      creatorRoles.map((role) => ({ label: role.name, value: role.publicId })),
+    () => creatorRoles.map((role) => ({ label: role.name, value: role.id })),
     [creatorRoles]
   );
   const credits = rows.flatMap((row) =>
     isComplete(row)
       ? [
           {
-            creatorPublicId: row.creatorPublicId,
-            rolePublicId: row.rolePublicId,
+            creatorId: row.creatorId,
+            roleId: row.roleId,
             shareBps: sharePercentToBps(row.shareText) ?? 0,
           },
         ]
@@ -209,9 +212,9 @@ export const EpisodeCreatorCreditsForm = ({
     setRows((current) => [
       ...current,
       {
-        creatorPublicId: "",
+        creatorId: "",
         key,
-        rolePublicId: creatorRoles.at(0)?.publicId ?? "",
+        roleId: creatorRoles.at(0)?.id ?? "",
         shareText: "",
         source: CreatorCreditSource.EPISODE,
       },
@@ -239,6 +242,7 @@ export const EpisodeCreatorCreditsForm = ({
       <form action={formAction} className="grid gap-3">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
+        <input name="episode_id" type="hidden" value={episodeId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
         <input
           name="creator_credits"

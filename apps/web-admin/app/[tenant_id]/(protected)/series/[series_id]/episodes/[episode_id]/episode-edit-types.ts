@@ -1,8 +1,8 @@
 import type { CreatorCreditSource } from "@publira/api-client/admin/types";
 
 export interface EpisodeCreatorCredit {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
   /** Basis points: 10000 is 100%. */
   shareBps: number;
   source: CreatorCreditSource;

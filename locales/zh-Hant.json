@@ -1471,6 +1471,7 @@
         "image_alt": "第 {$index} 頁",
         "image_reorder_action": "調整第 {$position} 頁的順序",
         "image_list_error": "無法顯示頁面圖片",
+        "pages_error": "無法顯示頁面上傳",
         "schedule_error": "無法顯示發布設定",
         "schedule_title": "publish_at 設定",
         "schedule_description": "更新預約發布的時間。送出空值即可清除預約。",

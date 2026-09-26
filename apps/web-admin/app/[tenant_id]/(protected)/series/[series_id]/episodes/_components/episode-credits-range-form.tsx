@@ -36,18 +36,17 @@ const isCreditOperation = (value: string): value is CreditOperation =>
   OPERATIONS.some((operation) => operation === value);
 
 const emptyPair = (creatorRoles: CreditPickerOption[]): CreditPair => ({
-  creatorPublicId: "",
-  rolePublicId: creatorRoles.at(0)?.publicId ?? "",
+  creatorId: "",
+  roleId: creatorRoles.at(0)?.id ?? "",
 });
 
 const isCompletePair = (pair: CreditPair): boolean =>
-  pair.creatorPublicId.length > 0 && pair.rolePublicId.length > 0;
+  pair.creatorId.length > 0 && pair.roleId.length > 0;
 
 const optionName = (
-  options: readonly { name: string; publicId: string }[],
-  publicId: string
-): string =>
-  options.find((option) => option.publicId === publicId)?.name ?? publicId;
+  options: readonly { name: string; id: string }[],
+  id: string
+): string => options.find((option) => option.id === id)?.name ?? id;
 
 const isReplaceSame = (
   operation: CreditOperation,
@@ -55,8 +54,8 @@ const isReplaceSame = (
   to: CreditPair
 ): boolean =>
   operation === "replace" &&
-  from.creatorPublicId === to.creatorPublicId &&
-  from.rolePublicId === to.rolePublicId &&
+  from.creatorId === to.creatorId &&
+  from.roleId === to.roleId &&
   isCompletePair(from);
 
 /**
@@ -127,17 +126,17 @@ const creditSelectionPreview = (input: {
   if (input.operation === "replace") {
     return input.t("admin.series.episodes.credits.preview_replace", {
       count,
-      from_creator: optionName(input.creators, input.from.creatorPublicId),
-      from_role: optionName(input.creatorRoles, input.from.rolePublicId),
-      to_creator: optionName(input.creators, input.to.creatorPublicId),
-      to_role: optionName(input.creatorRoles, input.to.rolePublicId),
+      from_creator: optionName(input.creators, input.from.creatorId),
+      from_role: optionName(input.creatorRoles, input.from.roleId),
+      to_creator: optionName(input.creators, input.to.creatorId),
+      to_role: optionName(input.creatorRoles, input.to.roleId),
     });
   }
   if (input.operation === "set_share") {
     return input.t("admin.series.episodes.credits.preview_set_share", {
       count,
-      creator: optionName(input.creators, input.credit.creatorPublicId),
-      role: optionName(input.creatorRoles, input.credit.rolePublicId),
+      creator: optionName(input.creators, input.credit.creatorId),
+      role: optionName(input.creatorRoles, input.credit.roleId),
       share: formatShareBps(
         toSetShareBps(input.shareText) ?? 0,
         input.intlLocale
@@ -146,8 +145,8 @@ const creditSelectionPreview = (input: {
   }
   const values = {
     count,
-    creator: optionName(input.creators, input.credit.creatorPublicId),
-    role: optionName(input.creatorRoles, input.credit.rolePublicId),
+    creator: optionName(input.creators, input.credit.creatorId),
+    role: optionName(input.creatorRoles, input.credit.roleId),
   };
   return input.operation === "add"
     ? input.t("admin.series.episodes.credits.preview_add", values)
@@ -167,7 +166,7 @@ export interface EpisodeCreditsRangeFormProps {
   episodesErrorMessage?: string;
   isEpisodePending: boolean;
   onRetryEpisodes: () => void;
-  seriesPublicId: string;
+  seriesId: string;
 }
 
 export const EpisodeCreditsRangeForm = ({
@@ -180,7 +179,7 @@ export const EpisodeCreditsRangeForm = ({
   episodesErrorMessage,
   isEpisodePending,
   onRetryEpisodes,
-  seriesPublicId,
+  seriesId,
 }: EpisodeCreditsRangeFormProps) => {
   const locale = useAdminLocale();
   const t = useClientMessages();
@@ -210,7 +209,7 @@ export const EpisodeCreditsRangeForm = ({
   const creatorItems = useMemo<ComboboxItem[]>(
     () =>
       creators
-        .map((creator) => ({ label: creator.name, value: creator.publicId }))
+        .map((creator) => ({ label: creator.name, value: creator.id }))
         .toSorted((left, right) =>
           left.label.localeCompare(right.label, toIntlLocale(locale))
         ),
@@ -220,7 +219,7 @@ export const EpisodeCreditsRangeForm = ({
     () =>
       creatorRoles.map((role) => ({
         label: role.name,
-        value: role.publicId,
+        value: role.id,
       })),
     [creatorRoles]
   );
@@ -302,12 +301,10 @@ export const EpisodeCreditsRangeForm = ({
       from={from}
       hidden={{
         credit,
-        episodePublicIds: JSON.stringify(
-          selected.map((episode) => episode.publicId)
-        ),
+        episodeIds: JSON.stringify(selected.map((episode) => episode.id)),
         from,
         operation,
-        seriesPublicId,
+        seriesId,
         share: shareText,
         tenantId,
         to,

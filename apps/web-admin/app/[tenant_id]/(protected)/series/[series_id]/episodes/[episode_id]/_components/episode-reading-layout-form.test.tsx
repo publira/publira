@@ -41,6 +41,7 @@ const renderForm = (
   render(
     <EpisodeReadingLayoutForm
       action={action}
+      episodeId="EP001-ID"
       episodePublicId="EP001"
       seriesPublicId="SERIES001"
       tenantId="TENANT001"
@@ -150,6 +151,7 @@ describe("EpisodeReadingLayoutForm", () => {
     render(
       <EpisodeReadingLayoutForm
         action={() => save.promise}
+        episodeId="EP001-ID"
         episodePublicId="EP001"
         initialLayout={{ readingDirection: "rtl", spreadStartIndex: 2 }}
         pageCount={24}

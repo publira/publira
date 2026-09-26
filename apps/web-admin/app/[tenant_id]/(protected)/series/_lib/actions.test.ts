@@ -75,8 +75,8 @@ describe("series actions", () => {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
+        labelId: "LABEL001",
         labelName: "Label",
-        labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
         synopsis: "A synopsis",
@@ -88,10 +88,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -112,10 +113,10 @@ describe("series actions", () => {
         creatorCredits: [],
         eyeCatchImageContentType: undefined,
         eyeCatchImageData: undefined,
-        genrePublicIds: [],
+        genreIds: [],
+        id: "SERIES001-ID",
         isPublished: true,
-        labelPublicId: "LABEL001",
-        publicId: "SERIES001",
+        labelId: "LABEL001",
         // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
         // (Asia/Seoul here) — never as the server process's local zone.
         publishedAt: "2030-01-01T01:00:00Z",
@@ -143,8 +144,8 @@ describe("series actions", () => {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
+        labelId: "LABEL001",
         labelName: "Label",
-        labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
         synopsis: "A synopsis",
@@ -156,10 +157,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -186,8 +188,8 @@ describe("series actions", () => {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: true,
+        labelId: "LABEL001",
         labelName: "Label",
-        labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
         synopsis: "A synopsis",
@@ -199,10 +201,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -236,10 +239,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -264,10 +268,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("comment_mode", "");
@@ -294,8 +299,8 @@ describe("series actions", () => {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
         isPublished: false,
+        labelId: "LABEL001",
         labelName: "Label",
-        labelPublicId: "LABEL001",
         publicId: "SERIES001",
         readingPeriodHours: 24,
         synopsis: "A synopsis",
@@ -309,7 +314,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -337,7 +342,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "hiatus");
     formData.set("age_rating", "r18");
     formData.set("availability", "all");
@@ -347,8 +352,8 @@ describe("series actions", () => {
     formData.set("spread_start_page", "2");
     formData.append("schedule_weekdays", "5");
     formData.append("schedule_weekdays", "1");
-    formData.append("genre_public_ids", "GENRE001");
-    formData.append("genre_public_ids", "GENRE002");
+    formData.append("genre_ids", "GENRE001");
+    formData.append("genre_ids", "GENRE002");
     formData.append("tag_names", " Fantasy ");
     formData.append("tag_names", "");
 
@@ -357,7 +362,7 @@ describe("series actions", () => {
     expect(mockCreateSeries).toHaveBeenCalledWith(
       expect.objectContaining({
         ageRating: "r18",
-        genrePublicIds: ["GENRE001", "GENRE002"],
+        genreIds: ["GENRE001", "GENRE002"],
         // Ascending, so the stored schedule does not depend on the order the
         // checkboxes happened to be ticked in.
         scheduleWeekdays: [1, 5],
@@ -380,7 +385,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -409,7 +414,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -445,7 +450,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -469,7 +474,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -498,10 +503,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "app");
@@ -525,7 +531,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "");
@@ -556,8 +562,9 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("clear_eye_catch_image", "1");
 
     await updateSeriesEyeCatchAction(null, formData);
@@ -590,10 +597,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -619,7 +627,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -648,10 +656,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -678,10 +687,11 @@ describe("series actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("public_id", "SERIES001");
+    formData.set("series_id", "SERIES001-ID");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -708,7 +718,7 @@ describe("series actions", () => {
       formData.set("title", "Series title");
       formData.set("synopsis", "A synopsis");
       formData.set("reading_period_hours", "24");
-      formData.set("label_public_id", "LABEL001");
+      formData.set("label_id", "LABEL001");
       formData.set("status", "ongoing");
       formData.set("age_rating", "all");
       formData.set("availability", "all");
@@ -741,7 +751,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -755,16 +765,16 @@ describe("series actions", () => {
       "creator_credits",
       JSON.stringify([
         {
-          creatorPublicId: "CREATOR001",
-          rolePublicId: "ROLE001",
+          creatorId: "CREATOR001",
+          roleId: "ROLE001",
           shareBps: 3000,
         },
         {
-          creatorPublicId: "CREATOR001",
-          rolePublicId: "ROLE002",
+          creatorId: "CREATOR001",
+          roleId: "ROLE002",
           shareBps: 2000,
         },
-        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+        { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
       ])
     );
 
@@ -774,18 +784,18 @@ describe("series actions", () => {
       expect.objectContaining({
         creatorCredits: [
           {
-            creatorPublicId: "CREATOR001",
-            rolePublicId: "ROLE001",
+            creatorId: "CREATOR001",
+            roleId: "ROLE001",
             shareBps: 3000,
           },
           {
-            creatorPublicId: "CREATOR001",
-            rolePublicId: "ROLE002",
+            creatorId: "CREATOR001",
+            roleId: "ROLE002",
             shareBps: 2000,
           },
           {
-            creatorPublicId: "CREATOR002",
-            rolePublicId: "ROLE002",
+            creatorId: "CREATOR002",
+            roleId: "ROLE002",
             shareBps: 0,
           },
         ],
@@ -803,7 +813,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -813,9 +823,7 @@ describe("series actions", () => {
     formData.set("spread_start_page", "2");
     formData.set(
       "creator_credits",
-      JSON.stringify([
-        { creatorPublicId: "CREATOR001", rolePublicId: "", shareBps: 0 },
-      ])
+      JSON.stringify([{ creatorId: "CREATOR001", roleId: "", shareBps: 0 }])
     );
 
     const result = await createSeriesAction(null, formData);
@@ -837,7 +845,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "ongoing");
     formData.set("age_rating", "all");
     formData.set("availability", "all");
@@ -847,9 +855,7 @@ describe("series actions", () => {
     formData.set("spread_start_page", "2");
     formData.set(
       "creator_credits",
-      JSON.stringify([
-        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001" },
-      ])
+      JSON.stringify([{ creatorId: "CREATOR001", roleId: "ROLE001" }])
     );
 
     const result = await createSeriesAction(null, formData);
@@ -865,7 +871,7 @@ describe("series actions", () => {
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
     formData.set("reading_period_hours", "24");
-    formData.set("label_public_id", "LABEL001");
+    formData.set("label_id", "LABEL001");
     formData.set("status", "cancelled");
     formData.set("age_rating", "all");
     formData.set("availability", "all");

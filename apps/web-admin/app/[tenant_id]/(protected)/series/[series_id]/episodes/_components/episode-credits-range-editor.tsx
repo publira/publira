@@ -34,14 +34,14 @@ export const OPERATIONS = ["add", "replace", "remove", "set_share"] as const;
 export type CreditOperation = (typeof OPERATIONS)[number];
 
 export interface CreditPair {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
 }
 
 interface CreditPairFieldsProps {
   creatorItems: ComboboxItem[];
-  onCreatorChange: (nextCreatorPublicId: string) => void;
-  onRoleChange: (nextRolePublicId: string) => void;
+  onCreatorChange: (nextCreatorId: string) => void;
+  onRoleChange: (nextRoleId: string) => void;
   pair: CreditPair;
   roleItems: ComboboxItem[];
 }
@@ -68,7 +68,7 @@ const CreditPairFields = ({
             id={creatorId}
             items={creatorItems}
             onValueChange={onCreatorChange}
-            value={pair.creatorPublicId}
+            value={pair.creatorId}
           >
             <ComboboxInput
               placeholder={t("admin.series.episodes.credits.creator_search")}
@@ -91,7 +91,7 @@ const CreditPairFields = ({
             id={roleId}
             items={roleItems}
             onValueChange={onRoleChange}
-            value={pair.rolePublicId}
+            value={pair.roleId}
           >
             <ComboboxInput
               placeholder={t("admin.series.episodes.credits.role_search")}
@@ -178,12 +178,10 @@ const CreditTargetFields = ({
       <div className="grid gap-3">
         <CreditPairFields
           creatorItems={creatorItems}
-          onCreatorChange={(creatorPublicId) =>
-            onCreditChange({ ...credit, creatorPublicId })
+          onCreatorChange={(creatorId) =>
+            onCreditChange({ ...credit, creatorId })
           }
-          onRoleChange={(rolePublicId) =>
-            onCreditChange({ ...credit, rolePublicId })
-          }
+          onRoleChange={(roleId) => onCreditChange({ ...credit, roleId })}
           pair={credit}
           roleItems={roleItems}
         />
@@ -196,12 +194,10 @@ const CreditTargetFields = ({
     return (
       <CreditPairFields
         creatorItems={creatorItems}
-        onCreatorChange={(creatorPublicId) =>
-          onCreditChange({ ...credit, creatorPublicId })
+        onCreatorChange={(creatorId) =>
+          onCreditChange({ ...credit, creatorId })
         }
-        onRoleChange={(rolePublicId) =>
-          onCreditChange({ ...credit, rolePublicId })
-        }
+        onRoleChange={(roleId) => onCreditChange({ ...credit, roleId })}
         pair={credit}
         roleItems={roleItems}
       />
@@ -216,12 +212,8 @@ const CreditTargetFields = ({
         </legend>
         <CreditPairFields
           creatorItems={creatorItems}
-          onCreatorChange={(creatorPublicId) =>
-            onFromChange({ ...from, creatorPublicId })
-          }
-          onRoleChange={(rolePublicId) =>
-            onFromChange({ ...from, rolePublicId })
-          }
+          onCreatorChange={(creatorId) => onFromChange({ ...from, creatorId })}
+          onRoleChange={(roleId) => onFromChange({ ...from, roleId })}
           pair={from}
           roleItems={roleItems}
         />
@@ -232,10 +224,8 @@ const CreditTargetFields = ({
         </legend>
         <CreditPairFields
           creatorItems={creatorItems}
-          onCreatorChange={(creatorPublicId) =>
-            onToChange({ ...to, creatorPublicId })
-          }
-          onRoleChange={(rolePublicId) => onToChange({ ...to, rolePublicId })}
+          onCreatorChange={(creatorId) => onToChange({ ...to, creatorId })}
+          onRoleChange={(roleId) => onToChange({ ...to, roleId })}
           pair={to}
           roleItems={roleItems}
         />
@@ -277,8 +267,8 @@ const EpisodeSelectionFields = ({
   isEpisodePending: boolean;
   onClearSelection: () => void;
   onRetryEpisodes: () => void;
-  onSelectMany: (publicIds: readonly string[], selected: boolean) => void;
-  onToggle: (publicId: string, selected: boolean) => void;
+  onSelectMany: (ids: readonly string[], selected: boolean) => void;
+  onToggle: (id: string, selected: boolean) => void;
   selectedCount: number;
   selectedIds: ReadonlySet<string>;
   selectionTooMany: boolean;
@@ -291,9 +281,9 @@ const EpisodeSelectionFields = ({
   const visibleEpisodes = episodes.filter((episode) =>
     episodeMatchesQuery(episode, query.trim())
   );
-  const visibleIds = visibleEpisodes.map((episode) => episode.publicId);
-  const selectedVisibleCount = visibleIds.filter((publicId) =>
-    selectedIds.has(publicId)
+  const visibleIds = visibleEpisodes.map((episode) => episode.id);
+  const selectedVisibleCount = visibleIds.filter((id) =>
+    selectedIds.has(id)
   ).length;
   const allVisibleSelected =
     visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
@@ -378,19 +368,19 @@ const EpisodeSelectionFields = ({
         <div className="max-h-72 overflow-y-auto border border-border p-3">
           <div className="grid gap-2">
             {visibleEpisodes.map((episode) => {
-              const rowId = `${listId}-${episode.publicId}`;
+              const rowId = `${listId}-${episode.id}`;
               return (
                 <label
                   className="flex items-center gap-2 text-sm"
                   htmlFor={rowId}
-                  key={episode.publicId}
+                  key={episode.id}
                 >
                   <Checkbox
-                    checked={selectedIds.has(episode.publicId)}
+                    checked={selectedIds.has(episode.id)}
                     disabled={listDisabled}
                     id={rowId}
                     onCheckedChange={(checked) => {
-                      onToggle(episode.publicId, checked);
+                      onToggle(episode.id, checked);
                     }}
                   />
                   <span>
@@ -436,10 +426,10 @@ export interface EpisodeCreditsRangeEditorProps {
   from: CreditPair;
   hidden: {
     credit: CreditPair;
-    episodePublicIds: string;
+    episodeIds: string;
     from: CreditPair;
     operation: CreditOperation;
-    seriesPublicId: string;
+    seriesId: string;
     share: string;
     tenantId: string;
     to: CreditPair;
@@ -451,10 +441,10 @@ export interface EpisodeCreditsRangeEditorProps {
   onFromChange: (next: CreditPair) => void;
   onOperationChange: (next: string) => void;
   onRetryEpisodes: () => void;
-  onSelectMany: (publicIds: readonly string[], selected: boolean) => void;
+  onSelectMany: (ids: readonly string[], selected: boolean) => void;
   onShareChange: (next: string) => void;
   onToChange: (next: CreditPair) => void;
-  onToggle: (publicId: string, selected: boolean) => void;
+  onToggle: (id: string, selected: boolean) => void;
   operation: CreditOperation;
   preview?: string;
   replaceSame: boolean;
@@ -508,47 +498,19 @@ export const EpisodeCreditsRangeEditor = ({
   return (
     <form action={formAction} className="grid gap-5">
       <input name="tenant_id" type="hidden" value={hidden.tenantId} />
-      <input
-        name="series_public_id"
-        type="hidden"
-        value={hidden.seriesPublicId}
-      />
+      <input name="series_id" type="hidden" value={hidden.seriesId} />
       <input name="operation" type="hidden" value={hidden.operation} />
+      <input name="episode_ids" type="hidden" value={hidden.episodeIds} />
+      <input name="creator_id" type="hidden" value={hidden.credit.creatorId} />
+      <input name="role_id" type="hidden" value={hidden.credit.roleId} />
       <input
-        name="episode_public_ids"
+        name="from_creator_id"
         type="hidden"
-        value={hidden.episodePublicIds}
+        value={hidden.from.creatorId}
       />
-      <input
-        name="creator_public_id"
-        type="hidden"
-        value={hidden.credit.creatorPublicId}
-      />
-      <input
-        name="role_public_id"
-        type="hidden"
-        value={hidden.credit.rolePublicId}
-      />
-      <input
-        name="from_creator_public_id"
-        type="hidden"
-        value={hidden.from.creatorPublicId}
-      />
-      <input
-        name="from_role_public_id"
-        type="hidden"
-        value={hidden.from.rolePublicId}
-      />
-      <input
-        name="to_creator_public_id"
-        type="hidden"
-        value={hidden.to.creatorPublicId}
-      />
-      <input
-        name="to_role_public_id"
-        type="hidden"
-        value={hidden.to.rolePublicId}
-      />
+      <input name="from_role_id" type="hidden" value={hidden.from.roleId} />
+      <input name="to_creator_id" type="hidden" value={hidden.to.creatorId} />
+      <input name="to_role_id" type="hidden" value={hidden.to.roleId} />
       <input name="share" type="hidden" value={hidden.share} />
 
       <Fieldset className="grid gap-5" disabled={isPending}>

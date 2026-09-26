@@ -92,16 +92,17 @@ vi.mock("@publira/ui-components/dialog", () => ({
 const t = bindMessages(sharedCatalog("en"));
 
 const episodes = Array.from({ length: 40 }, (_, index) => ({
+  id: `EP${String(index + 1).padStart(2, "0")}-ID`,
   publicId: `EP${String(index + 1).padStart(2, "0")}`,
   title: `Episode ${index + 1}`,
 }));
 
 const creators = [
-  { name: "Artist B", publicId: "CREATOR_B" },
-  { name: "Artist C", publicId: "CREATOR_C" },
+  { id: "CREATOR_B", name: "Artist B" },
+  { id: "CREATOR_C", name: "Artist C" },
 ];
 
-const creatorRoles = [{ name: "Artist", publicId: "ROLE_ARTIST" }];
+const creatorRoles = [{ id: "ROLE_ARTIST", name: "Artist" }];
 
 const render = ({
   action = () => Promise.resolve(null),
@@ -123,7 +124,7 @@ const render = ({
       episodes={formEpisodes}
       isEpisodePending={false}
       onRetryEpisodes={() => {}}
-      seriesPublicId="SERIES001"
+      seriesId="SERIES001"
     />,
     {
       wrapper: ({ children }) => (
@@ -171,9 +172,7 @@ const submittedControls = () => [
 describe("EpisodeCreditsRangeForm", () => {
   it("counts eleven checked episodes of a 40-episode series and does not enable apply until the credit is chosen", () => {
     render({
-      initialSelectedIds: episodes
-        .slice(0, 11)
-        .map((episode) => episode.publicId),
+      initialSelectedIds: episodes.slice(0, 11).map((episode) => episode.id),
     });
 
     fireEvent.click(screen.getByRole("radio", { name: /Replace/u }));
@@ -189,19 +188,15 @@ describe("EpisodeCreditsRangeForm", () => {
         formData: FormData
       ): Promise<BulkEditEpisodeCreditsActionState> => {
         expect(formData.get("operation")).toBe("replace");
-        expect(formData.get("episode_public_ids")).toBe(
-          JSON.stringify(
-            episodes.slice(0, 11).map((episode) => episode.publicId)
-          )
+        expect(formData.get("episode_ids")).toBe(
+          JSON.stringify(episodes.slice(0, 11).map((episode) => episode.id))
         );
-        expect(formData.get("from_creator_public_id")).toBe("CREATOR_B");
-        expect(formData.get("from_role_public_id")).toBe("ROLE_ARTIST");
-        expect(formData.get("to_creator_public_id")).toBe("CREATOR_C");
-        expect(formData.get("to_role_public_id")).toBe("ROLE_ARTIST");
+        expect(formData.get("from_creator_id")).toBe("CREATOR_B");
+        expect(formData.get("from_role_id")).toBe("ROLE_ARTIST");
+        expect(formData.get("to_creator_id")).toBe("CREATOR_C");
+        expect(formData.get("to_role_id")).toBe("ROLE_ARTIST");
         return Promise.resolve({
-          changedEpisodePublicIds: episodes
-            .slice(0, 11)
-            .map((episode) => episode.publicId),
+          changedEpisodeIds: episodes.slice(0, 11).map((episode) => episode.id),
           ok: true,
           unchangedEpisodes: [],
         });
@@ -210,9 +205,7 @@ describe("EpisodeCreditsRangeForm", () => {
 
     render({
       action,
-      initialSelectedIds: episodes
-        .slice(0, 11)
-        .map((episode) => episode.publicId),
+      initialSelectedIds: episodes.slice(0, 11).map((episode) => episode.id),
     });
 
     fireEvent.click(screen.getByRole("radio", { name: /Replace/u }));
@@ -255,13 +248,13 @@ describe("EpisodeCreditsRangeForm", () => {
         _prev: BulkEditEpisodeCreditsActionState,
         formData: FormData
       ): Promise<BulkEditEpisodeCreditsActionState> => {
-        expect(JSON.parse(String(formData.get("episode_public_ids")))).toEqual([
-          "EP01",
-          "EP07",
-          "EP11",
+        expect(JSON.parse(String(formData.get("episode_ids")))).toEqual([
+          "EP01-ID",
+          "EP07-ID",
+          "EP11-ID",
         ]);
         return Promise.resolve({
-          changedEpisodePublicIds: ["EP01", "EP07", "EP11"],
+          changedEpisodeIds: ["EP01-ID", "EP07-ID", "EP11-ID"],
           ok: true,
           unchangedEpisodes: [],
         });
@@ -300,18 +293,18 @@ describe("EpisodeCreditsRangeForm", () => {
         formData: FormData
       ): Promise<BulkEditEpisodeCreditsActionState> => {
         expect(formData.get("operation")).toBe("set_share");
-        expect(formData.get("creator_public_id")).toBe("CREATOR_B");
-        expect(formData.get("role_public_id")).toBe("ROLE_ARTIST");
+        expect(formData.get("creator_id")).toBe("CREATOR_B");
+        expect(formData.get("role_id")).toBe("ROLE_ARTIST");
         expect(formData.get("share")).toBe("25");
         return Promise.resolve({
-          changedEpisodePublicIds: ["EP01", "EP02", "EP03"],
+          changedEpisodeIds: ["EP01-ID", "EP02-ID", "EP03-ID"],
           ok: true,
           unchangedEpisodes: [],
         });
       }
     );
 
-    render({ action, initialSelectedIds: ["EP01", "EP02", "EP03"] });
+    render({ action, initialSelectedIds: ["EP01-ID", "EP02-ID", "EP03-ID"] });
 
     fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
     const [author] = authorPickers();
@@ -345,7 +338,7 @@ describe("EpisodeCreditsRangeForm", () => {
   });
 
   it("keeps apply disabled and says why while the share is not one", () => {
-    render({ initialSelectedIds: ["EP01"] });
+    render({ initialSelectedIds: ["EP01-ID"] });
 
     fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
     const [author] = authorPickers();
@@ -371,7 +364,7 @@ describe("EpisodeCreditsRangeForm", () => {
   it("closes the operation, the credit, and the selection while the edit is in flight", async () => {
     // Never resolved: the assertions are about the window the edit is open in.
     const edit = Promise.withResolvers<BulkEditEpisodeCreditsActionState>();
-    render({ action: () => edit.promise, initialSelectedIds: ["EP01"] });
+    render({ action: () => edit.promise, initialSelectedIds: ["EP01-ID"] });
 
     const [author] = authorPickers();
     if (!author) {

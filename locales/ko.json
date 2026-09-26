@@ -1471,6 +1471,7 @@
         "image_alt": "{$index}쪽",
         "image_reorder_action": "{$position}번 페이지 순서 변경",
         "image_list_error": "페이지 이미지를 표시할 수 없습니다",
+        "pages_error": "페이지 업로드를 표시할 수 없습니다",
         "schedule_error": "공개 설정을 표시할 수 없습니다",
         "schedule_title": "publish_at 설정",
         "schedule_description": "공개 예약 일시를 변경합니다. 비워서 보내면 예약이 해제됩니다.",
