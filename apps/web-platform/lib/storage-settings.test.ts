@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPlatformStorageSettings,
-  storageTestReasonKey,
+  storageTestFailureMessage,
   testPlatformStorageConnection,
   updatePlatformStorageSettings,
 } from "./storage-settings";
@@ -247,11 +247,15 @@ describe("testPlatformStorageConnection", () => {
   });
 });
 
-describe("storageTestReasonKey", () => {
-  it("resolves a recorded STORAGE_TEST_* reason and nothing else", () => {
-    expect(storageTestReasonKey("STORAGE_TEST_BUCKET_NOT_FOUND")).toBe(
-      "platform.storage.test.reasons.bucket_not_found"
+describe("storageTestFailureMessage", () => {
+  it("words a recorded STORAGE_TEST_* reason and nothing else", async () => {
+    await expect(
+      storageTestFailureMessage("STORAGE_TEST_BUCKET_NOT_FOUND", "en")
+    ).resolves.toBe(
+      "Configuration problem: the bucket wasn't found. Check the bucket name, the region, and the endpoint."
     );
-    expect(storageTestReasonKey("SMTP_TEST_AUTHENTICATION")).toBeUndefined();
+    await expect(
+      storageTestFailureMessage("SMTP_TEST_AUTHENTICATION", "en")
+    ).resolves.toBeUndefined();
   });
 });

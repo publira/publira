@@ -451,11 +451,9 @@ const duplicateDomainMessage = async (
   if (rpcErrorHasFieldViolation(error, "domain")) {
     return t("platform.tenants.domain_taken");
   }
-  return t(
-    kind === "create"
-      ? "platform.tenants.duplicate_create"
-      : "platform.tenants.duplicate_update"
-  );
+  return kind === "create"
+    ? t("platform.tenants.duplicate_create")
+    : t("platform.tenants.duplicate_update");
 };
 
 export const createPlatformTenant = async (

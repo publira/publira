@@ -168,13 +168,11 @@ export const PlatformNotificationBell = async () => {
           >
             <NotificationBellItemState>
               <Suspense fallback={null}>
-                <Message
-                  message={
-                    notification.isRead
-                      ? "platform.notifications.read"
-                      : "platform.notifications.unread"
-                  }
-                />
+                {notification.isRead ? (
+                  <Message message="platform.notifications.read" />
+                ) : (
+                  <Message message="platform.notifications.unread" />
+                )}
               </Suspense>
             </NotificationBellItemState>
             <NotificationBellItemTitle>

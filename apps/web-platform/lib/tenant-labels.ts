@@ -1,31 +1,8 @@
 import type { Locale } from "@publira/i18n";
 
-import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
 
 export type TenantStatusTone = "destructive" | "info" | "success";
-
-const tenantStatusKeys = new Map<string, PlatformMessageKey>([
-  ["active", "platform.common.tenant_status.active"],
-  ["inactive", "platform.common.tenant_status.inactive"],
-  ["suspended", "platform.common.tenant_status.suspended"],
-  ["trial", "platform.common.tenant_status.trial"],
-]);
-
-const invitationStatusKeys = new Map<string, PlatformMessageKey>([
-  ["accepted", "platform.common.invitation_status.accepted"],
-  ["canceled", "platform.common.invitation_status.canceled"],
-  ["expired", "platform.common.invitation_status.expired"],
-  ["pending", "platform.common.invitation_status.pending"],
-]);
-
-const tenantRoleKeys = new Map<string, PlatformMessageKey>([
-  ["tenant_admin", "platform.common.roles.tenant_admin"],
-  ["tenant_auditor", "platform.common.roles.tenant_auditor"],
-  ["tenant_editor", "platform.common.roles.tenant_editor"],
-  ["tenant_member", "platform.common.roles.tenant_member"],
-  ["tenant_owner", "platform.common.roles.tenant_owner"],
-]);
 
 /**
  * Each label takes the `locale` and reads the catalog itself. The value has to
@@ -37,14 +14,25 @@ export const getTenantStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = tenantStatusKeys.get(status);
-  if (!key) {
-    return status;
-  }
-
   const t = await getMessagesFor(locale);
 
-  return t(key);
+  switch (status) {
+    case "active": {
+      return t("platform.common.tenant_status.active");
+    }
+    case "inactive": {
+      return t("platform.common.tenant_status.inactive");
+    }
+    case "suspended": {
+      return t("platform.common.tenant_status.suspended");
+    }
+    case "trial": {
+      return t("platform.common.tenant_status.trial");
+    }
+    default: {
+      return status;
+    }
+  }
 };
 
 export const getTenantStatusTone = (status: string): TenantStatusTone => {
@@ -65,26 +53,51 @@ export const getTenantRoleLabel = async (
   role: string,
   locale: Locale
 ): Promise<string> => {
-  const key = tenantRoleKeys.get(role);
-  if (!key) {
-    return role;
-  }
-
   const t = await getMessagesFor(locale);
 
-  return t(key);
+  switch (role) {
+    case "tenant_admin": {
+      return t("platform.common.roles.tenant_admin");
+    }
+    case "tenant_auditor": {
+      return t("platform.common.roles.tenant_auditor");
+    }
+    case "tenant_editor": {
+      return t("platform.common.roles.tenant_editor");
+    }
+    case "tenant_member": {
+      return t("platform.common.roles.tenant_member");
+    }
+    case "tenant_owner": {
+      return t("platform.common.roles.tenant_owner");
+    }
+    default: {
+      return role;
+    }
+  }
 };
 
 export const getInvitationStatusLabel = async (
   status: string,
   locale: Locale
 ): Promise<string> => {
-  const key = invitationStatusKeys.get(status);
-  if (!key) {
-    return status;
-  }
-
   const t = await getMessagesFor(locale);
 
-  return t(key);
+  switch (status) {
+    case "accepted": {
+      return t("platform.common.invitation_status.accepted");
+    }
+    case "canceled": {
+      return t("platform.common.invitation_status.canceled");
+    }
+    case "expired": {
+      return t("platform.common.invitation_status.expired");
+    }
+    case "pending": {
+      return t("platform.common.invitation_status.pending");
+    }
+    default: {
+      return status;
+    }
+  }
 };

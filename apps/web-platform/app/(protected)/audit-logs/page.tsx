@@ -49,7 +49,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
-import { storageTestReasonKey } from "#lib/storage-settings";
+import { storageTestFailureMessage } from "#lib/storage-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 import { AuditActionName } from "./_components/audit-action-name";
@@ -243,19 +243,36 @@ const AuditLogsPagination = async ({
   );
 };
 
-const auditLogReason = (
+const auditLogReason = async (
   log: PlatformAuditLogSummary,
-  locale: Locale,
-  t: Awaited<ReturnType<typeof getMessagesFor>>
-): string => {
+  locale: Locale
+): Promise<string> => {
   if (log.action === "platform_smtp_test_email_sent") {
     return smtpTestFailureMessage(log.reason, locale) ?? log.reason;
   }
   if (log.action === "platform_storage_connection_tested") {
-    const key = storageTestReasonKey(log.reason);
-    return key ? t(key) : log.reason;
+    return (await storageTestFailureMessage(log.reason, locale)) ?? log.reason;
   }
   return log.reason;
+};
+
+/**
+ * The recorded reason, worded where the console knows it. An async component
+ * for the same reason as the cells below: a row rendered inside `.map()`
+ * cannot await.
+ */
+const AuditLogReason = async ({
+  locale,
+  log,
+}: {
+  locale: Locale;
+  log: PlatformAuditLogSummary;
+}) => {
+  const reason = await auditLogReason(log, locale);
+
+  return reason ? (
+    <p className="text-xs text-muted-foreground">{reason}</p>
+  ) : null;
 };
 
 /**
@@ -286,10 +303,7 @@ const AuditLogsTableBody = async ({
     return <TableBody />;
   }
 
-  const [emptyMessage, t] = await Promise.all([
-    buildEmptyMessage(hasFilter, locale),
-    getMessagesFor(locale),
-  ]);
+  const emptyMessage = await buildEmptyMessage(hasFilter, locale);
 
   if (result.auditLogs.length === 0) {
     return (
@@ -352,11 +366,7 @@ const AuditLogsTableBody = async ({
           <TableCell>
             <div className="grid gap-1">
               <AuditLogTarget log={log} />
-              {auditLogReason(log, locale, t) ? (
-                <p className="text-xs text-muted-foreground">
-                  {auditLogReason(log, locale, t)}
-                </p>
-              ) : null}
+              <AuditLogReason locale={locale} log={log} />
             </div>
           </TableCell>
         </TableRow>
