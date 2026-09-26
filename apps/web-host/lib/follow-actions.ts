@@ -82,9 +82,10 @@ export const toggleFollowAction = async (
   const t = await getMessagesFor(locale);
   return {
     isFollowing: result.isFollowing,
-    message: t(
-      intent === "follow" ? "host.follow.followed" : "host.follow.unfollowed"
-    ),
+    message:
+      intent === "follow"
+        ? t("host.follow.followed")
+        : t("host.follow.unfollowed"),
     ok: true,
   };
 };
