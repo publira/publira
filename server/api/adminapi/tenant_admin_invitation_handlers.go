@@ -123,8 +123,8 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		name := strings.TrimSpace(req.Msg.Name)
-		password := strings.TrimSpace(req.Msg.Password)
-		if name == "" || password == "" {
+		password := req.Msg.Password
+		if name == "" || strings.TrimSpace(password) == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name and password are required"))
 		}
 		member, err := tenantmembers.CreateAccount(ctx, tx, tenantmembers.AccountParams{

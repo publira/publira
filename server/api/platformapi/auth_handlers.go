@@ -317,8 +317,8 @@ func (s *platformServer) ConfirmPasswordReset(
 	req *connect.Request[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest],
 ) (*connect.Response[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse], error) {
 	token := strings.TrimSpace(req.Msg.Token)
-	newPassword := strings.TrimSpace(req.Msg.NewPassword)
-	if token == "" || newPassword == "" {
+	newPassword := req.Msg.NewPassword
+	if token == "" || strings.TrimSpace(newPassword) == "" {
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
 	}
@@ -389,8 +389,8 @@ func (s *platformServer) RequestEmailChange(
 
 	newEmail := strings.TrimSpace(req.Msg.NewEmail)
 	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
-	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
-	if currentEmail == "" || newEmail == "" || currentPassword == "" {
+	currentPassword := req.Msg.CurrentPassword
+	if currentEmail == "" || newEmail == "" || strings.TrimSpace(currentPassword) == "" {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_input")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
 	}
