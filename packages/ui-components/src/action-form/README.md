@@ -57,6 +57,57 @@ A second control that sends the same fields to another Action, such as a connect
 </ActionForm>
 ```
 
+### Field errors, returned data, and follow-ups
+
+An Action can answer with more than a sentence, and each part of that answer is read by the one component that needs it, so the form itself can stay a Server Component.
+
+A refused submission may carry `fieldErrors`, keyed by field. `ActionFormFieldError` shows the entry under its `name` next to that field, and nothing otherwise:
+
+```tsx
+<ActionForm action={saveSettings}>
+  <Field>
+    <FieldLabel htmlFor="close-day">Close day</FieldLabel>
+    <FieldContent>
+      <CloseDaySelect id="close-day" />
+      <ActionFormFieldError name="autoCloseDay" />
+    </FieldContent>
+  </Field>
+  <ActionFormSubmit>Save</ActionFormSubmit>
+</ActionForm>
+```
+
+A client component inside the form reads the state its Action returned with `useActionFormState`, typed by the caller, such as a control seeding itself from the settings a save confirmed:
+
+```tsx
+"use client";
+
+const CloseDaySelect = ({ initialDay }: { initialDay: string }) => {
+  const state = useActionFormState<RoyaltyCloseSettingsFormState>();
+  const savedDay = state?.ok ? String(state.policy.autoCloseDay) : initialDay;
+
+  return <DaySelect defaultValue={savedDay} key={savedDay} />;
+};
+```
+
+What follows a submission — a toast, a dialog closing, a field emptied — goes in `useActionFormSettled`, which is called with what the form's own Action returned as part of the submission, rather than in an Effect watching the state. A control's own `formAction` does not call it.
+
+```tsx
+"use client";
+
+const SavedToast = ({ title }: { title: ReactNode }) => {
+  const { add } = useToastManager();
+  useActionFormSettled((state) => {
+    if (state?.ok) {
+      add({ title, type: "success" });
+    }
+  });
+
+  return null;
+};
+```
+
+Each `ActionForm` holds the state of its own submissions, so a list that renders one form per row shows each answer on the row that was submitted, with no id to compare.
+
 ### Render function mode
 
 Pass a function as `children` when you want to place the message yourself or read the state the Action returned. The state has the Action's own type, so an Action that returns more than `ok` and `message` hands the rest to the function too.
@@ -117,6 +168,7 @@ export const myAction = async (
 ```tsx
 import { ActionForm } from "@publira/ui-components/action-form";
 import type {
+  ActionFormFieldErrors,
   ActionFormResult,
   FormActionState,
 } from "@publira/ui-components/action-form";
@@ -126,10 +178,10 @@ import type {
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `action` | `(prevState, formData) => Promise<State \| null>` | Required | The Server Action. `State` is `ActionFormResult` (`{ ok, message }`) or a type that widens it, such as a save that also returns the settings it confirmed; the render function reads it back as `state` |
+| `action` | `(prevState, formData) => Promise<State \| null>` | Required | The Server Action. `State` is `ActionFormResult` (`{ ok, message, fieldErrors? }`) or a type that widens it, such as a save that also returns the settings it confirmed; the render function reads it back as `state` |
 | `children` | `ReactNode \| (props) => ReactNode` | Required | Form content. Passing a function switches to render function mode |
 | `showSuccess` | `boolean` | `true` | Show a success message when the state is `{ ok: true }`. Pass `false` to suppress it |
 | `className` | `string` | — | className of the `<form>` |
 | `id` | `string` | — | id of the `<form>`, for a submit control outside it to name with `form` (such as `ConfirmDialogAction`) |
 
-`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, `disabled`, and `form` — the id of the form for a control a portal renders outside the form's DOM, which still has to sit inside the form in the React tree for `useFormStatus` to report the submission to it — and a `formAction` of `(formData: FormData) => void` to send the fields to in place of the form's Action. The pending slots read the same `formAction` in a plain `<form>` too, where it is the button's own `formAction`: a form with two Actions gives each of its two submit controls one. `ActionFormFieldset` takes the props of `Fieldset`; its `disabled` closes the fields whether or not the Action is in flight.
+`ActionFormSubmit` takes the submit button's own `children`, `className`, `variant`, `disabled`, and `form` — the id of the form for a control a portal renders outside the form's DOM, which still has to sit inside the form in the React tree for `useFormStatus` to report the submission to it — and a `formAction` of `(formData: FormData) => void` to send the fields to in place of the form's Action. The pending slots read the same `formAction` in a plain `<form>` too, where it is the button's own `formAction`: a form with two Actions gives each of its two submit controls one. `ActionFormFieldError` takes `name`, the key of `fieldErrors` it shows, and `className`. `useActionFormState` and `useActionFormSettled` throw outside an `ActionForm`. `ActionFormFieldset` takes the props of `Fieldset`; its `disabled` closes the fields whether or not the Action is in flight.

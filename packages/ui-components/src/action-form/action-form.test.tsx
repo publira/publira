@@ -13,12 +13,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ActionForm,
+  ActionFormFieldError,
   ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
+  useActionFormSettled,
+  useActionFormState,
 } from "./action-form";
-import type { FormActionState } from "./action-form";
+import type { ActionFormSettledListener, FormActionState } from "./action-form";
 
 afterEach(cleanup);
 
@@ -31,6 +34,60 @@ const succeed = (): Promise<FormActionState> =>
 const fail = (): Promise<FormActionState> =>
   Promise.resolve({
     message: "Could not save.",
+    ok: false,
+  });
+
+type NameFormState =
+  | { ok: true; message: string; name: string }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: Partial<Record<"name" | "slug", string>>;
+    }
+  | null;
+
+const refuseName = (): Promise<NameFormState> =>
+  Promise.resolve({
+    fieldErrors: { name: "Enter a shorter name." },
+    message: "Could not save.",
+    ok: false,
+  });
+
+const saveName = (
+  _prevState: NameFormState,
+  formData: FormData
+): Promise<NameFormState> =>
+  Promise.resolve({
+    message: "Saved.",
+    name: String(formData.get("name")).trim(),
+    ok: true,
+  });
+
+/** Reads the name the Action saved, the way a control seeded from it would. */
+const SavedName = () => {
+  const state = useActionFormState<NonNullable<NameFormState>>();
+
+  return <p>{state?.ok ? `Saved as ${state.name}` : "Not saved yet"}</p>;
+};
+
+/** Hands each settled state to `onSettled`, the way a toast would be raised. */
+const SettledSpy = ({
+  onSettled,
+}: {
+  onSettled: ActionFormSettledListener<NonNullable<NameFormState>>;
+}) => {
+  useActionFormSettled(onSettled);
+
+  return null;
+};
+
+/** Refuses a row's rename, naming the row it was sent from. */
+const renameRow = (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> =>
+  Promise.resolve({
+    message: `Could not rename ${String(formData.get("public_id"))}.`,
     ok: false,
   });
 
@@ -389,5 +446,168 @@ describe("ActionForm", () => {
     });
     expect(received?.get("name")).toBe("Ada Lovelace");
     expect(received?.get("intent")).toBe("publish");
+  });
+
+  it("places a refused field's error next to that field only", async () => {
+    render(
+      <ActionForm action={refuseName}>
+        <label>
+          Name
+          <input name="name" />
+        </label>
+        <div data-testid="name-field">
+          <ActionFormFieldError name="name" />
+        </div>
+        <div data-testid="slug-field">
+          <ActionFormFieldError name="slug" />
+        </div>
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("name-field").textContent).toContain(
+        "Enter a shorter name."
+      );
+    });
+    expect(screen.getByTestId("slug-field").textContent).toBe("");
+    expect(screen.getByText("Could not save.")).toBeTruthy();
+  });
+
+  it("clears a field's error once a submission succeeds", async () => {
+    let answer: typeof saveName = refuseName;
+    const answerName = (prevState: NameFormState, formData: FormData) =>
+      answer(prevState, formData);
+    render(
+      <ActionForm action={answerName}>
+        <input aria-label="Name" name="name" />
+        <ActionFormFieldError name="name" />
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(screen.getByText("Enter a shorter name.")).toBeTruthy();
+    });
+
+    answer = saveName;
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(screen.getByText("Saved.")).toBeTruthy();
+    });
+    expect(screen.queryByText("Enter a shorter name.")).toBeNull();
+  });
+
+  it("lets a component inside the form read the data the Action returned", async () => {
+    render(
+      <ActionForm action={saveName}>
+        <input aria-label="Name" name="name" />
+        <SavedName />
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    expect(screen.getByText("Not saved yet")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "  Ada  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved as Ada")).toBeTruthy();
+    });
+  });
+
+  it("calls a settled listener once with what each submission returned", async () => {
+    const onSettled = vi.fn();
+    render(
+      <ActionForm action={saveName}>
+        <input aria-label="Name" defaultValue="Ada" name="name" />
+        <SettledSpy onSettled={onSettled} />
+        <ActionFormSubmit>Save</ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledOnce();
+    });
+    expect(onSettled).toHaveBeenCalledWith({
+      message: "Saved.",
+      name: "Ada",
+      ok: true,
+    });
+  });
+
+  it("does not call a settled listener for a control's own formAction", async () => {
+    const onSettled = vi.fn();
+    const test = vi.fn(() => Promise.resolve(null));
+    const Form = () => {
+      const [, dispatchTest] = useActionState(test, null);
+
+      return (
+        <ActionForm action={saveName}>
+          <input aria-label="Name" defaultValue="Ada" name="name" />
+          <SettledSpy onSettled={onSettled} />
+          <ActionFormSubmit formAction={dispatchTest}>Test</ActionFormSubmit>
+        </ActionForm>
+      );
+    };
+
+    render(<Form />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Test" }));
+
+    await waitFor(() => {
+      expect(test).toHaveBeenCalledOnce();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Test" })).toHaveProperty(
+        "disabled",
+        false
+      );
+    });
+    expect(onSettled).not.toHaveBeenCalled();
+  });
+
+  it("keeps each row's answer on the row whose form was submitted", async () => {
+    render(
+      <ul>
+        {["first", "second"].map((publicId) => (
+          <li data-testid={publicId} key={publicId}>
+            <ActionForm action={renameRow}>
+              <input name="public_id" type="hidden" value={publicId} />
+              <ActionFormSubmit>{`Rename ${publicId}`}</ActionFormSubmit>
+            </ActionForm>
+          </li>
+        ))}
+      </ul>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rename second" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("second").textContent).toContain(
+        "Could not rename second."
+      );
+    });
+    expect(screen.getByTestId("first").textContent).toBe("Rename first");
+  });
+
+  it("refuses to read the state outside an ActionForm", () => {
+    // React reports the thrown render error on the console before rethrowing it.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => null);
+
+    expect(() => render(<SavedName />)).toThrow(
+      "useActionFormState must be rendered inside an ActionForm."
+    );
+    consoleError.mockRestore();
   });
 });

@@ -7,6 +7,8 @@ import {
   useActionState,
   useCallback,
   useContext,
+  useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -43,7 +45,14 @@ export type FormActionState = ActionFormResult | null;
 export interface ActionFormResult {
   ok: boolean;
   message: string;
+  /**
+   * What the Action says about individual fields, keyed by the name an
+   * `ActionFormFieldError` gives. Read only from a refused submission.
+   */
+  fieldErrors?: ActionFormFieldErrors;
 }
+
+export type ActionFormFieldErrors = Partial<Record<string, string>>;
 
 export interface ActionFormRenderProps<
   State extends ActionFormResult = ActionFormResult,
@@ -62,6 +71,83 @@ interface ActionFormContextValue {
 }
 
 const ActionFormContext = createContext<ActionFormContextValue | null>(null);
+
+/** Called with what the form's own Action returned, once it has returned. */
+export type ActionFormSettledListener<
+  State extends ActionFormResult = ActionFormResult,
+> = (state: State | null) => void;
+
+interface ActionFormStateContextValue {
+  state: ActionFormResult | null;
+  subscribe: (listener: ActionFormSettledListener) => () => void;
+}
+
+const ActionFormStateContext =
+  createContext<ActionFormStateContextValue | null>(null);
+
+const useActionFormStateContext = (caller: string) => {
+  const context = useContext(ActionFormStateContext);
+  if (!context) {
+    throw new Error(`${caller} must be rendered inside an ActionForm.`);
+  }
+
+  return context;
+};
+
+/**
+ * The state the surrounding `ActionForm`'s Action last returned, `null` before
+ * the first submission. `State` is taken on the caller's word.
+ */
+export const useActionFormState = <
+  State extends ActionFormResult = ActionFormResult,
+>() => useActionFormStateContext("useActionFormState").state as State | null;
+
+/**
+ * Calls `onSettled` with what the surrounding `ActionForm`'s own Action returned,
+ * from inside the submission, so a follow-up such as a toast is not an Effect
+ * watching the state. A control's own `formAction` does not call it.
+ */
+export const useActionFormSettled = <
+  State extends ActionFormResult = ActionFormResult,
+>(
+  onSettled: ActionFormSettledListener<State>
+) => {
+  const { subscribe } = useActionFormStateContext("useActionFormSettled");
+  const handleSettled = useEffectEvent(onSettled);
+
+  useEffect(
+    () =>
+      subscribe((state) => {
+        handleSettled(state as State | null);
+      }),
+    [subscribe]
+  );
+};
+
+export interface ActionFormFieldErrorProps {
+  className?: string;
+  /** The key of `fieldErrors` this message belongs to. */
+  name: string;
+}
+
+/**
+ * What a refused submission says about one field, placed next to that field.
+ * Renders nothing until the Action returns `{ ok: false, fieldErrors }` with an
+ * entry under `name`.
+ */
+export const ActionFormFieldError = ({
+  className,
+  name,
+}: ActionFormFieldErrorProps) => {
+  const state = useActionFormState();
+  const error = state && !state.ok ? state.fieldErrors?.[name] : undefined;
+
+  return error ? (
+    <FormMessage className={className} variant="destructive">
+      {error}
+    </FormMessage>
+  ) : null;
+};
 
 /** The Action of the control a slot sits in, `null` for the form's own. */
 const ActionFormControlContext = createContext<ActionFormControlAction | null>(
@@ -243,11 +329,15 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
 }: ActionFormProps<State>) => {
   const formRef = useRef<HTMLFormElement>(null);
   const controlActionRef = useRef<ActionFormControlAction | null>(null);
+  const listenersRef = useRef(new Set<ActionFormSettledListener>());
   const [submittedTo, setSubmittedTo] =
     useState<ActionFormControlAction | null>(null);
   const [state, formAction, isPending] = useActionState(
     async (prevState: State | null, formData: FormData) => {
       const nextState = await action(prevState, formData);
+      for (const listener of listenersRef.current) {
+        listener(nextState);
+      }
       const form = formRef.current;
       if (nextState?.ok && form) {
         startTransition(() => {
@@ -294,29 +384,43 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
     [submitTo, submittedTo]
   );
 
-  return (
-    <ActionFormContext value={context}>
-      <form
-        action={formAction}
-        className={className}
-        id={id}
-        onSubmit={handleSubmit}
-        ref={formRef}
-      >
-        {typeof children === "function" ? (
-          children({ isPending, state })
-        ) : (
-          <>
-            {children}
+  const subscribe = useCallback((listener: ActionFormSettledListener) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
 
-            {state && (showSuccess || !state.ok) ? (
-              <FormMessage variant={state.ok ? "success" : "destructive"}>
-                {state.message}
-              </FormMessage>
-            ) : null}
-          </>
-        )}
-      </form>
-    </ActionFormContext>
+  const stateContext = useMemo(
+    () => ({ state, subscribe }),
+    [state, subscribe]
+  );
+
+  return (
+    <ActionFormStateContext value={stateContext}>
+      <ActionFormContext value={context}>
+        <form
+          action={formAction}
+          className={className}
+          id={id}
+          onSubmit={handleSubmit}
+          ref={formRef}
+        >
+          {typeof children === "function" ? (
+            children({ isPending, state })
+          ) : (
+            <>
+              {children}
+
+              {state && (showSuccess || !state.ok) ? (
+                <FormMessage variant={state.ok ? "success" : "destructive"}>
+                  {state.message}
+                </FormMessage>
+              ) : null}
+            </>
+          )}
+        </form>
+      </ActionFormContext>
+    </ActionFormStateContext>
   );
 };
