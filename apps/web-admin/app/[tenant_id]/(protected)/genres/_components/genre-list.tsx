@@ -1,7 +1,10 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
+import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -23,6 +26,33 @@ interface GenreListProps {
 }
 
 const genreId = (genre: GenreListItem): string => genre.publicId;
+
+/** The smallest square cut of the eye-catch, which is all a row has room for. */
+const thumbnailOf = (genre: GenreListItem) =>
+  genre.eyeCatchImageVariants
+    .filter((variant) => variant.variantType === "square")
+    .toSorted((a, b) => a.width - b.width)
+    .at(0);
+
+const GenreThumbnail = ({ genre }: { genre: GenreListItem }) => {
+  const t = useClientMessages();
+  const thumbnail = thumbnailOf(genre);
+
+  return thumbnail ? (
+    <Image
+      alt={t("admin.genres.eye_catch_alt", { name: genre.name })}
+      className="size-10 shrink-0 rounded-control border object-cover"
+      height={40}
+      src={thumbnail.url}
+      width={40}
+    />
+  ) : (
+    <div
+      aria-hidden="true"
+      className="size-10 shrink-0 rounded-control border border-dashed border-border bg-muted/40"
+    />
+  );
+};
 
 /**
  * The tenant's genres in their own order, with the controls that write it.
@@ -101,8 +131,20 @@ export const GenreList = ({ genres }: GenreListProps) => {
                 values={{ name: genre.name }}
               />
             </SortableItemHandle>
-            <GenreRenameForm genre={genre} />
-            <GenreDeleteButton name={genre.name} publicId={genre.publicId} />
+            <div className="flex flex-1 items-start gap-3">
+              <GenreThumbnail genre={genre} />
+              <GenreRenameForm genre={genre} />
+            </div>
+            <div className="flex flex-wrap items-start gap-2">
+              <LinkButton
+                render={<Link href={`/genres/${genre.publicId}`} />}
+                size="sm"
+                variant="outline"
+              >
+                <ClientMessage message="admin.genres.edit_action" />
+              </LinkButton>
+              <GenreDeleteButton name={genre.name} publicId={genre.publicId} />
+            </div>
           </SortableItem>
         ))}
       </SortableList>

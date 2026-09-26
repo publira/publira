@@ -4,11 +4,17 @@ import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
+  createGenreViaUi,
   createLabelViaUi,
   createSeriesViaUi,
+  genreRow,
   signInAsSeedAdmin,
 } from "../src/admin";
-import { deleteLabelsByPublicIds, deleteSeriesByPublicIds } from "../src/db";
+import {
+  deleteGenresByNames,
+  deleteLabelsByPublicIds,
+  deleteSeriesByPublicIds,
+} from "../src/db";
 import {
   publishedAtOneHourAgo,
   uniqueSuffix,
@@ -235,24 +241,29 @@ const replaceEachAspectInTurn = async (
  * "the other three did not move" is compared byte for byte rather than by
  * presence.
  *
- * Each test creates the series or label it uploads to and drops it in
+ * Each test creates the series, label, or genre it uploads to and drops it in
  * `afterEach`, so a run against a long-lived stack leaves nothing behind.
  */
 test.describe("admin eye-catch upload", () => {
   let createdSeriesIds: string[] = [];
   let createdLabelIds: string[] = [];
+  /** Genres are addressed by name: the console never shows their public id. */
+  let createdGenreNames: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     createdSeriesIds = [];
     createdLabelIds = [];
+    createdGenreNames = [];
     await signInAsSeedAdmin(page);
   });
 
   test.afterEach(() => {
     deleteSeriesByPublicIds(createdSeriesIds);
     deleteLabelsByPublicIds(createdLabelIds);
+    deleteGenresByNames(createdGenreNames);
     createdSeriesIds = [];
     createdLabelIds = [];
+    createdGenreNames = [];
   });
 
   /** A published series on its eye-catch tab, with no image yet. */
@@ -451,5 +462,71 @@ test.describe("admin eye-catch upload", () => {
     const after = await deliveredEyeCatch(page, request);
     expect(after.landscape).not.toBe(before.landscape);
     expectOtherAspectsUnchanged(before, after, "landscape");
+  });
+
+  /**
+   * A genre has no page of its own until it is opened from its row in the
+   * list, which is also where the result has to show: the list is the one
+   * screen every genre is seen on.
+   */
+  test("a genre's eye-catch is uploaded, replaced one ratio at a time, and cleared from its row", async ({
+    page,
+    request,
+  }) => {
+    const name = `E2E Eye-catch Genre ${uniqueSuffix()}`;
+    createdGenreNames.push(name);
+    await createGenreViaUi(page, name);
+
+    const thumbnail = genreRow(page, name).getByRole("img", {
+      name: `Cover image of ${name}`,
+    });
+    const openEyeCatchTab = async (): Promise<void> => {
+      await genreRow(page, name).getByRole("link", { name: "Edit" }).click();
+      await page.getByRole("link", { name: "Cover image" }).click();
+    };
+
+    await expect(thumbnail).toHaveCount(0);
+    await openEyeCatchTab();
+    await expectNoEyeCatchYet(page);
+
+    await uploadEyeCatchSource(page, "genre_eye_catch_image");
+
+    const sources = await aspectSources(page);
+    expectAspectPaths(sources, "genres");
+
+    const before = await aspectDigests(request, sources);
+    expect(new Set(Object.values(before)).size).toBe(EYE_CATCH_ASPECTS.length);
+
+    await uploadAspectImage(
+      page,
+      "landscape",
+      EYE_CATCH_ASPECT_FIXTURES.landscape
+    );
+    await expectMessage(
+      aspectSlot(page, "landscape"),
+      "The image for this ratio was replaced."
+    );
+
+    const after = await deliveredEyeCatch(page, request);
+    expect(after.landscape).not.toBe(before.landscape);
+    expectOtherAspectsUnchanged(before, after, "landscape");
+
+    await page.getByRole("link", { name: "Back to list" }).click();
+    await expect(thumbnail).toHaveAttribute(
+      "src",
+      /^\/images\/genres\/[^/]+\/square\/\d+/u
+    );
+
+    await openEyeCatchTab();
+    await page
+      .getByRole("button", { name: "Delete the current eye-catch image" })
+      .click();
+    await page.getByRole("button", { name: "Update cover image" }).click();
+    await expectMessage(page, "Cover image updated.");
+    await expectNoEyeCatchYet(page);
+
+    await page.getByRole("link", { name: "Back to list" }).click();
+    await expect(genreRow(page, name)).toBeVisible();
+    await expect(thumbnail).toHaveCount(0);
   });
 });

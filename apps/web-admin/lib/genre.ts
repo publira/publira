@@ -12,6 +12,12 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { CATALOG_NAME_MAX_LENGTH } from "./catalog-name";
+import type { CropRect } from "./crop-rect";
+import {
+  mentionsAspectImageRejection,
+  mentionsImageRejection,
+  mentionsStorageNotConfigured,
+} from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -19,6 +25,16 @@ export interface GenreItem {
   publicId: string;
   name: string;
   slug: string;
+  eyeCatchImageUpdatedAt: string;
+  eyeCatchImageVariants: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
 }
 
 export type ListGenresResult =
@@ -39,6 +55,28 @@ export type UpdateGenreResult =
   | { ok: true; genre: GenreItem }
   | { ok: false; message: string };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the genre
+ * screen turns into `notFound()`, carrying no message for the same reason
+ * `GetLabelResult` carries none.
+ */
+export type GetGenreResult =
+  | { ok: true; genre: GenreItem }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
+export type GenreEyeCatchAspectResult =
+  | { ok: true; genre: GenreItem }
+  /** The API refused the image itself; the slot that submitted words it. */
+  | { ok: false; imageRejected: true }
+  | { ok: false; message: string };
+
 export type ReorderGenresResult =
   | { ok: true; genres: GenreItem[] }
   | { ok: false; message: string };
@@ -50,22 +88,28 @@ export const genresCacheTag = (tenantId: string): string =>
   `genres-${tenantId}`;
 
 /**
- * The name rules the API enforces, worded once for both writes that carry a
- * name. `invalid-argument` covers all three of them — empty, too long, and no
- * letter or digit to derive a slug from — and `conflict` is another genre whose
- * slug this name would collide with, which the two names need not look alike
- * to do.
+ * The rules the API enforces on the writes that carry a name and an eye-catch.
+ * `invalid-argument` is the image when a field violation names it, and
+ * otherwise one of the three name rules — empty, too long, and no letter or
+ * digit to derive a slug from. `conflict` is another genre whose slug this name
+ * would collide with, which the two names need not look alike to do.
  */
-const nameOverrides = async (
+const saveOverrides = async (
+  error: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
 
   return {
     conflict: t("admin.genres.name_taken"),
-    "invalid-argument": t("admin.genres.name_invalid", {
-      count: String(CATALOG_NAME_MAX_LENGTH),
-    }),
+    "invalid-argument": mentionsImageRejection(error)
+      ? t("admin.genres.image_invalid")
+      : t("admin.genres.name_invalid", {
+          count: String(CATALOG_NAME_MAX_LENGTH),
+        }),
+    precondition: mentionsStorageNotConfigured(error)
+      ? t("admin.errors.storage_not_configured")
+      : undefined,
   };
 };
 
@@ -77,9 +121,33 @@ const mapErrorToMessage = (
 ): string => rpcErrorMessage(error, fallbackMessage, { locale, overrides });
 
 /** The generated `Genre` fields {@link mapGenre} reads (see `label.ts`). */
-type RawGenre = Pick<Genre, "name" | "publicId" | "slug">;
+type RawGenre = Pick<
+  Genre,
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "name"
+  | "publicId"
+  | "slug"
+>;
 
 const mapGenre = (genre: RawGenre): GenreItem => ({
+  eyeCatchImageUpdatedAt: genre.eyeCatchImageUpdatedAt ?? "",
+  eyeCatchImageVariants: (genre.eyeCatchImageVariants ?? []).flatMap(
+    (variant) => {
+      const mappedVariant = {
+        contentType: variant.contentType ?? "",
+        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+        height: variant.height ?? 0,
+        label: variant.label ?? "",
+        url: variant.url ?? "",
+        variantType: variant.variantType ?? "",
+        width: variant.width ?? 0,
+      };
+      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+        ? [mappedVariant]
+        : [];
+    }
+  ),
   name: genre.name ?? "",
   publicId: genre.publicId ?? "",
   slug: genre.slug ?? "",
@@ -166,6 +234,31 @@ export const listGenres = async (
   }
 };
 
+/**
+ * One genre of the tenant, for the screen its eye-catch is edited on.
+ *
+ * There is no `GetGenre` RPC: the genre is picked out of {@link listGenres},
+ * which the console already reads whole and files under the same tag.
+ */
+export const getGenre = async (
+  input: { tenantId: string; publicId: string },
+  locale: Locale
+): Promise<GetGenreResult> => {
+  const result = await listGenres(input.tenantId, locale);
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+      requiresSignIn: result.requiresSignIn,
+    };
+  }
+
+  const genre = result.genres.find(
+    (candidate) => candidate.publicId === input.publicId
+  );
+  return genre ? { genre, ok: true } : { notFound: true, ok: false };
+};
+
 export const createGenre = async (
   input: { tenantId: string; name: string },
   locale: Locale
@@ -200,7 +293,7 @@ export const createGenre = async (
         error,
         t("admin.genres.save_failed"),
         locale,
-        await nameOverrides(locale)
+        await saveOverrides(error, locale)
       ),
       ok: false,
     };
@@ -208,7 +301,14 @@ export const createGenre = async (
 };
 
 export const updateGenre = async (
-  input: { tenantId: string; publicId: string; name: string },
+  input: {
+    tenantId: string;
+    publicId: string;
+    name: string;
+    clearEyeCatchImage?: boolean;
+    eyeCatchImageContentType?: string;
+    eyeCatchImageData?: Uint8Array;
+  },
   locale: Locale
 ): Promise<UpdateGenreResult> => {
   const [t, sessionId] = await Promise.all([
@@ -222,6 +322,9 @@ export const updateGenre = async (
   try {
     const response = await apiClient.genre.updateGenre(
       {
+        clearEyeCatchImage: input.clearEyeCatchImage,
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
         name: input.name,
         publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
@@ -242,7 +345,7 @@ export const updateGenre = async (
         error,
         t("admin.genres.save_failed"),
         locale,
-        await nameOverrides(locale)
+        await saveOverrides(error, locale)
       ),
       ok: false,
     };
@@ -344,6 +447,71 @@ export const deleteGenre = async (
         locale,
         {
           precondition: t("admin.genres.delete_in_use"),
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Replaces the image of one aspect ratio of the genre eye-catch. The other
+ * ratios keep the images they already hold, so the eye-catch has to exist
+ * before one ratio can be swapped on its own.
+ */
+export const uploadGenreEyeCatchAspectImage = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+    variantType: string;
+    imageContentType?: string;
+    imageData: Uint8Array;
+    /** Where in the upload the cut is taken; omitted, the API centres it. */
+    crop?: CropRect;
+  },
+  locale: Locale
+): Promise<GenreEyeCatchAspectResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.genre.uploadGenreEyeCatchAspectImage(
+      {
+        crop: input.crop,
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        publicId: input.publicId,
+        tenant: { tenantId: input.tenantId },
+        variantType: input.variantType,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.genre?.publicId?.trim()) {
+      return { message: t("admin.genres.save_failed"), ok: false };
+    }
+
+    return { genre: mapGenre(response.genre), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    if (mentionsAspectImageRejection(error)) {
+      return { imageRejected: true, ok: false };
+    }
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.genres.save_failed"),
+        locale,
+        {
+          precondition: mentionsStorageNotConfigured(error)
+            ? t("admin.errors.storage_not_configured")
+            : undefined,
         }
       ),
       ok: false,

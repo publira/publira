@@ -24,6 +24,7 @@ export const auditActions = [
   "genre_updated",
   "genre_deleted",
   "genres_reordered",
+  "genre_eye_catch_aspect_image_uploaded",
   "page_created",
   "page_updated",
   "page_unpublished",
