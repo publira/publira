@@ -27,7 +27,7 @@ const platformUrl = (pathname: string): string =>
 
 const CONFIRM_EMAIL_PATH = "/confirm-email";
 
-const SETTINGS_PATHS = ["/settings/account", "/settings/email"] as const;
+const SETTINGS_PATHS = ["/account", "/services/email"] as const;
 
 const EMAIL_CHANGE_REQUESTED_MESSAGE =
   "Confirmation emails were sent to both the current and new addresses. Open both links to finish the change.";
@@ -77,7 +77,7 @@ const requestEmailChange = async (
   newEmail: string,
   currentPassword: string = PLATFORM_OPERATOR_SETTINGS_OPERATOR.password
 ): Promise<void> => {
-  await signIn(page, "/settings/account");
+  await signIn(page, "/account");
 
   await page.getByLabel("Current email address").fill(currentEmail);
   await page.getByLabel("New email address").fill(newEmail);
@@ -116,8 +116,8 @@ const waitForEmailChangeToken = async (newEmail: string): Promise<void> => {
 /**
  * The operator's own account and the platform SMTP settings.
  *
- * `/settings/account` is the email-address change, not a display-name or
- * password form — those controls are not on the console. `/settings/email` is
+ * `/account` is the email-address change, not a display-name or
+ * password form — those controls are not on the console. `/services/email` is
  * the platform default SMTP. Tokens are stored as hashes, so every
  * confirmation below opens a token this suite read out of Mailpit.
  *
@@ -159,7 +159,7 @@ test.describe("web-platform operator settings", () => {
   test("the account screen names the signed-in operator in the header", async ({
     page,
   }) => {
-    await signIn(page, "/settings/account");
+    await signIn(page, "/account");
 
     await expect(
       page.getByRole("heading", { level: 1, name: "Account" })
@@ -263,7 +263,7 @@ test.describe("web-platform operator settings", () => {
   test("the new address signs in afterwards and the previous one does not", async ({
     page,
   }) => {
-    await page.goto(platformUrl("/login?next=%2Fsettings%2Faccount"));
+    await page.goto(platformUrl("/login?next=%2Faccount"));
     await fillLoginForm(page, PLATFORM_OPERATOR_SETTINGS_OPERATOR);
 
     await expectLoginPage(page);
@@ -275,10 +275,10 @@ test.describe("web-platform operator settings", () => {
         email: PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL,
         password: PLATFORM_OPERATOR_SETTINGS_OPERATOR.password,
       },
-      "/settings/account"
+      "/account"
     );
 
-    await expect(page).toHaveURL(/\/settings\/account\/?$/u);
+    await expect(page).toHaveURL(/\/account\/?$/u);
     await openPlatformUserMenu(page);
     await expect(
       page.getByText(PLATFORM_OPERATOR_SETTINGS_OPERATOR.publicId)
@@ -294,11 +294,11 @@ test.describe("web-platform operator settings", () => {
         email: PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL,
         password: PLATFORM_OPERATOR_SETTINGS_OPERATOR.password,
       },
-      "/settings/email"
+      "/services/email"
     );
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "Email delivery" })
     ).toBeVisible();
     await expect(page.getByText("Email settings")).toBeVisible();
 
@@ -310,7 +310,7 @@ test.describe("web-platform operator settings", () => {
     await expect(page.getByRole("status")).toContainText(SMTP_SAVED_MESSAGE);
     expect(smtpReplyTo()).toBe(PLATFORM_OPERATOR_SETTINGS_REPLY_TO);
 
-    await page.goto(platformUrl("/settings/email"));
+    await page.goto(platformUrl("/services/email"));
     await expect(page.getByLabel("Reply-to address (optional)")).toHaveValue(
       PLATFORM_OPERATOR_SETTINGS_REPLY_TO
     );
@@ -325,7 +325,7 @@ test.describe("web-platform operator settings", () => {
         email: PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL,
         password: PLATFORM_OPERATOR_SETTINGS_OPERATOR.password,
       },
-      "/settings/email"
+      "/services/email"
     );
 
     const replyTo = page.getByLabel("Reply-to address (optional)");

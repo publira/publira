@@ -516,7 +516,7 @@ The switcher writes the cookie from a Server Action. Never write `document.cooki
 
 Worked examples:
 
-- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language card on `/settings/general`
+- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the Display language switcher in the console header (`components/locale-switcher.tsx`)
 - `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the Display language card on `/settings`
 
 ### A URL-locale app (`web-host`)

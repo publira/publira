@@ -8,8 +8,6 @@ import {
 } from "../src/db";
 import { STACK_STORAGE, signInAsSeedPlatformSuperAdmin } from "../src/platform";
 
-const DASHBOARD_NOTICE =
-  "Some settings the platform needs aren't set up yet, so parts of it won't work.";
 const NEEDS_SETUP_SUMMARY =
   "Some settings the platform needs aren't set up yet. Open each item marked Needs setup to finish it.";
 const READY_SUMMARY =
@@ -19,12 +17,12 @@ const STORAGE_UNCONFIGURED =
 const WEBPUSH_UNCONFIGURED =
   "Readers aren't offered browser notifications. Set this up only if you want to send them.";
 
-/** One area's row of the overview, found by the name in its first cell. */
+/** One area's row of the setup status, found by the name in its first cell. */
 const areaRow = (page: Page, name: string) =>
   page.getByRole("row").filter({ hasText: name });
 
 /**
- * The Platform Console's configuration overview: which areas of the
+ * The setup status on the Platform Console's Dashboard: which areas of the
  * installation are ready, which the platform cannot work without, and which
  * are optional integrations it can run without indefinitely.
  *
@@ -32,7 +30,7 @@ const areaRow = (page: Page, name: string) =>
  * installation, which is why this suite has a project of its own after the
  * parallel ones. Both rows are put back afterwards.
  */
-test.describe("web-platform configuration overview", () => {
+test.describe("web-platform setup status", () => {
   test.describe.configure({ mode: "serial" });
 
   let storageSnapshot = "";
@@ -57,13 +55,13 @@ test.describe("web-platform configuration overview", () => {
     }
   });
 
-  test("a missing required setting is pointed out and fixed from the overview", async ({
+  test("a missing required setting is pointed out and fixed from the Dashboard", async ({
     page,
   }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/");
-    await expect(page.getByText(DASHBOARD_NOTICE)).toBeVisible();
-    await page.getByRole("link", { name: "Review settings" }).click();
-    await expect(page).toHaveURL(/\/settings$/u);
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Setup status" })
+    ).toBeVisible();
 
     await expect(page.getByText(NEEDS_SETUP_SUMMARY)).toBeVisible();
     const storage = areaRow(page, "Image storage");
@@ -81,7 +79,7 @@ test.describe("web-platform configuration overview", () => {
     await expect(areaRow(page, "Email delivery")).toContainText("Configured");
 
     await storage.getByRole("link", { name: "Set up" }).click();
-    await expect(page).toHaveURL(/\/settings\/storage$/u);
+    await expect(page).toHaveURL(/\/services\/storage$/u);
     await page
       .getByRole("textbox", { name: /^Bucket/u })
       .fill(STACK_STORAGE.bucket);
@@ -97,17 +95,7 @@ test.describe("web-platform configuration overview", () => {
     await page.getByRole("button", { name: "Save storage settings" }).click();
     await expect(page.getByText("Storage settings saved.")).toBeVisible();
 
-    // A client navigation, so the overview is read after the save cleared it.
-    await page.getByRole("link", { exact: true, name: "Overview" }).click();
-    await expect(page).toHaveURL(/\/settings$/u);
-    await expect(page.getByText(READY_SUMMARY)).toBeVisible();
-    await expect(storage).toContainText("Configured");
-    await expect(storage).toContainText(
-      `Uploaded images are stored in the ${STACK_STORAGE.bucket} bucket.`
-    );
-    await expect(webPush).toContainText("Not set up");
-    await expect(page.getByText("Needs setup")).toHaveCount(0);
-
+    // A client navigation, so the Dashboard is read after the save cleared it.
     await page.getByRole("link", { name: "Dashboard" }).click();
     await expect(
       page.getByRole("heading", {
@@ -115,6 +103,12 @@ test.describe("web-platform configuration overview", () => {
         name: "Cross-tenant operations hub",
       })
     ).toBeVisible();
-    await expect(page.getByText(DASHBOARD_NOTICE)).toHaveCount(0);
+    await expect(page.getByText(READY_SUMMARY)).toBeVisible();
+    await expect(storage).toContainText("Configured");
+    await expect(storage).toContainText(
+      `Uploaded images are stored in the ${STACK_STORAGE.bucket} bucket.`
+    );
+    await expect(webPush).toContainText("Not set up");
+    await expect(page.getByText("Needs setup")).toHaveCount(0);
   });
 });

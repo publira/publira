@@ -26,7 +26,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | Part | Where it lives |
 | --- | --- |
 | The resolved locale | `getPlatformLocale()` in `lib/locale.ts`, and the cookie options the switcher writes with |
-| The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/settings/general` |
+| The saved platform default | `lib/platform-settings.ts`, behind the Default language card on `/general` |
 | The locale a screen with nothing saved yet opens on | `getInitialLocaleCandidate()` in `lib/initial-locale.ts`, over the request's `Accept-Language` |
 | The catalog | `loadPlatformMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md); this app's copy is the `platform.*` namespace |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one |
@@ -36,7 +36,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | `<html lang>` | The inline `<head>` script in `app/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
-An operator switches locale from the Display language card on `/settings/general`, through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`.
+An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`.
 
 A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector (`_components/tenant-default-locale-select.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
 

@@ -63,9 +63,9 @@ test.describe("web-platform display language", () => {
   test("the header switcher stores the choice and re-renders the console in it", async ({
     page,
   }) => {
-    await signInAsSeedPlatformSuperAdmin(page, "/settings/general");
+    await signInAsSeedPlatformSuperAdmin(page, "/general");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "General settings" })
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
     expect(await storedLocaleCookie(page)).toBeUndefined();
@@ -73,7 +73,7 @@ test.describe("web-platform display language", () => {
     await switchConsoleLocale(page, "English", "日本語");
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "一般設定" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
     expect(await storedLocaleCookie(page)).toBe("ja");
@@ -81,7 +81,7 @@ test.describe("web-platform display language", () => {
     // A reload proves the cookie is what carries it, not the action's answer.
     await page.reload();
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "一般設定" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
   });
@@ -103,9 +103,9 @@ test.describe("web-platform display language", () => {
     browser,
     page,
   }) => {
-    await signInAsSeedPlatformSuperAdmin(page, "/settings/general");
+    await signInAsSeedPlatformSuperAdmin(page, "/general");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "General settings" })
     ).toBeVisible();
 
     await saveDefaultLocale(page, "English", "日本語");
@@ -113,7 +113,7 @@ test.describe("web-platform display language", () => {
     // The operator chose no display language of their own, so the screen that
     // saved the setting is the first one it applies to.
     await expect(
-      page.getByRole("heading", { level: 1, name: "設定" })
+      page.getByRole("heading", { level: 1, name: "一般設定" })
     ).toBeVisible();
     expect(await storedLocaleCookie(page)).toBeUndefined();
 
@@ -135,7 +135,7 @@ test.describe("web-platform display language", () => {
 
     await saveDefaultLocale(page, "日本語", "English");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Settings" })
+      page.getByRole("heading", { level: 1, name: "General settings" })
     ).toBeVisible();
   });
 });

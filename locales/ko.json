@@ -3964,9 +3964,8 @@
       "day_below_minute": "The daily limit for {$setting} must be at least its per-minute limit.",
       "day_below_hour": "The daily limit for {$setting} must be at least its per-hour limit.",
       "security": {
-        "tab": "Security",
-        "page_title": "Settings - Security",
-        "heading": "Security policy",
+        "page_title": "보안 정책",
+        "heading": "보안 정책",
         "page_description": "Manage sign-in and email abuse protections for the platform.",
         "title": "Security and abuse protection",
         "description": "These limits protect operator and tenant accounts. Changes take effect without a restart.",
@@ -3987,9 +3986,8 @@
         "saved": "Security policy saved."
       },
       "community": {
-        "tab": "Community",
-        "page_title": "Settings - Community",
-        "heading": "Community limits",
+        "page_title": "커뮤니티 제한",
+        "heading": "커뮤니티 제한",
         "page_description": "Manage the abuse-control defaults shared by tenants.",
         "title": "Community limit defaults",
         "description": "Set the initial limits for every tenant.",
@@ -4018,9 +4016,8 @@
         "saved": "Community limits saved."
       },
       "retention": {
-        "tab": "Retention",
-        "page_title": "Settings - Retention",
-        "heading": "Retention defaults",
+        "page_title": "보존 기간 기본값",
+        "heading": "보존 기간 기본값",
         "page_description": "Manage how long platform data is retained when a tenant has no override.",
         "title": "Retention defaults",
         "description": "These periods apply to tenants that have not chosen their own retention settings.",
@@ -4278,15 +4275,24 @@
     },
     "nav": {
       "audit_label": "감사 로그",
+      "community_label": "커뮤니티",
       "dashboard_label": "대시보드",
+      "email_label": "메일",
+      "general_label": "일반",
       "governance": "거버넌스",
       "operators_label": "운영자 관리",
       "overview": "개요",
-      "settings_label": "설정",
+      "platform": "플랫폼",
+      "policies": "정책",
+      "retention_label": "보존 기간",
+      "security_label": "보안",
+      "services": "외부 서비스",
+      "storage_label": "스토리지",
       "tenants_create_label": "테넌트 생성",
       "tenants_list_label": "테넌트 목록",
       "tenants_section": "테넌트",
-      "users_label": "사용자 관리"
+      "users_label": "사용자 관리",
+      "webpush_label": "Web Push"
     },
     "not_found": {
       "description": "해당 항목이 삭제되었거나 URL이 변경되었을 수 있습니다. 목록에서 다시 선택해 주세요.",
@@ -4410,18 +4416,16 @@
       "email_change_submit": "확인 메일 보내기",
       "email_change_success": "현재 주소와 새 주소 양쪽으로 확인 메일을 보냈습니다. 두 링크를 모두 열어 변경을 완료해 주세요.",
       "email_change_title": "이메일 주소 변경",
-      "email_heading": "설정",
+      "email_heading": "이메일 발송",
       "email_in_use": "이 이메일 주소는 이미 사용 중입니다.",
       "email_page_description": "플랫폼 기본 SMTP 설정을 관리합니다.",
-      "email_tab": "메일",
-      "email_title": "설정 - 메일",
+      "email_title": "이메일 발송",
       "encryption_none": "없음",
       "encryption_required": "암호화 방식을 선택해 주세요.",
       "from_address": "보내는 사람 주소",
-      "general_heading": "설정",
+      "general_heading": "일반 설정",
       "general_page_description": "플랫폼 전체에 적용되는 기본값을 관리합니다.",
-      "general_tab": "일반",
-      "general_title": "설정 - 일반",
+      "general_title": "일반 설정",
       "host": "호스트",
       "load_failed": "플랫폼 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "locale_required": "언어를 선택해 주세요.",
@@ -4646,9 +4650,8 @@
       "unsuspend_title": "이 계정의 정지를 해제할까요?"
     },
     "storage": {
-      "tab": "스토리지",
-      "page_title": "설정 - 스토리지",
-      "heading": "설정",
+      "page_title": "이미지 스토리지",
+      "heading": "이미지 스토리지",
       "page_description": "업로드된 이미지의 저장 위치를 관리합니다.",
       "title": "오브젝트 스토리지",
       "description": "모든 테넌트가 업로드한 이미지는 이 하나의 S3 호환 버킷에 저장됩니다. 저장한 변경 사항은 재시작 없이 1분 이내에 모든 서버에 반영됩니다.",
@@ -4728,9 +4731,8 @@
       }
     },
     "webpush": {
-      "tab": "Web Push",
-      "page_title": "설정 - Web Push",
-      "heading": "설정",
+      "page_title": "브라우저 알림",
+      "heading": "브라우저 알림",
       "page_description": "Publira가 독자에게 보내는 브라우저 알림을 관리합니다.",
       "title": "Web Push",
       "description": "Publira는 이 설치를 위해 생성한 키 쌍으로 브라우저 알림에 서명합니다. 개인 키는 서버 밖으로 나가지 않으며 표시되지 않습니다. 저장한 변경 사항은 재시작 없이 1분 이내에 모든 서버에 반영됩니다.",
@@ -4750,10 +4752,8 @@
       }
     },
     "configuration": {
-      "tab": "개요",
-      "page_title": "설정 - 개요",
-      "heading": "설정",
-      "page_description": "플랫폼의 어떤 기능을 바로 사용할 수 있는지 확인하고, 아직 빠진 설정을 마칩니다.",
+      "title": "설정 현황",
+      "description": "플랫폼의 어떤 기능을 바로 사용할 수 있는지 확인하고, 아직 빠진 설정을 마칩니다.",
       "summary_ready": "플랫폼에 필요한 설정이 모두 완료되었습니다. 선택 기능은 필요할 때까지 꺼 두어도 됩니다.",
       "summary_needs_setup": "플랫폼에 필요한 설정 중 아직 완료되지 않은 항목이 있습니다. '설정 필요'로 표시된 항목을 열어 설정을 마치세요.",
       "columns": {
@@ -4800,9 +4800,7 @@
         "name": "보안 및 데이터 정책",
         "defaults": "로그인, 악용 방지, 데이터 보존 한도에 기본 제공 값이 적용됩니다. 이 플랫폼에 맞지 않을 때만 변경하세요.",
         "configured": "저장한 로그인, 악용 방지, 데이터 보존 한도가 적용됩니다."
-      },
-      "dashboard_notice": "플랫폼에 필요한 설정 중 아직 완료되지 않은 항목이 있어 일부 기능이 작동하지 않습니다.",
-      "dashboard_notice_link": "설정 확인"
+      }
     }
   }
 }

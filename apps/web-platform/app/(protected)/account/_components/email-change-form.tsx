@@ -1,0 +1,111 @@
+import {
+  ActionForm,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
+import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import {
+  PlatformSection,
+  PlatformSectionDescription,
+  PlatformSectionHeader,
+  PlatformSectionHeading,
+  PlatformSectionTitle,
+} from "#components/platform-page";
+
+import { requestPlatformEmailChangeAction } from "../_lib/actions";
+
+export const EmailChangeForm = () => (
+  <PlatformSection>
+    <PlatformSectionHeader>
+      <PlatformSectionHeading>
+        <PlatformSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+            <Message message="platform.settings.email_change_title" />
+          </Suspense>
+        </PlatformSectionTitle>
+        <PlatformSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="platform.settings.email_change_description" />
+          </Suspense>
+        </PlatformSectionDescription>
+      </PlatformSectionHeading>
+    </PlatformSectionHeader>
+    <ActionForm
+      action={requestPlatformEmailChangeAction}
+      className="grid gap-4"
+    >
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.settings.email_change_current" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            name="current_email"
+            placeholder="current@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.settings.email_change_new" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            name="new_email"
+            placeholder="new@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.settings.email_change_password" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="current-password"
+            name="current_password"
+            placeholder="••••••••"
+            required
+            type="password"
+          />
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="platform.settings.email_change_password_help" />
+            </Suspense>
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
+      <div className="mt-2 flex justify-end gap-2">
+        <ActionFormSubmit>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.settings.email_change_submit" />
+          </Suspense>
+        </ActionFormSubmit>
+      </div>
+    </ActionForm>
+  </PlatformSection>
+);

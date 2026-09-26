@@ -6,6 +6,7 @@ import {
   intFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
+  revisionFormSchema,
 } from "./form-schemas";
 
 describe("requiredTrimmedString", () => {
@@ -122,5 +123,19 @@ describe("boundedIntFormSchema", () => {
     expect(schema.safeParse("1.5").success).toBe(false);
     expect(schema.safeParse("1e2").success).toBe(false);
     expect(schema.safeParse("0x10").success).toBe(false);
+  });
+});
+
+describe("revisionFormSchema", () => {
+  const schema = revisionFormSchema("Reload the screen.");
+
+  it("reads the revision as a bigint", () => {
+    expect(schema.parse(" 42 ")).toBe(42n);
+  });
+
+  it.each(["", "-1", "1.5", "12345678901234567890"])("refuses %j", (value) => {
+    const result = schema.safeParse(value);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("Reload the screen.");
   });
 });

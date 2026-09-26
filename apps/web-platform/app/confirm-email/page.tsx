@@ -84,7 +84,7 @@ const ConfirmEmailLink = ({ outcome }: { outcome: ConfirmEmailOutcome }) =>
       <Message message="platform.auth.confirm_email.to_dashboard" />
     </Link>
   ) : (
-    <Link className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/settings/account">
+    <Link className={CONFIRM_EMAIL_LINK_CLASS_NAME} href="/account">
       <Message message="platform.auth.confirm_email.back_to_settings" />
     </Link>
   );

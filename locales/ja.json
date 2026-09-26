@@ -3964,8 +3964,7 @@
       "day_below_minute": "{$setting} の1日あたりの上限は、1分あたりの上限以上にしてください。",
       "day_below_hour": "{$setting} の1日あたりの上限は、1時間あたりの上限以上にしてください。",
       "security": {
-        "tab": "セキュリティ",
-        "page_title": "設定 - セキュリティ",
+        "page_title": "セキュリティポリシー",
         "heading": "セキュリティポリシー",
         "page_description": "プラットフォームのサインインとメール悪用対策を管理します。",
         "title": "セキュリティと悪用対策",
@@ -3987,8 +3986,7 @@
         "saved": "セキュリティポリシーを保存しました。"
       },
       "community": {
-        "tab": "コミュニティ",
-        "page_title": "設定 - コミュニティ",
+        "page_title": "コミュニティの上限",
         "heading": "コミュニティの上限",
         "page_description": "テナントで共有される悪用対策の既定値を管理します。",
         "title": "コミュニティ上限の既定値",
@@ -4018,8 +4016,7 @@
         "saved": "コミュニティ上限を保存しました。"
       },
       "retention": {
-        "tab": "保持",
-        "page_title": "設定 - 保持",
+        "page_title": "保持期間の既定値",
         "heading": "保持期間の既定値",
         "page_description": "テナントに上書き設定がない場合のプラットフォームデータの保持期間を管理します。",
         "title": "保持期間の既定値",
@@ -4278,15 +4275,24 @@
     },
     "nav": {
       "audit_label": "監査ログ",
+      "community_label": "コミュニティ",
       "dashboard_label": "ダッシュボード",
+      "email_label": "メール",
+      "general_label": "一般",
       "governance": "Governance",
       "operators_label": "オペレーター管理",
       "overview": "Overview",
-      "settings_label": "設定",
+      "platform": "プラットフォーム",
+      "policies": "ポリシー",
+      "retention_label": "保持期間",
+      "security_label": "セキュリティ",
+      "services": "外部サービス",
+      "storage_label": "ストレージ",
       "tenants_create_label": "テナント作成",
       "tenants_list_label": "テナント一覧",
       "tenants_section": "Tenants",
-      "users_label": "ユーザー管理"
+      "users_label": "ユーザー管理",
+      "webpush_label": "Web Push"
     },
     "not_found": {
       "description": "お探しの項目は削除されたか、URL が変更された可能性があります。一覧から選び直してください。",
@@ -4410,18 +4416,16 @@
       "email_change_submit": "確認メールを送信",
       "email_change_success": "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
       "email_change_title": "メールアドレス変更",
-      "email_heading": "設定",
+      "email_heading": "メール送信",
       "email_in_use": "このメールアドレスは既に使用されています。",
       "email_page_description": "プラットフォーム既定の SMTP を管理します。",
-      "email_tab": "メール設定",
-      "email_title": "設定 - メール設定",
+      "email_title": "メール送信",
       "encryption_none": "なし",
       "encryption_required": "暗号化方式を選択してください。",
       "from_address": "送信者メールアドレス",
-      "general_heading": "設定",
+      "general_heading": "一般設定",
       "general_page_description": "プラットフォーム全体に適用される既定値を管理します。",
-      "general_tab": "一般",
-      "general_title": "設定 - 一般",
+      "general_title": "一般設定",
       "host": "ホスト",
       "load_failed": "プラットフォーム設定の取得に失敗しました。時間をおいて再試行してください。",
       "locale_required": "言語を選択してください。",
@@ -4646,9 +4650,8 @@
       "unsuspend_title": "アカウントの停止を解除しますか？"
     },
     "storage": {
-      "tab": "ストレージ",
-      "page_title": "設定 - ストレージ",
-      "heading": "設定",
+      "page_title": "画像ストレージ",
+      "heading": "画像ストレージ",
       "page_description": "アップロードされた画像の保存先を管理します。",
       "title": "オブジェクトストレージ",
       "description": "すべてのテナントがアップロードした画像は、この 1 つの S3 互換バケットに保存されます。保存した変更は、再起動なしで 1 分以内にすべてのサーバーへ反映されます。",
@@ -4728,9 +4731,8 @@
       }
     },
     "webpush": {
-      "tab": "Web Push",
-      "page_title": "設定 - Web Push",
-      "heading": "設定",
+      "page_title": "ブラウザー通知",
+      "heading": "ブラウザー通知",
       "page_description": "Publira が読者に送るブラウザー通知を管理します。",
       "title": "Web Push",
       "description": "Publira は、このインストール用に生成した鍵ペアでブラウザー通知に署名します。秘密鍵はサーバーの外に出ず、表示されることもありません。保存した変更は、再起動なしで 1 分以内にすべてのサーバーへ反映されます。",
@@ -4750,10 +4752,8 @@
       }
     },
     "configuration": {
-      "tab": "概要",
-      "page_title": "設定 - 概要",
-      "heading": "設定",
-      "page_description": "プラットフォームのどの機能がすぐ使える状態かを確認し、足りない設定を済ませます。",
+      "title": "設定の状況",
+      "description": "プラットフォームのどの機能がすぐ使える状態かを確認し、足りない設定を済ませます。",
       "summary_ready": "プラットフォームに必要な設定はすべて済んでいます。任意の機能は、使いたくなるまでオフのままで構いません。",
       "summary_needs_setup": "プラットフォームに必要な設定のうち、まだ済んでいないものがあります。「要設定」の項目を開いて設定を済ませてください。",
       "columns": {
@@ -4800,9 +4800,7 @@
         "name": "セキュリティとデータのポリシー",
         "defaults": "サインイン、不正利用対策、データ保持期間には組み込みの既定値が適用されています。このプラットフォームに合わない場合だけ変更してください。",
         "configured": "保存したサインイン、不正利用対策、データ保持期間の設定が適用されています。"
-      },
-      "dashboard_notice": "プラットフォームに必要な設定のうち、まだ済んでいないものがあります。このままでは一部の機能が動きません。",
-      "dashboard_notice_link": "設定を確認"
+      }
     }
   }
 }
