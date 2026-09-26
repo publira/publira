@@ -412,10 +412,14 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 				ProfileText: "profile",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+				mock.ExpectBegin()
+				expectPublicIDAttempt(mock)
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreator)).
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{String: "profile", Valid: true}, uuid.NullUUID{}).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil))
+				expectPublicIDAttemptReleased(mock)
+				mock.ExpectCommit()
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 					WithArgs(tenantID, "CREATOR001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
@@ -495,9 +499,11 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
@@ -1120,10 +1126,14 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 				Name:   "Weekly",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+				mock.ExpectBegin()
+				expectPublicIDAttempt(mock)
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabel)).
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
+				expectPublicIDAttemptReleased(mock)
+				mock.ExpectCommit()
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 					WithArgs(tenantID, "LABEL001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
@@ -1190,9 +1200,11 @@ func TestUpdateLabelSuccess(t *testing.T) {
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
@@ -1280,16 +1292,20 @@ func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectBegin()
+	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateLabel)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
+	expectPublicIDAttemptReleased(mock)
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
-	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateLabelRequest{
@@ -1321,15 +1337,17 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateLabel)).
 		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
-	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
@@ -1375,16 +1393,20 @@ func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectBegin()
+	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateCreator)).
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{}, uuid.NullUUID{}).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil))
+	expectPublicIDAttemptReleased(mock)
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
-	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateCreatorRequest{
@@ -1416,15 +1438,17 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
+	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateCreator)).
 		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetCreatorByPublicIDForTenant)).
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
-	expectRevalidationRecord(mock, tenantID)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{

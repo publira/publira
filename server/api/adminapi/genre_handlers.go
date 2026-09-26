@@ -223,10 +223,10 @@ func (s *adminServer) genreEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
-// genreEyeCatchVariants cuts an uploaded eye-catch into every ratio before
-// the caller opens its transaction, so a refused image costs no database work
-// and the cut does not run while the genre row is held. Nil means no upload.
-func (s *adminServer) genreEyeCatchVariants(data []byte, contentType string) ([]imageproc.Variant, error) {
+// eyeCatchVariants cuts an uploaded eye-catch into every ratio before the
+// caller opens its transaction, so a refused image costs no database work and
+// the cut does not run while the row is held. Nil means no upload.
+func (s *adminServer) eyeCatchVariants(data []byte, contentType string) ([]imageproc.Variant, error) {
 	image, err := normalizeEyeCatchImage(data, contentType, "eye_catch_image_data", "eye_catch_image_content_type")
 	if err != nil || image == nil {
 		return nil, err
@@ -423,7 +423,7 @@ func (s *adminServer) CreateGenre(
 	if err != nil {
 		return nil, err
 	}
-	eyeCatchVariants, err := s.genreEyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +531,7 @@ func (s *adminServer) UpdateGenre(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchVariants, err := s.genreEyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}

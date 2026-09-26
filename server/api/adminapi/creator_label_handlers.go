@@ -274,16 +274,9 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
 }
 
-func normalizeLabelEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
-	return normalizeSeriesEyeCatchImage(data, contentType)
-}
-
-func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, image *normalizedEyeCatchImage) (uuid.NullUUID, error) {
-	if image == nil {
+func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, variants []imageproc.Variant) (uuid.NullUUID, error) {
+	if len(variants) == 0 {
 		return uuid.NullUUID{}, nil
-	}
-	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
 	labelImageID, err := uuid.NewV7()
@@ -298,11 +291,6 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 	})
 	if err != nil {
 		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image", err, "tenant_id", tenant.ID.String(), "label_id", labelID.String())
-	}
-
-	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
-	if err != nil {
-		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 
 	store, err := storage.Pin(ctx, s.storage)
@@ -689,8 +677,17 @@ func (s *adminServer) CreateCreator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdBase, err := publicid.Insert(func(publicID string) (dbmodels.Creator, error) {
-		return s.queriesFor(ctx).CreateCreator(ctx, dbmodels.CreateCreatorParams{
+	// The creator and its icon commit together, so a refused upload leaves no
+	// creator behind for the editor's retry to create a second time.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create creator transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	createdBase, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Creator, error) {
+		return s.queriesFor(txCtx).CreateCreator(txCtx, dbmodels.CreateCreatorParams{
 			ID:          creatorID,
 			TenantID:    tenant.ID,
 			PublicID:    publicID,
@@ -703,12 +700,12 @@ func (s *adminServer) CreateCreator(
 		return nil, s.internalDBError(ctx, "failed to create creator", err, "tenant_id", tenant.ID.String())
 	}
 
-	iconImageID, err := s.createCreatorIconImage(ctx, tenant, createdBase.ID, createdBase.PublicID, iconImage)
+	iconImageID, err := s.createCreatorIconImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, iconImage)
 	if err != nil {
 		return nil, err
 	}
 	if iconImageID.Valid {
-		if err := s.queriesFor(ctx).UpdateCreator(ctx, dbmodels.UpdateCreatorParams{
+		if err := s.queriesFor(txCtx).UpdateCreator(txCtx, dbmodels.UpdateCreatorParams{
 			ID:          createdBase.ID,
 			Name:        createdBase.Name,
 			ProfileText: createdBase.ProfileText,
@@ -717,6 +714,14 @@ func (s *adminServer) CreateCreator(
 			return nil, s.internalDBError(ctx, "failed to update creator icon", err, "tenant_id", tenant.ID.String(), "creator_id", createdBase.ID.String())
 		}
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the created creator", err, "tenant_id", tenant.ID.String(), "creator_id", createdBase.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create creator", err, "tenant_id", tenant.ID.String(), "creator_id", createdBase.ID.String())
+	}
+
 	created, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: createdBase.PublicID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get created creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", createdBase.PublicID)
@@ -733,7 +738,7 @@ func (s *adminServer) CreateCreator(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		created.PublicID,
 		created.Name,
@@ -770,18 +775,27 @@ func (s *adminServer) UpdateCreator(
 		}
 		return nil, s.internalDBError(ctx, "failed to get creator for update", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
 	}
+	// The new icon commits with the update, so a failed update leaves no icon
+	// behind that nothing points at.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin update creator transaction", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
 	iconImageID := current.IconImageID
 	if req.Msg.ClearIconImage {
 		iconImageID = uuid.NullUUID{}
 	} else if iconImage != nil {
-		newIconImageID, uploadErr := s.createCreatorIconImage(ctx, tenant, current.ID, current.PublicID, iconImage)
+		newIconImageID, uploadErr := s.createCreatorIconImage(txCtx, tenant, current.ID, current.PublicID, iconImage)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
 		iconImageID = newIconImageID
 	}
 
-	err = s.queriesFor(ctx).UpdateCreator(ctx, dbmodels.UpdateCreatorParams{
+	err = s.queriesFor(txCtx).UpdateCreator(txCtx, dbmodels.UpdateCreatorParams{
 		ID:          current.ID,
 		Name:        req.Msg.Name,
 		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
@@ -790,6 +804,14 @@ func (s *adminServer) UpdateCreator(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
+	}
+
 	updated, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -809,7 +831,7 @@ func (s *adminServer) UpdateCreator(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, creatorRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: protomapper.CreatorFromRow(
 		updated.PublicID,
 		updated.Name,
@@ -845,7 +867,7 @@ func (s *adminServer) CreateLabel(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -853,8 +875,17 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdBase, err := publicid.Insert(func(publicID string) (dbmodels.Label, error) {
-		return s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
+	// The label and its eye-catch commit together, so a refused upload leaves
+	// no label behind for the editor's retry to create a second time.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create label transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	createdBase, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Label, error) {
+		return s.queriesFor(txCtx).CreateLabel(txCtx, dbmodels.CreateLabelParams{
 			ID:              labelID,
 			TenantID:        tenant.ID,
 			PublicID:        publicID,
@@ -865,12 +896,12 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create label", err, "tenant_id", tenant.ID.String())
 	}
-	eyeCatchImageID, err := s.createLabelEyeCatchImage(ctx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchImage)
+	eyeCatchImageID, err := s.createLabelEyeCatchImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
 	if eyeCatchImageID.Valid {
-		if err := s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{
+		if err := s.queriesFor(txCtx).UpdateLabel(txCtx, dbmodels.UpdateLabelParams{
 			ID:              createdBase.ID,
 			Name:            createdBase.Name,
 			EyeCatchImageID: eyeCatchImageID,
@@ -878,6 +909,14 @@ func (s *adminServer) CreateLabel(
 			return nil, s.internalDBError(ctx, "failed to update label eye catch image", err, "tenant_id", tenant.ID.String(), "label_id", createdBase.ID.String())
 		}
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the created label", err, "tenant_id", tenant.ID.String(), "label_id", createdBase.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create label", err, "tenant_id", tenant.ID.String(), "label_id", createdBase.ID.String())
+	}
+
 	created, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: createdBase.PublicID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get created label", err, "tenant_id", tenant.ID.String(), "label_public_id", createdBase.PublicID)
@@ -902,7 +941,7 @@ func (s *adminServer) CreateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants)}), nil
 }
 
@@ -920,7 +959,7 @@ func (s *adminServer) UpdateLabel(
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -931,20 +970,37 @@ func (s *adminServer) UpdateLabel(
 		}
 		return nil, s.internalDBError(ctx, "failed to get label for update", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
 	}
+	// The new eye-catch commits with the update, so a failed update leaves no
+	// eye-catch behind that nothing points at.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin update label transaction", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
-	} else if eyeCatchImage != nil {
-		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(ctx, tenant, current.ID, current.PublicID, eyeCatchImage)
+	} else if len(eyeCatchVariants) > 0 {
+		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
 		eyeCatchImageID = newEyeCatchImageID
 	}
-	err = s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
+	err = s.queriesFor(txCtx).UpdateLabel(txCtx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the updated label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+	}
+
 	updated, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -972,6 +1028,6 @@ func (s *adminServer) UpdateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	s.revalidateTags(ctx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants)}), nil
 }
