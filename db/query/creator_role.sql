@@ -50,16 +50,6 @@ ORDER BY cr.display_priority DESC,
     cr.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: GetCreatorRoleByPublicIDForTenant :one
-SELECT cr.id,
-    cr.public_id,
-    cr.name,
-    cr.display_priority
-FROM creator_roles cr
-WHERE cr.tenant_id = $1
-    AND cr.public_id = $2
-LIMIT 1;
-
 -- name: GetCreatorRoleByIDForTenant :one
 SELECT cr.id,
     cr.public_id,

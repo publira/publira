@@ -771,11 +771,11 @@ func (s *adminServer) UpdateCreator(
 		return nil, err
 	}
 
-	ref, err := recordRefArg(req.Msg.CreatorId, req.Msg.PublicId, "creator_id")
+	id, err := parseRecordID(req.Msg.CreatorId, "creator_id")
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.creatorByRef(ctx, tenant.ID, ref)
+	current, err := s.creatorByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -816,7 +816,7 @@ func (s *adminServer) UpdateCreator(
 		return nil, s.internalDBError(ctx, "failed to commit update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
 	}
 
-	updated, err := s.creatorByRef(ctx, tenant.ID, ref)
+	updated, err := s.creatorByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -964,11 +964,11 @@ func (s *adminServer) UpdateLabel(
 	if err != nil {
 		return nil, err
 	}
-	ref, err := recordRefArg(req.Msg.LabelId, req.Msg.PublicId, "label_id")
+	id, err := parseRecordID(req.Msg.LabelId, "label_id")
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.labelByRef(ctx, tenant.ID, ref)
+	current, err := s.labelByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1003,7 +1003,7 @@ func (s *adminServer) UpdateLabel(
 		return nil, s.internalDBError(ctx, "failed to commit update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
 
-	updated, err := s.labelByRef(ctx, tenant.ID, ref)
+	updated, err := s.labelByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1045,65 +1045,38 @@ func adminLabel(id uuid.UUID, label *publirattypesv1.Label) *publirattypesv1.Lab
 	return label
 }
 
-// creatorByRef reads the creator a request names, by primary key or by
-// public_id.
-func (s *adminServer) creatorByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetCreatorByIDForTenantRow, error) {
-	var (
-		row dbmodels.GetCreatorByIDForTenantRow
-		err error
-	)
-	if ref.id != uuid.Nil {
-		row, err = s.queriesFor(ctx).GetCreatorByIDForTenant(ctx, dbmodels.GetCreatorByIDForTenantParams{TenantID: tenantID, ID: ref.id})
-	} else {
-		var byPublicID dbmodels.GetCreatorByPublicIDForTenantRow
-		byPublicID, err = s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
-		row = dbmodels.GetCreatorByIDForTenantRow(byPublicID)
-	}
+// creatorByID reads the creator a request names.
+func (s *adminServer) creatorByID(ctx context.Context, tenantID, id uuid.UUID) (dbmodels.GetCreatorByIDForTenantRow, error) {
+	row, err := s.queriesFor(ctx).GetCreatorByIDForTenant(ctx, dbmodels.GetCreatorByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.GetCreatorByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
-		return dbmodels.GetCreatorByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenantID.String(), "creator_id", ref.id.String(), "creator_public_id", ref.publicID)
+		return dbmodels.GetCreatorByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenantID.String(), "creator_id", id.String())
 	}
 	return row, nil
 }
 
-// labelByRef reads the label a request names, by primary key or by public_id.
-func (s *adminServer) labelByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetLabelByIDForTenantRow, error) {
-	var (
-		row dbmodels.GetLabelByIDForTenantRow
-		err error
-	)
-	if ref.id != uuid.Nil {
-		row, err = s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: ref.id})
-	} else {
-		var byPublicID dbmodels.GetLabelByPublicIDForTenantRow
-		byPublicID, err = s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
-		row = dbmodels.GetLabelByIDForTenantRow(byPublicID)
-	}
+// labelByID reads the label a request names.
+func (s *adminServer) labelByID(ctx context.Context, tenantID, id uuid.UUID) (dbmodels.GetLabelByIDForTenantRow, error) {
+	row, err := s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.GetLabelByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return dbmodels.GetLabelByIDForTenantRow{}, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenantID.String(), "label_id", ref.id.String(), "label_public_id", ref.publicID)
+		return dbmodels.GetLabelByIDForTenantRow{}, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenantID.String(), "label_id", id.String())
 	}
 	return row, nil
 }
 
-// lockLabelByRef takes the row lock every eye-catch write on one label
+// lockLabelByID takes the row lock every eye-catch write on one label
 // serializes behind; the caller re-reads eye_catch_image_id after it.
-func (s *adminServer) lockLabelByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) error {
-	var err error
-	if ref.id != uuid.Nil {
-		_, err = s.queriesFor(ctx).LockLabelByIDForTenant(ctx, dbmodels.LockLabelByIDForTenantParams{TenantID: tenantID, ID: ref.id})
-	} else {
-		_, err = s.queriesFor(ctx).LockLabelByPublicIDForTenant(ctx, dbmodels.LockLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
-	}
-	if err != nil {
+func (s *adminServer) lockLabelByID(ctx context.Context, tenantID, id uuid.UUID) error {
+	if _, err := s.queriesFor(ctx).LockLabelByIDForTenant(ctx, dbmodels.LockLabelByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return s.internalDBError(ctx, "failed to lock label", err, "tenant_id", tenantID.String(), "label_id", ref.id.String(), "label_public_id", ref.publicID)
+		return s.internalDBError(ctx, "failed to lock label", err, "tenant_id", tenantID.String(), "label_id", id.String())
 	}
 	return nil
 }

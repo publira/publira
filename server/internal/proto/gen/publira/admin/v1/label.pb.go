@@ -358,12 +358,11 @@ func (x *CreateLabelResponse) GetLabel() *v1.Label {
 type UpdateLabelRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId                 string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Name                     string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	EyeCatchImageData        []byte                 `protobuf:"bytes,4,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string                 `protobuf:"bytes,5,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
 	ClearEyeCatchImage       bool                   `protobuf:"varint,6,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
-	// The label's primary key (Label.id). Takes precedence over public_id.
+	// The label's primary key (Label.id).
 	LabelId       string `protobuf:"bytes,7,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -404,13 +403,6 @@ func (x *UpdateLabelRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateLabelRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UpdateLabelRequest) GetName() string {
@@ -495,9 +487,8 @@ func (x *UpdateLabelResponse) GetLabel() *v1.Label {
 // Replaces the image of one aspect ratio of a label eye-catch. The other
 // ratios keep the images they already hold.
 type UploadLabelEyeCatchAspectImageRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// portrait / square / landscape / og
 	VariantType      string `protobuf:"bytes,3,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
 	ImageData        []byte `protobuf:"bytes,4,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
@@ -505,7 +496,7 @@ type UploadLabelEyeCatchAspectImageRequest struct {
 	// Where in the upload the cut is taken. Omitted, the image is cut from its
 	// centre as it always has been.
 	Crop *v1.ImageCropRect `protobuf:"bytes,6,opt,name=crop,proto3" json:"crop,omitempty"`
-	// The label's primary key (Label.id). Takes precedence over public_id.
+	// The label's primary key (Label.id).
 	LabelId       string `protobuf:"bytes,7,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -546,13 +537,6 @@ func (x *UploadLabelEyeCatchAspectImageRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UploadLabelEyeCatchAspectImageRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UploadLabelEyeCatchAspectImageRequest) GetVariantType() string {
@@ -659,26 +643,24 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x14eye_catch_image_data\x18\x03 \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\x04 \x01(\tR\x18eyeCatchImageContentType\"D\n" +
 	"\x13CreateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xbd\x02\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xb1\x02\n" +
 	"\x12UpdateLabelRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12/\n" +
 	"\x14eye_catch_image_data\x18\x04 \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\x12\x19\n" +
-	"\blabel_id\x18\a \x01(\tR\alabelId\"D\n" +
+	"\blabel_id\x18\a \x01(\tR\alabelIdJ\x04\b\x02\x10\x03R\tpublic_id\"D\n" +
 	"\x13UpdateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xbd\x02\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xb1\x02\n" +
 	"%UploadLabelEyeCatchAspectImageRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12!\n" +
 	"\fvariant_type\x18\x03 \x01(\tR\vvariantType\x12\x1d\n" +
 	"\n" +
 	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
 	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\x123\n" +
 	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\x12\x19\n" +
-	"\blabel_id\x18\a \x01(\tR\alabelId\"W\n" +
+	"\blabel_id\x18\a \x01(\tR\alabelIdJ\x04\b\x02\x10\x03R\tpublic_id\"W\n" +
 	"&UploadLabelEyeCatchAspectImageResponse\x12-\n" +
 	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\x97\x04\n" +
 	"\x11AdminLabelService\x12Y\n" +

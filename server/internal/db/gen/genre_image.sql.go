@@ -231,32 +231,10 @@ type LockGenreByIDForTenantParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// The same lock as LockGenreByPublicIDForTenant, for a request that names the
-// genre by primary key.
+// Serializes eye-catch writes on one genre, as LockLabelByIDForTenant does for
+// a label; the caller re-reads eye_catch_image_id behind it.
 func (q *Queries) LockGenreByIDForTenant(ctx context.Context, arg LockGenreByIDForTenantParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, LockGenreByIDForTenant, arg.TenantID, arg.ID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
-const LockGenreByPublicIDForTenant = `-- name: LockGenreByPublicIDForTenant :one
-SELECT id
-FROM genres
-WHERE tenant_id = $1
-    AND public_id = $2
-FOR UPDATE
-`
-
-type LockGenreByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-// Serializes eye-catch writes on one genre, as LockLabelByPublicIDForTenant
-// does for a label; the caller re-reads eye_catch_image_id behind it.
-func (q *Queries) LockGenreByPublicIDForTenant(ctx context.Context, arg LockGenreByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, LockGenreByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

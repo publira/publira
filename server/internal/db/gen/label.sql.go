@@ -990,34 +990,12 @@ type LockLabelByIDForTenantParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// The same lock as LockLabelByPublicIDForTenant, for a request that names the
-// label by primary key.
-func (q *Queries) LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, LockLabelByIDForTenant, arg.TenantID, arg.ID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
-const LockLabelByPublicIDForTenant = `-- name: LockLabelByPublicIDForTenant :one
-SELECT id
-FROM labels
-WHERE tenant_id = $1
-    AND public_id = $2
-FOR UPDATE
-`
-
-type LockLabelByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
 // Lock the label row so concurrent eye-catch writes serialize, the way
 // LockSeriesByPublicIDForTenant does for a series. The read of the row's
 // current eye_catch_image_id has to be a separate statement: READ COMMITTED
 // freezes this statement's snapshot before it waits for the lock.
-func (q *Queries) LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, LockLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
+func (q *Queries) LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockLabelByIDForTenant, arg.TenantID, arg.ID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

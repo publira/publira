@@ -137,7 +137,7 @@ func TestUpdateGenreRejectsClearAndImageTogether(t *testing.T) {
 	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateGenreRequest{
 		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:                 "GENRE001",
+		GenreId:                  "0190f0b5-7c1a-7000-8000-000000000001",
 		Name:                     "Fantasy",
 		ClearEyeCatchImage:       true,
 		EyeCatchImageData:        oneByOnePNG,

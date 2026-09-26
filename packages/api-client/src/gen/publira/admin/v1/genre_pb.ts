@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/genre.proto.
  */
 export const file_publira_admin_v1_genre: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpcBChJDcmVhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYAyABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgEIAEoCSI9ChNDcmVhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSLbAQoSVXBkYXRlR2VucmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgEIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAUgASgJEh0KFWNsZWFyX2V5ZV9jYXRjaF9pbWFnZRgGIAEoCBIQCghnZW5yZV9pZBgHIAEoCSI9ChNVcGRhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSKzAQoUUmVvcmRlckdlbnJlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhgKEGdlbnJlX3B1YmxpY19pZHMYAiADKAkSIQoZZXhwZWN0ZWRfZ2VucmVfcHVibGljX2lkcxgDIAMoCRIRCglnZW5yZV9pZHMYBCADKAkSGgoSZXhwZWN0ZWRfZ2VucmVfaWRzGAUgAygJIkAKFVJlb3JkZXJHZW5yZXNSZXNwb25zZRInCgZnZW5yZXMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlImoKEkRlbGV0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEhAKCGdlbnJlX2lkGAMgASgJIhUKE0RlbGV0ZUdlbnJlUmVzcG9uc2Ui8gEKJVVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIUCgx2YXJpYW50X3R5cGUYAyABKAkSEgoKaW1hZ2VfZGF0YRgEIAEoDBIaChJpbWFnZV9jb250ZW50X3R5cGUYBSABKAkSLQoEY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBIQCghnZW5yZV9pZBgHIAEoCSJQCiZVcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXNwb25zZRImCgVnZW5yZRgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuR2VucmUyhAUKEUFkbWluR2VucmVTZXJ2aWNlElkKCkxpc3RHZW5yZXMSIy5wdWJsaXJhLmFkbWluLnYxLkxpc3RHZW5yZXNSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5MaXN0R2VucmVzUmVzcG9uc2UiABJcCgtDcmVhdGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5DcmVhdGVHZW5yZVJlc3BvbnNlIgASXAoLVXBkYXRlR2VucmUSJC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUdlbnJlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlR2VucmVSZXNwb25zZSIAEmIKDVJlb3JkZXJHZW5yZXMSJi5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJHZW5yZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyR2VucmVzUmVzcG9uc2UiABJcCgtEZWxldGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVJlc3BvbnNlIgASlQEKHlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZRI3LnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlUmVxdWVzdBo4LnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpcBChJDcmVhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYAyABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgEIAEoCSI9ChNDcmVhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSLZAQoSVXBkYXRlR2VucmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAMgASgJEhwKFGV5ZV9jYXRjaF9pbWFnZV9kYXRhGAQgASgMEiQKHGV5ZV9jYXRjaF9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkSHQoVY2xlYXJfZXllX2NhdGNoX2ltYWdlGAYgASgIEhAKCGdlbnJlX2lkGAcgASgJSgQIAhADUglwdWJsaWNfaWQiPQoTVXBkYXRlR2VucmVSZXNwb25zZRImCgVnZW5yZRgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuR2VucmUirwEKFFJlb3JkZXJHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglnZW5yZV9pZHMYBCADKAkSGgoSZXhwZWN0ZWRfZ2VucmVfaWRzGAUgAygJSgQIAhADSgQIAxAEUhBnZW5yZV9wdWJsaWNfaWRzUhlleHBlY3RlZF9nZW5yZV9wdWJsaWNfaWRzIkAKFVJlb3JkZXJHZW5yZXNSZXNwb25zZRInCgZnZW5yZXMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlImgKEkRlbGV0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIZ2VucmVfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCIVChNEZWxldGVHZW5yZVJlc3BvbnNlIvABCiVVcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIUCgx2YXJpYW50X3R5cGUYAyABKAkSEgoKaW1hZ2VfZGF0YRgEIAEoDBIaChJpbWFnZV9jb250ZW50X3R5cGUYBSABKAkSLQoEY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBIQCghnZW5yZV9pZBgHIAEoCUoECAIQA1IJcHVibGljX2lkIlAKJlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZTKEBQoRQWRtaW5HZW5yZVNlcnZpY2USWQoKTGlzdEdlbnJlcxIjLnB1YmxpcmEuYWRtaW4udjEuTGlzdEdlbnJlc1JlcXVlc3QaJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RHZW5yZXNSZXNwb25zZSIAElwKC0NyZWF0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUdlbnJlUmVzcG9uc2UiABJcCgtVcGRhdGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVHZW5yZVJlc3BvbnNlIgASYgoNUmVvcmRlckdlbnJlcxImLnB1YmxpcmEuYWRtaW4udjEuUmVvcmRlckdlbnJlc1JlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJHZW5yZXNSZXNwb25zZSIAElwKC0RlbGV0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUdlbnJlUmVzcG9uc2UiABKVAQoeVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlEjcucHVibGlyYS5hZG1pbi52MS5VcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0GjgucHVibGlyYS5hZG1pbi52MS5VcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -147,11 +147,6 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string public_id = 2;
-   */
-  publicId: string;
-
-  /**
    * Renaming re-derives the slug. The public_id does not move, so whatever
    * addresses this genre keeps addressing it.
    *
@@ -179,7 +174,7 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
   clearEyeCatchImage: boolean;
 
   /**
-   * The genre's primary key (Genre.id). Takes precedence over public_id.
+   * The genre's primary key (Genre.id).
    *
    * @generated from field: string genre_id = 7;
    */
@@ -220,31 +215,18 @@ export type ReorderGenresRequest = Message<"publira.admin.v1.ReorderGenresReques
   tenant?: TenantContext | undefined;
 
   /**
-   * Desired order after the write. Must be a permutation of
-   * expected_genre_public_ids.
-   *
-   * @generated from field: repeated string genre_public_ids = 2;
-   */
-  genrePublicIds: string[];
-
-  /**
-   * The genre order the client read before composing genre_public_ids. The
-   * RPC locks the tenant's genres, re-reads the current order, and rejects the
-   * write with failed_precondition when this no longer matches.
-   *
-   * @generated from field: repeated string expected_genre_public_ids = 3;
-   */
-  expectedGenrePublicIds: string[];
-
-  /**
-   * The same two lists by primary key (Genre.id). When either is set, both
-   * are read and the public ID lists are ignored.
+   * Desired order after the write, by primary key (Genre.id). Must be a
+   * permutation of expected_genre_ids.
    *
    * @generated from field: repeated string genre_ids = 4;
    */
   genreIds: string[];
 
   /**
+   * The order the client read before composing genre_ids. The RPC locks the
+   * tenant's genres, re-reads the current order, and rejects the write with
+   * failed_precondition when this no longer matches.
+   *
    * @generated from field: repeated string expected_genre_ids = 5;
    */
   expectedGenreIds: string[];
@@ -288,12 +270,7 @@ export type DeleteGenreRequest = Message<"publira.admin.v1.DeleteGenreRequest"> 
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string public_id = 2;
-   */
-  publicId: string;
-
-  /**
-   * The genre's primary key (Genre.id). Takes precedence over public_id.
+   * The genre's primary key (Genre.id).
    *
    * @generated from field: string genre_id = 3;
    */
@@ -333,11 +310,6 @@ export type UploadGenreEyeCatchAspectImageRequest = Message<"publira.admin.v1.Up
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string public_id = 2;
-   */
-  publicId: string;
-
-  /**
    * portrait / square / landscape / og
    *
    * @generated from field: string variant_type = 3;
@@ -363,7 +335,7 @@ export type UploadGenreEyeCatchAspectImageRequest = Message<"publira.admin.v1.Up
   crop?: ImageCropRect | undefined;
 
   /**
-   * The genre's primary key (Genre.id). Takes precedence over public_id.
+   * The genre's primary key (Genre.id).
    *
    * @generated from field: string genre_id = 7;
    */

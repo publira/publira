@@ -116,20 +116,11 @@ ORDER BY label_image_id,
     variant_type,
     width;
 
--- name: LockLabelByPublicIDForTenant :one
+-- name: LockLabelByIDForTenant :one
 -- Lock the label row so concurrent eye-catch writes serialize, the way
 -- LockSeriesByPublicIDForTenant does for a series. The read of the row's
 -- current eye_catch_image_id has to be a separate statement: READ COMMITTED
 -- freezes this statement's snapshot before it waits for the lock.
-SELECT id
-FROM labels
-WHERE tenant_id = $1
-    AND public_id = $2
-FOR UPDATE;
-
--- name: LockLabelByIDForTenant :one
--- The same lock as LockLabelByPublicIDForTenant, for a request that names the
--- label by primary key.
 SELECT id
 FROM labels
 WHERE tenant_id = $1

@@ -50,18 +50,9 @@ ORDER BY genre_image_id,
     variant_type,
     width;
 
--- name: LockGenreByPublicIDForTenant :one
--- Serializes eye-catch writes on one genre, as LockLabelByPublicIDForTenant
--- does for a label; the caller re-reads eye_catch_image_id behind it.
-SELECT id
-FROM genres
-WHERE tenant_id = $1
-    AND public_id = $2
-FOR UPDATE;
-
 -- name: LockGenreByIDForTenant :one
--- The same lock as LockGenreByPublicIDForTenant, for a request that names the
--- genre by primary key.
+-- Serializes eye-catch writes on one genre, as LockLabelByIDForTenant does for
+-- a label; the caller re-reads eye_catch_image_id behind it.
 SELECT id
 FROM genres
 WHERE tenant_id = $1

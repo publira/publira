@@ -131,7 +131,7 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 
 	uploaded, err := client.UploadGenreEyeCatchAspectImage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           tenant.tenantContext(),
-		PublicId:         created.PublicId,
+		GenreId:          created.Id,
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
@@ -166,7 +166,7 @@ func TestDBUploadGenreEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
 	genre := createGenre(t, client, tenant, "Fantasy")
 	_, err := client.UploadGenreEyeCatchAspectImage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           tenant.tenantContext(),
-		PublicId:         genre.PublicId,
+		GenreId:          genre.Id,
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
@@ -184,9 +184,9 @@ func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
 	created := createGenreWithEyeCatch(t, client, tenant, "Fantasy")
 
 	renamed, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: created.PublicId,
-		Name:     "High Fantasy",
+		Tenant:  tenant.tenantContext(),
+		GenreId: created.Id,
+		Name:    "High Fantasy",
 	}))
 	if err != nil {
 		t.Fatalf("UpdateGenre rename: %v", err)
@@ -197,7 +197,7 @@ func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
 
 	cleared, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
 		Tenant:             tenant.tenantContext(),
-		PublicId:           created.PublicId,
+		GenreId:            created.Id,
 		Name:               "High Fantasy",
 		ClearEyeCatchImage: true,
 	}))
@@ -226,9 +226,9 @@ func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
 	second := createGenre(t, client, tenant, "Mystery")
 
 	reordered, err := client.ReorderGenres(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderGenresRequest{
-		Tenant:                 tenant.tenantContext(),
-		GenrePublicIds:         []string{second.PublicId, first.PublicId},
-		ExpectedGenrePublicIds: []string{first.PublicId, second.PublicId},
+		Tenant:           tenant.tenantContext(),
+		GenreIds:         []string{second.Id, first.Id},
+		ExpectedGenreIds: []string{first.Id, second.Id},
 	}))
 	if err != nil {
 		t.Fatalf("ReorderGenres: %v", err)
@@ -263,9 +263,9 @@ func TestDBUpdateGenreRenameAfterAConcurrentClearKeepsTheClear(t *testing.T) {
 	renamed := make(chan error, 1)
 	go func() {
 		_, err := client.UpdateGenre(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
-			Tenant:   tenant.tenantContext(),
-			PublicId: created.PublicId,
-			Name:     "High Fantasy",
+			Tenant:  tenant.tenantContext(),
+			GenreId: created.Id,
+			Name:    "High Fantasy",
 		}))
 		renamed <- err
 	}()

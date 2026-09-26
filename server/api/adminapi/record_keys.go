@@ -10,30 +10,6 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
-// recordRef is how a request names the one record it acts on: by primary key
-// when its ID field is set, and by public_id otherwise.
-type recordRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
-// recordRefArg reads a request's ID field and its public_id into a recordRef.
-// field names the ID field, which is what the console is told to fill in.
-func recordRefArg(rawID, rawPublicID, field string) (recordRef, error) {
-	if strings.TrimSpace(rawID) != "" {
-		id, err := parseRecordID(rawID, field)
-		if err != nil {
-			return recordRef{}, err
-		}
-		return recordRef{id: id}, nil
-	}
-	publicID := strings.TrimSpace(rawPublicID)
-	if publicID == "" {
-		return recordRef{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s is required", field), field)
-	}
-	return recordRef{publicID: publicID}, nil
-}
-
 // parseRecordID reads a primary key a request names. An unparseable value is
 // refused here rather than reaching a query that would answer not_found for
 // something that is not an identifier at all.
@@ -56,31 +32,29 @@ type reorderList struct {
 	field  string
 }
 
-// reorderKeys picks the pair of lists a reorder request names its rows by: the
-// primary keys when either ID list is set, and the public IDs otherwise. Each
-// primary key is returned in canonical form, so the caller compares it with
-// uuid.UUID.String of a locked row; byID says which key of the row to use.
-func reorderKeys(ids, expectedIDs, publicIDs, expectedPublicIDs reorderList, noun string) (order, expected []string, byID bool, err error) {
-	orderList, expectedList := publicIDs, expectedPublicIDs
-	if len(ids.values) > 0 || len(expectedIDs.values) > 0 {
-		orderList, expectedList, byID = ids, expectedIDs, true
-		if orderList.values, err = canonicalIDs(ids); err != nil {
-			return nil, nil, false, err
-		}
-		if expectedList.values, err = canonicalIDs(expectedIDs); err != nil {
-			return nil, nil, false, err
-		}
+// reorderIDs reads the two primary key lists a reorder request states: the
+// order to write and the order the client read. Each key is returned in
+// canonical form, so the caller compares it with uuid.UUID.String of a locked
+// row.
+func reorderIDs(order, expected reorderList, noun string) ([]string, []string, error) {
+	orderIDs, err := canonicalIDs(order)
+	if err != nil {
+		return nil, nil, err
 	}
-	if err := validateDistinctPublicIDs(orderList.values, orderList.field, noun); err != nil {
-		return nil, nil, false, err
+	expectedIDs, err := canonicalIDs(expected)
+	if err != nil {
+		return nil, nil, err
 	}
-	if err := validateDistinctPublicIDs(expectedList.values, expectedList.field, noun); err != nil {
-		return nil, nil, false, err
+	if err := validateDistinctPublicIDs(orderIDs, order.field, noun); err != nil {
+		return nil, nil, err
 	}
-	if !samePublicIDSet(orderList.values, expectedList.values) {
-		return nil, nil, false, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s must be a permutation of %s", orderList.field, expectedList.field))
+	if err := validateDistinctPublicIDs(expectedIDs, expected.field, noun); err != nil {
+		return nil, nil, err
 	}
-	return orderList.values, expectedList.values, byID, nil
+	if !samePublicIDSet(orderIDs, expectedIDs) {
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s must be a permutation of %s", order.field, expected.field))
+	}
+	return orderIDs, expectedIDs, nil
 }
 
 // canonicalIDs parses each entry of an ID list. An empty entry is kept as it

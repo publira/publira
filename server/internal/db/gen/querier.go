@@ -364,7 +364,6 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
-	GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg GetCreatorRoleByPublicIDForTenantParams) (GetCreatorRoleByPublicIDForTenantRow, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
@@ -402,7 +401,6 @@ type Querier interface {
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
-	GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
 	// empty list, so a storefront cannot show an empty page for a genre that was
@@ -1729,26 +1727,20 @@ type Querier interface {
 	// ORDER BY e.id is what keeps two range edits over overlapping ranges from
 	// deadlocking: both take the row locks in the same order.
 	LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error)
-	// The same lock as LockGenreByPublicIDForTenant, for a request that names the
-	// genre by primary key.
+	// Serializes eye-catch writes on one genre, as LockLabelByIDForTenant does for
+	// a label; the caller re-reads eye_catch_image_id behind it.
 	LockGenreByIDForTenant(ctx context.Context, arg LockGenreByIDForTenantParams) (uuid.UUID, error)
-	// Serializes eye-catch writes on one genre, as LockLabelByPublicIDForTenant
-	// does for a label; the caller re-reads eye_catch_image_id behind it.
-	LockGenreByPublicIDForTenant(ctx context.Context, arg LockGenreByPublicIDForTenantParams) (uuid.UUID, error)
 	// Locks every genre of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names and eye-catches come along because a
 	// reorder answers with the whole list, and nothing in this transaction changes
 	// them.
 	LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) ([]LockGenresForTenantRow, error)
-	// The same lock as LockLabelByPublicIDForTenant, for a request that names the
-	// label by primary key.
-	LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error)
 	// Lock the label row so concurrent eye-catch writes serialize, the way
 	// LockSeriesByPublicIDForTenant does for a series. The read of the row's
 	// current eye_catch_image_id has to be a separate statement: READ COMMITTED
 	// freezes this statement's snapshot before it waits for the lock.
-	LockLabelByPublicIDForTenant(ctx context.Context, arg LockLabelByPublicIDForTenantParams) (uuid.UUID, error)
+	LockLabelByIDForTenant(ctx context.Context, arg LockLabelByIDForTenantParams) (uuid.UUID, error)
 	// Reads the settings row for update. A save takes this lock first, so the
 	// revision it compares against cannot change between the comparison and the
 	// write. Returns no rows when the platform has never saved any settings.

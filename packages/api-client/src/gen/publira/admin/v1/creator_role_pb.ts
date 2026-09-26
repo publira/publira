@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/creator_role.proto.
  */
 export const file_publira_admin_v1_creator_role: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2NyZWF0b3Jfcm9sZS5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJoChdMaXN0Q3JlYXRvclJvbGVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkifAoYTGlzdENyZWF0b3JSb2xlc1Jlc3BvbnNlEjQKDWNyZWF0b3Jfcm9sZXMYASADKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3JSb2xlEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiWQoYQ3JlYXRlQ3JlYXRvclJvbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAIgASgJIlAKGUNyZWF0ZUNyZWF0b3JSb2xlUmVzcG9uc2USMwoMY3JlYXRvcl9yb2xlGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5DcmVhdG9yUm9sZSKFAQoYVXBkYXRlQ3JlYXRvclJvbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIXCg9jcmVhdG9yX3JvbGVfaWQYBCABKAkiUAoZVXBkYXRlQ3JlYXRvclJvbGVSZXNwb25zZRIzCgxjcmVhdG9yX3JvbGUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3JSb2xlItUBChpSZW9yZGVyQ3JlYXRvclJvbGVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHwoXY3JlYXRvcl9yb2xlX3B1YmxpY19pZHMYAiADKAkSKAogZXhwZWN0ZWRfY3JlYXRvcl9yb2xlX3B1YmxpY19pZHMYAyADKAkSGAoQY3JlYXRvcl9yb2xlX2lkcxgEIAMoCRIhChlleHBlY3RlZF9jcmVhdG9yX3JvbGVfaWRzGAUgAygJIlMKG1Jlb3JkZXJDcmVhdG9yUm9sZXNSZXNwb25zZRI0Cg1jcmVhdG9yX3JvbGVzGAEgAygLMh0ucHVibGlyYS50eXBlcy52MS5DcmVhdG9yUm9sZSJ3ChhEZWxldGVDcmVhdG9yUm9sZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIXCg9jcmVhdG9yX3JvbGVfaWQYAyABKAkiGwoZRGVsZXRlQ3JlYXRvclJvbGVSZXNwb25zZTLMBAoXQWRtaW5DcmVhdG9yUm9sZVNlcnZpY2USawoQTGlzdENyZWF0b3JSb2xlcxIpLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JSb2xlc1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkxpc3RDcmVhdG9yUm9sZXNSZXNwb25zZSIAEm4KEUNyZWF0ZUNyZWF0b3JSb2xlEioucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUm9sZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUNyZWF0b3JSb2xlUmVzcG9uc2UiABJuChFVcGRhdGVDcmVhdG9yUm9sZRIqLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJvbGVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5VcGRhdGVDcmVhdG9yUm9sZVJlc3BvbnNlIgASdAoTUmVvcmRlckNyZWF0b3JSb2xlcxIsLnB1YmxpcmEuYWRtaW4udjEuUmVvcmRlckNyZWF0b3JSb2xlc1JlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJDcmVhdG9yUm9sZXNSZXNwb25zZSIAEm4KEURlbGV0ZUNyZWF0b3JSb2xlEioucHVibGlyYS5hZG1pbi52MS5EZWxldGVDcmVhdG9yUm9sZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUNyZWF0b3JSb2xlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2NyZWF0b3Jfcm9sZS5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJoChdMaXN0Q3JlYXRvclJvbGVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkifAoYTGlzdENyZWF0b3JSb2xlc1Jlc3BvbnNlEjQKDWNyZWF0b3Jfcm9sZXMYASADKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3JSb2xlEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiWQoYQ3JlYXRlQ3JlYXRvclJvbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAIgASgJIlAKGUNyZWF0ZUNyZWF0b3JSb2xlUmVzcG9uc2USMwoMY3JlYXRvcl9yb2xlGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5DcmVhdG9yUm9sZSKDAQoYVXBkYXRlQ3JlYXRvclJvbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAMgASgJEhcKD2NyZWF0b3Jfcm9sZV9pZBgEIAEoCUoECAIQA1IJcHVibGljX2lkIlAKGVVwZGF0ZUNyZWF0b3JSb2xlUmVzcG9uc2USMwoMY3JlYXRvcl9yb2xlGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5DcmVhdG9yUm9sZSLRAQoaUmVvcmRlckNyZWF0b3JSb2xlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhgKEGNyZWF0b3Jfcm9sZV9pZHMYBCADKAkSIQoZZXhwZWN0ZWRfY3JlYXRvcl9yb2xlX2lkcxgFIAMoCUoECAIQA0oECAMQBFIXY3JlYXRvcl9yb2xlX3B1YmxpY19pZHNSIGV4cGVjdGVkX2NyZWF0b3Jfcm9sZV9wdWJsaWNfaWRzIlMKG1Jlb3JkZXJDcmVhdG9yUm9sZXNSZXNwb25zZRI0Cg1jcmVhdG9yX3JvbGVzGAEgAygLMh0ucHVibGlyYS50eXBlcy52MS5DcmVhdG9yUm9sZSJ1ChhEZWxldGVDcmVhdG9yUm9sZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhcKD2NyZWF0b3Jfcm9sZV9pZBgDIAEoCUoECAIQA1IJcHVibGljX2lkIhsKGURlbGV0ZUNyZWF0b3JSb2xlUmVzcG9uc2UyzAQKF0FkbWluQ3JlYXRvclJvbGVTZXJ2aWNlEmsKEExpc3RDcmVhdG9yUm9sZXMSKS5wdWJsaXJhLmFkbWluLnYxLkxpc3RDcmVhdG9yUm9sZXNSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5MaXN0Q3JlYXRvclJvbGVzUmVzcG9uc2UiABJuChFDcmVhdGVDcmVhdG9yUm9sZRIqLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJvbGVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUm9sZVJlc3BvbnNlIgASbgoRVXBkYXRlQ3JlYXRvclJvbGUSKi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSb2xlUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJvbGVSZXNwb25zZSIAEnQKE1Jlb3JkZXJDcmVhdG9yUm9sZXMSLC5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJDcmVhdG9yUm9sZXNSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyQ3JlYXRvclJvbGVzUmVzcG9uc2UiABJuChFEZWxldGVDcmVhdG9yUm9sZRIqLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlQ3JlYXRvclJvbGVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5EZWxldGVDcmVhdG9yUm9sZVJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -136,11 +136,6 @@ export type UpdateCreatorRoleRequest = Message<"publira.admin.v1.UpdateCreatorRo
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string public_id = 2;
-   */
-  publicId: string;
-
-  /**
    * The public_id does not move, so every credit keeps the role it names.
    *
    * @generated from field: string name = 3;
@@ -148,7 +143,7 @@ export type UpdateCreatorRoleRequest = Message<"publira.admin.v1.UpdateCreatorRo
   name: string;
 
   /**
-   * The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+   * The creator role's primary key (CreatorRole.id).
    *
    * @generated from field: string creator_role_id = 4;
    */
@@ -189,31 +184,18 @@ export type ReorderCreatorRolesRequest = Message<"publira.admin.v1.ReorderCreato
   tenant?: TenantContext | undefined;
 
   /**
-   * Desired order after the write. Must be a permutation of
-   * expected_creator_role_public_ids.
-   *
-   * @generated from field: repeated string creator_role_public_ids = 2;
-   */
-  creatorRolePublicIds: string[];
-
-  /**
-   * The order the client read before composing creator_role_public_ids. The
-   * RPC locks the tenant's roles, re-reads the current order, and rejects the
-   * write with failed_precondition when this no longer matches.
-   *
-   * @generated from field: repeated string expected_creator_role_public_ids = 3;
-   */
-  expectedCreatorRolePublicIds: string[];
-
-  /**
-   * The same two lists by primary key (CreatorRole.id). When either is set,
-   * both are read and the public ID lists are ignored.
+   * Desired order after the write, by primary key (CreatorRole.id). Must be a
+   * permutation of expected_creator_role_ids.
    *
    * @generated from field: repeated string creator_role_ids = 4;
    */
   creatorRoleIds: string[];
 
   /**
+   * The order the client read before composing creator_role_ids. The RPC locks the
+   * tenant's roles, re-reads the current order, and rejects the write with
+   * failed_precondition when this no longer matches.
+   *
    * @generated from field: repeated string expected_creator_role_ids = 5;
    */
   expectedCreatorRoleIds: string[];
@@ -257,12 +239,7 @@ export type DeleteCreatorRoleRequest = Message<"publira.admin.v1.DeleteCreatorRo
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string public_id = 2;
-   */
-  publicId: string;
-
-  /**
-   * The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+   * The creator role's primary key (CreatorRole.id).
    *
    * @generated from field: string creator_role_id = 3;
    */

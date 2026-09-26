@@ -318,8 +318,8 @@ func TestDBDeleteCreatorRoleRefusesARoleOnlyAnEpisodeStillNames(t *testing.T) {
 
 	artistRole := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[1].Name)
 	_, err = env.creatorRoleClient().DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: artistRole.PublicID,
+		Tenant:        tenant.tenantContext(),
+		CreatorRoleId: artistRole.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole: err = %v, want failed_precondition because an episode still credits it", err)

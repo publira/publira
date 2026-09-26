@@ -138,54 +138,6 @@ func (q *Queries) GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDFor
 	return i, err
 }
 
-const GetGenreByPublicIDForTenant = `-- name: GetGenreByPublicIDForTenant :one
-SELECT g.id,
-    g.public_id,
-    g.name,
-    g.slug,
-    g.display_order,
-    g.created_at,
-    g.eye_catch_image_id,
-    gi.updated_at AS eye_catch_image_updated_at
-FROM genres g
-    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
-WHERE g.tenant_id = $1
-    AND g.public_id = $2
-LIMIT 1
-`
-
-type GetGenreByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-type GetGenreByPublicIDForTenantRow struct {
-	ID                     uuid.UUID     `json:"id"`
-	PublicID               string        `json:"public_id"`
-	Name                   string        `json:"name"`
-	Slug                   string        `json:"slug"`
-	DisplayOrder           int32         `json:"display_order"`
-	CreatedAt              time.Time     `json:"created_at"`
-	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
-	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
-}
-
-func (q *Queries) GetGenreByPublicIDForTenant(ctx context.Context, arg GetGenreByPublicIDForTenantParams) (GetGenreByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetGenreByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i GetGenreByPublicIDForTenantRow
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.Name,
-		&i.Slug,
-		&i.DisplayOrder,
-		&i.CreatedAt,
-		&i.EyeCatchImageID,
-		&i.EyeCatchImageUpdatedAt,
-	)
-	return i, err
-}
-
 const GetGenreIDByPublicIDForTenant = `-- name: GetGenreIDByPublicIDForTenant :one
 SELECT g.id
 FROM genres g
