@@ -35,15 +35,15 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Aoi Sakura", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Original Author", int32(1)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EP001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByIDForTenant)).
+		WithArgs(tenantID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP001"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows())
@@ -56,6 +56,8 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows(episodeCreditRow{
 			episodeID:    episodeID,
+			creatorID:    creatorID,
+			roleID:       roleID,
 			publicID:     "CREATOR001",
 			name:         "Aoi Sakura",
 			rolePublicID: "ROLE00000001",
@@ -68,10 +70,10 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EP001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: episodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
-			{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
+			{CreatorId: creatorID.String(), RoleId: roleID.String()},
 		},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -103,15 +105,15 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Aoi Sakura", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Original Author", int32(1)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EP001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByIDForTenant)).
+		WithArgs(tenantID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP001"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows())
@@ -124,6 +126,8 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCreatorsByEpisodeIDs)).
 		WillReturnRows(episodeCreditRows(episodeCreditRow{
 			episodeID:    episodeID,
+			creatorID:    creatorID,
+			roleID:       roleID,
 			publicID:     "CREATOR001",
 			name:         "Aoi Sakura",
 			rolePublicID: "ROLE00000001",
@@ -136,10 +140,10 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EP001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: episodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
-			{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
+			{CreatorId: creatorID.String(), RoleId: roleID.String()},
 		},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -165,11 +169,11 @@ func TestReplaceEpisodeCreditsRefusesCreditSharesAboveOneWholeEpisode(t *testing
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EP001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
-			{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001", ShareBps: 6000},
-			{CreatorPublicId: "CREATOR002", RolePublicId: "ROLE00000001", ShareBps: 5000},
+			{CreatorId: episodeTestID(11).String(), RoleId: episodeTestID(21).String(), ShareBps: 6000},
+			{CreatorId: episodeTestID(12).String(), RoleId: episodeTestID(21).String(), ShareBps: 5000},
 		},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -185,6 +189,8 @@ func TestReplaceEpisodeCreditsRefusesCreditSharesAboveOneWholeEpisode(t *testing
 // shows it.
 type episodeCreditRow struct {
 	episodeID    uuid.UUID
+	creatorID    uuid.UUID
+	roleID       uuid.UUID
 	publicID     string
 	name         string
 	rolePublicID string
@@ -194,9 +200,9 @@ type episodeCreditRow struct {
 }
 
 func episodeCreditRows(credits ...episodeCreditRow) *sqlmock.Rows {
-	rows := sqlmock.NewRows([]string{"episode_id", "public_id", "name", "profile_text", "icon_image_id", "icon_image_updated_at", "role_public_id", "role_name", "display_order", "source", "share_bps"})
+	rows := sqlmock.NewRows([]string{"episode_id", "creator_id", "public_id", "name", "profile_text", "icon_image_id", "icon_image_updated_at", "role_id", "role_public_id", "role_name", "display_order", "source", "share_bps"})
 	for index, credit := range credits {
-		rows.AddRow(credit.episodeID, credit.publicID, credit.name, nil, nil, nil, credit.rolePublicID, credit.roleName, int32(index), credit.source, credit.shareBps)
+		rows.AddRow(credit.episodeID, credit.creatorID, credit.publicID, credit.name, nil, nil, nil, uuid.NullUUID{UUID: credit.roleID, Valid: credit.roleID != uuid.Nil}, credit.rolePublicID, credit.roleName, int32(index), credit.source, credit.shareBps)
 	}
 	return rows
 }

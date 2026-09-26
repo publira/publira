@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"errors"
 	"slices"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -32,7 +31,7 @@ func (s *adminServer) ListEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.episodeForCreditsByPublicID(ctx, tenant.ID, req.Msg.EpisodePublicId)
+	episode, err := s.episodeForCredits(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +52,8 @@ func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) [
 		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
 			CreatorPublicId: row.PublicID,
 			RolePublicId:    row.RolePublicID.String,
+			CreatorId:       row.CreatorID.String(),
+			RoleId:          nullUUIDString(row.RoleID),
 			ShareBps:        row.ShareBps,
 		})
 	}
@@ -79,6 +80,10 @@ func (s *adminServer) ReplaceEpisodeCredits(
 		return nil, err
 	}
 	setCreatorCreditShares(credits, shares)
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -91,15 +96,15 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	// credits: the whole set is deleted and rewritten, so there is no credit
 	// row for the second save to wait on, and without this it would read the
 	// provenance of rows the first save has already replaced.
-	episode, err := s.queriesFor(txCtx).LockEpisodeByPublicIDForTenant(txCtx, dbmodels.LockEpisodeByPublicIDForTenantParams{
+	episode, err := s.queriesFor(txCtx).LockEpisodeByIDForTenant(txCtx, dbmodels.LockEpisodeByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: strings.TrimSpace(req.Msg.EpisodePublicId),
+		ID:       episodeID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to lock episode for replace credits", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
+		return nil, s.internalDBError(ctx, "failed to lock episode for replace credits", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	// What the episode carries now, so a credit the request keeps keeps saying
 	// where it came from. A separate statement from the lock, because READ
@@ -109,9 +114,9 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits before replacing them", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	sourceByPair := make(map[[2]string]string, len(existing))
+	sourceByPair := make(map[[2]uuid.UUID]string, len(existing))
 	for _, row := range existing {
-		sourceByPair[[2]string{row.PublicID, row.RolePublicID.String}] = row.Source
+		sourceByPair[[2]uuid.UUID{row.CreatorID, row.RoleID.UUID}] = row.Source
 	}
 
 	if err := s.queriesFor(txCtx).DeleteEpisodeCreatorsByEpisodeID(txCtx, episode.ID); err != nil {
@@ -125,7 +130,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 		return cmp.Compare(left.role.DisplayPriority, right.role.DisplayPriority)
 	})
 	for index, credit := range ordered {
-		source, kept := sourceByPair[[2]string{credit.creator.PublicID, credit.role.PublicID}]
+		source, kept := sourceByPair[[2]uuid.UUID{credit.creator.ID, credit.role.ID}]
 		if !kept {
 			source = creditSourceEpisode
 		}
@@ -173,23 +178,28 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	}), nil
 }
 
-// episodeForCreditsByPublicID resolves the episode a credit read names, as the
+// episodeForCredits resolves the episode a credit read names, as the
 // not-found the console shows rather than as an empty credit list. The write
 // takes the row under a lock instead, so it has no use for this.
-func (s *adminServer) episodeForCreditsByPublicID(
+func (s *adminServer) episodeForCredits(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	publicID string,
-) (dbmodels.GetEpisodeByPublicIDForTenantRow, error) {
-	row, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
+	rawID string,
+	rawPublicID string,
+) (dbmodels.GetEpisodeByIDForTenantRow, error) {
+	episodeID, err := s.episodeIDArg(ctx, tenantID, rawID, rawPublicID)
+	if err != nil {
+		return dbmodels.GetEpisodeByIDForTenantRow{}, err
+	}
+	row, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{
 		TenantID: tenantID,
-		PublicID: strings.TrimSpace(publicID),
+		ID:       episodeID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetEpisodeByPublicIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return dbmodels.GetEpisodeByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return dbmodels.GetEpisodeByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenantID.String(), "episode_public_id", publicID)
+		return dbmodels.GetEpisodeByIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
 	}
 	return row, nil
 }

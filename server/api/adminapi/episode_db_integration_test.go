@@ -339,18 +339,25 @@ func TestDBListEpisodesOfAnotherTenantsSeriesIsEmpty(t *testing.T) {
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
 
-	theirSeries := createDBSeries(t, client, second, "Tenant B Series")
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateSeriesRequest{
+		Tenant: second.tenantContext(),
+		Title:  "Tenant B Series",
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries for tenant B: %v", err)
+	}
+	theirSeries := created.Msg.Series.Id
 	if _, err := client.CreateEpisode(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         second.tenantContext(),
-		SeriesPublicId: theirSeries,
-		Title:          "Tenant B Episode",
+		Tenant:   second.tenantContext(),
+		SeriesId: theirSeries,
+		Title:    "Tenant B Episode",
 	})); err != nil {
 		t.Fatalf("CreateEpisode for tenant B: %v", err)
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(first, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         first.tenantContext(),
-		SeriesPublicId: theirSeries,
+		Tenant:   first.tenantContext(),
+		SeriesId: theirSeries,
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes across tenants: %v", err)

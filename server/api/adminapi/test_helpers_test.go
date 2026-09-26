@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -395,22 +396,44 @@ func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.
 	expectPublicIDAttemptReleased(mock)
 }
 
-func expectLockSeriesByPublicID(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, seriesID uuid.UUID) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
-		WithArgs(tenantID, publicID).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+func expectLockSeriesByID(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES001"))
 }
 
-func expectListEpisodesBySeries(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID string, rows *sqlmock.Rows) {
+func expectListEpisodesBySeries(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, rows *sqlmock.Rows) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenant)).
-		WithArgs(tenantID, seriesPublicID).
+		WithArgs(tenantID, seriesID).
 		WillReturnRows(rows)
 }
 
-func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID, episodePublicID string, orderIndex int32) {
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries)).
-		WithArgs(tenantID, seriesPublicID, episodePublicID, orderIndex).
+func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID, seriesID, episodeID uuid.UUID, orderIndex int32) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByIDForTenantAndSeries)).
+		WithArgs(orderIndex, tenantID, seriesID, episodeID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+// testSeriesID and testEpisodeID are what a request names SERIES001 and
+// EPISODE001 by, and episodeTestID(n) what it names EP00n by.
+var (
+	testSeriesID  = uuid.MustParse("01900000-0000-7000-8000-00000000c001")
+	testEpisodeID = uuid.MustParse("01900000-0000-7000-8000-00000000c002")
+	// testOtherSeriesID and testOtherEpisodeID name nothing the tenant has.
+	testOtherSeriesID  = uuid.MustParse("01900000-0000-7000-8000-00000000c003")
+	testOtherEpisodeID = uuid.MustParse("01900000-0000-7000-8000-00000000c004")
+)
+
+func episodeTestID(n int) uuid.UUID {
+	return uuid.MustParse(fmt.Sprintf("01900000-0000-7000-8000-%012d", n))
+}
+
+// expectEpisodeSeriesLookup is the read an image upload resolves its episode,
+// and the series that episode belongs to, with.
+func expectEpisodeSeriesLookup(mock sqlmock.Sqlmock, tenantID, episodeID, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeSeriesByIDForTenant)).
+		WithArgs(tenantID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "series_id"}).AddRow(episodeID, "EPISODE001", seriesID))
 }
 
 // expectBakeSeriesCreatorsOntoEpisode is the copy that credits a new episode

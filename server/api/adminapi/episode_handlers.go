@@ -134,6 +134,7 @@ type episodePageRow struct {
 
 func (r episodePageRow) toProto() (*publirattypesv1.Episode, error) {
 	episode := &publirattypesv1.Episode{
+		Id:         r.id.String(),
 		PublicId:   r.publicID,
 		Title:      r.title,
 		OrderIndex: r.orderIndex,
@@ -227,7 +228,7 @@ func mapEpisodeDescRows(rows []dbmodels.ListEpisodesBySeriesForTenantDescRow) []
 func (s *adminServer) episodePage(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	seriesPublicID string,
+	seriesID uuid.UUID,
 	keys episodeCursorKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -236,7 +237,7 @@ func (s *adminServer) episodePage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListEpisodesBySeriesForTenantDesc(ctx, dbmodels.ListEpisodesBySeriesForTenantDescParams{
 			TenantID:         tenantID,
-			PublicID:         seriesPublicID,
+			SeriesID:         seriesID,
 			CursorID:         keys.id,
 			CursorInclusive:  keys.inclusive,
 			CursorOrderIndex: keys.orderIndex,
@@ -250,7 +251,7 @@ func (s *adminServer) episodePage(
 
 	rows, err := queries.ListEpisodesBySeriesForTenantAsc(ctx, dbmodels.ListEpisodesBySeriesForTenantAscParams{
 		TenantID:         tenantID,
-		PublicID:         seriesPublicID,
+		SeriesID:         seriesID,
 		CursorID:         keys.id,
 		CursorInclusive:  keys.inclusive,
 		CursorOrderIndex: keys.orderIndex,
@@ -270,8 +271,9 @@ func (s *adminServer) ListEpisodes(
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultEpisodePageSize, maxEpisodePageSize)
@@ -279,7 +281,7 @@ func (s *adminServer) ListEpisodes(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	listKey := pagination.NewListKey("order_index_asc").Value("series_public_id", req.Msg.SeriesPublicId)
+	listKey := pagination.NewListKey("order_index_asc").Value("series_id", seriesID.String())
 	var keys episodeCursorKeys
 	if !cursor.IsZero() {
 		inner, keyErr := listKey.Decode(cursor)
@@ -293,7 +295,7 @@ func (s *adminServer) ListEpisodes(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.episodePage(ctx, tenant.ID, req.Msg.SeriesPublicId, keys, cursor.Direction, limit+1)
+	rows, err := s.episodePage(ctx, tenant.ID, seriesID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episodes", err, "tenant_id", tenant.ID.String())
 	}
@@ -402,12 +404,78 @@ func episodeReadingLayout(
 	return readingDirection, protomapper.SpreadStartIndexOverrideFromStored(stored.SpreadStartIndex), nil
 }
 
-func listEpisodePublicIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []string {
-	ids := make([]string, 0, len(rows))
+func listEpisodeIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		ids = append(ids, row.PublicID)
+		ids = append(ids, row.ID)
 	}
 	return ids
+}
+
+// episodeOrderArg is the order a reorder asks for and the order it was
+// composed against, by id, or by public_id while a client still sends those.
+type episodeOrderArg struct {
+	desired        []uuid.UUID
+	expected       []uuid.UUID
+	desiredPublic  []string
+	expectedPublic []string
+}
+
+func parseEpisodeOrderArg(msg *publiraadminv1.ReorderEpisodesRequest) (episodeOrderArg, error) {
+	if len(msg.EpisodeIds) == 0 && len(msg.ExpectedEpisodeIds) == 0 && (len(msg.EpisodePublicIds) > 0 || len(msg.ExpectedEpisodePublicIds) > 0) {
+		if err := validateDistinctPublicIDs(msg.EpisodePublicIds, "episode_ids", "episode"); err != nil {
+			return episodeOrderArg{}, err
+		}
+		if err := validateDistinctPublicIDs(msg.ExpectedEpisodePublicIds, "expected_episode_ids", "episode"); err != nil {
+			return episodeOrderArg{}, err
+		}
+		if !samePublicIDSet(msg.EpisodePublicIds, msg.ExpectedEpisodePublicIds) {
+			return episodeOrderArg{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_ids must be a permutation of expected_episode_ids"))
+		}
+		return episodeOrderArg{desiredPublic: msg.EpisodePublicIds, expectedPublic: msg.ExpectedEpisodePublicIds}, nil
+	}
+	desired, err := recordIDsArg(msg.EpisodeIds, "episode_ids", "episode")
+	if err != nil {
+		return episodeOrderArg{}, err
+	}
+	expected, err := recordIDsArg(msg.ExpectedEpisodeIds, "expected_episode_ids", "episode")
+	if err != nil {
+		return episodeOrderArg{}, err
+	}
+	if !samePublicIDSet(uuidStrings(desired), uuidStrings(expected)) {
+		return episodeOrderArg{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_ids must be a permutation of expected_episode_ids"))
+	}
+	return episodeOrderArg{desired: desired, expected: expected}, nil
+}
+
+// resolve reads the order against the series' current rows: whether it was
+// composed against them, and the desired order by id.
+func (arg episodeOrderArg) resolve(rows []dbmodels.ListEpisodesBySeriesForTenantRow) ([]uuid.UUID, bool) {
+	if arg.desired != nil {
+		return arg.desired, slices.Equal(listEpisodeIDs(rows), arg.expected)
+	}
+	current := make([]string, 0, len(rows))
+	idByPublicID := make(map[string]uuid.UUID, len(rows))
+	for _, row := range rows {
+		current = append(current, row.PublicID)
+		idByPublicID[row.PublicID] = row.ID
+	}
+	if !slices.Equal(current, arg.expectedPublic) {
+		return nil, false
+	}
+	desired := make([]uuid.UUID, 0, len(arg.desiredPublic))
+	for _, publicID := range arg.desiredPublic {
+		desired = append(desired, idByPublicID[publicID])
+	}
+	return desired, true
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	values := make([]string, 0, len(ids))
+	for _, id := range ids {
+		values = append(values, id.String())
+	}
+	return values
 }
 
 func (s *adminServer) ReorderEpisodes(
@@ -418,17 +486,13 @@ func (s *adminServer) ReorderEpisodes(
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
-	}
-	if err := validateDistinctPublicIDs(req.Msg.EpisodePublicIds, "episode_public_ids", "episode"); err != nil {
+	order, err := parseEpisodeOrderArg(req.Msg)
+	if err != nil {
 		return nil, err
 	}
-	if err := validateDistinctPublicIDs(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids", "episode"); err != nil {
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
 		return nil, err
-	}
-	if !samePublicIDSet(req.Msg.EpisodePublicIds, req.Msg.ExpectedEpisodePublicIds) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids must be a permutation of expected_episode_public_ids"))
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -438,45 +502,45 @@ func (s *adminServer) ReorderEpisodes(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	seriesID, err := q.LockSeriesByPublicIDForTenant(ctx, dbmodels.LockSeriesByPublicIDForTenantParams{
+	if _, err := q.LockSeriesByIDForTenant(ctx, dbmodels.LockSeriesByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: req.Msg.SeriesPublicId,
-	})
-	if err != nil {
+		ID:       seriesID,
+	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to lock series for reorder episodes", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
+		return nil, s.internalDBError(ctx, "failed to lock series for reorder episodes", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	// Read after the lock so READ COMMITTED sees rows committed while this
-	// transaction waited. Matching expected_episode_public_ids is what says
-	// the client's merge is still based on the current series order.
+	// transaction waited. Matching expected_episode_ids is what says the
+	// client's merge is still based on the current series order.
 	rows, err := q.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: req.Msg.SeriesPublicId,
+		SeriesID: seriesID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episodes for reorder", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
-	if !slices.Equal(listEpisodePublicIDs(rows), req.Msg.ExpectedEpisodePublicIds) {
+	desired, current := order.resolve(rows)
+	if !current {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode order has changed"))
 	}
 
-	for index, episodePublicID := range req.Msg.EpisodePublicIds {
-		if err := q.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
+	for index, episodeID := range desired {
+		if err := q.UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams{
 			TenantID:   tenant.ID,
-			PublicID:   req.Msg.SeriesPublicId,
-			PublicID_2: episodePublicID,
+			SeriesID:   seriesID,
+			ID:         episodeID,
 			OrderIndex: int32(index + 1),
 		}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to update episode order_index", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String(), "episode_public_id", episodePublicID)
+			return nil, s.internalDBError(ctx, "failed to update episode order_index", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String(), "episode_id", episodeID.String())
 		}
 	}
 
 	updatedRows, err := q.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: req.Msg.SeriesPublicId,
+		SeriesID: seriesID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episodes after reorder", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
@@ -534,6 +598,11 @@ func (s *adminServer) CreateEpisode(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 	}
 
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to begin create episode transaction", err, "tenant_id", tenant.ID.String())
@@ -541,15 +610,14 @@ func (s *adminServer) CreateEpisode(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	seriesID, err := q.LockSeriesByPublicIDForTenant(ctx, dbmodels.LockSeriesByPublicIDForTenantParams{
+	if _, err := q.LockSeriesByIDForTenant(ctx, dbmodels.LockSeriesByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: req.Msg.SeriesPublicId,
-	})
-	if err != nil {
+		ID:       seriesID,
+	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to lock series for create episode", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
+		return nil, s.internalDBError(ctx, "failed to lock series for create episode", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	// An unset order_index means "append". Resolving it here keeps the client
@@ -561,10 +629,10 @@ func (s *adminServer) CreateEpisode(
 	if orderIndex == 0 {
 		maxOrderIndex, maxErr := q.GetMaxEpisodeOrderIndexBySeriesForTenant(ctx, dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenantParams{
 			TenantID: tenant.ID,
-			PublicID: req.Msg.SeriesPublicId,
+			SeriesID: seriesID,
 		})
 		if maxErr != nil {
-			return nil, s.internalDBError(ctx, "failed to resolve episode order_index", maxErr, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
+			return nil, s.internalDBError(ctx, "failed to resolve episode order_index", maxErr, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 		}
 		if maxOrderIndex == math.MaxInt32 {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode order_index limit reached"))
@@ -588,7 +656,7 @@ func (s *adminServer) CreateEpisode(
 		})
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to create episode", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
+		return nil, s.internalDBError(ctx, "failed to create episode", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 	status := "draft"
 	if scheduledAt.Valid {
@@ -628,7 +696,7 @@ func (s *adminServer) CreateEpisode(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
-	episode := &publirattypesv1.Episode{PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
+	episode := &publirattypesv1.Episode{Id: base.ID.String(), PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
 	if listing.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = listing.ReadingPeriodHours.Int32
 	}
@@ -668,10 +736,21 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
+	requestEpisodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
+	}
+	seriesID := uuid.Nil
+	if strings.TrimSpace(req.Msg.SeriesId) != "" || strings.TrimSpace(req.Msg.SeriesPublicId) != "" {
+		seriesID, err = s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+		if err != nil {
+			return nil, err
+		}
+	}
 	items, episodeID, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorderFor(ctx)}.Upload(ctx, episodeimages.UploadRequest{
 		Tenant:          tenant,
-		SeriesPublicID:  req.Msg.SeriesPublicId,
-		EpisodePublicID: req.Msg.EpisodePublicId,
+		SeriesID:        seriesID,
+		EpisodeID:       requestEpisodeID,
 		Images:          req.Msg.Images,
 		ArchiveData:     req.Msg.ArchiveData,
 		ArchiveFilename: req.Msg.ArchiveFilename,
@@ -696,11 +775,11 @@ func (s *adminServer) ListEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
@@ -731,19 +810,19 @@ func (s *adminServer) ReorderEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	if len(req.Msg.ImageIds) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids are required"))
 	}
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode for reorder images", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for reorder images", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
@@ -854,16 +933,20 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err != nil {
 		return nil, err
 	}
-	err = s.queriesFor(ctx).UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId, ScheduledAt: scheduledAt})
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
+		return nil, err
 	}
-	ep, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
+	err = s.queriesFor(ctx).UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+	}
+	ep, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
+		return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -878,7 +961,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		})
 	}
 	s.revalidateTags(ctx, tenant.ID, episodeScheduleRevalidateTags(tenant.ID.String()))
-	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(ep)
 	if err := setEpisodeAvailability(mapped, ep.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
 	}
@@ -896,9 +979,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	storedReadingDirection, err := protomapper.ReadingDirectionOverrideToStored(req.Msg.ReadingDirection)
 	if err != nil {
@@ -912,12 +995,12 @@ func (s *adminServer) UpdateEpisodeLayout(
 		storedSpreadStartIndex = sql.NullInt32{Int32: *req.Msg.SpreadStartIndex, Valid: true}
 	}
 
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode for layout update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for layout update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	// Pages are only ever added to an episode, so a count read outside a lock
 	// can fall short of the truth but never exceed it: a race refuses an index
@@ -940,11 +1023,11 @@ func (s *adminServer) UpdateEpisodeLayout(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to update episode layout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get episode after layout update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(updated)
 	readingDirection, spreadStartIndex, err := episodeReadingLayout(mapped, protomapper.StoredReadingLayout{
 		ReadingDirection:       updated.ReadingDirection,
 		SpreadStartIndex:       updated.SpreadStartIndex,
@@ -989,21 +1072,21 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	availability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.Availability)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 	}
 
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode for availability update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if err := s.queriesFor(ctx).UpdateEpisodeAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodeAvailabilityByIDForTenantParams{
 		TenantID:     tenant.ID,
@@ -1012,11 +1095,11 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to update episode availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get episode after availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(updated)
 	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
@@ -1048,21 +1131,21 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.PurchaseAvailability)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 	}
 
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode for purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if err := s.queriesFor(ctx).UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx, dbmodels.UpdateEpisodePurchaseAvailabilityByIDForTenantParams{
 		TenantID:             tenant.ID,
@@ -1071,11 +1154,11 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to update episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	updated, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get episode after purchase availability update", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	mapped := protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(updated)
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(updated)
 	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
 		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}

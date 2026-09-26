@@ -73,10 +73,10 @@ WHERE g.tenant_id = $1
     AND g.id = $2
 LIMIT 1;
 
--- name: ListGenresByPublicIDsForTenant :many
+-- name: ListGenresByIDsForTenant :many
 -- Resolves the genres a series form assigned. The caller compares the row
--- count against what it asked for, so a public_id of another tenant reads as
--- a genre that does not exist.
+-- count against what it asked for, so an id of another tenant reads as a
+-- genre that does not exist.
 SELECT g.id,
     g.public_id,
     g.name,
@@ -84,7 +84,10 @@ SELECT g.id,
     g.display_order
 FROM genres g
 WHERE g.tenant_id = sqlc.arg('tenant_id')
-    AND g.public_id = ANY(sqlc.arg('public_ids')::text[])
+    AND (
+        g.id = ANY(sqlc.arg('ids')::uuid[])
+        OR g.public_id = ANY(sqlc.arg('public_ids')::text[])
+    )
 ORDER BY g.display_order ASC,
     g.id ASC;
 

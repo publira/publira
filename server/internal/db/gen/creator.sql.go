@@ -411,7 +411,7 @@ func (q *Queries) GetPublishedCreatorForTenant(ctx context.Context, arg GetPubli
 	return i, err
 }
 
-const ListCreatorsByPublicIDsForTenant = `-- name: ListCreatorsByPublicIDsForTenant :many
+const ListCreatorsByIDsForTenant = `-- name: ListCreatorsByIDsForTenant :many
 SELECT id,
     tenant_id,
     public_id,
@@ -420,15 +420,19 @@ SELECT id,
     created_at
 FROM creators
 WHERE tenant_id = $1
-    AND public_id = ANY($2::varchar[])
+    AND (
+        id = ANY($2::uuid[])
+        OR public_id = ANY($3::varchar[])
+    )
 `
 
-type ListCreatorsByPublicIDsForTenantParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	PublicIds []string  `json:"public_ids"`
+type ListCreatorsByIDsForTenantParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	Ids       []uuid.UUID `json:"ids"`
+	PublicIds []string    `json:"public_ids"`
 }
 
-type ListCreatorsByPublicIDsForTenantRow struct {
+type ListCreatorsByIDsForTenantRow struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`
 	PublicID    string         `json:"public_id"`
@@ -437,15 +441,15 @@ type ListCreatorsByPublicIDsForTenantRow struct {
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
-func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListCreatorsByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+func (q *Queries) ListCreatorsByIDsForTenant(ctx context.Context, arg ListCreatorsByIDsForTenantParams) ([]ListCreatorsByIDsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListCreatorsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCreatorsByPublicIDsForTenantRow
+	var items []ListCreatorsByIDsForTenantRow
 	for rows.Next() {
-		var i ListCreatorsByPublicIDsForTenantRow
+		var i ListCreatorsByIDsForTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

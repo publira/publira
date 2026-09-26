@@ -357,11 +357,13 @@ func (q *Queries) DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeI
 
 const ListEpisodeCreatorsByEpisodeIDs = `-- name: ListEpisodeCreatorsByEpisodeIDs :many
 SELECT ec.episode_id,
+    c.id AS creator_id,
     c.public_id,
     c.name,
     c.profile_text,
     c.icon_image_id,
     ci.updated_at AS icon_image_updated_at,
+    cr.id AS role_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     ec.display_order,
@@ -380,11 +382,13 @@ ORDER BY ec.episode_id ASC,
 
 type ListEpisodeCreatorsByEpisodeIDsRow struct {
 	EpisodeID          uuid.UUID      `json:"episode_id"`
+	CreatorID          uuid.UUID      `json:"creator_id"`
 	PublicID           string         `json:"public_id"`
 	Name               string         `json:"name"`
 	ProfileText        sql.NullString `json:"profile_text"`
 	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
 	IconImageUpdatedAt sql.NullTime   `json:"icon_image_updated_at"`
+	RoleID             uuid.NullUUID  `json:"role_id"`
 	RolePublicID       sql.NullString `json:"role_public_id"`
 	RoleName           sql.NullString `json:"role_name"`
 	DisplayOrder       int32          `json:"display_order"`
@@ -411,11 +415,13 @@ func (q *Queries) ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeId
 		var i ListEpisodeCreatorsByEpisodeIDsRow
 		if err := rows.Scan(
 			&i.EpisodeID,
+			&i.CreatorID,
 			&i.PublicID,
 			&i.Name,
 			&i.ProfileText,
 			&i.IconImageID,
 			&i.IconImageUpdatedAt,
+			&i.RoleID,
 			&i.RolePublicID,
 			&i.RoleName,
 			&i.DisplayOrder,

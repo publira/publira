@@ -27,7 +27,7 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
 	predecessorID := uuid.Must(uuid.NewV7())
 	successorID := uuid.Must(uuid.NewV7())
 	roleID := uuid.Must(uuid.NewV7())
@@ -35,31 +35,31 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	const episodeCount = 800
-	episodePublicIDs := make([]string, 0, episodeCount)
+	episodeIDs := make([]string, 0, episodeCount)
 	lockedEpisodes := sqlmock.NewRows([]string{"id", "public_id"})
 	replacedEpisodes := sqlmock.NewRows([]string{"episode_id"})
 	for index := range episodeCount {
 		publicID := fmt.Sprintf("EP%09d", index)
 		episodeID := uuid.Must(uuid.NewV7())
-		episodePublicIDs = append(episodePublicIDs, publicID)
+		episodeIDs = append(episodeIDs, episodeID.String())
 		lockedEpisodes.AddRow(episodeID, publicID)
 		replacedEpisodes.AddRow(episodeID)
 	}
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(predecessorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now).
 			AddRow(successorID, tenantID, "CREATOR002", "Hana Kubo", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Artist", int32(2)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
-		WithArgs(tenantID, "SERIES000001").
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByPublicIDsForTenantAndSeries)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES000001"))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByIDsForTenantAndSeries)).
 		WillReturnRows(lockedEpisodes)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesHoldingBothEpisodeCredits)).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}))
@@ -73,13 +73,13 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:   "SERIES000001",
-		EpisodePublicIds: episodePublicIDs,
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		EpisodeIds: episodeIDs,
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Replace{
 			Replace: &publiraadminv1.ReplaceEpisodeCreditOperation{
-				From: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
-				To:   &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR002", RolePublicId: "ROLE00000001"},
+				From: &publiraadminv1.EpisodeCreatorCredit{CreatorId: predecessorID.String(), RoleId: roleID.String()},
+				To:   &publiraadminv1.EpisodeCreatorCredit{CreatorId: successorID.String(), RoleId: roleID.String()},
 			},
 		},
 	})
@@ -114,9 +114,9 @@ func TestBulkEditEpisodeCreditsRefusesARequestWithNoOperation(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:   "SERIES000001",
-		EpisodePublicIds: []string{"EP000000001"},
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		EpisodeIds: []string{episodeTestID(1).String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -132,7 +132,7 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
 	episodeID := uuid.Must(uuid.NewV7())
 	creatorID := uuid.Must(uuid.NewV7())
 	roleID := uuid.Must(uuid.NewV7())
@@ -141,17 +141,17 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "Ren Takahashi", nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByPublicIDsForTenant)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, "ROLE00000001", "Artist", int32(2)))
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
-		WithArgs(tenantID, "SERIES000001").
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByPublicIDsForTenantAndSeries)).
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(seriesID, "SERIES000001"))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodesByIDsForTenantAndSeries)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(episodeID, "EP000000001"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesExceedingShareAfterBulkSet)).
 		WithArgs(tenantID, sqlmock.AnyArg(), creatorID, roleID, int32(6000)).
@@ -160,12 +160,12 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:   "SERIES000001",
-		EpisodePublicIds: []string{"EP000000001"},
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		EpisodeIds: []string{episodeTestID(1).String()},
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_SetShare{
 			SetShare: &publiraadminv1.SetEpisodeCreditShareOperation{
-				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001", ShareBps: 6000},
+				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: creatorID.String(), RoleId: roleID.String(), ShareBps: 6000},
 			},
 		},
 	})
@@ -194,12 +194,12 @@ func TestBulkEditEpisodeCreditsRefusesARepeatedEpisode(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:   "SERIES000001",
-		EpisodePublicIds: []string{"EP000000001", "EP000000001"},
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		EpisodeIds: []string{episodeTestID(1).String(), episodeTestID(1).String()},
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
 			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{
-				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
+				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: uuid.Must(uuid.NewV7()).String(), RoleId: uuid.Must(uuid.NewV7()).String()},
 			},
 		},
 	})
@@ -225,9 +225,9 @@ func TestBulkEditEpisodeCreditsRefusesARangePastTheMaximum(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	const episodeCount = maxBulkEpisodeCreditEpisodes + 1
-	episodePublicIDs := make([]string, 0, episodeCount)
-	for index := range episodeCount {
-		episodePublicIDs = append(episodePublicIDs, fmt.Sprintf("EP%09d", index))
+	episodeIDs := make([]string, 0, episodeCount)
+	for range episodeCount {
+		episodeIDs = append(episodeIDs, uuid.Must(uuid.NewV7()).String())
 	}
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -235,12 +235,12 @@ func TestBulkEditEpisodeCreditsRefusesARangePastTheMaximum(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:   "SERIES000001",
-		EpisodePublicIds: episodePublicIDs,
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		EpisodeIds: episodeIDs,
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
 			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{
-				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorPublicId: "CREATOR001", RolePublicId: "ROLE00000001"},
+				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: uuid.Must(uuid.NewV7()).String(), RoleId: uuid.Must(uuid.NewV7()).String()},
 			},
 		},
 	})

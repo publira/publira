@@ -46,10 +46,10 @@ func TestUpdateEpisodePublishScheduleSetsAndClearsTheSchedule(t *testing.T) {
 	queries := dbmodels.New(pg.DB)
 	scheduledAt := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second)
 
-	if err := queries.UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{
+	if err := queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
 		ScheduledAt: sql.NullTime{Time: scheduledAt, Valid: true},
 		TenantID:    tenant.ID,
-		PublicID:    draft.PublicID,
+		ID:          draft.ID,
 	}); err != nil {
 		t.Fatalf("schedule the draft: %v", err)
 	}
@@ -58,9 +58,9 @@ func TestUpdateEpisodePublishScheduleSetsAndClearsTheSchedule(t *testing.T) {
 		t.Fatalf("scheduled draft = %+v, want scheduled at %s and never published", got, scheduledAt)
 	}
 
-	if err := queries.UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{
+	if err := queries.UpdateEpisodePublishScheduleByIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: published.PublicID,
+		ID:       published.ID,
 	}); err != nil {
 		t.Fatalf("clear the published episode's schedule: %v", err)
 	}

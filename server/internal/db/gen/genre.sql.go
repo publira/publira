@@ -298,7 +298,7 @@ func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeat
 	return items, nil
 }
 
-const ListGenresByPublicIDsForTenant = `-- name: ListGenresByPublicIDsForTenant :many
+const ListGenresByIDsForTenant = `-- name: ListGenresByIDsForTenant :many
 SELECT g.id,
     g.public_id,
     g.name,
@@ -306,17 +306,21 @@ SELECT g.id,
     g.display_order
 FROM genres g
 WHERE g.tenant_id = $1
-    AND g.public_id = ANY($2::text[])
+    AND (
+        g.id = ANY($2::uuid[])
+        OR g.public_id = ANY($3::text[])
+    )
 ORDER BY g.display_order ASC,
     g.id ASC
 `
 
-type ListGenresByPublicIDsForTenantParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	PublicIds []string  `json:"public_ids"`
+type ListGenresByIDsForTenantParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	Ids       []uuid.UUID `json:"ids"`
+	PublicIds []string    `json:"public_ids"`
 }
 
-type ListGenresByPublicIDsForTenantRow struct {
+type ListGenresByIDsForTenantRow struct {
 	ID           uuid.UUID `json:"id"`
 	PublicID     string    `json:"public_id"`
 	Name         string    `json:"name"`
@@ -325,17 +329,17 @@ type ListGenresByPublicIDsForTenantRow struct {
 }
 
 // Resolves the genres a series form assigned. The caller compares the row
-// count against what it asked for, so a public_id of another tenant reads as
-// a genre that does not exist.
-func (q *Queries) ListGenresByPublicIDsForTenant(ctx context.Context, arg ListGenresByPublicIDsForTenantParams) ([]ListGenresByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListGenresByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+// count against what it asked for, so an id of another tenant reads as a
+// genre that does not exist.
+func (q *Queries) ListGenresByIDsForTenant(ctx context.Context, arg ListGenresByIDsForTenantParams) ([]ListGenresByIDsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListGenresByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListGenresByPublicIDsForTenantRow
+	var items []ListGenresByIDsForTenantRow
 	for rows.Next() {
-		var i ListGenresByPublicIDsForTenantRow
+		var i ListGenresByIDsForTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,

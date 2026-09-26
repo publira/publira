@@ -34,8 +34,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	scheduledAtJST := now.Add(2 * time.Hour).In(time.FixedZone("JST", 9*60*60)).Truncate(time.Second)
 	scheduledAtUTC := scheduledAtJST.UTC()
@@ -44,7 +44,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
@@ -59,7 +59,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:     "SERIES001",
+		SeriesId:           testSeriesID.String(),
 		Title:              "Episode 1",
 		OrderIndex:         1,
 		Price:              100,
@@ -97,17 +97,17 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenant)).
-		WithArgs(tenantID, "SERIES001").
+		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(30)))
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 31", int32(31), now, "EP031")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
@@ -122,9 +122,9 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId: "SERIES001",
-		Title:          "Episode 31",
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId: testSeriesID.String(),
+		Title:    "Episode 31",
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -143,15 +143,15 @@ func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
@@ -160,10 +160,10 @@ func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId: "SERIES001",
-		Title:          "Episode 1",
-		OrderIndex:     1,
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:   testSeriesID.String(),
+		Title:      "Episode 1",
+		OrderIndex: 1,
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -187,69 +187,69 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-title",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "  ",
-				OrderIndex:     1,
+				Tenant:     &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:   testSeriesID.String(),
+				Title:      "  ",
+				OrderIndex: 1,
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "invalid-scheduled-at",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "Episode",
-				OrderIndex:     1,
-				ScheduledAt:    "invalid-date",
+				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:    testSeriesID.String(),
+				Title:       "Episode",
+				OrderIndex:  1,
+				ScheduledAt: "invalid-date",
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "past-scheduled-at",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "Episode",
-				OrderIndex:     1,
-				ScheduledAt:    "2000-01-01T00:00:00Z",
+				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:    testSeriesID.String(),
+				Title:       "Episode",
+				OrderIndex:  1,
+				ScheduledAt: "2000-01-01T00:00:00Z",
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "boundary-scheduled-at-now",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "Episode",
-				OrderIndex:     1,
-				ScheduledAt:    time.Now().UTC().Format(time.RFC3339),
+				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:    testSeriesID.String(),
+				Title:       "Episode",
+				OrderIndex:  1,
+				ScheduledAt: time.Now().UTC().Format(time.RFC3339),
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "negative-order-index",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "Episode",
-				OrderIndex:     -1,
+				Tenant:     &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:   testSeriesID.String(),
+				Title:      "Episode",
+				OrderIndex: -1,
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "series-cross-tenant-or-not-found",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES_OTHER_TENANT",
-				Title:          "Episode",
-				OrderIndex:     1,
+				Tenant:     &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:   testOtherSeriesID.String(),
+				Title:      "Episode",
+				OrderIndex: 1,
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
-					WithArgs(tenantID, "SERIES_OTHER_TENANT").
-					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+					WithArgs(tenantID, testOtherSeriesID).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
 				mock.ExpectRollback()
 			},
 			wantCode: connect.CodeNotFound,
@@ -257,15 +257,15 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "order-index-limit",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId: "SERIES001",
-				Title:          "Episode",
+				Tenant:   &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId: testSeriesID.String(),
+				Title:    "Episode",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectBegin()
-				expectLockSeriesByPublicID(mock, tenantID, "SERIES001", uuid.Must(uuid.NewV7()))
+				expectLockSeriesByID(mock, tenantID, testSeriesID)
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenant)).
-					WithArgs(tenantID, "SERIES001").
+					WithArgs(tenantID, testSeriesID).
 					WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(math.MaxInt32)))
 				mock.ExpectRollback()
 			},
@@ -308,24 +308,23 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 func TestReorderEpisodesSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	ids := []uuid.UUID{episodeTestID(1), episodeTestID(2), episodeTestID(3)}
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
-	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
+	expectListEpisodesBySeries(mock, tenantID, testSeriesID, addEpisodeRow(
 		addEpisodeRow(
 			addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
 			ids[1], "EP002", 2,
 		),
 		ids[2], "EP003", 3,
 	))
-	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP003", 1)
-	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP002", 2)
-	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP001", 3)
-	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+	expectUpdateEpisodeOrderIndex(mock, tenantID, testSeriesID, episodeTestID(3), 1)
+	expectUpdateEpisodeOrderIndex(mock, tenantID, testSeriesID, episodeTestID(2), 2)
+	expectUpdateEpisodeOrderIndex(mock, tenantID, testSeriesID, episodeTestID(1), 3)
+	expectListEpisodesBySeries(mock, tenantID, testSeriesID, addEpisodeRow(
 		addEpisodeRow(
 			addEpisodeRow(episodeColumns(), ids[2], "EP003", 1),
 			ids[1], "EP002", 2,
@@ -335,10 +334,10 @@ func TestReorderEpisodesSuccess(t *testing.T) {
 	mock.ExpectCommit()
 
 	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:           "SERIES001",
-		EpisodePublicIds:         []string{"EP003", "EP002", "EP001"},
-		ExpectedEpisodePublicIds: []string{"EP001", "EP002", "EP003"},
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:           testSeriesID.String(),
+		EpisodeIds:         []string{episodeTestID(3).String(), episodeTestID(2).String(), episodeTestID(1).String()},
+		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String(), episodeTestID(3).String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -355,16 +354,15 @@ func TestReorderEpisodesSuccess(t *testing.T) {
 func TestReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	ids := []uuid.UUID{episodeTestID(1), episodeTestID(2), episodeTestID(3)}
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
 	// The client still thinks the series is EP001, EP002, EP003, but another
 	// write has already swapped the first two.
-	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+	expectListEpisodesBySeries(mock, tenantID, testSeriesID, addEpisodeRow(
 		addEpisodeRow(
 			addEpisodeRow(episodeColumns(), ids[1], "EP002", 1),
 			ids[0], "EP001", 2,
@@ -374,10 +372,10 @@ func TestReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 	mock.ExpectRollback()
 
 	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:           "SERIES001",
-		EpisodePublicIds:         []string{"EP003", "EP002", "EP001"},
-		ExpectedEpisodePublicIds: []string{"EP001", "EP002", "EP003"},
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:           testSeriesID.String(),
+		EpisodeIds:         []string{episodeTestID(3).String(), episodeTestID(2).String(), episodeTestID(1).String()},
+		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String(), episodeTestID(3).String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -391,27 +389,26 @@ func TestReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 func TestReorderEpisodesRollsBackWhenUpdateFails(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	ids := []uuid.UUID{episodeTestID(1), episodeTestID(2)}
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectBegin()
-	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
-	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
+	expectListEpisodesBySeries(mock, tenantID, testSeriesID, addEpisodeRow(
 		addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
 		ids[1], "EP002", 2,
 	))
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries)).
-		WithArgs(tenantID, "SERIES001", "EP002", int32(1)).
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeOrderIndexByIDForTenantAndSeries)).
+		WithArgs(int32(1), tenantID, testSeriesID, episodeTestID(2)).
 		WillReturnError(errors.New("order update failed"))
 	mock.ExpectRollback()
 
 	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:           "SERIES001",
-		EpisodePublicIds:         []string{"EP002", "EP001"},
-		ExpectedEpisodePublicIds: []string{"EP001", "EP002"},
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:           testSeriesID.String(),
+		EpisodeIds:         []string{episodeTestID(2).String(), episodeTestID(1).String()},
+		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -432,45 +429,45 @@ func TestReorderEpisodesValidationAndBoundary(t *testing.T) {
 		{
 			name: "expected-required",
 			request: &publiraadminv1.ReorderEpisodesRequest{
-				Tenant:           &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:   "SERIES001",
-				EpisodePublicIds: []string{"EP001"},
+				Tenant:     &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:   testSeriesID.String(),
+				EpisodeIds: []string{episodeTestID(1).String()},
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "not-a-permutation",
 			request: &publiraadminv1.ReorderEpisodesRequest{
-				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:           "SERIES001",
-				EpisodePublicIds:         []string{"EP001", "EP002"},
-				ExpectedEpisodePublicIds: []string{"EP001", "EP003"},
+				Tenant:             &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:           testSeriesID.String(),
+				EpisodeIds:         []string{episodeTestID(1).String(), episodeTestID(2).String()},
+				ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(3).String()},
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "duplicate-desired",
 			request: &publiraadminv1.ReorderEpisodesRequest{
-				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:           "SERIES001",
-				EpisodePublicIds:         []string{"EP001", "EP001"},
-				ExpectedEpisodePublicIds: []string{"EP001", "EP002"},
+				Tenant:             &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:           testSeriesID.String(),
+				EpisodeIds:         []string{episodeTestID(1).String(), episodeTestID(1).String()},
+				ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String()},
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "series-not-found",
 			request: &publiraadminv1.ReorderEpisodesRequest{
-				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:           "SERIES_MISSING",
-				EpisodePublicIds:         []string{"EP001"},
-				ExpectedEpisodePublicIds: []string{"EP001"},
+				Tenant:             &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:           testOtherSeriesID.String(),
+				EpisodeIds:         []string{episodeTestID(1).String()},
+				ExpectedEpisodeIds: []string{episodeTestID(1).String()},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByPublicIDForTenant)).
-					WithArgs(tenantID, "SERIES_MISSING").
-					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
+					WithArgs(tenantID, testOtherSeriesID).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
 				mock.ExpectRollback()
 			},
 			wantCode: connect.CodeNotFound,
@@ -506,16 +503,13 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -548,8 +542,8 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
 			{Filename: "002.jpg", ContentType: "image/jpeg", Data: oneByOneJPEG, DisplayOrder: 1},
@@ -580,15 +574,15 @@ func TestListEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	imageID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
@@ -598,8 +592,8 @@ func TestListEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -619,7 +613,7 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	image1ID := uuid.Must(uuid.NewV7())
 	image2ID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
@@ -628,8 +622,8 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 	imageColumns := []string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
@@ -651,9 +645,9 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ReorderEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
-		ImageIds:        []string{image2ID.String(), image1ID.String()},
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		ImageIds:  []string{image2ID.String(), image1ID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -682,37 +676,34 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		{
 			name: "images-required",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				EpisodePublicId: "EPISODE001",
+				Tenant:    &publirattypesv1.TenantContext{TenantId: ""},
+				EpisodeId: testEpisodeID.String(),
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "episode-not-found",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				EpisodePublicId: "EPISODE_NOT_FOUND",
-				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
+				Tenant:    &publirattypesv1.TenantContext{TenantId: ""},
+				EpisodeId: testOtherEpisodeID.String(),
+				Images:    []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-					WithArgs(tenantID, "EPISODE_NOT_FOUND").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}))
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeSeriesByIDForTenant)).
+					WithArgs(tenantID, testOtherEpisodeID).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "series_id"}))
 			},
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name: "invalid-content-type",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				EpisodePublicId: "EPISODE001",
-				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
+				Tenant:    &publirattypesv1.TenantContext{TenantId: ""},
+				EpisodeId: testEpisodeID.String(),
+				Images:    []*publiraadminv1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-					WithArgs(tenantID, "EPISODE001").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+				expectEpisodeSeriesLookup(mock, tenantID, testEpisodeID, testSeriesID)
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 					WithArgs(sqlmock.AnyArg()).
 					WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -758,16 +749,13 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -799,8 +787,8 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
 		},
@@ -826,16 +814,13 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
-		WithArgs(tenantID, "SERIES001", "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -864,9 +849,9 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId:  "SERIES001",
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:  testSeriesID.String(),
+		EpisodeId: testEpisodeID.String(),
 		ArchiveData: makeZipArchive(t,
 			archiveEntry{name: "010.jpg", data: oneByOneJPEG},
 			archiveEntry{name: "002.png", data: oneByOnePNG},
@@ -896,19 +881,19 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-zip",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:  "SERIES001",
-				EpisodePublicId: "EPISODE001",
-				ArchiveData:     []byte("not-a-zip"),
+				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:    testSeriesID.String(),
+				EpisodeId:   testEpisodeID.String(),
+				ArchiveData: []byte("not-a-zip"),
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "invalid-path",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:  "SERIES001",
-				EpisodePublicId: "EPISODE001",
+				Tenant:    &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:  testSeriesID.String(),
+				EpisodeId: testEpisodeID.String(),
 				ArchiveData: makeZipArchive(t,
 					archiveEntry{name: "../001.png", data: oneByOnePNG},
 				),
@@ -918,17 +903,15 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 		{
 			name: "series-episode-mismatch",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesPublicId:  "SERIES_OTHER",
-				EpisodePublicId: "EPISODE001",
+				Tenant:    &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesId:  testOtherSeriesID.String(),
+				EpisodeId: testEpisodeID.String(),
 				ArchiveData: makeZipArchive(t,
 					archiveEntry{name: "001.png", data: oneByOnePNG},
 				),
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
-					WithArgs(tenantID, "SERIES_OTHER", "EPISODE001").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}))
+				expectEpisodeSeriesLookup(mock, tenantID, testEpisodeID, testSeriesID)
 			},
 			wantCode: connect.CodeNotFound,
 		},
@@ -1034,13 +1017,13 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				scheduledAt, _ := time.Parse(time.RFC3339, "2030-01-01T10:00:00+09:00")
 				normalized := scheduledAt.UTC()
-				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenant)).
-					WithArgs(sql.NullTime{Time: normalized, Valid: true}, tenantID, "EPISODE001").
+				mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePublishScheduleByIDForTenant)).
+					WithArgs(sql.NullTime{Time: normalized, Valid: true}, tenantID, testEpisodeID).
 					WillReturnResult(sqlmock.NewResult(0, 1))
-				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-					WithArgs(tenantID, "EPISODE001").
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+					WithArgs(tenantID, testEpisodeID).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil, nil, nil, nil, nil, nil, nil, "all"))
+						AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil, nil, nil, nil, nil, nil, nil, "all"))
 				mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
@@ -1066,9 +1049,9 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(&publiraadminv1.UpdateEpisodePublishScheduleRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				EpisodePublicId: "EPISODE001",
-				ScheduledAt:     tc.scheduled,
+				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				EpisodeId:   testEpisodeID.String(),
+				ScheduledAt: tc.scheduled,
 			})
 			req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -1148,8 +1131,8 @@ func newEpisodeClient(
 
 func newListEpisodesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListEpisodesRequest] {
 	req := connect.NewRequest(&publiraadminv1.ListEpisodesRequest{
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId: "SERIES001",
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId: testSeriesID.String(),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	return req
@@ -1165,7 +1148,7 @@ func episodePublicIDs(items []*publirattypesv1.Episode) []string {
 
 // episodeTestListKey names the episode list of SERIES001, the series every list
 // request here asks for.
-var episodeTestListKey = pagination.NewListKey("order_index_asc").Value("series_public_id", "SERIES001")
+var episodeTestListKey = pagination.NewListKey("order_index_asc").Value("series_id", testSeriesID.String())
 
 func encodeEpisodeTestToken(direction pagination.Direction, orderIndex int32, id uuid.UUID) string {
 	return episodeTestListKey.Encode(direction, strconv.FormatInt(int64(orderIndex), 10), id.String())
@@ -1183,7 +1166,7 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
-		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(3)).
+		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(3)).
 		WillReturnRows(addEpisodeRow(
 			addEpisodeRow(
 				addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
@@ -1208,7 +1191,7 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
-	wantKeys := []string{"order_index_asc+series_public_id:SERIES001", "2", ids[1].String()}
+	wantKeys := []string{"order_index_asc+series_id:" + testSeriesID.String(), "2", ids[1].String()}
 	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
 	}
@@ -1224,7 +1207,7 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
-		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
+		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP001", 1))
 
 	resp, err := client.ListEpisodes(context.Background(), newListEpisodesRequest(tenantID, sessionToken))
@@ -1240,6 +1223,36 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// A client that still names the series by public_id is answered the same
+// page, the id resolved from it first.
+func TestListEpisodesResolvesASeriesPublicID(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesIDByPublicIDForTenant)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(testSeriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
+		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
+		WillReturnRows(addEpisodeRow(episodeColumns(), episodeTestID(1), "EP001", 1))
+
+	req := connect.NewRequest(&publiraadminv1.ListEpisodesRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	resp, err := client.ListEpisodes(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListEpisodes: %v", err)
+	}
+	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].Id != episodeTestID(1).String() {
+		t.Fatalf("episodes = %v, want EP001 with its id", resp.Msg.Episodes)
+	}
+	assertExpectations(t, mock)
+}
+
 // The last page is reachable by following next_token, without an offset.
 func TestListEpisodesFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
@@ -1249,7 +1262,7 @@ func TestListEpisodesFollowsNextToken(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
-		WithArgs(tenantID, "SERIES001", boundaryID, false, int32(2), int32(3)).
+		WithArgs(tenantID, testSeriesID, boundaryID, false, int32(2), int32(3)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP003", 3))
 
 	req := newListEpisodesRequest(tenantID, sessionToken)
@@ -1279,7 +1292,7 @@ func TestListEpisodesFollowsPreviousTokenBackwards(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantDesc)).
-		WithArgs(tenantID, "SERIES001", boundaryID, false, int32(3), int32(3)).
+		WithArgs(tenantID, testSeriesID, boundaryID, false, int32(3), int32(3)).
 		WillReturnRows(addEpisodeRow(
 			addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP002", 2),
 			uuid.Must(uuid.NewV7()), "EP001", 1,
@@ -1337,7 +1350,7 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "SERIES001", boundaryID, false, int32(2), int32(21)).
+				WithArgs(tenantID, testSeriesID, boundaryID, false, int32(2), int32(21)).
 				WillReturnRows(episodeColumns())
 
 			req := newListEpisodesRequest(tenantID, sessionToken)
@@ -1366,7 +1379,7 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryRows = addEpisodeRow(recoveryRows, uuid.Must(uuid.NewV7()), "EP003", 3)
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
-				WithArgs(tenantID, "SERIES001", boundaryID, true, int32(2), int32(21)).
+				WithArgs(tenantID, testSeriesID, boundaryID, true, int32(2), int32(21)).
 				WillReturnRows(recoveryRows)
 
 			recoveryReq := newListEpisodesRequest(tenantID, sessionToken)
@@ -1413,7 +1426,7 @@ func TestListEpisodesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, "SERIES001", boundaryID, true, int32(2), int32(21)).
+				WithArgs(tenantID, testSeriesID, boundaryID, true, int32(2), int32(21)).
 				WillReturnRows(episodeColumns())
 
 			req := newListEpisodesRequest(tenantID, sessionToken)
@@ -1474,7 +1487,7 @@ func TestListEpisodesInvalidToken(t *testing.T) {
 }
 
 func TestListEpisodesRejectsAnotherSeriesToken(t *testing.T) {
-	otherSeries := pagination.NewListKey("order_index_asc").Value("series_public_id", "SERIES002")
+	otherSeries := pagination.NewListKey("order_index_asc").Value("series_id", uuid.Must(uuid.NewV7()).String())
 	boundaryID := uuid.Must(uuid.NewV7())
 	tests := map[string]string{
 		"boundary":        otherSeries.Encode(pagination.Forward, "2", boundaryID.String()),
@@ -1507,7 +1520,7 @@ func TestListEpisodesDatabaseErrorIsHidden(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
-		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
+		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
 
 	_, err := client.ListEpisodes(context.Background(), newListEpisodesRequest(tenantID, sessionToken))
@@ -1753,16 +1766,13 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -1773,8 +1783,8 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "page.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 480, 270), DisplayOrder: 0},
 		},
@@ -1814,16 +1824,13 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
+	episodeID := testEpisodeID
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil, nil, nil, nil, nil, nil, nil, "all"))
+	expectEpisodeSeriesLookup(mock, tenantID, episodeID, testSeriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMaxEpisodeImageDisplayOrderByEpisodeID)).
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
@@ -1846,8 +1853,8 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
 		},

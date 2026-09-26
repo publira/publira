@@ -8,11 +8,13 @@
 -- existed states none, and it is still a credit. Those come last, which is
 -- where a name with nothing said about it belongs.
 SELECT ec.episode_id,
+    c.id AS creator_id,
     c.public_id,
     c.name,
     c.profile_text,
     c.icon_image_id,
     ci.updated_at AS icon_image_updated_at,
+    cr.id AS role_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     ec.display_order,

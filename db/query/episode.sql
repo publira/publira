@@ -102,7 +102,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2
+    AND e.series_id = $2
 ORDER BY e.order_index ASC,
     e.id ASC;
 
@@ -127,7 +127,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.public_id = sqlc.arg('public_id')
+    AND e.series_id = sqlc.arg('series_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -159,7 +159,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.public_id = sqlc.arg('public_id')
+    AND e.series_id = sqlc.arg('series_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -180,18 +180,16 @@ SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2;
+    AND e.series_id = $2;
 
--- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
+-- name: UpdateEpisodeOrderIndexByIDForTenantAndSeries :exec
 UPDATE episodes e
-SET order_index = $4
-FROM series s
-WHERE e.series_id = s.id
-    AND s.tenant_id = $1
-    AND s.public_id = $2
-    AND e.public_id = $3;
+SET order_index = sqlc.arg('order_index')
+WHERE e.tenant_id = sqlc.arg('tenant_id')
+    AND e.series_id = sqlc.arg('series_id')
+    AND e.id = sqlc.arg('id');
 
--- name: LockEpisodeByPublicIDForTenant :one
+-- name: LockEpisodeByIDForTenant :one
 -- Lock the episode row so two calls that rewrite a set hanging off it — its
 -- credits — serialize. Locking the credit rows themselves would not do it: a
 -- replacement deletes and recreates the whole set, so an episode credited to
@@ -205,17 +203,17 @@ SELECT id,
     public_id
 FROM episodes
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 FOR UPDATE;
 
--- name: LockEpisodesByPublicIDsForTenantAndSeries :many
+-- name: LockEpisodesByIDsForTenantAndSeries :many
 -- The episodes a range edit names, resolved and locked in one statement. The
--- lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+-- lock is the one LockEpisodeByIDForTenant takes, for the same reason: a
 -- credit save on one of these episodes rewrites the whole set hanging off it,
 -- so the two have to serialize on the episode row rather than on credit rows a
 -- replacement is about to delete.
 --
--- A public_id of another series or another tenant simply does not come back,
+-- An id of another series or another tenant simply does not come back,
 -- which is what lets the handler refuse the request by comparing counts
 -- instead of checking each episode.
 --
@@ -227,7 +225,10 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND s.id = sqlc.arg('series_id')
-    AND e.public_id = ANY(sqlc.arg('public_ids')::text[])
+    AND (
+        e.id = ANY(sqlc.arg('ids')::uuid[])
+        OR e.public_id = ANY(sqlc.arg('public_ids')::text[])
+    )
 ORDER BY e.id
 FOR UPDATE OF e;
 
@@ -260,6 +261,57 @@ FROM episodes e
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
+    AND e.public_id = $2
+LIMIT 1;
+
+-- name: GetEpisodeByIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability,
+    -- Where the episode may be bought: its own value, NULL where it follows
+    -- the series, beside the value resolved through the series and the tenant.
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND e.id = $2
+LIMIT 1;
+
+-- name: GetEpisodeSeriesByIDForTenant :one
+-- The episode an image upload names and the series it belongs to, so an
+-- upload that also names a series is refused for an episode of another one.
+SELECT e.id,
+    e.public_id,
+    e.series_id
+FROM episodes e
+WHERE e.tenant_id = $1
+    AND e.id = $2
+LIMIT 1;
+
+-- name: GetEpisodeIDByPublicIDForTenant :one
+-- Resolves the episode a console request still names by public_id.
+SELECT e.id
+FROM episodes e
+WHERE e.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1;
 
@@ -614,7 +666,7 @@ WHERE r.tenant_id = sqlc.arg('tenant_id')
 ORDER BY e.order_index ASC,
     e.id ASC;
 
--- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
+-- name: UpdateEpisodePublishScheduleByIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
         WHEN sqlc.narg('scheduled_at')::timestamptz IS NULL THEN 'draft'
@@ -629,7 +681,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id
     AND s.tenant_id = sqlc.arg('tenant_id')
-    AND e.public_id = sqlc.arg('public_id');
+    AND e.id = sqlc.arg('id');
 
 -- name: UpdateEpisodeLayoutByIDForTenant :exec
 -- Both overrides are written together, and NULL returns a value to following

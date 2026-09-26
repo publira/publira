@@ -3,6 +3,7 @@
 -- were assigned in, so every series presents them the same way the genre list
 -- does.
 SELECT sg.series_id,
+    g.id AS genre_id,
     g.public_id,
     g.name,
     g.slug

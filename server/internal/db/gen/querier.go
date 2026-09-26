@@ -274,9 +274,9 @@ type Querier interface {
 	DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
-	// public_id that never existed. What the caller audits and revalidates comes
+	// window that never existed. What the caller audits and revalidates comes
 	// from the read it did first.
-	DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error)
+	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
@@ -365,6 +365,7 @@ type Querier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreatorRoleByIDForTenantParams) (GetCreatorRoleByIDForTenantRow, error)
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
+	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	// One comment in the shape the moderation list returns. Every moderation action
@@ -375,7 +376,10 @@ type Querier interface {
 	// and again after writing, so the answer describes the stored rows rather than
 	// what the transition was assumed to produce.
 	GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error)
+	GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error)
 	GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error)
+	// Resolves the episode a console request still names by public_id.
+	GetEpisodeIDByPublicIDForTenant(ctx context.Context, arg GetEpisodeIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
 	// This query only answers whether the image belongs to the tenant, with no
@@ -400,6 +404,9 @@ type Querier interface {
 	// rate assembled from one page's rows would describe that page instead of the
 	// period.
 	GetEpisodeReadThroughTotals(ctx context.Context, arg GetEpisodeReadThroughTotalsParams) (GetEpisodeReadThroughTotalsRow, error)
+	// The episode an image upload names and the series it belongs to, so an
+	// upload that also names a series is refused for an episode of another one.
+	GetEpisodeSeriesByIDForTenant(ctx context.Context, arg GetEpisodeSeriesByIDForTenantParams) (GetEpisodeSeriesByIDForTenantRow, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -563,8 +570,11 @@ type Querier interface {
 	// ListRoyaltyLinesForPeriod.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
+	GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
+	// Resolves the series a console request still names by public_id.
+	GetSeriesIDByPublicIDForTenant(ctx context.Context, arg GetSeriesIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
 	//
@@ -936,9 +946,9 @@ type Querier interface {
 	// Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
 	ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error)
 	// Resolves the roles a series form credited creators in. The caller compares
-	// the row count against what it asked for, so a public_id of another tenant
-	// reads as a role that does not exist.
-	ListCreatorRolesByPublicIDsForTenant(ctx context.Context, arg ListCreatorRolesByPublicIDsForTenantParams) ([]ListCreatorRolesByPublicIDsForTenantRow, error)
+	// the row count against what it asked for, so an id of another tenant reads
+	// as a role that does not exist.
+	ListCreatorRolesByIDsForTenant(ctx context.Context, arg ListCreatorRolesByIDsForTenantParams) ([]ListCreatorRolesByIDsForTenantRow, error)
 	// The role list is read in the order the tenant put it in, so the cursor sorts
 	// on (display_priority, id) — the same pair
 	// idx_creator_roles_tenant_display_priority holds. Forward uses the ascending
@@ -947,7 +957,7 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListCreatorRolesByTenantAsc(ctx context.Context, arg ListCreatorRolesByTenantAscParams) ([]ListCreatorRolesByTenantAscRow, error)
 	ListCreatorRolesByTenantDesc(ctx context.Context, arg ListCreatorRolesByTenantDescParams) ([]ListCreatorRolesByTenantDescRow, error)
-	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
+	ListCreatorsByIDsForTenant(ctx context.Context, arg ListCreatorsByIDsForTenantParams) ([]ListCreatorsByIDsForTenantRow, error)
 	ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error)
 	// Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler
@@ -1075,9 +1085,9 @@ type Querier interface {
 	ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error)
 	ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListGenreImageVariantsByImageIDsRow, error)
 	// Resolves the genres a series form assigned. The caller compares the row
-	// count against what it asked for, so a public_id of another tenant reads as
-	// a genre that does not exist.
-	ListGenresByPublicIDsForTenant(ctx context.Context, arg ListGenresByPublicIDsForTenantParams) ([]ListGenresByPublicIDsForTenantRow, error)
+	// count against what it asked for, so an id of another tenant reads as a
+	// genre that does not exist.
+	ListGenresByIDsForTenant(ctx context.Context, arg ListGenresByIDsForTenantParams) ([]ListGenresByIDsForTenantRow, error)
 	// The genre list is read in the order the tenant put it in, so the cursor
 	// sorts on (display_order, id) — the same pair idx_genres_tenant_display_order
 	// holds. Forward uses the ascending query; backward uses the descending one so
@@ -1695,7 +1705,7 @@ type Querier interface {
 	// the series lock's is: READ COMMITTED freezes a statement's snapshot at its
 	// start, so a read that waited for the lock inside the same statement would
 	// still answer from before the wait.
-	LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error)
+	LockEpisodeByIDForTenant(ctx context.Context, arg LockEpisodeByIDForTenantParams) (LockEpisodeByIDForTenantRow, error)
 	// Episode ratings and the public tally kept beside them. Every statement here
 	// runs on the reader's own connection: episode_ratings is member-isolated, so a
 	// rating is written and read under the reader whose rating it is.
@@ -1718,18 +1728,18 @@ type Querier interface {
 	// the rating rather than on a row, so it holds whether one exists yet or not.
 	LockEpisodeRating(ctx context.Context, arg LockEpisodeRatingParams) error
 	// The episodes a range edit names, resolved and locked in one statement. The
-	// lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+	// lock is the one LockEpisodeByIDForTenant takes, for the same reason: a
 	// credit save on one of these episodes rewrites the whole set hanging off it,
 	// so the two have to serialize on the episode row rather than on credit rows a
 	// replacement is about to delete.
 	//
-	// A public_id of another series or another tenant simply does not come back,
+	// An id of another series or another tenant simply does not come back,
 	// which is what lets the handler refuse the request by comparing counts
 	// instead of checking each episode.
 	//
 	// ORDER BY e.id is what keeps two range edits over overlapping ranges from
 	// deadlocking: both take the row locks in the same order.
-	LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error)
+	LockEpisodesByIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByIDsForTenantAndSeriesParams) ([]LockEpisodesByIDsForTenantAndSeriesRow, error)
 	// Serializes eye-catch writes on one genre, as LockLabelByIDForTenant does for
 	// a label; the caller re-reads eye_catch_image_id behind it.
 	LockGenreByIDForTenant(ctx context.Context, arg LockGenreByIDForTenantParams) (uuid.UUID, error)
@@ -1773,7 +1783,7 @@ type Querier interface {
 	// MAX(order_index)) must be a separate statement: READ COMMITTED
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
-	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
+	LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByIDForTenantParams) (LockSeriesByIDForTenantRow, error)
 	// Takes the intent a verified transaction names, holding it until the purchase
 	// it becomes is written, so two confirmations of different transactions
 	// cannot both consume it.
@@ -2129,8 +2139,8 @@ type Querier interface {
 	// Both overrides are written together, and NULL returns a value to following
 	// the series.
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
-	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
-	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
+	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
+	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error

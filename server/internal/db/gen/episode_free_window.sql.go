@@ -79,39 +79,100 @@ func (q *Queries) CreateEpisodeFreeWindow(ctx context.Context, arg CreateEpisode
 	return i, err
 }
 
-const DeleteEpisodeFreeWindowByPublicIDForTenant = `-- name: DeleteEpisodeFreeWindowByPublicIDForTenant :one
+const DeleteEpisodeFreeWindowByIDForTenant = `-- name: DeleteEpisodeFreeWindowByIDForTenant :one
 DELETE FROM episode_free_windows
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 RETURNING id,
+    public_id,
     episode_id,
     starts_at,
     ends_at
 `
 
-type DeleteEpisodeFreeWindowByPublicIDForTenantParams struct {
+type DeleteEpisodeFreeWindowByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
-type DeleteEpisodeFreeWindowByPublicIDForTenantRow struct {
+type DeleteEpisodeFreeWindowByIDForTenantRow struct {
 	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
 	EpisodeID uuid.UUID `json:"episode_id"`
 	StartsAt  time.Time `json:"starts_at"`
 	EndsAt    time.Time `json:"ends_at"`
 }
 
 // Returns the deleted row so a concurrent second delete is told apart from a
-// public_id that never existed. What the caller audits and revalidates comes
+// window that never existed. What the caller audits and revalidates comes
 // from the read it did first.
-func (q *Queries) DeleteEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByPublicIDForTenantParams) (DeleteEpisodeFreeWindowByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i DeleteEpisodeFreeWindowByPublicIDForTenantRow
+func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByIDForTenant, arg.TenantID, arg.ID)
+	var i DeleteEpisodeFreeWindowByIDForTenantRow
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.EpisodeID,
 		&i.StartsAt,
 		&i.EndsAt,
+	)
+	return i, err
+}
+
+const GetEpisodeFreeWindowByIDForTenant = `-- name: GetEpisodeFreeWindowByIDForTenant :one
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = $1
+    AND w.id = $2
+LIMIT 1
+`
+
+type GetEpisodeFreeWindowByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetEpisodeFreeWindowByIDForTenantRow struct {
+	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+}
+
+func (q *Queries) GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeFreeWindowByIDForTenant, arg.TenantID, arg.ID)
+	var i GetEpisodeFreeWindowByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.CreatedAt,
+		&i.EpisodeID,
+		&i.EpisodePublicID,
+		&i.EpisodeTitle,
+		&i.SeriesID,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
 	)
 	return i, err
 }
@@ -122,8 +183,10 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_free_windows w
@@ -145,8 +208,10 @@ type GetEpisodeFreeWindowByPublicIDForTenantRow struct {
 	StartsAt        time.Time `json:"starts_at"`
 	EndsAt          time.Time `json:"ends_at"`
 	CreatedAt       time.Time `json:"created_at"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
 	EpisodeTitle    string    `json:"episode_title"`
+	SeriesID        uuid.UUID `json:"series_id"`
 	SeriesPublicID  string    `json:"series_public_id"`
 	SeriesTitle     string    `json:"series_title"`
 }
@@ -160,8 +225,10 @@ func (q *Queries) GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, a
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.CreatedAt,
+		&i.EpisodeID,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
+		&i.SeriesID,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
 	)

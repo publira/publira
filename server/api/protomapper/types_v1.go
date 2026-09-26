@@ -20,6 +20,7 @@ import (
 // says the tenant has stated nothing.
 func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) (*publirattypesv1.Series, error) {
 	series := &publirattypesv1.Series{
+		Id:               row.ID.String(),
 		PublicId:         row.PublicID,
 		Title:            row.Title,
 		IsPublished:      row.IsPublished,
@@ -27,6 +28,7 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	}
 	if row.LabelPublicID.Valid {
 		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
+		series.Label.Id = row.LabelID.UUID.String()
 	}
 	if row.Synopsis.Valid {
 		series.Synopsis = row.Synopsis.String
@@ -62,8 +64,15 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	return series, nil
 }
 
+// SeriesFromGetSeriesByIDForTenantRow maps the same columns
+// SeriesFromGetSeriesByPublicIDForTenantRow does, read by id.
+func SeriesFromGetSeriesByIDForTenantRow(row dbmodels.GetSeriesByIDForTenantRow) (*publirattypesv1.Series, error) {
+	return SeriesFromGetSeriesByPublicIDForTenantRow(dbmodels.GetSeriesByPublicIDForTenantRow(row))
+}
+
 func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
 		PublicId:   row.PublicID,
 		Title:      row.Title,
 		OrderIndex: row.OrderIndex,
@@ -82,8 +91,15 @@ func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublic
 	return episode
 }
 
+// EpisodeFromGetEpisodeByIDForTenantRow maps the same columns
+// EpisodeFromGetEpisodeByPublicIDForTenantRow does, read by id.
+func EpisodeFromGetEpisodeByIDForTenantRow(row dbmodels.GetEpisodeByIDForTenantRow) *publirattypesv1.Episode {
+	return EpisodeFromGetEpisodeByPublicIDForTenantRow(dbmodels.GetEpisodeByPublicIDForTenantRow(row))
+}
+
 func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
 		PublicId:   row.PublicID,
 		Title:      row.Title,
 		OrderIndex: row.OrderIndex,
@@ -130,6 +146,7 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 
 func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeriesForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
+		Id:         row.ID.String(),
 		PublicId:   row.PublicID,
 		Title:      row.Title,
 		OrderIndex: row.OrderIndex,

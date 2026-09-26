@@ -102,6 +102,87 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 	return i, err
 }
 
+const GetEpisodeByIDForTenant = `-- name: GetEpisodeByIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at,
+    -- The episode's own layout, NULL where it follows the series, beside the
+    -- series' values it follows. The console form tells the two apart, and the
+    -- resolved pair is derived from them in Go.
+    e.reading_direction,
+    e.spread_start_index,
+    sl.reading_direction AS series_reading_direction,
+    sl.spread_start_index AS series_spread_start_index,
+    -- The episode's own availability, NULL where it follows the series.
+    e.availability,
+    -- Where the episode may be bought: its own value, NULL where it follows
+    -- the series, beside the value resolved through the series and the tenant.
+    e.purchase_availability,
+    epa.purchase_availability AS resolved_purchase_availability
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND e.id = $2
+LIMIT 1
+`
+
+type GetEpisodeByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetEpisodeByIDForTenantRow struct {
+	ID                           uuid.UUID      `json:"id"`
+	PublicID                     string         `json:"public_id"`
+	Title                        string         `json:"title"`
+	OrderIndex                   int32          `json:"order_index"`
+	Price                        int32          `json:"price"`
+	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	Status                       string         `json:"status"`
+	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
+	PublishedAt                  sql.NullTime   `json:"published_at"`
+	ReadingDirection             sql.NullString `json:"reading_direction"`
+	SpreadStartIndex             sql.NullInt32  `json:"spread_start_index"`
+	SeriesReadingDirection       sql.NullString `json:"series_reading_direction"`
+	SeriesSpreadStartIndex       sql.NullInt32  `json:"series_spread_start_index"`
+	Availability                 sql.NullString `json:"availability"`
+	PurchaseAvailability         sql.NullString `json:"purchase_availability"`
+	ResolvedPurchaseAvailability string         `json:"resolved_purchase_availability"`
+}
+
+func (q *Queries) GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeByIDForTenant, arg.TenantID, arg.ID)
+	var i GetEpisodeByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.OrderIndex,
+		&i.Price,
+		&i.ReadingPeriodHours,
+		&i.Status,
+		&i.ScheduledAt,
+		&i.PublishedAt,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+		&i.SeriesReadingDirection,
+		&i.SeriesSpreadStartIndex,
+		&i.Availability,
+		&i.PurchaseAvailability,
+		&i.ResolvedPurchaseAvailability,
+	)
+	return i, err
+}
+
 const GetEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -261,21 +342,72 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 	return i, err
 }
 
+const GetEpisodeIDByPublicIDForTenant = `-- name: GetEpisodeIDByPublicIDForTenant :one
+SELECT e.id
+FROM episodes e
+WHERE e.tenant_id = $1
+    AND e.public_id = $2
+LIMIT 1
+`
+
+type GetEpisodeIDByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Resolves the episode a console request still names by public_id.
+func (q *Queries) GetEpisodeIDByPublicIDForTenant(ctx context.Context, arg GetEpisodeIDByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const GetEpisodeSeriesByIDForTenant = `-- name: GetEpisodeSeriesByIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.series_id
+FROM episodes e
+WHERE e.tenant_id = $1
+    AND e.id = $2
+LIMIT 1
+`
+
+type GetEpisodeSeriesByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetEpisodeSeriesByIDForTenantRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+// The episode an image upload names and the series it belongs to, so an
+// upload that also names a series is refused for an episode of another one.
+func (q *Queries) GetEpisodeSeriesByIDForTenant(ctx context.Context, arg GetEpisodeSeriesByIDForTenantParams) (GetEpisodeSeriesByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeSeriesByIDForTenant, arg.TenantID, arg.ID)
+	var i GetEpisodeSeriesByIDForTenantRow
+	err := row.Scan(&i.ID, &i.PublicID, &i.SeriesID)
+	return i, err
+}
+
 const GetMaxEpisodeOrderIndexBySeriesForTenant = `-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
 SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2
+    AND e.series_id = $2
 `
 
 type GetMaxEpisodeOrderIndexBySeriesForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	SeriesID uuid.UUID `json:"series_id"`
 }
 
 func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, GetMaxEpisodeOrderIndexBySeriesForTenant, arg.TenantID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetMaxEpisodeOrderIndexBySeriesForTenant, arg.TenantID, arg.SeriesID)
 	var max_order_index int32
 	err := row.Scan(&max_order_index)
 	return max_order_index, err
@@ -459,14 +591,14 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2
+    AND e.series_id = $2
 ORDER BY e.order_index ASC,
     e.id ASC
 `
 
 type ListEpisodesBySeriesForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	SeriesID uuid.UUID `json:"series_id"`
 }
 
 type ListEpisodesBySeriesForTenantRow struct {
@@ -488,7 +620,7 @@ type ListEpisodesBySeriesForTenantRow struct {
 // compares it against what the client read back, and a different tiebreaker
 // would reject a request that never conflicted.
 func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
+	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenant, arg.TenantID, arg.SeriesID)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +669,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2
+    AND e.series_id = $2
     AND (
         $3::uuid IS NULL
         OR (
@@ -556,7 +688,7 @@ LIMIT $6
 
 type ListEpisodesBySeriesForTenantAscParams struct {
 	TenantID         uuid.UUID     `json:"tenant_id"`
-	PublicID         string        `json:"public_id"`
+	SeriesID         uuid.UUID     `json:"series_id"`
 	CursorID         uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive  bool          `json:"cursor_inclusive"`
 	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
@@ -584,7 +716,7 @@ type ListEpisodesBySeriesForTenantAscRow struct {
 func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantAsc,
 		arg.TenantID,
-		arg.PublicID,
+		arg.SeriesID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorOrderIndex,
@@ -638,7 +770,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
-    AND s.public_id = $2
+    AND e.series_id = $2
     AND (
         $3::uuid IS NULL
         OR (
@@ -657,7 +789,7 @@ LIMIT $6
 
 type ListEpisodesBySeriesForTenantDescParams struct {
 	TenantID         uuid.UUID     `json:"tenant_id"`
-	PublicID         string        `json:"public_id"`
+	SeriesID         uuid.UUID     `json:"series_id"`
 	CursorID         uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive  bool          `json:"cursor_inclusive"`
 	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
@@ -680,7 +812,7 @@ type ListEpisodesBySeriesForTenantDescRow struct {
 func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListEpisodesBySeriesForTenantDesc,
 		arg.TenantID,
-		arg.PublicID,
+		arg.SeriesID,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorOrderIndex,
@@ -1391,21 +1523,21 @@ func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRe
 	return items, nil
 }
 
-const LockEpisodeByPublicIDForTenant = `-- name: LockEpisodeByPublicIDForTenant :one
+const LockEpisodeByIDForTenant = `-- name: LockEpisodeByIDForTenant :one
 SELECT id,
     public_id
 FROM episodes
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 FOR UPDATE
 `
 
-type LockEpisodeByPublicIDForTenantParams struct {
+type LockEpisodeByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
-type LockEpisodeByPublicIDForTenantRow struct {
+type LockEpisodeByIDForTenantRow struct {
 	ID       uuid.UUID `json:"id"`
 	PublicID string    `json:"public_id"`
 }
@@ -1419,57 +1551,66 @@ type LockEpisodeByPublicIDForTenantRow struct {
 // the series lock's is: READ COMMITTED freezes a statement's snapshot at its
 // start, so a read that waited for the lock inside the same statement would
 // still answer from before the wait.
-func (q *Queries) LockEpisodeByPublicIDForTenant(ctx context.Context, arg LockEpisodeByPublicIDForTenantParams) (LockEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, LockEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i LockEpisodeByPublicIDForTenantRow
+func (q *Queries) LockEpisodeByIDForTenant(ctx context.Context, arg LockEpisodeByIDForTenantParams) (LockEpisodeByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, LockEpisodeByIDForTenant, arg.TenantID, arg.ID)
+	var i LockEpisodeByIDForTenantRow
 	err := row.Scan(&i.ID, &i.PublicID)
 	return i, err
 }
 
-const LockEpisodesByPublicIDsForTenantAndSeries = `-- name: LockEpisodesByPublicIDsForTenantAndSeries :many
+const LockEpisodesByIDsForTenantAndSeries = `-- name: LockEpisodesByIDsForTenantAndSeries :many
 SELECT e.id,
     e.public_id
 FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE e.tenant_id = $1
     AND s.id = $2
-    AND e.public_id = ANY($3::text[])
+    AND (
+        e.id = ANY($3::uuid[])
+        OR e.public_id = ANY($4::text[])
+    )
 ORDER BY e.id
 FOR UPDATE OF e
 `
 
-type LockEpisodesByPublicIDsForTenantAndSeriesParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	SeriesID  uuid.UUID `json:"series_id"`
-	PublicIds []string  `json:"public_ids"`
+type LockEpisodesByIDsForTenantAndSeriesParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	SeriesID  uuid.UUID   `json:"series_id"`
+	Ids       []uuid.UUID `json:"ids"`
+	PublicIds []string    `json:"public_ids"`
 }
 
-type LockEpisodesByPublicIDsForTenantAndSeriesRow struct {
+type LockEpisodesByIDsForTenantAndSeriesRow struct {
 	ID       uuid.UUID `json:"id"`
 	PublicID string    `json:"public_id"`
 }
 
 // The episodes a range edit names, resolved and locked in one statement. The
-// lock is the one LockEpisodeByPublicIDForTenant takes, for the same reason: a
+// lock is the one LockEpisodeByIDForTenant takes, for the same reason: a
 // credit save on one of these episodes rewrites the whole set hanging off it,
 // so the two have to serialize on the episode row rather than on credit rows a
 // replacement is about to delete.
 //
-// A public_id of another series or another tenant simply does not come back,
+// An id of another series or another tenant simply does not come back,
 // which is what lets the handler refuse the request by comparing counts
 // instead of checking each episode.
 //
 // ORDER BY e.id is what keeps two range edits over overlapping ranges from
 // deadlocking: both take the row locks in the same order.
-func (q *Queries) LockEpisodesByPublicIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByPublicIDsForTenantAndSeriesParams) ([]LockEpisodesByPublicIDsForTenantAndSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, LockEpisodesByPublicIDsForTenantAndSeries, arg.TenantID, arg.SeriesID, pq.Array(arg.PublicIds))
+func (q *Queries) LockEpisodesByIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByIDsForTenantAndSeriesParams) ([]LockEpisodesByIDsForTenantAndSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, LockEpisodesByIDsForTenantAndSeries,
+		arg.TenantID,
+		arg.SeriesID,
+		pq.Array(arg.Ids),
+		pq.Array(arg.PublicIds),
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LockEpisodesByPublicIDsForTenantAndSeriesRow
+	var items []LockEpisodesByIDsForTenantAndSeriesRow
 	for rows.Next() {
-		var i LockEpisodesByPublicIDsForTenantAndSeriesRow
+		var i LockEpisodesByIDsForTenantAndSeriesRow
 		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
 			return nil, err
 		}
@@ -1601,34 +1742,32 @@ func (q *Queries) UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg Upda
 	return err
 }
 
-const UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
+const UpdateEpisodeOrderIndexByIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByIDForTenantAndSeries :exec
 UPDATE episodes e
-SET order_index = $4
-FROM series s
-WHERE e.series_id = s.id
-    AND s.tenant_id = $1
-    AND s.public_id = $2
-    AND e.public_id = $3
+SET order_index = $1
+WHERE e.tenant_id = $2
+    AND e.series_id = $3
+    AND e.id = $4
 `
 
-type UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	PublicID   string    `json:"public_id"`
-	PublicID_2 string    `json:"public_id_2"`
+type UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams struct {
 	OrderIndex int32     `json:"order_index"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SeriesID   uuid.UUID `json:"series_id"`
+	ID         uuid.UUID `json:"id"`
 }
 
-func (q *Queries) UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries,
-		arg.TenantID,
-		arg.PublicID,
-		arg.PublicID_2,
+func (q *Queries) UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateEpisodeOrderIndexByIDForTenantAndSeries,
 		arg.OrderIndex,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.ID,
 	)
 	return err
 }
 
-const UpdateEpisodePublishScheduleByPublicIDForTenant = `-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
+const UpdateEpisodePublishScheduleByIDForTenant = `-- name: UpdateEpisodePublishScheduleByIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
         WHEN $1::timestamptz IS NULL THEN 'draft'
@@ -1643,17 +1782,17 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE el.episode_id = e.id
     AND s.tenant_id = $2
-    AND e.public_id = $3
+    AND e.id = $3
 `
 
-type UpdateEpisodePublishScheduleByPublicIDForTenantParams struct {
+type UpdateEpisodePublishScheduleByIDForTenantParams struct {
 	ScheduledAt sql.NullTime `json:"scheduled_at"`
 	TenantID    uuid.UUID    `json:"tenant_id"`
-	PublicID    string       `json:"public_id"`
+	ID          uuid.UUID    `json:"id"`
 }
 
-func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByPublicIDForTenant, arg.ScheduledAt, arg.TenantID, arg.PublicID)
+func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
 	return err
 }
 
