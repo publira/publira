@@ -63,6 +63,11 @@ vi.mock("#lib/audit-logs", () => ({
 const clearedTags = (): string[] =>
   mockUpdateTag.mock.calls.map(([tag]) => tag as string);
 
+const otherOperator = {
+  id: "0199a3c0-0000-7000-8000-000000000002",
+  publicId: "OPERATOR002",
+};
+
 describe("operator detail actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,9 +89,16 @@ describe("operator detail actions", () => {
     const { updateOperatorRoleAction } = await import("./actions");
 
     const formData = new FormData();
+    formData.set("operator_id", "0199a3c0-0000-7000-8000-000000000002");
     formData.set("operator_public_id", "OPERATOR002");
     formData.set("operator_role", "platform_auditor");
     await updateOperatorRoleAction(null, formData);
+
+    expect(mockUpdatePlatformOperatorRole).toHaveBeenCalledWith({
+      locale: "en",
+      operatorId: "0199a3c0-0000-7000-8000-000000000002",
+      role: "platform_auditor",
+    });
 
     expect(clearedTags()).toEqual([
       "platform:operators",
@@ -99,8 +111,13 @@ describe("operator detail actions", () => {
     const { suspendOperatorAction, unsuspendOperatorAction } =
       await import("./actions");
 
-    await suspendOperatorAction("OPERATOR002");
-    await unsuspendOperatorAction("OPERATOR002");
+    await suspendOperatorAction(otherOperator);
+    await unsuspendOperatorAction(otherOperator);
+
+    expect(mockSuspendPlatformOperator).toHaveBeenCalledWith(otherOperator.id);
+    expect(mockUnsuspendPlatformOperator).toHaveBeenCalledWith(
+      otherOperator.id
+    );
 
     const expected = ["platform:operators", "platform:audit-logs"];
     expect(clearedTags()).toEqual([...expected, ...expected]);
@@ -109,7 +126,7 @@ describe("operator detail actions", () => {
   it("deactivating an operator clears the operators, the dashboard, and the audit log before redirecting", async () => {
     const { deactivateOperatorAction } = await import("./actions");
 
-    await expect(deactivateOperatorAction("OPERATOR002")).rejects.toThrow(
+    await expect(deactivateOperatorAction(otherOperator)).rejects.toThrow(
       "NEXT_REDIRECT:/operators"
     );
 
@@ -123,7 +140,10 @@ describe("operator detail actions", () => {
   it("clears nothing when the operator may not make the change", async () => {
     const { suspendOperatorAction } = await import("./actions");
 
-    await suspendOperatorAction("OPERATOR001");
+    await suspendOperatorAction({
+      id: "0199a3c0-0000-7000-8000-000000000001",
+      publicId: "OPERATOR001",
+    });
 
     expect(mockSuspendPlatformOperator).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();

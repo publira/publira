@@ -99,10 +99,10 @@ const stop = await forEachPageWithToken(
 
 ## The tenant header
 
-With `tenantPublicId` set, every API request automatically carries the `X-Publira-Tenant-Public-Id` header.
+With `tenantId` set, every API request automatically carries the `X-Publira-Tenant-Id` header, which holds the tenant's primary key (UUID). Without it, a request message's top-level or nested `tenant.tenantId` fills the header instead.
 
-- A fixed value: `tenantPublicId: "TENANT001"`
-- A dynamic value: `tenantPublicId: () => selectedTenantPublicId`
+- A fixed value: `tenantId: "018f0e6a-1000-7000-8000-000000000001"`
+- A dynamic value: `tenantId: () => selectedTenantId`
 
 ## The client's address
 

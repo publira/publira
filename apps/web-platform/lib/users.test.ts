@@ -62,6 +62,7 @@ describe("listPlatformEndUsers", () => {
         {
           createdAt: "2026-03-01T00:00:00Z",
           email: "enduser@example.com",
+          id: "0199a3c0-0000-7000-8000-00000000000a",
           name: "End User",
           publicId: "ENDUSER001",
           status: "active",
@@ -81,6 +82,7 @@ describe("listPlatformEndUsers", () => {
         {
           createdAt: "2026-03-01T00:00:00Z",
           email: "enduser@example.com",
+          id: "0199a3c0-0000-7000-8000-00000000000a",
           name: "End User",
           primaryTenantName: "Tenant A",
           primaryTenantPublicId: "tenant_a",
@@ -96,10 +98,10 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 20,
-        publicIds: [],
         status: "",
         tenantPublicId: "",
         token: "",
+        userIds: [],
       },
       sessionHeaders
     );
@@ -150,10 +152,10 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 20,
-        publicIds: [],
         status: "",
         tenantPublicId: "tenant_a",
         token: "",
+        userIds: [],
       },
       sessionHeaders
     );
@@ -187,10 +189,10 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 10,
-        publicIds: [],
         status: "",
         tenantPublicId: "",
         token: "page-2",
+        userIds: [],
       },
       sessionHeaders
     );

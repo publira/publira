@@ -66,6 +66,8 @@ const endUserTags = [
 const clearedTags = (): string[] =>
   mockUpdateTag.mock.calls.map(([tag]) => tag as string);
 
+const endUserId = "0199a3c0-0000-7000-8000-00000000000a";
+
 describe("end-user detail actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,9 +87,11 @@ describe("end-user detail actions", () => {
     const { suspendEndUserAction, unsuspendEndUserAction } =
       await import("./actions");
 
-    await suspendEndUserAction("USER00000001");
-    await unsuspendEndUserAction("USER00000001");
+    await suspendEndUserAction(endUserId);
+    await unsuspendEndUserAction(endUserId);
 
+    expect(mockSuspendPlatformEndUser).toHaveBeenCalledWith(endUserId);
+    expect(mockUnsuspendPlatformEndUser).toHaveBeenCalledWith(endUserId);
     expect(clearedTags()).toEqual([...endUserTags, ...endUserTags]);
   });
 
@@ -96,7 +100,7 @@ describe("end-user detail actions", () => {
 
     const { deleteEndUserAction } = await import("./actions");
 
-    await expect(deleteEndUserAction("USER00000001")).rejects.toThrow(
+    await expect(deleteEndUserAction(endUserId)).rejects.toThrow(
       "NEXT_REDIRECT:/users"
     );
     expect(clearedTags()).toEqual(endUserTags);
@@ -114,7 +118,7 @@ describe("end-user detail actions", () => {
 
     const { suspendEndUserAction } = await import("./actions");
 
-    await suspendEndUserAction("USER00000001");
+    await suspendEndUserAction(endUserId);
 
     expect(mockSuspendPlatformEndUser).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();

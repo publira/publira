@@ -25,6 +25,7 @@ const getPlatformOperatorInputSchema = z.object({
 export interface PlatformOperatorSummary {
   createdAt: string;
   email: string;
+  id: string;
   name: string;
   publicId: string;
   role: string;
@@ -73,7 +74,7 @@ export type ListPlatformOperatorsResult =
  */
 type RawPlatformOperator = Pick<
   PlatformOperator,
-  "createdAt" | "email" | "name" | "publicId" | "role" | "status"
+  "createdAt" | "email" | "id" | "name" | "publicId" | "role" | "status"
 >;
 
 const mapOperator = (
@@ -81,6 +82,7 @@ const mapOperator = (
 ): PlatformOperatorSummary => ({
   createdAt: operator.createdAt,
   email: operator.email,
+  id: operator.id,
   name: operator.name,
   publicId: operator.publicId,
   role: normalizePlatformRole(operator.role),
@@ -158,7 +160,7 @@ export const createPlatformOperator = async (
 
   try {
     const response = await apiClient.operators.createOperator(
-      { email: input.email, name: input.name, role: input.role } as never,
+      { email: input.email, name: input.name, role: input.role },
       buildSessionHeaders(sessionId)
     );
     return { ok: true, publicId: response.operator?.publicId };
@@ -179,9 +181,9 @@ export const createPlatformOperator = async (
 };
 
 export const suspendPlatformOperator = async (
-  publicId: string
+  operatorId: string
 ): Promise<boolean> => {
-  if (!publicId.trim()) {
+  if (!operatorId.trim()) {
     return false;
   }
   const sessionId = await resolveAccessToken();
@@ -190,7 +192,7 @@ export const suspendPlatformOperator = async (
   }
   try {
     await apiClient.operators.suspendOperator(
-      { publicId } as never,
+      { operatorId },
       buildSessionHeaders(sessionId)
     );
     return true;
@@ -202,9 +204,9 @@ export const suspendPlatformOperator = async (
 };
 
 export const unsuspendPlatformOperator = async (
-  publicId: string
+  operatorId: string
 ): Promise<boolean> => {
-  if (!publicId.trim()) {
+  if (!operatorId.trim()) {
     return false;
   }
   const sessionId = await resolveAccessToken();
@@ -213,7 +215,7 @@ export const unsuspendPlatformOperator = async (
   }
   try {
     await apiClient.operators.unsuspendOperator(
-      { publicId } as never,
+      { operatorId },
       buildSessionHeaders(sessionId)
     );
     return true;
@@ -263,7 +265,7 @@ export const getPlatformOperator = async (
 
 export interface UpdatePlatformOperatorRoleInput {
   locale: Locale;
-  publicId: string;
+  operatorId: string;
   role: string;
 }
 
@@ -285,7 +287,7 @@ export const updatePlatformOperatorRole = async (
 
   try {
     await apiClient.operators.updateOperatorRole(
-      { publicId: input.publicId, role: input.role } as never,
+      { operatorId: input.operatorId, role: input.role },
       buildSessionHeaders(sessionId)
     );
     return { ok: true };
@@ -303,15 +305,15 @@ export const updatePlatformOperatorRole = async (
 };
 
 export const deactivatePlatformOperator = async (
-  publicId: string
+  operatorId: string
 ): Promise<boolean> => {
-  if (!publicId.trim()) {
+  if (!operatorId.trim()) {
     return false;
   }
   const sid = await resolveAccessToken();
   try {
     await apiClient.operators.deactivateOperator(
-      { publicId } as never,
+      { operatorId },
       buildSessionHeaders(sid)
     );
     return true;
