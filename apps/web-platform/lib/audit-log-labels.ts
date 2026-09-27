@@ -1,6 +1,8 @@
 import type { Locale } from "@publira/i18n";
 
 import { getMessagesFor } from "./messages";
+import { getOperatorRoleLabel } from "./operator-labels";
+import { getTenantRoleLabel } from "./tenant-labels";
 
 /** The action filter's options, sorted by label in the UI locale. */
 export const getAuditActionOptions = async (
@@ -115,4 +117,40 @@ export const getAuditActionOptions = async (
       value: "user_unsuspended",
     },
   ].toSorted((left, right) => left.label.localeCompare(right.label, locale));
+};
+
+/**
+ * The actor role an audit entry recorded. `system` is an entry with no
+ * operator, which on the platform side only `publiractl` writes.
+ */
+export const getActorRoleLabel = async (
+  role: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  if (!role) {
+    return t("platform.audit.unset");
+  }
+
+  const operatorLabel = await getOperatorRoleLabel(role, locale);
+  if (operatorLabel !== role) {
+    return operatorLabel;
+  }
+
+  const tenantLabel = await getTenantRoleLabel(role, locale);
+  if (tenantLabel !== role) {
+    return tenantLabel;
+  }
+
+  switch (role) {
+    case "platform_owner": {
+      return t("platform.audit.actor_platform");
+    }
+    case "system": {
+      return t("platform.audit.actor_system");
+    }
+    default: {
+      return role;
+    }
+  }
 };

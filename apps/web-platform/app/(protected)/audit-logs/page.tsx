@@ -37,7 +37,10 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getAuditActionOptions } from "#lib/audit-log-labels";
+import {
+  getActorRoleLabel,
+  getAuditActionOptions,
+} from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
   ListPlatformAuditLogsResult,
@@ -47,10 +50,8 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { storageTestFailureMessage } from "#lib/storage-settings";
-import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 import { AuditActionName } from "./_components/audit-action-name";
 import { AuditLogTarget } from "./_components/audit-log-target";
@@ -122,35 +123,6 @@ const buildEmptyMessage = async (
   return hasFilter
     ? t("platform.audit.empty_filtered")
     : t("platform.audit.empty");
-};
-
-const getActorRoleLabel = async (
-  role: string,
-  locale: Locale
-): Promise<string> => {
-  const t = await getMessagesFor(locale);
-  if (!role) {
-    return t("platform.audit.unset");
-  }
-
-  const operatorLabel = await getOperatorRoleLabel(role, locale);
-  if (operatorLabel !== role) {
-    return operatorLabel;
-  }
-
-  const tenantLabel = await getTenantRoleLabel(role, locale);
-  if (tenantLabel !== role) {
-    return tenantLabel;
-  }
-
-  switch (role) {
-    case "platform_owner": {
-      return t("platform.audit.actor_platform");
-    }
-    default: {
-      return role;
-    }
-  }
 };
 
 const getSummaryText = async (

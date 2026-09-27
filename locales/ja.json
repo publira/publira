@@ -4087,6 +4087,7 @@
       },
       "actor_filter_placeholder": "操作者公開IDで絞り込み",
       "actor_platform": "プラットフォーム管理者",
+      "actor_system": "コマンドライン",
       "all_events": "すべてのイベント",
       "columns": {
         "action": "操作",
