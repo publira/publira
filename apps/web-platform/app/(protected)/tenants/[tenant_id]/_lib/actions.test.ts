@@ -235,7 +235,7 @@ describe("tenant detail actions", () => {
     } = await import("./actions");
 
     const invitation = {
-      invitation_id: "INVITE001",
+      invitation_id: "01a0deb5-0000-7000-8000-000000000004",
       tenant_id: "01a0deb5-0000-7000-8000-000000000002",
     };
     await resendTenantAdminInvitationAction(null, formData(invitation));
@@ -255,5 +255,22 @@ describe("tenant detail actions", () => {
 
     expect(mockSuspendPlatformTenant).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("sends no request for a tenant or member ID that is not a UUID", async () => {
+    const { removeTenantMemberAction, suspendTenantAction } =
+      await import("./actions");
+
+    await suspendTenantAction(formData({ tenant_id: "SeedTNNTAAA1" }));
+    await removeTenantMemberAction(
+      null,
+      formData({
+        member_user_id: "SeedUSERAAA1",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+      })
+    );
+
+    expect(mockSuspendPlatformTenant).not.toHaveBeenCalled();
+    expect(mockRemovePlatformTenantMember).not.toHaveBeenCalled();
   });
 });
