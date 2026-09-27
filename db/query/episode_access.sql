@@ -4,7 +4,8 @@
 -- right now, and whether episode_content_grants holds a grant for the reader.
 -- A guest passes a NULL user_id, which no grant matches. The order is the one
 -- GetSeriesDetail lists the episodes in.
-SELECT e.public_id,
+SELECT e.id,
+    e.public_id,
     EXISTS (
         SELECT 1
         FROM published_free_episodes fe

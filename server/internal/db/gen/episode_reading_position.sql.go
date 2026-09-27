@@ -14,7 +14,8 @@ import (
 )
 
 const GetMyEpisodeReadingPosition = `-- name: GetMyEpisodeReadingPosition :one
-SELECT rp.page_index,
+SELECT e.public_id AS episode_public_id,
+    rp.page_index,
     rp.page_count,
     rp.updated_at
 FROM episode_reading_positions rp
@@ -23,7 +24,10 @@ FROM episode_reading_positions rp
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE rp.tenant_id = $1
     AND rp.user_id = $2
-    AND e.public_id = $3
+    AND (
+        e.id = $3::uuid
+        OR e.public_id = $4::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -34,23 +38,25 @@ WHERE rp.tenant_id = $1
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+            AND es.surface = $5::text
     )
     AND reader_may_open_episode($1, $2::uuid, e.id)
 LIMIT 1
 `
 
 type GetMyEpisodeReadingPositionParams struct {
-	TenantID        uuid.UUID `json:"tenant_id"`
-	UserID          uuid.UUID `json:"user_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	Surface         string    `json:"surface"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	EpisodeID       uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID sql.NullString `json:"episode_public_id"`
+	Surface         string         `json:"surface"`
 }
 
 type GetMyEpisodeReadingPositionRow struct {
-	PageIndex int32     `json:"page_index"`
-	PageCount int32     `json:"page_count"`
-	UpdatedAt time.Time `json:"updated_at"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	PageIndex       int32     `json:"page_index"`
+	PageCount       int32     `json:"page_count"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // The reader's position in one episode, gated on the same publication and body
@@ -60,16 +66,23 @@ func (q *Queries) GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpis
 	row := q.db.QueryRowContext(ctx, GetMyEpisodeReadingPosition,
 		arg.TenantID,
 		arg.UserID,
+		arg.EpisodeID,
 		arg.EpisodePublicID,
 		arg.Surface,
 	)
 	var i GetMyEpisodeReadingPositionRow
-	err := row.Scan(&i.PageIndex, &i.PageCount, &i.UpdatedAt)
+	err := row.Scan(
+		&i.EpisodePublicID,
+		&i.PageIndex,
+		&i.PageCount,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
 const GetMySeriesReadingProgress = `-- name: GetMySeriesReadingProgress :one
-SELECT e.public_id AS episode_public_id,
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index,
     el.price,
@@ -93,7 +106,10 @@ FROM episode_reading_positions rp
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE rp.tenant_id = $1
     AND rp.user_id = $2
-    AND s.public_id = $3
+    AND (
+        s.id = $3::uuid
+        OR s.public_id = $4::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -104,7 +120,7 @@ WHERE rp.tenant_id = $1
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+            AND es.surface = $5::text
     )
     AND reader_may_open_episode($1, $2::uuid, e.id)
 ORDER BY rp.updated_at DESC,
@@ -113,13 +129,15 @@ LIMIT 1
 `
 
 type GetMySeriesReadingProgressParams struct {
-	TenantID       uuid.UUID `json:"tenant_id"`
-	UserID         uuid.UUID `json:"user_id"`
-	SeriesPublicID string    `json:"series_public_id"`
-	Surface        string    `json:"surface"`
+	TenantID       uuid.UUID      `json:"tenant_id"`
+	UserID         uuid.UUID      `json:"user_id"`
+	SeriesID       uuid.NullUUID  `json:"series_id"`
+	SeriesPublicID sql.NullString `json:"series_public_id"`
+	Surface        string         `json:"surface"`
 }
 
 type GetMySeriesReadingProgressRow struct {
+	EpisodeID          uuid.UUID     `json:"episode_id"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
 	OrderIndex         int32         `json:"order_index"`
@@ -146,11 +164,13 @@ func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySerie
 	row := q.db.QueryRowContext(ctx, GetMySeriesReadingProgress,
 		arg.TenantID,
 		arg.UserID,
+		arg.SeriesID,
 		arg.SeriesPublicID,
 		arg.Surface,
 	)
 	var i GetMySeriesReadingProgressRow
 	err := row.Scan(
+		&i.EpisodeID,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
 		&i.OrderIndex,
@@ -260,6 +280,7 @@ continue_from AS (
     FROM current_episode ce
 )
 SELECT cf.series_id,
+    e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -313,6 +334,7 @@ type ListMyRecentSeriesAscParams struct {
 
 type ListMyRecentSeriesAscRow struct {
 	SeriesID           uuid.UUID     `json:"series_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
 	LastActivityAt     time.Time     `json:"last_activity_at"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
@@ -347,6 +369,7 @@ func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSer
 		var i ListMyRecentSeriesAscRow
 		if err := rows.Scan(
 			&i.SeriesID,
+			&i.EpisodeID,
 			&i.LastActivityAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -466,6 +489,7 @@ continue_from AS (
     FROM current_episode ce
 )
 SELECT cf.series_id,
+    e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -519,6 +543,7 @@ type ListMyRecentSeriesDescParams struct {
 
 type ListMyRecentSeriesDescRow struct {
 	SeriesID           uuid.UUID     `json:"series_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
 	LastActivityAt     time.Time     `json:"last_activity_at"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
@@ -583,6 +608,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 		var i ListMyRecentSeriesDescRow
 		if err := rows.Scan(
 			&i.SeriesID,
+			&i.EpisodeID,
 			&i.LastActivityAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -612,6 +638,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 const SaveEpisodeReadingPosition = `-- name: SaveEpisodeReadingPosition :one
 WITH readable AS (
     SELECT e.id,
+        e.public_id,
         (
             SELECT COUNT(*)
             FROM episode_images ei
@@ -621,7 +648,10 @@ WITH readable AS (
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
     WHERE s.tenant_id = $1
-        AND e.public_id = $2
+        AND (
+            e.id = $2::uuid
+            OR e.public_id = $3::text
+        )
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
@@ -632,17 +662,17 @@ WITH readable AS (
             SELECT 1
             FROM episode_surfaces es
             WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+                AND es.surface = $4::text
         )
-        AND reader_may_open_episode($1, $4::uuid, e.id)
+        AND reader_may_open_episode($1, $5::uuid, e.id)
     LIMIT 1
 ),
 saved AS (
     INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count)
-    SELECT $1, $4, r.id, $5::integer, r.page_count
+    SELECT $1, $5, r.id, $6::integer, r.page_count
     FROM readable r
-    WHERE $5::integer >= 0
-        AND $5::integer < r.page_count
+    WHERE $6::integer >= 0
+        AND $6::integer < r.page_count
     ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
     SET page_index = EXCLUDED.page_index,
         page_count = EXCLUDED.page_count,
@@ -654,7 +684,8 @@ saved AS (
         END
     RETURNING page_index, page_count, updated_at
 )
-SELECT r.page_count AS episode_page_count,
+SELECT r.public_id AS episode_public_id,
+    r.page_count AS episode_page_count,
     s.page_index,
     s.page_count,
     s.updated_at
@@ -663,14 +694,16 @@ FROM readable r
 `
 
 type SaveEpisodeReadingPositionParams struct {
-	TenantID        uuid.UUID `json:"tenant_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	Surface         string    `json:"surface"`
-	UserID          uuid.UUID `json:"user_id"`
-	PageIndex       int32     `json:"page_index"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	EpisodeID       uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID sql.NullString `json:"episode_public_id"`
+	Surface         string         `json:"surface"`
+	UserID          uuid.UUID      `json:"user_id"`
+	PageIndex       int32          `json:"page_index"`
 }
 
 type SaveEpisodeReadingPositionRow struct {
+	EpisodePublicID  string        `json:"episode_public_id"`
 	EpisodePageCount int32         `json:"episode_page_count"`
 	PageIndex        sql.NullInt32 `json:"page_index"`
 	PageCount        sql.NullInt32 `json:"page_count"`
@@ -696,6 +729,7 @@ type SaveEpisodeReadingPositionRow struct {
 func (q *Queries) SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error) {
 	row := q.db.QueryRowContext(ctx, SaveEpisodeReadingPosition,
 		arg.TenantID,
+		arg.EpisodeID,
 		arg.EpisodePublicID,
 		arg.Surface,
 		arg.UserID,
@@ -703,6 +737,7 @@ func (q *Queries) SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisod
 	)
 	var i SaveEpisodeReadingPositionRow
 	err := row.Scan(
+		&i.EpisodePublicID,
 		&i.EpisodePageCount,
 		&i.PageIndex,
 		&i.PageCount,

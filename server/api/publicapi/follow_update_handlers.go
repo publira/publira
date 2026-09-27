@@ -80,6 +80,7 @@ func (s *apiServer) ListMyFollowUpdates(
 		items = append(items, &publirav1.FollowUpdate{
 			Series: series,
 			Episode: &publirattypesv1.Episode{
+				Id:          row.EpisodeID.String(),
 				PublicId:    row.EpisodePublicID,
 				Title:       row.EpisodeTitle,
 				OrderIndex:  row.EpisodeOrderIndex,

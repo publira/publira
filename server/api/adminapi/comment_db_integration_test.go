@@ -113,10 +113,10 @@ func (f commentModerationFixture) withdrawComment(t *testing.T, publicID string)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	comment, err := dbmodels.New(f.env.PG.DB).WithdrawEpisodeCommentByPublicIDForUser(ctx, dbmodels.WithdrawEpisodeCommentByPublicIDForUserParams{
+	comment, err := dbmodels.New(f.env.PG.DB).WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: f.admin.Tenant.ID,
 		UserID:   f.reader,
-		PublicID: publicID,
+		PublicID: sql.NullString{String: publicID, Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("withdraw comment %s: %v", publicID, err)

@@ -46,6 +46,8 @@ SELECT s.id,
     COALESCE(
         json_agg(
             json_build_object(
+                    'id',
+                    c.id,
                     'public_id',
                     c.public_id,
                 'name',
@@ -121,6 +123,8 @@ SELECT s.id,
         (
             SELECT json_agg(
                     json_build_object(
+                        'id',
+                        e.id,
                         'public_id',
                         e.public_id,
                         'title',
@@ -420,11 +424,14 @@ LIMIT sqlc.arg('limit');
 -- Resolves a currently public series to its internal ID and nothing else.
 -- Shared by every member-facing RPC that acts on a series (follow, rating), so
 -- they all treat a foreign, unpublished, or missing series the same way.
--- name: GetPublishedSeriesIDByPublicID :one
+-- name: GetPublishedSeriesID :one
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.public_id = sqlc.arg('public_id')
+    AND (
+        s.id = sqlc.narg('id')::uuid
+        OR s.public_id = sqlc.narg('public_id')::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -436,7 +443,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
 LIMIT 1;
 
--- name: GetPublishedSeriesAgeRatingByPublicID :one
+-- name: GetPublishedSeriesAgeRating :one
 -- A currently public series and the rating the tenant's age rule is applied
 -- to, for a read that decides access to its episodes.
 SELECT s.id,
@@ -444,7 +451,10 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND s.public_id = sqlc.arg('public_id')
+    AND (
+        s.id = sqlc.narg('id')::uuid
+        OR s.public_id = sqlc.narg('public_id')::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()

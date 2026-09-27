@@ -19,6 +19,7 @@ message EpisodeComment {
   string author_public_id = 4;
   // The author's display name, as stored on their account.
   string author_name = 5;
+  string id = 6;
 }
 
 // One of the caller's own comments that ListEpisodeComments cannot carry.
@@ -37,6 +38,7 @@ message MyEpisodeComment {
   // comment would return to. Removal is silent by design: nothing in this
   // message changes when staff remove a comment.
   bool awaiting_approval = 4;
+  string id = 5;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -49,6 +51,8 @@ message ListEpisodeCommentsRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Takes precedence over episode_public_id.
+  string episode_id = 6;
 }
 
 message ListEpisodeCommentsResponse {
@@ -70,6 +74,8 @@ message ListMyEpisodeCommentsRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Takes precedence over episode_public_id.
+  string episode_id = 6;
 }
 
 message ListMyEpisodeCommentsResponse {
@@ -89,6 +95,8 @@ message PostEpisodeCommentRequest {
   string body = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // Takes precedence over episode_public_id.
+  string episode_id = 5;
 }
 
 message PostEpisodeCommentResponse {
@@ -100,6 +108,8 @@ message PostEpisodeCommentResponse {
 message WithdrawEpisodeCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
   string comment_public_id = 2;
+  // Takes precedence over comment_public_id.
+  string comment_id = 3;
 }
 
 // Deliberately empty. A withdrawn comment is gone from every reader-facing
@@ -130,6 +140,8 @@ message ReportEpisodeCommentRequest {
   string note = 4;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Takes precedence over comment_public_id.
+  string comment_id = 6;
 }
 
 // Deliberately empty. The reporter is told that their report was accepted and

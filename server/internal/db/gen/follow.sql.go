@@ -1062,7 +1062,7 @@ type UserFollowsPublishedCreatorParams struct {
 }
 
 // Creators are public when they have at least one active series, matching
-// GetPublishedCreatorByPublicID.
+// GetPublishedCreatorForTenant.
 func (q *Queries) UserFollowsPublishedCreator(ctx context.Context, arg UserFollowsPublishedCreatorParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserFollowsPublishedCreator,
 		arg.TenantID,
@@ -1110,7 +1110,7 @@ type UserFollowsPublishedEpisodeParams struct {
 	Surface   string    `json:"surface"`
 }
 
-// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
+// Matches GetPublishedEpisodeForTenant, so a draft, scheduled, or
 // otherwise non-public episode is indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserFollowsPublishedEpisode,
@@ -1152,7 +1152,7 @@ type UserFollowsPublishedSeriesParams struct {
 	Surface  string    `json:"surface"`
 }
 
-// Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
+// Matches GetPublishedSeriesID, so an unpublished series is
 // indistinguishable from an unfollowed one.
 func (q *Queries) UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserFollowsPublishedSeries,

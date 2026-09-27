@@ -47,24 +47,26 @@ func (s *apiServer) resolvePublicEpisode(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
-	episodePublicID string,
-) (dbmodels.GetPublishedEpisodeByPublicIDForTenantRow, error) {
-	publicID := strings.TrimSpace(episodePublicID)
-	if publicID == "" {
-		return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
+	rawEpisodeID string,
+	rawEpisodePublicID string,
+) (dbmodels.GetPublishedEpisodeForTenantRow, error) {
+	key, err := requestRecordKey("episode_id", rawEpisodeID, rawEpisodePublicID)
+	if err != nil {
+		return dbmodels.GetPublishedEpisodeForTenantRow{}, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 		TenantID: tenantID,
 		Surface:  surface,
-		PublicID: publicID,
+		ID:       key.id,
+		PublicID: key.publicID,
 	})
 	if err == nil {
 		return row, nil
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return dbmodels.GetPublishedEpisodeForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
-	return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode_public_id", publicID)
+	return dbmodels.GetPublishedEpisodeForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode", key.String())
 }
 
 // validateCommentBody normalises what is stored and rejects what the column
@@ -88,7 +90,7 @@ func validateCommentBody(body string) (string, error) {
 func (s *apiServer) readerCanReadEpisodeBody(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	episode dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
+	episode dbmodels.GetPublishedEpisodeForTenantRow,
 ) (bool, error) {
 	if episode.IsFree {
 		return true, nil
@@ -211,7 +213,7 @@ func (s *apiServer) ListEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +233,7 @@ func (s *apiServer) ListEpisodeComments(
 	items := make([]*publirav1.EpisodeComment, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, &publirav1.EpisodeComment{
+			Id:             row.id.String(),
 			PublicId:       row.publicID,
 			Body:           row.body,
 			CreatedAt:      row.createdAt.UTC().Format(time.RFC3339),
@@ -307,8 +310,9 @@ func (s *apiServer) myCommentPage(
 // myEpisodeComment projects one of the caller's own comments. It carries no
 // status: awaiting_approval reports whether the comment has ever been public,
 // so a removal — which the author is never told about — changes nothing here.
-func myEpisodeComment(publicID, body string, createdAt time.Time, publishedAt sql.NullTime) *publirav1.MyEpisodeComment {
+func myEpisodeComment(id uuid.UUID, publicID, body string, createdAt time.Time, publishedAt sql.NullTime) *publirav1.MyEpisodeComment {
 	return &publirav1.MyEpisodeComment{
+		Id:               id.String(),
 		PublicId:         publicID,
 		Body:             body,
 		CreatedAt:        createdAt.UTC().Format(time.RFC3339),
@@ -332,7 +336,7 @@ func (s *apiServer) ListMyEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +355,7 @@ func (s *apiServer) ListMyEpisodeComments(
 
 	items := make([]*publirav1.MyEpisodeComment, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, myEpisodeComment(row.publicID, row.body, row.createdAt, row.publishedAt))
+		items = append(items, myEpisodeComment(row.id, row.publicID, row.body, row.createdAt, row.publishedAt))
 	}
 
 	res := &publirav1.ListMyEpisodeCommentsResponse{Comments: items}
@@ -490,7 +494,7 @@ func (s *apiServer) PostEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -564,7 +568,7 @@ func (s *apiServer) PostEpisodeComment(
 	}
 
 	return noStorePrivateResponse(&publirav1.PostEpisodeCommentResponse{
-		Comment: myEpisodeComment(comment.PublicID, comment.Body, comment.CreatedAt, comment.PublishedAt),
+		Comment: myEpisodeComment(comment.ID, comment.PublicID, comment.Body, comment.CreatedAt, comment.PublishedAt),
 	}), nil
 }
 
@@ -581,15 +585,16 @@ func (s *apiServer) WithdrawEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.CommentPublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("comment public id is required"))
+	key, err := requestRecordKey("comment_id", req.Msg.CommentId, req.Msg.CommentPublicId)
+	if err != nil {
+		return nil, err
 	}
 
-	_, err = s.queriesFor(ctx).WithdrawEpisodeCommentByPublicIDForUser(ctx, dbmodels.WithdrawEpisodeCommentByPublicIDForUserParams{
+	_, err = s.queriesFor(ctx).WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
-		PublicID: publicID,
+		ID:       key.id,
+		PublicID: key.publicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Another reader's comment, a comment of another tenant, one already
@@ -665,8 +670,7 @@ func (s *apiServer) autoHideReportedComment(
 	ctx context.Context,
 	txq *dbmodels.Queries,
 	tenantID uuid.UUID,
-	comment dbmodels.GetReportableEpisodeCommentByPublicIDForTenantRow,
-	commentPublicID string,
+	comment dbmodels.GetReportableEpisodeCommentForTenantRow,
 ) (bool, error) {
 	hiddenPublicID, err := txq.AutoHideEpisodeCommentAtReportThreshold(ctx, dbmodels.AutoHideEpisodeCommentAtReportThresholdParams{
 		TenantID:  tenantID,
@@ -694,7 +698,7 @@ func (s *apiServer) autoHideReportedComment(
 		TenantID:         tenantID,
 		UserID:           comment.UserID,
 		NotificationType: outbox.NotificationTypeCommentHidden,
-		CommentPublicID:  commentPublicID,
+		CommentPublicID:  comment.PublicID,
 		EpisodePublicID:  comment.EpisodePublicID,
 		EpisodeTitle:     comment.EpisodeTitle,
 		SeriesPublicID:   comment.SeriesPublicID,
@@ -740,9 +744,9 @@ func (s *apiServer) ReportEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.CommentPublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("comment public id is required"))
+	key, err := requestRecordKey("comment_id", req.Msg.CommentId, req.Msg.CommentPublicId)
+	if err != nil {
+		return nil, err
 	}
 	reason, err := commentReportReason(req.Msg.Reason)
 	if err != nil {
@@ -762,9 +766,10 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, err
 	}
 
-	comment, err := s.queriesFor(ctx).GetReportableEpisodeCommentByPublicIDForTenant(ctx, dbmodels.GetReportableEpisodeCommentByPublicIDForTenantParams{
+	comment, err := s.queriesFor(ctx).GetReportableEpisodeCommentForTenant(ctx, dbmodels.GetReportableEpisodeCommentForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: publicID,
+		ID:       key.id,
+		PublicID: key.publicID,
 		Surface:  surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -776,7 +781,7 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment", key.String())
 	}
 	if comment.UserID == user.ID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot report your own comment"))
@@ -820,7 +825,7 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, s.internalDBError(ctx, "failed to refresh comment open report count", err, "tenant_id", tenant.ID.String(), "comment_id", comment.ID.String())
 	}
 
-	autoHidden, err := s.autoHideReportedComment(ctx, txq, tenant.ID, comment, publicID)
+	autoHidden, err := s.autoHideReportedComment(ctx, txq, tenant.ID, comment)
 	if err != nil {
 		return nil, err
 	}

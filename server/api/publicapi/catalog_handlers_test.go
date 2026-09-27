@@ -809,8 +809,8 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001", "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r18", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
@@ -848,8 +848,8 @@ func TestCatalogGetEpisodeDetailFailsOnAStoredRatingItDoesNotKnow(t *testing.T) 
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001", "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r12", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 
@@ -1031,8 +1031,8 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			now := time.Now()
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
-			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-				WithArgs(tenantID, tc.publicID, "web").
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+				WithArgs(tenantID, nil, tc.publicID, "web").
 				WillReturnRows(tc.rows)
 			if tc.wantCode == 0 {
 				expectEpisodeNeighborsLookup(mock, tenantID, normalSeriesID, int32(1), normalEpisodeID)
@@ -1184,8 +1184,8 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			now := time.Now()
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
-			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-				WithArgs(tenantID, "EPISODE001", "web").
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+				WithArgs(tenantID, nil, "EPISODE001", "web").
 				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, tc.price == 0, nil, int64(0), "all"))
 
@@ -1260,8 +1260,8 @@ func TestGetPublishedEpisodeQueryHasPublicationGuards(t *testing.T) {
 		"el.published_at <= NOW()",
 	}
 	for _, snippet := range requiredSnippets {
-		if !strings.Contains(dbmodels.GetPublishedEpisodeByPublicIDForTenant, snippet) {
-			t.Fatalf("dbmodels.GetPublishedEpisodeByPublicIDForTenant does not contain %q", snippet)
+		if !strings.Contains(dbmodels.GetPublishedEpisodeForTenant, snippet) {
+			t.Fatalf("dbmodels.GetPublishedEpisodeForTenant does not contain %q", snippet)
 		}
 	}
 }
@@ -1279,8 +1279,8 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE002", "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE002", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE002", "Chapter Two", int32(2), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(2), episodeID,
@@ -1329,8 +1329,8 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001", "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,
@@ -1368,8 +1368,8 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	now := time.Now()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeByPublicIDForTenant)).
-		WithArgs(tenantID, "EPISODE001", "web").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs(tenantID, nil, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Chapter One", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID,

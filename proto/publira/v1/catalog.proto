@@ -137,6 +137,8 @@ message GetSeriesEpisodeAccessRequest {
   string series_public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over series_public_id.
+  string series_id = 4;
 }
 
 // What the caller may do with one published episode's body.
@@ -144,6 +146,7 @@ message SeriesEpisodeAccess {
   string episode_public_id = 1;
   // Never EPISODE_ACCESS_UNSPECIFIED.
   EpisodeAccess access = 2;
+  string episode_id = 3;
 }
 
 message GetSeriesEpisodeAccessResponse {
@@ -236,6 +239,7 @@ message PublishedCreator {
   int64 icon_image_file_size_bytes = 5;
   string icon_image_updated_at = 6;
   int32 published_series_count = 7;
+  string id = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -622,6 +626,8 @@ message ListRelatedSeriesRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Takes precedence over series_public_id.
+  string series_id = 6;
 }
 
 message ListRelatedSeriesResponse {
@@ -718,6 +724,8 @@ message MarkEpisodeAsReadRequest {
   string episode_public_id = 2;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over episode_public_id.
+  string episode_id = 4;
 }
 
 message MarkEpisodeAsReadResponse {
@@ -746,6 +754,8 @@ message SaveReadingPositionRequest {
   int32 page_index = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // Takes precedence over episode_public_id.
+  string episode_id = 5;
 }
 
 message SaveReadingPositionResponse {
@@ -757,6 +767,8 @@ message GetMyReadingPositionRequest {
   string episode_public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over episode_public_id.
+  string episode_id = 4;
 }
 
 message GetMyReadingPositionResponse {
@@ -770,6 +782,8 @@ message GetMySeriesProgressRequest {
   string series_public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over series_public_id.
+  string series_id = 4;
 }
 
 // The member's standing in one series: the episode they last moved in, where
@@ -914,10 +928,12 @@ enum FollowTargetType {
   FOLLOW_TARGET_TYPE_SERIES = 3;
 }
 
-// A public catalog target. The public ID is interpreted according to type.
+// A public catalog target. The ID is interpreted according to type.
 message FollowTarget {
   FollowTargetType type = 1;
   string public_id = 2;
+  // Takes precedence over public_id.
+  string id = 3;
 }
 
 // The current member's state for one public target. This is deliberately kept
@@ -961,6 +977,7 @@ message MyFollow {
   FollowTargetType target_type = 1;
   string target_public_id = 2;
   string followed_at = 3;
+  string target_id = 4;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1060,6 +1077,8 @@ message RateEpisodeRequest {
   int32 presses = 3;
   // The client making the call. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // Takes precedence over episode_public_id.
+  string episode_id = 5;
 }
 
 message RateEpisodeResponse {
@@ -1077,6 +1096,8 @@ message GetMyEpisodeRatingRequest {
   string episode_public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over episode_public_id.
+  string episode_id = 4;
 }
 
 message GetMyEpisodeRatingResponse {
@@ -1091,6 +1112,8 @@ message GetMySeriesRatingRequest {
   string series_public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // Takes precedence over series_public_id.
+  string series_id = 4;
 }
 
 message GetMySeriesRatingResponse {
@@ -1143,10 +1166,12 @@ enum ContentViewTargetType {
   CONTENT_VIEW_TARGET_TYPE_EPISODE = 2;
 }
 
-// A public catalog target. The public ID is interpreted according to type.
+// A public catalog target. The ID is interpreted according to type.
 message ContentViewTarget {
   ContentViewTargetType type = 1;
   string public_id = 2;
+  // Takes precedence over public_id.
+  string id = 3;
 }
 
 // Records that a reader opened the target's detail page.
@@ -1204,6 +1229,8 @@ message StartEpisodeCheckoutRequest {
   // Where Stripe should return the reader after checkout, and the surface the
   // episode has to be sold on. Unspecified is the storefront.
   Client client = 3;
+  // Takes precedence over episode_public_id.
+  string episode_id = 4;
 }
 
 message StartEpisodeCheckoutResponse {
@@ -1281,6 +1308,8 @@ message StartStorePurchaseRequest {
   string episode_public_id = 2;
   // The store the app is about to charge through. Required.
   InAppPurchaseStore store = 3;
+  // Takes precedence over episode_public_id.
+  string episode_id = 4;
 }
 
 message StartStorePurchaseResponse {

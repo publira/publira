@@ -42,17 +42,22 @@ func (s *apiServer) resolveFollowTarget(
 	surface string,
 	target *publirav1.FollowTarget,
 ) (resolvedFollowTarget, error) {
-	if target == nil || strings.TrimSpace(target.PublicId) == "" {
+	if target == nil || strings.TrimSpace(target.Id) == "" && strings.TrimSpace(target.PublicId) == "" {
 		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
+	}
+	key, err := requestRecordKey("target.id", target.Id, target.PublicId)
+	if err != nil {
+		return resolvedFollowTarget{}, err
 	}
 
 	queries := s.queriesFor(ctx)
 	switch target.Type {
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE:
-		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
+		row, err := queries.GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			PublicID: strings.TrimSpace(target.PublicId),
+			ID:       key.id,
+			PublicID: key.publicID,
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetEpisode, id: row.ID}, nil
@@ -62,10 +67,11 @@ func (s *apiServer) resolveFollowTarget(
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow episode target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR:
-		row, err := queries.GetPublishedCreatorByPublicID(ctx, dbmodels.GetPublishedCreatorByPublicIDParams{
+		row, err := queries.GetPublishedCreatorForTenant(ctx, dbmodels.GetPublishedCreatorForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			PublicID: strings.TrimSpace(target.PublicId),
+			ID:       key.id,
+			PublicID: key.publicID,
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetCreator, id: row.ID}, nil
@@ -75,10 +81,11 @@ func (s *apiServer) resolveFollowTarget(
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow creator target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
-		row, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+		row, err := queries.GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			PublicID: strings.TrimSpace(target.PublicId),
+			ID:       key.id,
+			PublicID: key.publicID,
 		})
 		if err == nil {
 			return resolvedFollowTarget{typeName: followTargetSeries, id: row}, nil
@@ -481,6 +488,7 @@ func (s *apiServer) ListMyFollows(
 		}
 		items = append(items, &publirav1.MyFollow{
 			TargetType:     targetType,
+			TargetId:       row.targetID.String(),
 			TargetPublicId: publicID,
 			FollowedAt:     row.createdAt.UTC().Format(time.RFC3339),
 		})

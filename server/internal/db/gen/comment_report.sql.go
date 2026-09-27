@@ -250,9 +250,10 @@ func (q *Queries) GetEpisodeCommentReportForModerationByIDForTenant(ctx context.
 	return i, err
 }
 
-const GetReportableEpisodeCommentByPublicIDForTenant = `-- name: GetReportableEpisodeCommentByPublicIDForTenant :one
+const GetReportableEpisodeCommentForTenant = `-- name: GetReportableEpisodeCommentForTenant :one
 
 SELECT c.id,
+    c.public_id,
     c.user_id,
     c.episode_id,
     e.public_id AS episode_public_id,
@@ -267,7 +268,10 @@ FROM episode_comments c
     JOIN episode_listings el ON el.tenant_id = c.tenant_id
         AND el.episode_id = e.id
 WHERE c.tenant_id = $1
-    AND c.public_id = $2
+    AND (
+        c.id = $2::uuid
+        OR c.public_id = $3::text
+    )
     AND c.status = 'published'
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -279,19 +283,21 @@ WHERE c.tenant_id = $1
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+            AND es.surface = $4::text
     )
 LIMIT 1
 `
 
-type GetReportableEpisodeCommentByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-	Surface  string    `json:"surface"`
+type GetReportableEpisodeCommentForTenantParams struct {
+	TenantID uuid.UUID      `json:"tenant_id"`
+	ID       uuid.NullUUID  `json:"id"`
+	PublicID sql.NullString `json:"public_id"`
+	Surface  string         `json:"surface"`
 }
 
-type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
+type GetReportableEpisodeCommentForTenantRow struct {
 	ID              uuid.UUID `json:"id"`
+	PublicID        string    `json:"public_id"`
 	UserID          uuid.UUID `json:"user_id"`
 	EpisodeID       uuid.UUID `json:"episode_id"`
 	EpisodePublicID string    `json:"episode_public_id"`
@@ -305,8 +311,9 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 //
 // Expected plans:
 //
-//	GetReportableEpisodeCommentByPublicIDForTenant
-//	  -> episode_comments_tenant_public_id_key
+//	GetReportableEpisodeCommentForTenant
+//	  -> episode_comments_tenant_id_id_key, or
+//	     episode_comments_tenant_public_id_key for a public ID
 //	CreateEpisodeCommentReport
 //	  -> episode_comment_reports_tenant_comment_reporter_key for the conflict
 //	RefreshEpisodeCommentOpenReportCount
@@ -326,7 +333,7 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 //
 // The comment a reader is allowed to report: one that is published, on an
 // episode that is itself public right now. The publication predicate is the one
-// GetPublishedEpisodeByPublicIDForTenant applies, surface included, so a comment
+// GetPublishedEpisodeForTenant applies, surface included, so a comment
 // on an episode that has been unpublished since, or that the calling surface may
 // not show, is as absent here as one that never existed.
 //
@@ -342,11 +349,17 @@ type GetReportableEpisodeCommentByPublicIDForTenantRow struct {
 // The episode and the series the joins already visit are returned with it. The
 // staff notification the report raises names what the queue is about, and
 // reading it here keeps the report one round trip.
-func (q *Queries) GetReportableEpisodeCommentByPublicIDForTenant(ctx context.Context, arg GetReportableEpisodeCommentByPublicIDForTenantParams) (GetReportableEpisodeCommentByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
-	var i GetReportableEpisodeCommentByPublicIDForTenantRow
+func (q *Queries) GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetReportableEpisodeCommentForTenant,
+		arg.TenantID,
+		arg.ID,
+		arg.PublicID,
+		arg.Surface,
+	)
+	var i GetReportableEpisodeCommentForTenantRow
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.UserID,
 		&i.EpisodeID,
 		&i.EpisodePublicID,

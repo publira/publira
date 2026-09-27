@@ -195,18 +195,22 @@ func (s *apiServer) resolveContentViewTarget(
 	surface string,
 	target *publirav1.ContentViewTarget,
 ) (resolvedContentViewTarget, error) {
-	if target == nil || strings.TrimSpace(target.PublicId) == "" {
+	if target == nil || strings.TrimSpace(target.Id) == "" && strings.TrimSpace(target.PublicId) == "" {
 		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
 	}
-	publicID := strings.TrimSpace(target.PublicId)
+	key, err := requestRecordKey("target.id", target.Id, target.PublicId)
+	if err != nil {
+		return resolvedContentViewTarget{}, err
+	}
 
 	queries := s.queriesFor(ctx)
 	switch target.Type {
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_SERIES:
-		seriesID, err := queries.GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+		seriesID, err := queries.GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			PublicID: publicID,
+			ID:       key.id,
+			PublicID: key.publicID,
 		})
 		if err == nil {
 			return resolvedContentViewTarget{seriesID: seriesID}, nil
@@ -216,10 +220,11 @@ func (s *apiServer) resolveContentViewTarget(
 		}
 		return resolvedContentViewTarget{}, s.internalDBError(ctx, "failed to get content view series target", err, "tenant_id", tenantID.String())
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
-		row, err := queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
+		row, err := queries.GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			PublicID: publicID,
+			ID:       key.id,
+			PublicID: key.publicID,
 		})
 		if err == nil {
 			return resolvedContentViewTarget{

@@ -237,7 +237,10 @@ FROM creators c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = ANY(sqlc.arg('ids')::uuid []);
 
--- name: GetPublishedCreatorByPublicID :one
+-- name: GetPublishedCreatorForTenant :one
+-- A URL names the creator by its public ID and a reader's request by its ID;
+-- the caller passes the one it holds.
+--
 -- Returns only the creators that hold at least one published series. The
 -- caller turns an empty result into not_found exactly as it does a missing
 -- row, so the existence of an unpublished creator does not leak.
@@ -274,7 +277,10 @@ FROM creators c
         LIMIT 1
     ) civ ON true
 WHERE c.tenant_id = sqlc.arg('tenant_id')
-    AND c.public_id = sqlc.arg('public_id')
+    AND (
+        c.id = sqlc.narg('id')::uuid
+        OR c.public_id = sqlc.narg('public_id')::text
+    )
     AND EXISTS (
         SELECT 1
         FROM series_creators sc

@@ -58,9 +58,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	ctx context.Context,
 	req *connect.Request[publirav1.StartEpisodeCheckoutRequest],
 ) (*connect.Response[publirav1.StartEpisodeCheckoutResponse], error) {
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := checkoutSurface(req.Msg.Client)
 	if err != nil {
@@ -86,23 +86,24 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, err
 	}
 
-	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeByPublicIDForTenant(ctx, dbmodels.GetPurchasableEpisodeByPublicIDForTenantParams{
+	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: episodePublicID,
+		ID:       episodeKey.id,
+		PublicID: episodeKey.publicID,
 		Surface:  surface,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode", episodeKey.String())
 	}
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes do not require checkout"))
 	}
 	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
 	if err != nil {
-		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if !soldHere {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold on this surface"))
@@ -114,7 +115,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		EpisodeID: episode.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if hasPurchase {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
@@ -144,7 +145,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		IdempotencyKey: fmt.Sprintf("episode-checkout:%s:%s:%s", tenant.ID, user.ID, episode.ID),
 	})
 	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_public_id", episodePublicID)
+		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("failed to start checkout"))
 	}
 	return connect.NewResponse(&publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}), nil
@@ -187,9 +188,11 @@ type purchasePageRow struct {
 	expiresAt         sql.NullTime
 	refundedAt        sql.NullTime
 	purchasedAt       time.Time
+	episodeID         uuid.UUID
 	episodePublicID   string
 	episodeTitle      string
 	episodeOrderIndex int32
+	seriesID          uuid.UUID
 	seriesPublicID    string
 	seriesTitle       string
 }
@@ -203,9 +206,11 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			expiresAt:         row.ExpiresAt,
 			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
+			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
 			episodeOrderIndex: row.EpisodeOrderIndex,
+			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
 		})
@@ -222,9 +227,11 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			expiresAt:         row.ExpiresAt,
 			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
+			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
 			episodeOrderIndex: row.EpisodeOrderIndex,
+			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
 		})
@@ -278,6 +285,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 	return &publirav1.MyPurchase{
 		Id: row.id.String(),
 		Episode: &publirattypesv1.Episode{
+			Id:         row.episodeID.String(),
 			OrderIndex: row.episodeOrderIndex,
 			PublicId:   row.episodePublicID,
 			Title:      row.episodeTitle,
@@ -287,6 +295,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 		PriceAtPurchase: row.priceAtPurchase,
 		PurchasedAt:     row.purchasedAt.UTC().Format(time.RFC3339),
 		Series: &publirattypesv1.Series{
+			Id:       row.seriesID.String(),
 			PublicId: row.seriesPublicID,
 			Title:    row.seriesTitle,
 		},

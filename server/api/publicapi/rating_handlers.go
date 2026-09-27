@@ -54,26 +54,27 @@ func (s *apiServer) resolveRatingEpisode(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
-	episodePublicID string,
-) (dbmodels.GetPublishedEpisodeByPublicIDForTenantRow, error) {
-	publicID := strings.TrimSpace(episodePublicID)
-	if publicID == "" {
-		return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{},
-			connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
+	rawEpisodeID string,
+	rawEpisodePublicID string,
+) (dbmodels.GetPublishedEpisodeForTenantRow, error) {
+	key, err := requestRecordKey("episode_id", rawEpisodeID, rawEpisodePublicID)
+	if err != nil {
+		return dbmodels.GetPublishedEpisodeForTenantRow{}, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 		TenantID: tenantID,
 		Surface:  surface,
-		PublicID: publicID,
+		ID:       key.id,
+		PublicID: key.publicID,
 	})
 	if err == nil {
 		return row, nil
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{},
+		return dbmodels.GetPublishedEpisodeForTenantRow{},
 			connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
-	return dbmodels.GetPublishedEpisodeByPublicIDForTenantRow{},
+	return dbmodels.GetPublishedEpisodeForTenantRow{},
 		s.internalDBError(ctx, "failed to get rating episode target", err, "tenant_id", tenantID.String())
 }
 
@@ -83,7 +84,7 @@ func (s *apiServer) resolveRatingEpisode(
 func (s *apiServer) readerMayReadEpisode(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
+	row dbmodels.GetPublishedEpisodeForTenantRow,
 ) (bool, error) {
 	if row.IsFree {
 		return true, nil
@@ -161,7 +162,7 @@ func (s *apiServer) GetMyEpisodeRating(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -210,17 +211,18 @@ func (s *apiServer) GetMySeriesRating(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	if seriesPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series public id is required"))
+	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 	// The published catalog query first, as every member-facing series RPC
 	// does, so a foreign, unpublished, or missing series is NotFound before
 	// anything of the reader's is read.
-	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesIDByPublicID(ctx, dbmodels.GetPublishedSeriesIDByPublicIDParams{
+	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: seriesPublicID,
+		ID:       seriesKey.id,
+		PublicID: seriesKey.publicID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -265,7 +267,7 @@ func (s *apiServer) RateEpisode(
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodePublicId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +335,7 @@ type storedRating struct {
 func (s *apiServer) storeEpisodeRating(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	episode dbmodels.GetPublishedEpisodeByPublicIDForTenantRow,
+	episode dbmodels.GetPublishedEpisodeForTenantRow,
 	points int16,
 ) (storedRating, error) {
 	tx, err := s.beginTenantTx(ctx)

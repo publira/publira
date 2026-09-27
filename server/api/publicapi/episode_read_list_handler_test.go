@@ -21,12 +21,12 @@ import (
 
 func episodeReadRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "read_at", "episode_public_id", "episode_title", "episode_order_index", "series_public_id", "series_title",
+		"id", "read_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
 func addEpisodeReadRow(rows *sqlmock.Rows, id uuid.UUID, readAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, readAt, "EPISODE"+id.String(), "Episode title", int32(3), "SERIES001", "Series title")
+	return rows.AddRow(id, readAt, uuid.Must(uuid.NewV7()), "EPISODE"+id.String(), "Episode title", int32(3), uuid.Must(uuid.NewV7()), "SERIES001", "Series title")
 }
 
 func assertEpisodeReadEpisodeIDs(t *testing.T, reads []*publirav1.MyEpisodeRead, want []uuid.UUID) {

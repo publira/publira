@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -21,9 +20,9 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetSeriesEpisodeAccessRequest],
 ) (*connect.Response[publirav1.GetSeriesEpisodeAccessResponse], error) {
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	if seriesPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series public id is required"))
+	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
@@ -33,20 +32,21 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	if err != nil {
 		return nil, err
 	}
-	series, err := s.queriesFor(ctx).GetPublishedSeriesAgeRatingByPublicID(ctx, dbmodels.GetPublishedSeriesAgeRatingByPublicIDParams{
+	series, err := s.queriesFor(ctx).GetPublishedSeriesAgeRating(ctx, dbmodels.GetPublishedSeriesAgeRatingParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: seriesPublicID,
+		ID:       seriesKey.id,
+		PublicID: seriesKey.publicID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get series for episode access", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to get series for episode access", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
 	}
 	requiredMinimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, series.AgeRating)
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
 	}
 
 	// A rejected session reads as a guest. Any other failure is reported: a
@@ -61,7 +61,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 			}
 			slog.InfoContext(ctx, "series episode access: bearer session rejected, continuing without it",
 				"tenant_id", tenant.ID,
-				"series_public_id", seriesPublicID,
+				"series", seriesKey.String(),
 				"code", connect.CodeOf(authErr).String(),
 			)
 		} else {
@@ -72,7 +72,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 
 	clearsAgeGate, err := s.readerClearsMinimumAge(ctx, tenant, requiredMinimumAge, reader.BirthDate)
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
 	}
 
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeAccessInSeries(ctx, dbmodels.ListPublishedEpisodeAccessInSeriesParams{
@@ -82,13 +82,14 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 		SeriesID: series.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list episode access in a series", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to list episode access in a series", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
 	}
 	res := &publirav1.GetSeriesEpisodeAccessResponse{
 		Episodes: make([]*publirav1.SeriesEpisodeAccess, 0, len(rows)),
 	}
 	for _, row := range rows {
 		res.Episodes = append(res.Episodes, &publirav1.SeriesEpisodeAccess{
+			EpisodeId:       row.ID.String(),
 			EpisodePublicId: row.PublicID,
 			Access:          episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.HasGrant),
 		})

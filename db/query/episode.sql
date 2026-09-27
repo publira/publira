@@ -291,7 +291,9 @@ WHERE s.tenant_id = $1
     AND e.public_id = $3
 LIMIT 1;
 
--- name: GetPublishedEpisodeByPublicIDForTenant :one
+-- name: GetPublishedEpisodeForTenant :one
+-- A URL names the episode by its public ID and a reader's request by its ID;
+-- the caller passes the one it holds.
 SELECT e.id,
     e.public_id,
     e.title,
@@ -342,7 +344,10 @@ FROM episodes e
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND e.public_id = sqlc.arg('public_id')
+    AND (
+        e.id = sqlc.narg('id')::uuid
+        OR e.public_id = sqlc.narg('public_id')::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -460,7 +465,10 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
-    AND e.public_id = sqlc.arg('episode_public_id')
+    AND (
+        e.id = sqlc.narg('episode_id')::uuid
+        OR e.public_id = sqlc.narg('episode_public_id')::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -495,9 +503,11 @@ RETURNING *;
 -- cursor rules: proto/README.md.
 SELECT r.id,
     r.read_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_reads r
@@ -543,9 +553,11 @@ LIMIT sqlc.arg('limit');
 -- The backward direction of ListMyEpisodeReadsDesc.
 SELECT r.id,
     r.read_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_reads r
@@ -601,7 +613,10 @@ FROM episode_reads r
     JOIN series s ON s.id = e.series_id
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.user_id = sqlc.arg('user_id')
-    AND s.public_id = sqlc.arg('series_public_id')
+    AND (
+        s.id = sqlc.narg('series_id')::uuid
+        OR s.public_id = sqlc.narg('series_public_id')::text
+    )
 ORDER BY e.order_index ASC,
     e.id ASC;
 

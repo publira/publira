@@ -245,7 +245,7 @@ func (q *Queries) GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreat
 	return i, err
 }
 
-const GetPublishedCreatorByPublicID = `-- name: GetPublishedCreatorByPublicID :one
+const GetPublishedCreatorForTenant = `-- name: GetPublishedCreatorForTenant :one
 SELECT c.id,
     c.public_id,
     c.name,
@@ -279,7 +279,10 @@ FROM creators c
         LIMIT 1
     ) civ ON true
 WHERE c.tenant_id = $2
-    AND c.public_id = $3
+    AND (
+        c.id = $3::uuid
+        OR c.public_id = $4::text
+    )
     AND EXISTS (
         SELECT 1
         FROM series_creators sc
@@ -299,13 +302,14 @@ WHERE c.tenant_id = $2
 LIMIT 1
 `
 
-type GetPublishedCreatorByPublicIDParams struct {
-	Surface  string    `json:"surface"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+type GetPublishedCreatorForTenantParams struct {
+	Surface  string         `json:"surface"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	ID       uuid.NullUUID  `json:"id"`
+	PublicID sql.NullString `json:"public_id"`
 }
 
-type GetPublishedCreatorByPublicIDRow struct {
+type GetPublishedCreatorForTenantRow struct {
 	ID                     uuid.UUID      `json:"id"`
 	PublicID               string         `json:"public_id"`
 	Name                   string         `json:"name"`
@@ -316,12 +320,20 @@ type GetPublishedCreatorByPublicIDRow struct {
 	PublishedSeriesCount   int32          `json:"published_series_count"`
 }
 
+// A URL names the creator by its public ID and a reader's request by its ID;
+// the caller passes the one it holds.
+//
 // Returns only the creators that hold at least one published series. The
 // caller turns an empty result into not_found exactly as it does a missing
 // row, so the existence of an unpublished creator does not leak.
-func (q *Queries) GetPublishedCreatorByPublicID(ctx context.Context, arg GetPublishedCreatorByPublicIDParams) (GetPublishedCreatorByPublicIDRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedCreatorByPublicID, arg.Surface, arg.TenantID, arg.PublicID)
-	var i GetPublishedCreatorByPublicIDRow
+func (q *Queries) GetPublishedCreatorForTenant(ctx context.Context, arg GetPublishedCreatorForTenantParams) (GetPublishedCreatorForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPublishedCreatorForTenant,
+		arg.Surface,
+		arg.TenantID,
+		arg.ID,
+		arg.PublicID,
+	)
+	var i GetPublishedCreatorForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.PublicID,

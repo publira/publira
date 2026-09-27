@@ -281,7 +281,7 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 	return max_order_index, err
 }
 
-const GetPublishedEpisodeByPublicIDForTenant = `-- name: GetPublishedEpisodeByPublicIDForTenant :one
+const GetPublishedEpisodeForTenant = `-- name: GetPublishedEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
     e.title,
@@ -332,7 +332,10 @@ FROM episodes e
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
 WHERE s.tenant_id = $1
-    AND e.public_id = $2
+    AND (
+        e.id = $2::uuid
+        OR e.public_id = $3::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -343,18 +346,19 @@ WHERE s.tenant_id = $1
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+            AND es.surface = $4::text
     )
 LIMIT 1
 `
 
-type GetPublishedEpisodeByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-	Surface  string    `json:"surface"`
+type GetPublishedEpisodeForTenantParams struct {
+	TenantID uuid.UUID      `json:"tenant_id"`
+	ID       uuid.NullUUID  `json:"id"`
+	PublicID sql.NullString `json:"public_id"`
+	Surface  string         `json:"surface"`
 }
 
-type GetPublishedEpisodeByPublicIDForTenantRow struct {
+type GetPublishedEpisodeForTenantRow struct {
 	ID                           uuid.UUID      `json:"id"`
 	PublicID                     string         `json:"public_id"`
 	Title                        string         `json:"title"`
@@ -381,9 +385,16 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 	PurchaseAvailability         string         `json:"purchase_availability"`
 }
 
-func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.Surface)
-	var i GetPublishedEpisodeByPublicIDForTenantRow
+// A URL names the episode by its public ID and a reader's request by its ID;
+// the caller passes the one it holds.
+func (q *Queries) GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeForTenant,
+		arg.TenantID,
+		arg.ID,
+		arg.PublicID,
+		arg.Surface,
+	)
+	var i GetPublishedEpisodeForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.PublicID,
@@ -805,9 +816,11 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 const ListMyEpisodeReadsAsc = `-- name: ListMyEpisodeReadsAsc :many
 SELECT r.id,
     r.read_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_reads r
@@ -863,9 +876,11 @@ type ListMyEpisodeReadsAscParams struct {
 type ListMyEpisodeReadsAscRow struct {
 	ID                uuid.UUID `json:"id"`
 	ReadAt            time.Time `json:"read_at"`
+	EpisodeID         uuid.UUID `json:"episode_id"`
 	EpisodePublicID   string    `json:"episode_public_id"`
 	EpisodeTitle      string    `json:"episode_title"`
 	EpisodeOrderIndex int32     `json:"episode_order_index"`
+	SeriesID          uuid.UUID `json:"series_id"`
 	SeriesPublicID    string    `json:"series_public_id"`
 	SeriesTitle       string    `json:"series_title"`
 }
@@ -891,9 +906,11 @@ func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeRe
 		if err := rows.Scan(
 			&i.ID,
 			&i.ReadAt,
+			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
 			&i.EpisodeOrderIndex,
+			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 		); err != nil {
@@ -913,9 +930,11 @@ func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeRe
 const ListMyEpisodeReadsDesc = `-- name: ListMyEpisodeReadsDesc :many
 SELECT r.id,
     r.read_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_reads r
@@ -971,9 +990,11 @@ type ListMyEpisodeReadsDescParams struct {
 type ListMyEpisodeReadsDescRow struct {
 	ID                uuid.UUID `json:"id"`
 	ReadAt            time.Time `json:"read_at"`
+	EpisodeID         uuid.UUID `json:"episode_id"`
 	EpisodePublicID   string    `json:"episode_public_id"`
 	EpisodeTitle      string    `json:"episode_title"`
 	EpisodeOrderIndex int32     `json:"episode_order_index"`
+	SeriesID          uuid.UUID `json:"series_id"`
 	SeriesPublicID    string    `json:"series_public_id"`
 	SeriesTitle       string    `json:"series_title"`
 }
@@ -1012,9 +1033,11 @@ func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeR
 		if err := rows.Scan(
 			&i.ID,
 			&i.ReadAt,
+			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
 			&i.EpisodeOrderIndex,
+			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 		); err != nil {
@@ -1038,15 +1061,19 @@ FROM episode_reads r
     JOIN series s ON s.id = e.series_id
 WHERE r.tenant_id = $1
     AND r.user_id = $2
-    AND s.public_id = $3
+    AND (
+        s.id = $3::uuid
+        OR s.public_id = $4::text
+    )
 ORDER BY e.order_index ASC,
     e.id ASC
 `
 
 type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
-	TenantID       uuid.UUID `json:"tenant_id"`
-	UserID         uuid.UUID `json:"user_id"`
-	SeriesPublicID string    `json:"series_public_id"`
+	TenantID       uuid.UUID      `json:"tenant_id"`
+	UserID         uuid.UUID      `json:"user_id"`
+	SeriesID       uuid.NullUUID  `json:"series_id"`
+	SeriesPublicID sql.NullString `json:"series_public_id"`
 }
 
 // Which episodes of one series this reader has already finished, so the series
@@ -1057,7 +1084,12 @@ type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
 // that matches nothing in it marks nothing. What the query is scoped to is the reader, through the
 // member RLS policy episode_reads carries and the columns repeated here.
 func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesPublicID)
+	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries,
+		arg.TenantID,
+		arg.UserID,
+		arg.SeriesID,
+		arg.SeriesPublicID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1480,7 +1512,10 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $2
-    AND e.public_id = $4
+    AND (
+        e.id = $4::uuid
+        OR e.public_id = $5::text
+    )
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1491,7 +1526,7 @@ WHERE s.tenant_id = $2
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $5::text
+            AND es.surface = $6::text
     )
     AND reader_may_open_episode($2, $3, e.id)
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
@@ -1500,11 +1535,12 @@ RETURNING id, tenant_id, user_id, episode_id, read_at
 `
 
 type MarkPublishedEpisodeAsReadParams struct {
-	ID              uuid.UUID `json:"id"`
-	TenantID        uuid.UUID `json:"tenant_id"`
-	UserID          uuid.UUID `json:"user_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	Surface         string    `json:"surface"`
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	EpisodeID       uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID sql.NullString `json:"episode_public_id"`
+	Surface         string         `json:"surface"`
 }
 
 // Inserts the first completed read only after checking publication and body
@@ -1518,6 +1554,7 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
+		arg.EpisodeID,
 		arg.EpisodePublicID,
 		arg.Surface,
 	)

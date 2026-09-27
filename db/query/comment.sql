@@ -378,7 +378,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND status = 'hidden'
 RETURNING *;
 
--- name: WithdrawEpisodeCommentByPublicIDForUser :one
+-- name: WithdrawEpisodeCommentForUser :one
 -- The author's own deletion. It applies to a comment staff had removed too,
 -- since the author still sees that comment unchanged. The removal columns
 -- are cleared because no removal is in force on a withdrawn row any more;
@@ -392,7 +392,10 @@ SET status = 'withdrawn',
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
-    AND public_id = sqlc.arg('public_id')
+    AND (
+        id = sqlc.narg('id')::uuid
+        OR public_id = sqlc.narg('public_id')::text
+    )
     AND status <> 'withdrawn'
 RETURNING *;
 

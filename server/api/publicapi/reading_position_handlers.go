@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -35,9 +34,9 @@ func (s *apiServer) SaveReadingPosition(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
+	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
@@ -50,7 +49,8 @@ func (s *apiServer) SaveReadingPosition(
 	row, err := s.queriesFor(ctx).SaveEpisodeReadingPosition(ctx, dbmodels.SaveEpisodeReadingPositionParams{
 		TenantID:        tenant.ID,
 		UserID:          user.ID,
-		EpisodePublicID: publicID,
+		EpisodeID:       episodeKey.id,
+		EpisodePublicID: episodeKey.publicID,
 		PageIndex:       req.Msg.PageIndex,
 		Surface:         surface,
 	})
@@ -74,7 +74,7 @@ func (s *apiServer) SaveReadingPosition(
 
 	return noStorePrivateResponse(&publirav1.SaveReadingPositionResponse{
 		Position: &publirav1.ReadingPosition{
-			EpisodePublicId: publicID,
+			EpisodePublicId: row.EpisodePublicID,
 			PageIndex:       row.PageIndex.Int32,
 			PageCount:       row.PageCount.Int32,
 			UpdatedAt:       row.UpdatedAt.Time.UTC().Format(time.RFC3339Nano),
@@ -94,9 +94,9 @@ func (s *apiServer) GetMyReadingPosition(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode public id is required"))
+	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
@@ -109,7 +109,8 @@ func (s *apiServer) GetMyReadingPosition(
 	row, err := s.queriesFor(ctx).GetMyEpisodeReadingPosition(ctx, dbmodels.GetMyEpisodeReadingPositionParams{
 		TenantID:        tenant.ID,
 		UserID:          user.ID,
-		EpisodePublicID: publicID,
+		EpisodeID:       episodeKey.id,
+		EpisodePublicID: episodeKey.publicID,
 		Surface:         surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -121,7 +122,7 @@ func (s *apiServer) GetMyReadingPosition(
 
 	return noStorePrivateResponse(&publirav1.GetMyReadingPositionResponse{
 		Position: &publirav1.ReadingPosition{
-			EpisodePublicId: publicID,
+			EpisodePublicId: row.EpisodePublicID,
 			PageIndex:       row.PageIndex,
 			PageCount:       row.PageCount,
 			UpdatedAt:       row.UpdatedAt.UTC().Format(time.RFC3339Nano),
@@ -147,9 +148,9 @@ func (s *apiServer) GetMySeriesProgress(
 	if err != nil {
 		return nil, err
 	}
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	if seriesPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series public id is required"))
+	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 	surface, err := callingSurface(req.Msg.Surface)
 	if err != nil {
@@ -162,7 +163,8 @@ func (s *apiServer) GetMySeriesProgress(
 	finished, err := s.queriesFor(ctx).ListMyFinishedEpisodePublicIDsInSeries(ctx, dbmodels.ListMyFinishedEpisodePublicIDsInSeriesParams{
 		TenantID:       tenant.ID,
 		UserID:         user.ID,
-		SeriesPublicID: seriesPublicID,
+		SeriesID:       seriesKey.id,
+		SeriesPublicID: seriesKey.publicID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list finished episodes of the series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -172,7 +174,8 @@ func (s *apiServer) GetMySeriesProgress(
 	row, err := s.queriesFor(ctx).GetMySeriesReadingProgress(ctx, dbmodels.GetMySeriesReadingProgressParams{
 		TenantID:       tenant.ID,
 		UserID:         user.ID,
-		SeriesPublicID: seriesPublicID,
+		SeriesID:       seriesKey.id,
+		SeriesPublicID: seriesKey.publicID,
 		Surface:        surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {

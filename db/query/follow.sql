@@ -313,7 +313,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     );
 
 -- name: UserFollowsPublishedEpisode :one
--- Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
+-- Matches GetPublishedEpisodeForTenant, so a draft, scheduled, or
 -- otherwise non-public episode is indistinguishable from an unfollowed one.
 SELECT EXISTS (
     SELECT 1
@@ -343,7 +343,7 @@ SELECT EXISTS (
 
 -- name: UserFollowsPublishedCreator :one
 -- Creators are public when they have at least one active series, matching
--- GetPublishedCreatorByPublicID.
+-- GetPublishedCreatorForTenant.
 SELECT EXISTS (
     SELECT 1
     FROM creator_follows cf
@@ -372,7 +372,7 @@ SELECT EXISTS (
 ) AS follows_published_creator;
 
 -- name: UserFollowsPublishedSeries :one
--- Matches GetPublishedSeriesIDByPublicID, so an unpublished series is
+-- Matches GetPublishedSeriesID, so an unpublished series is
 -- indistinguishable from an unfollowed one.
 SELECT EXISTS (
     SELECT 1

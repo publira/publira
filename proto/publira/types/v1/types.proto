@@ -70,6 +70,9 @@ message Creator {
   // Set when this creator stands for an episode credit. It lets an editor see
   // which rows are local additions that a later range edit must leave alone.
   CreatorCreditSource source = 9;
+  // Set on the credits of a series the reader API returns, which is where a
+  // reader follows a credited creator from.
+  string id = 10;
 }
 
 message Label {
@@ -208,6 +211,7 @@ message Series {
   // SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
   // the catalog has already left out every series the caller may not show.
   SurfaceAvailability availability = 21;
+  string id = 22;
 }
 
 message Episode {
@@ -259,6 +263,7 @@ message Episode {
   // elsewhere. A client offers the checkout only where this names its own
   // surface, because StartEpisodeCheckout refuses it anywhere else.
   SurfaceAvailability purchase_availability = 14;
+  string id = 15;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
