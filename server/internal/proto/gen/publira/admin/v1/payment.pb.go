@@ -339,11 +339,11 @@ type TenantPaymentSettings struct {
 	// The id of the provider the tenant chose, or empty before one is saved.
 	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
 	Enabled  bool   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// One entry per field the provider declares, in its declared order.
-	Fields []*PaymentCredentialFieldState `protobuf:"bytes,3,rep,name=fields,proto3" json:"fields,omitempty"`
 	// True when enabled and every field the provider requires is stored.
 	// Checkout and Webhook use this tenant's settings only when ready.
-	Ready         bool `protobuf:"varint,4,opt,name=ready,proto3" json:"ready,omitempty"`
+	Ready bool `protobuf:"varint,7,opt,name=ready,proto3" json:"ready,omitempty"`
+	// One entry per field the provider declares, in its declared order.
+	Fields        []*PaymentCredentialFieldState `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -392,18 +392,18 @@ func (x *TenantPaymentSettings) GetEnabled() bool {
 	return false
 }
 
-func (x *TenantPaymentSettings) GetFields() []*PaymentCredentialFieldState {
-	if x != nil {
-		return x.Fields
-	}
-	return nil
-}
-
 func (x *TenantPaymentSettings) GetReady() bool {
 	if x != nil {
 		return x.Ready
 	}
 	return false
+}
+
+func (x *TenantPaymentSettings) GetFields() []*PaymentCredentialFieldState {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
 }
 
 type GetTenantPaymentSettingsRequest struct {
@@ -564,7 +564,7 @@ type UpdateTenantPaymentSettingsRequest struct {
 	// clears every field stored for the previous one.
 	Provider      string                          `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 	Enabled       bool                            `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Fields        []*PaymentCredentialFieldUpdate `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
+	Fields        []*PaymentCredentialFieldUpdate `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1448,12 +1448,12 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"configured\x18\x02 \x01(\bR\n" +
 	"configured\x12\x12\n" +
 	"\x04hint\x18\x03 \x01(\tR\x04hint\x12!\n" +
-	"\fpublic_value\x18\x04 \x01(\tR\vpublicValue\"\xaa\x01\n" +
+	"\fpublic_value\x18\x04 \x01(\tR\vpublicValue\"\x9a\x02\n" +
 	"\x15TenantPaymentSettings\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x18\n" +
-	"\aenabled\x18\x02 \x01(\bR\aenabled\x12E\n" +
-	"\x06fields\x18\x03 \x03(\v2-.publira.admin.v1.PaymentCredentialFieldStateR\x06fields\x12\x14\n" +
-	"\x05ready\x18\x04 \x01(\bR\x05ready\"Z\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x14\n" +
+	"\x05ready\x18\a \x01(\bR\x05ready\x12E\n" +
+	"\x06fields\x18\b \x03(\v2-.publira.admin.v1.PaymentCredentialFieldStateR\x06fieldsJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x15secret_key_configuredR\x19webhook_secret_configuredR\x0fsecret_key_hintR\x13webhook_secret_hint\"Z\n" +
 	"\x1fGetTenantPaymentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"g\n" +
 	" GetTenantPaymentSettingsResponse\x12C\n" +
@@ -1461,12 +1461,13 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\x1cPaymentCredentialFieldUpdate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x126\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x04mode\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\tR\x05value\"\xdb\x01\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"\xc3\x02\n" +
 	"\"UpdateTenantPaymentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x12F\n" +
-	"\x06fields\x18\x04 \x03(\v2..publira.admin.v1.PaymentCredentialFieldUpdateR\x06fields\"j\n" +
+	"\x06fields\x18\b \x03(\v2..publira.admin.v1.PaymentCredentialFieldUpdateR\x06fieldsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\x16secret_key_update_modeR\n" +
+	"secret_keyR\x1awebhook_secret_update_modeR\x0ewebhook_secret\"j\n" +
 	"#UpdateTenantPaymentSettingsResponse\x12C\n" +
 	"\bsettings\x18\x01 \x01(\v2'.publira.admin.v1.TenantPaymentSettingsR\bsettings\"\x90\x02\n" +
 	"\x1dTenantAppStorePaymentSettings\x12\x18\n" +

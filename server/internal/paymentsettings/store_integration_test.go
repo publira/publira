@@ -310,6 +310,66 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 	}
 }
 
+// Rolling the migration back leaves every row the old Stripe-only constraints
+// accept: Stripe's secrets back in their columns, and a row they cannot hold
+// disabled rather than failing the rollback.
+func TestCredentialFieldsMigrationDownKeepsWhatTheOldColumnsCanHold(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Cleanup(func() { pg.MigrateUp(t) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stripeTenant := pg.SeedTenant(t, "PAYDWN000001", "pay-down-a.example.com", "Pay Down A")
+	otherTenant := pg.SeedTenant(t, "PAYDWN000002", "pay-down-b.example.com", "Pay Down B")
+	partialTenant := pg.SeedTenant(t, "PAYDWN000003", "pay-down-c.example.com", "Pay Down C")
+	insert := func(tenantID uuid.UUID, provider, credentials, hints string) {
+		t.Helper()
+		if _, err := pg.DB.ExecContext(ctx, `
+			INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted, credential_hints)
+			VALUES ($1, $2, true, $3, $4)
+		`, tenantID, provider, credentials, hints); err != nil {
+			t.Fatalf("insert %s settings: %v", provider, err)
+		}
+	}
+	insert(stripeTenant.ID, stripe.ID,
+		`{"secret_key": "enc:v1:k1:a", "webhook_secret": "enc:v1:k1:b"}`,
+		`{"secret_key": "sk_test_••••aaaa", "webhook_secret": "whsec_••••bbbb"}`)
+	insert(otherTenant.ID, "card", `{"secret_key": "enc:v1:k1:c"}`, `{"secret_key": "••••cccc"}`)
+	insert(partialTenant.ID, stripe.ID, `{"secret_key": "enc:v1:k1:d"}`, `{"secret_key": "sk_test_••••dddd"}`)
+
+	pg.MigrateTo(t, beforeCredentialFieldsVersion)
+
+	type oldRow struct {
+		provider string
+		enabled  bool
+		secret   sql.NullString
+		webhook  sql.NullString
+	}
+	read := func(tenantID uuid.UUID) oldRow {
+		t.Helper()
+		var row oldRow
+		if err := pg.DB.QueryRowContext(ctx, `
+			SELECT provider, enabled, secret_key_encrypted, webhook_secret_encrypted
+			FROM tenant_payment_config
+			WHERE tenant_id = $1
+		`, tenantID).Scan(&row.provider, &row.enabled, &row.secret, &row.webhook); err != nil {
+			t.Fatalf("read rolled back settings: %v", err)
+		}
+		return row
+	}
+	if got, want := read(stripeTenant.ID), (oldRow{stripe.ID, true, sql.NullString{String: "enc:v1:k1:a", Valid: true}, sql.NullString{String: "enc:v1:k1:b", Valid: true}}); got != want {
+		t.Fatalf("rolled back Stripe row = %+v, want %+v", got, want)
+	}
+	if got, want := read(otherTenant.ID), (oldRow{provider: stripe.ID}); got != want {
+		t.Fatalf("rolled back row of another provider = %+v, want %+v", got, want)
+	}
+	if got, want := read(partialTenant.ID), (oldRow{stripe.ID, false, sql.NullString{String: "enc:v1:k1:d", Valid: true}, sql.NullString{}}); got != want {
+		t.Fatalf("rolled back Stripe row missing a secret = %+v, want %+v", got, want)
+	}
+}
+
 func stripeUpdate(secretKey, webhookSecret string) paymentsettings.UpdateInput {
 	return paymentsettings.UpdateInput{
 		Provider: stripe.ID,

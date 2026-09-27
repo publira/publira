@@ -11,6 +11,22 @@ ALTER TABLE tenant_payment_config
     ADD COLUMN secret_key_hint text,
     ADD COLUMN webhook_secret_hint text;
 
+-- The old columns hold Stripe's two secrets and nothing else. A row on another
+-- provider has no representation there, so it goes back to an unconfigured,
+-- disabled Stripe row, and a Stripe row missing either secret is disabled, as
+-- the old constraints require.
+UPDATE tenant_payment_config
+SET provider = 'stripe',
+    enabled = false,
+    credentials_encrypted = '{}'::jsonb,
+    credential_hints = '{}'::jsonb
+WHERE provider <> 'stripe';
+
+UPDATE tenant_payment_config
+SET enabled = false
+WHERE enabled
+    AND NOT (credentials_encrypted ?& ARRAY['secret_key', 'webhook_secret']);
+
 UPDATE tenant_payment_config
 SET secret_key_encrypted = credentials_encrypted ->> 'secret_key',
     webhook_secret_encrypted = credentials_encrypted ->> 'webhook_secret',
@@ -21,8 +37,6 @@ ALTER TABLE tenant_payment_config
     DROP COLUMN credential_hints,
     DROP COLUMN credentials_encrypted;
 
--- A row on a provider other than Stripe, or an enabled one missing either
--- Stripe secret, has no representation here and fails these constraints.
 ALTER TABLE ONLY tenant_payment_config
     ADD CONSTRAINT tenant_payment_config_provider_check CHECK (((provider)::text = 'stripe'::text)),
     ADD CONSTRAINT tenant_payment_config_secret_key_encrypted_envelope_check CHECK (((secret_key_encrypted IS NULL) OR (secret_key_encrypted LIKE 'enc:%'::text))),

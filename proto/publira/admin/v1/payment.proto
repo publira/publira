@@ -57,14 +57,17 @@ message PaymentCredentialFieldState {
 
 // Non-secret view of a tenant's payment-provider settings.
 message TenantPaymentSettings {
+  reserved 3, 4, 5, 6;
+  reserved "secret_key_configured", "webhook_secret_configured", "secret_key_hint", "webhook_secret_hint";
+
   // The id of the provider the tenant chose, or empty before one is saved.
   string provider = 1;
   bool enabled = 2;
-  // One entry per field the provider declares, in its declared order.
-  repeated PaymentCredentialFieldState fields = 3;
   // True when enabled and every field the provider requires is stored.
   // Checkout and Webhook use this tenant's settings only when ready.
-  bool ready = 4;
+  bool ready = 7;
+  // One entry per field the provider declares, in its declared order.
+  repeated PaymentCredentialFieldState fields = 8;
 }
 
 message GetTenantPaymentSettingsRequest {
@@ -85,12 +88,15 @@ message PaymentCredentialFieldUpdate {
 }
 
 message UpdateTenantPaymentSettingsRequest {
+  reserved 4, 5, 6, 7;
+  reserved "secret_key_update_mode", "secret_key", "webhook_secret_update_mode", "webhook_secret";
+
   publira.types.v1.TenantContext tenant = 1;
   // A registered provider id. Choosing a provider other than the stored one
   // clears every field stored for the previous one.
   string provider = 2;
   bool enabled = 3;
-  repeated PaymentCredentialFieldUpdate fields = 4;
+  repeated PaymentCredentialFieldUpdate fields = 8;
 }
 
 message UpdateTenantPaymentSettingsResponse {

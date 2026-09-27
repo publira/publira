@@ -17,8 +17,8 @@ type Registry struct {
 }
 
 // NewRegistry registers providers, and panics on an id that is malformed or
-// registered twice, or on a field declared both secret and public: each is a
-// programming error in the provider list.
+// registered twice, or on a field declared twice or both secret and public:
+// each is a programming error in the provider list.
 func NewRegistry(providers ...Provider) *Registry {
 	r := &Registry{providers: make(map[string]Provider, len(providers))}
 	for _, provider := range providers {
@@ -29,7 +29,12 @@ func NewRegistry(providers ...Provider) *Registry {
 		if _, ok := r.providers[id]; ok {
 			panic(fmt.Sprintf("paymentprovider: provider %q is registered twice", id))
 		}
+		fields := make(map[string]bool)
 		for _, field := range provider.Declaration().Fields {
+			if fields[field.Name] {
+				panic(fmt.Sprintf("paymentprovider: provider %q declares field %q twice", id, field.Name))
+			}
+			fields[field.Name] = true
 			if field.Secret && field.Public {
 				panic(fmt.Sprintf("paymentprovider: provider %q declares field %q both secret and public", id, field.Name))
 			}
