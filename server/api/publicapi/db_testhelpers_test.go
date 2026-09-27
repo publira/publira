@@ -78,54 +78,18 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 }
 
 // processReaderAuthRequests does what the worker does with the requests the
-// sign-up, password reset, and verification resend forms record: each pending
-// one runs through its handler, connected as the worker's own role, and is then
-// marked done. Those forms write nothing else, so a case that asserts what they
-// lead to calls this first.
+// sign-up, password reset, and verification resend forms record, connected as
+// the worker's own role. Those forms write nothing else, so a case that asserts
+// what they lead to calls this first.
 func (e *publicDBEnv) processReaderAuthRequests(t *testing.T) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	cfg := outbox.EmailHandlerConfig{DB: e.PG.OpenOutboxDB(t)}
-	handlers := map[string]outbox.Handler{
+	e.PG.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
 		outbox.EventTypeReaderSignupRequest:            outbox.NewReaderSignupRequestHandler(cfg),
 		outbox.EventTypeReaderPasswordResetRequest:     outbox.NewReaderPasswordResetRequestHandler(cfg),
 		outbox.EventTypeReaderEmailVerificationRequest: outbox.NewReaderEmailVerificationRequestHandler(cfg),
-	}
-
-	rows, err := e.PG.DB.QueryContext(ctx, `
-		SELECT id, tenant_id, event_type, payload FROM outbox_events
-		WHERE status = 'pending' AND event_type = ANY($1)
-		ORDER BY id
-	`, []string{
-		outbox.EventTypeReaderSignupRequest,
-		outbox.EventTypeReaderPasswordResetRequest,
-		outbox.EventTypeReaderEmailVerificationRequest,
 	})
-	if err != nil {
-		t.Fatalf("read pending reader auth requests: %v", err)
-	}
-	var events []dbmodels.OutboxEvent
-	for rows.Next() {
-		var event dbmodels.OutboxEvent
-		if err := rows.Scan(&event.ID, &event.TenantID, &event.EventType, &event.Payload); err != nil {
-			t.Fatalf("scan reader auth request: %v", err)
-		}
-		events = append(events, event)
-	}
-	if err := rows.Close(); err != nil {
-		t.Fatalf("read pending reader auth requests: %v", err)
-	}
-
-	for _, event := range events {
-		if err := handlers[event.EventType](ctx, event); err != nil {
-			t.Fatalf("process %s %s: %v", event.EventType, event.ID, err)
-		}
-		if _, err := e.PG.DB.ExecContext(ctx, `UPDATE outbox_events SET status = 'done' WHERE id = $1`, event.ID); err != nil {
-			t.Fatalf("mark %s done: %v", event.ID, err)
-		}
-	}
 }
 
 // openPolicy allows far more than any case that is not about a limit reaches,

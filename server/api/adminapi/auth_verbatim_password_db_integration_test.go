@@ -86,6 +86,7 @@ func TestDBAdminConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
+	env.processPasswordResetRequests(t)
 	events := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetEmail)
 	if len(events) != 1 {
 		t.Fatalf("pending reset events = %d, want 1", len(events))

@@ -143,6 +143,7 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 			t.Fatalf("RequestPasswordReset attempt %d: %v", attempt, err)
 		}
 	}
+	processPasswordResetRequests(t, pg)
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 1 {
 		t.Fatalf("password reset token rows = %d, want only the newest request to remain", got)
 	}
@@ -236,6 +237,7 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
+	processPasswordResetRequests(t, pg)
 	token := platformOutboxToken(t, pg, outbox.EventTypePlatformPasswordResetEmail, "")
 
 	expirePlatformPasswordResetTokens(t, pg)
@@ -321,9 +323,9 @@ func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
 	}
 }
 
-// The mail is queued rather than dialed out, so no SMTP configuration is needed
-// to answer the request — and the event lands in the same transaction as the
-// token it carries, with no tenant of its own.
+// The form records the request with no tenant of its own and answers, so no
+// SMTP configuration is needed to answer it. The worker then writes the token
+// and the mail that carries it, and the mail belongs to no tenant either.
 func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
@@ -334,6 +336,15 @@ func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset without SMTP settings: %v", err)
 	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM outbox_events WHERE event_type = $1 AND tenant_id IS NULL",
+		outbox.EventTypePlatformPasswordResetRequest); got != 1 {
+		t.Fatalf("tenantless password reset requests = %d, want 1", got)
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 0 {
+		t.Fatalf("password reset token rows before the worker = %d, want 0", got)
+	}
+
+	processPasswordResetRequests(t, pg)
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 1 {
 		t.Fatalf("password reset token rows = %d, want 1", got)
 	}
@@ -386,6 +397,7 @@ func TestDBRequestPasswordResetHidesUnknownAddress(t *testing.T) {
 	if !resp.Msg.Requested {
 		t.Fatal("requested = false for an unknown address, want true")
 	}
+	processPasswordResetRequests(t, pg)
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 0 {
 		t.Fatalf("password reset token rows = %d, want 0", got)
 	}

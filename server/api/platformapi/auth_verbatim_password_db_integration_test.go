@@ -29,6 +29,7 @@ func TestDBConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
+	processPasswordResetRequests(t, pg)
 	if _, err := authClient.ConfirmPasswordReset(ctx, connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       platformOutboxToken(t, pg, outbox.EventTypePlatformPasswordResetEmail, ""),
 		NewPassword: spacedPassword,

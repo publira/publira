@@ -217,6 +217,17 @@ func (q *Queries) GetPlatformUserPasswordResetTokenByHash(ctx context.Context, t
 	return i, err
 }
 
+const LockPlatformUserPasswordReset = `-- name: LockPlatformUserPasswordReset :exec
+SELECT pg_advisory_xact_lock(hashtextextended('platform_password_reset:' || $1::uuid::text, 0))
+`
+
+// Serializes the password reset requests for one operator for the rest of the
+// transaction, so two of them cannot each leave a live link behind.
+func (q *Queries) LockPlatformUserPasswordReset(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, LockPlatformUserPasswordReset, platformUserID)
+	return err
+}
+
 const MarkPlatformUserEmailChangeCompleted = `-- name: MarkPlatformUserEmailChangeCompleted :exec
 UPDATE platform_user_email_change_tokens
 SET completed_at = COALESCE(completed_at, NOW())

@@ -11,8 +11,10 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
 func expectAdminTenantByDomains(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, defaultLocale string) {
@@ -72,4 +74,44 @@ func TestAdminGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+// The password reset form answers a registered address exactly as it answers an
+// unknown one, so it records the request the worker resolves and never asks
+// whether the address has an account: sqlmock refuses any lookup it was not
+// told to expect, and a lookup is what would let the time the form takes tell
+// the two apart.
+func TestAdminRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT001", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeAdminPasswordResetRequest,
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "event_type", "payload", "idempotency_key",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()), uuid.NullUUID{UUID: tenantID, Valid: true}, outbox.EventTypeAdminPasswordResetRequest, []byte("{}"),
+			"key", outbox.StatusPending, int32(0), time.Now(), nil, time.Now(), time.Now(), nil,
+		))
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
+	resp, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Email:  "admin@tenant.example",
+	}))
+	if err != nil {
+		t.Fatalf("RequestPasswordReset: %v", err)
+	}
+	if !resp.Msg.Requested {
+		t.Fatal("requested = false, want true")
+	}
+	assertExpectations(t, mock)
 }

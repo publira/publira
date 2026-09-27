@@ -341,7 +341,7 @@ func (e *PostgresEnv) OpenTickerDB(t *testing.T) *sql.DB {
 
 // OpenOutboxDB opens a connection as publira_outbox, the login the outbox
 // worker runs as. It bypasses RLS and owns River's schema, and the platform
-// console's tables reach it only through the reads the seed names. The
+// console's tables reach it only through the grants the seed names. The
 // connection is closed via t.Cleanup.
 func (e *PostgresEnv) OpenOutboxDB(t *testing.T) *sql.DB {
 	t.Helper()

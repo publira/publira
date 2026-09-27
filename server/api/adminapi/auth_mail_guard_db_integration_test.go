@@ -32,8 +32,8 @@ func TestDBAdminRequestPasswordResetStopsAtTheLimit(t *testing.T) {
 		t.Fatalf("the second RequestPasswordReset code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 
-	events := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetEmail)
+	events := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetRequest)
 	if len(events) != 1 {
-		t.Fatalf("queued admin_password_reset_email events = %d, want the one the allowance paid for", len(events))
+		t.Fatalf("recorded admin_password_reset_request events = %d, want the one the allowance paid for", len(events))
 	}
 }

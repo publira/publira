@@ -90,51 +90,19 @@ func TestPlatformAuthLoginDatabaseErrorIsHidden(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
+// The form answers a registered address exactly as it answers an unknown one,
+// so it records the request the worker resolves and never asks whether the
+// address has an account: sqlmock refuses any lookup it was not told to expect,
+// and a lookup is what would let the time the form takes tell the two apart.
+func TestPlatformAuthRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	now := time.Now()
-	userID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
-		WithArgs("platform@example.com").
-		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
-	// The token and the mail that carries it are written together, so a request
-	// that cannot be announced leaves no usable token behind.
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserPasswordResetTokensByUserID)).
-		WithArgs(userID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserPasswordResetToken)).
-		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
-			AddRow(uuid.Must(uuid.NewV7()), userID, "token-hash", now.Add(time.Hour), nil, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
-		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetEmail, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetEmail))
-	mock.ExpectCommit()
+		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetRequest, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetRequest))
 
 	resp, err := server.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: "platform@example.com",
-	}))
-	if err != nil {
-		t.Fatalf("RequestPasswordReset: %v", err)
-	}
-	if !resp.Msg.Requested {
-		t.Fatal("requested = false, want true")
-	}
-	assertOperatorHandlerExpectations(t, mock)
-}
-
-func TestPlatformAuthRequestPasswordResetUnknownUserReturnsRequested(t *testing.T) {
-	server, mock := newOperatorHandlerTestServer(t)
-
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByEmail)).
-		WithArgs("missing@example.com").
-		WillReturnError(sql.ErrNoRows)
-
-	resp, err := server.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
-		Email: "missing@example.com",
 	}))
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)

@@ -34,10 +34,7 @@ func TestDBPlatformRequestPasswordResetStopsAtTheLimit(t *testing.T) {
 		t.Fatalf("the second RequestPasswordReset code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformPasswordResetEmail); got != 1 {
-		t.Fatalf("queued reset emails = %d, want the one the allowance paid for", got)
-	}
-	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_password_reset_tokens"); got != 1 {
-		t.Fatalf("password reset token rows = %d, want the refused request to have written none", got)
+	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformPasswordResetRequest); got != 1 {
+		t.Fatalf("recorded reset requests = %d, want the one the allowance paid for", got)
 	}
 }
