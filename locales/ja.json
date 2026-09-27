@@ -2567,7 +2567,8 @@
         "expires_at_invalid": "有効期限の形式が正しくありません。",
         "expires_at_past": "有効期限は未来の日時を指定してください。",
         "revoke_target": "失効対象が不正です。",
-        "series_required": "シリーズを選択してください。"
+        "series_required": "シリーズを選択してください。",
+        "reader_query_too_long": "検索語は{$count}文字以内で入力してください。"
       }
     },
     "engagement": {

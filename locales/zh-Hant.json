@@ -2567,7 +2567,8 @@
         "expires_at_invalid": "有效期限不是有效的日期與時間。",
         "expires_at_past": "有效期限必須是未來的時間。",
         "revoke_target": "要撤銷的閱讀券無效。",
-        "series_required": "請選擇系列。"
+        "series_required": "請選擇系列。",
+        "reader_query_too_long": "搜尋內容請控制在 {$count} 個字元以內。"
       }
     },
     "engagement": {

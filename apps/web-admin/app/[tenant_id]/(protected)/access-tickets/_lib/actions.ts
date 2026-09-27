@@ -97,6 +97,26 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
     ),
   });
 };
+/** An email address is the longest thing an operator types to find a reader. */
+const READER_QUERY_MAX_LENGTH = 254;
+const listReaderOptionsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    query: z
+      .string()
+      .trim()
+      .max(
+        READER_QUERY_MAX_LENGTH,
+        t("admin.access_tickets.validation.reader_query_too_long", {
+          count: String(READER_QUERY_MAX_LENGTH),
+        })
+      ),
+    tenantId: requiredTrimmedString(
+      t("admin.access_tickets.validation.tenant_missing")
+    ),
+  });
+};
 const existingNonActiveTicketMessage = async (
   publicId: string,
   status: string,
@@ -272,9 +292,19 @@ export const listReaderOptionsAction = async (
 ): Promise<ListTicketReaderOptionsResult> => {
   // This Server Action only reads reader options; the same-origin check
   // applies to mutations.
-  const result = await listReaders(tenantId, locale, {
+  const schema = await listReaderOptionsSchema(locale);
+  const parsed = schema.safeParse({ query, tenantId });
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+      readers: [],
+    };
+  }
+
+  const result = await listReaders(parsed.data.tenantId, locale, {
     limit: READER_OPTION_LIMIT,
-    query,
+    query: parsed.data.query,
     status: "active",
   });
   await redirectToLoginIfSessionRejected(result);

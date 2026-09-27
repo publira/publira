@@ -2567,7 +2567,8 @@
         "expires_at_invalid": "The expiry is not a valid date and time.",
         "expires_at_past": "The expiry must be in the future.",
         "revoke_target": "The ticket to revoke is not valid.",
-        "series_required": "Select a series."
+        "series_required": "Select a series.",
+        "reader_query_too_long": "Shorten the search to {$count} characters or fewer."
       }
     },
     "engagement": {

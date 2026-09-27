@@ -26,6 +26,7 @@ import { Textarea } from "@publira/ui-components/textarea";
 import {
   useActionState,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -48,6 +49,8 @@ import type {
   TicketSeriesOption,
 } from "../ticket-types";
 
+/** How long typing pauses before the readers are searched. */
+const READER_SEARCH_DELAY_MS = 300;
 interface TicketFormProps {
   action: (
     prevState: IssueAccessTicketActionState,
@@ -75,6 +78,7 @@ export const TicketForm = ({
   const [selectedReader, setSelectedReader] = useState<TicketReaderOption>();
   const [readersErrorMessage, setReadersErrorMessage] = useState<string>();
   const readerRequestIdRef = useRef(0);
+  const readerSearchTimerRef = useRef(0);
   const [seriesId, setSeriesId] = useState("");
   const [episodeId, setEpisodeId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
@@ -121,24 +125,32 @@ export const TicketForm = ({
   const canSubmit =
     !isPending && !isEpisodePending && readerId !== "" && episodeId !== "";
 
+  // A pending search is abandoned when the form goes away, so it cannot set
+  // state on a form nobody sees.
+  useEffect(() => () => window.clearTimeout(readerSearchTimerRef.current), []);
+
   const handleReaderSearch = useCallback(
     (query: string) => {
       const requestId = readerRequestIdRef.current + 1;
       readerRequestIdRef.current = requestId;
+      window.clearTimeout(readerSearchTimerRef.current);
       if (query.trim() === "") {
         setReaders([]);
         setReadersErrorMessage(undefined);
         return;
       }
 
-      startReaderTransition(async () => {
-        const result = await listReaderOptionsAction(tenantId, query, locale);
-        if (requestId !== readerRequestIdRef.current) {
-          return;
-        }
-        setReaders(result.readers);
-        setReadersErrorMessage(result.ok ? undefined : result.message);
-      });
+      // Typing an address would otherwise search every prefix of it.
+      readerSearchTimerRef.current = window.setTimeout(() => {
+        startReaderTransition(async () => {
+          const result = await listReaderOptionsAction(tenantId, query, locale);
+          if (requestId !== readerRequestIdRef.current) {
+            return;
+          }
+          setReaders(result.readers);
+          setReadersErrorMessage(result.ok ? undefined : result.message);
+        });
+      }, READER_SEARCH_DELAY_MS);
     },
     [locale, tenantId]
   );

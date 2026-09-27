@@ -2567,7 +2567,8 @@
         "expires_at_invalid": "有效期不是有效的日期和时间。",
         "expires_at_past": "有效期必须是将来的时间。",
         "revoke_target": "要撤销的阅读券无效。",
-        "series_required": "请选择系列。"
+        "series_required": "请选择系列。",
+        "reader_query_too_long": "搜索内容请控制在 {$count} 个字符以内。"
       }
     },
     "engagement": {

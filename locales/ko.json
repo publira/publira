@@ -2567,7 +2567,8 @@
         "expires_at_invalid": "만료일 형식이 올바르지 않습니다.",
         "expires_at_past": "만료일은 미래의 일시로 지정해 주세요.",
         "revoke_target": "취소할 대상이 올바르지 않습니다.",
-        "series_required": "시리즈를 선택해 주세요."
+        "series_required": "시리즈를 선택해 주세요.",
+        "reader_query_too_long": "검색어는 {$count}자 이내로 입력하세요."
       }
     },
     "engagement": {

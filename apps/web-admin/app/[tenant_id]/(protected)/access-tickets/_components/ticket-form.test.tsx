@@ -200,6 +200,32 @@ describe("TicketForm", () => {
     ).toBeDefined();
   });
 
+  it("searches once typing pauses rather than on every keystroke", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+
+      fireEvent.change(readerCombobox(), { target: { value: "o" } });
+      await vi.advanceTimersByTimeAsync(100);
+      fireEvent.change(readerCombobox(), { target: { value: "on" } });
+      await vi.advanceTimersByTimeAsync(100);
+      fireEvent.change(readerCombobox(), { target: { value: "one" } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockListReaderOptionsAction).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(mockListReaderOptionsAction).toHaveBeenCalledOnce();
+      expect(mockListReaderOptionsAction).toHaveBeenCalledWith(
+        "TENANT001",
+        "one",
+        "en"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("submits the chosen reader's and episode's internal IDs", async () => {
     mockListEpisodeOptionsAction.mockResolvedValue({
       episodes: [episodeOne],
