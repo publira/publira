@@ -1461,6 +1461,7 @@
         "schedule_error": "无法显示发布设置",
         "schedule_title": "发布设置",
         "schedule_description": "更新预约发布的时间。提交空值即可清除预约。",
+        "schedule_publish_at_description": "日期和时间按租户时区（{$time_zone}）的挂钟时间解释。",
         "schedule_update": "更新发布日期和时间",
         "updating": "正在更新…",
         "credits_updated": "已更新本集作者。",
@@ -1515,7 +1516,7 @@
           "reading_period": "阅读期限",
           "reading_period_description": "请填写小时数。设为 0 表示不限期阅读。",
           "publish_at": "发布日期和时间",
-          "publish_at_description": "留空则作为草稿提交。设置后将按租户时区（{$time_zone}）预约发布。"
+          "publish_at_description": "留空则作为草稿提交。日期和时间按租户时区（{$time_zone}）的挂钟时间解释，将在该时刻或之后发布；若指定已过去的时间，则在创建时立即发布。"
         },
         "validation": {
           "creator_credits_invalid": "每条作者署名都需要作者和角色。",

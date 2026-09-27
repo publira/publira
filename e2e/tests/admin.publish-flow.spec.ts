@@ -348,6 +348,48 @@ test.describe("admin publish flow", () => {
     }).toPass({ timeout: 30_000 });
   });
 
+  test("publishes an episode whose publication time has passed as it is created, and web-host lists it", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const seriesTitle = `E2E Publish Now Parent ${suffix}`;
+    const episodeTitle = `E2E Publish Now ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis: `Parent series ${suffix}`,
+        title: seriesTitle,
+      })
+    );
+
+    // Nothing nudges the schedule here: the create itself publishes, so the
+    // worker's publication pass has no part in what the host shows.
+    const episodeId = await createEpisodeViaUi(page, {
+      publishAt: publishedAtOneHourAgo(),
+      seriesPublicId: seriesId,
+      title: episodeTitle,
+    });
+
+    await page.goto(adminUrl(`/series/${seriesId}/episodes`));
+    await expect(page.getByText(/status: published/u)).toBeVisible();
+
+    const episodeResponse = await page.goto(
+      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+    );
+    expect(episodeResponse?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: episodeTitle })
+    ).toBeVisible();
+
+    // The drop the create recorded reaches web-host through the Outbox when
+    // its immediate attempt does not, and only marks the entry stale.
+    await expect(async () => {
+      await page.goto(hostUrl(`/series/${seriesId}`));
+      await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
+  });
+
   test("a missing required field shows an error", async ({ page }) => {
     await page.goto(adminUrl("/series/new"));
     const fields = seriesFormFields(page);

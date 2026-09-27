@@ -131,12 +131,7 @@ const toScheduledAt = async (
     );
   }
 
-  if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return toCreateFailure(
-      t("admin.series.episodes.validation.publish_at_future")
-    );
-  }
-
+  // A time that has already passed publishes the episode as it is created.
   return { ok: true, value };
 };
 

@@ -80,8 +80,12 @@ export const EpisodeScheduleForm = ({
           <PublishAtInput
             defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
             name="publish_at"
-            timeZone={timeZone}
-          />
+          >
+            <ClientMessage
+              message="admin.series.episodes.schedule_publish_at_description"
+              values={{ time_zone: timeZone }}
+            />
+          </PublishAtInput>
         </Fieldset>
 
         {state && state.mode === "schedule" ? (

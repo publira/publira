@@ -1461,6 +1461,7 @@
         "schedule_error": "Could not display publishing settings",
         "schedule_title": "Publishing settings",
         "schedule_description": "Update the scheduled publication time. Leave blank to clear the schedule.",
+        "schedule_publish_at_description": "The date and time are interpreted as wall-clock time in the tenant time zone ({$time_zone}).",
         "schedule_update": "Update publication date and time",
         "updating": "Updating...",
         "credits_updated": "Episode credits updated.",
@@ -1515,7 +1516,7 @@
           "reading_period": "Reading period",
           "reading_period_description": "Enter hours. Set 0 for unlimited reading.",
           "publish_at": "Publication date and time",
-          "publish_at_description": "Leave blank to create as a draft. When set, it will be scheduled using the tenant time zone ({$time_zone})."
+          "publish_at_description": "Leave blank to create as a draft. The date and time are interpreted as wall-clock time in the tenant time zone ({$time_zone}) and the episode will be published at or after that time; a time that has already passed publishes it as soon as it is created."
         },
         "validation": {
           "creator_credits_invalid": "Every author credit needs an author and a role.",

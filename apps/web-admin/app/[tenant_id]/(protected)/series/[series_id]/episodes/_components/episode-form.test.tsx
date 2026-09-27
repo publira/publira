@@ -138,6 +138,23 @@ it("creates an episode sold where its series is unless told otherwise", () => {
   );
 });
 
+it("says that a publication time already passed publishes the episode as it is created", () => {
+  render(
+    <EpisodeForm
+      action={action}
+      seriesId="SERIES001-ID"
+      seriesPublicId="SERIES001"
+      timeZone="Asia/Tokyo"
+    />
+  );
+
+  expect(
+    screen.getByText(
+      /time zone \(Asia\/Tokyo\).*already passed publishes it as soon as it is created/u
+    )
+  ).toBeTruthy();
+});
+
 // A control its `<fieldset>` closes keeps `disabled` false and matches
 // `:disabled` instead.
 const submittedControls = () => [

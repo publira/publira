@@ -1461,6 +1461,7 @@
         "schedule_error": "公開設定を表示できませんでした",
         "schedule_title": "公開設定",
         "schedule_description": "公開予約日時を更新します。空欄のまま更新すると予約を解除します。",
+        "schedule_publish_at_description": "日時はテナントのタイムゾーン（{$time_zone}）の壁時計として解釈します。",
         "schedule_update": "公開日時を更新",
         "updating": "更新中...",
         "credits_updated": "エピソードの著者を更新しました。",
@@ -1515,7 +1516,7 @@
           "reading_period": "閲覧可能期間",
           "reading_period_description": "単位は時間です。0 を指定すると無制限で閲覧できます。",
           "publish_at": "公開日時",
-          "publish_at_description": "未入力の場合は下書きとして作成します。入力するとテナントのタイムゾーン（{$time_zone}）の壁時計として予約公開します。"
+          "publish_at_description": "未入力の場合は下書きとして作成します。日時はテナントのタイムゾーン（{$time_zone}）の壁時計として解釈し、その時刻以降に公開されます。過ぎた日時を指定すると作成と同時に公開します。"
         },
         "validation": {
           "creator_credits_invalid": "著者のクレジットには著者と役割の両方が必要です。",
