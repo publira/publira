@@ -2142,36 +2142,45 @@
       },
       "payment": {
         "title": "결제 설정",
-        "description": "이 테넌트의 Stripe 시크릿을 등록, 교체, 비활성화합니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
+        "description": "이 테넌트의 결제 제공자를 선택하고 인증 정보를 등록, 교체, 비활성화합니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
         "provider": "결제 제공자",
-        "provider_description": "현재 선택할 수 있는 제공자는 Stripe뿐입니다.",
-        "enabled": "Stripe 결제 사용",
+        "provider_description": "독자는 여기에서 선택한 제공자로 결제합니다. 인증 정보는 아래 항목에서 등록합니다.",
+        "provider_change_warning": "다른 제공자로 저장하면 {$provider}에 저장된 인증 정보가 삭제됩니다.",
+        "enabled": "결제 사용",
         "enabled_checkbox": "사용",
         "enabled_description": "꺼 두면 유료 에피소드의 Checkout과 웹훅이 이 테넌트에서 동작하지 않습니다.",
-        "secret_key": "시크릿 키",
-        "webhook_secret": "웹훅 서명 시크릿",
+        "fields": {
+          "stripe": {
+            "secret_key": "시크릿 키",
+            "webhook_secret": "웹훅 서명 시크릿"
+          }
+        },
         "secret_change": "변경",
         "secret_change_cancel": "변경 취소",
+        "secret_remove": "삭제",
+        "secret_removed": "저장하면 삭제됩니다.",
+        "secret_remove_cancel": "삭제 취소",
         "secret_description": "입력한 값은 저장 후 다시 표시되지 않습니다. 저장된 값은 처음과 끝 글자를 빼고 마스킹되어 보입니다.",
+        "public_description": "이 값은 결제할 때 독자의 브라우저에 전달되므로 저장된 그대로 표시됩니다.",
         "webhook_url": "웹훅 URL",
-        "webhook_url_description": "Stripe 대시보드에 이 URL을 등록해 주세요. 서명 시크릿은 위 항목에서 저장합니다.",
+        "webhook_url_description": "{$provider}에 결제 알림을 보낼 곳으로 이 URL을 등록해 주세요.",
         "webhook_url_legacy_description": "이전에 등록한 /api/v1/webhook/stripe 엔드포인트도 계속 작동하지만, 이 URL은 더 이상 권장되지 않으며 이후 릴리스에서 삭제됩니다. 위의 URL로 바꿔 주세요.",
         "saved": "결제 설정을 저장했습니다.",
         "load_failed": "결제 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "save_failed": "결제 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "status": {
           "disabled": "사용 안 함",
-          "disabled_description": "시크릿은 저장되어 있지만 결제가 꺼져 있습니다. Checkout과 웹훅은 동작하지 않습니다.",
+          "disabled_description": "인증 정보는 저장되어 있지만 결제가 꺼져 있습니다. Checkout과 웹훅은 동작하지 않습니다.",
           "incomplete": "설정 부족",
-          "incomplete_description": "결제는 켜져 있지만 시크릿이 빠져 있어 결제가 시작되지 않습니다.",
+          "incomplete_description": "결제는 켜져 있지만 필수 인증 정보가 빠져 있어 결제가 시작되지 않습니다.",
           "ready": "사용 가능",
           "ready_description": "유료 에피소드의 Checkout과 웹훅에 이 테넌트의 설정이 사용됩니다.",
           "unset": "미설정",
-          "unset_description": "Stripe 시크릿을 등록하면 유료 에피소드 결제를 시작할 수 있습니다."
+          "unset_description": "제공자를 선택하고 인증 정보를 등록하면 유료 에피소드 결제를 시작할 수 있습니다."
         },
         "validation": {
-          "secret_key_required": "시크릿 키를 입력해 주세요.",
-          "webhook_secret_required": "웹훅 서명 시크릿을 입력해 주세요."
+          "field_required": "결제를 사용하려면 이 값을 입력해 주세요.",
+          "provider_invalid": "결제 제공자를 선택해 주세요."
         }
       },
       "purchase": {
@@ -2206,7 +2215,7 @@
         "route_description": "앱에서 구매할 수 있는지는 '판매 위치'에서 설정합니다. 여기서는 앱이 어떤 구매 방법을 제공할지만 정합니다.",
         "routes": {
           "external_checkout": "웹 결제",
-          "external_checkout_description": "앱이 브라우저에서 웹 결제 화면을 열고, 결제를 마친 독자는 앱으로 돌아옵니다. 청구는 Stripe가 합니다.",
+          "external_checkout_description": "앱이 브라우저에서 웹 결제 화면을 열고, 결제를 마친 독자는 앱으로 돌아옵니다. 청구는 결제 설정에서 선택한 결제 제공자가 합니다.",
           "store": "인앱 결제",
           "store_description": "앱이 스토어 결제 화면으로 판매하며 웹 결제 화면을 열지 않습니다. 청구는 스토어가 하고 수수료도 스토어가 공제합니다.",
           "store_unavailable": "아래 App Store나 Google Play 중 하나가 사용 가능해지면 선택할 수 있습니다."
@@ -2456,7 +2465,7 @@
       "email_description": "이 테넌트의 메일 발송 설정을 관리합니다.",
       "email_error": "메일 설정을 표시할 수 없습니다",
       "payment_title": "연동 — 결제",
-      "payment_description": "이 테넌트가 독자에게 청구하는 방법을 관리합니다. 웹 결제는 Stripe, 인앱 결제는 App Store와 Google Play입니다.",
+      "payment_description": "이 테넌트가 독자에게 청구하는 방법을 관리합니다. 웹 결제는 선택한 결제 제공자, 인앱 결제는 App Store와 Google Play입니다.",
       "payment_error": "결제 설정을 표시할 수 없습니다",
       "mobile_push_title": "연동 — 모바일 푸시",
       "mobile_push_description": "이 테넌트의 모바일 앱에 푸시 알림을 보낼 때 사용하는 Firebase 인증 정보를 관리합니다.",

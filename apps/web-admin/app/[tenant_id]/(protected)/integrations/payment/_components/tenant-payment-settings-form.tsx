@@ -29,19 +29,30 @@ import {
 import { Message } from "#components/message";
 import { paymentSettingsStatus } from "#lib/payment-settings-shared";
 import type {
+  PaymentCredentialField,
+  PaymentCredentialFieldState,
+  PaymentProvider,
   PaymentSettingsStatus,
   TenantPaymentSettings,
 } from "#lib/payment-settings-shared";
 
 import { updateTenantPaymentSettingsAction } from "../_lib/actions";
 import {
+  PaymentCredential,
+  PaymentCredentialHint,
+  PaymentCredentialLabel,
+  PaymentCredentialModeButton,
+  PaymentCredentialSecretInput,
+  PaymentCredentialTextInput,
+  PaymentCredentialWhile,
   PaymentEnabled,
   PaymentEnabledCheckbox,
   PaymentEnabledLabel,
-  PaymentSecret,
-  PaymentSecretEditor,
-  PaymentSecretLabel,
-  PaymentSecretStored,
+  PaymentProviderChangeNotice,
+  PaymentProviderChoice,
+  PaymentProviderLabel,
+  PaymentProviderPanel,
+  PaymentProviderSelect,
 } from "./payment-settings-controls";
 
 const statusTone: Record<PaymentSettingsStatus, BadgeTone> = {
@@ -97,23 +108,167 @@ const PaymentStatusDescription = ({
   }
 };
 
+/**
+ * A credential's name in the console's own catalogs. A field no catalog names
+ * yet shows the name the provider declares it under.
+ */
+const PaymentCredentialName = ({
+  field,
+  provider,
+}: {
+  field: string;
+  provider: string;
+}) => {
+  switch (`${provider}.${field}`) {
+    case "stripe.secret_key": {
+      return (
+        <Message message="admin.settings.payment.fields.stripe.secret_key" />
+      );
+    }
+    case "stripe.webhook_secret": {
+      return (
+        <Message message="admin.settings.payment.fields.stripe.webhook_secret" />
+      );
+    }
+    default: {
+      return field;
+    }
+  }
+};
+
+/** What a provider's webhook URL block adds for that provider alone. */
+const PaymentWebhookNote = ({ provider }: { provider: string }) => {
+  switch (provider) {
+    case "stripe": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.payment.webhook_url_legacy_description" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+const PaymentCredentialDescription = ({
+  field,
+}: {
+  field: PaymentCredentialField;
+}) => {
+  if (field.secret) {
+    return (
+      <FieldDescription>
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="admin.settings.payment.secret_description" />
+        </Suspense>
+      </FieldDescription>
+    );
+  }
+  if (field.public) {
+    return (
+      <FieldDescription>
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="admin.settings.payment.public_description" />
+        </Suspense>
+      </FieldDescription>
+    );
+  }
+  return null;
+};
+
+/** A write-only secret: a stored one shows only its hint until replaced. */
+const PaymentSecretControls = ({
+  field,
+  state,
+}: {
+  field: PaymentCredentialField;
+  state?: PaymentCredentialFieldState;
+}) => (
+  <>
+    <PaymentCredentialWhile mode="keep">
+      <div className="flex flex-wrap items-center gap-3">
+        <PaymentCredentialHint />
+        <PaymentCredentialModeButton mode="replace">
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.settings.payment.secret_change" />
+          </Suspense>
+        </PaymentCredentialModeButton>
+        {field.required ? null : (
+          <PaymentCredentialModeButton mode="clear">
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.settings.payment.secret_remove" />
+            </Suspense>
+          </PaymentCredentialModeButton>
+        )}
+      </div>
+    </PaymentCredentialWhile>
+    <PaymentCredentialWhile mode="replace">
+      <div className="flex flex-wrap items-center gap-3">
+        <PaymentCredentialSecretInput />
+        {state?.configured ? (
+          <PaymentCredentialModeButton mode="keep">
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.settings.payment.secret_change_cancel" />
+            </Suspense>
+          </PaymentCredentialModeButton>
+        ) : null}
+      </div>
+    </PaymentCredentialWhile>
+    <PaymentCredentialWhile mode="clear">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="admin.settings.payment.secret_removed" />
+          </Suspense>
+        </p>
+        <PaymentCredentialModeButton mode="keep">
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="admin.settings.payment.secret_remove_cancel" />
+          </Suspense>
+        </PaymentCredentialModeButton>
+      </div>
+    </PaymentCredentialWhile>
+  </>
+);
+
 interface TenantPaymentSettingsFormProps {
   canEdit: boolean;
   initialSettings: TenantPaymentSettings;
   loadErrorMessage?: string;
+  providers: PaymentProvider[];
   tenantId: string;
-  webhookUrl?: string;
+  /** `https://` and the tenant's storefront domain, when it is known. */
+  webhookOrigin?: string;
 }
 
 export const TenantPaymentSettingsForm = ({
   canEdit,
   initialSettings: settings,
   loadErrorMessage,
+  providers,
   tenantId,
-  webhookUrl,
+  webhookOrigin,
 }: TenantPaymentSettingsFormProps) => {
   const status = paymentSettingsStatus(settings);
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
+  const initialProvider =
+    providers.find((provider) => provider.id === settings.provider)?.id ??
+    providers[0]?.id ??
+    "";
+  const credentialsProvider = settings.fields.some((field) => field.configured)
+    ? settings.provider
+    : "";
+  const credentialsProviderName =
+    providers.find((provider) => provider.id === credentialsProvider)
+      ?.displayName ?? credentialsProvider;
+  const stateOf = (provider: string, field: string) =>
+    provider === settings.provider
+      ? settings.fields.find((state) => state.name === field)
+      : undefined;
 
   return (
     <AdminSection>
@@ -136,16 +291,6 @@ export const TenantPaymentSettingsForm = ({
         className="grid gap-5 sm:max-w-3xl"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <input
-          name="secret_key_configured"
-          type="hidden"
-          value={settings.secretKeyConfigured ? "1" : "0"}
-        />
-        <input
-          name="webhook_secret_configured"
-          type="hidden"
-          value={settings.webhookSecretConfigured ? "1" : "0"}
-        />
 
         {loadErrorMessage ? null : (
           <div className="flex flex-wrap items-center gap-3">
@@ -162,147 +307,156 @@ export const TenantPaymentSettingsForm = ({
           </div>
         )}
 
-        <Field>
-          <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.settings.payment.provider" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input disabled readOnly type="text" value="Stripe" />
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                <Message message="admin.settings.payment.provider_description" />
-              </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-
         {/* A save refreshes the settings; keying on them remounts the fields
             on what the API stored, behind the new hints. */}
         <ActionFormFieldset
           className="grid gap-5"
           disabled={fieldsDisabled}
           key={[
+            settings.provider,
             settings.enabled,
             settings.ready,
-            settings.secretKeyConfigured,
-            settings.secretKeyHint,
-            settings.webhookSecretConfigured,
-            settings.webhookSecretHint,
+            ...settings.fields.map(
+              (field) => `${field.name}=${field.configured}:${field.hint}`
+            ),
           ].join(":")}
         >
-          <PaymentEnabled initialEnabled={settings.enabled}>
+          <PaymentProviderChoice
+            credentialsProvider={credentialsProvider}
+            initialProvider={initialProvider}
+          >
             <Field>
-              <PaymentEnabledLabel>
-                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <Message message="admin.settings.payment.enabled" />
+              <PaymentProviderLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.settings.payment.provider" />
                 </Suspense>
-              </PaymentEnabledLabel>
+              </PaymentProviderLabel>
               <FieldContent>
-                <PaymentEnabledCheckbox>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                    <Message message="admin.settings.payment.enabled_checkbox" />
-                  </Suspense>
-                </PaymentEnabledCheckbox>
+                <PaymentProviderSelect providers={providers} />
                 <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                    <Message message="admin.settings.payment.enabled_description" />
+                  <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                    <Message message="admin.settings.payment.provider_description" />
                   </Suspense>
                 </FieldDescription>
+                <PaymentProviderChangeNotice>
+                  <FormMessage variant="warning">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                      <Message
+                        message="admin.settings.payment.provider_change_warning"
+                        values={{ provider: credentialsProviderName }}
+                      />
+                    </Suspense>
+                  </FormMessage>
+                </PaymentProviderChangeNotice>
               </FieldContent>
             </Field>
 
-            <PaymentSecret
-              configured={settings.secretKeyConfigured}
-              disabled={fieldsDisabled}
-              hint={settings.secretKeyHint}
-              name="secret_key"
-            >
+            <PaymentEnabled initialEnabled={settings.enabled}>
               <Field>
-                <PaymentSecretLabel>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                    <Message message="admin.settings.payment.secret_key" />
-                  </Suspense>
-                </PaymentSecretLabel>
-                <FieldContent>
-                  <PaymentSecretStored>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                      <Message message="admin.settings.payment.secret_change" />
-                    </Suspense>
-                  </PaymentSecretStored>
-                  <PaymentSecretEditor>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                      <Message message="admin.settings.payment.secret_change_cancel" />
-                    </Suspense>
-                  </PaymentSecretEditor>
-                  <ActionFormFieldError name="secretKey" />
-                </FieldContent>
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                    <Message message="admin.settings.payment.secret_description" />
-                  </Suspense>
-                </FieldDescription>
-              </Field>
-            </PaymentSecret>
-
-            <PaymentSecret
-              configured={settings.webhookSecretConfigured}
-              disabled={fieldsDisabled}
-              hint={settings.webhookSecretHint}
-              name="webhook_secret"
-            >
-              <Field>
-                <PaymentSecretLabel>
+                <PaymentEnabledLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                    <Message message="admin.settings.payment.webhook_secret" />
+                    <Message message="admin.settings.payment.enabled" />
                   </Suspense>
-                </PaymentSecretLabel>
+                </PaymentEnabledLabel>
                 <FieldContent>
-                  <PaymentSecretStored>
+                  <PaymentEnabledCheckbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                      <Message message="admin.settings.payment.secret_change" />
+                      <Message message="admin.settings.payment.enabled_checkbox" />
                     </Suspense>
-                  </PaymentSecretStored>
-                  <PaymentSecretEditor>
-                    <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                      <Message message="admin.settings.payment.secret_change_cancel" />
+                  </PaymentEnabledCheckbox>
+                  <FieldDescription>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                      <Message message="admin.settings.payment.enabled_description" />
                     </Suspense>
-                  </PaymentSecretEditor>
-                  <ActionFormFieldError name="webhookSecret" />
+                  </FieldDescription>
                 </FieldContent>
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                    <Message message="admin.settings.payment.secret_description" />
-                  </Suspense>
-                </FieldDescription>
               </Field>
-            </PaymentSecret>
-          </PaymentEnabled>
-        </ActionFormFieldset>
 
-        {webhookUrl ? (
-          <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.settings.payment.webhook_url" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              <Input disabled readOnly type="text" value={webhookUrl} />
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                  <Message message="admin.settings.payment.webhook_url_description" />
-                </Suspense>
-              </FieldDescription>
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                  <Message message="admin.settings.payment.webhook_url_legacy_description" />
-                </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        ) : null}
+              {providers.map((provider) => (
+                <PaymentProviderPanel key={provider.id} provider={provider.id}>
+                  {provider.fields.map((field) => {
+                    const state = stateOf(provider.id, field.name);
+                    return (
+                      <PaymentCredential
+                        configured={Boolean(state?.configured)}
+                        disabled={fieldsDisabled}
+                        hint={state?.hint ?? ""}
+                        key={field.name}
+                        name={field.name}
+                        required={field.required}
+                      >
+                        <Field>
+                          <PaymentCredentialLabel>
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-32" />}
+                            >
+                              <PaymentCredentialName
+                                field={field.name}
+                                provider={provider.id}
+                              />
+                            </Suspense>
+                          </PaymentCredentialLabel>
+                          <FieldContent>
+                            {field.secret ? (
+                              <PaymentSecretControls
+                                field={field}
+                                state={state}
+                              />
+                            ) : (
+                              <PaymentCredentialTextInput />
+                            )}
+                            <ActionFormFieldError
+                              name={`credential_${field.name}`}
+                            />
+                          </FieldContent>
+                          <PaymentCredentialDescription field={field} />
+                        </Field>
+                      </PaymentCredential>
+                    );
+                  })}
+                </PaymentProviderPanel>
+              ))}
+            </PaymentEnabled>
+
+            {webhookOrigin
+              ? providers.map((provider) => (
+                  <PaymentProviderPanel
+                    key={provider.id}
+                    provider={provider.id}
+                  >
+                    <Field>
+                      <FieldLabel>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-24" />}
+                        >
+                          <Message message="admin.settings.payment.webhook_url" />
+                        </Suspense>
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          disabled
+                          readOnly
+                          type="text"
+                          value={`${webhookOrigin}${provider.webhookPath}`}
+                        />
+                        <FieldDescription>
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-3/4" />}
+                          >
+                            <Message
+                              message="admin.settings.payment.webhook_url_description"
+                              values={{ provider: provider.displayName }}
+                            />
+                          </Suspense>
+                        </FieldDescription>
+                        <PaymentWebhookNote provider={provider.id} />
+                      </FieldContent>
+                    </Field>
+                  </PaymentProviderPanel>
+                ))
+              : null}
+          </PaymentProviderChoice>
+        </ActionFormFieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">

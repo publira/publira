@@ -2142,36 +2142,45 @@
       },
       "payment": {
         "title": "Payment settings",
-        "description": "Register, replace, or disable this tenant's Stripe secrets. A secret is write-only: coming back, you see its state and a mask, never the value.",
+        "description": "Choose this tenant's payment provider and register, replace, or disable its credentials. A secret is write-only: coming back, you see its state and a mask, never the value.",
         "provider": "Payment provider",
-        "provider_description": "Stripe is the only provider available today.",
-        "enabled": "Enable Stripe payments",
+        "provider_description": "Readers pay through the provider chosen here, with the credentials entered below.",
+        "provider_change_warning": "Saving with a different provider deletes the credentials stored for {$provider}.",
+        "enabled": "Enable payments",
         "enabled_checkbox": "Enable",
         "enabled_description": "Left off, Checkout and the webhook for paid episodes do not run for this tenant.",
-        "secret_key": "Secret key",
-        "webhook_secret": "Webhook signing secret",
+        "fields": {
+          "stripe": {
+            "secret_key": "Secret key",
+            "webhook_secret": "Webhook signing secret"
+          }
+        },
         "secret_change": "Change",
         "secret_change_cancel": "Cancel the change",
+        "secret_remove": "Remove",
+        "secret_removed": "Removed when you save.",
+        "secret_remove_cancel": "Keep it",
         "secret_description": "A value you enter is never shown again. A stored value appears masked apart from its first and last characters.",
+        "public_description": "This value is handed to the reader's browser at checkout, so it is shown as stored.",
         "webhook_url": "Webhook URL",
-        "webhook_url_description": "Register this URL in the Stripe dashboard. The signing secret is saved in the field above.",
+        "webhook_url_description": "Register this URL with {$provider} as where it sends payment notifications.",
         "webhook_url_legacy_description": "An endpoint registered earlier at /api/v1/webhook/stripe still works, but that URL is deprecated and will be removed in a later release. Replace it with the URL above.",
         "saved": "The payment settings were saved.",
         "load_failed": "Could not load the payment settings. Please try again later.",
         "save_failed": "Could not save the payment settings. Please try again later.",
         "status": {
           "disabled": "Disabled",
-          "disabled_description": "The secrets are stored, but payments are off. Checkout and the webhook do not run.",
+          "disabled_description": "The credentials are stored, but payments are off. Checkout and the webhook do not run.",
           "incomplete": "Incomplete",
-          "incomplete_description": "Payments are on, but a secret is missing, so nothing is charged.",
+          "incomplete_description": "Payments are on, but a required credential is missing, so nothing is charged.",
           "ready": "Ready",
           "ready_description": "Checkout and the webhook for paid episodes use this tenant's settings.",
           "unset": "Not set",
-          "unset_description": "Register the Stripe secrets to start charging for paid episodes."
+          "unset_description": "Choose a provider and register its credentials to start charging for paid episodes."
         },
         "validation": {
-          "secret_key_required": "Enter the secret key.",
-          "webhook_secret_required": "Enter the webhook signing secret."
+          "field_required": "Enter this value to turn payments on.",
+          "provider_invalid": "Choose a payment provider."
         }
       },
       "purchase": {
@@ -2206,7 +2215,7 @@
         "route_description": "Whether an episode may be bought in the app at all is set under Where episodes are sold. This decides only which purchase the app offers.",
         "routes": {
           "external_checkout": "Web checkout",
-          "external_checkout_description": "The app opens the web checkout in the browser and the reader comes back once paid. Stripe charges the reader.",
+          "external_checkout_description": "The app opens the web checkout in the browser and the reader comes back once paid. The payment provider chosen in the payment settings charges the reader.",
           "store": "In-app purchase",
           "store_description": "The app sells with the store's payment sheet and never opens the web checkout. The store charges the reader and keeps its commission.",
           "store_unavailable": "Available once the App Store or Google Play below is ready."
@@ -2456,7 +2465,7 @@
       "email_description": "Manage how this tenant sends email.",
       "email_error": "Could not display the email settings",
       "payment_title": "Integrations — Payments",
-      "payment_description": "Manage how this tenant charges readers: Stripe for the web checkout, and the App Store and Google Play for in-app purchase.",
+      "payment_description": "Manage how this tenant charges readers: the payment provider it chooses for the web checkout, and the App Store and Google Play for in-app purchase.",
       "payment_error": "Could not display the payment settings",
       "mobile_push_title": "Integrations — Mobile push",
       "mobile_push_description": "Manage the Firebase credentials this tenant's mobile app is sent push notifications with.",

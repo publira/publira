@@ -1,15 +1,22 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  SECRET_UPDATE_MODE_REPLACE,
+  SECRET_UPDATE_MODE_UNCHANGED,
+} from "./email-settings-shared";
+
 const {
   mockCacheTag,
   mockGetAccessToken,
   mockGetTenantPaymentSettingsApi,
+  mockListPaymentProvidersApi,
   mockUpdateTenantPaymentSettingsApi,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantPaymentSettingsApi: vi.fn(),
+  mockListPaymentProvidersApi: vi.fn(),
   mockUpdateTenantPaymentSettingsApi: vi.fn(),
 }));
 
@@ -25,6 +32,7 @@ vi.mock("./api", () => ({
   apiClient: {
     paymentSettings: {
       getTenantPaymentSettings: mockGetTenantPaymentSettingsApi,
+      listPaymentProviders: mockListPaymentProvidersApi,
       updateTenantPaymentSettings: mockUpdateTenantPaymentSettingsApi,
     },
   },
@@ -55,13 +63,35 @@ const rpcSettings = {
 
 const publicSettings = {
   enabled: true,
+  fields: [
+    { configured: true, hint: "sk_test_••••••••KLMN", name: "secret_key" },
+    { configured: true, hint: "whsec_••••••••WXYZ", name: "webhook_secret" },
+  ],
   provider: "stripe",
   ready: true,
-  secretKeyConfigured: true,
-  secretKeyHint: "sk_test_••••••••KLMN",
-  webhookSecretConfigured: true,
-  webhookSecretHint: "whsec_••••••••WXYZ",
 };
+
+const rpcProviders = [
+  {
+    displayName: "Example Pay",
+    fields: [
+      { name: "secret_key", public: false, required: true, secret: true },
+      { name: "public_key", public: true, required: true, secret: false },
+      { name: "webhook_token", public: false, required: false, secret: true },
+    ],
+    id: "examplepay",
+    webhookPath: "/api/v1/webhook/payment/examplepay",
+  },
+  {
+    displayName: "Stripe",
+    fields: [
+      { name: "secret_key", public: false, required: true, secret: true },
+      { name: "webhook_secret", public: false, required: true, secret: true },
+    ],
+    id: "stripe",
+    webhookPath: "/api/v1/webhook/payment/stripe",
+  },
+];
 
 const leakedSecretKey = "leak-secret-key-value";
 const leakedWebhookSecret = "leak-webhook-secret-value";
@@ -114,36 +144,27 @@ describe("payment-settings", () => {
     expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
     expect(JSON.stringify(result)).not.toContain(leakedWebhookSecret);
     if (result.ok) {
-      expect(result.settings.secretKeyHint).toBe("sk_test_••••••••KLMN");
+      expect(result.settings.fields[0]).toEqual({
+        configured: true,
+        hint: "sk_test_••••••••KLMN",
+        name: "secret_key",
+      });
       expect(result.settings).not.toHaveProperty("secretKey");
       expect(result.settings).not.toHaveProperty("webhookSecret");
     }
   });
 
-  it("reads a credential field the response does not list as not stored", async () => {
+  it("reads a tenant that has saved nothing as no provider and no fields", async () => {
     mockGetTenantPaymentSettingsApi.mockResolvedValueOnce({
-      settings: {
-        ...rpcSettings,
-        fields: rpcSettings.fields.filter(
-          (field) => field.name === "secret_key"
-        ),
-        ready: false,
-      },
+      settings: { enabled: false, fields: [], provider: "", ready: false },
     });
 
-    const { getTenantPaymentSettings } = await import("./payment-settings");
+    const { emptyTenantPaymentSettings, getTenantPaymentSettings } =
+      await import("./payment-settings");
 
     const result = await getTenantPaymentSettings("TENANT001", "en");
 
-    expect(result).toEqual({
-      ok: true,
-      settings: {
-        ...publicSettings,
-        ready: false,
-        webhookSecretConfigured: false,
-        webhookSecretHint: "",
-      },
-    });
+    expect(result).toEqual({ ok: true, settings: emptyTenantPaymentSettings });
   });
 
   it("returns an error when there is no session", async () => {
@@ -195,17 +216,25 @@ describe("payment-settings", () => {
       settings: rpcSettings,
     });
 
-    const { SECRET_UPDATE_MODE_REPLACE, updateTenantPaymentSettings } =
-      await import("./payment-settings");
+    const { updateTenantPaymentSettings } = await import("./payment-settings");
 
     const result = await updateTenantPaymentSettings(
       {
         enabled: true,
-        secretKey: leakedSecretKey,
-        secretKeyUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+        fields: [
+          {
+            mode: SECRET_UPDATE_MODE_REPLACE,
+            name: "secret_key",
+            value: leakedSecretKey,
+          },
+          {
+            mode: SECRET_UPDATE_MODE_REPLACE,
+            name: "webhook_secret",
+            value: leakedWebhookSecret,
+          },
+        ],
+        provider: "stripe",
         tenantId: "TENANT001",
-        webhookSecret: leakedWebhookSecret,
-        webhookSecretUpdateMode: SECRET_UPDATE_MODE_REPLACE,
       },
       "en"
     );
@@ -243,17 +272,21 @@ describe("payment-settings", () => {
       )
     );
 
-    const { SECRET_UPDATE_MODE_UNCHANGED, updateTenantPaymentSettings } =
-      await import("./payment-settings");
+    const { updateTenantPaymentSettings } = await import("./payment-settings");
 
     const result = await updateTenantPaymentSettings(
       {
         enabled: true,
-        secretKey: "",
-        secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+        fields: [
+          { mode: SECRET_UPDATE_MODE_UNCHANGED, name: "secret_key", value: "" },
+          {
+            mode: SECRET_UPDATE_MODE_UNCHANGED,
+            name: "webhook_secret",
+            value: "",
+          },
+        ],
+        provider: "stripe",
         tenantId: "TENANT001",
-        webhookSecret: "",
-        webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
       },
       "en"
     );
@@ -270,17 +303,21 @@ describe("payment-settings", () => {
       new ConnectError("admin role required", Code.PermissionDenied)
     );
 
-    const { SECRET_UPDATE_MODE_UNCHANGED, updateTenantPaymentSettings } =
-      await import("./payment-settings");
+    const { updateTenantPaymentSettings } = await import("./payment-settings");
 
     const result = await updateTenantPaymentSettings(
       {
         enabled: false,
-        secretKey: "",
-        secretKeyUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+        fields: [
+          { mode: SECRET_UPDATE_MODE_UNCHANGED, name: "secret_key", value: "" },
+          {
+            mode: SECRET_UPDATE_MODE_UNCHANGED,
+            name: "webhook_secret",
+            value: "",
+          },
+        ],
+        provider: "stripe",
         tenantId: "TENANT001",
-        webhookSecret: "",
-        webhookSecretUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
       },
       "en"
     );
@@ -288,6 +325,72 @@ describe("payment-settings", () => {
     expect(result).toEqual({
       message:
         "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
+  });
+
+  it("lists the registered providers with the fields each declares", async () => {
+    mockListPaymentProvidersApi.mockResolvedValueOnce({
+      providers: rpcProviders,
+    });
+
+    const { listPaymentProviders } = await import("./payment-settings");
+
+    const result = await listPaymentProviders("TENANT001", "en");
+
+    expect(result).toEqual({
+      ok: true,
+      providers: rpcProviders,
+    });
+    expect(mockListPaymentProvidersApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:payment-settings"
+    );
+  });
+
+  it("reports a provider list the API refuses as a message", async () => {
+    mockListPaymentProvidersApi.mockRejectedValueOnce(
+      new ConnectError("admin role required", Code.PermissionDenied)
+    );
+
+    const { listPaymentProviders } = await import("./payment-settings");
+
+    const result = await listPaymentProviders("TENANT001", "en");
+
+    expect(result).toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("finds the declaration of the provider a save names", async () => {
+    mockListPaymentProvidersApi.mockResolvedValueOnce({
+      providers: rpcProviders,
+    });
+
+    const { getPaymentProvider } = await import("./payment-settings");
+
+    const result = await getPaymentProvider("TENANT001", "examplepay", "en");
+
+    expect(result).toEqual({ ok: true, provider: rpcProviders[0] });
+  });
+
+  it("refuses a provider the server does not register", async () => {
+    mockListPaymentProvidersApi.mockResolvedValueOnce({
+      providers: rpcProviders,
+    });
+
+    const { getPaymentProvider } = await import("./payment-settings");
+
+    const result = await getPaymentProvider("TENANT001", "unknown", "en");
+
+    expect(result).toEqual({
+      message: "Choose a payment provider.",
       ok: false,
     });
   });

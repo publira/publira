@@ -1,30 +1,42 @@
-export const PAYMENT_PROVIDER_STRIPE = "stripe";
+/** One credential a payment provider declares, as the server registers it. */
+export interface PaymentCredentialField {
+  name: string;
+  /** Stored encrypted and answered back only as a masked hint. */
+  secret: boolean;
+  /** Handed to the reader's browser, so its value is shown as stored. */
+  public: boolean;
+  required: boolean;
+}
 
-/** The credential fields Stripe declares, as the server names them. */
-export const STRIPE_FIELD_SECRET_KEY = "secret_key";
-export const STRIPE_FIELD_WEBHOOK_SECRET = "webhook_secret";
+export interface PaymentProvider {
+  id: string;
+  displayName: string;
+  fields: PaymentCredentialField[];
+  /** The storefront path the provider's notifications are received on. */
+  webhookPath: string;
+}
 
-export const SECRET_UPDATE_MODE_UNCHANGED = 1;
-export const SECRET_UPDATE_MODE_REPLACE = 2;
+export interface PaymentCredentialFieldState {
+  name: string;
+  configured: boolean;
+  /** The masked value of a secret field and the value itself of any other. */
+  hint: string;
+}
 
 export interface TenantPaymentSettings {
+  /** Empty until the tenant saves a provider. */
   provider: string;
   enabled: boolean;
-  secretKeyConfigured: boolean;
-  webhookSecretConfigured: boolean;
-  secretKeyHint: string;
-  webhookSecretHint: string;
+  /** One entry per field the stored provider declares. */
+  fields: PaymentCredentialFieldState[];
   ready: boolean;
 }
 
 export const emptyTenantPaymentSettings: TenantPaymentSettings = {
   enabled: false,
-  provider: PAYMENT_PROVIDER_STRIPE,
+  fields: [],
+  provider: "",
   ready: false,
-  secretKeyConfigured: false,
-  secretKeyHint: "",
-  webhookSecretConfigured: false,
-  webhookSecretHint: "",
 };
 
 export type PaymentSettingsStatus =
@@ -42,7 +54,7 @@ export const paymentSettingsStatus = (
   if (settings.enabled) {
     return "incomplete";
   }
-  if (settings.secretKeyConfigured || settings.webhookSecretConfigured) {
+  if (settings.fields.some((field) => field.configured)) {
     return "disabled";
   }
   return "unset";

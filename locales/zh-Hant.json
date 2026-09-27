@@ -2142,36 +2142,45 @@
       },
       "payment": {
         "title": "付款設定",
-        "description": "設定、更換或停用該租戶的 Stripe 密鑰。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
+        "description": "選擇該租戶的付款服務商，並設定、更換或停用其憑證。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
         "provider": "付款服務商",
-        "provider_description": "目前僅提供 Stripe。",
-        "enabled": "啟用 Stripe 付款",
+        "provider_description": "讀者將透過此處選擇的服務商付款，憑證在下方填寫。",
+        "provider_change_warning": "以其他服務商儲存時，為 {$provider} 儲存的憑證將被刪除。",
+        "enabled": "啟用付款",
         "enabled_checkbox": "啟用",
         "enabled_description": "關閉時，該租戶付費章節的 Checkout 與 webhook 都不會執行。",
-        "secret_key": "密鑰",
-        "webhook_secret": "Webhook 簽章密鑰",
+        "fields": {
+          "stripe": {
+            "secret_key": "密鑰",
+            "webhook_secret": "Webhook 簽章密鑰"
+          }
+        },
         "secret_change": "變更",
         "secret_change_cancel": "取消變更",
+        "secret_remove": "刪除",
+        "secret_removed": "儲存後將被刪除。",
+        "secret_remove_cancel": "取消刪除",
         "secret_description": "您輸入的值不會再次顯示。已儲存的值除首尾字元外都會以遮罩顯示。",
+        "public_description": "此值會在結帳時交給讀者的瀏覽器，因此依儲存的原樣顯示。",
         "webhook_url": "Webhook URL",
-        "webhook_url_description": "請在 Stripe 主控台中設定此 URL。簽章密鑰儲存在上方的欄位中。",
+        "webhook_url_description": "請在 {$provider} 中將此 URL 設定為付款通知的接收位址。",
         "webhook_url_legacy_description": "先前設定的 /api/v1/webhook/stripe 端點仍可使用，但該 URL 已棄用，將在後續版本中移除。請改用上方的 URL。",
         "saved": "付款設定已儲存。",
         "load_failed": "無法載入付款設定。請稍後再試。",
         "save_failed": "無法儲存付款設定。請稍後再試。",
         "status": {
           "disabled": "已停用",
-          "disabled_description": "密鑰已儲存，但付款處於關閉狀態。Checkout 與 webhook 不會執行。",
+          "disabled_description": "憑證已儲存，但付款處於關閉狀態。Checkout 與 webhook 不會執行。",
           "incomplete": "未完成",
-          "incomplete_description": "付款已開啟，但缺少密鑰，因此無法完成收款。",
+          "incomplete_description": "付款已開啟，但缺少必要的憑證，因此無法完成收款。",
           "ready": "就緒",
           "ready_description": "付費章節的 Checkout 與 webhook 將使用該租戶的設定。",
           "unset": "未設定",
-          "unset_description": "請設定 Stripe 密鑰，以開始對付費章節收款。"
+          "unset_description": "請選擇服務商並設定其憑證，以開始對付費章節收款。"
         },
         "validation": {
-          "secret_key_required": "請輸入密鑰。",
-          "webhook_secret_required": "請輸入 webhook 簽章密鑰。"
+          "field_required": "若要啟用付款，請輸入此值。",
+          "provider_invalid": "請選擇付款服務商。"
         }
       },
       "purchase": {
@@ -2206,7 +2215,7 @@
         "route_description": "能否在應用程式中購買由「販售位置」決定。這裡只決定應用程式提供哪種購買方式。",
         "routes": {
           "external_checkout": "網頁結帳",
-          "external_checkout_description": "應用程式會在瀏覽器中開啟網頁結帳頁面，讀者付款後返回應用程式。由 Stripe 向讀者收費。",
+          "external_checkout_description": "應用程式會在瀏覽器中開啟網頁結帳頁面，讀者付款後返回應用程式。由付款設定中選擇的付款服務商向讀者收費。",
           "store": "應用程式內購買",
           "store_description": "應用程式使用商店的付款畫面販售，不會開啟網頁結帳頁面。由商店向讀者收費並扣除其佣金。",
           "store_unavailable": "下方的App Store 或 Google Play 可用後即可選擇。"
@@ -2456,7 +2465,7 @@
       "email_description": "管理該租戶寄送郵件的方式。",
       "email_error": "無法顯示郵件設定",
       "payment_title": "整合 — 付款",
-      "payment_description": "管理此租戶向讀者收費的方式：網頁結帳使用 Stripe，應用程式內購買使用 App Store 與 Google Play。",
+      "payment_description": "管理此租戶向讀者收費的方式：網頁結帳使用所選的付款服務商，應用程式內購買使用 App Store 與 Google Play。",
       "payment_error": "無法顯示付款設定",
       "mobile_push_title": "整合 — 行動推播",
       "mobile_push_description": "管理向該租戶的行動應用程式傳送推播通知所用的 Firebase 憑證。",

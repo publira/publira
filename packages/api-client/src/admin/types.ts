@@ -20,6 +20,7 @@ export type {
 } from "../gen/publira/admin/v1/member_pb.js";
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
 export type {
+  PaymentProvider,
   TenantAppStorePaymentSettings,
   TenantGooglePlayPaymentSettings,
   TenantPaymentSettings,

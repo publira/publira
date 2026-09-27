@@ -2142,36 +2142,45 @@
       },
       "payment": {
         "title": "支付设置",
-        "description": "登记、替换或停用该租户的 Stripe 密钥。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
+        "description": "选择该租户的支付服务商，并登记、替换或停用其凭据。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
         "provider": "支付服务商",
-        "provider_description": "目前仅支持 Stripe。",
-        "enabled": "启用 Stripe 支付",
+        "provider_description": "读者将通过此处选择的服务商付款，凭据在下方填写。",
+        "provider_change_warning": "以其他服务商保存时，为 {$provider} 保存的凭据将被删除。",
+        "enabled": "启用支付",
         "enabled_checkbox": "启用",
         "enabled_description": "关闭时，该租户的付费章节将不会运行 Checkout 和 webhook。",
-        "secret_key": "密钥",
-        "webhook_secret": "Webhook 签名密钥",
+        "fields": {
+          "stripe": {
+            "secret_key": "密钥",
+            "webhook_secret": "Webhook 签名密钥"
+          }
+        },
         "secret_change": "变更",
         "secret_change_cancel": "取消变更",
+        "secret_remove": "删除",
+        "secret_removed": "保存后将被删除。",
+        "secret_remove_cancel": "取消删除",
         "secret_description": "您输入的值不会再次显示。已保存的值除首尾字符外都会以掩码显示。",
+        "public_description": "该值会在结账时交给读者的浏览器，因此按保存的原样显示。",
         "webhook_url": "Webhook URL",
-        "webhook_url_description": "请在 Stripe 控制台中登记此 URL。签名密钥保存在上方的字段中。",
+        "webhook_url_description": "请在 {$provider} 中将此 URL 登记为支付通知的接收地址。",
         "webhook_url_legacy_description": "之前登记的 /api/v1/webhook/stripe 端点仍可使用，但该 URL 已弃用，将在后续版本中删除。请替换为上方的 URL。",
         "saved": "支付设置已保存。",
         "load_failed": "无法加载支付设置。请稍后再试。",
         "save_failed": "无法保存支付设置。请稍后再试。",
         "status": {
           "disabled": "已停用",
-          "disabled_description": "密钥已保存，但支付处于关闭状态。Checkout 和 webhook 不会运行。",
+          "disabled_description": "凭据已保存，但支付处于关闭状态。Checkout 和 webhook 不会运行。",
           "incomplete": "未完成",
-          "incomplete_description": "支付已开启，但缺少密钥，因此无法完成收款。",
+          "incomplete_description": "支付已开启，但缺少必需的凭据，因此无法完成收款。",
           "ready": "就绪",
           "ready_description": "付费章节的 Checkout 和 webhook 将使用该租户的设置。",
           "unset": "未设置",
-          "unset_description": "请登记 Stripe 密钥，以开始对付费章节收款。"
+          "unset_description": "请选择服务商并登记其凭据，以开始对付费章节收款。"
         },
         "validation": {
-          "secret_key_required": "请输入密钥。",
-          "webhook_secret_required": "请输入 webhook 签名密钥。"
+          "field_required": "要启用支付，请输入此值。",
+          "provider_invalid": "请选择支付服务商。"
         }
       },
       "purchase": {
@@ -2206,7 +2215,7 @@
         "route_description": "能否在应用中购买由“销售位置”决定。这里只决定应用提供哪种购买方式。",
         "routes": {
           "external_checkout": "网页结账",
-          "external_checkout_description": "应用在浏览器中打开网页结账页面，读者付款后返回应用。由 Stripe 向读者收费。",
+          "external_checkout_description": "应用在浏览器中打开网页结账页面，读者付款后返回应用。由支付设置中选择的支付服务商向读者收费。",
           "store": "应用内购买",
           "store_description": "应用使用商店的付款界面销售，不会打开网页结账页面。由商店向读者收费并扣除其佣金。",
           "store_unavailable": "下方的 App Store 或 Google Play 可用后即可选择。"
@@ -2456,7 +2465,7 @@
       "email_description": "管理该租户发送邮件的方式。",
       "email_error": "无法显示邮件设置",
       "payment_title": "集成 — 支付",
-      "payment_description": "管理此租户向读者收费的方式：网页结账使用 Stripe，应用内购买使用 App Store 和 Google Play。",
+      "payment_description": "管理此租户向读者收费的方式：网页结账使用所选的支付服务商，应用内购买使用 App Store 和 Google Play。",
       "payment_error": "无法显示支付设置",
       "mobile_push_title": "集成 — 移动推送",
       "mobile_push_description": "管理向该租户的移动应用发送推送通知所用的 Firebase 凭据。",

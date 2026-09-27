@@ -20,6 +20,7 @@ import { getMessagesFor } from "#lib/messages";
 import {
   emptyTenantPaymentSettings,
   getTenantPaymentSettings,
+  listPaymentProviders,
 } from "#lib/payment-settings";
 import {
   getTenantStorePaymentSettings,
@@ -58,52 +59,65 @@ const SettingsPaymentFormSkeleton = () => (
   </div>
 );
 
+const storefrontOrigin = (domain: string): string | undefined => {
+  const host = domain.trim();
+  return host ? `https://${host}` : undefined;
+};
+
 const tenantWebhookUrl = (
   domain: string,
   provider: string
 ): string | undefined => {
-  const host = domain.trim();
-  if (!host) {
-    return undefined;
-  }
-
-  return `https://${host}/api/v1/webhook/payment/${provider}`;
+  const origin = storefrontOrigin(domain);
+  return origin && `${origin}/api/v1/webhook/payment/${provider}`;
 };
 
 const SettingsPaymentForm = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const [paymentSettingsResult, currentUserResult, tenantResult] =
-    await Promise.all([
-      getTenantPaymentSettings(tenantId, locale),
-      getAdminCurrentUser(tenantId),
-      getTenantForSession(tenantId),
-    ]);
+  const [
+    paymentSettingsResult,
+    providersResult,
+    currentUserResult,
+    tenantResult,
+  ] = await Promise.all([
+    getTenantPaymentSettings(tenantId, locale),
+    listPaymentProviders(tenantId, locale),
+    getAdminCurrentUser(tenantId),
+    getTenantForSession(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(
     paymentSettingsResult,
+    providersResult,
     currentUserResult,
     tenantResult
   );
 
-  const settings = paymentSettingsResult.ok
-    ? paymentSettingsResult.settings
-    : emptyTenantPaymentSettings;
+  let loadErrorMessage: string | undefined;
+  if (!paymentSettingsResult.ok) {
+    loadErrorMessage = paymentSettingsResult.message;
+  } else if (!providersResult.ok) {
+    loadErrorMessage = providersResult.message;
+  }
 
   return (
     <TenantPaymentSettingsForm
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
-      initialSettings={settings}
-      loadErrorMessage={
-        paymentSettingsResult.ok ? undefined : paymentSettingsResult.message
+      initialSettings={
+        paymentSettingsResult.ok
+          ? paymentSettingsResult.settings
+          : emptyTenantPaymentSettings
       }
+      loadErrorMessage={loadErrorMessage}
+      providers={providersResult.ok ? providersResult.providers : []}
       tenantId={tenantId}
-      webhookUrl={
+      webhookOrigin={
         tenantResult.ok
-          ? tenantWebhookUrl(tenantResult.tenant.domain, settings.provider)
+          ? storefrontOrigin(tenantResult.tenant.domain)
           : undefined
       }
     />

@@ -1,8 +1,7 @@
 import type { StorePaymentSettingsFieldErrors } from "#lib/store-payment-settings";
 
-export type TenantPaymentSettingsFieldErrors = Partial<
-  Record<"secretKey" | "webhookSecret", string>
->;
+/** Keyed by `credential_<field name>`, the name each credential posts as. */
+export type TenantPaymentSettingsFieldErrors = Partial<Record<string, string>>;
 
 export type TenantPaymentSettingsFormState =
   | {
