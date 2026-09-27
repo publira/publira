@@ -5,19 +5,11 @@ export interface AnnouncementItem {
   title: string;
   body: string;
   linkUrl: string;
-  audienceType: "all" | "selected";
-  targetUserPublicId: string;
-  targetUserName: string;
   createdAt: string;
   /** Whether the site is showing this announcement as a banner right now. */
   pinned: boolean;
   /** The instant the banner stops at. Empty when it has no end. */
   pinnedUntil: string;
-}
-
-export interface AnnouncementTargetUser {
-  publicId: string;
-  name: string;
 }
 
 export type ListAnnouncementsResult = CursorPageTokens &
@@ -34,20 +26,6 @@ export type ListAnnouncementsResult = CursorPageTokens &
         requiresSignIn: boolean;
       }
   );
-
-/** Every user the create form can address, or the reason none could be read. */
-export type ListAnnouncementTargetUsersResult =
-  | {
-      ok: true;
-      users: AnnouncementTargetUser[];
-    }
-  | {
-      ok: false;
-      message: string;
-      users: AnnouncementTargetUser[];
-      /** The API rejected the session — the page raises the login redirect. */
-      requiresSignIn: boolean;
-    };
 
 export type CreateAnnouncementActionState =
   | {

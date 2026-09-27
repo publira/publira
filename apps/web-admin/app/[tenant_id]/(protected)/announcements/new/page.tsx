@@ -15,8 +15,6 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
-import { listAllAnnouncementTargetUsers } from "#lib/announcement";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -47,21 +45,10 @@ const AnnouncementFormSkeleton = () => (
 
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
-  const locale = await getLocale(tenantId);
-  const [usersResult, timeZone] = await Promise.all([
-    listAllAnnouncementTargetUsers(tenantId, locale),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
-
-  await redirectToLoginIfSessionRejected(usersResult);
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
 
   return (
-    <AnnouncementForm
-      action={createAnnouncementAction}
-      timeZone={timeZone}
-      users={usersResult.users}
-      usersErrorMessage={usersResult.ok ? undefined : usersResult.message}
-    />
+    <AnnouncementForm action={createAnnouncementAction} timeZone={timeZone} />
   );
 };
 

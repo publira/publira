@@ -5,12 +5,10 @@ const {
   mockGetSessionId,
   mockListAnnouncementsApi,
   mockCreateAnnouncementsApi,
-  mockListTenantUsersApi,
 } = vi.hoisted(() => ({
   mockCreateAnnouncementsApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockListAnnouncementsApi: vi.fn(),
-  mockListTenantUsersApi: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -23,9 +21,6 @@ vi.mock("./api", () => ({
       createAnnouncement: mockCreateAnnouncementsApi,
       listAnnouncements: mockListAnnouncementsApi,
     },
-    users: {
-      listTenantUsers: mockListTenantUsersApi,
-    },
   },
   withSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
@@ -37,13 +32,10 @@ vi.mock("next/cache", () => ({
 }));
 
 const announcement = (id: string, createdAt: string) => ({
-  audienceType: 1,
   body: "Announcement body",
   createdAt,
   id,
   linkUrl: "",
-  targetUserName: "",
-  targetUserPublicId: "",
   title: "Announcement title",
 });
 
@@ -52,7 +44,6 @@ describe("announcement lib", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetSessionId.mockResolvedValue("session-token");
-    mockListTenantUsersApi.mockResolvedValue({ users: [] });
   });
 
   it("passes the cursor token and the limit through and returns the tokens of the response", async () => {
@@ -110,13 +101,10 @@ describe("announcement lib", () => {
     mockListAnnouncementsApi.mockResolvedValue({
       announcements: [
         {
-          audienceType: 2,
           body: "Announcement body",
           createdAt: "2026-04-04T00:00:00Z",
           id: "n1",
           linkUrl: "/series/S001",
-          targetUserName: "User One",
-          targetUserPublicId: "USER001",
           title: "Announcement title",
         },
       ],
@@ -128,13 +116,10 @@ describe("announcement lib", () => {
     expect(result.ok).toBe(true);
     expect(result.announcements).toEqual([
       {
-        audienceType: "selected",
         body: "Announcement body",
         createdAt: "2026-04-04T00:00:00Z",
         id: "n1",
         linkUrl: "/series/S001",
-        targetUserName: "User One",
-        targetUserPublicId: "USER001",
         title: "Announcement title",
       },
     ]);
@@ -208,99 +193,6 @@ describe("announcement lib", () => {
     });
   });
 
-  it("does not read the target users while listing announcements", async () => {
-    mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
-
-    const { listAnnouncements } = await import("./announcement");
-    await listAnnouncements("TENANT001", "en", {});
-
-    // Only the creation screen needs the target users, so they are not fetched
-    // alongside every listing.
-    expect(mockListTenantUsersApi).not.toHaveBeenCalled();
-  });
-
-  it("follows the cursor to collect every page of target users", async () => {
-    mockListTenantUsersApi
-      .mockResolvedValueOnce({
-        nextToken: "page-2",
-        users: [{ name: "Zoe Bell", publicId: "USER001" }],
-      })
-      .mockResolvedValueOnce({
-        nextToken: "",
-        users: [{ name: "Ada Clark", publicId: "USER002" }],
-      });
-
-    const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
-
-    expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
-      1,
-      {
-        limit: 100,
-        query: "",
-        tenant: { tenantId: "TENANT001" },
-        token: "",
-      },
-      { headers: { Authorization: "Bearer session-token" } }
-    );
-    expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
-      2,
-      {
-        limit: 100,
-        query: "",
-        tenant: { tenantId: "TENANT001" },
-        token: "page-2",
-      },
-      { headers: { Authorization: "Bearer session-token" } }
-    );
-    // The second page's candidates join the choices too, and the whole set is
-    // sorted by name.
-    expect(result).toEqual({
-      ok: true,
-      users: [
-        { name: "Ada Clark", publicId: "USER002" },
-        { name: "Zoe Bell", publicId: "USER001" },
-      ],
-    });
-  });
-
-  it("offers no choices when the target users cannot be read to the last page", async () => {
-    // A broken response that keeps returning the same token. Presenting the
-    // candidates gathered so far as "everyone" would hide that the people
-    // missing from the list cannot be chosen at all.
-    mockListTenantUsersApi.mockResolvedValue({
-      nextToken: "same-token",
-      users: [{ name: "Zoe Bell", publicId: "USER001" }],
-    });
-
-    const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
-
-    expect(result).toEqual({
-      message:
-        "Could not load the list of target users. Please try again later.",
-      ok: false,
-      requiresSignIn: false,
-      users: [],
-    });
-  });
-
-  it("returns a message when the target users cannot be fetched", async () => {
-    mockListTenantUsersApi.mockRejectedValue(
-      new ConnectError("upstream down", Code.Unavailable)
-    );
-
-    const { listAllAnnouncementTargetUsers } = await import("./announcement");
-    const result = await listAllAnnouncementTargetUsers("TENANT001", "en");
-
-    expect(result).toEqual({
-      message: "Could not connect to the server. Please try again later.",
-      ok: false,
-      requiresSignIn: false,
-      users: [],
-    });
-  });
-
   it("returns the count once the announcement is created", async () => {
     mockCreateAnnouncementsApi.mockResolvedValue({
       announcements: [{ id: "n1" }, { id: "n2" }],
@@ -309,12 +201,10 @@ describe("announcement lib", () => {
     const { createAnnouncement } = await import("./announcement");
     const result = await createAnnouncement(
       {
-        audienceType: "all",
         body: "Announcement body",
         linkUrl: "",
         pinned: false,
         pinnedUntil: "",
-        targetUserPublicIds: [],
         tenantId: "TENANT001",
         title: "Announcement title",
       },

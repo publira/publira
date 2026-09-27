@@ -44,15 +44,12 @@ vi.mock("next/link", () => ({
 }));
 
 const announcement = (id: string): AnnouncementItem => ({
-  audienceType: "all",
   body: "Announcement body",
   createdAt: "2026-06-01T00:00:00Z",
   id,
   linkUrl: "/series/S001",
   pinned: false,
   pinnedUntil: "",
-  targetUserName: "",
-  targetUserPublicId: "",
   title: "Scheduled maintenance",
 });
 

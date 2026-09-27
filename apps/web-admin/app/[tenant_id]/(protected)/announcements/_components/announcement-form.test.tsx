@@ -41,8 +41,6 @@ const submittedControls = () => [
   screen.getByRole("textbox", { name: /Title/u }),
   screen.getByRole("textbox", { name: /Body/u }),
   screen.getByRole("textbox", { name: "Link" }),
-  screen.getByRole("radio", { name: "Everyone" }),
-  screen.getByRole("radio", { name: "Selected users" }),
   screen.getByRole("checkbox", { name: "Show as a site banner" }),
 ];
 
@@ -55,14 +53,9 @@ describe("AnnouncementForm", () => {
     const pendingAction = vi.fn(() => delivery.promise);
 
     await act(() => {
-      render(
-        <AnnouncementForm
-          action={pendingAction}
-          timeZone="UTC"
-          users={[{ name: "Reader A", publicId: "USER001" }]}
-        />,
-        { wrapper: EnglishConsole }
-      );
+      render(<AnnouncementForm action={pendingAction} timeZone="UTC" />, {
+        wrapper: EnglishConsole,
+      });
     });
 
     fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {

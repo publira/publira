@@ -16,7 +16,6 @@ import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
-  trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -28,18 +27,6 @@ const announcementFormSchema = async (locale: Locale) => {
 
   return z
     .object({
-      audienceType: z.preprocess(
-        (value) => {
-          if (typeof value !== "string" || value.trim() === "") {
-            return "all";
-          }
-
-          return value.trim();
-        },
-        z.enum(["all", "selected"], {
-          error: t("admin.announcements.validation.audience_invalid"),
-        })
-      ),
       body: requiredTrimmedString(
         t("admin.announcements.validation.body_required"),
         2000
@@ -52,7 +39,6 @@ const announcementFormSchema = async (locale: Locale) => {
         z.boolean()
       ),
       pinnedUntil: optionalTrimmedString(64),
-      targetUserPublicIds: trimmedStringListFormSchema,
       tenantId: requiredTrimmedString(
         t("admin.announcements.validation.tenant_missing")
       ),
@@ -62,28 +48,6 @@ const announcementFormSchema = async (locale: Locale) => {
       ),
     })
     .superRefine((value, ctx) => {
-      // The banner read behind the site answers no reader in particular, so an
-      // announcement addressed to named readers has nowhere to show. The server
-      // refuses the pair too; saying so here keeps the operator in the form.
-      if (value.pinned && value.audienceType !== "all") {
-        ctx.addIssue({
-          code: "custom",
-          message: t("admin.announcements.validation.pinned_audience"),
-          path: ["pinned"],
-        });
-      }
-
-      if (
-        value.audienceType === "selected" &&
-        value.targetUserPublicIds.length === 0
-      ) {
-        ctx.addIssue({
-          code: "custom",
-          message: t("admin.announcements.validation.target_users_required"),
-          path: ["targetUserPublicIds"],
-        });
-      }
-
       const isInternalPath =
         value.linkUrl.startsWith("/") && !value.linkUrl.startsWith("//");
       if (
@@ -149,12 +113,10 @@ export const createAnnouncementAction = async (
   const schema = await announcementFormSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      audienceType: { kind: "value", name: "audience_type" },
       body: "value",
       linkUrl: { kind: "value", name: "link_url" },
       pinned: "value",
       pinnedUntil: { kind: "value", name: "pinned_until" },
-      targetUserPublicIds: { kind: "values", name: "target_user_public_ids" },
       tenantId: { kind: "value", name: "tenant_id" },
       title: "value",
     })
@@ -179,12 +141,10 @@ export const createAnnouncementAction = async (
   const result = await withAdminSessionReauth(() =>
     createAnnouncement(
       {
-        audienceType: parsed.data.audienceType,
         body: parsed.data.body,
         linkUrl: parsed.data.linkUrl,
         pinned: parsed.data.pinned,
         pinnedUntil: pinnedUntil.value,
-        targetUserPublicIds: parsed.data.targetUserPublicIds,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
       },
