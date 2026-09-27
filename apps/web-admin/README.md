@@ -31,7 +31,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | `<html lang>` | The inline `<head>` script in `app/[tenant_id]/layout.tsx` (`LOCALE_LANG_SCRIPT` in `@publira/i18n`) |
 | The default the browser learns from | The `publira_resolved_locale` cookie `proxy.ts` publishes (`@publira/utils/resolved-locale`) |
 
-An individual operator switches locale from the Display language card on `/settings`, through the `setAdminLocaleAction` Server Action in `lib/locale-action.ts`.
+An individual operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setAdminLocaleAction` Server Action in `lib/locale-action.ts`.
 
 ## Development
 
