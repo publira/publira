@@ -4268,7 +4268,7 @@
       "dashboard_label": "ダッシュボード",
       "email_label": "メール",
       "general_label": "一般",
-      "governance": "Governance",
+      "governance": "ガバナンス",
       "operators_label": "オペレーター管理",
       "platform": "プラットフォーム",
       "policies": "ポリシー",
@@ -4278,7 +4278,7 @@
       "storage_label": "ストレージ",
       "tenants_create_label": "テナント作成",
       "tenants_list_label": "テナント一覧",
-      "tenants_section": "Tenants",
+      "tenants_section": "テナント",
       "users_label": "ユーザー管理",
       "webpush_label": "Web Push"
     },
