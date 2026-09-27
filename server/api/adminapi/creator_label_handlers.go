@@ -532,14 +532,21 @@ func (s *adminServer) GetCreator(
 		}
 		return nil, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: adminCreator(row.ID, protomapper.CreatorFromRow(
-		row.PublicID,
-		row.Name,
-		row.ProfileText.String,
-		row.IconImageID,
-		row.IconImageFileSizeBytes,
-		row.IconImageUpdatedAt,
-	))}), nil
+	accounts, err := s.creatorAccountsForSession(ctx, tenant.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{
+		Creator: adminCreator(row.ID, protomapper.CreatorFromRow(
+			row.PublicID,
+			row.Name,
+			row.ProfileText.String,
+			row.IconImageID,
+			row.IconImageFileSizeBytes,
+			row.IconImageUpdatedAt,
+		)),
+		Accounts: accounts,
+	}), nil
 }
 
 func (s *adminServer) ListLabels(

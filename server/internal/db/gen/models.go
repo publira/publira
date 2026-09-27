@@ -132,6 +132,13 @@ type Creator struct {
 	IconImageID uuid.NullUUID  `json:"icon_image_id"`
 }
 
+type CreatorAccount struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type CreatorFollow struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	UserID    uuid.UUID `json:"user_id"`

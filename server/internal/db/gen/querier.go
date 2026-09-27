@@ -163,6 +163,8 @@ type Querier interface {
 	// guest may write: the reply-to address is the only way back either way.
 	CreateContactMessage(ctx context.Context, arg CreateContactMessageParams) (ContactMessage, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
+	// A pair that is already linked is no row, so a retried link records nothing.
+	CreateCreatorAccount(ctx context.Context, arg CreateCreatorAccountParams) (int64, error)
 	CreateCreatorFollow(ctx context.Context, arg CreateCreatorFollowParams) (CreatorFollow, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
@@ -265,6 +267,9 @@ type Querier interface {
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
+	// A pair that is not linked is no rows. The account's public_id is what the
+	// audit entry names it by.
+	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
 	// The irreversible removal staff reach for when the text must not be retained
@@ -937,6 +942,9 @@ type Querier interface {
 	ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error)
 	// Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
 	ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error)
+	// The accounts linked to one creator, oldest link first. The account columns
+	// are the ones GetTenantReaderByID selects, less the birth date.
+	ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCreatorAccountsByCreatorIDParams) ([]ListCreatorAccountsByCreatorIDRow, error)
 	// Resolves the roles a series form credited creators in. The caller compares
 	// the row count against what it asked for, so an id of another tenant reads
 	// as a role that does not exist.

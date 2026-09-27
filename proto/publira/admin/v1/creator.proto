@@ -4,6 +4,7 @@ package publira.admin.v1;
 
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
 
+import "publira/admin/v1/user.proto";
 import "publira/types/v1/types.proto";
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -34,6 +35,18 @@ message GetCreatorRequest {
 
 message GetCreatorResponse {
   publira.types.v1.Creator creator = 1;
+  // The reader accounts linked to the creator, oldest link first. Readers are
+  // the tenant admin's to see, so it is empty for any other role.
+  repeated CreatorAccount accounts = 2;
+}
+
+// A reader account linked to a creator: the tenant's record that this account
+// belongs to the person credited under that creator.
+message CreatorAccount {
+  // birth_date is always empty here, as it is in ListReaders.
+  AdminReader reader = 1;
+  // When the link was made, RFC3339.
+  string linked_at = 2;
 }
 
 message CreateCreatorRequest {
@@ -71,9 +84,45 @@ message UpdateCreatorResponse {
   publira.types.v1.Creator creator = 1;
 }
 
+message LinkCreatorAccountRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The creator's primary key (Creator.id).
+  string creator_id = 2;
+  // The reader's primary key (AdminReader.id).
+  string reader_id = 3;
+}
+
+message LinkCreatorAccountResponse {
+  // Every account linked to the creator after the write, oldest link first.
+  repeated CreatorAccount accounts = 1;
+}
+
+message UnlinkCreatorAccountRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The creator's primary key (Creator.id).
+  string creator_id = 2;
+  // The reader's primary key (AdminReader.id).
+  string reader_id = 3;
+}
+
+message UnlinkCreatorAccountResponse {
+  // Every account linked to the creator after the write, oldest link first.
+  repeated CreatorAccount accounts = 1;
+}
+
 service AdminCreatorService {
   rpc ListCreators(ListCreatorsRequest) returns (ListCreatorsResponse) {}
   rpc GetCreator(GetCreatorRequest) returns (GetCreatorResponse) {}
   rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
   rpc UpdateCreator(UpdateCreatorRequest) returns (UpdateCreatorResponse) {}
+  // Links a reader account to a creator. One account may be linked to several
+  // creators and one creator to several accounts. Linking a pair that is
+  // already linked changes nothing and records nothing. not_found for a
+  // creator or an account of another tenant and for a staff account;
+  // failed_precondition for a reader who is not active. Tenant admins only.
+  rpc LinkCreatorAccount(LinkCreatorAccountRequest) returns (LinkCreatorAccountResponse) {}
+  // Removes a link. Unlinking a pair that is not linked changes nothing and
+  // records nothing. not_found for a creator of another tenant. Tenant admins
+  // only.
+  rpc UnlinkCreatorAccount(UnlinkCreatorAccountRequest) returns (UnlinkCreatorAccountResponse) {}
 }
