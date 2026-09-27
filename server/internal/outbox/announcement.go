@@ -15,12 +15,12 @@ import (
 )
 
 // EventTypeAnnouncementNotification puts an announcement the console posted in
-// front of the readers it addresses, as a row in their notification inbox.
+// front of every user of the tenant, as a row in their notification inbox.
 //
-// It is drained here rather than written by CreateAnnouncement itself. A
-// broadcast addresses every user the tenant has, so the fan-out is a query and
-// an insert per person while an operator waits for the form to come back, and
-// it grows with the tenant's readership rather than with what was posted.
+// It is drained here rather than written by CreateAnnouncement itself. The
+// fan-out is a query and an insert per person while an operator waits for the
+// form to come back, and it grows with the tenant's readership rather than with
+// what was posted.
 const EventTypeAnnouncementNotification = "announcement_notification"
 
 // NotificationTypeAnnouncementPosted is the notifications.notification_type the

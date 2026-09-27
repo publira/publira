@@ -316,9 +316,9 @@ func createAnnouncementRow(
 
 // enqueueAnnouncementNotification queues the bell delivery of one announcement.
 //
-// The worker owns the fan-out: a broadcast addresses every user the tenant has,
-// and an operator submitting the console form must not wait on an insert per
-// person. The idempotency key is the announcement's own identity, so a
+// The worker owns the fan-out: an announcement addresses every user the tenant
+// has, and an operator submitting the console form must not wait on an insert
+// per person. The idempotency key is the announcement's own identity, so a
 // redelivered event notifies nobody a second time.
 func enqueueAnnouncementNotification(
 	ctx context.Context,
