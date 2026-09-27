@@ -297,7 +297,7 @@ type Querier interface {
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// Hard delete, as DeleteUserByID. A staff account and another tenant's are no
 	// rows.
-	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (uuid.UUID, error)
+	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// An upload points its creator at the new icon and leaves the previous
 	// creator_images row behind, referenced by nothing. created_at guards the
@@ -329,7 +329,8 @@ type Querier interface {
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
-	GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error)
+	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
+	GetAccessTicketIDByPublicIDForTenant(ctx context.Context, arg GetAccessTicketIDByPublicIDForTenantParams) (uuid.UUID, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -637,6 +638,9 @@ type Querier interface {
 	// config.
 	GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
+	// GetTenantReaderByPublicID keyed by the primary key. A staff account and an
+	// account of another tenant are both no rows.
+	GetTenantReaderByID(ctx context.Context, arg GetTenantReaderByIDParams) (GetTenantReaderByIDRow, error)
 	// One reader in the shape ListTenantReaders* returns. A staff account and an
 	// account of another tenant are both no rows.
 	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
@@ -2051,7 +2055,7 @@ type Querier interface {
 	// It is due at once and charges no attempt: the retry budget is for
 	// failures, and an event large enough to need many runs is not failing.
 	ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
-	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
+	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a
 	// position for an episode that was unpublished or a rental that has expired.

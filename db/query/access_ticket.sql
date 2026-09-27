@@ -21,7 +21,7 @@ RETURNING id,
     created_by_user_id,
     created_at;
 
--- name: GetAccessTicketByPublicIDForTenant :one
+-- name: GetAccessTicketForTenant :one
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -44,7 +44,7 @@ FROM access_tickets at
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
-    AND at.public_id = $2
+    AND at.id = $2
 LIMIT 1;
 
 -- Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
@@ -164,11 +164,17 @@ ORDER BY at.created_at ASC,
     at.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: RevokeAccessTicketByPublicIDForTenant :one
+-- name: GetAccessTicketIDByPublicIDForTenant :one
+SELECT id
+FROM access_tickets
+WHERE tenant_id = $1
+    AND public_id = $2;
+
+-- name: RevokeAccessTicketForTenant :one
 UPDATE access_tickets
 SET revoked_at = NOW()
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
     AND revoked_at IS NULL
 RETURNING id,
     tenant_id,

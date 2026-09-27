@@ -447,6 +447,26 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')
         WHERE tur.user_id = u.id
     );
 
+-- name: GetTenantReaderByID :one
+-- GetTenantReaderByPublicID keyed by the primary key. A staff account and an
+-- account of another tenant are both no rows.
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    u.email_verified_at,
+    u.birth_date
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.id = sqlc.arg('id')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    );
+
 -- name: SuspendTenantReader :one
 -- Suspends a reader and invalidates the sessions they hold. A reader who is
 -- already suspended is no rows, like a staff account and another tenant's.
@@ -454,7 +474,7 @@ UPDATE users
 SET status = 'suspended',
     credentials_version = credentials_version + 1
 WHERE users.tenant_id = sqlc.arg('tenant_id')
-    AND users.public_id = sqlc.arg('public_id')
+    AND users.id = sqlc.arg('id')
     AND users.status <> 'suspended'
     AND NOT EXISTS (
         SELECT 1
@@ -476,7 +496,7 @@ RETURNING users.id,
 UPDATE users
 SET status = CASE WHEN users.email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
 WHERE users.tenant_id = sqlc.arg('tenant_id')
-    AND users.public_id = sqlc.arg('public_id')
+    AND users.id = sqlc.arg('id')
     AND users.status = 'suspended'
     AND NOT EXISTS (
         SELECT 1
@@ -499,7 +519,7 @@ RETURNING users.id,
 UPDATE users
 SET birth_date = sqlc.narg('birth_date')::date
 WHERE users.tenant_id = sqlc.arg('tenant_id')
-    AND users.public_id = sqlc.arg('public_id')
+    AND users.id = sqlc.arg('id')
     AND users.birth_date IS DISTINCT FROM sqlc.narg('birth_date')::date
     AND NOT EXISTS (
         SELECT 1
@@ -520,13 +540,14 @@ RETURNING users.id,
 -- rows.
 DELETE FROM users
 WHERE users.tenant_id = sqlc.arg('tenant_id')
-    AND users.public_id = sqlc.arg('public_id')
+    AND users.id = sqlc.arg('id')
     AND NOT EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
         WHERE tur.user_id = users.id
     )
-RETURNING users.id;
+RETURNING users.id,
+    users.public_id;
 
 -- name: ActivateInactiveUserByID :exec
 -- Only an account waiting for its address to be confirmed becomes active, so

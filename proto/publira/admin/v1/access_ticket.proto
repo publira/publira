@@ -25,6 +25,7 @@ message AdminAccessTicket {
   string created_at = 12;
   // active | expired | revoked
   string status = 13;
+  string id = 14;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -70,6 +71,8 @@ message IssueAccessTicketResponse {
 message RevokeAccessTicketRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The ticket's internal ID. Takes precedence over public_id when set.
+  string access_ticket_id = 3;
 }
 
 message RevokeAccessTicketResponse {

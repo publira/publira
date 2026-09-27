@@ -27,6 +27,7 @@ const (
 func tenantMemberToProto(member tenantmembers.Member) *publiraadminv1.TenantMember {
 	return &publiraadminv1.TenantMember{
 		UserPublicId: member.PublicID,
+		UserId:       member.UserID.String(),
 		Name:         member.Name,
 		Email:        member.Email,
 		Role:         member.Role,
@@ -178,6 +179,11 @@ func (s *adminServer) UpdateTenantMemberRole(
 		return nil, err
 	}
 
+	userID, err := memberUserID(req.Msg.UserId)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to begin update tenant member role transaction", err, "tenant_id", tenant.ID.String())
@@ -186,6 +192,7 @@ func (s *adminServer) UpdateTenantMemberRole(
 
 	member, err := tenantmembers.UpdateRole(ctx, tx, tenantmembers.UpdateRoleParams{
 		TenantID:     tenant.ID,
+		UserID:       userID,
 		UserPublicID: req.Msg.UserPublicId,
 		Role:         req.Msg.Role,
 		KeepAnAdmin:  true,
@@ -211,6 +218,11 @@ func (s *adminServer) RemoveTenantMember(
 		return nil, err
 	}
 
+	userID, err := memberUserID(req.Msg.UserId)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to begin remove tenant member transaction", err, "tenant_id", tenant.ID.String())
@@ -219,6 +231,7 @@ func (s *adminServer) RemoveTenantMember(
 
 	member, err := tenantmembers.Remove(ctx, tx, tenantmembers.RemoveParams{
 		TenantID:     tenant.ID,
+		UserID:       userID,
 		UserPublicID: req.Msg.UserPublicId,
 		KeepAnAdmin:  true,
 	})
@@ -231,7 +244,21 @@ func (s *adminServer) RemoveTenantMember(
 
 	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_removed", "user", member.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID}), nil
+	return connect.NewResponse(&publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}), nil
+}
+
+// memberUserID parses the user_id a member request names, which may be blank
+// while the request names the member by public ID instead.
+func memberUserID(raw string) (uuid.UUID, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("user_id must be a UUID"), "user_id")
+	}
+	return id, nil
 }
 
 func (s *adminServer) ListTenantAdminInvitations(

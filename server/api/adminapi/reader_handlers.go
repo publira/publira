@@ -67,6 +67,7 @@ func (filters readerListFilters) key() pagination.ListKey {
 
 func adminReader(row readerRow) *publiraadminv1.AdminReader {
 	return &publiraadminv1.AdminReader{
+		Id:              row.ID.String(),
 		PublicId:        row.PublicID,
 		Name:            row.Name,
 		Email:           row.Email,
@@ -233,6 +234,41 @@ func readerPublicIDArg(raw string) (string, error) {
 	return publicID, nil
 }
 
+// readerTargetID names the reader a reader action changes: readerID when it is
+// set, otherwise the reader the public ID resolves to.
+func (s *adminServer) readerTargetID(ctx context.Context, tenantID uuid.UUID, readerID, publicID string) (uuid.UUID, error) {
+	if raw := strings.TrimSpace(readerID); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reader_id must be a UUID"), "reader_id")
+		}
+		return id, nil
+	}
+	resolved, err := readerPublicIDArg(publicID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	row, err := s.tenantReader(ctx, tenantID, resolved)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return row.ID, nil
+}
+
+func (s *adminServer) tenantReaderByID(ctx context.Context, tenantID, readerID uuid.UUID) (readerRow, error) {
+	row, err := s.queriesFor(ctx).GetTenantReaderByID(ctx, dbmodels.GetTenantReaderByIDParams{
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		ID:       readerID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return readerRow{}, readerNotFoundError()
+		}
+		return readerRow{}, s.internalDBError(ctx, "failed to get reader", err, "tenant_id", tenantID.String())
+	}
+	return readerRow(row), nil
+}
+
 func (s *adminServer) tenantReader(ctx context.Context, tenantID uuid.UUID, publicID string) (readerRow, error) {
 	row, err := s.queriesFor(ctx).GetTenantReaderByPublicID(ctx, dbmodels.GetTenantReaderByPublicIDParams{
 		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
@@ -261,8 +297,9 @@ func (s *adminServer) changeReader(
 	ctx context.Context,
 	headers http.Header,
 	sessionCtx rpcmiddleware.SessionContext,
-	action, readerPublicID string,
-	write func(queries *dbmodels.Queries) error,
+	action string,
+	readerID uuid.UUID,
+	write func(queries *dbmodels.Queries) (string, error),
 ) error {
 	tenantID := sessionCtx.Tenant.ID.String()
 	tx, err := s.beginTenantTx(ctx)
@@ -272,11 +309,12 @@ func (s *adminServer) changeReader(
 	defer tx.Rollback() //nolint:errcheck
 
 	queries := dbmodels.New(tx)
-	if err := write(queries); err != nil {
+	readerPublicID, err := write(queries)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return errReaderUnchanged
 		}
-		return s.internalDBError(ctx, "failed to change reader", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+		return s.internalDBError(ctx, "failed to change reader", err, "tenant_id", tenantID, "action", action, "reader_id", readerID.String())
 	}
 	if err := auditlog.WriteTenant(ctx, queries, s.logger, auditlog.TenantEntry{
 		TenantID:    sessionCtx.Tenant.ID,
@@ -288,10 +326,10 @@ func (s *adminServer) changeReader(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(headers),
 	}); err != nil {
-		return s.internalDBError(ctx, "failed to record reader action", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+		return s.internalDBError(ctx, "failed to record reader action", err, "tenant_id", tenantID, "action", action, "reader_id", readerID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		return s.internalDBError(ctx, "failed to commit reader action", err, "tenant_id", tenantID, "action", action, "public_id", readerPublicID)
+		return s.internalDBError(ctx, "failed to commit reader action", err, "tenant_id", tenantID, "action", action, "reader_id", readerID.String())
 	}
 	return nil
 }
@@ -311,22 +349,22 @@ func (s *adminServer) SuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
 
 	var updated dbmodels.SuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", publicID, func(queries *dbmodels.Queries) error {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", readerID, func(queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID: publicID,
+			ID:       readerID,
 		})
-		return err
+		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one already suspended; the read tells which.
-		row, err := s.tenantReader(ctx, tenant.ID, publicID)
+		row, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return nil, err
 		}
@@ -352,22 +390,22 @@ func (s *adminServer) UnsuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
 
 	var updated dbmodels.UnsuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", publicID, func(queries *dbmodels.Queries) error {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", readerID, func(queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID: publicID,
+			ID:       readerID,
 		})
-		return err
+		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one who is not suspended; the read tells which.
-		row, err := s.tenantReader(ctx, tenant.ID, publicID)
+		row, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return nil, err
 		}
@@ -395,7 +433,7 @@ func (s *adminServer) SetReaderBirthDate(
 	if err != nil {
 		return nil, err
 	}
-	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -416,18 +454,18 @@ func (s *adminServer) SetReaderBirthDate(
 	}
 
 	var updated dbmodels.SetTenantReaderBirthDateRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, action, publicID, func(queries *dbmodels.Queries) error {
+	err = s.changeReader(ctx, req.Header(), sessionCtx, action, readerID, func(queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
 			BirthDate: birthDate,
 			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID:  publicID,
+			ID:        readerID,
 		})
-		return err
+		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
 		// Either no such reader or one whose date is already this; the read
 		// tells which.
-		row, err := s.tenantReader(ctx, tenant.ID, publicID)
+		row, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return nil, err
 		}
@@ -466,17 +504,18 @@ func (s *adminServer) DeleteReader(
 	if err != nil {
 		return nil, err
 	}
-	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", publicID, func(queries *dbmodels.Queries) error {
-		_, err := queries.DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{
+	var deleted dbmodels.DeleteTenantReaderRow
+	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", readerID, func(queries *dbmodels.Queries) (string, error) {
+		deleted, err = queries.DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID: publicID,
+			ID:       readerID,
 		})
-		return err
+		return deleted.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
 		return nil, readerNotFoundError()
@@ -485,5 +524,5 @@ func (s *adminServer) DeleteReader(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.DeleteReaderResponse{PublicId: publicID}), nil
+	return connect.NewResponse(&publiraadminv1.DeleteReaderResponse{PublicId: deleted.PublicID, ReaderId: deleted.ID.String()}), nil
 }

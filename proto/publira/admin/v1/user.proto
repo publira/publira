@@ -43,6 +43,7 @@ message AdminReader {
   // always empty in ListReaders: staff read it on one reader, to act on a
   // reader who asks for it to be corrected.
   string birth_date = 8;
+  string id = 9;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -82,6 +83,8 @@ message GetReaderResponse {
 message SuspendReaderRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The reader's internal ID. Takes precedence over public_id when set.
+  string reader_id = 3;
 }
 
 message SuspendReaderResponse {
@@ -91,6 +94,8 @@ message SuspendReaderResponse {
 message UnsuspendReaderRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The reader's internal ID. Takes precedence over public_id when set.
+  string reader_id = 3;
 }
 
 message UnsuspendReaderResponse {
@@ -104,6 +109,8 @@ message SetReaderBirthDateRequest {
   // tenant's calendar has reached, and not an implausibly old one. Empty clears
   // the stored date.
   string birth_date = 3;
+  // The reader's internal ID. Takes precedence over public_id when set.
+  string reader_id = 4;
 }
 
 message SetReaderBirthDateResponse {
@@ -113,10 +120,13 @@ message SetReaderBirthDateResponse {
 message DeleteReaderRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The reader's internal ID. Takes precedence over public_id when set.
+  string reader_id = 3;
 }
 
 message DeleteReaderResponse {
   string public_id = 1;
+  string reader_id = 2;
 }
 
 service AdminUserService {

@@ -53,6 +53,7 @@ func formatOptionalString(value sql.NullString) string {
 }
 
 type accessTicketFields struct {
+	id              uuid.UUID
 	publicID        string
 	episodePublicID string
 	episodeTitle    string
@@ -69,6 +70,7 @@ type accessTicketFields struct {
 
 func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.AdminAccessTicket {
 	return &publiraadminv1.AdminAccessTicket{
+		Id:              fields.id.String(),
 		PublicId:        fields.publicID,
 		EpisodePublicId: fields.episodePublicID,
 		EpisodeTitle:    fields.episodeTitle,
@@ -99,6 +101,7 @@ func mapAccessTicketDescRows(rows []dbmodels.ListAccessTicketsForTenantDescRow) 
 		mapped = append(mapped, accessTicketPageRow{
 			id: row.ID,
 			fields: accessTicketFields{
+				id:              row.ID,
 				publicID:        row.PublicID,
 				episodePublicID: row.EpisodePublicID,
 				episodeTitle:    row.EpisodeTitle,
@@ -123,6 +126,7 @@ func mapAccessTicketAscRows(rows []dbmodels.ListAccessTicketsForTenantAscRow) []
 		mapped = append(mapped, accessTicketPageRow{
 			id: row.ID,
 			fields: accessTicketFields{
+				id:              row.ID,
 				publicID:        row.PublicID,
 				episodePublicID: row.EpisodePublicID,
 				episodeTitle:    row.EpisodeTitle,
@@ -141,8 +145,9 @@ func mapAccessTicketAscRows(rows []dbmodels.ListAccessTicketsForTenantAscRow) []
 	return mapped
 }
 
-func mapAccessTicketFromGetRow(row dbmodels.GetAccessTicketByPublicIDForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
+func mapAccessTicketFromGetRow(row dbmodels.GetAccessTicketForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
 	return mapAccessTicket(accessTicketFields{
+		id:              row.ID,
 		publicID:        row.PublicID,
 		episodePublicID: row.EpisodePublicID,
 		episodeTitle:    row.EpisodeTitle,
@@ -226,15 +231,42 @@ func (s *adminServer) accessTicketPage(
 	return mapAccessTicketDescRows(rows), nil
 }
 
-func (s *adminServer) loadAccessTicketByPublicID(
+func (s *adminServer) loadAccessTicket(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	publicID string,
-) (dbmodels.GetAccessTicketByPublicIDForTenantRow, error) {
-	return s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
+	ticketID uuid.UUID,
+) (dbmodels.GetAccessTicketForTenantRow, error) {
+	return s.queriesFor(ctx).GetAccessTicketForTenant(ctx, dbmodels.GetAccessTicketForTenantParams{
 		TenantID: tenantID,
-		PublicID: publicID,
+		ID:       ticketID,
 	})
+}
+
+// revokeTargetID names the ticket RevokeAccessTicket revokes: ticketID when it
+// is set, otherwise the ticket the public ID resolves to.
+func (s *adminServer) revokeTargetID(ctx context.Context, tenantID uuid.UUID, ticketID, publicID string) (uuid.UUID, error) {
+	if raw := strings.TrimSpace(ticketID); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("access_ticket_id must be a UUID"), "access_ticket_id")
+		}
+		return id, nil
+	}
+	resolved := strings.TrimSpace(publicID)
+	if resolved == "" {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("access_ticket_id is required"))
+	}
+	id, err := s.queriesFor(ctx).GetAccessTicketIDByPublicIDForTenant(ctx, dbmodels.GetAccessTicketIDByPublicIDForTenantParams{
+		TenantID: tenantID,
+		PublicID: resolved,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
+		}
+		return uuid.Nil, s.internalDBError(ctx, "failed to resolve access ticket for revoke", err, "tenant_id", tenantID.String())
+	}
+	return id, nil
 }
 
 func (s *adminServer) ListAccessTickets(
@@ -405,9 +437,9 @@ func (s *adminServer) IssueAccessTicket(
 		EpisodeID: episode.ID,
 	})
 	if existingErr == nil {
-		ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, existing.PublicID)
+		ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, existing.ID)
 		if getErr != nil {
-			return nil, s.internalDBError(ctx, "failed to load existing access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", existing.PublicID)
+			return nil, s.internalDBError(ctx, "failed to load existing access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", existing.ID.String())
 		}
 		return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
 			Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
@@ -446,9 +478,9 @@ func (s *adminServer) IssueAccessTicket(
 			if getWinnerErr != nil {
 				return nil, s.internalDBError(ctx, "failed to get winning access ticket after conflict", getWinnerErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
 			}
-			ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, winner.PublicID)
+			ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, winner.ID)
 			if getErr != nil {
-				return nil, s.internalDBError(ctx, "failed to load winning access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", winner.PublicID)
+				return nil, s.internalDBError(ctx, "failed to load winning access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", winner.ID.String())
 			}
 			return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
@@ -457,9 +489,9 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, s.internalDBError(ctx, "failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
 	}
 
-	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, created.PublicID)
+	ticketRow, err := s.loadAccessTicket(ctx, tenant.ID, created.ID)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to load created access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", created.PublicID)
+		return nil, s.internalDBError(ctx, "failed to load created access ticket", err, "tenant_id", tenant.ID.String(), "access_ticket_id", created.ID.String())
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -491,18 +523,18 @@ func (s *adminServer) RevokeAccessTicket(
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	ticketID, err := s.revokeTargetID(ctx, tenant.ID, req.Msg.AccessTicketId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
 	}
 
 	// Confirm existence first so already-revoked tickets return a clear status.
-	current, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
+	current, err := s.loadAccessTicket(ctx, tenant.ID, ticketID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get access ticket for revoke", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to get access ticket for revoke", err, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 	}
 	if current.RevokedAt.Valid {
 		return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
@@ -510,31 +542,31 @@ func (s *adminServer) RevokeAccessTicket(
 		}), nil
 	}
 
-	if _, err := s.queriesFor(ctx).RevokeAccessTicketByPublicIDForTenant(ctx, dbmodels.RevokeAccessTicketByPublicIDForTenantParams{
+	if _, err := s.queriesFor(ctx).RevokeAccessTicketForTenant(ctx, dbmodels.RevokeAccessTicketForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: publicID,
+		ID:       ticketID,
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Concurrent revoke: another request may have revoked between the
 			// existence check and the conditional update. Re-read and return
 			// the revoked ticket instead of NotFound.
-			ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
+			ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, ticketID)
 			if getErr != nil {
 				if errors.Is(getErr, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
 				}
-				return nil, s.internalDBError(ctx, "failed to load concurrently revoked access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+				return nil, s.internalDBError(ctx, "failed to load concurrently revoked access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 			}
 			return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 			}), nil
 		}
-		return nil, s.internalDBError(ctx, "failed to revoke access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to revoke access ticket", err, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 	}
 
-	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
+	ticketRow, err := s.loadAccessTicket(ctx, tenant.ID, ticketID)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to load revoked access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to load revoked access ticket", err, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -543,7 +575,7 @@ func (s *adminServer) RevokeAccessTicket(
 		ActorRole:   sessionCtx.Role,
 		Action:      "access_ticket_revoked",
 		TargetType:  "access_ticket",
-		TargetID:    publicID,
+		TargetID:    current.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})

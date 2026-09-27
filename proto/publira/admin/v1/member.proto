@@ -17,6 +17,7 @@ message TenantMember {
   string status = 5;
   // RFC3339
   string created_at = 6;
+  string user_id = 7;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -43,6 +44,9 @@ message UpdateTenantMemberRoleRequest {
   string user_public_id = 2;
   // tenant_admin | tenant_editor | tenant_auditor
   string role = 3;
+  // The member's internal user ID. Takes precedence over user_public_id when
+  // set.
+  string user_id = 4;
 }
 
 message UpdateTenantMemberRoleResponse {
@@ -55,10 +59,14 @@ message UpdateTenantMemberRoleResponse {
 message RemoveTenantMemberRequest {
   publira.types.v1.TenantContext tenant = 1;
   string user_public_id = 2;
+  // The member's internal user ID. Takes precedence over user_public_id when
+  // set.
+  string user_id = 3;
 }
 
 message RemoveTenantMemberResponse {
   string user_public_id = 1;
+  string user_id = 2;
 }
 
 // An invitation to become a tenant_admin of the calling tenant.
