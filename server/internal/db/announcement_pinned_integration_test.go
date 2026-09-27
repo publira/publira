@@ -21,7 +21,6 @@ func mustInsertPinnedAnnouncement(
 	ctx context.Context,
 	db *sql.DB,
 	tenantID uuid.UUID,
-	targetUserID uuid.NullUUID,
 	createdAt time.Time,
 	pinnedUntil sql.NullTime,
 ) uuid.UUID {
@@ -29,9 +28,9 @@ func mustInsertPinnedAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, target_user_id, announcement_type, title, body, created_at, pinned, pinned_until
-		) VALUES ($1, $2, $3, 'announcement', 'title', 'body', $4, true, $5)
-	`, id, tenantID, targetUserID, createdAt, pinnedUntil)
+			id, tenant_id, announcement_type, title, body, created_at, pinned, pinned_until
+		) VALUES ($1, $2, 'announcement', 'title', 'body', $3, true, $4)
+	`, id, tenantID, createdAt, pinnedUntil)
 	if err != nil {
 		t.Fatalf("insert pinned announcement: %v", err)
 	}
@@ -46,18 +45,15 @@ func TestGetPinnedAnnouncementForTenantAnswersTheNewestOpenWindow(t *testing.T) 
 	defer cancel()
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "PINTENANT001", "pin.example.com", "admin-pin.example.com", "Pinned Tenant")
-	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "PINUSER00001", "pin-user@example.com", "Pinned User")
 	now := time.Now().UTC()
 
 	// Older than the one that should win, and open with no end at all.
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now.Add(-2*time.Hour), sql.NullTime{})
-	newest := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now.Add(-time.Hour), sql.NullTime{Time: now.Add(time.Hour), Valid: true})
+	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now.Add(-2*time.Hour), sql.NullTime{})
+	newest := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now.Add(-time.Hour), sql.NullTime{Time: now.Add(time.Hour), Valid: true})
 	// Its window has closed.
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
-	// Addressed to one reader, so it is not the tenant's word to everyone.
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: userID, Valid: true}, now, sql.NullTime{})
+	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
 	// Not pinned at all.
-	mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now)
+	mustInsertAnnouncement(t, ctx, pg.DB, tenantID, now)
 
 	queries := dbmodels.New(pg.DB)
 	row, err := queries.GetPinnedAnnouncementForTenant(ctx, tenantID)
@@ -78,7 +74,7 @@ func TestGetPinnedAnnouncementForTenantAnswersNothingWhenEveryWindowHasClosed(t 
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "PINTENANT002", "pin2.example.com", "admin-pin2.example.com", "Pinned Tenant 2")
 	now := time.Now().UTC()
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{Time: now.Add(-time.Second), Valid: true})
+	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(-time.Second), Valid: true})
 
 	queries := dbmodels.New(pg.DB)
 	if _, err := queries.GetPinnedAnnouncementForTenant(ctx, tenantID); !errors.Is(err, sql.ErrNoRows) {
@@ -96,7 +92,7 @@ func TestUnpinAnnouncementStopsTheBannerAndKeepsTheRow(t *testing.T) {
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "PINTENANT003", "pin3.example.com", "admin-pin3.example.com", "Pinned Tenant 3")
 	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "PINUSER00003", "pin-user3@example.com", "Pinned User 3")
 	now := time.Now().UTC()
-	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{})
+	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{})
 
 	queries := dbmodels.New(pg.DB)
 	if _, err := queries.UnpinAnnouncement(ctx, dbmodels.UnpinAnnouncementParams{ID: announcementID, TenantID: tenantID}); err != nil {
@@ -129,9 +125,9 @@ func TestListPinnedAnnouncementsDueNamesOnlyClosedWindows(t *testing.T) {
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "PINTENANT004", "pin4.example.com", "admin-pin4.example.com", "Pinned Tenant 4")
 	now := time.Now().UTC()
-	closed := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{Time: now.Add(time.Hour), Valid: true})
-	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, now, sql.NullTime{})
+	closed := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
+	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(time.Hour), Valid: true})
+	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{})
 
 	queries := dbmodels.New(pg.DB)
 	due, err := queries.ListPinnedAnnouncementsDue(ctx)

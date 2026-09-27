@@ -193,9 +193,9 @@ describe("announcement lib", () => {
     });
   });
 
-  it("returns the count once the announcement is created", async () => {
+  it("reports success once the announcement is created", async () => {
     mockCreateAnnouncementsApi.mockResolvedValue({
-      announcements: [{ id: "n1" }, { id: "n2" }],
+      announcement: { id: "n1" },
     });
 
     const { createAnnouncement } = await import("./announcement");
@@ -211,6 +211,6 @@ describe("announcement lib", () => {
       "en"
     );
 
-    expect(result).toEqual({ createdCount: 2, ok: true });
+    expect(result).toEqual({ ok: true });
   });
 });

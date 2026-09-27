@@ -202,7 +202,7 @@ func TestTickerRoleRunsExpirePinnedAnnouncements(t *testing.T) {
 
 	tenant := pg.SeedTenant(t, "TICKTENANT04", "pinned.example.com", "Pinned Tenant")
 	now := time.Now().UTC()
-	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID, uuid.NullUUID{}, now,
+	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID, now,
 		sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
 
 	ticker := pg.OpenTickerDB(t)
@@ -229,7 +229,7 @@ func TestTickerRoleCannotRewriteAnAnnouncement(t *testing.T) {
 	defer cancel()
 
 	tenant := pg.SeedTenant(t, "TICKTENANT05", "words.example.com", "Words Tenant")
-	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID, uuid.NullUUID{},
+	announcementID := mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenant.ID,
 		time.Now().UTC(), sql.NullTime{})
 
 	ticker := pg.OpenTickerDB(t)

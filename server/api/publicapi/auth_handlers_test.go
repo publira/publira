@@ -64,7 +64,7 @@ func newAuthedPublicRequest[T any](msg *T, tenantID string) *connect.Request[T] 
 
 func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
+		"id", "tenant_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
 	})
 }
 
@@ -77,7 +77,6 @@ func addAnnouncementRow(
 	return rows.AddRow(
 		id,
 		tenantID,
-		uuid.NullUUID{},
 		"member_episode_published",
 		title,
 		"The latest episode is out",

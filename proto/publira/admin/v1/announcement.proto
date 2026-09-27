@@ -6,20 +6,16 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
-enum AnnouncementAudienceType {
-  ANNOUNCEMENT_AUDIENCE_TYPE_UNSPECIFIED = 0;
-  ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS = 1;
-  ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS = 2;
-}
-
+// An announcement is addressed to everyone who opens the tenant's site; a
+// message to one person is a notification.
 message AdminAnnouncement {
+  reserved 5, 6, 7;
+  reserved "audience_type", "target_user_public_id", "target_user_name";
+
   string id = 1;
   string title = 2;
   string body = 3;
   string link_url = 4;
-  AnnouncementAudienceType audience_type = 5;
-  string target_user_public_id = 6;
-  string target_user_name = 7;
   string created_at = 8;
   // Whether the site shows this announcement as a banner above every page.
   bool pinned = 9;
@@ -50,12 +46,13 @@ message ListAnnouncementsResponse {
 }
 
 message CreateAnnouncementRequest {
+  reserved 5, 6;
+  reserved "audience_type", "target_user_public_ids";
+
   publira.types.v1.TenantContext tenant = 1;
   string title = 2;
   string body = 3;
   string link_url = 4;
-  AnnouncementAudienceType audience_type = 5;
-  repeated string target_user_public_ids = 6;
   bool pinned = 7;
   // RFC 3339 instant the banner stops at. Empty pins it until the console takes
   // it down, and it is ignored when pinned is false.
@@ -63,7 +60,10 @@ message CreateAnnouncementRequest {
 }
 
 message CreateAnnouncementResponse {
-  repeated AdminAnnouncement announcements = 1;
+  reserved 1;
+  reserved "announcements";
+
+  AdminAnnouncement announcement = 2;
 }
 
 // Takes the banner down without deleting the announcement, which stays in the

@@ -22,8 +22,6 @@ import {
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
-const audienceTypeAllUsers = 1;
-
 const mapErrorMessage = (
   error: unknown,
   fallback: string,
@@ -118,9 +116,7 @@ export const createAnnouncement = async (
     pinnedUntil: string;
   },
   locale: Locale
-): Promise<
-  { ok: true; createdCount: number } | { ok: false; message: string }
-> => {
+): Promise<{ ok: true } | { ok: false; message: string }> => {
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     getAccessToken(),
@@ -133,9 +129,8 @@ export const createAnnouncement = async (
   }
 
   try {
-    const response = await apiClient.announcement.createAnnouncement(
+    await apiClient.announcement.createAnnouncement(
       {
-        audienceType: audienceTypeAllUsers,
         body: input.body,
         linkUrl: input.linkUrl,
         pinned: input.pinned,
@@ -146,10 +141,7 @@ export const createAnnouncement = async (
       withSessionHeaders(sessionId)
     );
 
-    return {
-      createdCount: response.announcements?.length ?? 0,
-      ok: true,
-    };
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);

@@ -24,10 +24,10 @@ func pinnedAnnouncementRow(
 	pinnedUntil sql.NullTime,
 ) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body",
+		"id", "tenant_id", "announcement_type", "title", "body",
 		"link_url", "metadata", "created_at", "pinned", "pinned_until",
 	}).AddRow(
-		id, tenantID, uuid.NullUUID{}, "announcement", "Maintenance tonight", "We will be down for an hour",
+		id, tenantID, "announcement", "Maintenance tonight", "We will be down for an hour",
 		"/pages/maintenance", json.RawMessage("{}"), createdAt, true, pinnedUntil,
 	)
 }
@@ -107,10 +107,10 @@ func guestAnnouncementRow(
 	createdAt time.Time,
 ) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "target_user_id", "announcement_type", "title", "body",
+		"id", "tenant_id", "announcement_type", "title", "body",
 		"link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
 	}).AddRow(
-		id, tenantID, uuid.NullUUID{}, "announcement", title, "The latest episode is out",
+		id, tenantID, "announcement", title, "The latest episode is out",
 		"/series/S001", json.RawMessage("{}"), createdAt, false, sql.NullTime{},
 		false, sql.NullTime{},
 	)

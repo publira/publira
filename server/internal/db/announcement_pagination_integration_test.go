@@ -22,14 +22,11 @@ func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT1", "notif.example.com", "admin-notif.example.com", "Notification Tenant")
 	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER001", "notif-user@example.com", "Notification User")
-	otherUserID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER002", "notif-other@example.com", "Other User")
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	ids := make([]uuid.UUID, 4)
 	for index := range ids {
-		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt.Add(-time.Duration(index)*time.Minute))
+		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, createdAt.Add(-time.Duration(index)*time.Minute))
 	}
-	// Addressed to somebody else, so it must stay out of every page.
-	mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: otherUserID, Valid: true}, createdAt.Add(-30*time.Second))
 
 	queries := dbmodels.New(pg.DB)
 	firstPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
@@ -119,7 +116,7 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	ids := make([]uuid.UUID, 3)
 	for index := range ids {
-		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt)
+		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, createdAt)
 	}
 
 	queries := dbmodels.New(pg.DB)
@@ -154,7 +151,7 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	}
 }
 
-func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
+func TestGetAnnouncementForUserStaysInsideTheTenant(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -164,40 +161,25 @@ func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT2", "notif2.example.com", "admin-notif2.example.com", "Notification Tenant 2")
 	otherTenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT3", "notif3.example.com", "admin-notif3.example.com", "Notification Tenant 3")
 	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER011", "notif-user2@example.com", "Notification User")
-	otherUserID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER012", "notif-other2@example.com", "Other User")
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 
-	broadcastID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt)
-	mineID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: userID, Valid: true}, createdAt.Add(-time.Minute))
-	theirsID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: otherUserID, Valid: true}, createdAt.Add(-2*time.Minute))
-	foreignID := mustInsertAnnouncement(t, ctx, pg.DB, otherTenantID, uuid.NullUUID{}, createdAt)
+	ownID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, createdAt)
+	foreignID := mustInsertAnnouncement(t, ctx, pg.DB, otherTenantID, createdAt)
 
 	queries := dbmodels.New(pg.DB)
-	broadcast, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
-		ID:       broadcastID,
+	own, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+		ID:       ownID,
 		TenantID: tenantID,
 		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
 	})
 	if err != nil {
-		t.Fatalf("GetAnnouncementForUser broadcast: %v", err)
+		t.Fatalf("GetAnnouncementForUser own tenant: %v", err)
 	}
-	if broadcast.ID != broadcastID {
-		t.Fatalf("broadcast id = %v, want %v", broadcast.ID, broadcastID)
-	}
-
-	mine, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
-		ID:       mineID,
-		TenantID: tenantID,
-		UserID:   uuid.NullUUID{UUID: userID, Valid: true},
-	})
-	if err != nil {
-		t.Fatalf("GetAnnouncementForUser targeted: %v", err)
-	}
-	if mine.ID != mineID {
-		t.Fatalf("targeted id = %v, want %v", mine.ID, mineID)
+	if own.ID != ownID {
+		t.Fatalf("own id = %v, want %v", own.ID, ownID)
 	}
 
-	for _, announcementID := range []uuid.UUID{theirsID, foreignID, uuid.Must(uuid.NewV7())} {
+	for _, announcementID := range []uuid.UUID{foreignID, uuid.Must(uuid.NewV7())} {
 		_, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
 			ID:       announcementID,
 			TenantID: tenantID,
@@ -222,16 +204,15 @@ func mustInsertAnnouncement(
 	ctx context.Context,
 	db *sql.DB,
 	tenantID uuid.UUID,
-	targetUserID uuid.NullUUID,
 	createdAt time.Time,
 ) uuid.UUID {
 	t.Helper()
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, target_user_id, announcement_type, title, body, created_at
-		) VALUES ($1, $2, $3, 'member_episode_published', 'title', 'body', $4)
-	`, id, tenantID, targetUserID, createdAt)
+			id, tenant_id, announcement_type, title, body, created_at
+		) VALUES ($1, $2, 'member_episode_published', 'title', 'body', $3)
+	`, id, tenantID, createdAt)
 	if err != nil {
 		t.Fatalf("insert announcement: %v", err)
 	}

@@ -39,9 +39,7 @@ const NotificationTypeAnnouncementPosted = "announcement_posted"
 const announcementRecipientPageSize = int32(500)
 
 // AnnouncementSubjectKey is the identity one announcement's notifications
-// share. A redelivered event therefore writes no second row for anyone, and a
-// targeted announcement — which is one `announcements` row per recipient — gets
-// a key of its own for each.
+// share, so a redelivered event writes no second row for anyone.
 func AnnouncementSubjectKey(announcementID uuid.UUID) string {
 	return "announcement:" + announcementID.String()
 }
@@ -53,15 +51,11 @@ func AnnouncementIdempotencyKey(announcementID uuid.UUID) string {
 	return EventTypeAnnouncementNotification + ":" + announcementID.String()
 }
 
-// AnnouncementNotificationPayload is the JSON body of the event.
-//
-// TargetUserID is what tells the two audiences apart: empty is the broadcast
-// every user of the tenant is addressed by, and a user id is the single reader
-// a targeted announcement names.
+// AnnouncementNotificationPayload is the JSON body of the event. Every user of
+// the tenant is addressed by it.
 type AnnouncementNotificationPayload struct {
 	TenantID       string `json:"tenant_id"`
 	AnnouncementID string `json:"announcement_id"`
-	TargetUserID   string `json:"target_user_id,omitempty"`
 	Title          string `json:"title"`
 }
 
@@ -83,7 +77,6 @@ type AnnouncementNotificationHandlerConfig struct {
 // announcementNotificationQuerier is the statement pair the handler runs, named
 // so a test can drive the fan-out without a database behind it.
 type announcementNotificationQuerier interface {
-	GetTenantUserID(ctx context.Context, arg dbmodels.GetTenantUserIDParams) (uuid.UUID, error)
 	ListTenantUserIDs(ctx context.Context, arg dbmodels.ListTenantUserIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
@@ -145,31 +138,6 @@ func announcementNotificationHandler(
 				return fmt.Errorf("insert notification for %s: %w", userID, insertErr)
 			}
 			return nil
-		}
-
-		if target := strings.TrimSpace(payload.TargetUserID); target != "" {
-			targetID, parseErr := uuid.Parse(target)
-			if parseErr != nil {
-				return Permanent(fmt.Errorf("announcement notification payload target_user_id is invalid: %w", parseErr))
-			}
-			// The recipient is resolved inside the event's own tenant before
-			// the row is written. `notifications` holds the tenant and the user
-			// as two separate foreign keys, so a pair naming two tenants is
-			// stored rather than rejected, and it would then sit in a reader's
-			// inbox on a site their account does not belong to. The broadcast
-			// below needs no such check: its recipients are the tenant's own
-			// listing.
-			if _, lookupErr := queries.GetTenantUserID(ctx, dbmodels.GetTenantUserIDParams{
-				TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
-				UserID:   targetID,
-			}); lookupErr != nil {
-				if errors.Is(lookupErr, sql.ErrNoRows) {
-					return Permanent(fmt.Errorf(
-						"announcement notification target %s is not a user of tenant %s", targetID, tenantID))
-				}
-				return fmt.Errorf("resolve announcement notification target: %w", lookupErr)
-			}
-			return insert(targetID)
 		}
 
 		notified := 0

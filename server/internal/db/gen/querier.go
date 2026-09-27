@@ -333,9 +333,8 @@ type Querier interface {
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
-	// Returns the announcement with the caller's read state, and only when the row
-	// belongs to that caller's inbox. A row addressed to another user or owned by
-	// another tenant comes back as no rows, so its existence is not disclosed.
+	// Returns the announcement with the caller's read state. A row owned by another
+	// tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	// What the outbox worker reads to word the staff mail. It is by primary key
 	// because the event names the row it was queued for, and it carries the
@@ -465,8 +464,8 @@ type Querier interface {
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
 	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
-	// What the site shows as a banner: the newest tenant-wide announcement still
-	// inside its pinned window. It names no user, so a visitor with no session gets
+	// What the site shows as a banner: the newest announcement still inside its
+	// pinned window. It names no user, so a visitor with no session gets
 	// the same answer as a signed-in reader and the site caches it once per tenant.
 	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
@@ -653,13 +652,6 @@ type Querier interface {
 	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
-	// Worker check: the recipient a notification names is a user of the tenant the
-	// notification belongs to. `notifications` carries `tenant_id` and `user_id` as
-	// two separate foreign keys and its RLS policy reads only the tenant, so a pair
-	// from two different tenants is stored rather than rejected; a producer that
-	// takes the recipient from a payload asks here before it inserts. No rows means
-	// the user is not this tenant's.
-	GetTenantUserID(ctx context.Context, arg GetTenantUserIDParams) (uuid.UUID, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User, error)
@@ -899,14 +891,14 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
-	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error)
+	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]Announcement, error)
 	// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_announcements_tenant_created_at can be
 	// scanned in reverse. The handler flips ASC rows back into display order.
 	// A parameterized ORDER BY cannot be read in index order, so each scan
 	// direction gets its own query.
 	// cursor rules: proto/README.md.
-	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
+	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]Announcement, error)
 	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
 	// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
 	// the DESC query; backward uses ASC so the index can be scanned in reverse.
@@ -1820,13 +1812,13 @@ type Querier interface {
 	// Candidates for the sweep: the tags of this tenant no series carries. Locked
 	// in id order so two saves sweeping at once queue up rather than deadlock.
 	LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
-	// Inserts a read row for every announcement in the caller's inbox that lacks
-	// one: the tenant-wide announcements plus the ones addressed to that user.
+	// Inserts a read row for every announcement of the caller's tenant that lacks
+	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
 	MarkAllPlatformNotificationsAsRead(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	// Upserts, so marking an already-read announcement refreshes read_at instead
-	// of failing. The SELECT confines the insert to the caller's own inbox.
+	// of failing. The SELECT confines the insert to the caller's own tenant.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
