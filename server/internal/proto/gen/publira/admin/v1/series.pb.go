@@ -1892,10 +1892,12 @@ type CreateEpisodeRequest struct {
 	Title  string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	// Position in the series. 0 appends after the current last episode, so a
 	// client paging through ListEpisodes does not have to find the end itself.
-	OrderIndex         int32  `protobuf:"varint,4,opt,name=order_index,json=orderIndex,proto3" json:"order_index,omitempty"`
-	Price              int32  `protobuf:"varint,5,opt,name=price,proto3" json:"price,omitempty"`
-	ReadingPeriodHours int32  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	ScheduledAt        string `protobuf:"bytes,7,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
+	OrderIndex         int32 `protobuf:"varint,4,opt,name=order_index,json=orderIndex,proto3" json:"order_index,omitempty"`
+	Price              int32 `protobuf:"varint,5,opt,name=price,proto3" json:"price,omitempty"`
+	ReadingPeriodHours int32 `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	// RFC 3339. Empty creates a draft, a future time schedules the episode, and
+	// a time at or before the request publishes it as it is created.
+	ScheduledAt string `protobuf:"bytes,7,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
 	// Which surfaces this episode may be shown on, narrowing its series'.
 	// SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
 	Availability v1.SurfaceAvailability `protobuf:"varint,8,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`

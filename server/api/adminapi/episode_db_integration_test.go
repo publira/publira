@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 )
@@ -395,6 +397,41 @@ func TestDBUpdateEpisodePublishScheduleRejectsPastTime(t *testing.T) {
 		"SELECT count(*) FROM episode_listings WHERE status = $1", "scheduled",
 	); count != 0 {
 		t.Fatalf("scheduled listings = %d, want 0", count)
+	}
+}
+
+// A publication time that has already passed publishes the episode in the
+// write that creates it, as the console's tenant role, and leaves the
+// followers' notice to the worker.
+func TestDBCreateEpisodeWithPastScheduledAtPublishesIt(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Publish Now Host Series")
+
+	created, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:      tenant.tenantContext(),
+		SeriesId:    env.seriesID(t, seriesPublicID),
+		Title:       "Published Episode",
+		ScheduledAt: "2000-01-01T00:00:00Z",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+	if created.Msg.Episode.Status != "published" || created.Msg.Episode.PublishedAt == "" {
+		t.Fatalf("status, published_at = %q, %q, want published and a time", created.Msg.Episode.Status, created.Msg.Episode.PublishedAt)
+	}
+
+	if count := env.countRows(t,
+		"SELECT count(*) FROM episode_listings WHERE status = 'published' AND published_at IS NOT NULL AND scheduled_at = '2000-01-01T00:00:00Z'",
+	); count != 1 {
+		t.Fatalf("published listings = %d, want 1", count)
+	}
+	if count := env.countRows(t,
+		"SELECT count(*) FROM outbox_events WHERE event_type = $1 AND idempotency_key = $2",
+		outbox.EventTypeEpisodePublishedNotification, outbox.EpisodePublishedIdempotencyKey(uuid.MustParse(created.Msg.Episode.Id)),
+	); count != 1 {
+		t.Fatalf("episode published notification events = %d, want 1", count)
 	}
 }
 

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -19,10 +20,12 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/episodeimages"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -555,10 +558,11 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
-	scheduledAt, err = normalizeAndValidateScheduledAt(scheduledAt, time.Now())
-	if err != nil {
-		return nil, err
-	}
+	scheduledAt.Time = scheduledAt.Time.UTC()
+	// A time that has already passed publishes the episode as it is created,
+	// the way a series is public from the moment a past time is saved.
+	now := time.Now().UTC()
+	publishNow := scheduledAt.Valid && !scheduledAt.Time.After(now)
 	availability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.Availability)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
@@ -580,6 +584,7 @@ func (s *adminServer) CreateEpisode(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, q)
 	if _, err := q.LockSeriesByIDForTenant(ctx, dbmodels.LockSeriesByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       seriesID,
@@ -629,13 +634,18 @@ func (s *adminServer) CreateEpisode(
 		return nil, s.internalDBError(ctx, "failed to create episode", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 	status := "draft"
-	if scheduledAt.Valid {
+	publishedAt := sql.NullTime{}
+	switch {
+	case publishNow:
+		status = "published"
+		publishedAt = sql.NullTime{Time: now, Valid: true}
+	case scheduledAt.Valid:
 		status = "scheduled"
 	}
 	listing, err := q.UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
 		EpisodeID:          base.ID,
 		Price:              req.Msg.Price,
-		PublishedAt:        sql.NullTime{},
+		PublishedAt:        publishedAt,
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
 		ScheduledAt:        scheduledAt,
 		Status:             status,
@@ -662,6 +672,13 @@ func (s *adminServer) CreateEpisode(
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to resolve created episode purchase availability", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+	}
+	var owed revalidate.Owed
+	if publishNow {
+		owed, err = s.recordEpisodePublication(txCtx, q, tenant.ID, base.ID)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the publication of the created episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
@@ -695,7 +712,27 @@ func (s *adminServer) CreateEpisode(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
+	s.reval.Send(ctx, owed)
 	return connect.NewResponse(&publiraadminv1.CreateEpisodeResponse{Episode: episode, PurchaseAvailability: savedPurchaseAvailability}), nil
+}
+
+// recordEpisodePublication writes down, in the transaction that publishes the
+// episode, what the scheduled publication job would have done in its own: the
+// drop of the cache that lists the series' episodes, and the notice to the
+// episode's followers, which the worker writes because this connection cannot
+// see them.
+func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodels.Queries, tenantID, episodeID uuid.UUID) (revalidate.Owed, error) {
+	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{
+		TenantID:  tenantID.String(),
+		EpisodeID: episodeID.String(),
+	})
+	if err != nil {
+		return revalidate.Owed{}, fmt.Errorf("encode episode published notification payload: %w", err)
+	}
+	if err := insertAdminOutboxEvent(txCtx, q, tenantID, outbox.EventTypeEpisodePublishedNotification, payload, outbox.EpisodePublishedIdempotencyKey(episodeID)); err != nil {
+		return revalidate.Owed{}, fmt.Errorf("queue episode published notification: %w", err)
+	}
+	return s.recordRevalidation(txCtx, tenantID, episodeScheduleRevalidateTags(tenantID.String()))
 }
 
 func (s *adminServer) UploadEpisodeImages(

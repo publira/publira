@@ -127,6 +127,7 @@ It also handles these non-mail events:
 | `comment_awaiting_approval_notification` | A `notifications` row for every member of the tenant's staff, saying that one episode has comments waiting in the approval queue |
 | `comment_reported_notification` | The same, for an episode whose comments readers have reported |
 | `announcement_notification` | A `notifications` row for every reader one posted announcement addresses — every user of the tenant on a broadcast, the single named recipient on a targeted one |
+| `episode_published_notification` | The `notifications` rows, and the `member_push_notification` that mirrors them, for the followers of an episode the admin console published as it created it; an episode the scheduled publication job publishes has them written by that job |
 | `next_cache_revalidation` | The `POST /api/v1/revalidate` to each `web-*` app that drops the cache tags one write left stale |
 | `reader_signup_request` | A sign-up the storefront accepted: the inactive account, its consents, and a `reader_email_verification_email` for a free address, or a `reader_signup_attempt_notice_email` for a registered one |
 | `reader_password_reset_request` | A password reset the storefront accepted: the reset token and a `reader_password_reset_email` when the address has an account |

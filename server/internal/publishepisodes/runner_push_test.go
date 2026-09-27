@@ -24,7 +24,7 @@ func TestPublishSuccessEnqueuesOneMemberPushEvent(t *testing.T) {
 		t.Fatalf("member push events = %d, want 1", len(events))
 	}
 	event := events[0]
-	wantKey := "push:" + notificationTypeEpisodePublished + ":episode:" + env.episode.PublicID
+	wantKey := "push:" + outbox.NotificationTypeEpisodePublished + ":episode:" + env.episode.PublicID
 	if event.IdempotencyKey != wantKey {
 		t.Fatalf("idempotency_key = %q, want %q", event.IdempotencyKey, wantKey)
 	}
@@ -41,7 +41,7 @@ func TestPublishSuccessEnqueuesOneMemberPushEvent(t *testing.T) {
 	}
 	want := outbox.MemberPushNotificationPayload{
 		TenantID:         env.tenant.ID.String(),
-		NotificationType: notificationTypeEpisodePublished,
+		NotificationType: outbox.NotificationTypeEpisodePublished,
 		SubjectKey:       "episode:" + env.episode.PublicID,
 		SeriesID:         env.series.PublicID,
 		SeriesTitle:      env.series.Title,
@@ -61,10 +61,10 @@ func TestPublishRerunDoesNotEnqueueASecondMemberPushEvent(t *testing.T) {
 	defer cancel()
 	r.RunOnce(ctx)
 
-	// The listing is published now, so a second cycle finds nothing due. Ask
-	// for the same episode's push directly, which is what a re-run would do.
-	if err := r.enqueueMemberPush(ctx, r.queries, env.readyRow(), "episode:"+env.episode.PublicID); err != nil {
-		t.Fatalf("enqueue member push: %v", err)
+	// The listing is published now, so a second cycle finds nothing due. Run
+	// the same episode's fan-out directly, which is what a re-run would do.
+	if err := r.notifyFollowersOfPublish(ctx, r.queries, env.readyRow()); err != nil {
+		t.Fatalf("notify followers: %v", err)
 	}
 
 	if events := listMemberPushEvents(t, pg); len(events) != 1 {
