@@ -128,11 +128,15 @@ class ProgressOutbox {
         final finish = UnsentProgress(
           readerId: progress.readerId,
           episodeId: progress.episodeId,
+          episodeInternalId: progress.episodeInternalId,
           finished: true,
         );
         if (await _deliver(
               finish,
-              () => _origin.markEpisodeAsRead(progress.episodeId),
+              () => _origin.markEpisodeAsRead(
+                progress.episodeId,
+                episodeInternalId: progress.episodeInternalId,
+              ),
             ) ==
             _Delivery.stop) {
           return;
@@ -143,6 +147,7 @@ class ProgressOutbox {
         final page = UnsentProgress(
           readerId: progress.readerId,
           episodeId: progress.episodeId,
+          episodeInternalId: progress.episodeInternalId,
           seriesId: progress.seriesId,
           pageIndex: pageIndex,
         );
@@ -152,6 +157,7 @@ class ProgressOutbox {
                 progress.seriesId,
                 progress.episodeId,
                 pageIndex,
+                episodeInternalId: progress.episodeInternalId,
               ),
             ) ==
             _Delivery.stop) {

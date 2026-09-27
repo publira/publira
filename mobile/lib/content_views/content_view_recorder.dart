@@ -13,12 +13,14 @@ class ContentViewRecorder extends StatefulWidget {
   const ContentViewRecorder({
     super.key,
     required this.kind,
-    required this.publicId,
+    required this.targetId,
     required this.child,
   });
 
   final ContentViewKind kind;
-  final String publicId;
+
+  /// Internal id of the series or episode the page shows.
+  final String targetId;
   final Widget child;
 
   @override
@@ -45,7 +47,7 @@ class _ContentViewRecorderState extends State<ContentViewRecorder> {
   void didUpdateWidget(ContentViewRecorder oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.kind != oldWidget.kind ||
-        widget.publicId != oldWidget.publicId) {
+        widget.targetId != oldWidget.targetId) {
       _record();
     }
   }
@@ -58,7 +60,7 @@ class _ContentViewRecorderState extends State<ContentViewRecorder> {
     if (repository == null) {
       return;
     }
-    unawaited(_send(repository, widget.kind, widget.publicId));
+    unawaited(_send(repository, widget.kind, widget.targetId));
   }
 
   /// A view is instrumentation, so whatever the call fails with is dropped
@@ -66,10 +68,10 @@ class _ContentViewRecorderState extends State<ContentViewRecorder> {
   Future<void> _send(
     ContentViewRepository repository,
     ContentViewKind kind,
-    String publicId,
+    String targetId,
   ) async {
     try {
-      await repository.record(kind, publicId);
+      await repository.record(kind, targetId);
     } catch (_) {
       // Lost, as a beacon the browser could not queue is.
     }

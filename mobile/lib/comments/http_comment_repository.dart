@@ -51,7 +51,7 @@ class HttpCommentRepository implements CommentRepository {
 
   @override
   Future<EpisodeCommentPage> listComments(
-    String episodePublicId, {
+    String episodeInternalId, {
     String token = '',
   }) async {
     try {
@@ -62,7 +62,7 @@ class HttpCommentRepository implements CommentRepository {
       final body = await _client.unary(
         _listProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'limit': _pageSize,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
@@ -82,7 +82,7 @@ class HttpCommentRepository implements CommentRepository {
   }
 
   @override
-  Future<List<EpisodeComment>> listMyComments(String episodePublicId) async {
+  Future<List<EpisodeComment>> listMyComments(String episodeInternalId) async {
     // The API answers a request without a session `unauthenticated`, and a
     // reader who is signed out has no comments of their own to fold in, so
     // asking would spend a round trip on the answer the screen already has.
@@ -101,7 +101,7 @@ class HttpCommentRepository implements CommentRepository {
       final body = await _client.unary(
         _listMineProcedure,
         {
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'limit': _ownPageSize,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
@@ -118,7 +118,7 @@ class HttpCommentRepository implements CommentRepository {
 
   @override
   Future<EpisodeComment> post({
-    required String episodePublicId,
+    required String episodeInternalId,
     required String body,
   }) async {
     final accessToken = _requireSession();
@@ -128,7 +128,7 @@ class HttpCommentRepository implements CommentRepository {
         _postProcedure,
         {
           'body': body,
-          'episodePublicId': episodePublicId,
+          'episodeId': episodeInternalId,
           'tenant': {'tenantId': tenantId},
           'surface': appClientSurface,
         },
@@ -142,14 +142,14 @@ class HttpCommentRepository implements CommentRepository {
   }
 
   @override
-  Future<void> withdraw(String commentPublicId) async {
+  Future<void> withdraw(String commentId) async {
     final accessToken = _requireSession();
     try {
       final tenantId = await _tenants.resolve();
       await _client.unary(
         _withdrawProcedure,
         {
-          'commentPublicId': commentPublicId,
+          'commentId': commentId,
           'tenant': {'tenantId': tenantId},
         },
         tenantId: tenantId,
@@ -162,7 +162,7 @@ class HttpCommentRepository implements CommentRepository {
 
   @override
   Future<void> report({
-    required String commentPublicId,
+    required String commentId,
     required CommentReportReason reason,
     String note = '',
   }) async {
@@ -172,7 +172,7 @@ class HttpCommentRepository implements CommentRepository {
       await _client.unary(
         _reportProcedure,
         {
-          'commentPublicId': commentPublicId,
+          'commentId': commentId,
           'note': note,
           'reason': reason.wireValue,
           'tenant': {'tenantId': tenantId},
@@ -204,7 +204,7 @@ class HttpCommentRepository implements CommentRepository {
   /// One published comment, as every visitor of the episode sees it.
   EpisodeComment _publicComment(Map<String, Object?> json) {
     return EpisodeComment(
-      id: _readString(json, 'publicId'),
+      id: _readString(json, 'id'),
       body: _readString(json, 'body'),
       createdAt: _readInstant(json, 'createdAt'),
       authorId: _readString(json, 'authorPublicId'),
@@ -216,7 +216,7 @@ class HttpCommentRepository implements CommentRepository {
   /// caller, and the API does not repeat their name back to them.
   EpisodeComment _ownComment(Map<String, Object?> json) {
     return EpisodeComment(
-      id: _readString(json, 'publicId'),
+      id: _readString(json, 'id'),
       body: _readString(json, 'body'),
       createdAt: _readInstant(json, 'createdAt'),
       awaitingApproval: _readBool(json, 'awaitingApproval'),

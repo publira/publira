@@ -91,6 +91,17 @@ class ConnectFixtureServer {
   /// The stored eye-catch image the seed series' cover URLs address.
   static const seedSeriesImageId = '018f0e6a-2000-7000-8000-000000000001';
   static const seedEpisodeId = 'SeedEPSDAAA1';
+
+  /// The internal id this server answers a record with beside its public id
+  /// [publicId]. Derived rather than stored, so every record carries one.
+  static String internalIdOf(String publicId) => 'internal-$publicId';
+
+  /// The public id of the record [internalId] names, or an empty string for
+  /// an id this server never gave out.
+  static String publicIdOf(Object? internalId) =>
+      internalId is String && internalId.startsWith('internal-')
+      ? internalId.substring('internal-'.length)
+      : '';
   static const seedEpisodeTitle = 'Seed Episode 001-01';
   static const seedEpisodePageCount = 3;
   static const paidEpisodeId = 'SeedEPSDAA1A';
@@ -1326,7 +1337,7 @@ class ConnectFixtureServer {
     HttpRequest request,
     Map<String, Object?> body,
   ) async {
-    final seriesPublicId = body['seriesPublicId'];
+    final seriesPublicId = publicIdOf(body['seriesId']);
     final detail = _shows(body, seriesPublicId)
         ? details[seriesPublicId]
         : null;
@@ -1345,6 +1356,7 @@ class ConnectFixtureServer {
           for (final episode in listed.whereType<Map<Object?, Object?>>())
             if (episode['publicId'] case final String id)
               {
+                'episodeId': internalIdOf(id),
                 'episodePublicId': id,
                 'access':
                     (authorized ? entitledEpisodes[id] : null)?['access'] ??
@@ -1368,8 +1380,8 @@ class ConnectFixtureServer {
       });
       return;
     }
-    final episodeId = body['episodePublicId'];
-    if (episodeId is! String || episodes[episodeId] == null) {
+    final episodeId = publicIdOf(body['episodeId']);
+    if (episodes[episodeId] == null) {
       await _write(request, HttpStatus.notFound, {
         'code': 'not_found',
         'message': 'episode not found',
@@ -1687,7 +1699,7 @@ class ConnectFixtureServer {
       });
       return;
     }
-    final episodeId = body['episodePublicId'] as String? ?? '';
+    final episodeId = publicIdOf(body['episodeId']);
     if (path.endsWith('/ListEpisodeComments')) {
       await _write(request, HttpStatus.ok, {
         // protojson omits an empty repeated field, which is what an episode
@@ -1762,7 +1774,7 @@ class ConnectFixtureServer {
 
     final target = body['target'];
     final targetType = target is Map ? target['type'] : null;
-    final targetPublicId = target is Map ? target['publicId'] : null;
+    final targetPublicId = target is Map ? publicIdOf(target['id']) : null;
     final followed = myFollows.where((follow) {
       return follow['targetType'] == targetType &&
           follow['targetPublicId'] == targetPublicId;
@@ -2063,7 +2075,7 @@ class ConnectFixtureServer {
       });
       return;
     }
-    final episodeId = body['episodePublicId'] as String? ?? '';
+    final episodeId = publicIdOf(body['episodeId']);
     if (path.endsWith('/MarkEpisodeAsRead')) {
       final errorCode = markReadErrorCode;
       if (errorCode != null) {
@@ -2544,9 +2556,27 @@ class ConnectFixtureServer {
   Future<void> _write(HttpRequest request, int status, Object body) async {
     request.response.statusCode = status;
     request.response.headers.contentType = ContentType.json;
-    request.response.write(jsonEncode(body));
+    request.response.write(jsonEncode(_withInternalIds(body)));
     await request.response.close();
   }
+
+  /// [body] with every record that names a public id also carrying the
+  /// internal id the API answers beside it.
+  static Object? _withInternalIds(Object? body) => switch (body) {
+    final Map<Object?, Object?> map => {
+      for (final entry in map.entries) entry.key: _withInternalIds(entry.value),
+      if (map['publicId'] case final String publicId
+          when !map.containsKey('id'))
+        'id': internalIdOf(publicId),
+      if (map['targetPublicId'] case final String publicId
+          when !map.containsKey('targetId'))
+        'targetId': internalIdOf(publicId),
+    },
+    final List<Object?> list => [
+      for (final item in list) _withInternalIds(item),
+    ],
+    _ => body,
+  };
 }
 
 /// One account `CreateUser` opened on [ConnectFixtureServer].

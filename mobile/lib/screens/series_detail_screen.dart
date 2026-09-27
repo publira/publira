@@ -157,7 +157,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             provenRating: open.provenRating,
             child: ContentViewRecorder(
               kind: ContentViewKind.series,
-              publicId: detail.series.id,
+              targetId: detail.series.internalId,
               child: _SeriesDetailBody(detail: detail),
             ),
           ),
@@ -293,7 +293,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     // Either read failing offers no purchase, not a failed screen.
     final (access, acceptsPayments) = await (
       purchase
-          .seriesEpisodeAccess(widget.detail.series.id)
+          .seriesEpisodeAccess(widget.detail.series.internalId)
           .onError<PurchaseFailure>((_, _) => const {}),
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
     ).wait;
@@ -509,7 +509,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           const SizedBox(height: 16),
           FollowControl(
             kind: FollowTargetKind.series,
-            targetId: series.id,
+            targetId: series.internalId,
             targetName: series.title,
           ),
         ],
@@ -535,7 +535,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               title: Text(creator.name),
               trailing: FollowControl(
                 kind: FollowTargetKind.creator,
-                targetId: creator.id,
+                targetId: creator.internalId,
                 targetName: creator.name,
               ),
               onTap: () =>
@@ -579,6 +579,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                         _access[episode.id] == EpisodeAccess.locked
                     ? BuyEpisodeButton(
                         episodeId: episode.id,
+                        episodeInternalId: episode.internalId,
                         price: episode.price,
                         compact: true,
                         signInReturnTo: AppRoutes.episodeViewerPath(

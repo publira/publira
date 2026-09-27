@@ -11,6 +11,7 @@ import 'support/connect_fixture_server.dart';
 
 void main() {
   const episodeId = ConnectFixtureServer.seedEpisodeId;
+  final episodeInternalId = ConnectFixtureServer.internalIdOf(episodeId);
 
   late ConnectFixtureServer server;
   late String accessToken;
@@ -62,10 +63,10 @@ void main() {
   });
 
   test('the published comments map onto the rows a screen renders', () async {
-    final page = await repository().listComments(episodeId);
+    final page = await repository().listComments(episodeInternalId);
 
     final comment = page.comments.single;
-    expect(comment.id, 'SeedCMNTAAA1');
+    expect(comment.id, ConnectFixtureServer.internalIdOf('SeedCMNTAAA1'));
     expect(comment.body, 'The first one.');
     expect(comment.authorId, 'SeedMMBRBBB2');
     expect(comment.authorName, 'Another Member');
@@ -76,10 +77,10 @@ void main() {
   test('the public list is asked for without the reader session', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
-    await repository().listComments(episodeId, token: 'page-2');
+    await repository().listComments(episodeInternalId, token: 'page-2');
 
     final request = server.requestsTo('ListEpisodeComments').single;
-    expect(request.body['episodePublicId'], episodeId);
+    expect(request.body['episodeId'], episodeInternalId);
     expect(request.body['token'], 'page-2');
     expect(request.headers.containsKey('authorization'), isFalse);
   });
@@ -87,7 +88,7 @@ void main() {
   test(
     'a reader who is signed out asks for no comments of their own',
     () async {
-      expect(await repository().listMyComments(episodeId), isEmpty);
+      expect(await repository().listMyComments(episodeInternalId), isEmpty);
       expect(server.requestsTo('ListMyEpisodeComments'), isEmpty);
     },
   );
@@ -107,8 +108,10 @@ void main() {
         ],
       };
 
-      final comment = (await repository().listMyComments(episodeId)).single;
-      expect(comment.id, 'SeedCMNTAAA2');
+      final comment = (await repository().listMyComments(
+        episodeInternalId,
+      )).single;
+      expect(comment.id, ConnectFixtureServer.internalIdOf('SeedCMNTAAA2'));
       expect(comment.awaitingApproval, isTrue);
       expect(comment.authorName, isEmpty);
     },
@@ -119,7 +122,7 @@ void main() {
     server.commentMode = 'COMMENT_MODE_APPROVAL_REQUIRED';
 
     final posted = await repository().post(
-      episodePublicId: episodeId,
+      episodeInternalId: episodeInternalId,
       body: 'What an episode.',
     );
 
@@ -133,7 +136,10 @@ void main() {
 
   test('posting without a session fails before the request', () async {
     await expectLater(
-      repository().post(episodePublicId: episodeId, body: 'Anonymous.'),
+      repository().post(
+        episodeInternalId: episodeInternalId,
+        body: 'Anonymous.',
+      ),
       throwsA(
         isA<CommentFailure>().having(
           (failure) => failure.kind,
@@ -151,10 +157,7 @@ void main() {
     await repository().withdraw('SeedCMNTAAA1');
 
     expect(
-      server
-          .requestsTo('WithdrawEpisodeComment')
-          .single
-          .body['commentPublicId'],
+      server.requestsTo('WithdrawEpisodeComment').single.body['commentId'],
       'SeedCMNTAAA1',
     );
   });
@@ -163,7 +166,7 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
     await repository().report(
-      commentPublicId: 'SeedCMNTAAA1',
+      commentId: 'SeedCMNTAAA1',
       reason: CommentReportReason.spoiler,
       note: 'It gives the ending away.',
     );
@@ -179,11 +182,14 @@ void main() {
       accessToken = ConnectFixtureServer.memberAccessToken;
       final comments = repository();
 
-      await comments.listComments(episodeId);
-      await comments.listMyComments(episodeId);
-      await comments.post(episodePublicId: episodeId, body: 'Worth the wait.');
+      await comments.listComments(episodeInternalId);
+      await comments.listMyComments(episodeInternalId);
+      await comments.post(
+        episodeInternalId: episodeInternalId,
+        body: 'Worth the wait.',
+      );
       await comments.report(
-        commentPublicId: 'SeedCMNTAAA1',
+        commentId: 'SeedCMNTAAA1',
         reason: CommentReportReason.spam,
       );
 
@@ -206,7 +212,7 @@ void main() {
     server.commentStatus = HttpStatus.serviceUnavailable;
 
     await expectLater(
-      repository().listComments(episodeId),
+      repository().listComments(episodeInternalId),
       throwsA(
         isA<CommentFailure>().having(
           (failure) => failure.kind,

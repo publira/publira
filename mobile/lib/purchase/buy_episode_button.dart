@@ -20,6 +20,7 @@ class BuyEpisodeButton extends StatefulWidget {
   const BuyEpisodeButton({
     super.key,
     required this.episodeId,
+    required this.episodeInternalId,
     required this.price,
     required this.onAlreadyPurchased,
     required this.onStorePurchase,
@@ -28,6 +29,9 @@ class BuyEpisodeButton extends StatefulWidget {
   });
 
   final String episodeId;
+
+  /// Internal id of [episodeId], which the purchase requests take.
+  final String episodeInternalId;
   final int price;
 
   /// The reader already holds the episode, so there was nothing to pay for.
@@ -72,13 +76,15 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         if (purchaser == null) {
           throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
         }
-        final outcome = await purchaser.buy(widget.episodeId);
+        final outcome = await purchaser.buy(widget.episodeInternalId);
         if (mounted && outcome != StorePurchaseOutcome.cancelled) {
           widget.onStorePurchase();
         }
         return;
       }
-      final url = await repository.startEpisodeCheckout(widget.episodeId);
+      final url = await repository.startEpisodeCheckout(
+        widget.episodeInternalId,
+      );
       final opened = await purchase.launcher!.open(url);
       if (!opened) {
         messenger.showSnackBar(

@@ -95,12 +95,18 @@ void main() {
   group('the control on a series screen', () {
     testWidgets('offers the series and each of its authors', (tester) async {
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
       expect(find.text('Authors'), findsOneWidget);
       for (final credit in fixtureCreators) {
         expect(find.byKey(ValueKey('series-creator-${credit.id}')), findsOne);
-        expect(find.byKey(ValueKey('follow-${credit.id}')), findsOne);
+        expect(
+          find.byKey(ValueKey('follow-${fixtureInternalId(credit.id)}')),
+          findsOne,
+        );
       }
     });
 
@@ -109,16 +115,19 @@ void main() {
         series.id: SeriesDetail(
           series: SeriesItem(
             id: series.id,
+            internalId: fixtureInternalId(series.id),
             title: series.title,
             description: series.description,
             creators: [
               SeriesCreator(
                 id: creator.id,
+                internalId: fixtureInternalId(creator.id),
                 name: creator.name,
                 roleName: 'Story',
               ),
               SeriesCreator(
                 id: creator.id,
+                internalId: fixtureInternalId(creator.id),
                 name: creator.name,
                 roleName: 'Art',
               ),
@@ -128,17 +137,28 @@ void main() {
         ),
       };
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
       expect(find.byKey(ValueKey('series-creator-${creator.id}')), findsOne);
-      expect(find.byKey(ValueKey('follow-${creator.id}')), findsOne);
+      expect(
+        find.byKey(ValueKey('follow-${fixtureInternalId(creator.id)}')),
+        findsOne,
+      );
     });
 
     testWidgets('sends a reader who is signed out to sign in', (tester) async {
       await openSeries(tester);
 
-      expect(find.byKey(ValueKey('follow-${series.id}')), findsNothing);
-      await tester.tap(find.byKey(ValueKey('follow-sign-in-${series.id}')));
+      expect(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+        findsNothing,
+      );
+      await tester.tap(
+        find.byKey(ValueKey('follow-sign-in-${fixtureInternalId(series.id)}')),
+      );
       await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
 
       expect(router.state.uri.path, AppRoutes.signIn);
@@ -149,21 +169,28 @@ void main() {
       tester,
     ) async {
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
-      await tester.tap(find.byKey(ValueKey('follow-${series.id}')));
+      await tester.tap(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
       await pumpUntilFound(tester, find.text('Unfollow'));
 
-      expect(follows.followed, ['series:${series.id}']);
+      expect(follows.followed, ['series:${fixtureInternalId(series.id)}']);
 
-      await tester.tap(find.byKey(ValueKey('follow-${series.id}')));
+      await tester.tap(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
       await pumpUntilFound(tester, find.text('Follow'));
 
-      expect(follows.unfollowed, ['series:${series.id}']);
+      expect(follows.unfollowed, ['series:${fixtureInternalId(series.id)}']);
     });
 
     testWidgets('opens on the state the API already holds', (tester) async {
-      follows.following.add('creator:${creator.id}');
+      follows.following.add('creator:${fixtureInternalId(creator.id)}');
       await openSeries(tester, session: fakeSession);
       await pumpUntilFound(tester, find.text('Unfollow'));
 
@@ -179,9 +206,14 @@ void main() {
     ) async {
       follows.writeFailure = const FollowFailure(FollowFailureKind.network);
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
-      await tester.tap(find.byKey(ValueKey('follow-${series.id}')));
+      await tester.tap(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('follow-failure')),
@@ -199,12 +231,17 @@ void main() {
     ) async {
       follows.statusFailure = const FollowFailure(FollowFailureKind.network);
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
-      await tester.tap(find.byKey(ValueKey('follow-${series.id}')));
+      await tester.tap(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
       await pumpUntilFound(tester, find.text('Unfollow'));
 
-      expect(follows.followed, ['series:${series.id}']);
+      expect(follows.followed, ['series:${fixtureInternalId(series.id)}']);
     });
 
     testWidgets('names the target it acts on, and can be activated by name', (
@@ -212,10 +249,13 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       await openSeries(tester, session: fakeSession);
-      await pumpUntilFound(tester, find.byKey(ValueKey('follow-${series.id}')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+      );
 
       final node = tester.getSemantics(
-        find.byKey(ValueKey('follow-${creator.id}')),
+        find.byKey(ValueKey('follow-${fixtureInternalId(creator.id)}')),
       );
       expect(node.label, 'Follow ${creator.name}');
 
@@ -229,7 +269,7 @@ void main() {
         description: 'the follow the semantics action asked for',
       );
 
-      expect(follows.followed, ['creator:${creator.id}']);
+      expect(follows.followed, ['creator:${fixtureInternalId(creator.id)}']);
       semantics.dispose();
     });
 
@@ -281,8 +321,14 @@ void main() {
     testWidgets('is left out of a build that follows nothing', (tester) async {
       await openSeries(tester, withFollows: false);
 
-      expect(find.byKey(ValueKey('follow-${series.id}')), findsNothing);
-      expect(find.byKey(ValueKey('follow-sign-in-${series.id}')), findsNothing);
+      expect(
+        find.byKey(ValueKey('follow-${fixtureInternalId(series.id)}')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(ValueKey('follow-sign-in-${fixtureInternalId(series.id)}')),
+        findsNothing,
+      );
       expect(find.text('Authors'), findsNothing);
     });
   });
@@ -326,9 +372,14 @@ void main() {
           MyFollow(
             kind: FollowTargetKind.series,
             targetId: series.id,
+            targetInternalId: fixtureInternalId(series.id),
             followedAt: DateTime.utc(2026, 9, 8, 10, 30),
           ),
-          MyFollow(kind: FollowTargetKind.creator, targetId: creator.id),
+          MyFollow(
+            kind: FollowTargetKind.creator,
+            targetId: creator.id,
+            targetInternalId: fixtureInternalId(creator.id),
+          ),
         ],
       ];
       await openFollows(tester);
@@ -353,7 +404,13 @@ void main() {
 
     testWidgets('opens the series a row stands for', (tester) async {
       follows.pages = [
-        [MyFollow(kind: FollowTargetKind.series, targetId: series.id)],
+        [
+          MyFollow(
+            kind: FollowTargetKind.series,
+            targetId: series.id,
+            targetInternalId: fixtureInternalId(series.id),
+          ),
+        ],
       ];
       await openFollows(tester);
       await pumpUntilRouteSettled(tester, find.text(series.title));
@@ -370,7 +427,13 @@ void main() {
     testWidgets('opens the author a row stands for', (tester) async {
       catalog.publishedCreators = {creator.id: fixturePublishedCreator};
       follows.pages = [
-        [MyFollow(kind: FollowTargetKind.creator, targetId: creator.id)],
+        [
+          MyFollow(
+            kind: FollowTargetKind.creator,
+            targetId: creator.id,
+            targetInternalId: fixtureInternalId(creator.id),
+          ),
+        ],
       ];
       await openFollows(tester);
       await pumpUntilRouteSettled(tester, find.text(creator.name));
@@ -391,17 +454,25 @@ void main() {
       tester,
     ) async {
       follows.pages = [
-        [MyFollow(kind: FollowTargetKind.creator, targetId: creator.id)],
+        [
+          MyFollow(
+            kind: FollowTargetKind.creator,
+            targetId: creator.id,
+            targetInternalId: fixtureInternalId(creator.id),
+          ),
+        ],
       ];
       await openFollows(tester);
       await pumpUntilFound(tester, find.text('Unfollow'));
 
       expect(follows.statusReads, 0);
 
-      await tester.tap(find.byKey(ValueKey('follow-${creator.id}')));
+      await tester.tap(
+        find.byKey(ValueKey('follow-${fixtureInternalId(creator.id)}')),
+      );
       await pumpUntilFound(tester, find.text('Follow'));
 
-      expect(follows.unfollowed, ['creator:${creator.id}']);
+      expect(follows.unfollowed, ['creator:${fixtureInternalId(creator.id)}']);
     });
 
     testWidgets('reads the page under it as the reader nears the end', (
@@ -413,9 +484,16 @@ void main() {
             MyFollow(
               kind: FollowTargetKind.creator,
               targetId: 'SeedAUTHPAGE$index',
+              targetInternalId: 'internal-SeedAUTHPAGE$index',
             ),
         ],
-        [MyFollow(kind: FollowTargetKind.series, targetId: series.id)],
+        [
+          MyFollow(
+            kind: FollowTargetKind.series,
+            targetId: series.id,
+            targetInternalId: fixtureInternalId(series.id),
+          ),
+        ],
       ];
       await openFollows(tester);
       await pumpUntilFound(tester, find.byKey(const ValueKey('follows-list')));
@@ -442,7 +520,13 @@ void main() {
     ) async {
       follows
         ..pages = [
-          [MyFollow(kind: FollowTargetKind.series, targetId: series.id)],
+          [
+            MyFollow(
+              kind: FollowTargetKind.series,
+              targetId: series.id,
+              targetInternalId: fixtureInternalId(series.id),
+            ),
+          ],
         ]
         ..listFailure = const FollowFailure(FollowFailureKind.network);
       await openFollows(tester);
@@ -484,9 +568,16 @@ void main() {
               MyFollow(
                 kind: FollowTargetKind.creator,
                 targetId: 'SeedAUTHPAGE$index',
+                targetInternalId: 'internal-SeedAUTHPAGE$index',
               ),
           ],
-          [MyFollow(kind: FollowTargetKind.series, targetId: series.id)],
+          [
+            MyFollow(
+              kind: FollowTargetKind.series,
+              targetId: series.id,
+              targetInternalId: fixtureInternalId(series.id),
+            ),
+          ],
         ]
         ..moreFailure = const FollowFailure(FollowFailureKind.sessionExpired);
       await openFollows(tester);

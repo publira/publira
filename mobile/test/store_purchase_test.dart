@@ -25,7 +25,9 @@ void main() {
   /// The fixture series' last episode, the one that costs something.
   final paidEpisodeId = '$seriesId-ep-${fixtureSeries.first.episodeCount}';
   final viewerPath = AppRoutes.episodeViewerPath(seriesId, paidEpisodeId);
-  final intentId = FakePurchaseRepository.intentFor(paidEpisodeId);
+  final intentId = FakePurchaseRepository.intentFor(
+    fixtureInternalId(paidEpisodeId),
+  );
 
   final locked = find.byKey(const ValueKey('episode-locked'));
   final pages = find.byKey(const ValueKey('episode-page-view'));
@@ -99,7 +101,7 @@ void main() {
       await tester.tap(buy);
       await pumpUntilFound(tester, pages);
 
-      expect(purchases.storeIntents, [paidEpisodeId]);
+      expect(purchases.storeIntents, [fixtureInternalId(paidEpisodeId)]);
       final param = platform.bought.single;
       expect(param.productDetails.id, 'episode_500');
       expect(param.applicationUserName, intentId);
@@ -182,7 +184,7 @@ void main() {
         'jws-2000000000000004',
         'jws-2000000000000001',
       ]);
-      expect(purchases.storeIntents, [paidEpisodeId]);
+      expect(purchases.storeIntents, [fixtureInternalId(paidEpisodeId)]);
     });
 
     testWidgets('confirms on sign-in what the store reported signed out', (
@@ -368,7 +370,7 @@ void main() {
     await tester.tap(buy);
     await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
 
-    expect(purchases.checkouts, [paidEpisodeId]);
+    expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
     expect(purchases.storeIntents, isEmpty);
     expect(platform.bought, isEmpty);
   });

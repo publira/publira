@@ -14,6 +14,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
+import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
@@ -1862,10 +1863,11 @@ void main() {
         accessToken: session.accessToken,
       );
       final pageCount = (detail['images']! as List).length;
+      final episode = detail['episode']! as Map<String, Object?>;
       await client.unary(
         '/publira.v1.EpisodeReadService/SaveReadingPosition',
         {
-          'episodePublicId': ConnectFixtureServer.seedEpisodeId,
+          'episodeId': episode['id'],
           'pageIndex': pageCount - 2,
           'surface': appClientSurface,
           'tenant': {'tenantId': tenantId},
@@ -2816,30 +2818,47 @@ void main() {
         );
       }
 
-      test('the live API takes a series and an episode view', () async {
-        final views = contentViews();
-
-        await views.record(
-          ContentViewKind.series,
+      /// The internal ids of the seed series and its first episode, read
+      /// from the live series detail as the app reads them before a view.
+      Future<({String series, String episode})> seedInternalIds() async {
+        final catalog = HttpCatalogRepository(
+          config: const AppConfig(
+            baseUrl: liveBaseUrl,
+            tenantHost: liveTenantHost,
+          ),
+        );
+        final detail = await catalog.getSeries(
           ConnectFixtureServer.seedSeriesId,
         );
-        await views.record(
-          ContentViewKind.episode,
-          ConnectFixtureServer.seedEpisodeId,
+        final episode = detail!.episodes.firstWhere(
+          (item) => item.id == ConnectFixtureServer.seedEpisodeId,
         );
+        return (series: detail.series.internalId, episode: episode.internalId);
+      }
+
+      test('the live API takes a series and an episode view', () async {
+        final views = contentViews();
+        final ids = await seedInternalIds();
+
+        await views.record(ContentViewKind.series, ids.series);
+        await views.record(ContentViewKind.episode, ids.episode);
       });
 
       test('the live API takes a signed-in reader\'s view', () async {
         final member = await signInSeedMember();
+        final ids = await seedInternalIds();
 
         await contentViews(
           accessToken: member.session.accessToken,
-        ).record(ContentViewKind.episode, ConnectFixtureServer.seedEpisodeId);
+        ).record(ContentViewKind.episode, ids.episode);
       });
 
       test('the live API refuses a view of a work it does not show', () async {
         await expectLater(
-          contentViews().record(ContentViewKind.series, 'MissingSERS01'),
+          contentViews().record(
+            ContentViewKind.series,
+            '018f0e6a-ffff-7000-8000-000000000000',
+          ),
           throwsA(
             isA<ConnectException>().having(
               (error) => error.isNotFound,
@@ -2854,10 +2873,11 @@ void main() {
         'the Secure identifier the live API mints is not kept over HTTP',
         () async {
           final anonymousIds = MemoryAnonymousIdStore();
+          final ids = await seedInternalIds();
 
           await contentViews(
             anonymousIds: anonymousIds,
-          ).record(ContentViewKind.series, ConnectFixtureServer.seedSeriesId);
+          ).record(ContentViewKind.series, ids.series);
 
           expect(
             anonymousIds.anonymousId,

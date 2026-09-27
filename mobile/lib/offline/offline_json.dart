@@ -170,6 +170,7 @@ TenantLogo? _logoFromJson(Object? decoded) {
 // screen that reads a saved series has the live ones in hand.
 Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'id': series.id,
+  'internalId': series.internalId,
   'title': series.title,
   'description': series.description,
   'episodeCount': series.episodeCount,
@@ -201,6 +202,7 @@ SeriesItem? _seriesFromJson(Object? decoded) {
   final rawWeekdays = decoded['scheduleWeekdays'];
   return SeriesItem(
     id: id,
+    internalId: _string(decoded['internalId']),
     title: _string(decoded['title']),
     description: _string(decoded['description']),
     episodeCount: _int(decoded['episodeCount']),
@@ -290,6 +292,7 @@ SeriesAgeRating? _ageRatingFromJson(Object? raw) {
 
 Map<String, Object?> _creatorToJson(SeriesCreator creator) => {
   'id': creator.id,
+  'internalId': creator.internalId,
   'name': creator.name,
   'roleName': creator.roleName,
 };
@@ -307,6 +310,7 @@ SeriesCreator? _creatorFromJson(Object? decoded) {
   // named without their roles.
   return SeriesCreator(
     id: _string(decoded['id']),
+    internalId: _string(decoded['internalId']),
     name: name,
     roleName: _string(decoded['roleName']),
   );
@@ -341,6 +345,7 @@ EyeCatchVariant? _variantFromJson(Object? decoded) {
 
 Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'id': episode.id,
+  'internalId': episode.internalId,
   'title': episode.title,
   'orderIndex': episode.orderIndex,
   'price': episode.price,
@@ -357,6 +362,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
   }
   return EpisodeItem(
     id: id,
+    internalId: _string(decoded['internalId']),
     title: _string(decoded['title']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
@@ -538,6 +544,7 @@ SavedReadingPosition? _positionFromJson(Object? decoded) {
 Map<String, Object?> _unsentToJson(UnsentProgress progress) => {
   'readerId': progress.readerId,
   'episodeId': progress.episodeId,
+  'episodeInternalId': progress.episodeInternalId,
   if (progress.seriesId.isNotEmpty) 'seriesId': progress.seriesId,
   if (progress.pageIndex != null) 'pageIndex': progress.pageIndex,
   if (progress.finished) 'finished': true,
@@ -551,13 +558,16 @@ UnsentProgress? _unsentFromJson(Object? decoded) {
   final progress = UnsentProgress(
     readerId: _string(decoded['readerId']),
     episodeId: _string(decoded['episodeId']),
+    episodeInternalId: _string(decoded['episodeInternalId']),
     seriesId: _string(decoded['seriesId']),
     pageIndex: pageIndex is int && pageIndex >= 0 ? pageIndex : null,
     finished: decoded['finished'] == true,
   );
-  // A page is sent under its series, so one without it could never be.
+  // A page is sent under its series, so one without it could never be, and
+  // nothing is sent for an episode the API cannot be told the id of.
   if (progress.readerId.isEmpty ||
       progress.episodeId.isEmpty ||
+      progress.episodeInternalId.isEmpty ||
       (progress.pageIndex != null && progress.seriesId.isEmpty) ||
       progress.isEmpty) {
     return null;

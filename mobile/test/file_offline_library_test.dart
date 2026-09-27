@@ -432,6 +432,7 @@ void main() {
       const UnsentProgress(
         readerId: 'SeedMMBRAAA1',
         episodeId: 'EP1',
+        episodeInternalId: 'internal-EP1',
         seriesId: _seriesId,
         pageIndex: 4,
       ),
@@ -440,6 +441,7 @@ void main() {
       const UnsentProgress(
         readerId: 'SeedMMBRAAA1',
         episodeId: 'EP1',
+        episodeInternalId: 'internal-EP1',
         finished: true,
       ),
     );
@@ -459,6 +461,7 @@ void main() {
       const UnsentProgress(
         readerId: 'SeedMMBRAAA1',
         episodeId: 'EP1',
+        episodeInternalId: 'internal-EP1',
         finished: true,
       ),
     );
@@ -476,6 +479,7 @@ void main() {
     const finish = UnsentProgress(
       readerId: 'SeedMMBRAAA1',
       episodeId: 'EP1',
+      episodeInternalId: 'internal-EP1',
       finished: true,
     );
     final library = open();
@@ -490,7 +494,12 @@ void main() {
     final library = open();
     for (final readerId in ['SeedMMBRAAA1', 'SeedMMBRAAA2']) {
       await library.queueUnsentProgress(
-        UnsentProgress(readerId: readerId, episodeId: 'EP1', finished: true),
+        UnsentProgress(
+          readerId: readerId,
+          episodeId: 'EP1',
+          episodeInternalId: 'internal-EP1',
+          finished: true,
+        ),
       );
     }
 

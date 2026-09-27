@@ -84,6 +84,8 @@ void main() {
     );
     expect(find.text('A stranger read this too.'), findsOneWidget);
     expect(find.text('Another Member'), findsOneWidget);
+    // The route names the episode by its public id; the API is sent its id.
+    expect(comments.episodeIds, [fixtureInternalId(episodeId)]);
   });
 
   testWidgets('an episode nobody has commented on says so', (tester) async {
@@ -295,7 +297,7 @@ void main() {
     );
 
     final sent = comments.reports.single;
-    expect(sent.commentPublicId, 'comment-other');
+    expect(sent.commentId, 'comment-other');
     expect(sent.reason, CommentReportReason.spoiler);
     expect(sent.note, 'It gives the ending away.');
   });

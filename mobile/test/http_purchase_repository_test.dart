@@ -88,13 +88,16 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
     final intent = await repository().startStorePurchase(
-      paidEpisodeId,
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
       InAppPurchaseStore.googlePlay,
     );
     expect(intent.intentId, ConnectFixtureServer.storeIntentId);
     expect(intent.productId, ConnectFixtureServer.storeProductId);
     final request = server.requestsTo('StartStorePurchase').single;
-    expect(request.body['episodePublicId'], paidEpisodeId);
+    expect(
+      request.body['episodeId'],
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+    );
     expect(request.body['store'], 'IN_APP_PURCHASE_STORE_GOOGLE_PLAY');
     expect(request.headers['authorization'], 'Bearer $accessToken');
   });
@@ -105,7 +108,7 @@ void main() {
 
     await expectLater(
       repository().startStorePurchase(
-        paidEpisodeId,
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
         InAppPurchaseStore.appStore,
       ),
       failsWith(PurchaseFailureKind.notSold),
@@ -144,7 +147,7 @@ void main() {
   test('a guest is not sent to the API for a store purchase', () async {
     await expectLater(
       repository().startStorePurchase(
-        paidEpisodeId,
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
         InAppPurchaseStore.appStore,
       ),
       failsWith(PurchaseFailureKind.sessionExpired),
@@ -165,12 +168,20 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
     server.entitledEpisodes = ConnectFixtureServer.populatedEntitledEpisodes();
 
-    expect(await repository().seriesEpisodeAccess(seriesId), {
-      freeEpisodeId: EpisodeAccess.free,
-      paidEpisodeId: EpisodeAccess.entitled,
-    });
+    expect(
+      await repository().seriesEpisodeAccess(
+        ConnectFixtureServer.internalIdOf(seriesId),
+      ),
+      {
+        freeEpisodeId: EpisodeAccess.free,
+        paidEpisodeId: EpisodeAccess.entitled,
+      },
+    );
     final request = server.requestsTo('GetSeriesEpisodeAccess').single;
-    expect(request.body['seriesPublicId'], seriesId);
+    expect(
+      request.body['seriesId'],
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
     expect(request.headers['authorization'], 'Bearer $accessToken');
   });
 
@@ -178,18 +189,25 @@ void main() {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
     expect(
-      await repository().startEpisodeCheckout(paidEpisodeId),
+      await repository().startEpisodeCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      ),
       ConnectFixtureServer.checkoutUrlFor(paidEpisodeId),
     );
     final request = server.requestsTo('StartEpisodeCheckout').single;
     expect(request.body['client'], 'CLIENT_MOBILE');
-    expect(request.body['episodePublicId'], paidEpisodeId);
+    expect(
+      request.body['episodeId'],
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+    );
     expect(request.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a guest is not sent to the API for a checkout', () async {
     await expectLater(
-      repository().startEpisodeCheckout(paidEpisodeId),
+      repository().startEpisodeCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      ),
       failsWith(PurchaseFailureKind.sessionExpired),
     );
     expect(server.requestsTo('StartEpisodeCheckout'), isEmpty);
@@ -200,7 +218,9 @@ void main() {
     server.entitledEpisodes = ConnectFixtureServer.populatedEntitledEpisodes();
 
     await expectLater(
-      repository().startEpisodeCheckout(paidEpisodeId),
+      repository().startEpisodeCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      ),
       failsWith(PurchaseFailureKind.alreadyPurchased),
     );
   });
@@ -209,7 +229,9 @@ void main() {
     accessToken = 'a-token-the-api-no-longer-accepts';
 
     await expectLater(
-      repository().startEpisodeCheckout(paidEpisodeId),
+      repository().startEpisodeCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      ),
       failsWith(PurchaseFailureKind.sessionExpired),
     );
   });
@@ -219,7 +241,9 @@ void main() {
     server.checkoutStatus = HttpStatus.serviceUnavailable;
 
     await expectLater(
-      repository().startEpisodeCheckout(paidEpisodeId),
+      repository().startEpisodeCheckout(
+        ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      ),
       failsWith(PurchaseFailureKind.network),
     );
   });
@@ -230,7 +254,9 @@ void main() {
   });
 
   test('both catalog reads a purchase is offered from name the app', () async {
-    await repository().seriesEpisodeAccess(seriesId);
+    await repository().seriesEpisodeAccess(
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
     await repository().seriesOfEpisode(paidEpisodeId);
 
     expect(

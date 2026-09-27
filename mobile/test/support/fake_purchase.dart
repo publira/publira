@@ -43,9 +43,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Transactions [confirmStorePurchase] recorded, in order.
   final List<String> confirmed = <String>[];
 
-  /// The intent [startStorePurchase] opens for [episodePublicId].
-  static String intentFor(String episodePublicId) =>
-      'intent-$episodePublicId'.toLowerCase();
+  /// The intent [startStorePurchase] opens for [episodeInternalId].
+  static String intentFor(String episodeInternalId) =>
+      'intent-$episodeInternalId'.toLowerCase();
 
   /// What [acceptsPayments] answers.
   bool payments;
@@ -83,7 +83,7 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
-    String seriesPublicId,
+    String seriesInternalId,
   ) async => access;
 
   @override
@@ -97,13 +97,13 @@ class FakePurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<Uri> startEpisodeCheckout(String episodePublicId) async {
-    checkouts.add(episodePublicId);
+  Future<Uri> startEpisodeCheckout(String episodeInternalId) async {
+    checkouts.add(episodeInternalId);
     final failure = checkoutFailure;
     if (failure != null) {
       throw failure;
     }
-    return checkoutUrlFor(episodePublicId);
+    return checkoutUrlFor(episodeInternalId);
   }
 
   @override
@@ -111,16 +111,16 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<StorePurchaseIntent> startStorePurchase(
-    String episodePublicId,
+    String episodeInternalId,
     InAppPurchaseStore store,
   ) async {
-    storeIntents.add(episodePublicId);
+    storeIntents.add(episodeInternalId);
     final failure = storeStartFailure;
     if (failure != null) {
       throw failure;
     }
     return StorePurchaseIntent(
-      intentId: intentFor(episodePublicId),
+      intentId: intentFor(episodeInternalId),
       productId: storeProductId,
     );
   }
@@ -160,8 +160,8 @@ class FakePurchaseRepository implements PurchaseRepository {
     );
   }
 
-  static Uri checkoutUrlFor(String episodePublicId) =>
-      Uri.parse('https://checkout.stripe.test/c/pay/$episodePublicId');
+  static Uri checkoutUrlFor(String episodeInternalId) =>
+      Uri.parse('https://checkout.stripe.test/c/pay/$episodeInternalId');
 }
 
 /// A [CheckoutLauncher] a test reads, so a purchase can be asserted without a

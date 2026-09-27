@@ -17,12 +17,13 @@ abstract class CommentRepository {
   /// tell "this tenant takes no comments" from "nobody could be asked".
   Future<CommentMode> commentMode();
 
-  /// One page of the episode's published comments, newest first.
+  /// One page of the published comments on the episode [episodeInternalId]
+  /// names, newest first.
   ///
   /// [token] is the opaque cursor from a previous page, empty for the newest
   /// one. Throws [CommentFailure].
   Future<EpisodeCommentPage> listComments(
-    String episodePublicId, {
+    String episodeInternalId, {
     String token,
   });
 
@@ -32,20 +33,20 @@ abstract class CommentRepository {
   /// The rows carry no author, because the API does not repeat the caller's
   /// own name back to them; [EpisodeComment.byAuthor] names them. A reader who
   /// is signed out has none. Throws [CommentFailure].
-  Future<List<EpisodeComment>> listMyComments(String episodePublicId);
+  Future<List<EpisodeComment>> listMyComments(String episodeInternalId);
 
   /// Posts one comment as the signed-in reader and returns what was stored.
   ///
   /// [EpisodeComment.awaitingApproval] on the answer is what tells the author
   /// whether anyone else can read it yet. Throws [CommentFailure].
   Future<EpisodeComment> post({
-    required String episodePublicId,
+    required String episodeInternalId,
     required String body,
   });
 
   /// Takes one of the reader's own comments down. It leaves every list, the
   /// author's own included. Throws [CommentFailure].
-  Future<void> withdraw(String commentPublicId);
+  Future<void> withdraw(String commentId);
 
   /// Flags one other reader's comment as breaking the rules.
   ///
@@ -55,7 +56,7 @@ abstract class CommentRepository {
   /// anything else would reveal what the platform has since done about it.
   /// Throws [CommentFailure].
   Future<void> report({
-    required String commentPublicId,
+    required String commentId,
     required CommentReportReason reason,
     String note,
   });

@@ -53,7 +53,7 @@ void main() {
       await pumpApp(tester, AppRoutes.seriesDetailPath(series.id));
       await pumpUntilRouteSettled(tester, find.text('Episodes'));
 
-      expect(views.recorded, ['series:${series.id}']);
+      expect(views.recorded, ['series:${fixtureInternalId(series.id)}']);
     });
 
     testWidgets('records nothing while the age rating gate stands', (
@@ -73,7 +73,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
       await pumpUntilRouteSettled(tester, find.text('Episodes'));
 
-      expect(views.recorded, ['series:${fixtureRatedSeries.id}']);
+      expect(views.recorded, [
+        'series:${fixtureInternalId(fixtureRatedSeries.id)}',
+      ]);
     });
 
     testWidgets('records nothing for a series the API does not show', (
@@ -98,7 +100,7 @@ void main() {
       await pumpApp(tester, AppRoutes.seriesDetailPath(series.id));
       await pumpUntilRouteSettled(tester, find.text('Episodes'));
 
-      expect(views.recorded, ['series:${series.id}']);
+      expect(views.recorded, ['series:${fixtureInternalId(series.id)}']);
       expect(find.byKey(const ValueKey('series-detail-error')), findsNothing);
     });
   });
@@ -111,7 +113,7 @@ void main() {
       );
       await pumpUntilFound(tester, pageView);
 
-      expect(views.recorded, ['episode:$firstEpisode']);
+      expect(views.recorded, ['episode:${fixtureInternalId(firstEpisode)}']);
     });
 
     testWidgets('records the series beneath only once the reader goes back', (
@@ -123,12 +125,15 @@ void main() {
       );
       await pumpUntilFound(tester, pageView);
 
-      expect(views.recorded, ['episode:$firstEpisode']);
+      expect(views.recorded, ['episode:${fixtureInternalId(firstEpisode)}']);
 
       router.pop();
       await pumpUntilRouteSettled(tester, find.text('Episodes'));
 
-      expect(views.recorded, ['episode:$firstEpisode', 'series:${series.id}']);
+      expect(views.recorded, [
+        'episode:${fixtureInternalId(firstEpisode)}',
+        'series:${fixtureInternalId(series.id)}',
+      ]);
     });
 
     testWidgets('records the next episode the reader moves on to', (
@@ -152,8 +157,8 @@ void main() {
       await pumpUntilNoPendingFrameCallbacks(tester);
 
       expect(views.recorded, [
-        'episode:$firstEpisode',
-        'episode:${series.id}-ep-2',
+        'episode:${fixtureInternalId(firstEpisode)}',
+        'episode:${fixtureInternalId('${series.id}-ep-2')}',
       ]);
     });
 
@@ -170,7 +175,7 @@ void main() {
         find.byKey(const ValueKey('episode-locked')),
       );
 
-      expect(views.recorded, ['episode:$firstEpisode']);
+      expect(views.recorded, ['episode:${fixtureInternalId(firstEpisode)}']);
     });
 
     testWidgets('records nothing while the age rating gate stands', (
@@ -191,7 +196,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('age-rating-confirm')));
       await pumpUntilFound(tester, pageView);
 
-      expect(views.recorded, ['episode:$firstEpisode']);
+      expect(views.recorded, ['episode:${fixtureInternalId(firstEpisode)}']);
     });
 
     testWidgets('still opens when the view could not be recorded', (
@@ -204,7 +209,7 @@ void main() {
       );
       await pumpUntilFound(tester, pageView);
 
-      expect(views.recorded, ['episode:$firstEpisode']);
+      expect(views.recorded, ['episode:${fixtureInternalId(firstEpisode)}']);
       expect(find.text('1 / 3'), findsOneWidget);
     });
   });

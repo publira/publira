@@ -5,6 +5,7 @@ import 'package:publira/models/series_item.dart';
 class PublishedCreator {
   const PublishedCreator({
     required this.id,
+    this.internalId = '',
     required this.name,
     this.profileText = '',
     this.iconUrl,
@@ -14,6 +15,9 @@ class PublishedCreator {
 
   /// Public id (`public_id`), used as the route parameter.
   final String id;
+
+  /// Internal id (`id`), which following the creator takes.
+  final String internalId;
   final String name;
 
   /// What the creator wrote about themselves. Empty when they have published

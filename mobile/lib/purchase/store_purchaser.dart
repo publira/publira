@@ -103,12 +103,12 @@ class StorePurchaser {
     }
   }
 
-  /// Opens the payment sheet for [episodePublicId].
+  /// Opens the payment sheet for the episode [episodeInternalId] names.
   ///
   /// Throws [PurchaseFailure]: [PurchaseFailureKind.storeUnavailable] when the
   /// device cannot pay, [PurchaseFailureKind.notSold] when the store has no
   /// product for the episode, and whatever [PurchaseRepository] throws.
-  Future<StorePurchaseOutcome> buy(String episodePublicId) async {
+  Future<StorePurchaseOutcome> buy(String episodeInternalId) async {
     if (_open != null) {
       throw const PurchaseFailure(
         PurchaseFailureKind.unexpected,
@@ -122,7 +122,10 @@ class StorePurchaser {
     // unfinished transaction of, so one the server can take now is cleared
     // before a new order of the same price.
     await reconcile();
-    final intent = await repository.startStorePurchase(episodePublicId, store);
+    final intent = await repository.startStorePurchase(
+      episodeInternalId,
+      store,
+    );
     final product = await _product(intent.productId);
     final open = _OpenPurchase(intent);
     _open = open;

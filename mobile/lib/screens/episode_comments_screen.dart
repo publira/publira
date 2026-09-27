@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/comments/own_comments.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_comment.dart';
+import 'package:publira/models/episode_detail.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
@@ -34,11 +37,15 @@ class _Section {
     required this.mode,
     required this.page,
     required this.comments,
+    this.episodeInternalId = '',
     this.ownFailure,
   });
 
   final CommentMode mode;
   final EpisodeCommentPage page;
+
+  /// Internal id of the episode, which a posted comment is sent with.
+  final String episodeInternalId;
 
   /// The public page with the reader's own comments placed among it by date.
   final List<EpisodeComment> comments;
@@ -112,6 +119,26 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
     }
   }
 
+  /// The internal id of the episode the route names by its public id, which
+  /// every comment request takes.
+  Future<String> _episodeInternalId(CatalogRepository catalog) async {
+    final EpisodeDetail? detail;
+    try {
+      detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    } on CatalogFailure catch (failure) {
+      throw CommentFailure(switch (failure.kind) {
+        CatalogFailureKind.network ||
+        CatalogFailureKind.notSaved => CommentFailureKind.network,
+        CatalogFailureKind.sessionExpired => CommentFailureKind.sessionExpired,
+        _ => CommentFailureKind.unexpected,
+      }, message: failure.message);
+    }
+    if (detail == null) {
+      throw const CommentFailure(CommentFailureKind.gone);
+    }
+    return detail.episode.internalId;
+  }
+
   Future<_Section> _load() async {
     final comments = CommentScope.maybeOf(context);
     if (comments == null) {
@@ -122,13 +149,16 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
       );
     }
     final viewer = _viewer;
+    final episodeInternalId = await _episodeInternalId(
+      CatalogScope.of(context),
+    );
 
     // All three reads are started before any is awaited: none depends on
     // another, and a reader made to wait out three round trips in a row would
     // see the list that much later for it.
-    final ownRead = _guarded(comments.listMyComments(widget.episodeId));
+    final ownRead = _guarded(comments.listMyComments(episodeInternalId));
     final pageRead = _guarded(
-      comments.listComments(widget.episodeId, token: _token),
+      comments.listComments(episodeInternalId, token: _token),
     );
     final mode = await comments.commentMode();
 
@@ -146,6 +176,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
     return _Section(
       mode: mode,
       page: page,
+      episodeInternalId: episodeInternalId,
       comments: mergeOwnComments(page, [
         if (own != null && viewer != null)
           for (final comment in own)
@@ -251,7 +282,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
         if (comments != null && viewer != null)
           _CommentForm(
             comments: comments,
-            episodeId: widget.episodeId,
+            episodeInternalId: section.episodeInternalId,
             onPosted: _reload,
           )
         else
@@ -347,12 +378,12 @@ class _SignInPrompt extends StatelessWidget {
 class _CommentForm extends StatefulWidget {
   const _CommentForm({
     required this.comments,
-    required this.episodeId,
+    required this.episodeInternalId,
     required this.onPosted,
   });
 
   final CommentRepository comments;
-  final String episodeId;
+  final String episodeInternalId;
 
   /// The list has a comment in it that was not there before.
   final VoidCallback onPosted;
@@ -396,7 +427,7 @@ class _CommentFormState extends State<_CommentForm> {
     });
     try {
       final posted = await widget.comments.post(
-        episodePublicId: widget.episodeId,
+        episodeInternalId: widget.episodeInternalId,
         body: body,
       );
       if (!mounted) {
@@ -551,7 +582,7 @@ class _CommentTileState extends State<_CommentTile> {
     });
     try {
       await comments.report(
-        commentPublicId: widget.comment.id,
+        commentId: widget.comment.id,
         reason: report.reason,
         note: report.note,
       );

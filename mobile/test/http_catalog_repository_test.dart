@@ -504,6 +504,19 @@ void main() {
     expect(detail!.ageRating, SeriesAgeRating.r18);
   });
 
+  test('getSeries carries the internal ids the API answers with', () async {
+    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+
+    expect(
+      detail!.series.internalId,
+      ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+    );
+    expect(
+      detail.episodes.first.internalId,
+      ConnectFixtureServer.internalIdOf(detail.episodes.first.id),
+    );
+  });
+
   test('getSeries carries the cover renditions of the series', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -1932,17 +1945,26 @@ void main() {
       await signedIn.getReadingPosition(
         ConnectFixtureServer.seedSeriesId,
         episodeId,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
       );
       await signedIn.saveReadingPosition(
         ConnectFixtureServer.seedSeriesId,
         episodeId,
         4,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
       );
-      await signedIn.markEpisodeAsRead(episodeId);
+      await signedIn.markEpisodeAsRead(
+        episodeId,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
+      );
       await signedIn.listRecentSeries(limit: 6);
       await signedIn.listEpisodeReads(limit: 20);
-      await signedIn.getEpisodeReaction(episodeId);
-      await signedIn.reactToEpisode(episodeId);
+      await signedIn.getEpisodeReaction(
+        ConnectFixtureServer.internalIdOf(episodeId),
+      );
+      await signedIn.reactToEpisode(
+        ConnectFixtureServer.internalIdOf(episodeId),
+      );
 
       final calls = server.requests.where(
         (request) =>
@@ -1971,6 +1993,9 @@ void main() {
         await signedIn.getReadingPosition(
           ConnectFixtureServer.seedSeriesId,
           ConnectFixtureServer.seedEpisodeId,
+          episodeInternalId: ConnectFixtureServer.internalIdOf(
+            ConnectFixtureServer.seedEpisodeId,
+          ),
         ),
         11,
       );
@@ -1981,6 +2006,9 @@ void main() {
         await signedIn.getReadingPosition(
           ConnectFixtureServer.seedSeriesId,
           ConnectFixtureServer.paidEpisodeId,
+          episodeInternalId: ConnectFixtureServer.internalIdOf(
+            ConnectFixtureServer.paidEpisodeId,
+          ),
         ),
         isNull,
       );
@@ -1991,6 +2019,9 @@ void main() {
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
         4,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        ),
       );
 
       expect(server.readingPositions[ConnectFixtureServer.seedEpisodeId], 4);
@@ -2006,7 +2037,12 @@ void main() {
     });
 
     test('markEpisodeAsRead records the finish against the episode', () async {
-      await signedIn.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId);
+      await signedIn.markEpisodeAsRead(
+        ConnectFixtureServer.seedEpisodeId,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+      );
 
       expect(server.episodeReads.keys, [ConnectFixtureServer.seedEpisodeId]);
       final recorded = server.requestsTo('MarkEpisodeAsRead').single;
@@ -2029,7 +2065,12 @@ void main() {
         server.markReadErrorCode = code;
 
         expect(
-          () => signedIn.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId),
+          () => signedIn.markEpisodeAsRead(
+            ConnectFixtureServer.seedEpisodeId,
+            episodeInternalId: ConnectFixtureServer.internalIdOf(
+              ConnectFixtureServer.seedEpisodeId,
+            ),
+          ),
           throwsA(
             isA<CatalogFailure>().having(
               (failure) => failure.refused,
@@ -2142,6 +2183,9 @@ void main() {
         await catalog.getReadingPosition(
           ConnectFixtureServer.seedSeriesId,
           ConnectFixtureServer.seedEpisodeId,
+          episodeInternalId: ConnectFixtureServer.internalIdOf(
+            ConnectFixtureServer.seedEpisodeId,
+          ),
         ),
         isNull,
       );
@@ -2149,8 +2193,16 @@ void main() {
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
         4,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        ),
       );
-      await catalog.markEpisodeAsRead(ConnectFixtureServer.seedEpisodeId);
+      await catalog.markEpisodeAsRead(
+        ConnectFixtureServer.seedEpisodeId,
+        episodeInternalId: ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        ),
+      );
       expect((await catalog.listRecentSeries(limit: 6)).series, isEmpty);
       expect((await catalog.listEpisodeReads(limit: 20)).reads, isEmpty);
 
@@ -2172,6 +2224,9 @@ void main() {
         () => signedIn.getReadingPosition(
           ConnectFixtureServer.seedSeriesId,
           ConnectFixtureServer.seedEpisodeId,
+          episodeInternalId: ConnectFixtureServer.internalIdOf(
+            ConnectFixtureServer.seedEpisodeId,
+          ),
         ),
         throwsA(
           isA<CatalogFailure>().having(
