@@ -244,7 +244,6 @@ export const updateTenantTimezoneAction = async (
   return {
     message: t("admin.settings.timezone.saved"),
     ok: true,
-    timezone: result.timezone,
   };
 };
 
@@ -300,7 +299,6 @@ export const updateTenantDefaultLocaleAction = async (
   updateTag(tenantDefaultLocaleCacheTag(tenantId));
 
   return {
-    defaultLocale: result.defaultLocale,
     message: t("admin.settings.default_locale.saved"),
     ok: true,
   };
@@ -362,8 +360,6 @@ export const updateTenantCommentSettingsAction = async (
   updateTag(tenantCommentSettingsCacheTag(tenantId));
 
   return {
-    autoHideReportThreshold: result.autoHideReportThreshold,
-    commentMode: result.commentMode,
     message: t("admin.settings.comments.saved"),
     ok: true,
   };
@@ -417,7 +413,6 @@ export const updateTenantAgeVerificationAction = async (
   updateTag(tenantAgeVerificationCacheTag(tenantId));
 
   return {
-    ageVerification: result.ageVerification,
     message: t("admin.settings.age_verification.saved"),
     ok: true,
   };

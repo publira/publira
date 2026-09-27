@@ -1,5 +1,3 @@
-import type { RoyaltyClosePolicy } from "#lib/royalty-period";
-
 export type CloseRoyaltyStatementActionState = {
   message: string;
   ok: false;
@@ -13,7 +11,6 @@ export type RoyaltyCloseSettingsFormState =
   | {
       ok: true;
       message: string;
-      policy: RoyaltyClosePolicy;
     }
   | {
       ok: false;

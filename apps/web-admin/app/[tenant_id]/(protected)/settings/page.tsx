@@ -1,4 +1,3 @@
-import { getLocaleLabel, getLocales } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -40,17 +39,8 @@ import { SiteSettingsForm } from "./_components/site-settings-form";
 import { TenantAgeVerificationForm } from "./_components/tenant-age-verification-form";
 import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
 import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
-import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
-import {
-  updateSiteSettingsAction,
-  updateTenantAgeVerificationAction,
-  updateTenantCommentSettingsAction,
-  updateTenantDefaultLocaleAction,
-  updateTenantLegalPagesAction,
-  updateTenantTimezoneAction,
-} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -99,12 +89,6 @@ const SettingsFormsSkeleton = () => (
   </AdminSections>
 );
 
-const tenantDefaultLocaleOptions = (): TenantDefaultLocaleFormOption[] =>
-  getLocales().map((value) => ({
-    label: getLocaleLabel(value),
-    locale: value,
-  }));
-
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
@@ -118,7 +102,6 @@ const SettingsForms = async () => {
     legalPagesResult,
     publishedPagesResult,
     currentUserResult,
-    options,
   ] = await Promise.all([
     getTenantSiteSettings(tenantId, locale),
     getTenantTimezone(tenantId, locale),
@@ -128,7 +111,6 @@ const SettingsForms = async () => {
     getTenantLegalPages(tenantId, locale),
     listPublishedPages(tenantId, locale),
     getAdminCurrentUser(tenantId),
-    tenantDefaultLocaleOptions(),
   ]);
 
   await redirectToLoginIfSessionRejected(
@@ -150,8 +132,8 @@ const SettingsForms = async () => {
     <AdminSections>
       {settingsResult.ok ? (
         <SiteSettingsForm
-          action={updateSiteSettingsAction}
           initialSettings={settingsResult.settings}
+          tenantId={tenantId}
         />
       ) : (
         <SectionError>
@@ -169,16 +151,15 @@ const SettingsForms = async () => {
       )}
 
       <TenantTimezoneForm
-        action={updateTenantTimezoneAction}
         canEdit={canEdit}
         initialTimezone={timezoneResult.timezone}
         loadErrorMessage={
           timezoneResult.ok ? undefined : timezoneResult.message
         }
+        tenantId={tenantId}
       />
 
       <TenantDefaultLocaleForm
-        action={updateTenantDefaultLocaleAction}
         canEdit={canEdit}
         initialDefaultLocale={
           defaultLocaleResult.ok ? defaultLocaleResult.defaultLocale : undefined
@@ -186,11 +167,10 @@ const SettingsForms = async () => {
         loadErrorMessage={
           defaultLocaleResult.ok ? undefined : defaultLocaleResult.message
         }
-        options={options}
+        tenantId={tenantId}
       />
 
       <TenantCommentSettingsForm
-        action={updateTenantCommentSettingsAction}
         canEdit={canEdit}
         initialSettings={
           commentSettingsResult.ok ? commentSettingsResult : undefined
@@ -198,10 +178,10 @@ const SettingsForms = async () => {
         loadErrorMessage={
           commentSettingsResult.ok ? undefined : commentSettingsResult.message
         }
+        tenantId={tenantId}
       />
 
       <TenantAgeVerificationForm
-        action={updateTenantAgeVerificationAction}
         canEdit={canEdit}
         initialAgeVerification={
           ageVerificationResult.ok
@@ -211,10 +191,10 @@ const SettingsForms = async () => {
         loadErrorMessage={
           ageVerificationResult.ok ? undefined : ageVerificationResult.message
         }
+        tenantId={tenantId}
       />
 
       <TenantLegalPagesForm
-        action={updateTenantLegalPagesAction}
         canEdit={canEdit}
         initialPages={legalPagesResult.ok ? legalPagesResult.pages : undefined}
         loadErrorMessage={
@@ -236,6 +216,7 @@ const SettingsForms = async () => {
               }))
             : []
         }
+        tenantId={tenantId}
       />
     </AdminSections>
   );

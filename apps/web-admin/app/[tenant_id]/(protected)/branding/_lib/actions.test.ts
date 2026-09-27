@@ -224,7 +224,6 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      icon: storedImage("/images/tenants/icon-1"),
       message: "The icon was saved.",
       ok: true,
     });
@@ -253,7 +252,6 @@ describe("updateTenantIconAction", () => {
     );
 
     expect(result).toEqual({
-      icon: null,
       message: "The icon was deleted.",
       ok: true,
     });
@@ -371,7 +369,6 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      logo: storedImage("/images/tenants/logo-1"),
       message: "The logo was saved.",
       ok: true,
     });
@@ -400,7 +397,6 @@ describe("updateTenantLogoAction", () => {
     );
 
     expect(result).toEqual({
-      logo: null,
       message: "The logo was deleted.",
       ok: true,
     });

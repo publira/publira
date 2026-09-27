@@ -85,6 +85,5 @@ export const updateRoyaltyCloseSettingsAction = async (
   return {
     message: t("admin.settings.royalties.saved"),
     ok: true,
-    policy: result.policy,
   };
 };

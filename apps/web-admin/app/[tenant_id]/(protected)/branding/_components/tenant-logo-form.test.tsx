@@ -7,33 +7,43 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
-  render as renderBase,
+  render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
-
+import type { TenantLogoActionState } from "../branding-types";
 import { TenantLogoForm } from "./tenant-logo-form";
 
-vi.mock("#components/client-message", () => ({
-  ClientMessage: ({
+const { save } = vi.hoisted(() => ({
+  save: {
+    calls: [] as FormData[],
+    current: Promise.withResolvers<TenantLogoActionState>(),
+  },
+}));
+
+vi.mock("../_lib/actions", () => ({
+  updateTenantLogoAction: (_state: TenantLogoActionState, data: FormData) => {
+    save.calls.push(data);
+    return save.current.promise;
+  },
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({
     message,
     values,
   }: {
     message: MessageKey<SharedMessages>;
     values?: MessageValues;
   }) => bindMessages(sharedCatalog("en"))(message, values),
-  useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
-
-const noopAction = vi.fn();
 
 const brandingImage = (url: string) => ({
   updatedAt: "2026-08-19T00:00:00Z",
@@ -50,24 +60,21 @@ const brandingImage = (url: string) => ({
   ],
 });
 
-const render = (ui: ReactNode) =>
-  renderBase(ui, {
-    wrapper: ({ children }) => (
-      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-    ),
-  });
-
 afterEach(() => {
   cleanup();
+  // A submission left in flight would hold back the next test's transitions.
+  save.current.resolve(null);
+  save.current = Promise.withResolvers<TenantLogoActionState>();
+  save.calls = [];
 });
 
 describe("TenantLogoForm", () => {
-  it("previews the saved logo and offers to remove it", () => {
+  it("previews the saved icon and offers to remove it", async () => {
     render(
-      <TenantLogoForm
-        action={noopAction}
-        initialLogo={brandingImage("/images/tenants/logo-1")}
-      />
+      await TenantLogoForm({
+        logo: brandingImage("/images/tenants/logo-1"),
+        tenantId: "TENANT001",
+      })
     );
 
     expect(
@@ -78,154 +85,71 @@ describe("TenantLogoForm", () => {
     expect(screen.getByRole("button", { name: "Delete" })).toBeDefined();
   });
 
-  it("shows neither the preview nor the remove action when nothing is set", () => {
-    render(<TenantLogoForm action={noopAction} initialLogo={null} />);
+  it("shows neither the preview nor the remove action when nothing is set", async () => {
+    render(await TenantLogoForm({ logo: null, tenantId: "TENANT001" }));
 
     expect(screen.queryByAltText("Current logo")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
     expect(screen.getByText("No logo is set.")).toBeDefined();
   });
 
-  it("tells upload and removal apart by the intent of the same form", () => {
-    render(
-      <TenantLogoForm
-        action={noopAction}
-        initialLogo={brandingImage("/images/tenants/logo-1")}
-      />
-    );
-
-    const submit = screen.getByRole<HTMLButtonElement>("button", {
-      name: "Save the logo",
-    });
-
-    expect(submit.name).toBe("intent");
-    expect(submit.value).toBe("upload");
-
-    const remove = screen.getByRole<HTMLButtonElement>("button", {
-      name: "Delete the logo",
-    });
-
-    expect(remove.name).toBe("intent");
-    expect(remove.value).toBe("delete");
-  });
-
-  it("reflects the saved logo in the preview once the save succeeds", async () => {
-    const action = vi.fn().mockResolvedValue({
-      logo: brandingImage("/images/tenants/logo-2"),
-      message: "The logo was saved.",
-      ok: true,
-    });
-
-    render(
-      <TenantLogoForm
-        action={action}
-        initialLogo={brandingImage("/images/tenants/logo-1")}
-      />
-    );
+  it("posts the upload with the upload intent", async () => {
+    render(await TenantLogoForm({ logo: null, tenantId: "TENANT001" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
 
     await waitFor(() => {
-      expect(
-        screen
-          .getByAltText<HTMLImageElement>("Current logo")
-          .src.includes("logo-2")
-      ).toBe(true);
+      expect(save.calls).toHaveLength(1);
     });
+    expect(save.calls[0]?.get("intent")).toBe("upload");
+    expect(save.calls[0]?.get("tenant_id")).toBe("TENANT001");
   });
 
-  it("keeps the last saved logo when the submission fails", async () => {
-    // A failed Action state carries no logo, so deriving the preview from it
-    // would blank out an image that is still stored. What the form holds on to
-    // is the last image that saved.
-    const action = vi
-      .fn()
-      .mockResolvedValueOnce({
-        logo: brandingImage("/images/tenants/logo-2"),
-        message: "The logo was saved.",
-        ok: true,
+  it("posts the removal with the delete intent once it is confirmed, and reports it", async () => {
+    render(
+      await TenantLogoForm({
+        logo: brandingImage("/images/tenants/logo-1"),
+        tenantId: "TENANT001",
       })
-      .mockResolvedValueOnce({
-        message: "Could not save the logo.",
-        ok: false,
-      });
-
-    render(
-      <TenantLogoForm
-        action={action}
-        initialLogo={brandingImage("/images/tenants/logo-1")}
-      />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
-      expect(
-        screen
-          .getByAltText<HTMLImageElement>("Current logo")
-          .src.includes("logo-2")
-      ).toBe(true);
+      expect(save.calls).toHaveLength(1);
     });
-    // The preview adopts the saved image as soon as the Action resolves, which
-    // is before the submission itself settles. Retry for the submit button
-    // instead of reading it synchronously, or the second click races the
-    // pending render that still labels it "Saving...".
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Save the logo" })
-    );
+    expect(save.calls[0]?.get("intent")).toBe("delete");
+    expect(save.calls[0]?.get("tenant_id")).toBe("TENANT001");
 
-    await waitFor(() => {
-      expect(screen.getByText("Could not save the logo.")).toBeDefined();
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
-    });
-    expect(
-      screen
-        .getByAltText<HTMLImageElement>("Current logo")
-        .src.includes("logo-2")
-    ).toBe(true);
+    save.current.resolve({ message: "The logo was deleted.", ok: true });
+    expect(await screen.findByText("The logo was deleted.")).toBeDefined();
   });
 
-  it("follows the new preview when it is remounted by key", () => {
-    // The card holds the last confirmed logo for the life of the mount, so a
-    // caller that has to seed it again remounts the form with a changed `key`.
-    const { rerender } = render(
-      <TenantLogoForm action={noopAction} initialLogo={null} key="unset" />
-    );
+  it("shows why the save was refused", async () => {
+    render(await TenantLogoForm({ logo: null, tenantId: "TENANT001" }));
 
-    rerender(
-      <TenantLogoForm
-        action={noopAction}
-        initialLogo={brandingImage("/images/tenants/logo-2")}
-        key="logo-2"
-      />
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
+    save.current.resolve({ message: "Could not save the logo.", ok: false });
 
-    expect(
-      screen
-        .getByAltText<HTMLImageElement>("Current logo")
-        .src.includes("logo-2")
-    ).toBe(true);
+    expect(await screen.findByText("Could not save the logo.")).toBeDefined();
   });
 
   // The Action carries the file picked when the form was submitted, and React
   // resets the form once it settles, so a file picked while it is in flight
   // would be neither saved nor kept.
   it("closes the file field while the save is in flight", async () => {
-    // Never resolved: the assertions are about the window the save is open in.
-    const pendingAction = vi.fn(() => Promise.withResolvers<never>().promise);
-
-    render(<TenantLogoForm action={pendingAction} initialLogo={null} />);
+    render(await TenantLogoForm({ logo: null, tenantId: "TENANT001" }));
 
     const file = screen.getByLabelText<HTMLInputElement>("Logo image");
 
-    expect(file.disabled).toBe(false);
+    expect(file.matches(":disabled")).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Save the logo" }));
 
     await waitFor(() => {
-      expect(file.disabled).toBe(true);
+      expect(file.matches(":disabled")).toBe(true);
     });
   });
 });

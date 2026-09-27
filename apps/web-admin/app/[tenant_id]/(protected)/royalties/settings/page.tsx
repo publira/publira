@@ -24,7 +24,6 @@ import { getRoyaltyClosePolicy } from "#lib/royalties";
 import { getTenantId } from "#lib/tenant-id";
 
 import { RoyaltyCloseSettingsForm } from "./_components/royalty-close-settings-form";
-import { updateRoyaltyCloseSettingsAction } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -58,12 +57,12 @@ const RoyaltyCloseSettingsSection = async () => {
 
   return (
     <RoyaltyCloseSettingsForm
-      action={updateRoyaltyCloseSettingsAction}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
       initialPolicy={policyResult.ok ? policyResult.policy : undefined}
       loadErrorMessage={policyResult.ok ? undefined : policyResult.message}
+      tenantId={tenantId}
     />
   );
 };

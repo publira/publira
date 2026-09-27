@@ -1,19 +1,19 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -22,135 +22,103 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
 
-import type { EmailChangeActionState } from "../settings-types";
+import { requestEmailChangeAction } from "../_lib/actions";
 
 interface EmailChangeFormProps {
-  action: (
-    prevState: EmailChangeActionState,
-    formData: FormData
-  ) => Promise<EmailChangeActionState>;
+  tenantId: string;
 }
 
-export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [currentEmail, setCurrentEmail] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
+export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
+  <AdminSection>
+    <AdminSectionHeader>
+      <AdminSectionHeading>
+        <AdminSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="admin.settings.email_change.title" />
+          </Suspense>
+        </AdminSectionTitle>
+        <AdminSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.email_change.description" />
+          </Suspense>
+        </AdminSectionDescription>
+      </AdminSectionHeading>
+    </AdminSectionHeader>
+    <ActionForm action={requestEmailChangeAction} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
 
-  const handleCurrentEmailChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentEmail(event.target.value);
-    },
-    []
-  );
-
-  const handleNewEmailChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setNewEmail(event.target.value);
-    },
-    []
-  );
-
-  const handleCurrentPasswordChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentPassword(event.target.value);
-    },
-    []
-  );
-
-  return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
-            <ClientMessage message="admin.settings.email_change.title" />
-          </AdminSectionTitle>
-          <AdminSectionDescription>
-            <ClientMessage message="admin.settings.email_change.description" />
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
-      <form action={formAction} className="grid gap-4">
-        <input name="tenant_id" type="hidden" value={tenantId} />
-
+      <ActionFormFieldset className="grid gap-4">
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.settings.email_change.current_email" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="admin.settings.email_change.current_email" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               autoComplete="email"
-              disabled={isPending}
               name="current_email"
-              onChange={handleCurrentEmailChange}
               placeholder="current@example.com"
               required
               type="email"
-              value={currentEmail}
             />
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.settings.email_change.new_email" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="admin.settings.email_change.new_email" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               autoComplete="email"
-              disabled={isPending}
               name="new_email"
-              onChange={handleNewEmailChange}
               placeholder="new@example.com"
               required
               type="email"
-              value={newEmail}
             />
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.settings.email_change.current_password" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.settings.email_change.current_password" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               autoComplete="current-password"
-              disabled={isPending}
               name="current_password"
-              onChange={handleCurrentPasswordChange}
               placeholder="••••••••"
               required
               type="password"
-              value={currentPassword}
             />
             <FieldDescription>
-              <ClientMessage message="admin.settings.email_change.password_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.settings.email_change.password_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
+      </ActionFormFieldset>
 
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
-
-        <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={isPending} type="submit">
+      <div className="mt-2 flex justify-end gap-2">
+        <ActionFormSubmit>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <ActionFormIdle>
-              <ClientMessage message="admin.settings.email_change.submit" />
+              <Message message="admin.settings.email_change.submit" />
             </ActionFormIdle>
             <ActionFormPending>
-              <ClientMessage message="admin.settings.email_change.submitting" />
+              <Message message="admin.settings.email_change.submitting" />
             </ActionFormPending>
-          </Button>
-        </div>
-      </form>
-    </AdminSection>
-  );
-};
+          </Suspense>
+        </ActionFormSubmit>
+      </div>
+    </ActionForm>
+  </AdminSection>
+);

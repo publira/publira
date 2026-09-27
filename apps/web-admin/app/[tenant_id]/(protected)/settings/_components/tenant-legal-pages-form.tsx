@@ -1,18 +1,15 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import {
-  Combobox,
   ComboboxEmpty,
-  ComboboxInput,
   ComboboxItems,
   ComboboxPopup,
 } from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -20,8 +17,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState, useId, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -30,27 +27,18 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import type {
-  TenantLegalPage,
-  TenantLegalPages,
-} from "#lib/tenant-legal-pages-shared";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import type { TenantLegalPages } from "#lib/tenant-legal-pages-shared";
 
-import type { TenantLegalPagesActionState } from "../settings-types";
-
-/** A published page the tenant can nominate. */
-export interface LegalPageOption {
-  pageId: string;
-  slug: string;
-  title: string;
-}
+import { updateTenantLegalPagesAction } from "../_lib/actions";
+import {
+  LegalPageCombobox,
+  LegalPagePicker,
+  LegalPageWhileSelected,
+} from "./tenant-legal-page-picker";
+import type { LegalPageOption } from "./tenant-legal-page-picker";
 
 interface TenantLegalPagesFormProps {
-  action: (
-    prevState: TenantLegalPagesActionState,
-    formData: FormData
-  ) => Promise<TenantLegalPagesActionState>;
   canEdit: boolean;
   /** The saved nominations, absent when the read failed. */
   initialPages?: TenantLegalPages;
@@ -58,178 +46,147 @@ interface TenantLegalPagesFormProps {
   /** Every published page of the tenant. */
   publishedPages: LegalPageOption[];
   pagesErrorMessage?: string;
+  tenantId: string;
 }
 
-/**
- * "None" first, then every published page. The nominated page is always
- * offered even when the list lacks it — marked when it has been unpublished —
- * so the saved value stays shown and saving the other role does not drop it.
- */
-const useLegalPageItems = (
-  publishedPages: LegalPageOption[],
-  nominated: TenantLegalPage | undefined
-): ComboboxItem[] => {
-  const t = useClientMessages();
-
-  return useMemo(() => {
-    const items: ComboboxItem[] = [
-      { label: t("admin.settings.legal_pages.none"), value: "" },
-      ...publishedPages.map((page) => ({
-        label: t("admin.settings.legal_pages.option", {
-          slug: page.slug,
-          title: page.title,
-        }),
-        value: page.pageId,
-      })),
-    ];
-    if (
-      nominated &&
-      !publishedPages.some((page) => page.pageId === nominated.pageId)
-    ) {
-      const values = { slug: nominated.slug, title: nominated.title };
-      items.push({
-        label: nominated.published
-          ? t("admin.settings.legal_pages.option", values)
-          : t("admin.settings.legal_pages.option_unpublished", values),
-        value: nominated.pageId,
-      });
-    }
-    return items;
-  }, [nominated, publishedPages, t]);
-};
-
-const LegalPageField = ({
-  description,
-  disabled,
-  label,
-  name,
-  nominated,
-  onValueChange,
-  publishedPages,
-  value,
-}: {
-  description: ReactNode;
-  disabled: boolean;
-  label: ReactNode;
-  name: string;
-  nominated: TenantLegalPage | undefined;
-  onValueChange: (next: string) => void;
-  publishedPages: LegalPageOption[];
-  value: string;
-}) => {
-  const t = useClientMessages();
-  // Combobox renders its own input rather than a Field control, so the label
-  // needs an id to point at.
-  const comboboxId = useId();
-  const items = useLegalPageItems(publishedPages, nominated);
-  const unpublished =
-    nominated !== undefined &&
-    !nominated.published &&
-    value === nominated.pageId;
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={comboboxId}>{label}</FieldLabel>
-      <FieldContent>
-        <Combobox
-          disabled={disabled}
-          id={comboboxId}
-          items={items}
-          onValueChange={onValueChange}
-          value={value}
-        >
-          <ComboboxInput
-            placeholder={t("admin.settings.legal_pages.placeholder")}
-          />
-          <ComboboxPopup>
-            <ComboboxEmpty>
-              <ClientMessage message="admin.settings.legal_pages.empty" />
-            </ComboboxEmpty>
-            <ComboboxItems />
-          </ComboboxPopup>
-        </Combobox>
-        <input name={name} type="hidden" value={value} />
-        {unpublished ? (
-          <FormMessage variant="destructive">
-            <ClientMessage
-              message="admin.settings.legal_pages.unpublished"
-              values={{ title: nominated.title }}
-            />
-          </FormMessage>
-        ) : null}
-        <FieldDescription>{description}</FieldDescription>
-      </FieldContent>
-    </Field>
-  );
-};
-
 export const TenantLegalPagesForm = ({
-  action,
   canEdit,
   initialPages,
   loadErrorMessage,
   pagesErrorMessage,
   publishedPages,
+  tenantId,
 }: TenantLegalPagesFormProps) => {
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [termsPageId, setTermsPageId] = useState(
-    initialPages?.termsPage?.pageId ?? ""
-  );
-  const [privacyPageId, setPrivacyPageId] = useState(
-    initialPages?.privacyPage?.pageId ?? ""
-  );
-
+  const termsPage = initialPages?.termsPage;
+  const privacyPage = initialPages?.privacyPage;
   // Without the saved nominations a save would clear them, and without the
   // page list the pickers could offer nothing but "None".
   const fieldsDisabled =
     !canEdit || Boolean(loadErrorMessage) || Boolean(pagesErrorMessage);
-  const controlsDisabled = fieldsDisabled || isPending;
 
   return (
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <ClientMessage message="admin.settings.legal_pages.title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+              <Message message="admin.settings.legal_pages.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <ClientMessage message="admin.settings.legal_pages.description" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.settings.legal_pages.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form action={formAction} className="grid gap-4 sm:max-w-lg">
+      <ActionForm
+        action={updateTenantLegalPagesAction}
+        className="grid gap-4 sm:max-w-lg"
+      >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <LegalPageField
-          description={
-            <ClientMessage message="admin.settings.legal_pages.terms_description" />
-          }
-          disabled={controlsDisabled}
-          label={<ClientMessage message="admin.settings.legal_pages.terms" />}
-          name="terms_page_id"
-          nominated={initialPages?.termsPage}
-          onValueChange={setTermsPageId}
-          publishedPages={publishedPages}
-          value={termsPageId}
-        />
+        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.settings.legal_pages.terms" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <LegalPagePicker initialPageId={termsPage?.pageId ?? ""}>
+                <LegalPageCombobox
+                  name="terms_page_id"
+                  nominated={termsPage}
+                  publishedPages={publishedPages}
+                >
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-40" />}
+                      >
+                        <Message message="admin.settings.legal_pages.empty" />
+                      </Suspense>
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </LegalPageCombobox>
+                {termsPage && !termsPage.published ? (
+                  <LegalPageWhileSelected pageId={termsPage.pageId}>
+                    <FormMessage variant="destructive">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-72" />}
+                      >
+                        <Message
+                          message="admin.settings.legal_pages.unpublished"
+                          values={{ title: termsPage.title }}
+                        />
+                      </Suspense>
+                    </FormMessage>
+                  </LegalPageWhileSelected>
+                ) : null}
+              </LegalPagePicker>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.settings.legal_pages.terms_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
 
-        <LegalPageField
-          description={
-            <ClientMessage message="admin.settings.legal_pages.privacy_description" />
-          }
-          disabled={controlsDisabled}
-          label={<ClientMessage message="admin.settings.legal_pages.privacy" />}
-          name="privacy_page_id"
-          nominated={initialPages?.privacyPage}
-          onValueChange={setPrivacyPageId}
-          publishedPages={publishedPages}
-          value={privacyPageId}
-        />
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.settings.legal_pages.privacy" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <LegalPagePicker initialPageId={privacyPage?.pageId ?? ""}>
+                <LegalPageCombobox
+                  name="privacy_page_id"
+                  nominated={privacyPage}
+                  publishedPages={publishedPages}
+                >
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-40" />}
+                      >
+                        <Message message="admin.settings.legal_pages.empty" />
+                      </Suspense>
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </LegalPageCombobox>
+                {privacyPage && !privacyPage.published ? (
+                  <LegalPageWhileSelected pageId={privacyPage.pageId}>
+                    <FormMessage variant="destructive">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-72" />}
+                      >
+                        <Message
+                          message="admin.settings.legal_pages.unpublished"
+                          values={{ title: privacyPage.title }}
+                        />
+                      </Suspense>
+                    </FormMessage>
+                  </LegalPageWhileSelected>
+                ) : null}
+              </LegalPagePicker>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.settings.legal_pages.privacy_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        </ActionFormFieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <ClientMessage message="admin.settings.admin_only" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.admin_only" />
+            </Suspense>
           </FormMessage>
         )}
 
@@ -237,7 +194,9 @@ export const TenantLegalPagesForm = ({
           <FormMessage variant="destructive">
             <span className="block">{loadErrorMessage}</span>
             <span className="block">
-              <ClientMessage message="admin.settings.legal_pages.load_error_hint" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.settings.legal_pages.load_error_hint" />
+              </Suspense>
             </span>
           </FormMessage>
         ) : null}
@@ -246,23 +205,19 @@ export const TenantLegalPagesForm = ({
           <FormMessage variant="destructive">{pagesErrorMessage}</FormMessage>
         ) : null}
 
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
-
         <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={controlsDisabled} type="submit">
-            <ActionFormIdle>
-              <ClientMessage message="admin.settings.legal_pages.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.settings.saving" />
-            </ActionFormPending>
-          </Button>
+          <ActionFormSubmit disabled={fieldsDisabled}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <ActionFormIdle>
+                <Message message="admin.settings.legal_pages.submit" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Message message="admin.settings.saving" />
+              </ActionFormPending>
+            </Suspense>
+          </ActionFormSubmit>
         </div>
-      </form>
+      </ActionForm>
     </AdminSection>
   );
 };

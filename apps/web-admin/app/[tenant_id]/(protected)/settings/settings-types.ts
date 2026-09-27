@@ -1,8 +1,3 @@
-import type { Locale } from "@publira/i18n";
-
-import type { TenantAgeVerification } from "#lib/tenant-age-verification-shared";
-import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
-
 export type SiteSettingsActionState =
   | {
       ok: true;
@@ -18,7 +13,6 @@ export type TenantTimezoneActionState =
   | {
       ok: true;
       message: string;
-      timezone: string;
     }
   | {
       ok: false;
@@ -30,7 +24,6 @@ export type TenantDefaultLocaleActionState =
   | {
       ok: true;
       message: string;
-      defaultLocale: Locale;
     }
   | {
       ok: false;
@@ -42,8 +35,6 @@ export type TenantCommentSettingsActionState =
   | {
       ok: true;
       message: string;
-      commentMode: TenantCommentMode;
-      autoHideReportThreshold: number;
     }
   | {
       ok: false;
@@ -55,7 +46,6 @@ export type TenantAgeVerificationActionState =
   | {
       ok: true;
       message: string;
-      ageVerification: TenantAgeVerification;
     }
   | {
       ok: false;

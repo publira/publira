@@ -101,7 +101,6 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(result).toEqual({
       message: "The payment settings were saved.",
       ok: true,
-      settings: storedPaymentSettings,
     });
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
@@ -250,7 +249,6 @@ describe("updateTenantPurchaseSettingsAction", () => {
     expect(result).toEqual({
       message: "Where episodes are sold was saved.",
       ok: true,
-      settings: storedPurchaseSettings,
     });
     expect(mockUpdateTenantPurchaseSettings).toHaveBeenCalledWith(
       {
@@ -421,7 +419,6 @@ describe("updateTenantStorePaymentSettingsAction", () => {
     expect(result).toEqual({
       message: "The in-app purchase settings were saved.",
       ok: true,
-      settings: storedStoreSettings,
     });
     expect(mockUpdateTenantStorePaymentSettings).toHaveBeenCalledWith(
       {

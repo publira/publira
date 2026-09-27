@@ -85,7 +85,6 @@ describe("updateRoyaltyCloseSettingsAction", () => {
     expect(result).toEqual({
       message: "The closing settings were saved.",
       ok: true,
-      policy,
     });
     expect(mockUpdatePolicy).toHaveBeenCalledWith(
       { autoCloseDay: 5, closeMode: "automatic", tenantId: "TENANT001" },

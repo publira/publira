@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -16,11 +20,27 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { RoyaltyCloseSettingsFormState } from "../../royalty-types";
 import { RoyaltyCloseSettingsForm } from "./royalty-close-settings-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { save } = vi.hoisted(() => ({
+  save: {
+    current: vi.fn(
+      () => Promise.withResolvers<RoyaltyCloseSettingsFormState>().promise
+    ),
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  updateRoyaltyCloseSettingsAction: () => save.current(),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
@@ -47,15 +67,18 @@ const hiddenValue = (name: string) =>
 
 afterEach(() => {
   cleanup();
+  save.current = vi.fn(
+    () => Promise.withResolvers<RoyaltyCloseSettingsFormState>().promise
+  );
 });
 
 describe("RoyaltyCloseSettingsForm", () => {
   it("offers no day while months are closed by hand", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit
         initialPolicy={{ automaticSince: "", closeMode: "manual" }}
+        tenantId="TENANT001"
       />
     );
 
@@ -71,9 +94,9 @@ describe("RoyaltyCloseSettingsForm", () => {
   it("asks for the day once automatic closing is chosen", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit
         initialPolicy={{ automaticSince: "", closeMode: "manual" }}
+        tenantId="TENANT001"
       />
     );
 
@@ -91,13 +114,13 @@ describe("RoyaltyCloseSettingsForm", () => {
   it("starts from the saved day in automatic mode", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit
         initialPolicy={{
           autoCloseDay: 5,
           automaticSince: "2026-08-15T00:00:00Z",
           closeMode: "automatic",
         }}
+        tenantId="TENANT001"
       />
     );
 
@@ -110,9 +133,9 @@ describe("RoyaltyCloseSettingsForm", () => {
   it("explains what each mode does to the months still open", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit
         initialPolicy={{ automaticSince: "", closeMode: "manual" }}
+        tenantId="TENANT001"
       />
     );
 
@@ -127,7 +150,7 @@ describe("RoyaltyCloseSettingsForm", () => {
   });
 
   it("shows the refused day beside the day select", async () => {
-    const refusingAction = vi.fn((): Promise<RoyaltyCloseSettingsFormState> =>
+    save.current = vi.fn((): Promise<RoyaltyCloseSettingsFormState> =>
       Promise.resolve({
         fieldErrors: {
           autoCloseDay:
@@ -140,9 +163,9 @@ describe("RoyaltyCloseSettingsForm", () => {
 
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={refusingAction}
         canEdit
         initialPolicy={{ automaticSince: "", closeMode: "manual" }}
+        tenantId="TENANT001"
       />
     );
 
@@ -156,15 +179,15 @@ describe("RoyaltyCloseSettingsForm", () => {
         "Choose the day of the following month on which to close."
       )
     ).toBeDefined();
-    expect(refusingAction).toHaveBeenCalledTimes(1);
+    expect(save.current).toHaveBeenCalledTimes(1);
   });
 
   it("stays read-only for someone who is not a tenant admin", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit={false}
         initialPolicy={{ automaticSince: "", closeMode: "manual" }}
+        tenantId="TENANT001"
       />
     );
 
@@ -177,9 +200,9 @@ describe("RoyaltyCloseSettingsForm", () => {
   it("blocks editing and shows the reason when the read fails", async () => {
     await renderCard(
       <RoyaltyCloseSettingsForm
-        action={noopAction}
         canEdit
         loadErrorMessage="Could not load royalties."
+        tenantId="TENANT001"
       />
     );
 

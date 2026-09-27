@@ -205,11 +205,7 @@ const brandingImageFileSchema = async (locale: Locale) => {
       error: t("admin.settings.image.unsupported_type"),
     });
 };
-/**
- * Upload and delete share one Action so the card renders the current icon
- * straight from the Action state: with a state per operation there is no way to
- * tell which of the two ran last.
- */
+/** Upload and delete share one Action, told apart by `intent`. */
 const tenantIconSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -225,7 +221,7 @@ const tenantIconSchema = async (locale: Locale) => {
     }),
   ]);
 };
-/** Upload and delete share one Action, for the reason the icon's does. */
+/** Upload and delete share one Action, told apart by `intent`. */
 const tenantLogoSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -436,7 +432,6 @@ export const updateTenantIconAction = async (
   updateTag(tenantThemeCacheTag(input.tenantId));
 
   return {
-    icon: result.icon,
     message: isDelete
       ? t("admin.settings.icon.deleted")
       : t("admin.settings.icon.saved"),
@@ -501,7 +496,6 @@ export const updateTenantLogoAction = async (
   updateTag(tenantThemeCacheTag(input.tenantId));
 
   return {
-    logo: result.logo,
     message: isDelete
       ? t("admin.settings.logo.deleted")
       : t("admin.settings.logo.saved"),

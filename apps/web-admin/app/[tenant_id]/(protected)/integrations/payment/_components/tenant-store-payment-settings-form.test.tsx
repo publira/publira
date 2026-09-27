@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -17,11 +21,26 @@ import type { TenantStorePaymentSettings } from "#lib/store-payment-settings-sha
 import type { TenantStorePaymentSettingsFormState } from "../payment-types";
 import { TenantStorePaymentSettingsForm } from "./tenant-store-payment-settings-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { action } = vi.hoisted(() => ({
+  action: {
+    current: (): Promise<TenantStorePaymentSettingsFormState> =>
+      Promise.resolve(null),
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  updateTenantStorePaymentSettingsAction: () => action.current(),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const unsetSettings: TenantStorePaymentSettings = {
   appPurchaseRoute: "external_checkout",
@@ -80,19 +99,25 @@ const submitButton = () =>
     name: "Save the in-app purchase settings",
   });
 
-const posted = (name: string) =>
-  document.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.value;
+const posted = (name: string) => {
+  const { form } = submitButton();
+  if (!form) {
+    throw new Error("the save button belongs to no form");
+  }
+  return new FormData(form).get(name);
+};
 
 afterEach(() => {
   cleanup();
+  action.current = () => Promise.resolve(null);
 });
 
 describe("TenantStorePaymentSettingsForm", () => {
   it("keeps the store route closed until a store is ready", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={unsetSettings}
       />
     );
@@ -116,8 +141,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("shows the URL App Store Server Notifications are sent to", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={readySettings}
         notificationUrl="https://shop.example.com/api/v1/webhook/payment/app-store"
       />
@@ -135,8 +160,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("leaves the notification URL out while the tenant has no domain", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={readySettings}
       />
     );
@@ -147,8 +172,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("asks for a key as a file or pasted text where none is stored", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={unsetSettings}
       />
     );
@@ -168,8 +193,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("shows stored keys masked and the apps each store sells in", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={readySettings}
       />
     );
@@ -204,8 +229,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("posts a removal until the operator keeps the key again", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         initialSettings={readySettings}
       />
     );
@@ -224,7 +249,7 @@ describe("TenantStorePaymentSettingsForm", () => {
   });
 
   it("keeps the IDs typed and names the refused field beside them", async () => {
-    const action = vi.fn((): Promise<TenantStorePaymentSettingsFormState> =>
+    action.current = vi.fn((): Promise<TenantStorePaymentSettingsFormState> =>
       Promise.resolve({
         fieldErrors: {
           keyId:
@@ -236,8 +261,8 @@ describe("TenantStorePaymentSettingsForm", () => {
     );
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={action}
         canEdit
+        tenantId="TENANT001"
         initialSettings={readySettings}
       />
     );
@@ -264,8 +289,8 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("keeps saving closed when the settings could not be read", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit
+        tenantId="TENANT001"
         loadErrorMessage="Could not load the in-app purchase settings. Please try again later."
       />
     );
@@ -282,20 +307,21 @@ describe("TenantStorePaymentSettingsForm", () => {
   it("leaves the settings read-only for an operator who is not an admin", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
-        action={noopAction}
         canEdit={false}
+        tenantId="TENANT001"
         initialSettings={readySettings}
       />
     );
 
     expect(
-      screen.getByRole<HTMLInputElement>("textbox", { name: /Issuer ID/u })
-        .disabled
+      screen
+        .getByRole<HTMLInputElement>("textbox", { name: /Issuer ID/u })
+        .matches(":disabled")
     ).toBe(true);
     for (const replace of screen.getAllByRole<HTMLButtonElement>("button", {
       name: "Replace",
     })) {
-      expect(replace.disabled).toBe(true);
+      expect(replace.matches(":disabled")).toBe(true);
     }
     expect(submitButton().disabled).toBe(true);
   });

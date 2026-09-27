@@ -149,7 +149,6 @@ export const updateTenantPaymentSettingsAction = async (
   return {
     message: t("admin.settings.payment.saved"),
     ok: true,
-    settings: result.settings,
   };
 };
 
@@ -211,7 +210,6 @@ export const updateTenantPurchaseSettingsAction = async (
   return {
     message: t("admin.settings.purchase.saved"),
     ok: true,
-    settings: result.settings,
   };
 };
 
@@ -389,6 +387,5 @@ export const updateTenantStorePaymentSettingsAction = async (
   return {
     message: t("admin.settings.store_payment.saved"),
     ok: true,
-    settings: result.settings,
   };
 };

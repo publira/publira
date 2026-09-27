@@ -18,8 +18,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
-import { ThemePreview } from "./theme-preview";
+import type { ThemeSettingsActionState } from "../branding-types";
 import { ThemeSettingsForm } from "./theme-settings-form";
+
+const { save } = vi.hoisted(() => ({
+  save: {
+    action: (() => Promise.resolve(null)) as (
+      state: ThemeSettingsActionState,
+      data: FormData
+    ) => Promise<ThemeSettingsActionState>,
+  },
+}));
+
+vi.mock("../_lib/actions", () => ({
+  updateTenantThemeSettingsAction: (
+    state: ThemeSettingsActionState,
+    data: FormData
+  ) => save.action(state, data),
+}));
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({
@@ -37,10 +53,6 @@ vi.mock("#components/message", () => ({
     bindMessages(sharedCatalog("en"))(message),
 }));
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
-}));
-
 const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
@@ -49,16 +61,16 @@ const render = (ui: ReactNode) =>
   });
 
 const renderForm = async (
-  action = vi.fn().mockResolvedValue(null)
+  action: typeof save.action = () => Promise.resolve(null)
 ): Promise<HTMLElement> => {
+  save.action = action;
   let container: HTMLElement | undefined;
 
   await act(() => {
     ({ container } = render(
       <ThemeSettingsForm
-        action={action}
         initialTheme={DEFAULT_TENANT_THEME}
-        preview={<ThemePreview />}
+        tenantId="TENANT001"
       />
     ));
   });
@@ -121,12 +133,13 @@ describe("ThemeSettingsForm", () => {
   });
 
   it("keeps the selected tab when the save fails", async () => {
-    const action = vi.fn().mockResolvedValue({
-      fieldErrors: { primaryColor: "Enter a color as #RRGGBB." },
-      message: "Could not save the theme. Please try again later.",
-      ok: false,
-    });
-    await renderForm(action);
+    await renderForm(() =>
+      Promise.resolve({
+        fieldErrors: { primaryColor: "Enter a color as #RRGGBB." },
+        message: "Could not save the theme. Please try again later.",
+        ok: false,
+      })
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Save the theme" }));
 
@@ -141,7 +154,7 @@ describe("ThemeSettingsForm", () => {
   it("closes every field while the save is in flight", async () => {
     // Never resolved: the assertions are about the window the save is open in.
     const container = await renderForm(
-      vi.fn(() => Promise.withResolvers<never>().promise)
+      () => Promise.withResolvers<never>().promise
     );
 
     // A control its `<fieldset>` closes keeps `disabled` false and matches
@@ -163,6 +176,29 @@ describe("ThemeSettingsForm", () => {
       for (const control of controls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
+    });
+  });
+
+  it("adopts the palette the save stored", async () => {
+    await renderForm(() =>
+      Promise.resolve({
+        message: "The theme was saved.",
+        ok: true,
+        theme: { ...DEFAULT_TENANT_THEME, primaryColor: "#aabbcc" },
+      })
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: /Primary color/u }), {
+      target: { value: "#AABBCC" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save the theme" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole<HTMLInputElement>("textbox", {
+          name: /Primary color/u,
+        }).value
+      ).toBe("#aabbcc");
     });
   });
 });
