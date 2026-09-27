@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -39,6 +39,29 @@ Environment variables:
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## platform
+
+Saves the platform's default locale, which the Platform Console displays in, and the default time zone every new tenant starts on. It does what `PlatformSettingsService` does from the Platform Console, through the same implementation, `internal/platformconfig`.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl platform set --default-locale en --default-timezone Asia/Tokyo
+go run ./server/cmd/publiractl platform show
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `platform set` | `UpdatePlatformSettings` | Saves `--default-locale` and `--default-timezone`, keeping the stored value of a flag left out. With nothing saved, `--default-locale` is required and the time zone is `UTC` unless given. Saving what is already saved changes nothing and files nothing |
+| `platform show` | `GetPlatformSettings` | Prints the saved defaults |
+
+A tenant keeps the time zone it was created on; changing the default moves only the tenants created afterwards.
+
+`platform set` files `platform_settings_updated` in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## policy
 
