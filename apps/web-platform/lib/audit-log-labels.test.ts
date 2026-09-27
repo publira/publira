@@ -1,7 +1,7 @@
 import { getLocales } from "@publira/i18n";
 import { describe, expect, it } from "vitest";
 
-import { getAuditActionOptions } from "./audit-log-labels";
+import { getActorRoleLabel, getAuditActionOptions } from "./audit-log-labels";
 
 const en = "en" as const;
 const ja = "ja" as const;
@@ -54,5 +54,24 @@ describe("getAuditActionOptions", () => {
         .map((item) => item.label)
         .toSorted((left, right) => left.localeCompare(right, "en"))
     );
+  });
+});
+
+describe("getActorRoleLabel", () => {
+  it.each([
+    ["system", "Command line"],
+    ["platform_super_admin", "Super admin"],
+    ["platform_owner", "Platform admin"],
+    ["tenant_owner", "Owner"],
+    ["", "Not set"],
+    ["unknown_role", "unknown_role"],
+  ])("labels the %s actor role", async (role, label) => {
+    await expect(getActorRoleLabel(role, en)).resolves.toBe(label);
+  });
+
+  it.each(getLocales())("words the system actor role in %s", async (locale) => {
+    const label = await getActorRoleLabel("system", locale);
+
+    expect(label).not.toBe("system");
   });
 });

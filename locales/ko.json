@@ -4053,6 +4053,7 @@
       },
       "actor_filter_placeholder": "실행자 공개 ID로 필터",
       "actor_platform": "플랫폼 관리자",
+      "actor_system": "명령줄",
       "all_events": "모든 이벤트",
       "columns": {
         "action": "작업",

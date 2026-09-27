@@ -4053,6 +4053,7 @@
       },
       "actor_filter_placeholder": "依操作者公開 ID 篩選",
       "actor_platform": "平台管理員",
+      "actor_system": "命令列",
       "all_events": "全部事件",
       "columns": {
         "action": "操作",

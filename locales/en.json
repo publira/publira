@@ -4053,6 +4053,7 @@
       },
       "actor_filter_placeholder": "Filter by actor public ID",
       "actor_platform": "Platform admin",
+      "actor_system": "Command line",
       "all_events": "All events",
       "columns": {
         "action": "Action",
