@@ -70,7 +70,7 @@ The trace attributes, span naming, sampling, and the list of `OTEL_*` variables 
 
 A write that leaves a cache entry stale records a `next_cache_revalidation` outbox event, in its own transaction where it holds one, and then attempts the drop itself without making the response wait for it. Whatever that attempt does not finish, `publira worker` retries. Both halves need `PUBLIRA_REVALIDATE_TOKEN`; without it nothing is recorded and nothing is sent. The destinations are the apps whose `PUBLIRA_WEB_*_INTERNAL_URL` is set, logged at startup as `next revalidate is enabled`, and the fixed path at each one is `/api/v1/revalidate`.
 
-`PUBLIRA_WEB_HOST_URL` is the public URL that Stripe Checkout returns the browser to, and is separate from this set of internal URLs.
+These internal URLs are private network addresses, not the ones browsers use: the URL Stripe Checkout returns the browser to is built from the tenant's `domain`.
 
 ### Image delivery
 

@@ -165,7 +165,7 @@ With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves st
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
 - `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (for example `http://web-platform:4100`)
 
-These are URLs reachable inside the private network, not the public ones meant for browsers (`PUBLIRA_WEB_HOST_URL`).
+These are URLs reachable inside the private network, not the public ones meant for browsers. The URL Stripe Checkout returns the browser to is built from the tenant's `domain`, not from any of them.
 
 ## Email renderer
 
