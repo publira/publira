@@ -47,3 +47,22 @@ func Resolve(mode Mode, replacement string, required error) (Mode, error) {
 		return Unspecified, fmt.Errorf("%w: %d", ErrInvalidMode, mode)
 	}
 }
+
+// Decrypter opens a stored secret.
+type Decrypter interface {
+	DecryptString(value string) (string, error)
+}
+
+// KeepIfSame is Unchanged for a Replace whose replacement is the secret already
+// stored, so a save that repeats it leaves the stored ciphertext alone. Every
+// other mode, and a stored secret that cannot be opened, is returned as it is.
+func KeepIfSame(mode Mode, replacement, storedEncrypted string, d Decrypter) Mode {
+	if mode != Replace || storedEncrypted == "" || d == nil {
+		return mode
+	}
+	stored, err := d.DecryptString(storedEncrypted)
+	if err != nil || stored != replacement {
+		return mode
+	}
+	return Unchanged
+}

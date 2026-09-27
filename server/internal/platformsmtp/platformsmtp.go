@@ -106,7 +106,8 @@ func (p SaveParams) Validate() error {
 // Save writes p in one transaction on db, with its entry filed under actor.
 // The row is locked first, so the password a save keeps is the one its
 // revision was compared against rather than one another session has since
-// replaced.
+// replaced. A save that changes no stored value, the password included,
+// writes nothing and files nothing.
 func Save(
 	ctx context.Context,
 	db *sql.DB,
@@ -125,9 +126,9 @@ func Save(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, err := write(ctx, q, encryptor, p)
-	if err != nil {
-		return dbmodels.PlatformSmtpConfig{}, err
+	saved, changed, err := write(ctx, q, encryptor, p)
+	if err != nil || !changed {
+		return saved, err
 	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_email_settings_updated",
@@ -143,50 +144,66 @@ func Save(
 	return saved, nil
 }
 
-func write(ctx context.Context, q *dbmodels.Queries, encryptor emailsettings.SecretManager, p SaveParams) (dbmodels.PlatformSmtpConfig, error) {
+func write(ctx context.Context, q *dbmodels.Queries, encryptor emailsettings.SecretManager, p SaveParams) (dbmodels.PlatformSmtpConfig, bool, error) {
 	current, err := q.LockPlatformSMTPConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Any revision but zero was read from a row that has since been
 		// deleted, and creating one would resurrect values nobody confirmed.
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
-			return dbmodels.PlatformSmtpConfig{}, ErrConflict
+			return dbmodels.PlatformSmtpConfig{}, false, ErrConflict
 		}
 		params, err := configParams(p, "", encryptor)
 		if err != nil {
-			return dbmodels.PlatformSmtpConfig{}, err
+			return dbmodels.PlatformSmtpConfig{}, false, err
 		}
 		inserted, err := q.InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams(params))
 		// Two first saves both find nothing to lock; the primary key settles
 		// which one wins.
 		if dberr.IsUniqueViolation(err) {
-			return dbmodels.PlatformSmtpConfig{}, ErrConflict
+			return dbmodels.PlatformSmtpConfig{}, false, ErrConflict
 		}
 		if err != nil {
-			return dbmodels.PlatformSmtpConfig{}, fmt.Errorf("insert platform smtp config: %w", err)
+			return dbmodels.PlatformSmtpConfig{}, false, fmt.Errorf("insert platform smtp config: %w", err)
 		}
-		return inserted, nil
+		return inserted, true, nil
 	}
 	if err != nil {
-		return dbmodels.PlatformSmtpConfig{}, fmt.Errorf("lock platform smtp config: %w", err)
+		return dbmodels.PlatformSmtpConfig{}, false, fmt.Errorf("lock platform smtp config: %w", err)
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
-		return dbmodels.PlatformSmtpConfig{}, ErrConflict
+		return dbmodels.PlatformSmtpConfig{}, false, ErrConflict
 	}
 	params, err := configParams(p, current.PasswordEncrypted, encryptor)
 	if err != nil {
-		return dbmodels.PlatformSmtpConfig{}, err
+		return dbmodels.PlatformSmtpConfig{}, false, err
+	}
+	if params == storedParams(current) {
+		return current, false, nil
 	}
 	updated, err := q.UpdatePlatformSMTPConfig(ctx, params)
 	if err != nil {
-		return dbmodels.PlatformSmtpConfig{}, fmt.Errorf("update platform smtp config: %w", err)
+		return dbmodels.PlatformSmtpConfig{}, false, fmt.Errorf("update platform smtp config: %w", err)
 	}
-	return updated, nil
+	return updated, true, nil
+}
+
+func storedParams(config dbmodels.PlatformSmtpConfig) dbmodels.UpdatePlatformSMTPConfigParams {
+	return dbmodels.UpdatePlatformSMTPConfigParams{
+		Host:              config.Host,
+		Port:              config.Port,
+		Username:          config.Username,
+		PasswordEncrypted: config.PasswordEncrypted,
+		Encryption:        config.Encryption,
+		FromAddress:       config.FromAddress,
+		ReplyTo:           config.ReplyTo,
+	}
 }
 
 // configParams resolves the password the row ends up holding from the stored
 // ciphertext, which is empty when nothing is saved yet.
 func configParams(p SaveParams, existingPassword string, encryptor emailsettings.SecretManager) (dbmodels.UpdatePlatformSMTPConfigParams, error) {
-	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, p.PasswordMode, p.Password, encryptor)
+	mode := secretupdate.KeepIfSame(p.PasswordMode, p.Password, existingPassword, encryptor)
+	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, mode, p.Password, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSMTPConfigParams{}, passwordError(err)
 	}

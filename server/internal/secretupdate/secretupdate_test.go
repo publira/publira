@@ -57,3 +57,41 @@ func TestKeepsHoldsForTheModesThatLeaveTheStoredSecret(t *testing.T) {
 		}
 	}
 }
+
+type reversingDecrypter struct{}
+
+func (reversingDecrypter) DecryptString(value string) (string, error) {
+	if value == "unreadable" {
+		return "", errors.New("unknown key")
+	}
+	runes := []rune(value)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes), nil
+}
+
+func TestKeepIfSameKeepsOnlyARepeatedSecret(t *testing.T) {
+	tests := []struct {
+		name        string
+		mode        Mode
+		replacement string
+		stored      string
+		d           Decrypter
+		want        Mode
+	}{
+		{name: "the stored secret again", mode: Replace, replacement: "secret", stored: "terces", d: reversingDecrypter{}, want: Unchanged},
+		{name: "another secret", mode: Replace, replacement: "other", stored: "terces", d: reversingDecrypter{}, want: Replace},
+		{name: "nothing stored", mode: Replace, replacement: "secret", d: reversingDecrypter{}, want: Replace},
+		{name: "no decrypter", mode: Replace, replacement: "secret", stored: "terces", want: Replace},
+		{name: "unreadable stored secret", mode: Replace, replacement: "secret", stored: "unreadable", d: reversingDecrypter{}, want: Replace},
+		{name: "clear", mode: Clear, stored: "terces", d: reversingDecrypter{}, want: Clear},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := KeepIfSame(tt.mode, tt.replacement, tt.stored, tt.d); got != tt.want {
+				t.Fatalf("KeepIfSame = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

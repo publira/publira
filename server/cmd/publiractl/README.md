@@ -75,7 +75,7 @@ go run ./server/cmd/publiractl policy show
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `policy set` | `UpdatePlatformPolicy` | Saves the values its flags give over the saved policy, or over the built-in defaults when none is saved, and keeps every other value. It refuses to run with no flag |
+| `policy set` | `UpdatePlatformPolicy` | Saves the values its flags give over the saved policy, or over the built-in defaults when none is saved, and keeps every other value. It refuses to run with no flag. Saving what is already saved changes nothing and files nothing |
 | `policy show` | `GetPlatformPolicy` | Prints the saved policy with its revision, or the built-in defaults, marked as such, when none is saved |
 
 `policy set` takes one flag per field of `PlatformPolicy`:
@@ -115,7 +115,7 @@ go run ./server/cmd/publiractl retention show
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `retention set` | `UpdatePlatformRetentionDefaults` | Saves the periods its flags give over the saved defaults, or over the built-in ones when none are saved, and keeps every other period. It refuses to run with no flag |
+| `retention set` | `UpdatePlatformRetentionDefaults` | Saves the periods its flags give over the saved defaults, or over the built-in ones when none are saved, and keeps every other period. It refuses to run with no flag. Saving what is already saved changes nothing and files nothing |
 | `retention show` | `GetPlatformRetentionDefaults` | Prints the saved defaults with their revision, or the built-in ones, marked as such, when none are saved |
 
 `retention set` takes one flag per field of `RetentionPeriods`, each a whole number of days from 1 to 36500: `--withdrawn-comment-days`, `--content-event-days`, `--daily-ranking-snapshot-days`, and `--weekly-ranking-snapshot-days`. Each purge reads the defaults when its run starts, so a save applies from the next run. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
@@ -144,7 +144,7 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one |
+| `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one. Saving what is already saved, the password included, changes nothing and files nothing |
 | `smtp show` | `GetPlatformEmailSettings` | Prints the saved settings and whether a password is saved, never the password |
 | `smtp test` | `SendPlatformSmtpTestEmail` | Sends the console's test message through the saved settings to `--to`, and exits `1` when the server does not take it |
 
@@ -183,7 +183,7 @@ go run ./server/cmd/publiractl storage test
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `storage set` | `UpdatePlatformStorageSettings` | Replaces every saved setting with the flags given, so a `--public-base-url` left out clears the saved one. Saving what is already saved changes nothing and files nothing |
+| `storage set` | `UpdatePlatformStorageSettings` | Replaces every saved setting with the flags given, so a `--public-base-url` left out clears the saved one. Saving what is already saved, the secret access key included, changes nothing and files nothing |
 | `storage show` | `GetPlatformStorageSettings` | Prints the saved settings and whether a secret access key is saved, never the key |
 | `storage test` | `TestPlatformStorageConnection` | Puts, gets, lists, and deletes a probe object in the saved store, printing one line per check, and exits `1` when any fails |
 
@@ -272,7 +272,7 @@ go run ./server/cmd/publiractl webpush show
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `webpush init --subject <URI>` | `UpdatePlatformWebPushSubject` | Saves the subject, a `mailto:` URI with an address or an absolute `https:` URL. The key pair is generated only when none is stored and is otherwise kept, so running it again changes the subject alone. Nothing regenerates the pair, which would invalidate every subscription |
+| `webpush init --subject <URI>` | `UpdatePlatformWebPushSubject` | Saves the subject, a `mailto:` URI with an address or an absolute `https:` URL. The key pair is generated only when none is stored and is otherwise kept, so running it again changes the subject alone, and running it with the saved subject changes nothing and files nothing. Nothing regenerates the pair, which would invalidate every subscription |
 | `webpush show` | `GetPlatformWebPushSettings` | Prints the subject and the VAPID public key, never the private key. Unlike the RPC, it generates nothing |
 
 The private key is stored encrypted with the keys the servers decrypt it with. The storefront and the worker reread the settings within `webpushsettings.CacheTTL`, so a save reaches them without a restart.

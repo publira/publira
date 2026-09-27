@@ -50,7 +50,8 @@ func (p SaveParams) Validate() error {
 
 // Save writes p in one transaction on db, with its entry filed under actor, so
 // a change to the security policy never goes unrecorded. Every Resolver
-// rereads the row within CacheTTL.
+// rereads the row within CacheTTL. A save that changes no stored value writes
+// nothing and files nothing.
 func Save(
 	ctx context.Context,
 	db *sql.DB,
@@ -68,9 +69,9 @@ func Save(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, err := write(ctx, q, p)
-	if err != nil {
-		return dbmodels.PlatformPolicyConfig{}, err
+	saved, changed, err := write(ctx, q, p)
+	if err != nil || !changed {
+		return saved, err
 	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_policy_updated",
@@ -86,35 +87,38 @@ func Save(
 	return saved, nil
 }
 
-func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.PlatformPolicyConfig, error) {
+func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.PlatformPolicyConfig, bool, error) {
 	params := p.Policy.ConfigParams()
 	current, err := q.LockPlatformPolicyConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Any revision but zero was read from a row that has since been
 		// deleted, and creating one would resurrect values nobody confirmed.
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
-			return dbmodels.PlatformPolicyConfig{}, ErrConflict
+			return dbmodels.PlatformPolicyConfig{}, false, ErrConflict
 		}
 		inserted, err := q.InsertPlatformPolicyConfig(ctx, dbmodels.InsertPlatformPolicyConfigParams(params))
 		// Two first saves both find nothing to lock; the primary key settles
 		// which one wins.
 		if dberr.IsUniqueViolation(err) {
-			return dbmodels.PlatformPolicyConfig{}, ErrConflict
+			return dbmodels.PlatformPolicyConfig{}, false, ErrConflict
 		}
 		if err != nil {
-			return dbmodels.PlatformPolicyConfig{}, fmt.Errorf("insert platform policy: %w", err)
+			return dbmodels.PlatformPolicyConfig{}, false, fmt.Errorf("insert platform policy: %w", err)
 		}
-		return inserted, nil
+		return inserted, true, nil
 	}
 	if err != nil {
-		return dbmodels.PlatformPolicyConfig{}, fmt.Errorf("lock platform policy: %w", err)
+		return dbmodels.PlatformPolicyConfig{}, false, fmt.Errorf("lock platform policy: %w", err)
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
-		return dbmodels.PlatformPolicyConfig{}, ErrConflict
+		return dbmodels.PlatformPolicyConfig{}, false, ErrConflict
+	}
+	if FromConfig(current).ConfigParams() == params {
+		return current, false, nil
 	}
 	updated, err := q.UpdatePlatformPolicyConfig(ctx, params)
 	if err != nil {
-		return dbmodels.PlatformPolicyConfig{}, fmt.Errorf("update platform policy: %w", err)
+		return dbmodels.PlatformPolicyConfig{}, false, fmt.Errorf("update platform policy: %w", err)
 	}
-	return updated, nil
+	return updated, true, nil
 }
