@@ -158,6 +158,25 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor storagesettings.S
 	return updated, true, nil
 }
 
+// Changes reports whether [Save] would write p over the stored row, refusing
+// p as Save would. It reads without locking, so a caller that decides on it,
+// such as one that tests only a store it is about to change, can be raced by
+// another save; Save itself does not depend on it.
+func Changes(ctx context.Context, q Querier, encryptor storagesettings.SecretManager, p SaveParams) (bool, error) {
+	if err := p.Validate(); err != nil {
+		return false, err
+	}
+	current, found, err := Get(ctx, q)
+	if err != nil || !found {
+		return !found, err
+	}
+	params, err := configParams(p, current, encryptor)
+	if err != nil {
+		return false, err
+	}
+	return params != storedParams(current), nil
+}
+
 // configParams resolves the secret the row ends up holding and refuses a
 // credential that is only half stated, or whose halves no longer belong
 // together. current is the zero row when nothing is saved yet.
