@@ -108,6 +108,7 @@ test.describe("web-host ranking", () => {
 
     await expect(page.locator("main ol > li")).not.toHaveCount(0);
     await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 
     await page
       .getByRole("navigation", { name: "Ranking age rating" })
@@ -115,6 +116,16 @@ test.describe("web-host ranking", () => {
       .click();
 
     await expect(page).toHaveURL(/period=weekly&rating=r18/u);
+    // A rated chart is a page of its own, kept out of the index.
+    await expect(page).toHaveTitle(/R18 ranking/u);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/u
+    );
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      /\/ranking\?rating=r18$/u
+    );
     await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
     await page.getByRole("button", { name: "I am 18 or older" }).click();
 

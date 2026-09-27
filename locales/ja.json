@@ -3220,6 +3220,8 @@
       "list_error": "ランキングを表示できませんでした",
       "list_failed": "ランキングを取得できませんでした。時間をおいて再試行してください。",
       "list_title": "ランキング",
+      "list_title_r15": "R15 ランキング",
+      "list_title_r18": "R18 ランキング",
       "movement_down": "{$count}ランクダウン",
       "movement_new": "初登場",
       "movement_none": "変動なし",

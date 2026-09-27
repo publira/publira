@@ -3220,6 +3220,8 @@
       "list_error": "랭킹을 표시할 수 없습니다",
       "list_failed": "랭킹을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "list_title": "랭킹",
+      "list_title_r15": "R15 랭킹",
+      "list_title_r18": "R18 랭킹",
       "movement_down": "{$count}단계 하락",
       "movement_new": "신규",
       "movement_none": "변동 없음",

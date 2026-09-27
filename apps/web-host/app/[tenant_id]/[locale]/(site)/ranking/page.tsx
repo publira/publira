@@ -64,7 +64,11 @@ import { getTenantId } from "#lib/tenant-id";
 import { RankingAgeGate } from "./_components/ranking-age-gate";
 import { rankMovement } from "./_lib/rank-movement";
 import { rankingAgeRatingsFor } from "./_lib/ranking-age-ratings";
-import { parseRankingSearchParams, rankingHref } from "./_lib/search-params";
+import {
+  DEFAULT_RANKING_PERIOD,
+  parseRankingSearchParams,
+  rankingHref,
+} from "./_lib/search-params";
 
 const RANKING_PAGE_SIZE = 20;
 
@@ -73,13 +77,31 @@ type RankingPageProps = PageProps<"/[tenant_id]/[locale]/ranking">;
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async (): Promise<Metadata> => {
+/**
+ * A rated chart is its own page rather than a duplicate of the all-ages one,
+ * and what a crawler reads there is the age gate, so it stays out of the index.
+ */
+export const generateMetadata = async ({
+  searchParams,
+}: RankingPageProps): Promise<Metadata> => {
+  const { rating } = parseRankingSearchParams(await searchParams);
   const [t, alternates] = await Promise.all([
     getMessages(),
-    getPageAlternates("/ranking"),
+    getPageAlternates(rankingHref({ period: DEFAULT_RANKING_PERIOD, rating })),
   ]);
 
-  return { alternates, title: t("host.ranking.list_title") };
+  if (rating === "all") {
+    return { alternates, title: t("host.ranking.list_title") };
+  }
+
+  return {
+    alternates,
+    robots: { index: false },
+    title:
+      rating === "r18"
+        ? t("host.ranking.list_title_r18")
+        : t("host.ranking.list_title_r15"),
+  };
 };
 
 /**
@@ -215,8 +237,7 @@ const getReaderRankingAgeRatings = async (
 
 /**
  * The charts, as links rather than as a control: which one is shown is part
- * of the address, so a reader can bookmark the weekly chart and a crawler can
- * index every chart it may see.
+ * of the address, so a reader can bookmark the chart they follow.
  *
  * The ratings come first, because each is a chart of its own with both
  * periods, and they are drawn only where the reader has more than all-ages to

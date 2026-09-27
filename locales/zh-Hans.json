@@ -3220,6 +3220,8 @@
       "list_error": "无法显示排行榜",
       "list_failed": "无法加载排行榜。请稍后再试。",
       "list_title": "排行榜",
+      "list_title_r15": "R15 排行榜",
+      "list_title_r18": "R18 排行榜",
       "movement_down": "下降 {$count} 位",
       "movement_new": "新上榜",
       "movement_none": "排名不变",
