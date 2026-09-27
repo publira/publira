@@ -11,7 +11,7 @@
 //
 // The settings and provisioning groups change what the Platform Console
 // changes. They connect as PUBLIRA_PLATFORM_DB_URL, take a secret only from a
-// masked prompt or stdin, and file their audit entries under
+// masked prompt, stdin, or a file, and file their audit entries under
 // auditlog.SystemPlatformActor.
 //
 // Each job is a thin invocation of internal/maintenance, which the worker's

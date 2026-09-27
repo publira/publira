@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -254,8 +253,8 @@ func setupAdminCreate(f *commandFlags) func(context.Context, *commandEnv) error 
 	password := f.Secret("password", "password")
 	generate := f.Bool("generate-password", false, "generate a password and print it once to stdout, instead of reading one")
 	return func(ctx context.Context, env *commandEnv) error {
-		if *generate && password.fromStdin {
-			return errors.New("--generate-password and --password-stdin cannot both be given")
+		if *generate && password.given() {
+			return fmt.Errorf("--generate-password and %s cannot both be given", password.source())
 		}
 		var err error
 		if *generate {
@@ -267,7 +266,7 @@ func setupAdminCreate(f *commandFlags) func(context.Context, *commandEnv) error 
 			return err
 		}
 		if err := params.Validate(); err != nil {
-			return tenantError(err)
+			return password.refusal(err, tenantmembers.FieldPassword, tenantError)
 		}
 
 		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {

@@ -313,3 +313,31 @@ func TestSMTPSetHelpSaysABlankPasswordKeepsTheSavedOne(t *testing.T) {
 		}
 	}
 }
+
+// A password in a file is stored as it would be from stdin, and giving it
+// through both flags writes nothing.
+func TestSMTPSetReadsThePasswordFromAFile(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	server := testutil.StartSMTPServer(t)
+	file := writeSecretFile(t, testSecretValue+"\n")
+
+	code, _, stderr := smtpCommand(t, "other", smtpSetArgs(server, "--password-file", file, "--password-stdin")...)
+	if code != 2 || !strings.HasPrefix(stderr, "publiractl: --password-stdin and --password-file cannot both be given\n") {
+		t.Fatalf("both flags: exit code = %d, stderr = %q", code, stderr)
+	}
+	var rows int
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM platform_smtp_config`).Scan(&rows); err != nil {
+		t.Fatalf("count platform_smtp_config: %v", err)
+	}
+	if rows != 0 {
+		t.Fatalf("platform_smtp_config rows = %d after a usage error, want 0", rows)
+	}
+
+	mustSMTPCommand(t, "", smtpSetArgs(server, "--password-file", file)...)
+	if got := storedSMTPPassword(t, pg); got != testSecretValue {
+		t.Fatalf("stored password = %q, want the file's contents", got)
+	}
+}

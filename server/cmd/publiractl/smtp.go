@@ -63,10 +63,13 @@ func setupSMTPSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.FromAddress, "from-address", "", "the address the platform's mail is sent from")
 	f.StringVar(&settings.ReplyTo, "reply-to", "", "the address replies go to, if not the sender's")
 	password := f.KeepableSecret("password", "SMTP password")
+	named := func(err error) error {
+		return password.refusal(err, emailsettings.FieldPassword, func(err error) error { return smtpError(err, false) })
+	}
 	return func(ctx context.Context, env *commandEnv) error {
 		params := platformsmtp.SaveParams{Settings: settings, PasswordMode: secretupdate.Unchanged}
 		if err := params.Validate(); err != nil {
-			return smtpError(err, false)
+			return named(err)
 		}
 		secrets, err := env.secretManager()
 		if err != nil {
@@ -86,7 +89,7 @@ func setupSMTPSet(f *commandFlags) func(context.Context, *commandEnv) error {
 		defer db.Close() //nolint:errcheck
 		saved, err := platformsmtp.Save(ctx, db, env.logger, secrets, auditlog.SystemPlatformActor, params)
 		if err != nil {
-			return smtpError(err, false)
+			return named(err)
 		}
 		_, err = fmt.Fprintf(env.stdout, "Saved the SMTP settings for %s:%d, revision %d\n", saved.Host, saved.Port, saved.Revision)
 		return err

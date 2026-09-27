@@ -237,6 +237,7 @@ func TestTenantCommandsNameTheRefusedFlag(t *testing.T) {
 		{name: "resend a malformed invitation ID", args: append([]string{"invite", "resend", "--id", "42"}, tenant...), want: "--id: invalid invitation_id"},
 		{name: "create an account with a malformed email", args: append([]string{"admin", "create", "--email", "nobody", "--name", "A", "--generate-password"}, tenant...), want: "--email: invalid email"},
 		{name: "create an account with two passwords", args: append([]string{"admin", "create", "--email", "a@example.com", "--name", "A", "--generate-password", "--password-stdin"}, tenant...), want: "--generate-password and --password-stdin cannot both be given"},
+		{name: "create an account with a generated password and a file", args: append([]string{"admin", "create", "--email", "a@example.com", "--name", "A", "--generate-password", "--password-file", "password"}, tenant...), want: "--generate-password and --password-file cannot both be given"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer

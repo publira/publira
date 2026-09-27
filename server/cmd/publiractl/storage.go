@@ -65,10 +65,11 @@ func setupStorageSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.PublicBaseURL, "public-base-url", "", "the URL stored objects are readable from, when something serves them directly")
 	f.StringVar(&accessKeyID, "access-key-id", "", "the access key requests are signed with; left out, every process signs with its own AWS credential")
 	secret := f.KeepableSecret("secret-access-key", "secret access key")
+	named := func(err error) error { return secret.refusal(err, storagesettings.FieldSecretAccessKey, storageError) }
 	return func(ctx context.Context, env *commandEnv) error {
 		params := platformstorage.SaveParams{Settings: settings, AccessKeyID: strings.TrimSpace(accessKeyID), SecretMode: secretupdate.Clear}
 		if err := params.Validate(); err != nil {
-			return storageError(err)
+			return named(err)
 		}
 		// Without an access key id the processes sign with the ambient
 		// credential, so there is no secret to ask for or to encrypt.
@@ -86,8 +87,8 @@ func setupStorageSet(f *commandFlags) func(context.Context, *commandEnv) error {
 			if params.SecretAccessKey != "" {
 				params.SecretMode = secretupdate.Replace
 			}
-		} else if secret.fromStdin {
-			return storageError(storagesettings.ValidateCredentialPair("", true))
+		} else if secret.given() {
+			return named(storagesettings.ValidateCredentialPair("", true))
 		}
 
 		db, err := env.openPlatformDB()
@@ -97,7 +98,7 @@ func setupStorageSet(f *commandFlags) func(context.Context, *commandEnv) error {
 		defer db.Close() //nolint:errcheck
 		saved, err := platformstorage.Save(ctx, db, env.logger, secrets, auditlog.SystemPlatformActor, params)
 		if err != nil {
-			return storageError(err)
+			return named(err)
 		}
 		_, err = fmt.Fprintf(env.stdout, "Saved the object store %s, revision %d\n", saved.Bucket, saved.Revision)
 		return err
