@@ -17,7 +17,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
-import { listEpisodeOptionsAction } from "../_lib/actions";
+import {
+  listEpisodeOptionsAction,
+  listReaderOptionsAction,
+} from "../_lib/actions";
 import type { IssueAccessTicketActionState } from "../ticket-types";
 import { TicketForm } from "./ticket-form";
 
@@ -38,27 +41,35 @@ vi.mock("#lib/use-tenant-id", () => ({
 
 vi.mock("../_lib/actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
+  listReaderOptionsAction: vi.fn(),
 }));
 
 vi.mock("@publira/ui-components/combobox", async () => {
   const { Input } = await import("@publira/ui-components/input");
 
   return {
+    // Typing both searches, where the picker searches, and picks the typed
+    // value, so one field stands in for the text box and the list.
     Combobox: ({
       disabled,
       items,
+      onSearch,
       onValueChange,
       value,
     }: {
       disabled?: boolean;
       items: { label: string; value: string }[];
+      onSearch?: (query: string) => void;
       onValueChange: (next: string) => void;
       value: string;
     }) => (
       <>
         <Input
           disabled={disabled}
-          onChange={(event) => onValueChange(event.target.value)}
+          onChange={(event) => {
+            onSearch?.(event.target.value);
+            onValueChange(event.target.value);
+          }}
           value={value}
         />
         {items.map((item) => (
@@ -78,27 +89,48 @@ vi.mock("@publira/ui-components/combobox", async () => {
 });
 
 const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
+const mockListReaderOptionsAction = vi.mocked(listReaderOptionsAction);
 
 const action = () => Promise.resolve({ message: "", ok: false });
 
 const seriesA = {
-  id: "SERIES001-ID",
+  id: "018f0e6a-3000-7000-8000-000000000001",
   publicId: "SERIES001",
   title: "Series A",
 };
 const seriesB = {
-  id: "SERIES002-ID",
+  id: "018f0e6a-3000-7000-8000-000000000002",
   publicId: "SERIES002",
   title: "Series B",
 };
 
+const episodeOne = {
+  id: "018f0e6a-4000-7000-8000-000000000001",
+  publicId: "EPISODE001",
+  title: "Episode 1",
+};
+
+const readerCombobox = () => screen.getByLabelText(/^Reader/u);
 const seriesCombobox = () => screen.getByLabelText(/Series/u);
 const episodeCombobox = () => screen.getByLabelText(/^Episode/u);
 
-const selectSeries = (item: { id: string; title: string }) => {
+const selectSeries = (item: { id: string }) => {
   fireEvent.change(seriesCombobox(), {
     target: { value: item.id },
   });
+};
+
+const issueButton = () =>
+  screen.getByRole("button", { name: "Issue the ticket" });
+
+/** Picks a reader, the seed series, and its episode, as an operator would. */
+const fillTicket = async () => {
+  fireEvent.change(readerCombobox(), {
+    target: { value: "018f0e6a-5000-7000-8000-000000000001" },
+  });
+  selectSeries(seriesA);
+  await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" });
+  fireEvent.change(episodeCombobox(), { target: { value: episodeOne.id } });
 };
 
 const render = (ui: ReactNode) =>
@@ -115,8 +147,9 @@ afterEach(() => {
 // A control its `<fieldset>` closes keeps `disabled` false and matches
 // `:disabled` instead.
 const submittedControls = () => [
-  screen.getByLabelText(/User public_id/u),
-  screen.getByLabelText(/Episode public_id/u),
+  readerCombobox(),
+  seriesCombobox(),
+  episodeCombobox(),
   screen.getByLabelText(/Expiry/u),
   screen.getByLabelText(/Note/u),
 ];
@@ -124,34 +157,121 @@ const submittedControls = () => [
 describe("TicketForm", () => {
   beforeEach(() => {
     mockListEpisodeOptionsAction.mockReset();
+    mockListReaderOptionsAction.mockReset();
+    mockListReaderOptionsAction.mockResolvedValue({ ok: true, readers: [] });
   });
 
-  it("picks an episode from the combobox when series are available and blocks issuing until one is chosen", () => {
+  it("blocks issuing until a reader and an episode are chosen", () => {
     render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
 
+    expect(readerCombobox()).toBeDefined();
     expect(seriesCombobox()).toBeDefined();
     expect(episodeCombobox()).toBeDefined();
-    expect(screen.queryByLabelText(/Episode public_id/u)).toBeNull();
-    expect(
-      screen
-        .getByRole("button", { name: "Issue the ticket" })
-        .hasAttribute("disabled")
-    ).toBe(true);
+    expect(issueButton().hasAttribute("disabled")).toBe(true);
   });
 
-  it("falls back to typing the episode public_id when the series list is empty", () => {
-    render(<TicketForm action={action} series={[]} timeZone="UTC" />);
+  it("searches the tenant's readers with what the operator types", async () => {
+    mockListReaderOptionsAction.mockResolvedValue({
+      ok: true,
+      readers: [
+        {
+          email: "one@example.com",
+          id: "018f0e6a-5000-7000-8000-000000000001",
+          name: "Reader One",
+        },
+      ],
+    });
 
-    expect(screen.getByLabelText(/Episode public_id/u)).toBeDefined();
-    expect(screen.queryByLabelText(/^Series$/u)).toBeNull();
+    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+
+    fireEvent.change(readerCombobox(), { target: { value: "one" } });
+
+    await waitFor(() => {
+      expect(mockListReaderOptionsAction).toHaveBeenCalledWith(
+        "TENANT001",
+        "one",
+        "en"
+      );
+    });
     expect(
-      screen.getByText(
-        "No series is available to pick, so enter the episode's public_id directly."
-      )
+      await screen.findByRole("option", {
+        name: "Reader One (one@example.com)",
+      })
     ).toBeDefined();
   });
 
-  it("falls back to the public_id input and shows an error when the series fetch fails", () => {
+  it("searches once typing pauses rather than on every keystroke", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+
+      fireEvent.change(readerCombobox(), { target: { value: "o" } });
+      await vi.advanceTimersByTimeAsync(100);
+      fireEvent.change(readerCombobox(), { target: { value: "on" } });
+      await vi.advanceTimersByTimeAsync(100);
+      fireEvent.change(readerCombobox(), { target: { value: "one" } });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mockListReaderOptionsAction).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(mockListReaderOptionsAction).toHaveBeenCalledOnce();
+      expect(mockListReaderOptionsAction).toHaveBeenCalledWith(
+        "TENANT001",
+        "one",
+        "en"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("submits the chosen reader's and episode's internal IDs", async () => {
+    mockListEpisodeOptionsAction.mockResolvedValue({
+      episodes: [episodeOne],
+      ok: true,
+    });
+    const submitted = Promise.withResolvers<FormData>();
+    const recordingAction = (
+      _state: IssueAccessTicketActionState,
+      formData: FormData
+    ) => {
+      submitted.resolve(formData);
+      return Promise.resolve<IssueAccessTicketActionState>(null);
+    };
+
+    render(
+      <TicketForm action={recordingAction} series={[seriesA]} timeZone="UTC" />
+    );
+    await fillTicket();
+    await waitFor(() => {
+      expect(issueButton().hasAttribute("disabled")).toBe(false);
+    });
+    fireEvent.click(issueButton());
+
+    const formData = await submitted.promise;
+    expect(formData.get("user_id")).toBe(
+      "018f0e6a-5000-7000-8000-000000000001"
+    );
+    expect(formData.get("episode_id")).toBe(
+      "018f0e6a-4000-7000-8000-000000000001"
+    );
+    expect(formData.has("user_public_id")).toBe(false);
+    expect(formData.has("episode_public_id")).toBe(false);
+  });
+
+  it("says there is no episode to grant when the series list is empty", () => {
+    render(<TicketForm action={action} series={[]} timeZone="UTC" />);
+
+    expect(
+      screen.getByText(
+        "No series is available, so there is no episode to grant."
+      )
+    ).toBeDefined();
+    expect(issueButton().hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows the series fetch error beside the series picker", () => {
     render(
       <TicketForm
         action={action}
@@ -161,13 +281,13 @@ describe("TicketForm", () => {
       />
     );
 
-    expect(screen.getByLabelText(/Episode public_id/u)).toBeDefined();
     expect(screen.getByText("Could not load the series.")).toBeDefined();
+    expect(seriesCombobox()).toBeDefined();
   });
 
   it("loads the episode choices and lets one be picked once a series is selected", async () => {
     mockListEpisodeOptionsAction.mockResolvedValue({
-      episodes: [{ publicId: "EPISODE001", title: "Episode 1" }],
+      episodes: [episodeOne],
       ok: true,
     });
 
@@ -178,7 +298,7 @@ describe("TicketForm", () => {
     await waitFor(() => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
         "TENANT001",
-        seriesA.id,
+        "018f0e6a-3000-7000-8000-000000000001",
         "en"
       );
     });
@@ -186,17 +306,6 @@ describe("TicketForm", () => {
     expect(
       await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" })
     ).toBeDefined();
-
-    fireEvent.change(episodeCombobox(), {
-      target: { value: "EPISODE001" },
-    });
-    await waitFor(() => {
-      expect(
-        screen
-          .getByRole("button", { name: "Issue the ticket" })
-          .hasAttribute("disabled")
-      ).toBe(false);
-    });
   });
 
   it("keeps the selection UI and offers a retry when the episode fetch fails", async () => {
@@ -207,7 +316,7 @@ describe("TicketForm", () => {
         ok: false,
       })
       .mockResolvedValueOnce({
-        episodes: [{ publicId: "EPISODE001", title: "Episode 1" }],
+        episodes: [episodeOne],
         ok: true,
       });
 
@@ -219,7 +328,6 @@ describe("TicketForm", () => {
       await screen.findByText("Could not load the episodes.")
     ).toBeDefined();
     expect(seriesCombobox()).toBeDefined();
-    expect(screen.queryByLabelText(/Episode public_id/u)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
@@ -231,14 +339,20 @@ describe("TicketForm", () => {
 
   it("discards the stale result when series are selected in quick succession", async () => {
     const firstLoad = Promise.withResolvers<{
-      episodes: { publicId: string; title: string }[];
+      episodes: { id: string; publicId: string; title: string }[];
       ok: true;
     }>();
 
     mockListEpisodeOptionsAction
       .mockImplementationOnce(() => firstLoad.promise)
       .mockResolvedValueOnce({
-        episodes: [{ publicId: "EPISODE-B", title: "The Later Pick" }],
+        episodes: [
+          {
+            id: "018f0e6a-4000-7000-8000-00000000000b",
+            publicId: "EPISODE-B",
+            title: "The Later Pick",
+          },
+        ],
         ok: true,
       });
 
@@ -250,7 +364,13 @@ describe("TicketForm", () => {
     selectSeries(seriesB);
 
     firstLoad.resolve({
-      episodes: [{ publicId: "EPISODE-A", title: "The Earlier Answer" }],
+      episodes: [
+        {
+          id: "018f0e6a-4000-7000-8000-00000000000a",
+          publicId: "EPISODE-A",
+          title: "The Earlier Answer",
+        },
+      ],
       ok: true,
     });
 
@@ -265,25 +385,27 @@ describe("TicketForm", () => {
   // The Action carries what the fields held when the form was submitted, so a
   // change made while it is in flight would not be the ticket that is issued.
   it("closes every field while the ticket is being issued", async () => {
+    mockListEpisodeOptionsAction.mockResolvedValue({
+      episodes: [episodeOne],
+      ok: true,
+    });
     // Never resolved: the assertions are about the window the save is open in.
     const issue = Promise.withResolvers<IssueAccessTicketActionState>();
 
     render(
-      <TicketForm action={() => issue.promise} series={[]} timeZone="UTC" />
+      <TicketForm
+        action={() => issue.promise}
+        series={[seriesA]}
+        timeZone="UTC"
+      />
     );
-
-    fireEvent.change(screen.getByLabelText(/User public_id/u), {
-      target: { value: "USER001" },
-    });
-    fireEvent.change(screen.getByLabelText(/Episode public_id/u), {
-      target: { value: "EPISODE001" },
-    });
+    await fillTicket();
 
     for (const control of submittedControls()) {
       expect(control.matches(":disabled")).toBe(false);
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "Issue the ticket" }));
+    fireEvent.click(issueButton());
 
     await waitFor(() => {
       for (const control of submittedControls()) {

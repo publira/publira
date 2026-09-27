@@ -2536,17 +2536,17 @@
       },
       "form": {
         "option": "{$title} ({$id})",
-        "user": "User public_id",
-        "user_placeholder": "e.g. SeedMMBRAAA1",
-        "user_description": "The public_id of the end user who gets access.",
-        "episode_id": "Episode public_id",
-        "episode_id_placeholder": "e.g. SeedEPSDAAA1",
-        "episode_id_description": "The public_id of the episode to grant.",
-        "episode_id_no_series": "No series is available to pick, so enter the episode's public_id directly.",
+        "user": "Reader",
+        "user_placeholder": "Search by name or email address",
+        "user_description": "Pick the reader who gets access.",
+        "user_empty": "No reader matches.",
+        "user_searching": "Searching…",
+        "user_option": "{$name} ({$email})",
         "series": "Series",
         "series_placeholder": "Search by series title",
         "series_empty": "No series matches.",
         "series_description": "Pick the series the episode belongs to and its episodes appear.",
+        "episode_no_series": "No series is available, so there is no episode to grant.",
         "episode": "Episode",
         "episode_placeholder": "Search by episode title",
         "episode_loading": "Loading…",
@@ -2561,13 +2561,14 @@
         "submit": "Issue the ticket"
       },
       "validation": {
-        "episode_id_required": "The episode public_id is required.",
-        "user_id_required": "The user public_id is required.",
+        "episode_id_required": "Select an episode.",
+        "user_id_required": "Select a reader.",
         "tenant_missing": "The tenant ID is missing.",
         "expires_at_invalid": "The expiry is not a valid date and time.",
         "expires_at_past": "The expiry must be in the future.",
         "revoke_target": "The ticket to revoke is not valid.",
-        "series_required": "Select a series."
+        "series_required": "Select a series.",
+        "reader_query_too_long": "Shorten the search to {$count} characters or fewer."
       }
     },
     "engagement": {

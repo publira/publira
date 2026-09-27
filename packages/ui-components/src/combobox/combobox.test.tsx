@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   Combobox,
@@ -77,5 +77,31 @@ describe("Combobox input slots", () => {
     render(<Multi />);
 
     expect(screen.getByRole("combobox", { name: "Creators" })).toBeTruthy();
+  });
+});
+
+describe("Combobox onSearch", () => {
+  it("passes the typed text to onSearch", () => {
+    const onSearch = vi.fn();
+    render(
+      <Combobox
+        items={items}
+        onSearch={onSearch}
+        onValueChange={vi.fn()}
+        value=""
+      >
+        <ComboboxInput aria-label="Label" />
+        <ComboboxPopup>
+          <ComboboxEmpty>No matching items.</ComboboxEmpty>
+          <ComboboxItems />
+        </ComboboxPopup>
+      </Combobox>
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Label" }), {
+      target: { value: "app" },
+    });
+
+    expect(onSearch).toHaveBeenCalledWith("app");
   });
 });

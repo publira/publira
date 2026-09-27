@@ -7,7 +7,8 @@ import { uniqueSuffix } from "../src/scenarios/admin-publish";
 const SEED_TICKET = {
   episodePublicId: "SeedEPSDAAA1",
   episodeTitle: "Seed Episode 001-01",
-  memberPublicId: "SeedMMBRAAA1",
+  memberEmail: "member@example.com",
+  memberLabel: "Sample Member (member@example.com)",
   seriesLabel: "Seed Series 001 (SeedSERSAAA1)",
 } as const;
 
@@ -58,9 +59,12 @@ test.describe("web-admin access tickets", () => {
       page.getByRole("heading", { name: "Issue a ticket" })
     ).toBeVisible();
 
-    await page
-      .getByRole("textbox", { name: /User public_id/u })
-      .fill(SEED_TICKET.memberPublicId);
+    // The reader picker searches the tenant's readers with what is typed, so
+    // it is filled with a query rather than the option's full label.
+    const readerCombobox = page.getByRole("combobox", { name: /Reader/u });
+    await readerCombobox.click();
+    await readerCombobox.fill(SEED_TICKET.memberEmail);
+    await page.getByRole("option", { name: SEED_TICKET.memberLabel }).click();
     await selectComboboxOption(
       page,
       page.getByRole("combobox", { name: /Series/u }),

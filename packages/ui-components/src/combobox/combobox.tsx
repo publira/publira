@@ -24,6 +24,11 @@ export interface ComboboxProps {
   disabled?: boolean;
   id?: string;
   items: readonly ComboboxItem[];
+  /**
+   * Called with the text the user types, for a caller that fetches `items`
+   * matching it; selecting an item does not call it.
+   */
+  onSearch?: (query: string) => void;
   onValueChange: (nextValue: string) => void;
   value: string;
 }
@@ -51,6 +56,7 @@ export const Combobox = ({
   disabled,
   id,
   items,
+  onSearch,
   onValueChange,
   value,
 }: ComboboxProps) => {
@@ -72,12 +78,28 @@ export const Combobox = ({
     [onValueChange]
   );
 
+  const handleInputValueChange = useCallback(
+    (
+      inputValue: string,
+      eventDetails: BaseCombobox.Root.ChangeEventDetails
+    ) => {
+      if (
+        eventDetails.reason === "input-change" ||
+        eventDetails.reason === "input-clear"
+      ) {
+        onSearch?.(inputValue);
+      }
+    },
+    [onSearch]
+  );
+
   return (
     <BaseCombobox.Root
       disabled={disabled}
       id={id}
       items={items}
       itemToStringLabel={itemToStringLabel}
+      onInputValueChange={onSearch ? handleInputValueChange : undefined}
       onValueChange={handleValueChange}
       value={selectedItem}
     >

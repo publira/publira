@@ -2536,17 +2536,17 @@
       },
       "form": {
         "option": "{$title}（{$id}）",
-        "user": "用户 public_id",
-        "user_placeholder": "例如：SeedMMBRAAA1",
-        "user_description": "将获得阅读权限的终端用户的 public_id。",
-        "episode_id": "章节 public_id",
-        "episode_id_placeholder": "例如：SeedEPSDAAA1",
-        "episode_id_description": "要授予阅读权限的章节的 public_id。",
-        "episode_id_no_series": "没有可选择的系列，请直接输入章节的 public_id。",
+        "user": "读者",
+        "user_placeholder": "按姓名或电子邮件地址搜索",
+        "user_description": "选择将获得阅读权限的读者。",
+        "user_empty": "没有匹配的读者。",
+        "user_searching": "正在搜索…",
+        "user_option": "{$name}（{$email}）",
         "series": "系列",
         "series_placeholder": "按系列标题搜索",
         "series_empty": "没有匹配的系列。",
         "series_description": "选择章节所属的系列后，即可显示它的章节。",
+        "episode_no_series": "没有可选择的系列，因此没有可授予的章节。",
         "episode": "章节",
         "episode_placeholder": "按章节标题搜索",
         "episode_loading": "正在加载…",
@@ -2561,13 +2561,14 @@
         "submit": "发放阅读券"
       },
       "validation": {
-        "episode_id_required": "章节 public_id 为必填项。",
-        "user_id_required": "用户 public_id 为必填项。",
+        "episode_id_required": "请选择章节。",
+        "user_id_required": "请选择读者。",
         "tenant_missing": "缺少租户 ID。",
         "expires_at_invalid": "有效期不是有效的日期和时间。",
         "expires_at_past": "有效期必须是将来的时间。",
         "revoke_target": "要撤销的阅读券无效。",
-        "series_required": "请选择系列。"
+        "series_required": "请选择系列。",
+        "reader_query_too_long": "搜索内容请控制在 {$count} 个字符以内。"
       }
     },
     "engagement": {

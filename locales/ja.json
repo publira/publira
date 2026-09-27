@@ -2536,17 +2536,17 @@
       },
       "form": {
         "option": "{$title} ({$id})",
-        "user": "ユーザー public_id",
-        "user_placeholder": "例: SeedMMBRAAA1",
-        "user_description": "閲覧権を付与するエンドユーザーの public_id を入力します。",
-        "episode_id": "エピソード public_id",
-        "episode_id_placeholder": "例: SeedEPSDAAA1",
-        "episode_id_description": "対象エピソードの public_id を入力します。",
-        "episode_id_no_series": "選択できるシリーズがありません。エピソードの public_id を直接入力してください。",
+        "user": "読者",
+        "user_placeholder": "名前またはメールアドレスで検索",
+        "user_description": "閲覧権を付与する読者を選びます。",
+        "user_empty": "一致する読者が見つかりません。",
+        "user_searching": "検索中…",
+        "user_option": "{$name} ({$email})",
         "series": "シリーズ",
         "series_placeholder": "シリーズ名で検索",
         "series_empty": "一致するシリーズが見つかりません。",
         "series_description": "対象エピソードが属するシリーズを選ぶと、エピソード一覧が開きます。",
+        "episode_no_series": "選択できるシリーズがないため、付与できるエピソードがありません。",
         "episode": "エピソード",
         "episode_placeholder": "エピソード名で検索",
         "episode_loading": "読み込み中…",
@@ -2561,13 +2561,14 @@
         "submit": "チケットを発行"
       },
       "validation": {
-        "episode_id_required": "エピソード public_id は必須です。",
-        "user_id_required": "ユーザー public_id は必須です。",
+        "episode_id_required": "エピソードを選択してください。",
+        "user_id_required": "読者を選択してください。",
         "tenant_missing": "テナント ID が見つかりません。",
         "expires_at_invalid": "有効期限の形式が正しくありません。",
         "expires_at_past": "有効期限は未来の日時を指定してください。",
         "revoke_target": "失効対象が不正です。",
-        "series_required": "シリーズを選択してください。"
+        "series_required": "シリーズを選択してください。",
+        "reader_query_too_long": "検索語は{$count}文字以内で入力してください。"
       }
     },
     "engagement": {
