@@ -40,16 +40,14 @@ export const tenantDefaultLocaleCacheTag = (tenantId: string): string =>
 const resolveDefaultLocale = (value: string | undefined): Locale | undefined =>
   parseLocale(value?.trim());
 
-export const getTenantDefaultLocale = async (
+const getTenantDefaultLocaleForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantDefaultLocaleResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -94,6 +92,12 @@ export const getTenantDefaultLocale = async (
     };
   }
 };
+
+export const getTenantDefaultLocale = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantDefaultLocaleResult> =>
+  getTenantDefaultLocaleForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantDefaultLocale = async (
   input: {

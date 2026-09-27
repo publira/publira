@@ -98,15 +98,13 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
 /** A private, paged list of the signed-in reader's purchases. */
 const readPurchaseList = async (
   tenantId: string,
-  input: ListPurchasesInput
+  input: ListPurchasesInput,
+  sessionId: string
 ): Promise<CachedListPurchasesResult> => {
   "use cache: private";
 
   const { locale } = input;
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyPurchasePage,
@@ -152,7 +150,11 @@ export const listMyPurchases = async (
   tenantId: string,
   input: ListPurchasesInput
 ): Promise<ListPurchasesResult> => {
-  const { unexpected, ...result } = await readPurchaseList(tenantId, input);
+  const { unexpected, ...result } = await readPurchaseList(
+    tenantId,
+    input,
+    await resolveAccessToken()
+  );
   if (unexpected) {
     const t = await getMessagesFor(input.locale);
 

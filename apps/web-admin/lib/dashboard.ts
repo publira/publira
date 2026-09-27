@@ -51,13 +51,13 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(error, t("admin.dashboard.load_error"), { locale });
 };
 
-export const getDashboard = async (
+const getDashboardForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 
-  const sessionId = await getAccessToken();
   if (!sessionId) {
     const t = await getMessagesFor(locale);
     return {
@@ -100,3 +100,9 @@ export const getDashboard = async (
     };
   }
 };
+
+export const getDashboard = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetDashboardResult> =>
+  getDashboardForSession(tenantId, locale, await getAccessToken());

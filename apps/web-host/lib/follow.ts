@@ -79,15 +79,12 @@ const readFollowStatus = async (
   tenantId: string,
   targetKind: FollowTargetKind,
   targetId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<CachedFollowStatusResult> => {
   "use cache: private";
   applyCacheTag(followsCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
   if (!sessionId) {
     return {
       isFollowing: false,
@@ -96,6 +93,8 @@ const readFollowStatus = async (
       unexpected: false,
     };
   }
+
+  const t = await getMessagesFor(locale);
 
   try {
     const response = await apiClient.follow.getMyFollowStatus(
@@ -147,7 +146,13 @@ export const getMyFollowStatus = async (
   locale: Locale
 ): Promise<FollowStatusResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readFollowStatus(tenantId, targetKind, targetId, locale),
+    readFollowStatus(
+      tenantId,
+      targetKind,
+      targetId,
+      locale,
+      await resolveAccessToken()
+    ),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(

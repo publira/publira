@@ -129,16 +129,14 @@ const emptyListPage = {
 
 const readNotificationList = async (
   tenantId: string,
-  input: ListNotificationsInput
+  input: ListNotificationsInput,
+  sessionId: string
 ): Promise<CachedListNotificationsResult> => {
   "use cache: private";
   applyCacheTag(notificationsCacheTag(tenantId));
 
   const { locale } = input;
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyListPage,
@@ -190,15 +188,13 @@ const readNotificationList = async (
 
 const readUnreadNotificationCount = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<CachedUnreadCountResult> => {
   "use cache: private";
   applyCacheTag(notificationsCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -245,7 +241,7 @@ export const listNotifications = async (
   input: ListNotificationsInput
 ): Promise<ListNotificationsResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readNotificationList(tenantId, input),
+    readNotificationList(tenantId, input, await resolveAccessToken()),
     getMessagesFor(input.locale),
   ]);
   throwIfUnexpected(
@@ -265,7 +261,7 @@ export const countUnreadNotifications = async (
   locale: Locale
 ): Promise<CountUnreadNotificationsResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readUnreadNotificationCount(tenantId, locale),
+    readUnreadNotificationCount(tenantId, locale, await resolveAccessToken()),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(

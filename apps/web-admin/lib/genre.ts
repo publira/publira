@@ -157,29 +157,15 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
   slug: genre.slug ?? "",
 });
 
-/**
- * Every genre of the tenant, in the order the tenant put them in.
- *
- * The whole list rather than one page, because `ReorderGenres` compares the
- * order the client posts against the tenant's entire order and refuses a
- * mismatch: a screen holding one page could not name an order to send. Genres
- * are a hand-curated vocabulary, so the walk is a page or two in practice.
- *
- * An incomplete walk fails with an empty list rather than a partial one. A
- * partial list would not only hide genres — it would make every move button on
- * screen post an order that is missing rows, which the API refuses.
- */
-export const listGenres = async (
+const listGenresForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<ListGenresResult> => {
   "use cache: private";
   cacheTag(genresCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       genres: [],
@@ -237,6 +223,24 @@ export const listGenres = async (
     };
   }
 };
+
+/**
+ * Every genre of the tenant, in the order the tenant put them in.
+ *
+ * The whole list rather than one page, because `ReorderGenres` compares the
+ * order the client posts against the tenant's entire order and refuses a
+ * mismatch: a screen holding one page could not name an order to send. Genres
+ * are a hand-curated vocabulary, so the walk is a page or two in practice.
+ *
+ * An incomplete walk fails with an empty list rather than a partial one. A
+ * partial list would not only hide genres — it would make every move button on
+ * screen post an order that is missing rows, which the API refuses.
+ */
+export const listGenres = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListGenresResult> =>
+  listGenresForSession(tenantId, locale, await getAccessToken());
 
 /**
  * One genre of the tenant, for the screen its eye-catch is edited on.

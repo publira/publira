@@ -154,13 +154,13 @@ const mergeTenantFilterOptions = (
  */
 export const platformEndUsersCacheTag = "platform:users";
 
-export const listPlatformEndUsers = async (
-  input: ListPlatformEndUsersInput
+const listPlatformEndUsersForSession = async (
+  input: ListPlatformEndUsersInput,
+  sid: string
 ): Promise<ListPlatformEndUsersResult> => {
   "use cache: private";
   cacheTag(platformEndUsersCacheTag);
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
@@ -214,6 +214,11 @@ export const listPlatformEndUsers = async (
   }
 };
 
+export const listPlatformEndUsers = async (
+  input: ListPlatformEndUsersInput
+): Promise<ListPlatformEndUsersResult> =>
+  listPlatformEndUsersForSession(input, await resolveAccessToken());
+
 export type SearchPlatformTenantFilterOptionsResult =
   | {
       hasMore: boolean;
@@ -229,9 +234,10 @@ export type SearchPlatformTenantFilterOptionsResult =
       tenants: [];
     };
 
-export const searchPlatformTenantFilterOptions = async (
+const searchPlatformTenantFilterOptionsForSession = async (
   query: string,
-  locale: Locale
+  locale: Locale,
+  sid: string
 ): Promise<SearchPlatformTenantFilterOptionsResult> => {
   "use cache: private";
   cacheTag(platformTenantsCacheTag);
@@ -241,7 +247,6 @@ export const searchPlatformTenantFilterOptions = async (
     return { hasMore: false, ok: true, tenants: [] };
   }
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -317,6 +322,16 @@ export const searchPlatformTenantFilterOptions = async (
   }
 };
 
+export const searchPlatformTenantFilterOptions = async (
+  query: string,
+  locale: Locale
+): Promise<SearchPlatformTenantFilterOptionsResult> =>
+  searchPlatformTenantFilterOptionsForSession(
+    query,
+    locale,
+    await resolveAccessToken()
+  );
+
 export type GetPlatformEndUserResult =
   | { ok: true; user: PlatformEndUserSummary | null }
   | {
@@ -326,9 +341,10 @@ export type GetPlatformEndUserResult =
       requiresSignIn: boolean;
     };
 
-export const getPlatformEndUser = async (
+const getPlatformEndUserForSession = async (
   publicId: string,
-  locale: Locale
+  locale: Locale,
+  sid: string
 ): Promise<GetPlatformEndUserResult> => {
   "use cache: private";
   cacheTag(platformEndUsersCacheTag);
@@ -338,7 +354,6 @@ export const getPlatformEndUser = async (
     return { ok: true, user: null };
   }
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -374,6 +389,12 @@ export const getPlatformEndUser = async (
     };
   }
 };
+
+export const getPlatformEndUser = async (
+  publicId: string,
+  locale: Locale
+): Promise<GetPlatformEndUserResult> =>
+  getPlatformEndUserForSession(publicId, locale, await resolveAccessToken());
 
 export const suspendPlatformEndUser = async (
   userId: string

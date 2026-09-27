@@ -249,12 +249,12 @@ export const logoutAdmin = async (
   );
 };
 
-export const getAdminCurrentUser = async (
-  tenantId: string
+const getAdminCurrentUserForSession = async (
+  tenantId: string,
+  token: string
 ): Promise<GetAdminCurrentUserResult> => {
   "use cache: private";
 
-  const token = await getAccessToken();
   if (!token) {
     return { ok: false, requiresSignIn: true };
   }
@@ -290,6 +290,11 @@ export const getAdminCurrentUser = async (
     throw error;
   }
 };
+
+export const getAdminCurrentUser = async (
+  tenantId: string
+): Promise<GetAdminCurrentUserResult> =>
+  getAdminCurrentUserForSession(tenantId, await getAccessToken());
 
 export const isAdminSessionValid = async (
   tenantId: string

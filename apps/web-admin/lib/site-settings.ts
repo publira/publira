@@ -53,16 +53,14 @@ const mapErrorToMessage = (
   locale: Locale
 ): string => rpcErrorMessage(error, fallbackMessage, { locale });
 
-export const getTenantSiteSettings = async (
+const getTenantSiteSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantSiteSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -105,6 +103,12 @@ export const getTenantSiteSettings = async (
     };
   }
 };
+
+export const getTenantSiteSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantSiteSettingsResult> =>
+  getTenantSiteSettingsForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantSiteSettings = async (
   input: {

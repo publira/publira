@@ -85,16 +85,14 @@ const toCommentModeEnum = (mode: TenantCommentMode): CommentMode => {
   }
 };
 
-export const getTenantCommentSettings = async (
+const getTenantCommentSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantCommentSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -143,6 +141,12 @@ export const getTenantCommentSettings = async (
     };
   }
 };
+
+export const getTenantCommentSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantCommentSettingsResult> =>
+  getTenantCommentSettingsForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantCommentSettings = async (
   input: {

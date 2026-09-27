@@ -91,12 +91,12 @@ const parseErrorMessage = (
   });
 };
 
-export const getPlatformSettings = async (
-  locale: Locale
+const getPlatformSettingsForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPlatformSettingsResult> => {
   "use cache: private";
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -157,6 +157,11 @@ export const getPlatformSettings = async (
   }
 };
 
+export const getPlatformSettings = async (
+  locale: Locale
+): Promise<GetPlatformSettingsResult> =>
+  getPlatformSettingsForSession(locale, await resolveAccessToken());
+
 /**
  * The saved row with no copy attached, so reading it needs no locale.
  *
@@ -165,13 +170,14 @@ export const getPlatformSettings = async (
  * the copy is in. This read answers the stored values or `null`, and each
  * display helper decides for itself what a missing answer means.
  */
-const readPlatformSettings = async (): Promise<{
+const readPlatformSettings = async (
+  sessionId: string
+): Promise<{
   defaultLocale: Locale;
   defaultTimezone: string;
 } | null> => {
   "use cache: private";
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     return null;
@@ -208,7 +214,7 @@ const readPlatformSettings = async (): Promise<{
  * the host's zone, so the wall clock never depends on where the container runs.
  */
 export const getPlatformDisplayTimeZone = async (): Promise<string> => {
-  const settings = await readPlatformSettings();
+  const settings = await readPlatformSettings(await resolveAccessToken());
   return settings?.defaultTimezone ?? DEFAULT_TIME_ZONE;
 };
 
@@ -232,7 +238,7 @@ export const getPlatformDisplayTimeZone = async (): Promise<string> => {
  * about to choose a language.
  */
 export const getPlatformDisplayLocale = async (): Promise<Locale> => {
-  const settings = await readPlatformSettings();
+  const settings = await readPlatformSettings(await resolveAccessToken());
   if (settings) {
     lastConfirmedDisplayLocale = settings.defaultLocale;
     return settings.defaultLocale;

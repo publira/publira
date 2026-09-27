@@ -92,13 +92,13 @@ const mapOperator = (
 /** The tag every operator read is filed under, and every operator write clears. */
 export const platformOperatorsCacheTag = "platform:operators";
 
-export const listPlatformOperators = async (
-  input: ListPlatformOperatorsInput
+const listPlatformOperatorsForSession = async (
+  input: ListPlatformOperatorsInput,
+  sessionId: string
 ): Promise<ListPlatformOperatorsResult> => {
   "use cache: private";
   cacheTag(platformOperatorsCacheTag);
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
@@ -145,6 +145,11 @@ export const listPlatformOperators = async (
     };
   }
 };
+
+export const listPlatformOperators = async (
+  input: ListPlatformOperatorsInput
+): Promise<ListPlatformOperatorsResult> =>
+  listPlatformOperatorsForSession(input, await resolveAccessToken());
 
 export const createPlatformOperator = async (
   input: CreatePlatformOperatorInput
@@ -226,9 +231,10 @@ export const unsuspendPlatformOperator = async (
   }
 };
 
-export const getPlatformOperator = async (
+const getPlatformOperatorForSession = async (
   publicId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<PlatformOperatorSummary | null> => {
   "use cache: private";
   cacheTag(platformOperatorsCacheTag);
@@ -237,22 +243,13 @@ export const getPlatformOperator = async (
   // under the wrong language. This read currently returns null on a miss.
   void locale;
 
-  const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
-  if (!parsed.success) {
-    // Same null as a missing operator: the URL is not a resource, and
-    // wording that said "malformed" would only help an attacker probe
-    // which strings the server accepts.
-    return null;
-  }
-
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return null;
   }
 
   try {
     const response = await apiClient.operators.getOperator(
-      { publicId: parsed.data.publicId },
+      { publicId },
       buildSessionHeaders(sessionId)
     );
     return response.operator ? mapOperator(response.operator) : null;
@@ -261,6 +258,25 @@ export const getPlatformOperator = async (
     rethrowUnclassifiedRpcError(error);
     return null;
   }
+};
+
+export const getPlatformOperator = async (
+  publicId: string,
+  locale: Locale
+): Promise<PlatformOperatorSummary | null> => {
+  const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
+  if (!parsed.success) {
+    // Same null as a missing operator: the URL is not a resource, and
+    // wording that said "malformed" would only help an attacker probe
+    // which strings the server accepts.
+    return null;
+  }
+
+  return getPlatformOperatorForSession(
+    parsed.data.publicId,
+    locale,
+    await resolveAccessToken()
+  );
 };
 
 export interface UpdatePlatformOperatorRoleInput {

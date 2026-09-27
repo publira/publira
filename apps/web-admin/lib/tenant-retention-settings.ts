@@ -87,16 +87,14 @@ const toRetentionOverrides = (
   withdrawnCommentDays: overrides?.withdrawnCommentDays,
 });
 
-export const getTenantRetentionSettings = async (
+const getTenantRetentionSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantRetentionSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -133,6 +131,16 @@ export const getTenantRetentionSettings = async (
     };
   }
 };
+
+export const getTenantRetentionSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantRetentionSettingsResult> =>
+  getTenantRetentionSettingsForSession(
+    tenantId,
+    locale,
+    await getAccessToken()
+  );
 
 export const updateTenantRetentionSettings = async (
   input: {

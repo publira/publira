@@ -246,16 +246,14 @@ const communityLimitName = (
   }
 };
 
-export const getTenantCommunityLimitSettings = async (
+const getTenantCommunityLimitSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantCommunityLimitSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -293,6 +291,16 @@ export const getTenantCommunityLimitSettings = async (
     };
   }
 };
+
+export const getTenantCommunityLimitSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantCommunityLimitSettingsResult> =>
+  getTenantCommunityLimitSettingsForSession(
+    tenantId,
+    locale,
+    await getAccessToken()
+  );
 
 /**
  * Save the tenant's own limits, reading the platform values again first so a

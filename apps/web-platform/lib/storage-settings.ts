@@ -212,13 +212,13 @@ const writeFailure = async (
   };
 };
 
-export const getPlatformStorageSettings = async (
-  locale: Locale
+const getPlatformStorageSettingsForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPlatformStorageSettingsResult> => {
   "use cache: private";
   cacheTag(platformStorageSettingsCacheTag);
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -250,6 +250,11 @@ export const getPlatformStorageSettings = async (
     };
   }
 };
+
+export const getPlatformStorageSettings = async (
+  locale: Locale
+): Promise<GetPlatformStorageSettingsResult> =>
+  getPlatformStorageSettingsForSession(locale, await resolveAccessToken());
 
 /**
  * Save the storage settings. `expectedRevision` is the revision the screen was

@@ -141,25 +141,16 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
   userPublicId: item.userPublicId,
 });
 
-/**
- * One page of the tenant's access tickets, newest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` descending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the list spans more than one page.
- */
-export const listAccessTickets = async (
+const listAccessTicketsForSession = async (
   tenantId: string,
   locale: Locale,
-  options: ListAccessTicketsOptions = {}
+  options: ListAccessTicketsOptions,
+  sessionId: string
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -202,6 +193,25 @@ export const listAccessTickets = async (
     };
   }
 };
+
+/**
+ * One page of the tenant's access tickets, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
+export const listAccessTickets = async (
+  tenantId: string,
+  locale: Locale,
+  options: ListAccessTicketsOptions = {}
+): Promise<ListAccessTicketsResult> =>
+  listAccessTicketsForSession(
+    tenantId,
+    locale,
+    options,
+    await getAccessToken()
+  );
 
 export const issueAccessTicket = async (
   input: IssueAccessTicketInput,

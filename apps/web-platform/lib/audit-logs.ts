@@ -57,13 +57,13 @@ export type ListPlatformAuditLogsResult =
 /** The tag the audit log read is filed under, cleared by every write the API records. */
 export const platformAuditLogsCacheTag = "platform:audit-logs";
 
-export const listPlatformAuditLogs = async (
-  input: ListPlatformAuditLogsInput
+const listPlatformAuditLogsForSession = async (
+  input: ListPlatformAuditLogsInput,
+  sid: string
 ): Promise<ListPlatformAuditLogsResult> => {
   "use cache: private";
   cacheTag(platformAuditLogsCacheTag);
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
@@ -133,3 +133,8 @@ export const listPlatformAuditLogs = async (
     };
   }
 };
+
+export const listPlatformAuditLogs = async (
+  input: ListPlatformAuditLogsInput
+): Promise<ListPlatformAuditLogsResult> =>
+  listPlatformAuditLogsForSession(input, await resolveAccessToken());

@@ -138,16 +138,14 @@ const availableItem = (
 /** A private, paged list of the signed-in member's currently public follows. */
 const readFollowList = async (
   tenantId: string,
-  input: ListMyFollowsInput
+  input: ListMyFollowsInput,
+  sessionId: string
 ): Promise<CachedListMyFollowsResult> => {
   "use cache: private";
   applyCacheTag(followsCacheTag(tenantId));
 
   const { locale } = input;
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyFollowPage,
@@ -197,7 +195,7 @@ export const listMyFollows = async (
   input: ListMyFollowsInput
 ): Promise<ListMyFollowsResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readFollowList(tenantId, input),
+    readFollowList(tenantId, input, await resolveAccessToken()),
     getMessagesFor(input.locale),
   ]);
   throwIfUnexpected(

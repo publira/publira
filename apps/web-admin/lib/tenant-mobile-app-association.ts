@@ -76,16 +76,14 @@ const toTenantMobileAppAssociation = (association?: {
     : undefined,
 });
 
-export const getTenantMobileAppAssociation = async (
+const getTenantMobileAppAssociationForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantMobileAppAssociationResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -120,6 +118,16 @@ export const getTenantMobileAppAssociation = async (
     };
   }
 };
+
+export const getTenantMobileAppAssociation = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantMobileAppAssociationResult> =>
+  getTenantMobileAppAssociationForSession(
+    tenantId,
+    locale,
+    await getAccessToken()
+  );
 
 /** Which field the API refused, as the form names it to the operator. */
 const refusedFieldMessage = (

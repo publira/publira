@@ -147,16 +147,14 @@ const toTenantSmtpSettings = (
   username: settings?.username ?? "",
 });
 
-export const getTenantEmailSettings = async (
+const getTenantEmailSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
@@ -187,6 +185,12 @@ export const getTenantEmailSettings = async (
     };
   }
 };
+
+export const getTenantEmailSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantSmtpSettingsResult> =>
+  getTenantEmailSettingsForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput,

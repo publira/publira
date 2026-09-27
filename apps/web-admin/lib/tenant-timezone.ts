@@ -66,10 +66,12 @@ const parseErrorMessage = (
  * makes it the wrong entry point for the screens that only want the zone: they
  * would have to resolve a language to read a value that is not a sentence.
  */
-const readTenantTimezone = async (tenantId: string): Promise<string | null> => {
+const readTenantTimezone = async (
+  tenantId: string,
+  sessionId: string
+): Promise<string | null> => {
   "use cache: private";
 
-  const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return null;
@@ -92,16 +94,14 @@ const readTenantTimezone = async (tenantId: string): Promise<string | null> => {
   }
 };
 
-export const getTenantTimezone = async (
+const getTenantTimezoneForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantTimezoneResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -143,6 +143,12 @@ export const getTenantTimezone = async (
   }
 };
 
+export const getTenantTimezone = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantTimezoneResult> =>
+  getTenantTimezoneForSession(tenantId, locale, await getAccessToken());
+
 /**
  * Display / conversion zone for every date the admin console shows or accepts.
  * One entry point, so a screen never falls back to the fixed
@@ -158,7 +164,7 @@ export const getTenantTimezone = async (
 export const getTenantDisplayTimeZone = async (
   tenantId: string
 ): Promise<string> => {
-  const timezone = await readTenantTimezone(tenantId);
+  const timezone = await readTenantTimezone(tenantId, await getAccessToken());
   return timezone ?? DEFAULT_TIME_ZONE;
 };
 
