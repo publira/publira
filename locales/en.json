@@ -1333,6 +1333,8 @@
         "label_placeholder": "Search labels",
         "label_empty": "No matching labels found.",
         "label_description": "Select a label to associate with this series.",
+        "label_none": "A series needs a label, and this tenant has none yet.",
+        "label_create": "Create a label",
         "eye_catch": "Cover image",
         "eye_catch_preview": "Upload preview",
         "eye_catch_preview_alt": "Uploaded image preview",
