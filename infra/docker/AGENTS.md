@@ -10,7 +10,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | --- | --- |
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
-| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install: `db migrate` over the `db/migrations` it carries, every maintenance job an operator runs by hand (the worker schedules them as well), the `policy` and `retention` commands that change the platform policy and the retention defaults, the `smtp` commands that save and test the platform's SMTP settings, the `storage` commands that save and test the platform's object store, the `tenant` commands that create and manage a tenant, and the `webpush` commands that turn on Web Push |
+| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install: `db migrate` over the `db/migrations` it carries, `db roles` over the `db/seeds/baseline` it carries, every maintenance job an operator runs by hand (the worker schedules them as well), the `policy` and `retention` commands that change the platform policy and the retention defaults, the `smtp` commands that save and test the platform's SMTP settings, the `storage` commands that save and test the platform's object store, the `tenant` commands that create and manage a tenant, and the `webpush` commands that turn on Web Push |
 | `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
@@ -32,7 +32,7 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
 | --- | --- | --- | --- |
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
 | `server` | — | `VERSION` | `server/cmd/publira` → binary `/app/publira`; the process is the container argument (`server`, the default, or `worker`), not a build ARG |
-| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`db migrate`, `job <kind>`), not a build ARG |
+| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`db migrate`, `db roles`, `job <kind>`), not a build ARG |
 | `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
 ## Implementation rules

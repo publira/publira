@@ -177,15 +177,16 @@ tasks:
         echo "smoke ok: {{.APP_NAME}} /livez and /readyz (host port ${host_port})"
 
   smoke:publiractl:
-    desc: Migrate an empty database with a built publiractl image and check the version it reports
+    desc: Migrate an empty database with a built publiractl image, create its roles, and check a role signs in
     vars:
       PROJECT: publira-publiractl-smoke
     cmds:
       - |
         set -euo pipefail
         compose() { docker compose -p "{{.PROJECT}}" -f infra/docker/publiractl/compose.smoke.yaml "$@"; }
+        secrets="$(mktemp -d)"
         cleanup() { compose down -v >/dev/null 2>&1 || true; }
-        trap cleanup EXIT
+        trap 'cleanup; rm -rf "${secrets}"' EXIT
         cleanup
         compose run --rm -T publiractl db migrate
         compose run --rm -T publiractl db migrate
@@ -195,4 +196,15 @@ tasks:
           echo "smoke failed: db version reported ${version}, want version ${head}, not dirty" >&2
           exit 1
         fi
-        echo "smoke ok: publiractl migrated an empty database to ${head}"
+        roles="public admin platform outbox ticker content-stats"
+        flags=""
+        for role in ${roles}; do
+          printf 'smoke-%s' "${role}" > "${secrets}/${role}"
+          flags="${flags} --${role}-password-file /run/secrets/${role}"
+        done
+        # The image runs as nonroot, which has to read what the runner wrote.
+        chmod 0755 "${secrets}" && chmod 0644 "${secrets}"/*
+        compose run --rm -T -v "${secrets}:/run/secrets:ro" publiractl db roles ${flags}
+        compose run --rm -T publiractl db roles
+        compose exec -T db psql "postgres://publira_admin:smoke-admin@127.0.0.1:5432/publira" -tAc 'SELECT count(*) FROM tenants' >/dev/null
+        echo "smoke ok: publiractl migrated an empty database to ${head} and created roles that sign in"

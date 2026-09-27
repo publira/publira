@@ -55,6 +55,9 @@ func TestDBUsageListsEveryCommand(t *testing.T) {
 			t.Fatalf("usage text is missing %q", c.name)
 		}
 	}
+	if !strings.Contains(out, dbRolesCommand.name) {
+		t.Fatalf("usage text is missing %q", dbRolesCommand.name)
+	}
 }
 
 // A deployment that forgot the variable must not be migrated against the

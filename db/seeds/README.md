@@ -24,11 +24,12 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
 ## Directory layout
 
 - `prod.sql`: **Production** entry point — database users, roles, and object ownership only
-- `dev.sql`: **Development** entry point — `prod.sql` plus development sample data
-- `baseline/`: Minimal files shared between environments (referenced by both prod and dev)
+- `dev.sql`: **Development** entry point — `prod.sql` plus the development passwords and sample data
+- `baseline/`: Minimal files shared between environments (referenced by both prod and dev). `publiractl db roles` applies the same files without `psql`, so they hold no `psql` meta-command, and `prod.sql` includes every one of them in name order
 - `creator_roles.sql`: The creator-role vocabulary a tenant starts with, for the tenant a seed created (included with `\ir` from every seed that inserts a tenant, after `\set seed_tenant <public_id>`)
 - `episode_creators.sql`: The credits of the episodes a seed wrote, copied from their series (included the same way from every seed that inserts an episode)
 - `dev/`: Data used only in development (referenced only by dev.sql)
+  - `000_role_passwords.sql`: The development passwords of the login users `baseline/` creates without one
   - `001_tenant_users.sql`: Tenants, users, and roles
   - `010_catalog.sql`: Labels, creators, series, episodes, genres, and tags
   - `020_audit_logs.sql`: Audit logs
@@ -45,7 +46,7 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
 
 ```bash
 task db:seed             # Development seeds (default: ENV=dev)
-task db:seed ENV=prod    # Production seeds (database users, roles, and object ownership only)
+task db:seed ENV=prod    # Production seeds (database users, roles, and object ownership only, with no password)
 task storage:seed        # The images the development seed's rows name
 ```
 
@@ -73,7 +74,7 @@ task storage:seed        # The images the development seed's rows name
 
 ## Baseline roles and users
 
-`baseline/000_rls_bypass_role.sql` creates the following idempotently:
+`baseline/000_rls_bypass_role.sql` creates the following idempotently, each login without a password:
 
 | Name | Type | Purpose |
 | --- | --- | --- |
@@ -93,7 +94,7 @@ The same file takes the blanket grants back from two families of table — every
 
 `baseline/010_river_object_owner.sql` follows it and hands any existing `river_*` table, sequence, enum, or function to `publira_outbox`. On a database the worker has always connected to as that role there is nothing to move; on one whose River schema another role created, the transfer is what keeps `rivermigrate` able to alter those objects on the next River release.
 
-The development passwords are `platformpass`, `contentstatspass`, `outboxpass`, `tickerpass`, `adminpass`, and `publicpass`. After seeding a production environment, change them to secure values with `ALTER ROLE ... PASSWORD`.
+`dev/000_role_passwords.sql` sets the development passwords: `platformpass`, `contentstatspass`, `outboxpass`, `tickerpass`, `adminpass`, and `publicpass`. A production environment sets its own with `publiractl db roles`, which applies `baseline/` as well, or with `ALTER ROLE ... PASSWORD` after `task db:seed ENV=prod`.
 
 ## Development data counts
 
