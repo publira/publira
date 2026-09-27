@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
 )
 
@@ -43,7 +44,7 @@ func (s *platformServer) ListTenantAdminInvitations(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantAdminInvitationsResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func (s *platformServer) ListTenantAdminInvitations(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	listKey := ref.scope(pagination.NewListKey("created_at_desc"))
+	listKey := pagination.NewListKey("created_at_desc").Value("tenant_id", tenantID.String())
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = listKey.DecodeTimeUUID(cursor)
@@ -62,7 +63,7 @@ func (s *platformServer) ListTenantAdminInvitations(
 		}
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateTenantAdminInvitationRequest],
 ) (*connect.Response[publirasplatformv1.CreateTenantAdminInvitationResponse], error) {
-	ref, err := parseTenantRef(req.Msg.TenantId, req.Msg.TenantPublicId, req.Header())
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +122,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		return nil, err
 	}
 
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ResendTenantAdminInvitationRequest],
 ) (*connect.Response[publirasplatformv1.ResendTenantAdminInvitationResponse], error) {
-	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.TenantPublicId, req.Msg.InvitationId)
+	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.InvitationId)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CancelTenantAdminInvitationRequest],
 ) (*connect.Response[publirasplatformv1.CancelTenantAdminInvitationResponse], error) {
-	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.TenantPublicId, req.Msg.InvitationId)
+	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.InvitationId)
 	if err != nil {
 		return nil, err
 	}
@@ -227,16 +228,16 @@ func (s *platformServer) allowInvitationMail(ctx context.Context, req connect.An
 	}
 }
 
-func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantID, rawTenantPublicID, rawInvitationID string) (dbmodels.Tenant, uuid.UUID, error) {
+func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantID, rawInvitationID string) (dbmodels.Tenant, uuid.UUID, error) {
 	invitationID := strings.TrimSpace(rawInvitationID)
-	if (strings.TrimSpace(rawTenantID) == "" && strings.TrimSpace(rawTenantPublicID) == "") || invitationID == "" {
+	if strings.TrimSpace(rawTenantID) == "" || invitationID == "" {
 		return dbmodels.Tenant{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id and invitation_id are required"))
 	}
-	ref, err := parseTenantRef(rawTenantID, rawTenantPublicID, nil)
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(rawTenantID, nil)
 	if err != nil {
 		return dbmodels.Tenant{}, uuid.Nil, err
 	}
-	tenant, err := s.tenant(ctx, ref)
+	tenant, err := s.tenant(ctx, tenantID)
 	if err != nil {
 		return dbmodels.Tenant{}, uuid.Nil, err
 	}
@@ -247,18 +248,11 @@ func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantID
 	return tenant, parsedID, nil
 }
 
-// tenant reads the tenant ref names.
-func (s *platformServer) tenant(ctx context.Context, ref tenantRef) (dbmodels.Tenant, error) {
-	if ref.id != uuid.Nil {
-		tenant, err := platformtenants.GetByID(ctx, s.queriesFor(ctx), ref.id)
-		if err != nil {
-			return dbmodels.Tenant{}, s.tenantError(ctx, "failed to get tenant", err, "tenant_id", ref.id.String())
-		}
-		return tenant, nil
-	}
-	tenant, err := platformtenants.Get(ctx, s.queriesFor(ctx), ref.publicID)
+// tenant reads the tenant id names.
+func (s *platformServer) tenant(ctx context.Context, id uuid.UUID) (dbmodels.Tenant, error) {
+	tenant, err := platformtenants.GetByID(ctx, s.queriesFor(ctx), id)
 	if err != nil {
-		return dbmodels.Tenant{}, s.tenantError(ctx, "failed to get tenant", err, "public_id", ref.publicID)
+		return dbmodels.Tenant{}, s.tenantError(ctx, "failed to get tenant", err, "tenant_id", id.String())
 	}
 	return tenant, nil
 }

@@ -30,8 +30,10 @@ message ListTenantsRequest {
   int32 limit = 1;
   // Filters.
   string name = 3;
-  string public_id = 4;
   string status = 5;
+  // Removed with the move to internal IDs: no URL names a tenant by it.
+  reserved 4;
+  reserved "public_id";
   // Opaque token from a previous response. Empty for the first page.
   string token = 6;
 }
@@ -69,8 +71,9 @@ message CreateTenantResponse {
 }
 
 message SuspendTenantRequest {
-  string public_id = 1;
   string tenant_id = 2;
+  reserved 1;
+  reserved "public_id";
 }
 
 message SuspendTenantResponse {
@@ -78,8 +81,9 @@ message SuspendTenantResponse {
 }
 
 message ResumeTenantRequest {
-  string public_id = 1;
   string tenant_id = 2;
+  reserved 1;
+  reserved "public_id";
 }
 
 message ResumeTenantResponse {
@@ -103,7 +107,9 @@ message ListTenantMembersRequest {
   reserved 3;
   reserved "offset";
 
-  string tenant_public_id = 1;
+  reserved 1;
+  reserved "tenant_public_id";
+
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
@@ -120,12 +126,12 @@ message ListTenantMembersResponse {
 }
 
 message AddTenantMemberRequest {
-  string tenant_public_id = 1;
-  string user_public_id = 2;
   string role = 3;
   string email = 4;
   string tenant_id = 5;
   string user_id = 6;
+  reserved 1, 2;
+  reserved "tenant_public_id", "user_public_id";
 }
 
 message AddTenantMemberResponse {
@@ -133,11 +139,11 @@ message AddTenantMemberResponse {
 }
 
 message UpdateTenantMemberRoleRequest {
-  string tenant_public_id = 1;
-  string user_public_id = 2;
   string role = 3;
   string tenant_id = 4;
   string user_id = 5;
+  reserved 1, 2;
+  reserved "tenant_public_id", "user_public_id";
 }
 
 message UpdateTenantMemberRoleResponse {
@@ -145,10 +151,10 @@ message UpdateTenantMemberRoleResponse {
 }
 
 message RemoveTenantMemberRequest {
-  string tenant_public_id = 1;
-  string user_public_id = 2;
   string tenant_id = 3;
   string user_id = 4;
+  reserved 1, 2;
+  reserved "tenant_public_id", "user_public_id";
 }
 
 message RemoveTenantMemberResponse {
@@ -172,7 +178,9 @@ message ListTenantAdminInvitationsRequest {
   reserved 3;
   reserved "offset";
 
-  string tenant_public_id = 1;
+  reserved 1;
+  reserved "tenant_public_id";
+
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
@@ -189,9 +197,10 @@ message ListTenantAdminInvitationsResponse {
 }
 
 message CreateTenantAdminInvitationRequest {
-  string tenant_public_id = 1;
   string email = 2;
   string tenant_id = 3;
+  reserved 1;
+  reserved "tenant_public_id";
 }
 
 message CreateTenantAdminInvitationResponse {
@@ -200,9 +209,10 @@ message CreateTenantAdminInvitationResponse {
 }
 
 message ResendTenantAdminInvitationRequest {
-  string tenant_public_id = 1;
   string invitation_id = 2;
   string tenant_id = 3;
+  reserved 1;
+  reserved "tenant_public_id";
 }
 
 message ResendTenantAdminInvitationResponse {
@@ -210,9 +220,10 @@ message ResendTenantAdminInvitationResponse {
 }
 
 message CancelTenantAdminInvitationRequest {
-  string tenant_public_id = 1;
   string invitation_id = 2;
   string tenant_id = 3;
+  reserved 1;
+  reserved "tenant_public_id";
 }
 
 message CancelTenantAdminInvitationResponse {
@@ -220,12 +231,12 @@ message CancelTenantAdminInvitationResponse {
 }
 
 message UpdateTenantRequest {
-  string public_id = 1;
   string name = 2;
   string domain = 4;
   string admin_domain = 5;
   string tenant_id = 6;
-  reserved 3;
+  reserved 1, 3;
+  reserved "public_id";
 }
 
 message UpdateTenantResponse {

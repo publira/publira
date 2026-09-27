@@ -29,7 +29,7 @@ func TestListTenantsReturnsEmptyList(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantsDesc)).
-		WithArgs(sql.NullString{String: "", Valid: true}, sql.NullString{String: "", Valid: true}, sql.NullString{String: "", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(sql.NullString{String: "", Valid: true}, sql.NullString{String: "", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)

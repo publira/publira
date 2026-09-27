@@ -46,18 +46,18 @@ func addTenantAdminInvitationRow(
 }
 
 func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByPublicID)).
-		WithArgs("TENANT001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
+		WithArgs(uuid.MustParse(testTenantID)).
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
 }
 
-// tenantAdminInvitationListKey names the invitation list of TENANT001, the
+// tenantAdminInvitationListKey names the invitation list of testTenantID, the
 // tenant every list request here asks for.
-var tenantAdminInvitationListKey = pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT001")
+var tenantAdminInvitationListKey = pagination.NewListKey("created_at_desc").Value("tenant_id", testTenantID)
 
 func newTenantAdminInvitationListRequest() *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest] {
-	return connect.NewRequest(&publirasplatformv1.ListTenantAdminInvitationsRequest{TenantPublicId: "TENANT001"})
+	return connect.NewRequest(&publirasplatformv1.ListTenantAdminInvitationsRequest{TenantId: testTenantID})
 }
 
 func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
@@ -93,7 +93,7 @@ func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
-	wantKeys := []string{"created_at_desc+tenant_public_id:TENANT001", now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	wantKeys := []string{"created_at_desc+tenant_id:" + testTenantID, now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
 	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
 	}
@@ -217,7 +217,7 @@ func TestListTenantAdminInvitationsRejectsAnotherTenantsToken(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	boundaryAt := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
-	otherTenant := pagination.NewListKey("created_at_desc").Value("tenant_public_id", "TENANT002")
+	otherTenant := pagination.NewListKey("created_at_desc").Value("tenant_id", testUserID)
 
 	for name, token := range map[string]string{
 		"boundary": otherTenant.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
@@ -264,8 +264,8 @@ func TestCreateTenantAdminInvitationCommitsOutboxEventWithoutSMTP(t *testing.T) 
 	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{UserID: operator.ID, Role: operator.Role})
 
 	response, err := server.CreateTenantAdminInvitation(ctx, connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{
-		TenantPublicId: "OUTBOXAPI001",
-		Email:          "admin@example.com",
+		TenantId: tenantID.String(),
+		Email:    "admin@example.com",
 	}))
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)

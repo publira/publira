@@ -6,7 +6,6 @@
 SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
-  AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
   AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
   AND (
     sqlc.narg('cursor_id')::uuid IS NULL
@@ -26,7 +25,6 @@ LIMIT sqlc.arg('limit');
 SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
-  AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
   AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
   AND (
     sqlc.narg('cursor_id')::uuid IS NULL

@@ -131,9 +131,8 @@ type ListTenantsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Filters.
-	Name     string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Status   string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Name   string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -180,13 +179,6 @@ func (x *ListTenantsRequest) GetLimit() int32 {
 func (x *ListTenantsRequest) GetName() string {
 	if x != nil {
 		return x.Name
-	}
-	return ""
-}
-
-func (x *ListTenantsRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
 	}
 	return ""
 }
@@ -480,7 +472,6 @@ func (x *CreateTenantResponse) GetTenant() *Tenant {
 
 type SuspendTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -514,13 +505,6 @@ func (x *SuspendTenantRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SuspendTenantRequest.ProtoReflect.Descriptor instead.
 func (*SuspendTenantRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *SuspendTenantRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *SuspendTenantRequest) GetTenantId() string {
@@ -576,7 +560,6 @@ func (x *SuspendTenantResponse) GetTenant() *Tenant {
 
 type ResumeTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -610,13 +593,6 @@ func (x *ResumeTenantRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ResumeTenantRequest.ProtoReflect.Descriptor instead.
 func (*ResumeTenantRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *ResumeTenantRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *ResumeTenantRequest) GetTenantId() string {
@@ -765,8 +741,7 @@ func (x *TenantMember) GetUserId() string {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListTenantMembersRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
@@ -804,13 +779,6 @@ func (x *ListTenantMembersRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListTenantMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListTenantMembersRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ListTenantMembersRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *ListTenantMembersRequest) GetLimit() int32 {
@@ -897,15 +865,13 @@ func (x *ListTenantMembersResponse) GetNextToken() string {
 }
 
 type AddTenantMemberRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
-	Role           string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	Email          string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	TenantId       string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	UserId         string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	TenantId      string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddTenantMemberRequest) Reset() {
@@ -936,20 +902,6 @@ func (x *AddTenantMemberRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use AddTenantMemberRequest.ProtoReflect.Descriptor instead.
 func (*AddTenantMemberRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *AddTenantMemberRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
-}
-
-func (x *AddTenantMemberRequest) GetUserPublicId() string {
-	if x != nil {
-		return x.UserPublicId
-	}
-	return ""
 }
 
 func (x *AddTenantMemberRequest) GetRole() string {
@@ -1025,14 +977,12 @@ func (x *AddTenantMemberResponse) GetMember() *TenantMember {
 }
 
 type UpdateTenantMemberRoleRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
-	Role           string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	TenantId       string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	UserId         string                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	TenantId      string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateTenantMemberRoleRequest) Reset() {
@@ -1063,20 +1013,6 @@ func (x *UpdateTenantMemberRoleRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateTenantMemberRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantMemberRoleRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *UpdateTenantMemberRoleRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
-}
-
-func (x *UpdateTenantMemberRoleRequest) GetUserPublicId() string {
-	if x != nil {
-		return x.UserPublicId
-	}
-	return ""
 }
 
 func (x *UpdateTenantMemberRoleRequest) GetRole() string {
@@ -1145,13 +1081,11 @@ func (x *UpdateTenantMemberRoleResponse) GetMember() *TenantMember {
 }
 
 type RemoveTenantMemberRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	UserId         string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RemoveTenantMemberRequest) Reset() {
@@ -1182,20 +1116,6 @@ func (x *RemoveTenantMemberRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RemoveTenantMemberRequest.ProtoReflect.Descriptor instead.
 func (*RemoveTenantMemberRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *RemoveTenantMemberRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
-}
-
-func (x *RemoveTenantMemberRequest) GetUserPublicId() string {
-	if x != nil {
-		return x.UserPublicId
-	}
-	return ""
 }
 
 func (x *RemoveTenantMemberRequest) GetTenantId() string {
@@ -1358,8 +1278,7 @@ func (x *TenantAdminInvitation) GetCanceledAt() string {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListTenantAdminInvitationsRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
@@ -1397,13 +1316,6 @@ func (x *ListTenantAdminInvitationsRequest) ProtoReflect() protoreflect.Message 
 // Deprecated: Use ListTenantAdminInvitationsRequest.ProtoReflect.Descriptor instead.
 func (*ListTenantAdminInvitationsRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *ListTenantAdminInvitationsRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *ListTenantAdminInvitationsRequest) GetLimit() int32 {
@@ -1490,12 +1402,11 @@ func (x *ListTenantAdminInvitationsResponse) GetNextToken() string {
 }
 
 type CreateTenantAdminInvitationRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	Email          string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	TenantId      string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateTenantAdminInvitationRequest) Reset() {
@@ -1526,13 +1437,6 @@ func (x *CreateTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message
 // Deprecated: Use CreateTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
 func (*CreateTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *CreateTenantAdminInvitationRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *CreateTenantAdminInvitationRequest) GetEmail() string {
@@ -1602,12 +1506,11 @@ func (x *CreateTenantAdminInvitationResponse) GetRoleGrantedImmediately() bool {
 }
 
 type ResendTenantAdminInvitationRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvitationId  string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	TenantId      string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResendTenantAdminInvitationRequest) Reset() {
@@ -1638,13 +1541,6 @@ func (x *ResendTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message
 // Deprecated: Use ResendTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
 func (*ResendTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *ResendTenantAdminInvitationRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *ResendTenantAdminInvitationRequest) GetInvitationId() string {
@@ -1706,12 +1602,11 @@ func (x *ResendTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvita
 }
 
 type CancelTenantAdminInvitationRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvitationId  string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	TenantId      string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CancelTenantAdminInvitationRequest) Reset() {
@@ -1742,13 +1637,6 @@ func (x *CancelTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message
 // Deprecated: Use CancelTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
 func (*CancelTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *CancelTenantAdminInvitationRequest) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
 }
 
 func (x *CancelTenantAdminInvitationRequest) GetInvitationId() string {
@@ -1811,7 +1699,6 @@ func (x *CancelTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvita
 
 type UpdateTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
 	AdminDomain   string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
@@ -1848,13 +1735,6 @@ func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateTenantRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *UpdateTenantRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UpdateTenantRequest) GetName() string {
@@ -1943,13 +1823,12 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\a \x01(\tR\vadminDomain\x12\x1a\n" +
 	"\btimezone\x18\b \x01(\tR\btimezone\x12\x0e\n" +
-	"\x02id\x18\t \x01(\tR\x02idJ\x04\b\x06\x10\a\"\x97\x01\n" +
+	"\x02id\x18\t \x01(\tR\x02idJ\x04\b\x06\x10\a\"\x8b\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
-	"\tpublic_id\x18\x04 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x14\n" +
-	"\x05token\x18\x06 \x01(\tR\x05tokenJ\x04\b\x02\x10\x03R\x06offset\"\x92\x01\n" +
+	"\x05token\x18\x06 \x01(\tR\x05tokenJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\x06offsetR\tpublic_id\"\x92\x01\n" +
 	"\x13ListTenantsResponse\x125\n" +
 	"\atenants\x18\x01 \x03(\v2\x1b.publira.platform.v1.TenantR\atenants\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -1966,15 +1845,13 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12%\n" +
 	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocaleJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"P\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"D\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"L\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02R\tpublic_id\"L\n" +
 	"\x15SuspendTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"O\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"C\n" +
 	"\x13ResumeTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"K\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02R\tpublic_id\"K\n" +
 	"\x14ResumeTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xc2\x01\n" +
 	"\fTenantMember\x12$\n" +
@@ -1985,39 +1862,32 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x17\n" +
-	"\auser_id\x18\a \x01(\tR\x06userId\"\x9b\x01\n" +
-	"\x18ListTenantMembersRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"\auser_id\x18\a \x01(\tR\x06userId\"\x89\x01\n" +
+	"\x18ListTenantMembersRequest\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +
-	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04R\x06offset\"\x9e\x01\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04J\x04\b\x01\x10\x02R\x06offsetR\x10tenant_public_id\"\x9e\x01\n" +
 	"\x19ListTenantMembersResponse\x12;\n" +
 	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc8\x01\n" +
-	"\x16AddTenantMemberRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa6\x01\n" +
+	"\x16AddTenantMemberRequest\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x14\n" +
 	"\x05email\x18\x04 \x01(\tR\x05email\x12\x1b\n" +
 	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12\x17\n" +
-	"\auser_id\x18\x06 \x01(\tR\x06userId\"T\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x10tenant_public_idR\x0euser_public_id\"T\n" +
 	"\x17AddTenantMemberResponse\x129\n" +
-	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\xb9\x01\n" +
-	"\x1dUpdateTenantMemberRoleRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
+	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\x97\x01\n" +
+	"\x1dUpdateTenantMemberRoleRequest\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x17\n" +
-	"\auser_id\x18\x05 \x01(\tR\x06userId\"[\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x10tenant_public_idR\x0euser_public_id\"[\n" +
 	"\x1eUpdateTenantMemberRoleResponse\x129\n" +
-	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\xa1\x01\n" +
-	"\x19RemoveTenantMemberRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x1b\n" +
+	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\x7f\n" +
+	"\x19RemoveTenantMemberRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12\x17\n" +
-	"\auser_id\x18\x04 \x01(\tR\x06userId\"[\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x10tenant_public_idR\x0euser_public_id\"[\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
 	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xd5\x01\n" +
@@ -2032,48 +1902,43 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\vaccepted_at\x18\x06 \x01(\tR\n" +
 	"acceptedAt\x12\x1f\n" +
 	"\vcanceled_at\x18\a \x01(\tR\n" +
-	"canceledAt\"\xa4\x01\n" +
-	"!ListTenantAdminInvitationsRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"canceledAt\"\x92\x01\n" +
+	"!ListTenantAdminInvitationsRequest\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +
-	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04R\x06offset\"\xb8\x01\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04J\x04\b\x01\x10\x02R\x06offsetR\x10tenant_public_id\"\xb8\x01\n" +
 	"\"ListTenantAdminInvitationsResponse\x12L\n" +
 	"\vinvitations\x18\x01 \x03(\v2*.publira.platform.v1.TenantAdminInvitationR\vinvitations\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x81\x01\n" +
-	"\"CreateTenantAdminInvitationRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"o\n" +
+	"\"CreateTenantAdminInvitationRequest\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"\xab\x01\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02R\x10tenant_public_id\"\xab\x01\n" +
 	"#CreateTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
 	"invitation\x128\n" +
-	"\x18role_granted_immediately\x18\x02 \x01(\bR\x16roleGrantedImmediately\"\x90\x01\n" +
-	"\"ResendTenantAdminInvitationRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
+	"\x18role_granted_immediately\x18\x02 \x01(\bR\x16roleGrantedImmediately\"~\n" +
+	"\"ResendTenantAdminInvitationRequest\x12#\n" +
 	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"q\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02R\x10tenant_public_id\"q\n" +
 	"#ResendTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"\x90\x01\n" +
-	"\"CancelTenantAdminInvitationRequest\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
+	"invitation\"~\n" +
+	"\"CancelTenantAdminInvitationRequest\x12#\n" +
 	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"q\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02R\x10tenant_public_id\"q\n" +
 	"#CancelTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"\xa4\x01\n" +
-	"\x13UpdateTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"invitation\"\x98\x01\n" +
+	"\x13UpdateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x04 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12\x1b\n" +
-	"\ttenant_id\x18\x06 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04\"K\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\tpublic_id\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xae\r\n" +
 	"\x15PlatformTenantService\x12b\n" +

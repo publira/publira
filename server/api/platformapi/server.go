@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -17,10 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
-	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/storagesettings"
@@ -84,52 +81,6 @@ func platformActorFromContext(ctx context.Context) (platformActor, bool) {
 
 func (s *platformServer) queriesFor(_ context.Context) Querier {
 	return s.queries
-}
-
-// tenantRef is the tenant a request names, parsed without reading anything:
-// by its ID, or by its public ID when the request carries no ID.
-type tenantRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
-// parseTenantRef reads the tenant a request names from its tenant_id, or from
-// its tenant_public_id when tenant_id is blank. Either one may come from the
-// tenant header instead, and must match it when both are set.
-func parseTenantRef(rawID, rawPublicID string, headers http.Header) (tenantRef, error) {
-	if strings.TrimSpace(rawID) != "" {
-		id, err := rpcmiddleware.ResolveTenantIDValue(rawID, headers)
-		return tenantRef{id: id}, err
-	}
-	publicID, err := resolveTenantPublicID(rawPublicID, headers)
-	return tenantRef{publicID: publicID}, err
-}
-
-// scope binds a list token to the tenant ref names.
-func (ref tenantRef) scope(key pagination.ListKey) pagination.ListKey {
-	if ref.id != uuid.Nil {
-		return key.Value("tenant_id", ref.id.String())
-	}
-	return key.Value("tenant_public_id", ref.publicID)
-}
-
-// resolveTenantPublicID resolves the tenant public_id from the request body or
-// the tenant header. Platform APIs address tenants by their human-facing
-// public_id, so this stays a platform-local helper rather than reusing the UUID
-// resolvers in rpcmiddleware.
-func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (string, error) {
-	body := strings.TrimSpace(reqTenantPublicID)
-	header := rpcmiddleware.TenantIDFromHeader(headers)
-	if body != "" && header != "" && body != header {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id header and request body must match"))
-	}
-	if body != "" {
-		return body, nil
-	}
-	if header != "" {
-		return header, nil
-	}
-	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }
 
 // ServiceName is the service.name this namespace's spans carry. The three
