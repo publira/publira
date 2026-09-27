@@ -209,6 +209,15 @@ export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
 }, z.array(z.string()));
 
 /**
+ * A JSON array of record IDs, as a reorder form posts it. An entry that is not
+ * a UUID refuses the whole list rather than reaching the API; `guid` checks
+ * the shape only, as `requiredRecordId` does.
+ */
+export const jsonRecordIdArrayFormSchema = jsonStringArrayFormSchema.pipe(
+  z.array(z.guid())
+);
+
+/**
  * A credit's share inside a posted credit list, already in basis points.
  * Required rather than defaulted: the list replaces every credit, and a
  * missing share read as 0 would stop paying the person without anyone

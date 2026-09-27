@@ -41,7 +41,7 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
   return (
     <form action={formAction} className="grid flex-1 gap-2">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={genre.publicId} />
+      <input name="genre_id" type="hidden" value={genre.id} />
       <div className="flex flex-wrap items-center gap-2">
         <Input
           aria-label={t("admin.genres.name_field_label", {
@@ -71,7 +71,7 @@ export const GenreRenameForm = ({ genre }: GenreRenameFormProps) => {
           />
         </p>
       </div>
-      {state && state.publicId === genre.publicId ? (
+      {state && state.id === genre.id ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>
           {state.message}
         </FormMessage>

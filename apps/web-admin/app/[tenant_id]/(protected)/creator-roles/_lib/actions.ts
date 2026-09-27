@@ -19,7 +19,8 @@ import {
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "#lib/creator-roles-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import {
-  jsonStringArrayFormSchema,
+  jsonRecordIdArrayFormSchema,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -47,10 +48,10 @@ const tenantIdSchema = async (locale: Locale) => {
     t("admin.creator_roles.validation.tenant_missing")
   );
 };
-const publicIdSchema = async (locale: Locale) => {
+const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return requiredTrimmedString(t("admin.creator_roles.validation.id_missing"));
+  return requiredRecordId(t("admin.creator_roles.validation.id_missing"));
 };
 const createCreatorRoleSchema = async (locale: Locale) =>
   z.object({
@@ -59,23 +60,23 @@ const createCreatorRoleSchema = async (locale: Locale) =>
   });
 const renameCreatorRoleSchema = async (locale: Locale) =>
   z.object({
+    id: await idSchema(locale),
     name: await nameSchema(locale),
-    publicId: await publicIdSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const deleteCreatorRoleSchema = async (locale: Locale) =>
   z.object({
-    publicId: await publicIdSchema(locale),
+    id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const reorderCreatorRolesSchema = async (locale: Locale) =>
   z.object({
-    expectedPublicIds: jsonStringArrayFormSchema,
-    publicIds: jsonStringArrayFormSchema,
+    expectedIds: jsonRecordIdArrayFormSchema,
+    ids: jsonRecordIdArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
 const rowFormFields = {
-  publicId: { kind: "value", name: "public_id" },
+  id: { kind: "value", name: "creator_role_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
@@ -131,28 +132,28 @@ export const renameCreatorRoleAction = async (
   if (!parsed.success) {
     // The row the message belongs to is the one that submitted, which is what
     // the form posted — a parse failure has no validated id to echo.
-    const publicId = formData.get("public_id");
+    const id = formData.get("creator_role_id");
     return {
+      id: typeof id === "string" ? id : "",
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      publicId: typeof publicId === "string" ? publicId : "",
     };
   }
 
-  const { name, publicId, tenantId } = parsed.data;
+  const { name, id, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    updateCreatorRole({ name, publicId, tenantId }, locale)
+    updateCreatorRole({ id, name, tenantId }, locale)
   );
   if (!result.ok) {
-    return { message: result.message, ok: false, publicId };
+    return { id, message: result.message, ok: false };
   }
 
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
+    id,
     message: t("admin.creator_roles.updated"),
     ok: true,
-    publicId,
   };
 };
 
@@ -168,28 +169,28 @@ export const deleteCreatorRoleAction = async (
   ]);
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
-    const publicId = formData.get("public_id");
+    const id = formData.get("creator_role_id");
     return {
+      id: typeof id === "string" ? id : "",
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      publicId: typeof publicId === "string" ? publicId : "",
     };
   }
 
-  const { publicId, tenantId } = parsed.data;
+  const { id, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    deleteCreatorRole({ publicId, tenantId }, locale)
+    deleteCreatorRole({ id, tenantId }, locale)
   );
   if (!result.ok) {
-    return { message: result.message, ok: false, publicId };
+    return { id, message: result.message, ok: false };
   }
 
   updateTag(creatorRolesCacheTag(tenantId));
 
   return {
+    id,
     message: t("admin.creator_roles.deleted"),
     ok: true,
-    publicId,
   };
 };
 
@@ -204,11 +205,11 @@ export const reorderCreatorRolesAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      expectedPublicIds: {
+      expectedIds: {
         kind: "value",
-        name: "expected_creator_role_public_ids",
+        name: "expected_creator_role_ids",
       },
-      publicIds: { kind: "value", name: "creator_role_public_ids" },
+      ids: { kind: "value", name: "creator_role_ids" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
@@ -222,8 +223,8 @@ export const reorderCreatorRolesAction = async (
     };
   }
 
-  const { expectedPublicIds, publicIds, tenantId } = parsed.data;
-  if (publicIds.length === 0 || publicIds.length !== expectedPublicIds.length) {
+  const { expectedIds, ids, tenantId } = parsed.data;
+  if (ids.length === 0 || ids.length !== expectedIds.length) {
     return {
       message: t("admin.creator_roles.reorder_failed"),
       ok: false,
@@ -231,7 +232,7 @@ export const reorderCreatorRolesAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    reorderCreatorRoles({ expectedPublicIds, publicIds, tenantId }, locale)
+    reorderCreatorRoles({ expectedIds, ids, tenantId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };

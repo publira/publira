@@ -2,6 +2,9 @@ import type { EyeCatchVariantItem } from "#components/eye-catch/types";
 
 /** One row of the genre list, in the order the tenant put its genres in. */
 export interface GenreListItem {
+  /** The primary key every genre write addresses the genre by. */
+  id: string;
+  /** What the genre's page is addressed by in the URL. */
   publicId: string;
   name: string;
   slug: string;
@@ -19,7 +22,7 @@ export interface GenreListItem {
 export type GenreRowActionState = {
   ok: boolean;
   message: string;
-  publicId: string;
+  id: string;
 } | null;
 
 /** Result of a reorder, which the list submits rather than a form. */

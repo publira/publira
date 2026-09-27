@@ -24,7 +24,7 @@ interface CreatorRoleListProps {
 }
 
 const creatorRoleId = (creatorRole: CreatorRoleListItem): string =>
-  creatorRole.publicId;
+  creatorRole.id;
 
 /**
  * The tenant's creator roles in priority order, with the controls that write
@@ -68,13 +68,13 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
         const formData = new FormData();
         formData.set("tenant_id", tenantId);
         formData.set(
-          "creator_role_public_ids",
+          "creator_role_ids",
           JSON.stringify(nextCreatorRoles.map(creatorRoleId))
         );
         // The order the list was rendered from, so a console left open while
         // someone else moved a role is refused rather than merged.
         formData.set(
-          "expected_creator_role_public_ids",
+          "expected_creator_role_ids",
           JSON.stringify(currentCreatorRoles.map(creatorRoleId))
         );
 
@@ -99,9 +99,9 @@ export const CreatorRoleList = ({ creatorRoles }: CreatorRoleListProps) => {
           <SortableItem
             className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
             disabled={isPending}
-            id={creatorRole.publicId}
+            id={creatorRole.id}
             index={index}
-            key={creatorRole.publicId}
+            key={creatorRole.id}
             label={creatorRole.name}
           >
             {/* The height of the name field beside it, so the grip and the

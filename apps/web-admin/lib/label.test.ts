@@ -415,6 +415,7 @@ describe("label eye-catch aspect images", () => {
             width: 1600,
           },
         ],
+        id: "LABEL101",
         name: "Weekly",
         publicId: "LABEL101",
       },
@@ -424,9 +425,9 @@ describe("label eye-catch aspect images", () => {
     const { uploadLabelEyeCatchAspectImage } = await import("./label");
     const result = await uploadLabelEyeCatchAspectImage(
       {
+        id: "LABEL101",
         imageContentType: "image/jpeg",
         imageData,
-        publicId: "LABEL101",
         tenantId: "TENANT001",
         variantType: "landscape",
       },
@@ -437,7 +438,7 @@ describe("label eye-catch aspect images", () => {
       {
         imageContentType: "image/jpeg",
         imageData,
-        publicId: "LABEL101",
+        labelId: "LABEL101",
         tenant: { tenantId: "TENANT001" },
         variantType: "landscape",
       },
@@ -457,8 +458,8 @@ describe("label eye-catch aspect images", () => {
     const { uploadLabelEyeCatchAspectImage } = await import("./label");
     const result = await uploadLabelEyeCatchAspectImage(
       {
+        id: "LABEL101",
         imageData: new Uint8Array([1]),
-        publicId: "LABEL101",
         tenantId: "TENANT001",
         variantType: "landscape",
       },

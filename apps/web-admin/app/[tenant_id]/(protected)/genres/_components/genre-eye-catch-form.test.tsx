@@ -61,6 +61,7 @@ const genre: GenreListItem = {
       width: 1200,
     },
   ],
+  id: "genre-1",
   name: "Fantasy",
   publicId: "GENRE001",
   slug: "fantasy",
@@ -122,7 +123,7 @@ describe("GenreEyeCatchForm", () => {
 
     const formData = await submitted.current.promise;
     expect(formData.get("tenant_id")).toBe("TENANT001");
-    expect(formData.get("public_id")).toBe("GENRE001");
+    expect(formData.get("genre_id")).toBe("genre-1");
     expect(formData.get("name")).toBe("Fantasy");
     expect(formData.get("clear_eye_catch_image")).toBe("1");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(

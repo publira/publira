@@ -50,7 +50,7 @@ export const CreatorRoleDeleteButton = ({
   return (
     <form action={formAction} className="grid gap-1" ref={formRef}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={creatorRole.publicId} />
+      <input name="creator_role_id" type="hidden" value={creatorRole.id} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={
@@ -95,7 +95,7 @@ export const CreatorRoleDeleteButton = ({
           </ConfirmDialogFooter>
         </ConfirmDialogContent>
       </ConfirmDialog>
-      {state && !state.ok && state.publicId === creatorRole.publicId ? (
+      {state && !state.ok && state.id === creatorRole.id ? (
         <FormMessage variant="destructive">{state.message}</FormMessage>
       ) : null}
     </form>

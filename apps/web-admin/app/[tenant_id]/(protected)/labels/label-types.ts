@@ -1,6 +1,9 @@
 import type { EyeCatchVariantItem } from "#components/eye-catch/types";
 
 export interface LabelListItem {
+  /** The primary key an edit addresses the label by. */
+  id: string;
+  /** What the label's page is addressed by in the URL. */
   publicId: string;
   name: string;
   eyeCatchImageUpdatedAt: string;

@@ -226,9 +226,9 @@ const surfaces: UploadSurface[] = [
         {
           iconImageContentType: "image/png",
           iconImageData: image,
+          id: "CREATOR001",
           name: "Creator",
           profileText: "",
-          publicId: "CREATOR001",
           tenantId: "TENANT001",
         },
         locale
@@ -262,8 +262,8 @@ const surfaces: UploadSurface[] = [
         {
           eyeCatchImageContentType: "image/png",
           eyeCatchImageData: image,
+          id: "LABEL001",
           name: "Label",
-          publicId: "LABEL001",
           tenantId: "TENANT001",
         },
         locale
@@ -278,8 +278,8 @@ const surfaces: UploadSurface[] = [
       const { uploadLabelEyeCatchAspectImage } = await import("./label");
       return uploadLabelEyeCatchAspectImage(
         {
+          id: "LABEL001",
           imageData: image,
-          publicId: "LABEL001",
           tenantId: "TENANT001",
           variantType: "square",
         },

@@ -31,6 +31,8 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
+  /** The primary key an edit addresses the label by. */
+  id: string;
   publicId: string;
   name: string;
   eyeCatchImageUpdatedAt: string;
@@ -118,7 +120,11 @@ const mapErrorToMessage = async (
 /** The generated `Label` fields {@link mapLabel} reads (see `series.ts`). */
 type RawLabel = Pick<
   Label,
-  "eyeCatchImageUpdatedAt" | "eyeCatchImageVariants" | "name" | "publicId"
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "id"
+  | "name"
+  | "publicId"
 >;
 
 const mapLabel = (label: RawLabel): LabelItem => ({
@@ -139,6 +145,7 @@ const mapLabel = (label: RawLabel): LabelItem => ({
         : [];
     }
   ),
+  id: label.id,
   name: label.name,
   publicId: label.publicId,
 });
@@ -324,7 +331,7 @@ export const createLabel = async (
       withSessionHeaders(sessionId)
     );
 
-    if (!response.label?.publicId?.trim()) {
+    if (!response.label?.id?.trim()) {
       return {
         message: t("admin.labels.save_failed"),
         ok: false,
@@ -352,7 +359,7 @@ export const createLabel = async (
 export const updateLabel = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     name: string;
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
@@ -377,14 +384,14 @@ export const updateLabel = async (
         clearEyeCatchImage: input.clearEyeCatchImage,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
+        labelId: input.id,
         name: input.name,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.label?.publicId?.trim()) {
+    if (!response.label?.id?.trim()) {
       return {
         message: t("admin.labels.save_failed"),
         ok: false,
@@ -500,7 +507,7 @@ export type LabelEyeCatchAspectResult =
 export const uploadLabelEyeCatchAspectImage = async (
   input: {
     tenantId: string;
-    publicId: string;
+    id: string;
     variantType: string;
     imageContentType?: string;
     imageData: Uint8Array;
@@ -526,14 +533,14 @@ export const uploadLabelEyeCatchAspectImage = async (
         crop: input.crop,
         imageContentType: input.imageContentType,
         imageData: input.imageData,
-        publicId: input.publicId,
+        labelId: input.id,
         tenant: { tenantId: input.tenantId },
         variantType: input.variantType,
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.label?.publicId?.trim()) {
+    if (!response.label?.id?.trim()) {
       return {
         message: t("admin.labels.save_failed"),
         ok: false,

@@ -57,6 +57,7 @@ const invalidField = (message: string, field: string) =>
 
 /** A genre as the console maps it when the API sent no eye-catch. */
 const withoutEyeCatch = (genre: {
+  id: string;
   name: string;
   publicId: string;
   slug: string;
@@ -83,13 +84,30 @@ describe("listGenres", () => {
     mockListGenres
       .mockResolvedValueOnce({
         genres: [
-          { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
-          { name: "Mystery", publicId: "GENRE002", slug: "mystery" },
+          {
+            id: "genre-1",
+            name: "Fantasy",
+            publicId: "GENRE001",
+            slug: "fantasy",
+          },
+          {
+            id: "genre-2",
+            name: "Mystery",
+            publicId: "GENRE002",
+            slug: "mystery",
+          },
         ],
         nextToken: "page-2",
       })
       .mockResolvedValueOnce({
-        genres: [{ name: "Romance", publicId: "GENRE003", slug: "romance" }],
+        genres: [
+          {
+            id: "genre-3",
+            name: "Romance",
+            publicId: "GENRE003",
+            slug: "romance",
+          },
+        ],
         nextToken: "",
       });
 
@@ -99,16 +117,19 @@ describe("listGenres", () => {
     expect(result).toEqual({
       genres: [
         withoutEyeCatch({
+          id: "genre-1",
           name: "Fantasy",
           publicId: "GENRE001",
           slug: "fantasy",
         }),
         withoutEyeCatch({
+          id: "genre-2",
           name: "Mystery",
           publicId: "GENRE002",
           slug: "mystery",
         }),
         withoutEyeCatch({
+          id: "genre-3",
           name: "Romance",
           publicId: "GENRE003",
           slug: "romance",
@@ -152,6 +173,7 @@ describe("listGenres", () => {
               url: "",
             },
           ],
+          id: "genre-1",
           name: "Fantasy",
           publicId: "GENRE001",
           slug: "fantasy",
@@ -168,6 +190,7 @@ describe("listGenres", () => {
         {
           eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
           eyeCatchImageVariants: [squareVariant],
+          id: "genre-1",
           name: "Fantasy",
           publicId: "GENRE001",
           slug: "fantasy",
@@ -209,7 +232,12 @@ describe("createGenre", () => {
 
   it("returns the created genre", async () => {
     mockCreateGenre.mockResolvedValue({
-      genre: { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+      genre: {
+        id: "genre-1",
+        name: "Fantasy",
+        publicId: "GENRE001",
+        slug: "fantasy",
+      },
     });
 
     const { createGenre } = await import("./genre");
@@ -220,6 +248,7 @@ describe("createGenre", () => {
 
     expect(result).toEqual({
       genre: withoutEyeCatch({
+        id: "genre-1",
         name: "Fantasy",
         publicId: "GENRE001",
         slug: "fantasy",
@@ -244,7 +273,7 @@ describe("updateGenre", () => {
 
     const { updateGenre } = await import("./genre");
     const result = await updateGenre(
-      { name: "!!!", publicId: "GENRE001", tenantId: "TENANT001" },
+      { id: "GENRE001", name: "!!!", tenantId: "TENANT001" },
       "en"
     );
 
@@ -260,8 +289,18 @@ describe("getGenre", () => {
   it("picks the genre out of the tenant's list", async () => {
     mockListGenres.mockResolvedValueOnce({
       genres: [
-        { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
-        { name: "Mystery", publicId: "GENRE002", slug: "mystery" },
+        {
+          id: "genre-1",
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
+        {
+          id: "genre-2",
+          name: "Mystery",
+          publicId: "GENRE002",
+          slug: "mystery",
+        },
       ],
       nextToken: "",
     });
@@ -274,6 +313,7 @@ describe("getGenre", () => {
 
     expect(result).toEqual({
       genre: withoutEyeCatch({
+        id: "genre-2",
         name: "Mystery",
         publicId: "GENRE002",
         slug: "mystery",
@@ -284,7 +324,14 @@ describe("getGenre", () => {
 
   it("answers not found for a genre the tenant does not have", async () => {
     mockListGenres.mockResolvedValueOnce({
-      genres: [{ name: "Fantasy", publicId: "GENRE001", slug: "fantasy" }],
+      genres: [
+        {
+          id: "genre-1",
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
+      ],
       nextToken: "",
     });
 
@@ -315,7 +362,12 @@ describe("getGenre", () => {
 describe("updateGenre with an eye-catch", () => {
   it("sends the image and the delete flag beside the name", async () => {
     mockUpdateGenre.mockResolvedValue({
-      genre: { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+      genre: {
+        id: "genre-1",
+        name: "Fantasy",
+        publicId: "GENRE001",
+        slug: "fantasy",
+      },
     });
 
     const { updateGenre } = await import("./genre");
@@ -324,8 +376,8 @@ describe("updateGenre with an eye-catch", () => {
         clearEyeCatchImage: false,
         eyeCatchImageContentType: "image/png",
         eyeCatchImageData: new Uint8Array([1, 2, 3]),
+        id: "GENRE001",
         name: "Fantasy",
-        publicId: "GENRE001",
         tenantId: "TENANT001",
       },
       "en"
@@ -336,8 +388,8 @@ describe("updateGenre with an eye-catch", () => {
         clearEyeCatchImage: false,
         eyeCatchImageContentType: "image/png",
         eyeCatchImageData: new Uint8Array([1, 2, 3]),
+        genreId: "GENRE001",
         name: "Fantasy",
-        publicId: "GENRE001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -353,8 +405,8 @@ describe("updateGenre with an eye-catch", () => {
     const result = await updateGenre(
       {
         eyeCatchImageData: new Uint8Array([1]),
+        id: "GENRE001",
         name: "Fantasy",
-        publicId: "GENRE001",
         tenantId: "TENANT001",
       },
       "en"
@@ -374,6 +426,7 @@ describe("uploadGenreEyeCatchAspectImage", () => {
       genre: {
         eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
         eyeCatchImageVariants: [squareVariant],
+        id: "genre-1",
         name: "Fantasy",
         publicId: "GENRE001",
         slug: "fantasy",
@@ -383,9 +436,9 @@ describe("uploadGenreEyeCatchAspectImage", () => {
     const { uploadGenreEyeCatchAspectImage } = await import("./genre");
     const result = await uploadGenreEyeCatchAspectImage(
       {
+        id: "GENRE001",
         imageContentType: "image/png",
         imageData: new Uint8Array([1]),
-        publicId: "GENRE001",
         tenantId: "TENANT001",
         variantType: "square",
       },
@@ -399,9 +452,9 @@ describe("uploadGenreEyeCatchAspectImage", () => {
     expect(mockUploadGenreEyeCatchAspectImage).toHaveBeenCalledWith(
       {
         crop: undefined,
+        genreId: "GENRE001",
         imageContentType: "image/png",
         imageData: new Uint8Array([1]),
-        publicId: "GENRE001",
         tenant: { tenantId: "TENANT001" },
         variantType: "square",
       },
@@ -417,8 +470,8 @@ describe("uploadGenreEyeCatchAspectImage", () => {
     const { uploadGenreEyeCatchAspectImage } = await import("./genre");
     const result = await uploadGenreEyeCatchAspectImage(
       {
+        id: "GENRE001",
         imageData: new Uint8Array([1]),
-        publicId: "GENRE001",
         tenantId: "TENANT001",
         variantType: "square",
       },
@@ -433,16 +486,26 @@ describe("reorderGenres", () => {
   it("sends the order it wants beside the order it read", async () => {
     mockReorderGenres.mockResolvedValue({
       genres: [
-        { name: "Mystery", publicId: "GENRE002", slug: "mystery" },
-        { name: "Fantasy", publicId: "GENRE001", slug: "fantasy" },
+        {
+          id: "genre-2",
+          name: "Mystery",
+          publicId: "GENRE002",
+          slug: "mystery",
+        },
+        {
+          id: "genre-1",
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+        },
       ],
     });
 
     const { reorderGenres } = await import("./genre");
     const result = await reorderGenres(
       {
-        expectedPublicIds: ["GENRE001", "GENRE002"],
-        publicIds: ["GENRE002", "GENRE001"],
+        expectedIds: ["GENRE001", "GENRE002"],
+        ids: ["GENRE002", "GENRE001"],
         tenantId: "TENANT001",
       },
       "en"
@@ -451,8 +514,8 @@ describe("reorderGenres", () => {
     expect(result).toMatchObject({ ok: true });
     expect(mockReorderGenres).toHaveBeenCalledWith(
       {
-        expectedGenrePublicIds: ["GENRE001", "GENRE002"],
-        genrePublicIds: ["GENRE002", "GENRE001"],
+        expectedGenreIds: ["GENRE001", "GENRE002"],
+        genreIds: ["GENRE002", "GENRE001"],
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -467,8 +530,8 @@ describe("reorderGenres", () => {
     const { reorderGenres } = await import("./genre");
     const result = await reorderGenres(
       {
-        expectedPublicIds: ["GENRE001"],
-        publicIds: ["GENRE001"],
+        expectedIds: ["GENRE001"],
+        ids: ["GENRE001"],
         tenantId: "TENANT001",
       },
       "en"
@@ -493,7 +556,7 @@ describe("deleteGenre", () => {
 
     const { deleteGenre } = await import("./genre");
     const result = await deleteGenre(
-      { publicId: "GENRE001", tenantId: "TENANT001" },
+      { id: "GENRE001", tenantId: "TENANT001" },
       "en"
     );
 
@@ -509,7 +572,7 @@ describe("deleteGenre", () => {
 
     const { deleteGenre } = await import("./genre");
     const result = await deleteGenre(
-      { publicId: "GENRE001", tenantId: "TENANT001" },
+      { id: "GENRE001", tenantId: "TENANT001" },
       "en"
     );
 

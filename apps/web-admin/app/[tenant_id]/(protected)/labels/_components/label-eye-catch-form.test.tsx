@@ -37,6 +37,7 @@ const label: LabelListItem = {
       width: 2400,
     },
   ],
+  id: "label-1",
   name: "Monthly Novels",
   publicId: "LABEL001",
 };

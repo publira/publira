@@ -104,10 +104,7 @@ describe("deleteCreatorRole", () => {
       mockDeleteCreatorRole.mockRejectedValueOnce(creatorRoleInUseError("1"));
       const { deleteCreatorRole } = await import("./creator-roles");
       await expect(
-        deleteCreatorRole(
-          { publicId: "ROLE0001", tenantId: "TENANT001" },
-          locale
-        )
+        deleteCreatorRole({ id: "ROLE0001", tenantId: "TENANT001" }, locale)
       ).resolves.toEqual({
         message: deleteInUseByLocale[locale].one,
         ok: false,
@@ -115,10 +112,7 @@ describe("deleteCreatorRole", () => {
 
       mockDeleteCreatorRole.mockRejectedValueOnce(creatorRoleInUseError("3"));
       await expect(
-        deleteCreatorRole(
-          { publicId: "ROLE0001", tenantId: "TENANT001" },
-          locale
-        )
+        deleteCreatorRole({ id: "ROLE0001", tenantId: "TENANT001" }, locale)
       ).resolves.toEqual({
         message: deleteInUseByLocale[locale].three,
         ok: false,
@@ -136,7 +130,7 @@ describe("deleteCreatorRole", () => {
 
     const { deleteCreatorRole } = await import("./creator-roles");
     await expect(
-      deleteCreatorRole({ publicId: "ROLE0001", tenantId: "TENANT001" }, "en")
+      deleteCreatorRole({ id: "ROLE0001", tenantId: "TENANT001" }, "en")
     ).resolves.toEqual({
       message:
         "A series or an episode is still credited in this role. Re-credit them before deleting it.",
@@ -149,7 +143,7 @@ describe("deleteCreatorRole", () => {
 
     const { deleteCreatorRole } = await import("./creator-roles");
     await expect(
-      deleteCreatorRole({ publicId: "ROLE0001", tenantId: "TENANT001" }, "en")
+      deleteCreatorRole({ id: "ROLE0001", tenantId: "TENANT001" }, "en")
     ).resolves.toEqual({ ok: true });
   });
 });
