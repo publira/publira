@@ -1,13 +1,9 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId, useMemo } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isSeriesCommentMode } from "#lib/series-comment-mode";
@@ -72,11 +68,15 @@ const SERIES_COMMENT_MODE_ITEMS = [
 ];
 
 export const SeriesCommentModeField = ({
-  onChange,
+  description,
+  initialValue,
+  label,
   tenantCommentMode,
-  value,
 }: {
-  onChange: (next: SeriesCommentMode) => void;
+  description: ReactNode;
+  /** Empty while the series follows its tenant. */
+  initialValue: SeriesCommentMode;
+  label: ReactNode;
   /**
    * What the tenant publishes comments under, for the option that follows it.
    * Absent when that read failed, and the option then says only that it
@@ -84,8 +84,8 @@ export const SeriesCommentModeField = ({
    * tenant's own choice.
    */
   tenantCommentMode?: TenantCommentMode;
-  value: SeriesCommentMode;
 }) => {
+  const [value, setValue] = useState(initialValue);
   // `Select` renders a trigger rather than a Field control, so the label needs
   // an id to point at.
   const selectId = useId();
@@ -106,22 +106,17 @@ export const SeriesCommentModeField = ({
     [tenantCommentMode]
   );
 
-  const handleValueChange = useCallback(
-    (next: string) => {
-      // The trigger only ever offers the four above; the guard is what keeps
-      // the state's type honest without a cast.
-      if (isSeriesCommentMode(next)) {
-        onChange(next);
-      }
-    },
-    [onChange]
-  );
+  const handleValueChange = useCallback((next: string) => {
+    // The trigger only ever offers the four above; the guard is what keeps
+    // the state's type honest without a cast.
+    if (isSeriesCommentMode(next)) {
+      setValue(next);
+    }
+  }, []);
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
-        <ClientMessage message="admin.series.form.comment_mode" />
-      </FieldLabel>
+      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
       <FieldContent>
         <Select
           id={selectId}
@@ -130,9 +125,7 @@ export const SeriesCommentModeField = ({
           value={value}
         />
         <input name="comment_mode" type="hidden" value={value} />
-        <FieldDescription>
-          <ClientMessage message="admin.series.form.comment_mode_description" />
-        </FieldDescription>
+        {description}
       </FieldContent>
     </Field>
   );

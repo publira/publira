@@ -1,34 +1,34 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId } from "react";
+import { useCallback, useId, useState } from "react";
+import type { ReactNode } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { useClientMessages } from "#components/client-message";
 import { isPurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 export const SeriesPurchaseAvailabilityField = ({
-  onChange,
+  description,
+  initialValue,
+  label,
   tenantPurchaseAvailability,
-  value,
 }: {
-  onChange: (next: PurchaseAvailabilityOverride) => void;
+  description: ReactNode;
+  /** Empty while the series follows its tenant. */
+  initialValue: PurchaseAvailabilityOverride;
+  label: ReactNode;
   /**
    * Where the tenant sells by default, for the option that follows it. Absent
    * when that read failed, and the option then says only that it follows the
    * tenant — a wrong value named there would be read as the tenant's own.
    */
   tenantPurchaseAvailability?: SurfaceAvailabilityValue;
-  value: PurchaseAvailabilityOverride;
 }) => {
   const t = useClientMessages();
+  const [value, setValue] = useState(initialValue);
   // `Select` renders a trigger rather than a Field control, so the label needs
   // an id to point at.
   const selectId = useId();
@@ -51,20 +51,15 @@ export const SeriesPurchaseAvailabilityField = ({
     );
   }
 
-  const handleValueChange = useCallback(
-    (next: string) => {
-      if (isPurchaseAvailabilityOverride(next)) {
-        onChange(next);
-      }
-    },
-    [onChange]
-  );
+  const handleValueChange = useCallback((next: string) => {
+    if (isPurchaseAvailabilityOverride(next)) {
+      setValue(next);
+    }
+  }, []);
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
-        <ClientMessage message="admin.series.form.purchase_availability" />
-      </FieldLabel>
+      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
       <FieldContent>
         <Select
           id={selectId}
@@ -78,9 +73,7 @@ export const SeriesPurchaseAvailabilityField = ({
           value={value}
         />
         <input name="purchase_availability" type="hidden" value={value} />
-        <FieldDescription>
-          <ClientMessage message="admin.series.form.purchase_availability_description" />
-        </FieldDescription>
+        {description}
       </FieldContent>
     </Field>
   );

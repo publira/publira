@@ -64,6 +64,7 @@ const NewSeriesFormData = async () => {
     commentSettingsResult,
     purchaseSettingsResult,
     timeZone,
+    t,
   ] = await Promise.all([
     // Only `defaultReadingPeriodHours` is read here, and that comes from the
     // tenant rather than the page, so the smallest page the API allows is
@@ -84,6 +85,8 @@ const NewSeriesFormData = async () => {
     // Likewise for the tenant's default place of sale.
     getTenantPurchaseSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
+    // The placeholders are attributes, which cannot stream in as nodes.
+    getMessagesFor(locale),
   ]);
 
   await redirectToLoginIfSessionRejected(
@@ -111,6 +114,7 @@ const NewSeriesFormData = async () => {
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="create"
+      synopsisPlaceholder={t("admin.series.form.synopsis_placeholder")}
       tagSuggestions={tagsResult.tagNames}
       tagSuggestionsErrorMessage={
         tagsResult.ok ? undefined : tagsResult.message
@@ -123,7 +127,9 @@ const NewSeriesFormData = async () => {
           ? purchaseSettingsResult.settings.purchaseAvailability
           : undefined
       }
+      tenantId={tenantId}
       timeZone={timeZone}
+      titlePlaceholder={t("admin.series.form.title_placeholder")}
     />
   );
 };

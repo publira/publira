@@ -43,16 +43,8 @@ export interface SeriesListItem {
 
 export type SeriesMutationMode = "create" | "update";
 
-export type SeriesActionState =
-  | {
-      ok: false;
-      message: string;
-      mode: SeriesMutationMode;
-    }
-  | {
-      ok: true;
-      message: string;
-      mode: SeriesMutationMode;
-      series: SeriesListItem;
-    }
-  | null;
+export type SeriesActionState = {
+  ok: boolean;
+  message: string;
+  mode: SeriesMutationMode;
+} | null;

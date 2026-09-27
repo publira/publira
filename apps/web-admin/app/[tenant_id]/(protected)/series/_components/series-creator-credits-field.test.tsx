@@ -18,6 +18,16 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { SeriesCreatorCredit } from "../series-types";
 import { SeriesCreatorCreditsField } from "./series-creator-credits-field";
 
+// The save button sits outside this field, in the form around it, so what the
+// field tells it is read here instead.
+const savable = vi.hoisted(() => ({
+  onChange: (_savable: boolean): void => undefined,
+}));
+
+vi.mock("./series-form-save", () => ({
+  useSetSeriesFormSavable: () => (next: boolean) => savable.onChange(next),
+}));
+
 vi.mock("#lib/messages", () => ({
   getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
   loadAdminMessages: () => Promise.resolve(sharedCatalog("en")),
@@ -98,14 +108,16 @@ const creatorRoles = [
 
 const render = (
   initialCredits: SeriesCreatorCredit[],
-  onSavableChange: (savable: boolean) => void = vi.fn()
-) =>
-  renderBase(
+  onSavableChange: (next: boolean) => void = vi.fn()
+) => {
+  savable.onChange = onSavableChange;
+  return renderBase(
     <SeriesCreatorCreditsField
       creatorRoles={creatorRoles}
       creators={creators}
+      description={null}
       initialCredits={initialCredits}
-      onSavableChange={onSavableChange}
+      legend="Authors"
     />,
     {
       wrapper: ({ children }) => (
@@ -115,6 +127,7 @@ const render = (
       ),
     }
   );
+};
 
 /** What the form would post, which is the list the API stores in this order. */
 const postedCredits = (): SeriesCreatorCredit[] => {
@@ -300,17 +313,6 @@ describe("SeriesCreatorCreditsField", () => {
     expect(postedCredits()).toEqual([
       { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
     ]);
-  });
-
-  // Editing this list is editing the template the next episode is baked from,
-  // so the form says as much rather than leaving an editor to assume a save
-  // re-credits the episodes that already shipped.
-  it("says that the credits reach episodes created from now on", () => {
-    render([]);
-
-    expect(
-      screen.getByText(/template new episodes are created from/u)
-    ).toBeDefined();
   });
 
   it("opens a stored share as the percentage it stands for", () => {
