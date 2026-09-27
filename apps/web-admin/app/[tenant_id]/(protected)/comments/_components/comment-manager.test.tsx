@@ -48,21 +48,21 @@ vi.mock("next/link", () => ({
 vi.mock("./comment-action-button", () => ({
   CommentActionButton: ({
     action,
-    publicId,
+    commentId,
   }: {
     action: string;
-    publicId: string;
-  }) => <button type="button">{`${action} ${publicId}`}</button>,
+    commentId: string;
+  }) => <button type="button">{`${action} ${commentId}`}</button>,
 }));
 
 vi.mock("./comment-reason-dialog", () => ({
   CommentReasonDialog: ({
     action,
-    publicId,
+    commentId,
   }: {
     action: string;
-    publicId: string;
-  }) => <button type="button">{`${action} ${publicId}`}</button>,
+    commentId: string;
+  }) => <button type="button">{`${action} ${commentId}`}</button>,
 }));
 
 const comment = (
@@ -78,8 +78,8 @@ const comment = (
   episodeTitle: "Episode 1",
   hiddenAt: "",
   hiddenReason: "unknown",
+  id: "018f0f80-0002-7000-8000-000000000001",
   openReportCount: 0,
-  publicId: "COMMENT0001",
   publishedAt: "",
   purgeDueAt: "",
   seriesPublicId: "SERIES001",
@@ -133,10 +133,18 @@ describe("CommentManager", () => {
       })
     );
 
-    expect(screen.getByText("approve COMMENT0001")).toBeTruthy();
-    expect(screen.getByText("hide COMMENT0001")).toBeTruthy();
-    expect(screen.getByText("purge COMMENT0001")).toBeTruthy();
-    expect(screen.queryByText("restore COMMENT0001")).toBeNull();
+    expect(
+      screen.getByText("approve 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("purge 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("restore 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
   });
 
   it("offers only a purge on a comment its author deleted", async () => {
@@ -154,10 +162,18 @@ describe("CommentManager", () => {
       })
     );
 
-    expect(screen.getByText("purge COMMENT0001")).toBeTruthy();
-    expect(screen.queryByText("approve COMMENT0001")).toBeNull();
-    expect(screen.queryByText("hide COMMENT0001")).toBeNull();
-    expect(screen.queryByText("restore COMMENT0001")).toBeNull();
+    expect(
+      screen.getByText("purge 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("approve 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
+    expect(
+      screen.queryByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
+    expect(
+      screen.queryByText("restore 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
   });
 
   it("names who removed a comment and warns that its author still reads it", async () => {
@@ -185,7 +201,9 @@ describe("CommentManager", () => {
         "The commenter still sees it exactly as they posted it — they are never told about a removal."
       )
     ).toBeTruthy();
-    expect(screen.getByText("restore COMMENT0001")).toBeTruthy();
+    expect(
+      screen.getByText("restore 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
   });
 
   it("counts the days a withdrawn comment has left in the tenant time zone", async () => {

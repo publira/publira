@@ -11,13 +11,16 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { markContactMessageHandled } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 const contactMessageActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    contactMessageId: requiredRecordId(
+      t("admin.contact_messages.validation.target_missing")
+    ),
     publicId: requiredTrimmedString(
       t("admin.contact_messages.validation.target_missing")
     ),
@@ -27,7 +30,12 @@ const contactMessageActionSchema = async (locale: Locale) => {
   });
 };
 
+/**
+ * `contact_message_id` addresses the message in the API; `public_id` is only
+ * the URL the Action redirects back to.
+ */
 const contactMessageActionFormFields = {
+  contactMessageId: { kind: "value", name: "contact_message_id" },
   publicId: { kind: "value", name: "public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
@@ -61,7 +69,14 @@ const mark = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    markContactMessageHandled({ handled, ...parsed.data }, locale)
+    markContactMessageHandled(
+      {
+        contactMessageId: parsed.data.contactMessageId,
+        handled,
+        tenantId: parsed.data.tenantId,
+      },
+      locale
+    )
   );
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };

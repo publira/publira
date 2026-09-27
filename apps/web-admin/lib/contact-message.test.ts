@@ -34,6 +34,7 @@ const adminContactMessage = {
   body: "The second episode will not open for me.",
   createdAt: "2026-06-01T00:00:00Z",
   handledAt: "",
+  id: "018f0f80-0003-7000-8000-000000000001",
   publicId: "CONTACT0001",
   replyToEmail: "reader@example.com",
   senderName: "Reader One",
@@ -100,6 +101,7 @@ describe("contact message lib", () => {
         {
           body: "Is there an app?",
           createdAt: "2026-06-02T00:00:00Z",
+          id: "018f0f80-0003-7000-8000-000000000002",
           publicId: "CONTACT0002",
           replyToEmail: "guest@example.com",
         },
@@ -113,6 +115,7 @@ describe("contact message lib", () => {
       body: "Is there an app?",
       createdAt: "2026-06-02T00:00:00Z",
       handledAt: "",
+      id: "018f0f80-0003-7000-8000-000000000002",
       publicId: "CONTACT0002",
       replyToEmail: "guest@example.com",
       senderName: "",
@@ -213,14 +216,18 @@ describe("contact message lib", () => {
 
     const { markContactMessageHandled } = await import("./contact-message");
     const result = await markContactMessageHandled(
-      { handled, publicId: "CONTACT0001", tenantId: "TENANT001" },
+      {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        handled,
+        tenantId: "TENANT001",
+      },
       "en"
     );
 
     expect(mockMarkContactMessageHandled).toHaveBeenCalledWith(
       {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
         handled,
-        publicId: "CONTACT0001",
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -235,7 +242,11 @@ describe("contact message lib", () => {
 
     const { markContactMessageHandled } = await import("./contact-message");
     const result = await markContactMessageHandled(
-      { handled: true, publicId: "CONTACT0001", tenantId: "TENANT001" },
+      {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        handled: true,
+        tenantId: "TENANT001",
+      },
       "en"
     );
 
@@ -251,7 +262,11 @@ describe("contact message lib", () => {
 
     await expect(
       markContactMessageHandled(
-        { handled: true, publicId: "CONTACT0001", tenantId: "TENANT001" },
+        {
+          contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+          handled: true,
+          tenantId: "TENANT001",
+        },
         "en"
       )
     ).rejects.toThrow();
@@ -262,7 +277,11 @@ describe("contact message lib", () => {
 
     const { markContactMessageHandled } = await import("./contact-message");
     const result = await markContactMessageHandled(
-      { handled: true, publicId: "CONTACT0001", tenantId: "TENANT001" },
+      {
+        contactMessageId: "018f0f80-0003-7000-8000-000000000001",
+        handled: true,
+        tenantId: "TENANT001",
+      },
       "en"
     );
 

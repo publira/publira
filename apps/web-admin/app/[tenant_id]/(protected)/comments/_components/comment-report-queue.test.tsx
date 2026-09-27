@@ -37,21 +37,21 @@ vi.mock("next/link", () => ({
 vi.mock("./comment-action-button", () => ({
   CommentActionButton: ({
     action,
-    publicId,
+    commentId,
   }: {
     action: string;
-    publicId: string;
-  }) => <button type="button">{`${action} ${publicId}`}</button>,
+    commentId: string;
+  }) => <button type="button">{`${action} ${commentId}`}</button>,
 }));
 
 vi.mock("./comment-reason-dialog", () => ({
   CommentReasonDialog: ({
     action,
-    publicId,
+    commentId,
   }: {
     action: string;
-    publicId: string;
-  }) => <button type="button">{`${action} ${publicId}`}</button>,
+    commentId: string;
+  }) => <button type="button">{`${action} ${commentId}`}</button>,
 }));
 
 vi.mock("./comment-report-decision-button", () => ({
@@ -76,8 +76,8 @@ const reportedComment = (
   episodeTitle: "Episode 1",
   hiddenAt: "",
   hiddenReason: "unknown",
+  id: "018f0f80-0002-7000-8000-000000000001",
   openReportCount: 1,
-  publicId: "COMMENT0001",
   publishedAt: "2026-06-01T01:00:00Z",
   purgeDueAt: "",
   seriesPublicId: "SERIES001",
@@ -167,9 +167,15 @@ describe("CommentReportQueue", () => {
     expect(screen.getByText("rejected REPORT0001")).toBeTruthy();
     // The comment is published, so it can be removed or purged from here but
     // there is nothing to restore.
-    expect(screen.getByText("hide COMMENT0001")).toBeTruthy();
-    expect(screen.getByText("purge COMMENT0001")).toBeTruthy();
-    expect(screen.queryByText("restore COMMENT0001")).toBeNull();
+    expect(
+      screen.getByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("purge 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("restore 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
   });
 
   it("offers a restore, and says a decision will not undo the removal, once the threshold has hidden the comment", async () => {
@@ -195,8 +201,12 @@ describe("CommentReportQueue", () => {
       )
     ).toBeTruthy();
     expect(screen.getByText("3 reports still waiting")).toBeTruthy();
-    expect(screen.getByText("restore COMMENT0001")).toBeTruthy();
-    expect(screen.queryByText("hide COMMENT0001")).toBeNull();
+    expect(
+      screen.getByText("restore 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeNull();
   });
 
   it("leaves a decided report with no decision to make", async () => {
@@ -210,6 +220,8 @@ describe("CommentReportQueue", () => {
     expect(screen.queryByText("rejected REPORT0001")).toBeNull();
     // The comment can still be acted on: the report being settled says nothing
     // about whether the comment should stay up.
-    expect(screen.getByText("hide COMMENT0001")).toBeTruthy();
+    expect(
+      screen.getByText("hide 018f0f80-0002-7000-8000-000000000001")
+    ).toBeTruthy();
   });
 });

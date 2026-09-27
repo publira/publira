@@ -23,6 +23,9 @@ export interface ContactMessageItem {
   createdAt: string;
   /** When staff marked it dealt with. Empty while it is still waiting. */
   handledAt: string;
+  /** The primary key, which the actions on the message address it by. */
+  id: string;
+  /** The identifier the message's URL carries. */
   publicId: string;
   /** The address staff answer at, as the reader typed it. */
   replyToEmail: string;

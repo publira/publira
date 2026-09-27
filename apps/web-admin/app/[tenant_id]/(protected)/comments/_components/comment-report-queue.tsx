@@ -135,16 +135,13 @@ const CommentReportStatusFilter = ({
 const ReportedCommentActions = ({ report }: { report: CommentReportItem }) => (
   <div className="grid gap-2">
     {report.comment.status === "hidden" ? (
-      <CommentActionButton
-        action="restore"
-        publicId={report.comment.publicId}
-      />
+      <CommentActionButton action="restore" commentId={report.comment.id} />
     ) : null}
     {report.comment.status === "pending" ||
     report.comment.status === "published" ? (
-      <CommentReasonDialog action="hide" publicId={report.comment.publicId} />
+      <CommentReasonDialog action="hide" commentId={report.comment.id} />
     ) : null}
-    <CommentReasonDialog action="purge" publicId={report.comment.publicId} />
+    <CommentReasonDialog action="purge" commentId={report.comment.id} />
   </div>
 );
 

@@ -55,6 +55,7 @@ const adminComment = {
   episodeTitle: "Episode 1",
   hiddenAt: "2026-06-02T00:00:00Z",
   hiddenReason: "staff",
+  id: "018f0f80-0002-7000-8000-000000000001",
   openReportCount: 2,
   publicId: "COMMENT0001",
   publishedAt: "2026-06-01T01:00:00Z",
@@ -87,8 +88,8 @@ const mappedComment = {
   episodeTitle: "Episode 1",
   hiddenAt: "2026-06-02T00:00:00Z",
   hiddenReason: "staff",
+  id: "018f0f80-0002-7000-8000-000000000001",
   openReportCount: 2,
-  publicId: "COMMENT0001",
   publishedAt: "2026-06-01T01:00:00Z",
   purgeDueAt: "",
   seriesPublicId: "SERIES001",
@@ -200,7 +201,7 @@ describe("comment lib", () => {
 
     const { moderateComment } = await import("./comment");
     const input = {
-      publicId: "COMMENT0001",
+      commentId: "018f0f80-0002-7000-8000-000000000001",
       reason: "Personal information",
       tenantId: "TENANT001",
     };
@@ -211,7 +212,7 @@ describe("comment lib", () => {
     await moderateComment({ ...input, action: "purge" }, "en");
 
     const request = {
-      publicId: "COMMENT0001",
+      commentId: "018f0f80-0002-7000-8000-000000000001",
       reason: "Personal information",
       tenant: { tenantId: "TENANT001" },
     };
@@ -231,7 +232,7 @@ describe("comment lib", () => {
     const result = await moderateComment(
       {
         action: "approve",
-        publicId: "COMMENT0001",
+        commentId: "018f0f80-0002-7000-8000-000000000001",
         reason: "",
         tenantId: "TENANT001",
       },
@@ -256,7 +257,7 @@ describe("comment lib", () => {
       moderateComment(
         {
           action: "hide",
-          publicId: "COMMENT0001",
+          commentId: "018f0f80-0002-7000-8000-000000000001",
           reason: "",
           tenantId: "TENANT001",
         },

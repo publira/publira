@@ -36,6 +36,7 @@ type RawContactMessage = Pick<
   | "body"
   | "createdAt"
   | "handledAt"
+  | "id"
   | "publicId"
   | "replyToEmail"
   | "senderName"
@@ -47,6 +48,7 @@ const mapContactMessage = (item: RawContactMessage): ContactMessageItem => ({
   body: item.body ?? "",
   createdAt: item.createdAt ?? "",
   handledAt: item.handledAt ?? "",
+  id: item.id ?? "",
   publicId: item.publicId ?? "",
   replyToEmail: item.replyToEmail ?? "",
   senderName: item.senderName ?? "",
@@ -160,9 +162,9 @@ export const getContactMessage = async (
 };
 
 export interface MarkContactMessageHandledInput {
+  contactMessageId: string;
   /** True marks the message dealt with, false puts it back among the waiting. */
   handled: boolean;
-  publicId: string;
   tenantId: string;
 }
 
@@ -190,8 +192,8 @@ export const markContactMessageHandled = async (
   try {
     await apiClient.contact.markContactMessageHandled(
       {
+        contactMessageId: input.contactMessageId,
         handled: input.handled,
-        publicId: input.publicId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

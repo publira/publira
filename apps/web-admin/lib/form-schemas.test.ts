@@ -10,9 +10,34 @@ import {
   optionalCropRectFormSchema,
   optionalHttpsUrlFormSchema,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
   trimmedStringListFormSchema,
 } from "./form-schemas";
+
+describe("requiredRecordId", () => {
+  const schema = requiredRecordId("Choose a record.");
+
+  it("trims and accepts a UUID", () => {
+    expect(schema.parse(" 018f0e6a-1000-7000-8000-000000000001 ")).toBe(
+      "018f0e6a-1000-7000-8000-000000000001"
+    );
+  });
+
+  it("accepts a UUID without RFC version bits, as seeded IDs are", () => {
+    expect(schema.parse("c4ca4238-a0b9-2382-0dcc-509a6f75849b")).toBe(
+      "c4ca4238-a0b9-2382-0dcc-509a6f75849b"
+    );
+  });
+
+  it("rejects a blank, missing, or malformed value with the given message", () => {
+    for (const value of ["", null, "SeedCMNTAAA1"]) {
+      expect(schema.safeParse(value).error?.issues[0]?.message).toBe(
+        "Choose a record."
+      );
+    }
+  });
+});
 
 describe("requiredTrimmedString", () => {
   const schema = requiredTrimmedString("Name is required.");
