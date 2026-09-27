@@ -3,9 +3,14 @@
 -- A tenant the engagement batch has run for is what the ranking page, the top
 -- page's popularity module, and the genre tiles are about, and the development
 -- seed produces no reading signals, so nothing computes one. These rows are
--- that batch's output, written directly: four tenant-wide snapshots and the
--- current weekly snapshot of each genre, each filed for the web and the app
--- alike because every seeded series is on both.
+-- that batch's output, written directly: four tenant-wide snapshots per age
+-- rating and the current weekly snapshot of each genre, each filed for the web
+-- and the app alike because every seeded series is on both.
+--
+-- The ranking page and the top page's module read the all-ages ranking, so
+-- the markers below are all-ages works. The ranking of every rating together,
+-- which the recommendation order reads, is filed with the same positions: the
+-- rated works the seed ranks score below its top ten.
 --
 -- Two periods of each tenant-wide ranking, because a movement marker is the
 -- difference between them. Together they cover every marker the page can draw:
@@ -32,7 +37,7 @@
 
 BEGIN;
 
--- The four snapshots, per surface. `items` carries only the two fields the
+-- The four snapshots, per age rating and surface. `items` carries only the two fields the
 -- ranking read looks at; the batch writes the scores beside them, and nothing
 -- on the screen shows a score.
 WITH tenant_scope AS (
@@ -50,53 +55,75 @@ snapshot_seed (snapshot, ranking_key, start_offset, end_offset, computed_at) AS 
         ('daily-previous', 'daily', 1, 1, TIMESTAMPTZ '2026-04-19 06:00:00+00')
 ),
 
--- Each row is one position: which snapshot, which place, and the number in
--- `Seed Series NNN` that holds it. The markers the specs read off the screen
--- fall out of the difference between a period and the one before it:
+-- Each row is one position: which snapshot, which rating's ranking, which
+-- place, and the number in `Seed Series NNN` that holds it. The development
+-- seed rates every series ending in 6 r15 and every one ending in 7 r18. The
+-- markers the specs read off the screen fall out of the difference between an
+-- all-ages period and the one before it:
 --
 --   weekly  042 1st, was 2nd   → up 1
 --           100 2nd, unranked  → new
---           007 3rd, was 1st   → down 2
+--           008 3rd, was 1st   → down 2
 --   daily   100 1st, was 1st   → unchanged
 --           099 3rd, unranked  → new
-snapshot_item (snapshot, rank, series_number) AS (
+snapshot_item (snapshot, age_rating, rank, series_number) AS (
     VALUES
-        ('weekly-current', 1, 42),
-        ('weekly-current', 2, 100),
-        ('weekly-current', 3, 7),
-        ('weekly-current', 4, 63),
-        ('weekly-current', 5, 15),
-        ('weekly-current', 6, 99),
-        ('weekly-current', 7, 30),
-        ('weekly-current', 8, 58),
-        ('weekly-current', 9, 71),
-        ('weekly-current', 10, 87),
-        ('weekly-previous', 1, 7),
-        ('weekly-previous', 2, 42),
-        ('weekly-previous', 3, 15),
-        ('weekly-previous', 4, 30),
-        ('weekly-previous', 5, 63),
-        ('weekly-previous', 6, 58),
-        ('weekly-previous', 7, 71),
-        ('weekly-previous', 8, 99),
-        ('daily-current', 1, 100),
-        ('daily-current', 2, 42),
-        ('daily-current', 3, 99),
-        ('daily-current', 4, 7),
-        ('daily-current', 5, 63),
-        ('daily-current', 6, 15),
-        ('daily-current', 7, 87),
-        ('daily-current', 8, 30),
-        ('daily-current', 9, 58),
-        ('daily-current', 10, 71),
-        ('daily-previous', 1, 100),
-        ('daily-previous', 2, 7),
-        ('daily-previous', 3, 42),
-        ('daily-previous', 4, 63),
-        ('daily-previous', 5, 15),
-        ('daily-previous', 6, 30),
-        ('daily-previous', 7, 58),
-        ('daily-previous', 8, 71)
+        ('weekly-current', 'all', 1, 42),
+        ('weekly-current', 'all', 2, 100),
+        ('weekly-current', 'all', 3, 8),
+        ('weekly-current', 'all', 4, 63),
+        ('weekly-current', 'all', 5, 15),
+        ('weekly-current', 'all', 6, 99),
+        ('weekly-current', 'all', 7, 30),
+        ('weekly-current', 'all', 8, 58),
+        ('weekly-current', 'all', 9, 71),
+        ('weekly-current', 'all', 10, 88),
+        ('weekly-previous', 'all', 1, 8),
+        ('weekly-previous', 'all', 2, 42),
+        ('weekly-previous', 'all', 3, 15),
+        ('weekly-previous', 'all', 4, 30),
+        ('weekly-previous', 'all', 5, 63),
+        ('weekly-previous', 'all', 6, 58),
+        ('weekly-previous', 'all', 7, 71),
+        ('weekly-previous', 'all', 8, 99),
+        ('daily-current', 'all', 1, 100),
+        ('daily-current', 'all', 2, 42),
+        ('daily-current', 'all', 3, 99),
+        ('daily-current', 'all', 4, 8),
+        ('daily-current', 'all', 5, 63),
+        ('daily-current', 'all', 6, 15),
+        ('daily-current', 'all', 7, 88),
+        ('daily-current', 'all', 8, 30),
+        ('daily-current', 'all', 9, 58),
+        ('daily-current', 'all', 10, 71),
+        ('daily-previous', 'all', 1, 100),
+        ('daily-previous', 'all', 2, 8),
+        ('daily-previous', 'all', 3, 42),
+        ('daily-previous', 'all', 4, 63),
+        ('daily-previous', 'all', 5, 15),
+        ('daily-previous', 'all', 6, 30),
+        ('daily-previous', 'all', 7, 58),
+        ('daily-previous', 'all', 8, 71),
+        ('weekly-current', 'r15', 1, 16),
+        ('weekly-current', 'r15', 2, 6),
+        ('weekly-current', 'r15', 3, 46),
+        ('weekly-previous', 'r15', 1, 6),
+        ('weekly-previous', 'r15', 2, 16),
+        ('daily-current', 'r15', 1, 6),
+        ('daily-current', 'r15', 2, 26),
+        ('daily-current', 'r15', 3, 16),
+        ('daily-previous', 'r15', 1, 6),
+        ('daily-previous', 'r15', 2, 16),
+        ('weekly-current', 'r18', 1, 7),
+        ('weekly-current', 'r18', 2, 87),
+        ('weekly-current', 'r18', 3, 27),
+        ('weekly-previous', 'r18', 1, 87),
+        ('weekly-previous', 'r18', 2, 7),
+        ('daily-current', 'r18', 1, 87),
+        ('daily-current', 'r18', 2, 7),
+        ('daily-current', 'r18', 3, 57),
+        ('daily-previous', 'r18', 1, 7),
+        ('daily-previous', 'r18', 2, 87)
 )
 INSERT INTO content_ranking_snapshots (
     id,
@@ -106,6 +133,7 @@ INSERT INTO content_ranking_snapshots (
     period_end,
     entity_type,
     surface,
+    age_rating,
     items,
     algorithm_version,
     computed_at
@@ -118,6 +146,7 @@ SELECT
     ts.yesterday - ss.end_offset,
     'series',
     sf.surface,
+    rt.age_rating,
     COALESCE((
         SELECT jsonb_agg(
             jsonb_build_object('rank', si.rank, 'entity_id', s.id)
@@ -129,13 +158,17 @@ SELECT
             AND s.public_id = 'SeedSERS'
                 || TRANSLATE(LPAD(si.series_number::text, 4, '0'), '0', 'A')
         WHERE si.snapshot = ss.snapshot
+            AND si.age_rating = rt.items_of
     ), '[]'::jsonb),
     1,
     ss.computed_at
 FROM snapshot_seed ss
 CROSS JOIN tenant_scope ts
 CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface) DO UPDATE
+-- A NULL age_rating is the ranking of every rating together, filed with the
+-- all-ages positions.
+CROSS JOIN (VALUES (NULL, 'all'), ('all', 'all'), ('r15', 'r15'), ('r18', 'r18')) AS rt(age_rating, items_of)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 
@@ -194,6 +227,7 @@ INSERT INTO content_ranking_snapshots (
     entity_type,
     genre_id,
     surface,
+    age_rating,
     items,
     algorithm_version,
     computed_at
@@ -207,6 +241,7 @@ SELECT
     'series',
     g.id,
     sf.surface,
+    'all',
     COALESCE((
         SELECT jsonb_agg(
             jsonb_build_object('rank', gi.rank, 'entity_id', s.id)
@@ -227,7 +262,7 @@ JOIN genres g
     ON g.tenant_id = ts.id
     AND g.public_id LIKE 'SeedGENR%'
 CROSS JOIN (VALUES ('web'), ('app')) AS sf(surface)
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface) DO UPDATE
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 

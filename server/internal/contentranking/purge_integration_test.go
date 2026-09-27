@@ -227,6 +227,54 @@ func TestPurgeRunKeepsTheNewestPeriodOfEachSurface(t *testing.T) {
 	}
 }
 
+func TestPurgeRunKeepsTheNewestPeriodOfEachAgeRating(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "PURGERATE001", "rating-purge-rankings.example.com", "Rating Purge Ranking Tenant")
+
+	var expired, retained []uuid.UUID
+	for _, ageRating := range []string{"", "all", "r15", "r18"} {
+		expired = append(expired,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-29", ageRating: ageRating}),
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, periodEnd: "2025-12-30", ageRating: ageRating}),
+		)
+		retained = append(retained,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: WeeklyRankingKey, periodEnd: "2026-08-28", ageRating: ageRating}),
+		)
+	}
+	// The mixed and the all-ages rankings have a newer daily period; the rated
+	// ones do not, so their expired periods are still the newest a reader of
+	// that rating would be shown.
+	for _, ageRating := range []string{"", "all"} {
+		retained = append(retained,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-08-28", ageRating: ageRating}),
+		)
+	}
+	for _, ageRating := range []string{"r15", "r18"} {
+		retained = append(retained,
+			insertRetentionSnapshot(t, pg.DB, snapshotSeed{tenantID: tenant.ID, rankingKey: DailyRankingKey, periodEnd: "2026-05-30", ageRating: ageRating}),
+		)
+	}
+
+	result, err := NewPurger(pg.OpenContentStatsDB(t)).Run(context.Background(), purgeOptions(false))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if want := (PurgeResult{TenantCount: 1, RowCount: int64(len(expired)), ChunkCount: 1}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	for _, id := range expired {
+		if snapshotExists(t, pg.DB, id) {
+			t.Fatalf("expired snapshot %s survived the purge", id)
+		}
+	}
+	for _, id := range retained {
+		if !snapshotExists(t, pg.DB, id) {
+			t.Fatalf("retained snapshot %s was purged", id)
+		}
+	}
+}
+
 func TestPurgeRunRejectsTenantScopedRole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -274,6 +322,9 @@ type snapshotSeed struct {
 	// surface is the surface a series ranking was cut for. Empty is the web
 	// for a series ranking and none for an episode ranking.
 	surface string
+	// ageRating is the rating a tenant-wide series ranking was cut for. Empty
+	// is every rating together, and a genre's ranking is always all-ages.
+	ageRating string
 }
 
 // insertRetentionSnapshot files one snapshot at seed.periodEnd. Only the end
@@ -303,11 +354,15 @@ func insertRetentionSnapshot(t *testing.T, db *sql.DB, seed snapshotSeed) uuid.U
 
 	id := uuid.Must(uuid.NewV7())
 	genreID := uuid.NullUUID{UUID: seed.genreID, Valid: seed.genreID != uuid.Nil}
+	ageRating := sql.NullString{String: seed.ageRating, Valid: seed.ageRating != ""}
+	if genreID.Valid {
+		ageRating = sql.NullString{String: "all", Valid: true}
+	}
 	if _, err := db.ExecContext(ctx, `
 		INSERT INTO content_ranking_snapshots (
-			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, genre_id, surface
-		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7, $8, $9)
-	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion, genreID, surface); err != nil {
+			id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, genre_id, surface, age_rating
+		) VALUES ($1, $2, $3, $4::date, $5::date, $6, '[]'::jsonb, $7, $8, $9, $10)
+	`, id, seed.tenantID, seed.rankingKey, periodStart, seed.periodEnd, entityType, algorithmVersion, genreID, surface, ageRating); err != nil {
 		t.Fatalf("insert %s snapshot ending %s: %v", seed.rankingKey, seed.periodEnd, err)
 	}
 	return id

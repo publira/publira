@@ -184,6 +184,7 @@ WITH leaderboards AS (
     WHERE crs.tenant_id = $2
         AND crs.genre_id = ANY($1::uuid[])
         AND crs.surface = $3::text
+        AND crs.age_rating = 'all'
         AND crs.ranking_key = $5::text
         AND crs.entity_type = 'series'
     ORDER BY crs.genre_id,

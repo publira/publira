@@ -211,8 +211,8 @@ type CatalogServiceClient interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
-	// One page of the latest ranking snapshot for a period, in the positions
-	// that snapshot recorded. A tenant the batch has not ranked yet gets an
+	// One page of the latest ranking snapshot for a period and an age rating, in
+	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
 	// empty list rather than an error: nothing has been computed, which is not
 	// a failure. A series unpublished since the snapshot was written drops out
 	// and leaves a gap in the positions, because a snapshot describes a past
@@ -501,8 +501,8 @@ type CatalogServiceHandler interface {
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
 	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
-	// One page of the latest ranking snapshot for a period, in the positions
-	// that snapshot recorded. A tenant the batch has not ranked yet gets an
+	// One page of the latest ranking snapshot for a period and an age rating, in
+	// the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
 	// empty list rather than an error: nothing has been computed, which is not
 	// a failure. A series unpublished since the snapshot was written drops out
 	// and leaves a gap in the positions, because a snapshot describes a past

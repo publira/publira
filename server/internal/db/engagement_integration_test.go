@@ -455,7 +455,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 
 	rows, err := tx.QueryContext(ctx, `
 		EXPLAIN SELECT * FROM content_ranking_snapshots
-		WHERE tenant_id = $1 AND genre_id IS NULL AND surface = 'web' AND ranking_key = 'weekly' AND entity_type = 'series'
+		WHERE tenant_id = $1 AND genre_id IS NULL AND surface = 'web' AND age_rating IS NULL AND ranking_key = 'weekly' AND entity_type = 'series'
 		ORDER BY computed_at DESC LIMIT 1
 	`, seed.tenantID)
 	if err != nil {
@@ -477,7 +477,7 @@ func TestContentRankingSnapshotExplainUsesTenantKeyEntityIndex(t *testing.T) {
 		t.Fatalf("close explain: %v", err)
 	}
 
-	const index = "idx_content_ranking_snapshots_tenant_genre_surface_key_computed"
+	const index = "idx_content_ranking_snapshots_tenant_leaderboard_computed"
 	if !strings.Contains(plan.String(), index) {
 		t.Fatalf("plan did not use %s:\n%s", index, plan.String())
 	}
