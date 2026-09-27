@@ -4502,11 +4502,13 @@
       "account_settings": "帳戶設定",
       "context": "跨租戶營運",
       "logout": "登出",
+      "name": "平台主控台",
       "navigation_close": "關閉導覽",
       "navigation_open": "開啟導覽",
       "notifications_none": "通知，沒有未讀",
       "notifications_unread": "通知，{$count} 則未讀",
-      "offline": "目前處於離線狀態，正在等待網路恢復。"
+      "offline": "目前處於離線狀態，正在等待網路恢復。",
+      "title": "Publira 平台主控台"
     },
     "tenants": {
       "add_member": "新增成員",

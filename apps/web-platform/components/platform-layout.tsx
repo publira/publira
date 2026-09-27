@@ -236,7 +236,11 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
       <ConsoleSidebarBrand>
         <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
       </ConsoleSidebarBrand>
-      <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
+      <ConsoleSidebarContext>
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="platform.shell.name" />
+        </Suspense>
+      </ConsoleSidebarContext>
       <PlatformNavigation />
     </ConsoleSidebar>
 

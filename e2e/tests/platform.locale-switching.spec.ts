@@ -40,6 +40,13 @@ const saveDefaultLocale = async (
   await form.getByRole("button", { name: SAVE_DEFAULT_LOCALE[from] }).click();
 };
 
+/** The console's own name, under the brand at the top of the sidebar. */
+const expectConsoleName = async (page: Page, name: string): Promise<void> => {
+  await expect(
+    page.getByRole("complementary").getByText(name, { exact: true })
+  ).toBeVisible();
+};
+
 /**
  * The platform console resolves its language from the `publira_locale` cookie
  * and, without one, from the row the General settings screen writes. Both ends
@@ -68,6 +75,10 @@ test.describe("web-platform display language", () => {
       page.getByRole("heading", { level: 1, name: "General settings" })
     ).toBeVisible();
     await expectDocumentLocale(page, "English");
+    await expectConsoleName(page, "Platform Console");
+    await expect(page).toHaveTitle(
+      "General settings | Publira Platform Console"
+    );
     expect(await storedLocaleCookie(page)).toBeUndefined();
 
     await switchConsoleLocale(page, "English", "日本語");
@@ -76,6 +87,10 @@ test.describe("web-platform display language", () => {
       page.getByRole("heading", { level: 1, name: "一般設定" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
+    await expectConsoleName(page, "プラットフォーム管理画面");
+    await expect(page).toHaveTitle(
+      "一般設定 | Publira プラットフォーム管理画面"
+    );
     expect(await storedLocaleCookie(page)).toBe("ja");
 
     // A reload proves the cookie is what carries it, not the action's answer.
