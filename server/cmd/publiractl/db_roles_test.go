@@ -25,7 +25,11 @@ func TestDBRolesRefusesWithoutDBURL(t *testing.T) {
 
 func TestDBRolesTakesAMigratedClusterToRolesEveryProcessConnectsAs(t *testing.T) {
 	superuser := testutil.StartBarePostgres(t)
-	env := testutil.Env(map[string]string{"PUBLIRA_DB_URL": superuser})
+	// A half-set encryption key pair is a configuration db roles never reads.
+	env := testutil.Env(map[string]string{
+		"PUBLIRA_DB_URL": superuser,
+		"PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID": "k1",
+	})
 	if code, output := testutil.RunMain(t, env, "db", "migrate"); code != 0 {
 		t.Fatalf("db migrate exit code = %d\n%s", code, output)
 	}

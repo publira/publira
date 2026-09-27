@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/text/secure/precis"
+	"github.com/xdg-go/stringprep"
 
 	"github.com/publira/publira/server/internal/dbmigrate"
 )
@@ -180,13 +180,18 @@ const scramIterations = 4096
 // place of the password, as psql's \password does, keeps the plaintext out of
 // the server's statement log.
 func scramSHA256(password string) (string, error) {
-	// SASLprep, falling back to the raw password as PostgreSQL and pgx do.
-	if prepared, err := precis.OpaqueString.String(password); err == nil {
-		password = prepared
-	}
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
+	}
+	return scramVerifier(password, salt)
+}
+
+func scramVerifier(password string, salt []byte) (string, error) {
+	// SASLprep, falling back to the raw password on prohibited input, is what
+	// PostgreSQL applies when it hashes a password itself.
+	if prepared, err := stringprep.SASLprep.Prepare(password); err == nil {
+		password = prepared
 	}
 	salted, err := pbkdf2.Key(sha256.New, password, salt, scramIterations, sha256.Size)
 	if err != nil {

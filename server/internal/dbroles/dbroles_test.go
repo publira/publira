@@ -74,3 +74,22 @@ func TestSCRAMVerifierIsSaltedPerCall(t *testing.T) {
 		t.Fatalf("verifier = %q carries the password or a quote", a)
 	}
 }
+
+// PostgreSQL SASLpreps a password before hashing it, so a full-width letter
+// and a soft hyphen hash as the ASCII password they normalize to.
+func TestSCRAMVerifierSASLprepsThePassword(t *testing.T) {
+	salt := []byte("0123456789abcdef")
+	want, err := scramVerifier("password", salt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, password := range []string{"\uff50\uff41\uff53\uff53\uff57\uff4f\uff52\uff44", "pass\u00adword"} {
+		got, err := scramVerifier(password, salt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("verifier of %q = %q, want the verifier of \"password\", %q", password, got, want)
+		}
+	}
+}

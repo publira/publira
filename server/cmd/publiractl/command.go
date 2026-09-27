@@ -56,7 +56,6 @@ type commandFlags struct {
 
 // commandEnv is what every settings and provisioning command runs with.
 type commandEnv struct {
-	cfg     *config.Config
 	console console
 	stdout  io.Writer
 	logger  *slog.Logger
@@ -84,13 +83,18 @@ func (e *commandEnv) openPlatformDB() (*sql.DB, error) {
 var errNoEncryptionKeys = errors.New("PUBLIRA_SECRET_ENCRYPTION_KEYS is not set; a stored secret is encrypted with the keys the servers decrypt it with")
 
 // secretManager encrypts a secret for storage with the keys config.New()
-// resolved, which are the ones the servers read. A command calls it before it
-// writes anything, so a missing key stops it with nothing changed.
+// resolves, which are the ones the servers read. A command calls it before it
+// writes anything, so a missing key stops it with nothing changed; a command
+// that stores no secret never reads the keys.
 func (e *commandEnv) secretManager() (*secretcrypto.Manager, error) {
-	if len(e.cfg.Encryption.Keys) == 0 {
+	cfg, err := config.New()
+	if err != nil {
+		return nil, err
+	}
+	if len(cfg.Encryption.Keys) == 0 {
 		return nil, errNoEncryptionKeys
 	}
-	return secretcrypto.NewManager(e.cfg.Encryption.Keys, e.cfg.Encryption.PrimaryKeyID)
+	return secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
 }
 
 // runGroup dispatches one settings or provisioning command. It exits 0 on
@@ -143,12 +147,7 @@ func runCommand(name string, c *command, args []string, con console, stdout io.W
 		return usageError(stderr, err.Error(), usage)
 	}
 
-	cfg, err := config.New()
-	if err != nil {
-		return commandError(stderr, err)
-	}
 	env := &commandEnv{
-		cfg:     cfg,
 		console: con,
 		stdout:  stdout,
 		logger:  logging.New(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
