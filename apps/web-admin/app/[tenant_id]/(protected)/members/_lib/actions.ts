@@ -10,7 +10,7 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   cancelTenantAdminInvitation,
@@ -34,7 +34,7 @@ const memberSchema = async (locale: Locale) => {
 
   return z.object({
     tenantId: await tenantIdSchema(locale),
-    userId: requiredTrimmedString(t("admin.members.validation.member_missing")),
+    userId: requiredRecordId(t("admin.members.validation.member_missing")),
   });
 };
 const memberRoleSchema = async (locale: Locale) => {

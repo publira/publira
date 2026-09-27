@@ -18,6 +18,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { listAllEpisodes } from "#lib/episode";
 import {
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -77,7 +78,7 @@ const revokeTicketSchema = async (locale: Locale) => {
     tenantId: requiredTrimmedString(
       t("admin.access_tickets.validation.revoke_target")
     ),
-    ticketId: requiredTrimmedString(
+    ticketId: requiredRecordId(
       t("admin.access_tickets.validation.revoke_target")
     ),
   });

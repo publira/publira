@@ -12,6 +12,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -30,7 +31,7 @@ const readerActionSchema = async (locale: Locale) => {
 
   return z.object({
     publicId: target,
-    readerId: target,
+    readerId: requiredRecordId(t("admin.readers.validation.target_missing")),
     tenantId: requiredTrimmedString(
       t("admin.readers.validation.tenant_missing")
     ),

@@ -123,7 +123,10 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_owner", user_id: "USER001" })
+      formData({
+        role: "tenant_owner",
+        user_id: "018f0e6a-3000-7000-8000-000000000001",
+      })
     );
 
     expect(result).toEqual({ message: "Choose a role.", ok: false });
@@ -138,7 +141,10 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_editor", user_id: "USER001" })
+      formData({
+        role: "tenant_editor",
+        user_id: "018f0e6a-3000-7000-8000-000000000001",
+      })
     );
 
     expect(result).toEqual({ message: refusal, ok: false });
@@ -151,7 +157,10 @@ describe("updateTenantMemberRoleAction", () => {
 
     const result = await updateTenantMemberRoleAction(
       null,
-      formData({ role: "tenant_auditor", user_id: "USER001" })
+      formData({
+        role: "tenant_auditor",
+        user_id: "018f0e6a-3000-7000-8000-000000000001",
+      })
     );
 
     expect(result).toEqual({ message: "Role updated.", ok: true });
@@ -159,7 +168,7 @@ describe("updateTenantMemberRoleAction", () => {
       {
         role: "tenant_auditor",
         tenantId: "TENANT001",
-        userId: "USER001",
+        userId: "018f0e6a-3000-7000-8000-000000000001",
       },
       "en"
     );
@@ -171,16 +180,28 @@ describe("removeTenantMemberAction", () => {
   it("removes the member and drops the member list", async () => {
     mockRemoveMember.mockResolvedValueOnce({
       ok: true,
-      userId: "USER001",
+      userId: "018f0e6a-3000-7000-8000-000000000001",
     });
     const { removeTenantMemberAction } = await import("./actions");
 
     const result = await removeTenantMemberAction(
       null,
-      formData({ user_id: "USER001" })
+      formData({ user_id: "018f0e6a-3000-7000-8000-000000000001" })
     );
 
     expect(result).toEqual({ message: "Member removed.", ok: true });
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant-members-TENANT001");
+  });
+
+  it("sends no request for a member ID that is not a UUID", async () => {
+    const { removeTenantMemberAction } = await import("./actions");
+
+    const result = await removeTenantMemberAction(
+      null,
+      formData({ user_id: "SeedUSERAAA1" })
+    );
+
+    expect(result?.ok).toBe(false);
+    expect(mockRemoveMember).not.toHaveBeenCalled();
   });
 });
