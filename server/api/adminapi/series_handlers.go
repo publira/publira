@@ -240,11 +240,9 @@ func (s *adminServer) syncSeriesCredits(
 			},
 		})
 		records = append(records, &publiraadminv1.SeriesCreatorCredit{
-			CreatorPublicId: credit.creator.PublicID,
-			RolePublicId:    credit.role.PublicID,
-			CreatorId:       credit.creator.ID.String(),
-			RoleId:          credit.role.ID.String(),
-			ShareBps:        credit.shareBps,
+			CreatorId: credit.creator.ID.String(),
+			RoleId:    credit.role.ID.String(),
+			ShareBps:  credit.shareBps,
 		})
 	}
 	return items, records, nil
@@ -301,11 +299,9 @@ func seriesCreatorCreditsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsR
 	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(rows))
 	for _, row := range rows {
 		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
-			CreatorPublicId: row.PublicID,
-			RolePublicId:    row.RolePublicID.String,
-			CreatorId:       row.CreatorID.String(),
-			RoleId:          nullUUIDString(row.RoleID),
-			ShareBps:        row.ShareBps,
+			CreatorId: row.CreatorID.String(),
+			RoleId:    nullUUIDString(row.RoleID),
+			ShareBps:  row.ShareBps,
 		})
 	}
 	return credits
@@ -316,81 +312,51 @@ func seriesCreatorCreditsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsR
 // with everything and therefore with nothing.
 const maxSeriesTags = 20
 
-// resolveGenres reads the genres a save assigned, in the tenant's genre order:
-// by genre_ids, or by genre_public_ids while a client still sends those. An
-// identifier naming no genre of this tenant is a bad request rather than a
+// resolveGenres reads the genres a save assigned, in the tenant's genre order.
+// An identifier naming no genre of this tenant is a bad request rather than a
 // silently dropped assignment.
 func (s *adminServer) resolveGenres(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	genreIDs []string,
-	genrePublicIDs []string,
 ) ([]dbmodels.ListGenresByIDsForTenantRow, error) {
-	params := dbmodels.ListGenresByIDsForTenantParams{TenantID: tenantID, Ids: []uuid.UUID{}, PublicIds: []string{}}
-	if len(genreIDs) > 0 {
-		seen := make(map[uuid.UUID]struct{}, len(genreIDs))
-		for _, value := range genreIDs {
-			if strings.TrimSpace(value) == "" {
-				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains empty value"), "genre_ids")
-			}
-			id, err := recordIDArg(value, "genre_ids")
-			if err != nil {
-				return nil, err
-			}
-			if _, ok := seen[id]; ok {
-				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains duplicate value"), "genre_ids")
-			}
-			seen[id] = struct{}{}
-			params.Ids = append(params.Ids, id)
+	ids := make([]uuid.UUID, 0, len(genreIDs))
+	seen := make(map[uuid.UUID]struct{}, len(genreIDs))
+	for _, value := range genreIDs {
+		if strings.TrimSpace(value) == "" {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains empty value"), "genre_ids")
 		}
-	} else {
-		seen := make(map[string]struct{}, len(genrePublicIDs))
-		for _, value := range genrePublicIDs {
-			trimmed := strings.TrimSpace(value)
-			if trimmed == "" {
-				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains empty value"), "genre_ids")
-			}
-			if _, ok := seen[trimmed]; ok {
-				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains duplicate value"), "genre_ids")
-			}
-			seen[trimmed] = struct{}{}
-			params.PublicIds = append(params.PublicIds, trimmed)
+		id, err := recordIDArg(value, "genre_ids")
+		if err != nil {
+			return nil, err
 		}
+		if _, ok := seen[id]; ok {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains duplicate value"), "genre_ids")
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
 	}
-	requested := len(params.Ids) + len(params.PublicIds)
-	if requested == 0 {
+	if len(ids) == 0 {
 		return []dbmodels.ListGenresByIDsForTenantRow{}, nil
 	}
-	rows, err := s.queriesFor(ctx).ListGenresByIDsForTenant(ctx, params)
+	rows, err := s.queriesFor(ctx).ListGenresByIDsForTenant(ctx, dbmodels.ListGenresByIDsForTenantParams{TenantID: tenantID, Ids: ids})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list genres by ids", err, "tenant_id", tenantID.String())
 	}
-	if len(rows) != requested {
+	if len(rows) != len(ids) {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre not found"), "genre_ids")
 	}
 	return rows, nil
 }
 
-// labelIDArg resolves the label a series save names: by label_id, or by
-// label_public_id while a client still sends that. A request naming neither
+// labelIDArg resolves the label a series save names. A request naming none
 // names no label.
-func (s *adminServer) labelIDArg(ctx context.Context, tenantID uuid.UUID, rawID, rawPublicID string) (uuid.NullUUID, error) {
+func (s *adminServer) labelIDArg(ctx context.Context, tenantID uuid.UUID, rawID string) (uuid.NullUUID, error) {
 	id, err := recordIDArg(rawID, "label_id")
-	if err != nil {
+	if err != nil || id == uuid.Nil {
 		return uuid.NullUUID{}, err
 	}
-	publicID := strings.TrimSpace(rawPublicID)
-	switch {
-	case id != uuid.Nil:
-		_, err = s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id})
-	case publicID != "":
-		var label dbmodels.GetLabelByPublicIDForTenantRow
-		label, err = s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: publicID})
-		id = label.ID
-	default:
-		return uuid.NullUUID{}, nil
-	}
-	if err != nil {
+	if _, err := s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
 		}
@@ -677,7 +643,7 @@ func (s *adminServer) CreateSeries(
 	if !publishedAt.Valid && req.Msg.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId, req.Msg.LabelPublicId)
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId)
 	if err != nil {
 		return nil, err
 	}
@@ -693,7 +659,7 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds, req.Msg.GenrePublicIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds)
 	if err != nil {
 		return nil, err
 	}
@@ -867,7 +833,7 @@ func (s *adminServer) UpdateSeries(
 	if !publishedAt.Valid && req.Msg.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.PublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
@@ -892,7 +858,7 @@ func (s *adminServer) UpdateSeries(
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 		}
 	}
-	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId, req.Msg.LabelPublicId)
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId)
 	if err != nil {
 		return nil, err
 	}
@@ -911,7 +877,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds, req.Msg.GenrePublicIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds)
 	if err != nil {
 		return nil, err
 	}

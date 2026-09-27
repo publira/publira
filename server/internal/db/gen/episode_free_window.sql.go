@@ -177,64 +177,6 @@ func (q *Queries) GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg Get
 	return i, err
 }
 
-const GetEpisodeFreeWindowByPublicIDForTenant = `-- name: GetEpisodeFreeWindowByPublicIDForTenant :one
-SELECT w.id,
-    w.public_id,
-    w.starts_at,
-    w.ends_at,
-    w.created_at,
-    e.id AS episode_id,
-    e.public_id AS episode_public_id,
-    e.title AS episode_title,
-    s.id AS series_id,
-    s.public_id AS series_public_id,
-    s.title AS series_title
-FROM episode_free_windows w
-    JOIN episodes e ON e.id = w.episode_id
-    JOIN series s ON s.id = e.series_id
-WHERE w.tenant_id = $1
-    AND w.public_id = $2
-LIMIT 1
-`
-
-type GetEpisodeFreeWindowByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-type GetEpisodeFreeWindowByPublicIDForTenantRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
-	SeriesTitle     string    `json:"series_title"`
-}
-
-func (q *Queries) GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetEpisodeFreeWindowByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i GetEpisodeFreeWindowByPublicIDForTenantRow
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.StartsAt,
-		&i.EndsAt,
-		&i.CreatedAt,
-		&i.EpisodeID,
-		&i.EpisodePublicID,
-		&i.EpisodeTitle,
-		&i.SeriesID,
-		&i.SeriesPublicID,
-		&i.SeriesTitle,
-	)
-	return i, err
-}
-
 const ListEpisodeFreeWindowBoundariesDue = `-- name: ListEpisodeFreeWindowBoundariesDue :many
 SELECT w.id,
     w.tenant_id,

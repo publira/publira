@@ -117,7 +117,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.PublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}

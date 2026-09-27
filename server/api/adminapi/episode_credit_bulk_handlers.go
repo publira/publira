@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -47,37 +46,16 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
-	// The range by id, or by public_id while a client still sends that; refs
-	// keeps the order the request listed them in, whichever it used.
-	var (
-		refs             []episodeRef
-		episodeIDs       []uuid.UUID
-		episodePublicIDs []string
-	)
-	if len(req.Msg.EpisodeIds) > 0 {
-		episodeIDs, err = recordIDsArg(req.Msg.EpisodeIds, "episode_ids", "episode")
-		if err != nil {
-			return nil, err
-		}
-		for _, id := range episodeIDs {
-			refs = append(refs, episodeRef{id: id})
-		}
-	} else {
-		for _, publicID := range req.Msg.EpisodePublicIds {
-			episodePublicIDs = append(episodePublicIDs, strings.TrimSpace(publicID))
-		}
-		if err := validateDistinctPublicIDs(episodePublicIDs, "episode_ids", "episode"); err != nil {
-			return nil, err
-		}
-		for _, publicID := range episodePublicIDs {
-			refs = append(refs, episodeRef{publicID: publicID})
-		}
+	// The range in the order the request listed it.
+	episodeIDs, err := recordIDsArg(req.Msg.EpisodeIds, "episode_ids", "episode")
+	if err != nil {
+		return nil, err
 	}
-	if len(refs) > maxBulkEpisodeCreditEpisodes {
+	if len(episodeIDs) > maxBulkEpisodeCreditEpisodes {
 		return nil, rpcerrors.NewFieldViolationError(
 			connect.CodeInvalidArgument,
 			fmt.Errorf("episode_ids must name at most %d episodes", maxBulkEpisodeCreditEpisodes),
@@ -120,22 +98,20 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	// would cost a second round trip to say what the console already knows:
 	// the range it composed came from this series' own episode list.
 	locked, err := s.queriesFor(txCtx).LockEpisodesByIDsForTenantAndSeries(txCtx, dbmodels.LockEpisodesByIDsForTenantAndSeriesParams{
-		TenantID:  tenant.ID,
-		SeriesID:  series.ID,
-		Ids:       episodeIDs,
-		PublicIds: episodePublicIDs,
+		TenantID: tenant.ID,
+		SeriesID: series.ID,
+		Ids:      episodeIDs,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock episodes for bulk edit episode credits", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
-	if len(locked) != len(refs) {
+	if len(locked) != len(episodeIDs) {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("episode_ids names an episode this series does not have"), "episode_ids")
 	}
-	lockedByRef := make(map[episodeRef]dbmodels.LockEpisodesByIDsForTenantAndSeriesRow, 2*len(locked))
+	lockedByID := make(map[uuid.UUID]dbmodels.LockEpisodesByIDsForTenantAndSeriesRow, len(locked))
 	lockedIDs := make([]uuid.UUID, 0, len(locked))
 	for _, row := range locked {
-		lockedByRef[episodeRef{id: row.ID}] = row
-		lockedByRef[episodeRef{publicID: row.PublicID}] = row
+		lockedByID[row.ID] = row
 		lockedIDs = append(lockedIDs, row.ID)
 	}
 
@@ -173,9 +149,9 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	// result in.
 	changed := make([]string, 0, len(outcome.changed))
 	changedIDs := make([]string, 0, len(outcome.changed))
-	unchanged := make([]*publiraadminv1.UnchangedEpisodeCredit, 0, len(refs)-len(outcome.changed))
-	for _, ref := range refs {
-		episode := lockedByRef[ref]
+	unchanged := make([]*publiraadminv1.UnchangedEpisodeCredit, 0, len(episodeIDs)-len(outcome.changed))
+	for _, id := range episodeIDs {
+		episode := lockedByID[id]
 		if _, ok := outcome.changed[episode.ID]; ok {
 			changed = append(changed, episode.PublicID)
 			changedIDs = append(changedIDs, episode.ID.String())

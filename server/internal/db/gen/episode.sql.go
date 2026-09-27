@@ -342,27 +342,6 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 	return i, err
 }
 
-const GetEpisodeIDByPublicIDForTenant = `-- name: GetEpisodeIDByPublicIDForTenant :one
-SELECT e.id
-FROM episodes e
-WHERE e.tenant_id = $1
-    AND e.public_id = $2
-LIMIT 1
-`
-
-type GetEpisodeIDByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-// Resolves the episode a console request still names by public_id.
-func (q *Queries) GetEpisodeIDByPublicIDForTenant(ctx context.Context, arg GetEpisodeIDByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, GetEpisodeIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
 const GetEpisodeSeriesByIDForTenant = `-- name: GetEpisodeSeriesByIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -1565,19 +1544,15 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE e.tenant_id = $1
     AND s.id = $2
-    AND (
-        e.id = ANY($3::uuid[])
-        OR e.public_id = ANY($4::text[])
-    )
+    AND e.id = ANY($3::uuid[])
 ORDER BY e.id
 FOR UPDATE OF e
 `
 
 type LockEpisodesByIDsForTenantAndSeriesParams struct {
-	TenantID  uuid.UUID   `json:"tenant_id"`
-	SeriesID  uuid.UUID   `json:"series_id"`
-	Ids       []uuid.UUID `json:"ids"`
-	PublicIds []string    `json:"public_ids"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	SeriesID uuid.UUID   `json:"series_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
 type LockEpisodesByIDsForTenantAndSeriesRow struct {
@@ -1598,12 +1573,7 @@ type LockEpisodesByIDsForTenantAndSeriesRow struct {
 // ORDER BY e.id is what keeps two range edits over overlapping ranges from
 // deadlocking: both take the row locks in the same order.
 func (q *Queries) LockEpisodesByIDsForTenantAndSeries(ctx context.Context, arg LockEpisodesByIDsForTenantAndSeriesParams) ([]LockEpisodesByIDsForTenantAndSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, LockEpisodesByIDsForTenantAndSeries,
-		arg.TenantID,
-		arg.SeriesID,
-		pq.Array(arg.Ids),
-		pq.Array(arg.PublicIds),
-	)
+	rows, err := q.db.QueryContext(ctx, LockEpisodesByIDsForTenantAndSeries, arg.TenantID, arg.SeriesID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

@@ -27,18 +27,13 @@ type creatorCredit struct {
 // treats them the same.
 type creatorCreditMessage interface {
 	GetCreatorId() string
-	GetCreatorPublicId() string
 	GetRoleId() string
-	GetRolePublicId() string
 }
 
-// creditPair is one credit as a request names it: the creator and the role,
-// each by id, or by public_id while a client still sends that.
+// creditPair is one credit as a request names it: the creator and the role.
 type creditPair struct {
-	creatorID       string
-	creatorPublicID string
-	roleID          string
-	rolePublicID    string
+	creatorID string
+	roleID    string
 }
 
 // creatorCreditPairs reduces a request's credit list to the pairs
@@ -46,57 +41,38 @@ type creditPair struct {
 func creatorCreditPairs[Credit creatorCreditMessage](credits []Credit) []creditPair {
 	pairs := make([]creditPair, 0, len(credits))
 	for _, credit := range credits {
-		pairs = append(pairs, creditPair{
-			creatorID:       credit.GetCreatorId(),
-			creatorPublicID: credit.GetCreatorPublicId(),
-			roleID:          credit.GetRoleId(),
-			rolePublicID:    credit.GetRolePublicId(),
-		})
+		pairs = append(pairs, creditPair{creatorID: credit.GetCreatorId(), roleID: credit.GetRoleId()})
 	}
 	return pairs
 }
 
-// creditRef is one end of a credit once its identifier is parsed.
-type creditRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
-// parseCreditRef reads one end of a credit. An unparseable id is refused here
+// parseCreditID reads one end of a credit. An unparseable id is refused here
 // rather than reaching a query that would answer "not found" for a value that
 // is not an identifier at all.
-func parseCreditRef(rawID, rawPublicID, name, field string) (creditRef, error) {
-	if id := strings.TrimSpace(rawID); id != "" {
-		parsed, err := uuid.Parse(id)
-		if err != nil {
-			return creditRef{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s_id is not an identifier", name), field)
-		}
-		return creditRef{id: parsed}, nil
+func parseCreditID(raw, name, field string) (uuid.UUID, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s_id is required", name), field)
 	}
-	if publicID := strings.TrimSpace(rawPublicID); publicID != "" {
-		return creditRef{publicID: publicID}, nil
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s_id is not an identifier", name), field)
 	}
-	return creditRef{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s_id is required", name), field)
+	return id, nil
 }
 
-// collectCreditRefs splits refs into the ids and public_ids one query reads
-// them by, each once.
-func collectCreditRefs(refs []creditRef) ([]uuid.UUID, []string) {
-	ids := make([]uuid.UUID, 0, len(refs))
-	publicIDs := make([]string, 0, len(refs))
-	seen := make(map[creditRef]struct{}, len(refs))
-	for _, ref := range refs {
-		if _, ok := seen[ref]; ok {
+// distinctIDs lists ids once each, for the query that reads them.
+func distinctIDs(ids []uuid.UUID) []uuid.UUID {
+	distinct := make([]uuid.UUID, 0, len(ids))
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
 			continue
 		}
-		seen[ref] = struct{}{}
-		if ref.id != uuid.Nil {
-			ids = append(ids, ref.id)
-		} else {
-			publicIDs = append(publicIDs, ref.publicID)
-		}
+		seen[id] = struct{}{}
+		distinct = append(distinct, id)
 	}
-	return ids, publicIDs
+	return distinct
 }
 
 func validateCreditShares(shares []int32, field string) error {
@@ -134,66 +110,60 @@ func (s *adminServer) resolveCreatorCredits(
 	credits []creditPair,
 	field string,
 ) ([]creatorCredit, error) {
-	creatorRefs := make([]creditRef, 0, len(credits))
-	roleRefs := make([]creditRef, 0, len(credits))
+	creatorIDs := make([]uuid.UUID, 0, len(credits))
+	roleIDs := make([]uuid.UUID, 0, len(credits))
 	for _, credit := range credits {
-		creatorRef, err := parseCreditRef(credit.creatorID, credit.creatorPublicID, "creator", field)
+		creatorID, err := parseCreditID(credit.creatorID, "creator", field)
 		if err != nil {
 			return nil, err
 		}
-		roleRef, err := parseCreditRef(credit.roleID, credit.rolePublicID, "role", field)
+		roleID, err := parseCreditID(credit.roleID, "role", field)
 		if err != nil {
 			return nil, err
 		}
-		creatorRefs = append(creatorRefs, creatorRef)
-		roleRefs = append(roleRefs, roleRef)
+		creatorIDs = append(creatorIDs, creatorID)
+		roleIDs = append(roleIDs, roleID)
 	}
 	if len(credits) == 0 {
 		return []creatorCredit{}, nil
 	}
 
-	creatorIDs, creatorPublicIDs := collectCreditRefs(creatorRefs)
 	creatorRows, err := s.queriesFor(ctx).ListCreatorsByIDsForTenant(ctx, dbmodels.ListCreatorsByIDsForTenantParams{
-		TenantID:  tenantID,
-		Ids:       creatorIDs,
-		PublicIds: creatorPublicIDs,
+		TenantID: tenantID,
+		Ids:      distinctIDs(creatorIDs),
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creators by ids", err, "tenant_id", tenantID.String())
 	}
-	creators := make(map[creditRef]dbmodels.ListCreatorsByIDsForTenantRow, 2*len(creatorRows))
+	creators := make(map[uuid.UUID]dbmodels.ListCreatorsByIDsForTenantRow, len(creatorRows))
 	for _, row := range creatorRows {
-		creators[creditRef{id: row.ID}] = row
-		creators[creditRef{publicID: row.PublicID}] = row
+		creators[row.ID] = row
 	}
 	// Checked before the roles are read so a request naming nobody real is
 	// refused without a second query.
-	for _, ref := range creatorRefs {
-		if _, ok := creators[ref]; !ok {
+	for _, id := range creatorIDs {
+		if _, ok := creators[id]; !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
 		}
 	}
 
-	roleIDs, rolePublicIDs := collectCreditRefs(roleRefs)
 	roleRows, err := s.queriesFor(ctx).ListCreatorRolesByIDsForTenant(ctx, dbmodels.ListCreatorRolesByIDsForTenantParams{
-		TenantID:  tenantID,
-		Ids:       roleIDs,
-		PublicIds: rolePublicIDs,
+		TenantID: tenantID,
+		Ids:      distinctIDs(roleIDs),
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creator roles by ids", err, "tenant_id", tenantID.String())
 	}
-	roles := make(map[creditRef]dbmodels.ListCreatorRolesByIDsForTenantRow, 2*len(roleRows))
+	roles := make(map[uuid.UUID]dbmodels.ListCreatorRolesByIDsForTenantRow, len(roleRows))
 	for _, row := range roleRows {
-		roles[creditRef{id: row.ID}] = row
-		roles[creditRef{publicID: row.PublicID}] = row
+		roles[row.ID] = row
 	}
 
 	resolved := make([]creatorCredit, 0, len(credits))
 	seenPairs := make(map[[2]uuid.UUID]struct{}, len(credits))
 	for index := range credits {
-		creator := creators[creatorRefs[index]]
-		role, ok := roles[roleRefs[index]]
+		creator := creators[creatorIDs[index]]
+		role, ok := roles[roleIDs[index]]
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
 		}

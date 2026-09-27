@@ -308,10 +308,7 @@ SELECT id,
     created_at
 FROM creators
 WHERE tenant_id = sqlc.arg('tenant_id')
-    AND (
-        id = ANY(sqlc.arg('ids')::uuid[])
-        OR public_id = ANY(sqlc.arg('public_ids')::varchar[])
-    );
+    AND id = ANY(sqlc.arg('ids')::uuid[]);
 
 -- Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
 -- backward uses ASC so the index can be scanned in reverse. The handler

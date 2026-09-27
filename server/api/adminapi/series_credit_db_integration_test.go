@@ -85,8 +85,8 @@ func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
 		// Listed against the priority order, so what puts the leading role
 		// first is the role rather than the order of the save.
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: artist.PublicID},
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: originalAuthor.PublicID},
+			{CreatorId: creator.Msg.Creator.Id, RoleId: artist.ID.String()},
+			{CreatorId: creator.Msg.Creator.Id, RoleId: originalAuthor.ID.String()},
 		},
 	}))
 	if err != nil {
@@ -126,8 +126,8 @@ func TestDBCreateSeriesRefusesTheSameCreatorTwiceInOneRole(t *testing.T) {
 		Tenant: tenant.tenantContext(),
 		Title:  "Doubly Credited",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: role.PublicID},
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: role.PublicID},
+			{CreatorId: creator.Msg.Creator.Id, RoleId: role.ID.String()},
+			{CreatorId: creator.Msg.Creator.Id, RoleId: role.ID.String()},
 		},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -157,7 +157,7 @@ func TestDBCreateSeriesRefusesACreatorRoleOfAnotherTenant(t *testing.T) {
 		Tenant: first.tenantContext(),
 		Title:  "Series Borrowing A Role",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorPublicId: creator.Msg.Creator.PublicId, RolePublicId: theirRole.PublicID},
+			{CreatorId: creator.Msg.Creator.Id, RoleId: theirRole.ID.String()},
 		},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

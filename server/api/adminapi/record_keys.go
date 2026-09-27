@@ -25,6 +25,45 @@ func parseRecordID(raw, field string) (uuid.UUID, error) {
 	return id, nil
 }
 
+// recordIDArg reads a primary key a request may leave empty, returning uuid.Nil
+// for an empty field.
+func recordIDArg(raw, field string) (uuid.UUID, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return uuid.Nil, nil
+	}
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("%s is not an identifier", field), field)
+	}
+	return id, nil
+}
+
+// recordIDsArg reads a list of internal IDs under the rules
+// validateDistinctPublicIDs holds a list of public IDs to.
+func recordIDsArg(raw []string, field, noun string) ([]uuid.UUID, error) {
+	if len(raw) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s are required", field))
+	}
+	ids := make([]uuid.UUID, 0, len(raw))
+	seen := make(map[uuid.UUID]struct{}, len(raw))
+	for _, value := range raw {
+		if strings.TrimSpace(value) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains empty value", field))
+		}
+		id, err := recordIDArg(value, field)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := seen[id]; ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains duplicate %s", field, noun))
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // reorderList is one of the two lists a reorder request states, with the
 // field it came from.
 type reorderList struct {

@@ -70,10 +70,7 @@ SELECT cr.id,
     cr.display_priority
 FROM creator_roles cr
 WHERE cr.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        cr.id = ANY(sqlc.arg('ids')::uuid[])
-        OR cr.public_id = ANY(sqlc.arg('public_ids')::text[])
-    )
+    AND cr.id = ANY(sqlc.arg('ids')::uuid[])
 ORDER BY cr.display_priority ASC,
     cr.id ASC;
 

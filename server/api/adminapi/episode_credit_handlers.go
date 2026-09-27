@@ -31,7 +31,7 @@ func (s *adminServer) ListEpisodeCredits(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.episodeForCredits(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episode, err := s.episodeForCredits(ctx, tenant.ID, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -50,11 +50,9 @@ func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) [
 	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(rows))
 	for _, row := range rows {
 		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
-			CreatorPublicId: row.PublicID,
-			RolePublicId:    row.RolePublicID.String,
-			CreatorId:       row.CreatorID.String(),
-			RoleId:          nullUUIDString(row.RoleID),
-			ShareBps:        row.ShareBps,
+			CreatorId: row.CreatorID.String(),
+			RoleId:    nullUUIDString(row.RoleID),
+			ShareBps:  row.ShareBps,
 		})
 	}
 	return credits
@@ -80,7 +78,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 		return nil, err
 	}
 	setCreatorCreditShares(credits, shares)
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -185,9 +183,8 @@ func (s *adminServer) episodeForCredits(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	rawID string,
-	rawPublicID string,
 ) (dbmodels.GetEpisodeByIDForTenantRow, error) {
-	episodeID, err := s.episodeIDArg(ctx, tenantID, rawID, rawPublicID)
+	episodeID, err := parseRecordID(rawID, "episode_id")
 	if err != nil {
 		return dbmodels.GetEpisodeByIDForTenantRow{}, err
 	}

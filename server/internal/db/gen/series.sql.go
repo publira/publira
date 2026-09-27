@@ -654,27 +654,6 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 	return i, err
 }
 
-const GetSeriesIDByPublicIDForTenant = `-- name: GetSeriesIDByPublicIDForTenant :one
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = $1
-    AND s.public_id = $2
-LIMIT 1
-`
-
-type GetSeriesIDByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-// Resolves the series a console request still names by public_id.
-func (q *Queries) GetSeriesIDByPublicIDForTenant(ctx context.Context, arg GetSeriesIDByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, GetSeriesIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
 const ListSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
 SELECT s.id,
     s.public_id,

@@ -10,14 +10,14 @@ import "publira/types/v1/types.proto";
 // appear twice under two roles — an original author who also draws it — and
 // not twice under the same one.
 message SeriesCreatorCredit {
-  string creator_public_id = 1;
-  // A role of this tenant, by public_id. Credits carry no order of their own
-  // across roles: the role's priority is what puts the leading one first.
-  string role_public_id = 2;
+  reserved 1, 2;
+  reserved "creator_public_id", "role_public_id";
   // The creator's share of an episode's sales, in basis points. 10000 is
   // 100%; a zero share records a credit without compensation.
   int32 share_bps = 3;
   string creator_id = 4;
+  // A role of this tenant. Credits carry no order of their own across roles:
+  // the role's priority is what puts the leading one first.
   string role_id = 5;
 }
 
@@ -25,11 +25,12 @@ message CreateSeriesRequest {
   // 7 held `creator_public_ids`, a creator list with no way to state a role.
   reserved 7;
   reserved "creator_public_ids";
+  reserved 4, 16;
+  reserved "label_public_id", "genre_public_ids";
 
   publira.types.v1.TenantContext tenant = 1;
   string title = 2;
   string synopsis = 3;
-  string label_public_id = 4;
   bool is_published = 5;
   int32 reading_period_hours = 6;
   bytes eye_catch_image_data = 8;
@@ -41,10 +42,6 @@ message CreateSeriesRequest {
   // before it is stored; empty keeps no weekly schedule.
   repeated int32 schedule_weekdays = 14;
   publira.types.v1.SeriesAgeRating age_rating = 15;
-  // Genres of this tenant, by public_id. An id naming no genre of the tenant
-  // is invalid_argument; the assignment carries no order of its own, because
-  // the series presents them in the tenant's genre order.
-  repeated string genre_public_ids = 16;
   // Tag names as the editor typed them. A name used for the first time creates
   // the tag; one that matches an existing tag's slug resolves to it, keeping
   // the name that tag was created under. At most 20 per series.
@@ -73,7 +70,9 @@ message CreateSeriesRequest {
   // including afterwards, when its default changes.
   publira.types.v1.SurfaceAvailability purchase_availability = 23;
   string label_id = 24;
-  // Genres of this tenant, by id, with the same rules genre_public_ids has.
+  // Genres of this tenant. An id naming no genre of the tenant is
+  // invalid_argument; the assignment carries no order of its own, because the
+  // series presents them in the tenant's genre order.
   repeated string genre_ids = 25;
 }
 
@@ -117,15 +116,16 @@ message UpdateSeriesRequest {
   reserved 14;
   reserved "schedule_weekdays";
 
+  reserved 2, 8, 16;
+  reserved "public_id", "label_public_id", "genre_public_ids";
+
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
   string title = 3;
   // Empty, sent explicitly, clears the synopsis.
   optional string synopsis = 4;
   bool is_published = 5;
   // Zero, sent explicitly, returns the series to the tenant's default.
   optional int32 reading_period_hours = 6;
-  string label_public_id = 8;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
   bool clear_eye_catch_image = 11;
@@ -135,11 +135,9 @@ message UpdateSeriesRequest {
   optional publira.types.v1.SeriesStatus status = 13;
   SeriesScheduleWeekdays weekly_schedule = 24;
   optional publira.types.v1.SeriesAgeRating age_rating = 15;
-  // The whole assignment: what this field holds is what the series carries
-  // afterwards, and an empty field clears it.
-  repeated string genre_public_ids = 16;
-  // Likewise the whole tag list. A tag the last series here lets go of is
-  // deleted, because nothing else keeps a tag alive.
+  // The whole tag list: what this field holds is what the series carries
+  // afterwards, and an empty field clears it. A tag the last series here lets
+  // go of is deleted, because nothing else keeps a tag alive.
   repeated string tag_names = 17;
   // Likewise the whole credit list, replacing every credit the series had.
   repeated SeriesCreatorCredit creator_credits = 18;
@@ -165,7 +163,7 @@ message UpdateSeriesRequest {
   optional publira.types.v1.SurfaceAvailability purchase_availability = 23;
   string series_id = 25;
   string label_id = 26;
-  // The whole assignment by id, as genre_public_ids is.
+  // Likewise the whole genre assignment.
   repeated string genre_ids = 27;
 }
 
@@ -235,8 +233,9 @@ message GetSeriesResponse {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListEpisodesRequest {
+  reserved 2;
+  reserved "series_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
   // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
@@ -276,8 +275,9 @@ message GetEpisodeResponse {
 // written on every call, so a field left empty returns that value to following
 // the series.
 message UpdateEpisodeLayoutRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   // READING_DIRECTION_UNSPECIFIED follows the series.
   publira.types.v1.ReadingDirection reading_direction = 3;
   // Absent follows the series. It must name one of the episode's pages: a
@@ -299,8 +299,9 @@ message UpdateEpisodeLayoutResponse {
 // only where its series is: its own value can take it off a surface, never put
 // it on one the series is kept off.
 message UpdateEpisodeAvailabilityRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
   // series.
   publira.types.v1.SurfaceAvailability availability = 3;
@@ -316,8 +317,9 @@ message UpdateEpisodeAvailabilityResponse {
 // Unlike where it is shown, the episode's value is not bounded by the series:
 // it may be sold on a surface its series' other episodes are not.
 message UpdateEpisodePurchaseAvailabilityRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
   // series.
   publira.types.v1.SurfaceAvailability purchase_availability = 3;
@@ -332,19 +334,16 @@ message UpdateEpisodePurchaseAvailabilityResponse {
 }
 
 message ReorderEpisodesRequest {
+  reserved 2, 3, 4;
+  reserved "series_public_id", "episode_public_ids", "expected_episode_public_ids";
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
-  // Desired order after the write. Must be a permutation of
-  // expected_episode_public_ids.
-  repeated string episode_public_ids = 3;
-  // The series order the client read before composing episode_public_ids.
-  // The RPC locks the series, re-reads the current order, and rejects the
-  // write with failed_precondition when this no longer matches.
-  repeated string expected_episode_public_ids = 4;
   string series_id = 5;
-  // episode_ids and expected_episode_ids follow the rules the public_id lists
-  // above do.
+  // Desired order after the write. Must be a permutation of
+  // expected_episode_ids.
   repeated string episode_ids = 6;
+  // The series order the client read before composing episode_ids. The RPC
+  // locks the series, re-reads the current order, and rejects the write with
+  // failed_precondition when this no longer matches.
   repeated string expected_episode_ids = 7;
 }
 
@@ -353,8 +352,9 @@ message ReorderEpisodesResponse {
 }
 
 message CreateEpisodeRequest {
+  reserved 2;
+  reserved "series_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
   string title = 3;
   // Position in the series. 0 appends after the current last episode, so a
   // client paging through ListEpisodes does not have to find the end itself.
@@ -385,10 +385,10 @@ message EpisodeImageUpload {
 }
 
 message UploadEpisodeImagesRequest {
+  reserved 2, 4;
+  reserved "episode_public_id", "series_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   repeated EpisodeImageUpload images = 3;
-  string series_public_id = 4;
   bytes archive_data = 5;
   string archive_filename = 6;
   string archive_content_type = 7;
@@ -401,8 +401,9 @@ message UploadEpisodeImagesResponse {
 }
 
 message ListEpisodeImagesRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   string episode_id = 3;
 }
 
@@ -411,8 +412,9 @@ message ListEpisodeImagesResponse {
 }
 
 message ReorderEpisodeImagesRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   repeated string image_ids = 3;
   string episode_id = 4;
 }
@@ -422,8 +424,9 @@ message ReorderEpisodeImagesResponse {
 }
 
 message UpdateEpisodePublishScheduleRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   string scheduled_at = 3;
   string episode_id = 4;
 }
@@ -437,18 +440,19 @@ message UpdateEpisodePublishScheduleResponse {
 // separately: what the series carries is what the next episode is created
 // with, and what an episode carries is what that episode shipped with.
 message EpisodeCreatorCredit {
-  string creator_public_id = 1;
-  // A role of this tenant, by public_id. Credits carry no order of their own
-  // across roles: the role's priority is what puts the leading one first.
-  string role_public_id = 2;
+  reserved 1, 2;
+  reserved "creator_public_id", "role_public_id";
   int32 share_bps = 3;
   string creator_id = 4;
+  // A role of this tenant. Credits carry no order of their own across roles:
+  // the role's priority is what puts the leading one first.
   string role_id = 5;
 }
 
 message ListEpisodeCreditsRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   string episode_id = 3;
 }
 
@@ -465,8 +469,9 @@ message ListEpisodeCreditsResponse {
 // series and is still listed keeps saying so, so a later range edit can tell
 // the standing team from a guest on this episode.
 message ReplaceEpisodeCreditsRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   repeated EpisodeCreatorCredit creator_credits = 3;
   string episode_id = 4;
 }
@@ -506,14 +511,9 @@ message SetEpisodeCreditShareOperation {
 // this one": a guest or a spot supervisor makes an episode's set differ, and a
 // set comparison would leave that episode behind without saying so.
 message BulkEditEpisodeCreditsRequest {
+  reserved 2, 3;
+  reserved "series_public_id", "episode_public_ids";
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
-  // The episodes to act on, by public_id, rather than a span of order indexes.
-  // Episodes are reordered through this API, so a span would name a different
-  // set of episodes after a reorder than it did when it was composed. The
-  // console resolves its range picker to this list. At most 1000 per call:
-  // every episode named is locked until the operation commits.
-  repeated string episode_public_ids = 3;
   // Exactly one operation per call. It is a oneof so that the share work can
   // add a rate operation beside these three without changing what they mean.
   oneof operation {
@@ -523,7 +523,11 @@ message BulkEditEpisodeCreditsRequest {
     SetEpisodeCreditShareOperation set_share = 7;
   }
   string series_id = 8;
-  // The episodes to act on by id, with the rules episode_public_ids has.
+  // The episodes to act on, rather than a span of order indexes. Episodes are
+  // reordered through this API, so a span would name a different set of
+  // episodes after a reorder than it did when it was composed. The console
+  // resolves its range picker to this list. At most 1000 per call: every
+  // episode named is locked until the operation commits.
   repeated string episode_ids = 9;
 }
 
@@ -559,8 +563,9 @@ message BulkEditEpisodeCreditsResponse {
 // Replaces the image of one aspect ratio of a series eye-catch. The other
 // ratios keep the images they already hold.
 message UploadSeriesEyeCatchAspectImageRequest {
+  reserved 2;
+  reserved "public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
   // portrait / square / landscape / og
   string variant_type = 3;
   bytes image_data = 4;
@@ -593,8 +598,9 @@ message AdminEpisodeFreeWindow {
 }
 
 message CreateEpisodeFreeWindowRequest {
+  reserved 2;
+  reserved "episode_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string episode_public_id = 2;
   // RFC3339 both. ends_at must be after starts_at, and the period must not
   // overlap a window the episode already has: an overlap is failed_precondition
   // rather than a silently merged period.
@@ -612,8 +618,9 @@ message CreateEpisodeFreeWindowResponse {
 // the period overlaps a window any one episode already has, no window is
 // created.
 message CreateSeriesFreeWindowsRequest {
+  reserved 2;
+  reserved "series_public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string series_public_id = 2;
   string starts_at = 3;
   string ends_at = 4;
   string series_id = 5;
@@ -627,8 +634,9 @@ message CreateSeriesFreeWindowsResponse {
 // Removes a scheduled window. Removing one that is currently open ends the
 // campaign immediately: the episode is priced again as soon as the caches drop.
 message DeleteEpisodeFreeWindowRequest {
+  reserved 2;
+  reserved "public_id";
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
   string free_window_id = 3;
 }
 

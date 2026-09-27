@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -109,7 +110,7 @@ func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:             tenant.tenantContext(),
-		PublicId:           publicID,
+		SeriesId:           env.seriesID(t, publicID),
 		Title:              "Published Title",
 		Synopsis:           new("Published synopsis"),
 		ReadingPeriodHours: new(int32(24)),
@@ -185,7 +186,7 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 
 	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
-		PublicId:       publicID,
+		SeriesId:       env.seriesID(t, publicID),
 		Title:          "Weekly Story",
 		IsPublished:    true,
 		Status:         publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED.Enum(),
@@ -236,7 +237,7 @@ func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:      tenant.tenantContext(),
-		PublicId:    publicID,
+		SeriesId:    env.seriesID(t, publicID),
 		Title:       "Quiet Story",
 		IsPublished: true,
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_DISABLED.Enum(),
@@ -261,7 +262,7 @@ func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 
 	cleared, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:      tenant.tenantContext(),
-		PublicId:    publicID,
+		SeriesId:    env.seriesID(t, publicID),
 		Title:       "Quiet Story",
 		IsPublished: true,
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_UNSPECIFIED.Enum(),
@@ -301,7 +302,7 @@ func TestDBUpdateSeriesKeepsTheListingFieldsItLeavesUnset(t *testing.T) {
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:      tenant.tenantContext(),
-		PublicId:    publicID,
+		SeriesId:    env.seriesID(t, publicID),
 		Title:       "Renamed Story",
 		IsPublished: true,
 	}))
@@ -364,7 +365,7 @@ func TestDBUpdateSeriesWritesTheDefaultsItStates(t *testing.T) {
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:             tenant.tenantContext(),
-		PublicId:           publicID,
+		SeriesId:           env.seriesID(t, publicID),
 		Title:              "Reset Story",
 		IsPublished:        true,
 		Synopsis:           new(""),
@@ -423,7 +424,7 @@ func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 
 	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
-		PublicId:       created.Msg.Series.PublicId,
+		SeriesId:       created.Msg.Series.Id,
 		Title:          "Weekly Story",
 		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{3, 9}},
 	}))
@@ -498,7 +499,7 @@ func TestDBUpdateSeriesOfAnotherTenantReturnsNotFound(t *testing.T) {
 
 	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   first.tenantContext(),
-		PublicId: theirs.Msg.Series.PublicId,
+		SeriesId: theirs.Msg.Series.Id,
 		Title:    "Hijacked Title",
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -546,9 +547,9 @@ func TestDBCreateSeriesWithUnknownLabelReturnsInvalidArgument(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
 	_, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:        tenant.tenantContext(),
-		Title:         "Series With Label",
-		LabelPublicId: "NOSUCHLABEL",
+		Tenant:  tenant.tenantContext(),
+		Title:   "Series With Label",
+		LabelId: uuid.NewString(),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -563,7 +564,7 @@ func TestDBCreateSeriesUnknownCreatorLeavesNoRows(t *testing.T) {
 		Tenant:         tenant.tenantContext(),
 		Title:          "Orphan Series",
 		Synopsis:       "Should not persist",
-		CreatorCredits: env.creatorCredits(t, tenant, "NOSUCHCREATOR"),
+		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{{CreatorId: uuid.NewString(), RoleId: env.leadingCreatorRoleID(t, tenant)}},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -597,7 +598,7 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 		Tenant:         tenant.tenantContext(),
 		Title:          "Original Title",
 		Synopsis:       "Original synopsis",
-		CreatorCredits: env.creatorCredits(t, tenant, creatorPublicID),
+		CreatorCredits: env.creatorCredits(t, tenant, createdCreator.Msg.Creator.Id),
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
@@ -606,10 +607,10 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 
 	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
-		PublicId:       publicID,
+		SeriesId:       env.seriesID(t, publicID),
 		Title:          "Hijacked Title",
 		Synopsis:       new("Hijacked synopsis"),
-		CreatorCredits: env.creatorCredits(t, tenant, "NOSUCHCREATOR"),
+		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{{CreatorId: uuid.NewString(), RoleId: env.leadingCreatorRoleID(t, tenant)}},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -644,7 +645,7 @@ func TestDBSeriesCreditSharesReadBack(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
 
-	creatorPublicIDs := make([]string, 0, 2)
+	creatorIDs := make([]string, 0, 2)
 	for _, name := range []string{"Share Author", "Share Artist"} {
 		created, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
 			Tenant: tenant.tenantContext(),
@@ -653,9 +654,9 @@ func TestDBSeriesCreditSharesReadBack(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateCreator %s: %v", name, err)
 		}
-		creatorPublicIDs = append(creatorPublicIDs, created.Msg.Creator.PublicId)
+		creatorIDs = append(creatorIDs, created.Msg.Creator.Id)
 	}
-	credits := env.creatorCredits(t, tenant, creatorPublicIDs...)
+	credits := env.creatorCredits(t, tenant, creatorIDs...)
 	credits[0].ShareBps = 1000
 
 	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
@@ -674,7 +675,7 @@ func TestDBSeriesCreditSharesReadBack(t *testing.T) {
 	credits[1].ShareBps = 2000
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
-		PublicId:       created.Msg.Series.PublicId,
+		SeriesId:       created.Msg.Series.Id,
 		Title:          "Shared Series",
 		CreatorCredits: credits,
 	}))
@@ -693,7 +694,7 @@ func TestDBSeriesCreditSharesReadBack(t *testing.T) {
 		t.Fatalf("GetSeries: %v", err)
 	}
 	for index, credit := range got.Msg.CreatorCredits {
-		if credit.CreatorPublicId != credits[index].CreatorPublicId || credit.RolePublicId != credits[index].RolePublicId {
+		if credit.CreatorId != credits[index].CreatorId || credit.RoleId != credits[index].RoleId {
 			t.Fatalf("GetSeries credit %d = %+v, want %+v", index, credit, credits[index])
 		}
 	}
