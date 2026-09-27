@@ -377,15 +377,13 @@ func (x *GetContactMessageResponse) GetMessage() *ContactMessage {
 }
 
 type MarkContactMessageHandledRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// True marks the message dealt with, false puts it back among the ones still
 	// waiting. The flag is stated rather than toggled, so two members of staff
 	// working the same inbox cannot undo each other by pressing at once.
 	Handled bool `protobuf:"varint,3,opt,name=handled,proto3" json:"handled,omitempty"`
-	// The message's primary key (ContactMessage.id). Takes precedence over
-	// public_id.
+	// The message's primary key (ContactMessage.id).
 	ContactMessageId string `protobuf:"bytes,4,opt,name=contact_message_id,json=contactMessageId,proto3" json:"contact_message_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -426,13 +424,6 @@ func (x *MarkContactMessageHandledRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *MarkContactMessageHandledRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *MarkContactMessageHandledRequest) GetHandled() bool {
@@ -525,12 +516,11 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"W\n" +
 	"\x19GetContactMessageResponse\x12:\n" +
-	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\xc0\x01\n" +
+	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\xb4\x01\n" +
 	" MarkContactMessageHandledRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x18\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x18\n" +
 	"\ahandled\x18\x03 \x01(\bR\ahandled\x12,\n" +
-	"\x12contact_message_id\x18\x04 \x01(\tR\x10contactMessageId\"_\n" +
+	"\x12contact_message_id\x18\x04 \x01(\tR\x10contactMessageIdJ\x04\b\x02\x10\x03R\tpublic_id\"_\n" +
 	"!MarkContactMessageHandledResponse\x12:\n" +
 	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage2\x84\x03\n" +
 	"\x13AdminContactService\x12t\n" +

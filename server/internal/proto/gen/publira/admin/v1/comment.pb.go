@@ -614,13 +614,12 @@ func (x *CountPendingCommentsResponse) GetPendingCount() int32 {
 }
 
 type ApproveCommentRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Recorded on the audit log row. Optional: approving is the queue's ordinary
 	// outcome and usually needs no explanation.
 	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	// The comment's primary key (AdminComment.id).
 	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -661,13 +660,6 @@ func (x *ApproveCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *ApproveCommentRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *ApproveCommentRequest) GetReason() string {
@@ -729,13 +721,12 @@ func (x *ApproveCommentResponse) GetComment() *AdminComment {
 }
 
 type HideCommentRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Recorded on the audit log row, which is where a tenant reads back why a
 	// comment was removed when it owes its author a statement of reasons.
 	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	// The comment's primary key (AdminComment.id).
 	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -776,13 +767,6 @@ func (x *HideCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *HideCommentRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *HideCommentRequest) GetReason() string {
@@ -844,12 +828,11 @@ func (x *HideCommentResponse) GetComment() *AdminComment {
 }
 
 type RestoreCommentRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Recorded on the audit log row.
 	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	// The comment's primary key (AdminComment.id).
 	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -890,13 +873,6 @@ func (x *RestoreCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *RestoreCommentRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *RestoreCommentRequest) GetReason() string {
@@ -958,14 +934,13 @@ func (x *RestoreCommentResponse) GetComment() *AdminComment {
 }
 
 type PurgeCommentRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Required. The row is gone afterwards, so the audit log entry is the only
 	// record left that this comment ever existed, and a purge with no stated
 	// reason leaves a tenant unable to account for it.
 	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	// The comment's primary key (AdminComment.id).
 	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1006,13 +981,6 @@ func (x *PurgeCommentRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *PurgeCommentRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *PurgeCommentRequest) GetReason() string {
@@ -1377,37 +1345,33 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x1bCountPendingCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"C\n" +
 	"\x1cCountPendingCommentsResponse\x12#\n" +
-	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\"\xa4\x01\n" +
+	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\"\x98\x01\n" +
 	"\x15ApproveCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x04 \x01(\tR\tcommentId\"R\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\tpublic_id\"R\n" +
 	"\x16ApproveCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa1\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x95\x01\n" +
 	"\x12HideCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x04 \x01(\tR\tcommentId\"O\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\tpublic_id\"O\n" +
 	"\x13HideCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa4\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x98\x01\n" +
 	"\x15RestoreCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x04 \x01(\tR\tcommentId\"R\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\tpublic_id\"R\n" +
 	"\x16RestoreCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa2\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x96\x01\n" +
 	"\x13PurgeCommentRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x04 \x01(\tR\tcommentId\"\x16\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentIdJ\x04\b\x02\x10\x03R\tpublic_id\"\x16\n" +
 	"\x14PurgeCommentResponse\"\x98\x01\n" +
 	"\x19ListCommentReportsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +

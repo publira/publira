@@ -128,11 +128,12 @@ message CountPendingCommentsResponse {
 
 message ApproveCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // Recorded on the audit log row. Optional: approving is the queue's ordinary
   // outcome and usually needs no explanation.
   string reason = 3;
-  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  // The comment's primary key (AdminComment.id).
   string comment_id = 4;
 }
 
@@ -142,11 +143,12 @@ message ApproveCommentResponse {
 
 message HideCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // Recorded on the audit log row, which is where a tenant reads back why a
   // comment was removed when it owes its author a statement of reasons.
   string reason = 3;
-  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  // The comment's primary key (AdminComment.id).
   string comment_id = 4;
 }
 
@@ -156,10 +158,11 @@ message HideCommentResponse {
 
 message RestoreCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // Recorded on the audit log row.
   string reason = 3;
-  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  // The comment's primary key (AdminComment.id).
   string comment_id = 4;
 }
 
@@ -169,12 +172,13 @@ message RestoreCommentResponse {
 
 message PurgeCommentRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // Required. The row is gone afterwards, so the audit log entry is the only
   // record left that this comment ever existed, and a purge with no stated
   // reason leaves a tenant unable to account for it.
   string reason = 3;
-  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  // The comment's primary key (AdminComment.id).
   string comment_id = 4;
 }
 

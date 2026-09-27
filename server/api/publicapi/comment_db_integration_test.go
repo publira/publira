@@ -124,14 +124,29 @@ func (e *publicDBEnv) openAdminConsole(t *testing.T, tenant testutil.Tenant, sta
 	return adminConsole{server: adminServer, token: token}
 }
 
+// commentID looks up the primary key the admin API addresses a comment by. The
+// reader API names comments by public_id, which is what these tests hold.
+func (e *publicDBEnv) commentID(t *testing.T, tenant testutil.Tenant, publicID string) string {
+	t.Helper()
+
+	var id string
+	if err := e.PG.DB.QueryRowContext(context.Background(),
+		`SELECT id FROM episode_comments WHERE tenant_id = $1 AND public_id = $2`,
+		tenant.ID, publicID,
+	).Scan(&id); err != nil {
+		t.Fatalf("look up comment %s: %v", publicID, err)
+	}
+	return id
+}
+
 func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff testutil.TenantUser, publicID string) {
 	t.Helper()
 
 	console := e.openAdminCommentConsole(t, tenant, staff)
 	req := connect.NewRequest(&publiraadminv1.HideCommentRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-		PublicId: publicID,
-		Reason:   "Removed for this test.",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		CommentId: e.commentID(t, tenant, publicID),
+		Reason:    "Removed for this test.",
 	})
 	req.Header().Set("Authorization", "Bearer "+console.token)
 	if _, err := console.client.HideComment(context.Background(), req); err != nil {

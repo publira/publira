@@ -336,31 +336,6 @@ FROM episode_comments c
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('id');
 
--- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
--- The same comment by the public identifier, for a moderation request that
--- still names it that way.
-SELECT c.*,
-    u.public_id AS author_public_id,
-    u.name AS author_name,
-    EXISTS (
-        SELECT 1
-        FROM tenant_user_roles tur
-        WHERE tur.user_id = u.id
-    ) AS author_is_staff,
-    e.public_id AS episode_public_id,
-    e.title AS episode_title,
-    s.public_id AS series_public_id,
-    s.title AS series_title
-FROM episode_comments c
-    JOIN users u ON u.tenant_id = c.tenant_id
-        AND u.id = c.user_id
-    JOIN episodes e ON e.tenant_id = c.tenant_id
-        AND e.id = c.episode_id
-    JOIN series s ON s.tenant_id = e.tenant_id
-        AND s.id = e.series_id
-WHERE c.tenant_id = sqlc.arg('tenant_id')
-    AND c.public_id = sqlc.arg('public_id');
-
 -- name: ApproveEpisodeCommentByIDForTenant :one
 -- Approval is what publishes a comment posted under approval_required, so it is
 -- also where published_at is first written.

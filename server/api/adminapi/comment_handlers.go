@@ -54,7 +54,7 @@ const (
 // The three moderation queries select the same columns in the same order, so
 // sqlc emits three structurally identical row types; naming one of them lets a
 // list row convert into it instead of being copied field by field.
-type moderationCommentRow = dbmodels.GetEpisodeCommentForModerationByPublicIDForTenantRow
+type moderationCommentRow = dbmodels.GetEpisodeCommentForModerationByIDForTenantRow
 
 func moderationCommentRowsFromDesc(rows []dbmodels.ListEpisodeCommentsForModerationByCreatedAtDescRow) []moderationCommentRow {
 	mapped := make([]moderationCommentRow, 0, len(rows))
@@ -372,45 +372,22 @@ func adminCommentReport(row commentReportRow, periods retention.Periods) *publir
 	}
 }
 
-// commentRef is how a moderation request names its comment: by primary key
-// when comment_id is set, and by public_id otherwise.
-type commentRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
 // loadCommentForModeration reads the comment an action names. The tenant is part
 // of the lookup, so a comment of another tenant is not found rather than
 // forbidden: a moderator learns nothing about what exists elsewhere.
 func (s *adminServer) loadCommentForModeration(
 	ctx context.Context,
-	tenantID uuid.UUID,
-	ref commentRef,
+	tenantID, commentID uuid.UUID,
 ) (moderationCommentRow, error) {
-	var (
-		row moderationCommentRow
-		err error
-	)
-	if ref.id != uuid.Nil {
-		var byID dbmodels.GetEpisodeCommentForModerationByIDForTenantRow
-		byID, err = s.queriesFor(ctx).GetEpisodeCommentForModerationByIDForTenant(ctx, dbmodels.GetEpisodeCommentForModerationByIDForTenantParams{
-			TenantID: tenantID,
-			ID:       ref.id,
-		})
-		row = moderationCommentRow(byID)
-	} else {
-		var byPublicID dbmodels.GetEpisodeCommentForModerationByPublicIDForTenantRow
-		byPublicID, err = s.queriesFor(ctx).GetEpisodeCommentForModerationByPublicIDForTenant(ctx, dbmodels.GetEpisodeCommentForModerationByPublicIDForTenantParams{
-			TenantID: tenantID,
-			PublicID: ref.publicID,
-		})
-		row = moderationCommentRow(byPublicID)
-	}
+	row, err := s.queriesFor(ctx).GetEpisodeCommentForModerationByIDForTenant(ctx, dbmodels.GetEpisodeCommentForModerationByIDForTenantParams{
+		TenantID: tenantID,
+		ID:       commentID,
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return moderationCommentRow{}, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
 	}
 	if err != nil {
-		return moderationCommentRow{}, s.internalDBError(ctx, "failed to get comment for moderation", err, "tenant_id", tenantID.String(), "comment_id", ref.id.String(), "comment_public_id", ref.publicID)
+		return moderationCommentRow{}, s.internalDBError(ctx, "failed to get comment for moderation", err, "tenant_id", tenantID.String(), "comment_id", commentID.String())
 	}
 	return row, nil
 }
@@ -434,22 +411,19 @@ func commentAuthorNotification(row moderationCommentRow, notificationType, hidde
 	}
 }
 
-// commentRefArg is the comment every moderation action names. An unparseable
+// commentIDArg is the comment every moderation action names. An unparseable
 // comment_id is refused here rather than reaching a query that would answer
 // not_found for a value that is not an identifier at all.
-func commentRefArg(rawID, rawPublicID string) (commentRef, error) {
-	if id := strings.TrimSpace(rawID); id != "" {
-		parsed, err := uuid.Parse(id)
-		if err != nil {
-			return commentRef{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("comment_id is not an identifier"), "comment_id")
-		}
-		return commentRef{id: parsed}, nil
+func commentIDArg(raw string) (uuid.UUID, error) {
+	id := strings.TrimSpace(raw)
+	if id == "" {
+		return uuid.UUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("comment_id is required"), "comment_id")
 	}
-	publicID := strings.TrimSpace(rawPublicID)
-	if publicID == "" {
-		return commentRef{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("comment_id is required"), "comment_id")
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.UUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("comment_id is not an identifier"), "comment_id")
 	}
-	return commentRef{publicID: publicID}, nil
+	return parsed, nil
 }
 
 // commentAuditEntry is the audit row a moderation action owes.
@@ -666,7 +640,7 @@ func (s *adminServer) ApproveComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ApproveCommentRequest],
 ) (*connect.Response[publiraadminv1.ApproveCommentResponse], error) {
-	tenant, sessionCtx, ref, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId, req.Msg.PublicId)
+	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +651,7 @@ func (s *adminServer) ApproveComment(
 		return nil, err
 	}
 
-	current, err := s.loadCommentForModeration(ctx, tenant.ID, ref)
+	current, err := s.loadCommentForModeration(ctx, tenant.ID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -709,7 +683,7 @@ func (s *adminServer) ApproveComment(
 		return nil, s.internalDBError(ctx, "failed to commit the comment approval", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 
-	updated, err := s.loadCommentForModeration(ctx, tenant.ID, commentRef{id: current.ID})
+	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -726,7 +700,7 @@ func (s *adminServer) HideComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.HideCommentRequest],
 ) (*connect.Response[publiraadminv1.HideCommentResponse], error) {
-	tenant, sessionCtx, ref, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId, req.Msg.PublicId)
+	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +711,7 @@ func (s *adminServer) HideComment(
 		return nil, err
 	}
 
-	current, err := s.loadCommentForModeration(ctx, tenant.ID, ref)
+	current, err := s.loadCommentForModeration(ctx, tenant.ID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -767,7 +741,7 @@ func (s *adminServer) HideComment(
 		return nil, s.internalDBError(ctx, "failed to commit the comment hide", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 
-	updated, err := s.loadCommentForModeration(ctx, tenant.ID, commentRef{id: current.ID})
+	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -786,7 +760,7 @@ func (s *adminServer) RestoreComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.RestoreCommentRequest],
 ) (*connect.Response[publiraadminv1.RestoreCommentResponse], error) {
-	tenant, sessionCtx, ref, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId, req.Msg.PublicId)
+	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -797,7 +771,7 @@ func (s *adminServer) RestoreComment(
 		return nil, err
 	}
 
-	current, err := s.loadCommentForModeration(ctx, tenant.ID, ref)
+	current, err := s.loadCommentForModeration(ctx, tenant.ID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -843,7 +817,7 @@ func (s *adminServer) RestoreComment(
 		return nil, s.internalDBError(ctx, "failed to commit the comment restore", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 
-	updated, err := s.loadCommentForModeration(ctx, tenant.ID, commentRef{id: current.ID})
+	updated, err := s.loadCommentForModeration(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -862,7 +836,7 @@ func (s *adminServer) PurgeComment(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.PurgeCommentRequest],
 ) (*connect.Response[publiraadminv1.PurgeCommentResponse], error) {
-	tenant, sessionCtx, ref, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId, req.Msg.PublicId)
+	tenant, sessionCtx, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -873,7 +847,7 @@ func (s *adminServer) PurgeComment(
 
 	// Read before the delete: the episode the list belongs to is on the row
 	// that is about to stop existing.
-	current, err := s.loadCommentForModeration(ctx, tenant.ID, ref)
+	current, err := s.loadCommentForModeration(ctx, tenant.ID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -1108,21 +1082,21 @@ func (s *adminServer) loadCommentReport(
 func (s *adminServer) commentActionContext(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	rawCommentID, rawPublicID string,
-) (dbmodels.Tenant, rpcmiddleware.SessionContext, commentRef, error) {
+	rawCommentID string,
+) (dbmodels.Tenant, rpcmiddleware.SessionContext, uuid.UUID, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, commentRef{}, err
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
 	}
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, commentRef{}, err
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
 	}
-	ref, err := commentRefArg(rawCommentID, rawPublicID)
+	commentID, err := commentIDArg(rawCommentID)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, commentRef{}, err
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, uuid.UUID{}, err
 	}
-	return tenant, sessionCtx, ref, nil
+	return tenant, sessionCtx, commentID, nil
 }
 
 // commentStateError refuses a transition the comment's current state does not
