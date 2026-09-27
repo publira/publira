@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
@@ -22,6 +23,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -87,6 +89,84 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	if resp.Msg.Episode.ScheduledAt != scheduledAtUTC.Format(time.RFC3339) {
 		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAtUTC.Format(time.RFC3339))
 	}
+	assertExpectations(t, mock)
+}
+
+// A scheduled_at that has already passed publishes the episode as it is
+// created, and the same transaction owes the storefront's cache drop and the
+// followers' notice the scheduled publication job would otherwise write.
+func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := testSeriesID
+	episodeID := testEpisodeID
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	scheduledAt := now.Add(-time.Hour).Truncate(time.Second)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectBegin()
+	expectLockSeriesByID(mock, tenantID, testSeriesID)
+	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
+		WithArgs(episodeID, int32(0), sql.NullInt32{}, "published", sql.NullTime{Time: scheduledAt, Valid: true}, sqlmock.AnyArg(), tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
+			AddRow(episodeID, int32(0), nil, "published", scheduledAt, now, tenantID))
+	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
+	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeEpisodePublishedNotification,
+			sqlmock.AnyArg(),
+			outbox.EpisodePublishedIdempotencyKey(episodeID),
+			sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "event_type", "payload", "idempotency_key",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeEpisodePublishedNotification,
+			json.RawMessage("{}"),
+			outbox.EpisodePublishedIdempotencyKey(episodeID),
+			"pending", int32(0), now, nil, now, now, nil,
+		))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesId:    testSeriesID.String(),
+		Title:       "Episode 1",
+		OrderIndex:  1,
+		ScheduledAt: scheduledAt.Format(time.RFC3339),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.CreateEpisode(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+	if resp.Msg.Episode.Status != "published" {
+		t.Fatalf("episode status = %q, want published", resp.Msg.Episode.Status)
+	}
+	if resp.Msg.Episode.PublishedAt == "" {
+		t.Fatal("episode published_at is empty")
+	}
+	if resp.Msg.Episode.ScheduledAt != scheduledAt.Format(time.RFC3339) {
+		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAt.Format(time.RFC3339))
+	}
+	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":series:detail"})
 	assertExpectations(t, mock)
 }
 
@@ -202,28 +282,6 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				Title:       "Episode",
 				OrderIndex:  1,
 				ScheduledAt: "invalid-date",
-			},
-			wantCode: connect.CodeInvalidArgument,
-		},
-		{
-			name: "past-scheduled-at",
-			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesId:    testSeriesID.String(),
-				Title:       "Episode",
-				OrderIndex:  1,
-				ScheduledAt: "2000-01-01T00:00:00Z",
-			},
-			wantCode: connect.CodeInvalidArgument,
-		},
-		{
-			name: "boundary-scheduled-at-now",
-			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
-				SeriesId:    testSeriesID.String(),
-				Title:       "Episode",
-				OrderIndex:  1,
-				ScheduledAt: time.Now().UTC().Format(time.RFC3339),
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},

@@ -186,6 +186,7 @@ func runWorker() int {
 		Renderer:  resolveEmailRenderer(logger),
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		invalidator))
 	if err != nil {
@@ -229,6 +230,7 @@ func workerConfig(
 	pushHandlers outbox.PushHandlerConfig,
 	staffHandlers outbox.StaffNotificationHandlerConfig,
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
+	episodePublishedHandlers outbox.EpisodePublishedNotificationHandlerConfig,
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	invalidator outbox.CacheInvalidator,
 ) outbox.Config {
@@ -254,6 +256,7 @@ func workerConfig(
 	handlers.Register(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	handlers.Register(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
+	handlers.Register(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	googlePlayHandlers.Logger = logger

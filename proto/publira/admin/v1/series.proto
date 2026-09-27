@@ -361,6 +361,8 @@ message CreateEpisodeRequest {
   int32 order_index = 4;
   int32 price = 5;
   int32 reading_period_hours = 6;
+  // RFC 3339. Empty creates a draft, a future time schedules the episode, and
+  // a time at or before the request publishes it as it is created.
   string scheduled_at = 7;
   // Which surfaces this episode may be shown on, narrowing its series'.
   // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.

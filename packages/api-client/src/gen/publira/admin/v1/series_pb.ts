@@ -1064,6 +1064,9 @@ export type CreateEpisodeRequest = Message<"publira.admin.v1.CreateEpisodeReques
   readingPeriodHours: number;
 
   /**
+   * RFC 3339. Empty creates a draft, a future time schedules the episode, and
+   * a time at or before the request publishes it as it is created.
+   *
    * @generated from field: string scheduled_at = 7;
    */
   scheduledAt: string;

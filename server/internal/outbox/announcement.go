@@ -33,9 +33,9 @@ const EventTypeAnnouncementNotification = "announcement_notification"
 const NotificationTypeAnnouncementPosted = "announcement_posted"
 
 // announcementRecipientPageSize bounds one recipient query, for the reason
-// defaultFollowerPageSize does in the publish runner: the handler walks the
-// tenant's users a page at a time instead of materializing every one of them
-// before the first insert.
+// DefaultEpisodeFollowerPageSize does: the handler walks the tenant's users a
+// page at a time instead of materializing every one of them before the first
+// insert.
 const announcementRecipientPageSize = int32(500)
 
 // AnnouncementSubjectKey is the identity one announcement's notifications

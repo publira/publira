@@ -496,6 +496,10 @@ type Querier interface {
 	// caller turns an empty result into not_found exactly as it does a missing
 	// row, so the existence of an unpublished creator does not leak.
 	GetPublishedCreatorForTenant(ctx context.Context, arg GetPublishedCreatorForTenantParams) (GetPublishedCreatorForTenantRow, error)
+	// Worker read: what the episode_published notification of an episode the
+	// console published at once says. An episode that is no longer published by
+	// the time the event drains answers no row, so its followers are not told.
+	GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg GetPublishedEpisodeForFollowerNotificationParams) (GetPublishedEpisodeForFollowerNotificationRow, error)
 	// A URL names the episode by its public ID and a reader's request by its ID;
 	// the caller passes the one it holds.
 	GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error)

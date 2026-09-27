@@ -56,6 +56,22 @@ WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW();
 
+-- name: GetPublishedEpisodeForFollowerNotification :one
+-- Worker read: what the episode_published notification of an episode the
+-- console published at once says. An episode that is no longer published by
+-- the time the event drains answers no row, so its followers are not told.
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.id = $2
+    AND el.status = 'published';
+
 -- name: MarkEpisodePublished :exec
 UPDATE episode_listings
 SET status = 'published',

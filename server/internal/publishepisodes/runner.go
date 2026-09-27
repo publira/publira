@@ -26,13 +26,7 @@ const (
 	defaultRetryBaseDelay  = 2 * time.Second
 	defaultRetryMultiplier = 2
 
-	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
-
-	// defaultFollowerPageSize bounds one recipient query. The fan-out grows
-	// with the tenant's readership, so the run walks the followers a page at a
-	// time instead of materializing every one of them before the first insert.
-	defaultFollowerPageSize = 500
 )
 
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepisodes")
@@ -45,7 +39,7 @@ type Runner struct {
 	logger     *slog.Logger
 	maxRetries int
 	// followerPageSize bounds one recipient query. New sets it to
-	// defaultFollowerPageSize; a test lowers it to walk several pages without
+	// outbox.DefaultEpisodeFollowerPageSize; a test lowers it to walk several pages without
 	// seeding a page's worth of readers.
 	followerPageSize int32
 	// publish, when set, replaces publishEpisode so tests can force a final failure.
@@ -53,13 +47,6 @@ type Runner struct {
 	// notify, when set, replaces notifyFollowersOfPublish so tests can force a
 	// failure after the listing is marked published and before commit.
 	notify func(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
-}
-
-type episodePublishedPayload struct {
-	EpisodeID    string `json:"episode_id"`
-	EpisodeTitle string `json:"episode_title"`
-	SeriesID     string `json:"series_id"`
-	SeriesTitle  string `json:"series_title"`
 }
 
 type episodePublishFailedPayload struct {
@@ -90,7 +77,7 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Requester, log
 		reval:            reval,
 		logger:           logger,
 		maxRetries:       maxRetries,
-		followerPageSize: defaultFollowerPageSize,
+		followerPageSize: outbox.DefaultEpisodeFollowerPageSize,
 	}
 }
 
@@ -165,7 +152,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 		"episode_id", row.EpisodeID,
 		"tenant_id", row.TenantID.String(),
 	)
-	r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
+	r.notifyTenantAdmins(ctx, row, outbox.NotificationTypeEpisodePublished)
 }
 
 // newPublishBackOff builds the retry schedule: defaultRetryBaseDelay doubling on
@@ -192,117 +179,18 @@ func (r *Runner) notifyFollowers(ctx context.Context, q *dbmodels.Queries, row d
 	return r.notifyFollowersOfPublish(ctx, q, row)
 }
 
-// notifyFollowersOfPublish writes one notification per reader who asked to
-// hear about this episode — a follower of the episode, of its series, or of a
-// creator credited on it. A tenant whose readers follow nothing publishes
-// silently, which is the point: a follow is the request to be told.
-//
-// The recipients arrive a page at a time and the notification rows are written
-// as each page lands, so the run holds one page rather than the whole
-// readership. Every page runs in the publishing transaction, so a failure
-// half way leaves neither the notifications nor the published listing behind.
+// notifyFollowersOfPublish tells the followers of the episode inside the
+// publishing transaction, so a failure half way leaves neither the
+// notifications nor the published listing behind.
 func (r *Runner) notifyFollowersOfPublish(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
-	payload, err := json.Marshal(episodePublishedPayload{
-		EpisodeID:    row.EpisodePublicID,
-		EpisodeTitle: row.EpisodeTitle,
-		SeriesID:     row.SeriesPublicID,
-		SeriesTitle:  row.SeriesTitle,
-	})
-	if err != nil {
-		return fmt.Errorf("encode payload: %w", err)
-	}
-
-	subjectKey := "episode:" + row.EpisodePublicID
-	notified := 0
-	// The nil UUID sorts below every UUID, so the first page starts there.
-	after := uuid.Nil
-	for {
-		followers, err := q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
-			TenantID:    row.TenantID,
-			EpisodeID:   row.EpisodeID,
-			AfterUserID: after,
-			Limit:       r.followerPageSize,
-		})
-		if err != nil {
-			return fmt.Errorf("list followers: %w", err)
-		}
-		if len(followers) == 0 {
-			break
-		}
-
-		for _, followerID := range followers {
-			notificationID, err := uuid.NewV7()
-			if err != nil {
-				return fmt.Errorf("allocate notification id: %w", err)
-			}
-			err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-				ID:               notificationID,
-				TenantID:         row.TenantID,
-				UserID:           followerID,
-				NotificationType: notificationTypeEpisodePublished,
-				SubjectKey:       subjectKey,
-				Payload:          payload,
-			})
-			if err != nil {
-				return fmt.Errorf("insert notification for %s: %w", followerID, err)
-			}
-		}
-
-		notified += len(followers)
-		after = followers[len(followers)-1]
-		if int32(len(followers)) < r.followerPageSize {
-			break
-		}
-	}
-	if notified == 0 {
-		return nil
-	}
-	return r.enqueueMemberPush(ctx, q, row, subjectKey)
-}
-
-// enqueueMemberPush schedules the mobile push for the notification rows above,
-// in the same transaction that wrote them. The Outbox worker owns the send, so
-// a Firebase outage retries there instead of failing or slowing this run.
-//
-// One row per episode carries every recipient: the handler resolves the
-// devices from the notification rows when it drains the event. The idempotency
-// key is the notification's own identity, so a re-run over the same episode
-// finds the row already there and pushes nothing a second time.
-func (r *Runner) enqueueMemberPush(
-	ctx context.Context,
-	q *dbmodels.Queries,
-	row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow,
-	subjectKey string,
-) error {
-	payload, err := json.Marshal(outbox.MemberPushNotificationPayload{
-		TenantID:         row.TenantID.String(),
-		NotificationType: notificationTypeEpisodePublished,
-		SubjectKey:       subjectKey,
-		SeriesID:         row.SeriesPublicID,
-		SeriesTitle:      row.SeriesTitle,
-		EpisodeID:        row.EpisodePublicID,
-		EpisodeTitle:     row.EpisodeTitle,
-	})
-	if err != nil {
-		return fmt.Errorf("encode member push payload: %w", err)
-	}
-
-	eventID, err := uuid.NewV7()
-	if err != nil {
-		return fmt.Errorf("allocate outbox event id: %w", err)
-	}
-	_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
-		ID:             eventID,
-		TenantID:       uuid.NullUUID{UUID: row.TenantID, Valid: true},
-		EventType:      outbox.EventTypeMemberPushNotification,
-		Payload:        payload,
-		IdempotencyKey: fmt.Sprintf("push:%s:%s", notificationTypeEpisodePublished, subjectKey),
-		AvailableAt:    time.Now().UTC(),
-	})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("insert member push outbox event: %w", err)
-	}
-	return nil
+	return outbox.NotifyEpisodeFollowers(ctx, q, outbox.EpisodePublication{
+		TenantID:        row.TenantID,
+		EpisodeID:       row.EpisodeID,
+		EpisodePublicID: row.EpisodePublicID,
+		EpisodeTitle:    row.EpisodeTitle,
+		SeriesPublicID:  row.SeriesPublicID,
+		SeriesTitle:     row.SeriesTitle,
+	}, r.followerPageSize)
 }
 
 func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow, notificationType string) {
@@ -317,7 +205,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 		return
 	}
 
-	payload, err := json.Marshal(episodePublishedPayload{
+	payload, err := json.Marshal(outbox.EpisodePublishedNotificationBody{
 		EpisodeID:    row.EpisodePublicID,
 		EpisodeTitle: row.EpisodeTitle,
 		SeriesID:     row.SeriesPublicID,

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -25,7 +26,7 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 
 	r.RunOnce(ctx)
 	r.RunOnce(ctx)
-	r.notifyTenantAdmins(ctx, env.readyRow(), notificationTypeEpisodePublished)
+	r.notifyTenantAdmins(ctx, env.readyRow(), outbox.NotificationTypeEpisodePublished)
 
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
@@ -53,17 +54,17 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 		if row.TenantID != env.tenant.ID {
 			t.Fatalf("tenant_id = %s, want %s", row.TenantID, env.tenant.ID)
 		}
-		if row.NotificationType != notificationTypeEpisodePublished {
-			t.Fatalf("type = %q, want %s", row.NotificationType, notificationTypeEpisodePublished)
+		if row.NotificationType != outbox.NotificationTypeEpisodePublished {
+			t.Fatalf("type = %q, want %s", row.NotificationType, outbox.NotificationTypeEpisodePublished)
 		}
 		if row.SubjectKey != "episode:"+env.episode.PublicID {
 			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)
 		}
-		var payload episodePublishedPayload
+		var payload outbox.EpisodePublishedNotificationBody
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
 			t.Fatalf("payload: %v", err)
 		}
-		if payload != (episodePublishedPayload{
+		if payload != (outbox.EpisodePublishedNotificationBody{
 			EpisodeID:    env.episode.PublicID,
 			EpisodeTitle: "Failed Episode",
 			SeriesID:     env.series.PublicID,
@@ -388,11 +389,11 @@ func TestPublishFinalFailureNotifiesEachAdminOnce(t *testing.T) {
 		if row.SubjectKey != "episode:"+env.episode.PublicID {
 			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)
 		}
-		var payload episodePublishedPayload
+		var payload outbox.EpisodePublishedNotificationBody
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
 			t.Fatalf("payload: %v", err)
 		}
-		if payload != (episodePublishedPayload{
+		if payload != (outbox.EpisodePublishedNotificationBody{
 			EpisodeID:    env.episode.PublicID,
 			EpisodeTitle: "Failed Episode",
 			SeriesID:     env.series.PublicID,
@@ -597,17 +598,17 @@ func assertFollowerPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv
 		if row.TenantID != env.tenant.ID {
 			t.Fatalf("tenant_id = %s, want %s", row.TenantID, env.tenant.ID)
 		}
-		if row.NotificationType != notificationTypeEpisodePublished {
-			t.Fatalf("type = %q, want %s", row.NotificationType, notificationTypeEpisodePublished)
+		if row.NotificationType != outbox.NotificationTypeEpisodePublished {
+			t.Fatalf("type = %q, want %s", row.NotificationType, outbox.NotificationTypeEpisodePublished)
 		}
 		if row.SubjectKey != "episode:"+env.episode.PublicID {
 			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)
 		}
-		var payload episodePublishedPayload
+		var payload outbox.EpisodePublishedNotificationBody
 		if err := json.Unmarshal(row.Payload, &payload); err != nil {
 			t.Fatalf("payload: %v", err)
 		}
-		if payload != (episodePublishedPayload{
+		if payload != (outbox.EpisodePublishedNotificationBody{
 			EpisodeID:    env.episode.PublicID,
 			EpisodeTitle: "Failed Episode",
 			SeriesID:     env.series.PublicID,

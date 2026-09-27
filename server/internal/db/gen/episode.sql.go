@@ -392,6 +392,49 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 	return max_order_index, err
 }
 
+const GetPublishedEpisodeForFollowerNotification = `-- name: GetPublishedEpisodeForFollowerNotification :one
+SELECT e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.tenant_id = $1
+    AND e.id = $2
+    AND el.status = 'published'
+`
+
+type GetPublishedEpisodeForFollowerNotificationParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetPublishedEpisodeForFollowerNotificationRow struct {
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+}
+
+// Worker read: what the episode_published notification of an episode the
+// console published at once says. An episode that is no longer published by
+// the time the event drains answers no row, so its followers are not told.
+func (q *Queries) GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg GetPublishedEpisodeForFollowerNotificationParams) (GetPublishedEpisodeForFollowerNotificationRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeForFollowerNotification, arg.TenantID, arg.ID)
+	var i GetPublishedEpisodeForFollowerNotificationRow
+	err := row.Scan(
+		&i.EpisodeID,
+		&i.EpisodePublicID,
+		&i.EpisodeTitle,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
+	)
+	return i, err
+}
+
 const GetPublishedEpisodeForTenant = `-- name: GetPublishedEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
