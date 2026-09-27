@@ -83,7 +83,9 @@ it("finds each input by its role and label", () => {
   expect(
     screen.getAllByRole("spinbutton", { name: /Reading period/u })
   ).toHaveLength(2);
-  expect(screen.getAllByLabelText(/publish_at/u)).toHaveLength(2);
+  expect(screen.getAllByLabelText(/Publication date and time/u)).toHaveLength(
+    2
+  );
 });
 
 // A new episode starts out following its series, and the option says what
@@ -142,7 +144,7 @@ const submittedControls = () => [
   screen.getByRole("textbox", { name: /Title/u }),
   screen.getByRole("spinbutton", { name: /Price/u }),
   screen.getByRole("spinbutton", { name: /Reading period/u }),
-  screen.getByLabelText(/publish_at/u),
+  screen.getByLabelText(/Publication date and time/u),
   screen.getByRole("combobox", { name: "Shown on" }),
   screen.getByRole("combobox", { name: "Sold on" }),
 ];

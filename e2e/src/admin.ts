@@ -320,7 +320,9 @@ export interface EpisodeFormFields {
  */
 export const episodeFormFields = (page: Page): EpisodeFormFields => ({
   price: page.getByRole("spinbutton", { name: /Price/u }),
-  publishAt: page.getByLabel(/publish_at/u).filter({ visible: true }),
+  publishAt: page
+    .getByLabel(/Publication date and time/u)
+    .filter({ visible: true }),
   readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
   title: page.getByRole("textbox", { name: /Title/u }),
 });

@@ -468,7 +468,7 @@ describe("episode actions", () => {
     const result = await updateEpisodeScheduleAction(null, formData);
 
     expect(result).toEqual({
-      message: "The publish_at format is invalid.",
+      message: "The publication date and time is invalid.",
       mode: "schedule",
       ok: false,
     });
@@ -546,7 +546,7 @@ describe("episode actions", () => {
     const result = await updateEpisodeScheduleAction(null, formData);
 
     expect(result).toEqual({
-      message: "The publish_at format is invalid.",
+      message: "The publication date and time is invalid.",
       mode: "schedule",
       ok: false,
     });
