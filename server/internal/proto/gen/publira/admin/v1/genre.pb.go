@@ -277,8 +277,10 @@ type UpdateGenreRequest struct {
 	EyeCatchImageContentType string `protobuf:"bytes,5,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
 	// Removes the eye-catch. Refused alongside eye_catch_image_data.
 	ClearEyeCatchImage bool `protobuf:"varint,6,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The genre's primary key (Genre.id). Takes precedence over public_id.
+	GenreId       string `protobuf:"bytes,7,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateGenreRequest) Reset() {
@@ -353,6 +355,13 @@ func (x *UpdateGenreRequest) GetClearEyeCatchImage() bool {
 	return false
 }
 
+func (x *UpdateGenreRequest) GetGenreId() string {
+	if x != nil {
+		return x.GenreId
+	}
+	return ""
+}
+
 type UpdateGenreResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Genre         *v1.Genre              `protobuf:"bytes,1,opt,name=genre,proto3" json:"genre,omitempty"`
@@ -407,8 +416,12 @@ type ReorderGenresRequest struct {
 	// RPC locks the tenant's genres, re-reads the current order, and rejects the
 	// write with failed_precondition when this no longer matches.
 	ExpectedGenrePublicIds []string `protobuf:"bytes,3,rep,name=expected_genre_public_ids,json=expectedGenrePublicIds,proto3" json:"expected_genre_public_ids,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// The same two lists by primary key (Genre.id). When either is set, both
+	// are read and the public ID lists are ignored.
+	GenreIds         []string `protobuf:"bytes,4,rep,name=genre_ids,json=genreIds,proto3" json:"genre_ids,omitempty"`
+	ExpectedGenreIds []string `protobuf:"bytes,5,rep,name=expected_genre_ids,json=expectedGenreIds,proto3" json:"expected_genre_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ReorderGenresRequest) Reset() {
@@ -462,6 +475,20 @@ func (x *ReorderGenresRequest) GetExpectedGenrePublicIds() []string {
 	return nil
 }
 
+func (x *ReorderGenresRequest) GetGenreIds() []string {
+	if x != nil {
+		return x.GenreIds
+	}
+	return nil
+}
+
+func (x *ReorderGenresRequest) GetExpectedGenreIds() []string {
+	if x != nil {
+		return x.ExpectedGenreIds
+	}
+	return nil
+}
+
 type ReorderGenresResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Genres        []*v1.Genre            `protobuf:"bytes,1,rep,name=genres,proto3" json:"genres,omitempty"`
@@ -510,9 +537,11 @@ func (x *ReorderGenresResponse) GetGenres() []*v1.Genre {
 // with failed_precondition: dropping it would silently reclassify every series
 // holding it, so the editor is told to unassign it first.
 type DeleteGenreRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The genre's primary key (Genre.id). Takes precedence over public_id.
+	GenreId       string `protobuf:"bytes,3,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -557,6 +586,13 @@ func (x *DeleteGenreRequest) GetTenant() *v1.TenantContext {
 func (x *DeleteGenreRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *DeleteGenreRequest) GetGenreId() string {
+	if x != nil {
+		return x.GenreId
 	}
 	return ""
 }
@@ -609,7 +645,9 @@ type UploadGenreEyeCatchAspectImageRequest struct {
 	ImageContentType string `protobuf:"bytes,5,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
 	// Where in the upload the cut is taken. Omitted, the image is cut from its
 	// centre.
-	Crop          *v1.ImageCropRect `protobuf:"bytes,6,opt,name=crop,proto3" json:"crop,omitempty"`
+	Crop *v1.ImageCropRect `protobuf:"bytes,6,opt,name=crop,proto3" json:"crop,omitempty"`
+	// The genre's primary key (Genre.id). Takes precedence over public_id.
+	GenreId       string `protobuf:"bytes,7,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -686,6 +724,13 @@ func (x *UploadGenreEyeCatchAspectImageRequest) GetCrop() *v1.ImageCropRect {
 	return nil
 }
 
+func (x *UploadGenreEyeCatchAspectImageRequest) GetGenreId() string {
+	if x != nil {
+		return x.GenreId
+	}
+	return ""
+}
+
 type UploadGenreEyeCatchAspectImageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Genre         *v1.Genre              `protobuf:"bytes,1,opt,name=genre,proto3" json:"genre,omitempty"`
@@ -750,26 +795,30 @@ const file_publira_admin_v1_genre_proto_rawDesc = "" +
 	"\x14eye_catch_image_data\x18\x03 \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\x04 \x01(\tR\x18eyeCatchImageContentType\"D\n" +
 	"\x13CreateGenreResponse\x12-\n" +
-	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xa2\x02\n" +
+	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xbd\x02\n" +
 	"\x12UpdateGenreRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12/\n" +
 	"\x14eye_catch_image_data\x18\x04 \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
-	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\"D\n" +
+	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\x12\x19\n" +
+	"\bgenre_id\x18\a \x01(\tR\agenreId\"D\n" +
 	"\x13UpdateGenreResponse\x12-\n" +
-	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xb4\x01\n" +
+	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xff\x01\n" +
 	"\x14ReorderGenresRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10genre_public_ids\x18\x02 \x03(\tR\x0egenrePublicIds\x129\n" +
-	"\x19expected_genre_public_ids\x18\x03 \x03(\tR\x16expectedGenrePublicIds\"H\n" +
+	"\x19expected_genre_public_ids\x18\x03 \x03(\tR\x16expectedGenrePublicIds\x12\x1b\n" +
+	"\tgenre_ids\x18\x04 \x03(\tR\bgenreIds\x12,\n" +
+	"\x12expected_genre_ids\x18\x05 \x03(\tR\x10expectedGenreIds\"H\n" +
 	"\x15ReorderGenresResponse\x12/\n" +
-	"\x06genres\x18\x01 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\"j\n" +
+	"\x06genres\x18\x01 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\"\x85\x01\n" +
 	"\x12DeleteGenreRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x15\n" +
-	"\x13DeleteGenreResponse\"\xa2\x02\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x19\n" +
+	"\bgenre_id\x18\x03 \x01(\tR\agenreId\"\x15\n" +
+	"\x13DeleteGenreResponse\"\xbd\x02\n" +
 	"%UploadGenreEyeCatchAspectImageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
@@ -777,7 +826,8 @@ const file_publira_admin_v1_genre_proto_rawDesc = "" +
 	"\n" +
 	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
 	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\x123\n" +
-	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\"W\n" +
+	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\x12\x19\n" +
+	"\bgenre_id\x18\a \x01(\tR\agenreId\"W\n" +
 	"&UploadGenreEyeCatchAspectImageResponse\x12-\n" +
 	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre2\x84\x05\n" +
 	"\x11AdminGenreService\x12Y\n" +

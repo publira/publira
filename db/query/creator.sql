@@ -449,6 +449,31 @@ WHERE c.tenant_id = $1
     AND c.public_id = $2
 LIMIT 1;
 
+-- name: GetCreatorByIDForTenant :one
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+    AND c.id = $2
+LIMIT 1;
+
 -- name: UpdateCreator :exec
 UPDATE creators
 SET name = $2,

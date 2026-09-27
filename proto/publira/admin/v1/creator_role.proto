@@ -43,6 +43,8 @@ message UpdateCreatorRoleRequest {
   string public_id = 2;
   // The public_id does not move, so every credit keeps the role it names.
   string name = 3;
+  // The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+  string creator_role_id = 4;
 }
 
 message UpdateCreatorRoleResponse {
@@ -58,6 +60,10 @@ message ReorderCreatorRolesRequest {
   // RPC locks the tenant's roles, re-reads the current order, and rejects the
   // write with failed_precondition when this no longer matches.
   repeated string expected_creator_role_public_ids = 3;
+  // The same two lists by primary key (CreatorRole.id). When either is set,
+  // both are read and the public ID lists are ignored.
+  repeated string creator_role_ids = 4;
+  repeated string expected_creator_role_ids = 5;
 }
 
 message ReorderCreatorRolesResponse {
@@ -70,6 +76,8 @@ message ReorderCreatorRolesResponse {
 message DeleteCreatorRoleRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // The creator role's primary key (CreatorRole.id). Takes precedence over public_id.
+  string creator_role_id = 3;
 }
 
 message DeleteCreatorRoleResponse {}

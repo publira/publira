@@ -97,6 +97,7 @@ func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID,
 // genreRow is a genre as every admin genre RPC answers with it, whichever
 // query read it.
 type genreRow struct {
+	id                     uuid.UUID
 	publicID               string
 	name                   string
 	slug                   string
@@ -104,8 +105,9 @@ type genreRow struct {
 	eyeCatchImageUpdatedAt sql.NullTime
 }
 
-func genreRowFromGet(row dbmodels.GetGenreByPublicIDForTenantRow) genreRow {
+func genreRowFromGet(row dbmodels.GetGenreByIDForTenantRow) genreRow {
 	return genreRow{
+		id:                     row.ID,
 		publicID:               row.PublicID,
 		name:                   row.Name,
 		slug:                   row.Slug,
@@ -118,7 +120,6 @@ func genreRowFromGet(row dbmodels.GetGenreByPublicIDForTenantRow) genreRow {
 // descending keyset queries so the handler reads a single shape.
 type genrePageRow struct {
 	genreRow
-	id           uuid.UUID
 	displayOrder int32
 }
 
@@ -127,13 +128,13 @@ func mapGenreAscRows(rows []dbmodels.ListGenresByTenantAscRow) []genrePageRow {
 	for _, row := range rows {
 		mapped = append(mapped, genrePageRow{
 			genreRow: genreRow{
+				id:                     row.ID,
 				publicID:               row.PublicID,
 				name:                   row.Name,
 				slug:                   row.Slug,
 				eyeCatchImageID:        row.EyeCatchImageID,
 				eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
 			},
-			id:           row.ID,
 			displayOrder: row.DisplayOrder,
 		})
 	}
@@ -145,13 +146,13 @@ func mapGenreDescRows(rows []dbmodels.ListGenresByTenantDescRow) []genrePageRow 
 	for _, row := range rows {
 		mapped = append(mapped, genrePageRow{
 			genreRow: genreRow{
+				id:                     row.ID,
 				publicID:               row.PublicID,
 				name:                   row.Name,
 				slug:                   row.Slug,
 				eyeCatchImageID:        row.EyeCatchImageID,
 				eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
 			},
-			id:           row.ID,
 			displayOrder: row.DisplayOrder,
 		})
 	}
@@ -165,7 +166,7 @@ func (s *adminServer) genreMessages(ctx context.Context, rows []genreRow) ([]*pu
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	genreByImageID := make(map[uuid.UUID]*publirattypesv1.Genre, len(rows))
 	for _, row := range rows {
-		genre := &publirattypesv1.Genre{PublicId: row.publicID, Name: row.name, Slug: row.slug}
+		genre := &publirattypesv1.Genre{Id: row.id.String(), PublicId: row.publicID, Name: row.name, Slug: row.slug}
 		if row.eyeCatchImageUpdatedAt.Valid {
 			genre.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 		}
@@ -487,7 +488,7 @@ func (s *adminServer) CreateGenre(
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_created", created.PublicID)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, created.PublicID)
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, recordRef{publicID: created.PublicID})
 	if err != nil {
 		return nil, err
 	}
@@ -496,8 +497,8 @@ func (s *adminServer) CreateGenre(
 
 // genreWithEyeCatch re-reads a genre after a write, so the answer carries the
 // eye-catch delivery now serves.
-func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Genre, error) {
-	row, err := s.genreByPublicID(ctx, tenantID, publicID)
+func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID uuid.UUID, ref recordRef) (*publirattypesv1.Genre, error) {
+	row, err := s.genreByRef(ctx, tenantID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +536,10 @@ func (s *adminServer) UpdateGenre(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.PublicId)
+	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	if err != nil {
+		return nil, err
+	}
 
 	// Committed with the rename, so a name another genre holds does not leave
 	// an eye-catch behind that nothing shows.
@@ -549,16 +553,10 @@ func (s *adminServer) UpdateGenre(
 	// Every update writes eye_catch_image_id back, so it is read behind the
 	// lock: a rename racing a clear or a replacement would otherwise restore
 	// the eye-catch the other write had just changed.
-	if _, err := s.queriesFor(txCtx).LockGenreByPublicIDForTenant(txCtx, dbmodels.LockGenreByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: publicID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to lock genre for update", err, "tenant_id", tenant.ID.String(), "genre_public_id", publicID)
+	if err := s.lockGenreByRef(txCtx, tenant.ID, ref); err != nil {
+		return nil, err
 	}
-	current, err := s.genreByPublicID(txCtx, tenant.ID, publicID)
+	current, err := s.genreByRef(txCtx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +592,7 @@ func (s *adminServer) UpdateGenre(
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_updated", current.PublicID)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, current.PublicID)
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -609,14 +607,15 @@ func (s *adminServer) ReorderGenres(
 	if err != nil {
 		return nil, err
 	}
-	if err := validateDistinctPublicIDs(req.Msg.GenrePublicIds, "genre_public_ids", "genre"); err != nil {
+	order, expected, byID, err := reorderKeys(
+		reorderList{req.Msg.GenreIds, "genre_ids"},
+		reorderList{req.Msg.ExpectedGenreIds, "expected_genre_ids"},
+		reorderList{req.Msg.GenrePublicIds, "genre_public_ids"},
+		reorderList{req.Msg.ExpectedGenrePublicIds, "expected_genre_public_ids"},
+		"genre",
+	)
+	if err != nil {
 		return nil, err
-	}
-	if err := validateDistinctPublicIDs(req.Msg.ExpectedGenrePublicIds, "expected_genre_public_ids", "genre"); err != nil {
-		return nil, err
-	}
-	if !samePublicIDSet(req.Msg.GenrePublicIds, req.Msg.ExpectedGenrePublicIds) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("genre_public_ids must be a permutation of expected_genre_public_ids"))
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -633,19 +632,23 @@ func (s *adminServer) ReorderGenres(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock genres for reorder", err, "tenant_id", tenant.ID.String())
 	}
-	byPublicID := make(map[string]dbmodels.LockGenresForTenantRow, len(locked))
+	byKey := make(map[string]dbmodels.LockGenresForTenantRow, len(locked))
 	currentOrder := make([]string, 0, len(locked))
 	for _, row := range locked {
-		byPublicID[row.PublicID] = row
-		currentOrder = append(currentOrder, row.PublicID)
+		key := row.PublicID
+		if byID {
+			key = row.ID.String()
+		}
+		byKey[key] = row
+		currentOrder = append(currentOrder, key)
 	}
-	if !slices.Equal(currentOrder, req.Msg.ExpectedGenrePublicIds) {
+	if !slices.Equal(currentOrder, expected) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre order has changed"))
 	}
 
-	reordered := make([]genreRow, 0, len(req.Msg.GenrePublicIds))
-	for index, publicID := range req.Msg.GenrePublicIds {
-		row := byPublicID[publicID]
+	reordered := make([]genreRow, 0, len(order))
+	for index, key := range order {
+		row := byKey[key]
 		if err := s.queriesFor(txCtx).UpdateGenreDisplayOrder(txCtx, dbmodels.UpdateGenreDisplayOrderParams{
 			ID:           row.ID,
 			DisplayOrder: int32(index + 1),
@@ -653,6 +656,7 @@ func (s *adminServer) ReorderGenres(
 			return nil, s.internalDBError(ctx, "failed to update genre display order", err, "tenant_id", tenant.ID.String(), "genre_id", row.ID.String())
 		}
 		reordered = append(reordered, genreRow{
+			id:                     row.ID,
 			publicID:               row.PublicID,
 			name:                   row.Name,
 			slug:                   row.Slug,
@@ -686,7 +690,11 @@ func (s *adminServer) DeleteGenre(
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.genreByPublicID(ctx, tenant.ID, req.Msg.PublicId)
+	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.genreByRef(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -726,16 +734,42 @@ func genreInUseError(assigned int32) error {
 	)
 }
 
-func (s *adminServer) genreByPublicID(ctx context.Context, tenantID uuid.UUID, publicID string) (dbmodels.GetGenreByPublicIDForTenantRow, error) {
-	row, err := s.queriesFor(ctx).GetGenreByPublicIDForTenant(ctx, dbmodels.GetGenreByPublicIDForTenantParams{
-		TenantID: tenantID,
-		PublicID: strings.TrimSpace(publicID),
-	})
+// genreByRef reads the genre a request names, by primary key or by public_id.
+func (s *adminServer) genreByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetGenreByIDForTenantRow, error) {
+	var (
+		row dbmodels.GetGenreByIDForTenantRow
+		err error
+	)
+	if ref.id != uuid.Nil {
+		row, err = s.queriesFor(ctx).GetGenreByIDForTenant(ctx, dbmodels.GetGenreByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		var byPublicID dbmodels.GetGenreByPublicIDForTenantRow
+		byPublicID, err = s.queriesFor(ctx).GetGenreByPublicIDForTenant(ctx, dbmodels.GetGenreByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+		row = dbmodels.GetGenreByIDForTenantRow(byPublicID)
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetGenreByPublicIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+			return dbmodels.GetGenreByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
 		}
-		return dbmodels.GetGenreByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get genre", err, "tenant_id", tenantID.String(), "genre_public_id", publicID)
+		return dbmodels.GetGenreByIDForTenantRow{}, s.internalDBError(ctx, "failed to get genre", err, "tenant_id", tenantID.String(), "genre_id", ref.id.String(), "genre_public_id", ref.publicID)
 	}
 	return row, nil
+}
+
+// lockGenreByRef takes the row lock every eye-catch write on one genre
+// serializes behind; the caller re-reads eye_catch_image_id after it.
+func (s *adminServer) lockGenreByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) error {
+	var err error
+	if ref.id != uuid.Nil {
+		_, err = s.queriesFor(ctx).LockGenreByIDForTenant(ctx, dbmodels.LockGenreByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		_, err = s.queriesFor(ctx).LockGenreByPublicIDForTenant(ctx, dbmodels.LockGenreByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+		}
+		return s.internalDBError(ctx, "failed to lock genre", err, "tenant_id", tenantID.String(), "genre_id", ref.id.String(), "genre_public_id", ref.publicID)
+	}
+	return nil
 }

@@ -183,6 +183,7 @@ func (s *adminServer) ListCreatorRoles(
 	creatorRoles := make([]*publirattypesv1.CreatorRole, 0, len(rows))
 	for _, row := range rows {
 		creatorRoles = append(creatorRoles, &publirattypesv1.CreatorRole{
+			Id:       row.id.String(),
 			PublicId: row.publicID,
 			Name:     row.name,
 		})
@@ -253,7 +254,7 @@ func (s *adminServer) CreateCreatorRole(
 	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.CreateCreatorRoleResponse{
-		CreatorRole: &publirattypesv1.CreatorRole{PublicId: created.PublicID, Name: created.Name},
+		CreatorRole: &publirattypesv1.CreatorRole{Id: created.ID.String(), PublicId: created.PublicID, Name: created.Name},
 	}), nil
 }
 
@@ -281,7 +282,11 @@ func (s *adminServer) UpdateCreatorRole(
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.creatorRoleByPublicID(ctx, tenant.ID, req.Msg.PublicId)
+	ref, err := recordRefArg(req.Msg.CreatorRoleId, req.Msg.PublicId, "creator_role_id")
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.creatorRoleByRef(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +304,7 @@ func (s *adminServer) UpdateCreatorRole(
 	s.revalidateTags(ctx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorRoleResponse{
-		CreatorRole: &publirattypesv1.CreatorRole{PublicId: current.PublicID, Name: name},
+		CreatorRole: &publirattypesv1.CreatorRole{Id: current.ID.String(), PublicId: current.PublicID, Name: name},
 	}), nil
 }
 
@@ -311,14 +316,15 @@ func (s *adminServer) ReorderCreatorRoles(
 	if err != nil {
 		return nil, err
 	}
-	if err := validateDistinctPublicIDs(req.Msg.CreatorRolePublicIds, "creator_role_public_ids", "creator role"); err != nil {
+	order, expected, byID, err := reorderKeys(
+		reorderList{req.Msg.CreatorRoleIds, "creator_role_ids"},
+		reorderList{req.Msg.ExpectedCreatorRoleIds, "expected_creator_role_ids"},
+		reorderList{req.Msg.CreatorRolePublicIds, "creator_role_public_ids"},
+		reorderList{req.Msg.ExpectedCreatorRolePublicIds, "expected_creator_role_public_ids"},
+		"creator role",
+	)
+	if err != nil {
 		return nil, err
-	}
-	if err := validateDistinctPublicIDs(req.Msg.ExpectedCreatorRolePublicIds, "expected_creator_role_public_ids", "creator role"); err != nil {
-		return nil, err
-	}
-	if !samePublicIDSet(req.Msg.CreatorRolePublicIds, req.Msg.ExpectedCreatorRolePublicIds) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator_role_public_ids must be a permutation of expected_creator_role_public_ids"))
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -335,26 +341,30 @@ func (s *adminServer) ReorderCreatorRoles(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock creator roles for reorder", err, "tenant_id", tenant.ID.String())
 	}
-	byPublicID := make(map[string]dbmodels.LockCreatorRolesForTenantRow, len(locked))
+	byKey := make(map[string]dbmodels.LockCreatorRolesForTenantRow, len(locked))
 	currentOrder := make([]string, 0, len(locked))
 	for _, row := range locked {
-		byPublicID[row.PublicID] = row
-		currentOrder = append(currentOrder, row.PublicID)
+		key := row.PublicID
+		if byID {
+			key = row.ID.String()
+		}
+		byKey[key] = row
+		currentOrder = append(currentOrder, key)
 	}
-	if !slices.Equal(currentOrder, req.Msg.ExpectedCreatorRolePublicIds) {
+	if !slices.Equal(currentOrder, expected) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("creator role order has changed"))
 	}
 
-	creatorRoles := make([]*publirattypesv1.CreatorRole, 0, len(req.Msg.CreatorRolePublicIds))
-	for index, publicID := range req.Msg.CreatorRolePublicIds {
-		row := byPublicID[publicID]
+	creatorRoles := make([]*publirattypesv1.CreatorRole, 0, len(order))
+	for index, key := range order {
+		row := byKey[key]
 		if err := s.queriesFor(txCtx).UpdateCreatorRoleDisplayPriority(txCtx, dbmodels.UpdateCreatorRoleDisplayPriorityParams{
 			ID:              row.ID,
 			DisplayPriority: int32(index + 1),
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update creator role display priority", err, "tenant_id", tenant.ID.String(), "creator_role_id", row.ID.String())
 		}
-		creatorRoles = append(creatorRoles, &publirattypesv1.CreatorRole{PublicId: row.PublicID, Name: row.Name})
+		creatorRoles = append(creatorRoles, &publirattypesv1.CreatorRole{Id: row.ID.String(), PublicId: row.PublicID, Name: row.Name})
 	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, creatorRoleRevalidateTags(tenant.ID.String()))
 	if err != nil {
@@ -378,7 +388,11 @@ func (s *adminServer) DeleteCreatorRole(
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.creatorRoleByPublicID(ctx, tenant.ID, req.Msg.PublicId)
+	ref, err := recordRefArg(req.Msg.CreatorRoleId, req.Msg.PublicId, "creator_role_id")
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.creatorRoleByRef(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -434,16 +448,25 @@ func creatorRoleInUseError(credited int32) error {
 	)
 }
 
-func (s *adminServer) creatorRoleByPublicID(ctx context.Context, tenantID uuid.UUID, publicID string) (dbmodels.GetCreatorRoleByPublicIDForTenantRow, error) {
-	row, err := s.queriesFor(ctx).GetCreatorRoleByPublicIDForTenant(ctx, dbmodels.GetCreatorRoleByPublicIDForTenantParams{
-		TenantID: tenantID,
-		PublicID: strings.TrimSpace(publicID),
-	})
+// creatorRoleByRef reads the role a request names, by primary key or by
+// public_id.
+func (s *adminServer) creatorRoleByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetCreatorRoleByIDForTenantRow, error) {
+	var (
+		row dbmodels.GetCreatorRoleByIDForTenantRow
+		err error
+	)
+	if ref.id != uuid.Nil {
+		row, err = s.queriesFor(ctx).GetCreatorRoleByIDForTenant(ctx, dbmodels.GetCreatorRoleByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		var byPublicID dbmodels.GetCreatorRoleByPublicIDForTenantRow
+		byPublicID, err = s.queriesFor(ctx).GetCreatorRoleByPublicIDForTenant(ctx, dbmodels.GetCreatorRoleByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+		row = dbmodels.GetCreatorRoleByIDForTenantRow(byPublicID)
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetCreatorRoleByPublicIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator role not found"))
+			return dbmodels.GetCreatorRoleByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator role not found"))
 		}
-		return dbmodels.GetCreatorRoleByPublicIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator role", err, "tenant_id", tenantID.String(), "creator_role_public_id", publicID)
+		return dbmodels.GetCreatorRoleByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator role", err, "tenant_id", tenantID.String(), "creator_role_id", ref.id.String(), "creator_role_public_id", ref.publicID)
 	}
 	return row, nil
 }

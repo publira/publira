@@ -218,6 +218,28 @@ func (q *Queries) ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds
 	return items, nil
 }
 
+const LockGenreByIDForTenant = `-- name: LockGenreByIDForTenant :one
+SELECT id
+FROM genres
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE
+`
+
+type LockGenreByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// The same lock as LockGenreByPublicIDForTenant, for a request that names the
+// genre by primary key.
+func (q *Queries) LockGenreByIDForTenant(ctx context.Context, arg LockGenreByIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockGenreByIDForTenant, arg.TenantID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const LockGenreByPublicIDForTenant = `-- name: LockGenreByPublicIDForTenant :one
 SELECT id
 FROM genres

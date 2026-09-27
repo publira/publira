@@ -50,6 +50,20 @@ WHERE l.tenant_id = $1
     AND l.public_id = $2
 LIMIT 1;
 
+-- name: GetLabelByIDForTenant :one
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.id = $2
+LIMIT 1;
+
 -- name: CreateLabelImage :one
 INSERT INTO label_images (
         id,
@@ -111,6 +125,15 @@ SELECT id
 FROM labels
 WHERE tenant_id = $1
     AND public_id = $2
+FOR UPDATE;
+
+-- name: LockLabelByIDForTenant :one
+-- The same lock as LockLabelByPublicIDForTenant, for a request that names the
+-- label by primary key.
+SELECT id
+FROM labels
+WHERE tenant_id = $1
+    AND id = $2
 FOR UPDATE;
 
 -- name: TouchLabelImage :exec

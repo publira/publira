@@ -482,14 +482,16 @@ func (s *adminServer) ListCreators(
 
 	items := make([]*publirattypesv1.Creator, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, protomapper.CreatorFromRow(
+		item := protomapper.CreatorFromRow(
 			row.publicID,
 			row.name,
 			row.profileText.String,
 			row.iconImageID,
 			row.iconImageFileSizeBytes,
 			row.iconImageUpdatedAt,
-		))
+		)
+		item.Id = row.id.String()
+		items = append(items, item)
 	}
 
 	res := &publiraadminv1.ListCreatorsResponse{Creators: items}
@@ -530,14 +532,14 @@ func (s *adminServer) GetCreator(
 		}
 		return nil, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: protomapper.CreatorFromRow(
+	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: adminCreator(row.ID, protomapper.CreatorFromRow(
 		row.PublicID,
 		row.Name,
 		row.ProfileText.String,
 		row.IconImageID,
 		row.IconImageFileSizeBytes,
 		row.IconImageUpdatedAt,
-	)}), nil
+	))}), nil
 }
 
 func (s *adminServer) ListLabels(
@@ -572,6 +574,7 @@ func (s *adminServer) ListLabels(
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Label, len(rows))
 	for _, row := range rows {
 		item := protomapper.LabelWithImage(row.publicID, row.name, row.eyeCatchImageUpdatedAt, nil)
+		item.Id = row.id.String()
 		items = append(items, item)
 		if row.eyeCatchImageID.Valid {
 			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
@@ -639,7 +642,7 @@ func (s *adminServer) GetLabel(
 		}
 		variants = variantsByImageID[row.EyeCatchImageID.UUID]
 	}
-	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants)}), nil
+	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: adminLabel(row.ID, protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants))}), nil
 }
 
 // creatorRevalidateTags names what web-host caches a creator under. The creator
@@ -739,14 +742,14 @@ func (s *adminServer) CreateCreator(
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: protomapper.CreatorFromRow(
+	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: adminCreator(created.ID, protomapper.CreatorFromRow(
 		created.PublicID,
 		created.Name,
 		created.ProfileText.String,
 		created.IconImageID,
 		created.IconImageFileSizeBytes,
 		created.IconImageUpdatedAt,
-	)}), nil
+	))}), nil
 }
 
 func (s *adminServer) UpdateCreator(
@@ -768,12 +771,13 @@ func (s *adminServer) UpdateCreator(
 		return nil, err
 	}
 
-	current, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	ref, err := recordRefArg(req.Msg.CreatorId, req.Msg.PublicId, "creator_id")
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get creator for update", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
+		return nil, err
+	}
+	current, err := s.creatorByRef(ctx, tenant.ID, ref)
+	if err != nil {
+		return nil, err
 	}
 	// The new icon commits with the update, so a failed update leaves no icon
 	// behind that nothing points at.
@@ -812,12 +816,9 @@ func (s *adminServer) UpdateCreator(
 		return nil, s.internalDBError(ctx, "failed to commit update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
 	}
 
-	updated, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.creatorByRef(ctx, tenant.ID, ref)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get updated creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
+		return nil, err
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -832,14 +833,14 @@ func (s *adminServer) UpdateCreator(
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: protomapper.CreatorFromRow(
+	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: adminCreator(updated.ID, protomapper.CreatorFromRow(
 		updated.PublicID,
 		updated.Name,
 		updated.ProfileText.String,
 		updated.IconImageID,
 		updated.IconImageFileSizeBytes,
 		updated.IconImageUpdatedAt,
-	)}), nil
+	))}), nil
 }
 
 // labelRevalidateTags names what web-host caches a label under. The label list
@@ -942,7 +943,7 @@ func (s *adminServer) CreateLabel(
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants)}), nil
+	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: adminLabel(created.ID, protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants))}), nil
 }
 
 func (s *adminServer) UpdateLabel(
@@ -963,12 +964,13 @@ func (s *adminServer) UpdateLabel(
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	ref, err := recordRefArg(req.Msg.LabelId, req.Msg.PublicId, "label_id")
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get label for update", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
+		return nil, err
+	}
+	current, err := s.labelByRef(ctx, tenant.ID, ref)
+	if err != nil {
+		return nil, err
 	}
 	// The new eye-catch commits with the update, so a failed update leaves no
 	// eye-catch behind that nothing points at.
@@ -1001,12 +1003,9 @@ func (s *adminServer) UpdateLabel(
 		return nil, s.internalDBError(ctx, "failed to commit update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
 
-	updated, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.labelByRef(ctx, tenant.ID, ref)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get updated label", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
+		return nil, err
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if updated.EyeCatchImageID.Valid {
@@ -1029,5 +1028,82 @@ func (s *adminServer) UpdateLabel(
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants)}), nil
+	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: adminLabel(updated.ID, protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants))}), nil
+}
+
+// adminCreator is a creator as the admin API answers with it: the catalog's
+// shape plus the primary key the console addresses the creator by.
+func adminCreator(id uuid.UUID, creator *publirattypesv1.Creator) *publirattypesv1.Creator {
+	creator.Id = id.String()
+	return creator
+}
+
+// adminLabel is a label as the admin API answers with it, with the primary key
+// the console addresses the label by.
+func adminLabel(id uuid.UUID, label *publirattypesv1.Label) *publirattypesv1.Label {
+	label.Id = id.String()
+	return label
+}
+
+// creatorByRef reads the creator a request names, by primary key or by
+// public_id.
+func (s *adminServer) creatorByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetCreatorByIDForTenantRow, error) {
+	var (
+		row dbmodels.GetCreatorByIDForTenantRow
+		err error
+	)
+	if ref.id != uuid.Nil {
+		row, err = s.queriesFor(ctx).GetCreatorByIDForTenant(ctx, dbmodels.GetCreatorByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		var byPublicID dbmodels.GetCreatorByPublicIDForTenantRow
+		byPublicID, err = s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+		row = dbmodels.GetCreatorByIDForTenantRow(byPublicID)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.GetCreatorByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+		}
+		return dbmodels.GetCreatorByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenantID.String(), "creator_id", ref.id.String(), "creator_public_id", ref.publicID)
+	}
+	return row, nil
+}
+
+// labelByRef reads the label a request names, by primary key or by public_id.
+func (s *adminServer) labelByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetLabelByIDForTenantRow, error) {
+	var (
+		row dbmodels.GetLabelByIDForTenantRow
+		err error
+	)
+	if ref.id != uuid.Nil {
+		row, err = s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		var byPublicID dbmodels.GetLabelByPublicIDForTenantRow
+		byPublicID, err = s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+		row = dbmodels.GetLabelByIDForTenantRow(byPublicID)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.GetLabelByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+		}
+		return dbmodels.GetLabelByIDForTenantRow{}, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenantID.String(), "label_id", ref.id.String(), "label_public_id", ref.publicID)
+	}
+	return row, nil
+}
+
+// lockLabelByRef takes the row lock every eye-catch write on one label
+// serializes behind; the caller re-reads eye_catch_image_id after it.
+func (s *adminServer) lockLabelByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) error {
+	var err error
+	if ref.id != uuid.Nil {
+		_, err = s.queriesFor(ctx).LockLabelByIDForTenant(ctx, dbmodels.LockLabelByIDForTenantParams{TenantID: tenantID, ID: ref.id})
+	} else {
+		_, err = s.queriesFor(ctx).LockLabelByPublicIDForTenant(ctx, dbmodels.LockLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+		}
+		return s.internalDBError(ctx, "failed to lock label", err, "tenant_id", tenantID.String(), "label_id", ref.id.String(), "label_public_id", ref.publicID)
+	}
+	return nil
 }

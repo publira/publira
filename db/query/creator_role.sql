@@ -60,6 +60,16 @@ WHERE cr.tenant_id = $1
     AND cr.public_id = $2
 LIMIT 1;
 
+-- name: GetCreatorRoleByIDForTenant :one
+SELECT cr.id,
+    cr.public_id,
+    cr.name,
+    cr.display_priority
+FROM creator_roles cr
+WHERE cr.tenant_id = $1
+    AND cr.id = $2
+LIMIT 1;
+
 -- name: ListCreatorRolesByPublicIDsForTenant :many
 -- Resolves the roles a series form credited creators in. The caller compares
 -- the row count against what it asked for, so a public_id of another tenant
