@@ -51,14 +51,16 @@ const normalizeRecentEventsLimit = (value?: number): number => {
  */
 export const platformDashboardCacheTag = "platform:dashboard";
 
-export const getPlatformDashboardSummary = async (input: {
-  locale: Locale;
-  recentEventsLimit?: number;
-}): Promise<GetPlatformDashboardSummaryResult> => {
+const getPlatformDashboardSummaryForSession = async (
+  input: {
+    locale: Locale;
+    recentEventsLimit?: number;
+  },
+  sid: string
+): Promise<GetPlatformDashboardSummaryResult> => {
   "use cache: private";
   cacheTag(platformDashboardCacheTag);
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
@@ -109,3 +111,9 @@ export const getPlatformDashboardSummary = async (input: {
     };
   }
 };
+
+export const getPlatformDashboardSummary = async (input: {
+  locale: Locale;
+  recentEventsLimit?: number;
+}): Promise<GetPlatformDashboardSummaryResult> =>
+  getPlatformDashboardSummaryForSession(input, await resolveAccessToken());

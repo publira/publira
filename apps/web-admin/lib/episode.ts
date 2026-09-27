@@ -750,20 +750,18 @@ export const listAllEpisodes = async (
   }
 };
 
-export const getEpisode = async (
+const getEpisodeForSession = async (
   input: {
     tenantId: string;
     seriesPublicId: string;
     publicId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetEpisodeResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -823,6 +821,16 @@ export const getEpisode = async (
     };
   }
 };
+
+export const getEpisode = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+    publicId: string;
+  },
+  locale: Locale
+): Promise<GetEpisodeResult> =>
+  getEpisodeForSession(input, locale, await getAccessToken());
 
 export const updateEpisodePublishSchedule = async (
   input: {
@@ -1122,20 +1130,18 @@ export const uploadEpisodePages = async (
   }
 };
 
-export const listEpisodeImages = async (
+const listEpisodeImagesForSession = async (
   input: {
     tenantId: string;
     episodeId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<ListEpisodeImagesResult> => {
   "use cache: private";
   cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       images: [],
@@ -1172,6 +1178,15 @@ export const listEpisodeImages = async (
     };
   }
 };
+
+export const listEpisodeImages = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+  },
+  locale: Locale
+): Promise<ListEpisodeImagesResult> =>
+  listEpisodeImagesForSession(input, locale, await getAccessToken());
 
 const reorderEpisodes = async (
   input: {

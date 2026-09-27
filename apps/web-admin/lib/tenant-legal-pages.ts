@@ -57,16 +57,14 @@ const toTenantLegalPages = (
   termsPage: toTenantLegalPage(pages?.termsPage),
 });
 
-export const getTenantLegalPages = async (
+const getTenantLegalPagesForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantLegalPagesResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -99,6 +97,12 @@ export const getTenantLegalPages = async (
     };
   }
 };
+
+export const getTenantLegalPages = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantLegalPagesResult> =>
+  getTenantLegalPagesForSession(tenantId, locale, await getAccessToken());
 
 /**
  * Writes both nominations. An empty id clears that nomination.

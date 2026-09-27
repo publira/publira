@@ -169,16 +169,14 @@ const toTenantStoreProduct = (
   productId: product.productId ?? "",
 });
 
-export const getTenantStorePaymentSettings = async (
+const getTenantStorePaymentSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantStorePaymentSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -213,6 +211,16 @@ export const getTenantStorePaymentSettings = async (
     };
   }
 };
+
+export const getTenantStorePaymentSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantStorePaymentSettingsResult> =>
+  getTenantStorePaymentSettingsForSession(
+    tenantId,
+    locale,
+    await getAccessToken()
+  );
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (

@@ -74,40 +74,44 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
   }
 };
 
-export const getPlatformCurrentOperator =
-  async (): Promise<GetPlatformCurrentOperatorResult> => {
-    "use cache: private";
-    cacheTag(PLATFORM_SESSION_CACHE_TAG);
+const getPlatformCurrentOperatorForSession = async (
+  sid: string
+): Promise<GetPlatformCurrentOperatorResult> => {
+  "use cache: private";
+  cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
-    const sid = await resolveAccessToken();
-    if (!sid) {
+  if (!sid) {
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: true };
+  }
+  try {
+    const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
+    const { user } = response;
+    if (!user) {
+      return { ok: false, requiresSignIn: false };
+    }
+    return {
+      ok: true,
+      operator: {
+        name: user.name,
+        publicId: user.publicId,
+        role: normalizePlatformRole(user.role),
+      },
+    };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      // A rejected session must not be cached, or the console would keep
+      // redirecting to /login after the operator has signed in again.
       dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
-    try {
-      const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
-      const { user } = response;
-      if (!user) {
-        return { ok: false, requiresSignIn: false };
-      }
-      return {
-        ok: true,
-        operator: {
-          name: user.name,
-          publicId: user.publicId,
-          role: normalizePlatformRole(user.role),
-        },
-      };
-    } catch (error) {
-      if (isUnauthenticatedRpcError(error)) {
-        // A rejected session must not be cached, or the console would keep
-        // redirecting to /login after the operator has signed in again.
-        dropFailedCacheEntry();
-        return { ok: false, requiresSignIn: true };
-      }
-      if (isExpectedNullableRpcError(error)) {
-        return { ok: false, requiresSignIn: false };
-      }
-      throw error;
+    if (isExpectedNullableRpcError(error)) {
+      return { ok: false, requiresSignIn: false };
     }
-  };
+    throw error;
+  }
+};
+
+export const getPlatformCurrentOperator =
+  async (): Promise<GetPlatformCurrentOperatorResult> =>
+    getPlatformCurrentOperatorForSession(await resolveAccessToken());

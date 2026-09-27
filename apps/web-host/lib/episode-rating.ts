@@ -78,15 +78,12 @@ type CachedEpisodeRatingStatusResult = EpisodeRatingStatusResult & {
 const readMyEpisodeRating = async (
   tenantId: string,
   episodeId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<CachedEpisodeRatingStatusResult> => {
   "use cache: private";
   applyCacheTag(episodeRatingsCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
   if (!sessionId) {
     return {
       mode: "single",
@@ -97,6 +94,8 @@ const readMyEpisodeRating = async (
       unexpected: false,
     };
   }
+
+  const t = await getMessagesFor(locale);
 
   try {
     const response = await apiClient.rating.getMyEpisodeRating(
@@ -158,7 +157,12 @@ export const getMyEpisodeRating = async (
   locale: Locale
 ): Promise<EpisodeRatingStatusResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readMyEpisodeRating(tenantId, episodeId, locale),
+    readMyEpisodeRating(
+      tenantId,
+      episodeId,
+      locale,
+      await resolveAccessToken()
+    ),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(

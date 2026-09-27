@@ -150,25 +150,16 @@ const mapLabel = (label: RawLabel): LabelItem => ({
   publicId: label.publicId,
 });
 
-/**
- * One page of the tenant's labels, newest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` descending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the list spans more than one page.
- */
-export const listLabels = async (
+const listLabelsForSession = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -210,27 +201,28 @@ export const listLabels = async (
 };
 
 /**
- * Every label in the tenant for combobox pickers (series form, etc.).
+ * One page of the tenant's labels, newest first.
  *
- * Walks `ListLabels` cursor pages so the client-side Combobox can search
- * beyond a single RPC page. The `/labels` list keeps {@link listLabels}
- * (one page) so list paging stays independent of picker loading.
- *
- * Sorted by name for readable search results. An incomplete walk (budget
- * exhausted or a repeated token) fails with an empty list rather than a
- * partial option set that would hide labels beyond the rows already read.
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
  */
-export const listAllLabels = async (
+export const listLabels = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListLabelsResult> =>
+  listLabelsForSession(tenantId, locale, options, await getAccessToken());
+
+const listAllLabelsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -299,6 +291,23 @@ export const listAllLabels = async (
     };
   }
 };
+
+/**
+ * Every label in the tenant for combobox pickers (series form, etc.).
+ *
+ * Walks `ListLabels` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/labels` list keeps {@link listLabels}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by name for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide labels beyond the rows already read.
+ */
+export const listAllLabels = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListLabelsResult> =>
+  listAllLabelsForSession(tenantId, locale, await getAccessToken());
 
 export const createLabel = async (
   input: {
@@ -421,12 +430,13 @@ const getLabelInputSchema = z.object({
   tenantId: z.string().trim().min(1).max(255),
 });
 
-export const getLabel = async (
+const getLabelForSession = async (
   input: {
     tenantId: string;
     publicId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetLabelResult> => {
   "use cache: private";
   const parsed = getLabelInputSchema.safeParse(input);
@@ -440,10 +450,7 @@ export const getLabel = async (
   cacheTag(`labels-${parsed.data.tenantId}`);
   cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -488,6 +495,15 @@ export const getLabel = async (
     };
   }
 };
+
+export const getLabel = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale
+): Promise<GetLabelResult> =>
+  getLabelForSession(input, locale, await getAccessToken());
 
 export type LabelEyeCatchAspectResult =
   | { ok: true; label: LabelItem }

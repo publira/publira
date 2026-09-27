@@ -448,25 +448,16 @@ const mapSeries = (
   };
 };
 
-/**
- * One page of the tenant's series, newest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` descending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the list spans more than one page.
- */
-export const listSeries = async (
+const listSeriesForSession = async (
   tenantId: string,
   locale: Locale,
-  options: ListSeriesOptions = {}
+  options: ListSeriesOptions,
+  sessionId: string
 ): Promise<ListSeriesResult> => {
   "use cache: private";
   cacheTag(seriesListCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -517,27 +508,28 @@ export const listSeries = async (
 };
 
 /**
- * Every series in the tenant for combobox pickers (access-ticket form).
+ * One page of the tenant's series, newest first.
  *
- * Walks `ListSeries` cursor pages so the client-side Combobox can search
- * beyond a single RPC page. The `/series` list keeps {@link listSeries}
- * (one page) so list paging stays independent of picker loading.
- *
- * Sorted by title for readable search results. An incomplete walk (budget
- * exhausted or a repeated token) fails with an empty list rather than a
- * partial option set that would hide series beyond the rows already read.
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
  */
-export const listAllSeries = async (
+export const listSeries = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  options: ListSeriesOptions = {}
+): Promise<ListSeriesResult> =>
+  listSeriesForSession(tenantId, locale, options, await getAccessToken());
+
+const listAllSeriesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
 ): Promise<ListSeriesResult> => {
   "use cache: private";
   cacheTag(seriesListCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -613,20 +605,35 @@ export const listAllSeries = async (
   }
 };
 
-export const getSeries = async (
+/**
+ * Every series in the tenant for combobox pickers (access-ticket form).
+ *
+ * Walks `ListSeries` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/series` list keeps {@link listSeries}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by title for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide series beyond the rows already read.
+ */
+export const listAllSeries = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListSeriesResult> =>
+  listAllSeriesForSession(tenantId, locale, await getAccessToken());
+
+const getSeriesForSession = async (
   input: {
     tenantId: string;
     publicId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetSeriesResult> => {
   "use cache: private";
   cacheTag(seriesCacheTag(input.tenantId, input.publicId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -694,6 +701,15 @@ export const getSeries = async (
     };
   }
 };
+
+export const getSeries = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale
+): Promise<GetSeriesResult> =>
+  getSeriesForSession(input, locale, await getAccessToken());
 
 /**
  * The listing fields of a series. A new series states every one; an update

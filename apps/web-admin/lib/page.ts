@@ -229,25 +229,16 @@ const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
   versionNumber: version.versionNumber,
 });
 
-/**
- * One page of the tenant's fixed pages, oldest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` ascending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the list spans more than one page.
- */
-export const listPages = async (
+const listPagesForSession = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -289,23 +280,28 @@ export const listPages = async (
 };
 
 /**
- * Every published page of the tenant, sorted by title, for pickers that may
- * only name a page the storefront serves.
+ * One page of the tenant's fixed pages, oldest first.
  *
- * An incomplete walk fails rather than handing the picker a partial list that
- * looks complete.
+ * The rows keep the server's keyset order (`created_at`, `id` ascending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
  */
-export const listPublishedPages = async (
+export const listPages = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListPagesResult> =>
+  listPagesForSession(tenantId, locale, options, await getAccessToken());
+
+const listPublishedPagesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
 ): Promise<ListPublishedPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -365,21 +361,32 @@ export const listPublishedPages = async (
   }
 };
 
-export const getPage = async (
+/**
+ * Every published page of the tenant, sorted by title, for pickers that may
+ * only name a page the storefront serves.
+ *
+ * An incomplete walk fails rather than handing the picker a partial list that
+ * looks complete.
+ */
+export const listPublishedPages = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListPublishedPagesResult> =>
+  listPublishedPagesForSession(tenantId, locale, await getAccessToken());
+
+const getPageForSession = async (
   input: {
     tenantId: string;
     pageId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPageResult> => {
   "use cache: private";
   cacheTag(`pages-${input.tenantId}`);
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -431,20 +438,27 @@ export const getPage = async (
   }
 };
 
-export const listPageVersions = async (
+export const getPage = async (
   input: {
     tenantId: string;
     pageId: string;
   },
   locale: Locale
+): Promise<GetPageResult> =>
+  getPageForSession(input, locale, await getAccessToken());
+
+const listPageVersionsForSession = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale,
+  sessionId: string
 ): Promise<ListPageVersionsResult> => {
   "use cache: private";
   cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -483,6 +497,15 @@ export const listPageVersions = async (
     };
   }
 };
+
+export const listPageVersions = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale
+): Promise<ListPageVersionsResult> =>
+  listPageVersionsForSession(input, locale, await getAccessToken());
 
 export const createPage = async (
   input: {

@@ -25,12 +25,12 @@ export type GetTenantForSessionResult =
   | { ok: true; tenant: TenantDetail }
   | { ok: false; requiresSignIn: boolean };
 
-export const getTenantForSession = async (
-  tenantId: string
+const readTenantForSession = async (
+  tenantId: string,
+  sessionId: string
 ): Promise<GetTenantForSessionResult> => {
   "use cache: private";
 
-  const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return { ok: false, requiresSignIn: !sessionId };
@@ -69,3 +69,8 @@ export const getTenantForSession = async (
     throw error;
   }
 };
+
+export const getTenantForSession = async (
+  tenantId: string
+): Promise<GetTenantForSessionResult> =>
+  readTenantForSession(tenantId, await getAccessToken());

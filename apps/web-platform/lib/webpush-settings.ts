@@ -47,13 +47,13 @@ export const toPlatformWebPushSettings = (
   subject: settings?.subject ?? "",
 });
 
-export const getPlatformWebPushSettings = async (
-  locale: Locale
+const getPlatformWebPushSettingsForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPlatformWebPushSettingsResult> => {
   "use cache: private";
   cacheTag(platformWebPushSettingsCacheTag);
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -93,6 +93,11 @@ export const getPlatformWebPushSettings = async (
     };
   }
 };
+
+export const getPlatformWebPushSettings = async (
+  locale: Locale
+): Promise<GetPlatformWebPushSettingsResult> =>
+  getPlatformWebPushSettingsForSession(locale, await resolveAccessToken());
 
 /**
  * Save the subject. `expectedRevision` is the revision the screen was rendered

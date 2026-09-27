@@ -74,16 +74,14 @@ const toTenantPurchaseSettings = (
   };
 };
 
-export const getTenantPurchaseSettings = async (
+const getTenantPurchaseSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantPurchaseSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -123,6 +121,12 @@ export const getTenantPurchaseSettings = async (
     };
   }
 };
+
+export const getTenantPurchaseSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantPurchaseSettingsResult> =>
+  getTenantPurchaseSettingsForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantPurchaseSettings = async (
   input: { tenantId: string } & TenantPurchaseSettings,

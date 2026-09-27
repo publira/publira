@@ -203,14 +203,14 @@ const challengeMfaFailure = async (
 export const adminMfaStatusCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:admin-mfa-status`;
 
-export const getAdminMfaStatus = async (
-  tenantId: string
+const getAdminMfaStatusForSession = async (
+  tenantId: string,
+  token: string
 ): Promise<GetAdminMfaStatusResult> => {
   "use cache: private";
 
   cacheTag(adminMfaStatusCacheTag(tenantId));
 
-  const token = await getAccessToken();
   if (!token) {
     return { ok: false, requiresSignIn: true };
   }
@@ -236,6 +236,11 @@ export const getAdminMfaStatus = async (
     throw error;
   }
 };
+
+export const getAdminMfaStatus = async (
+  tenantId: string
+): Promise<GetAdminMfaStatusResult> =>
+  getAdminMfaStatusForSession(tenantId, await getAccessToken());
 
 export const verifyAdminMfa = async (
   tenantId: string,

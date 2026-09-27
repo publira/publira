@@ -129,13 +129,12 @@ type CachedListMyAnnouncementsResult = ListMyAnnouncementsResult & {
 
 const readAnnouncementList = async (
   tenantId: string,
-  sessionId: string | undefined,
+  sid: string,
   options: ListMyAnnouncementsOptions
 ): Promise<CachedListMyAnnouncementsResult> => {
   "use cache: private";
   applyCacheTag(announcementsCacheTag(tenantId));
 
-  const sid = await resolveAccessToken(sessionId);
   try {
     const response = await listAnnouncementsRpc(tenantId, sid, options);
 
@@ -163,7 +162,7 @@ export const listMyAnnouncements = async (
 ): Promise<ListMyAnnouncementsResult> => {
   const { error, ...result } = await readAnnouncementList(
     tenantId,
-    sessionId,
+    await resolveAccessToken(sessionId),
     options
   );
   if (error !== undefined) {
@@ -185,22 +184,11 @@ interface CachedGetMyAnnouncementResult {
 const readMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
-  sessionId?: string
+  sid: string
 ): Promise<CachedGetMyAnnouncementResult> => {
   "use cache: private";
+  applyCacheTag(announcementsCacheTag(tenantId));
 
-  const parsed = getMyAnnouncementInputSchema.safeParse({
-    announcementId,
-    tenantId,
-  });
-  if (!parsed.success) {
-    // Same null as a missing row: a malformed id is not a distinct outcome.
-    return { value: null };
-  }
-
-  applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
-
-  const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return { value: null };
   }
@@ -208,8 +196,8 @@ const readMyAnnouncement = async (
   try {
     const response = await apiClient.auth.getAnnouncement(
       {
-        announcementId: parsed.data.announcementId,
-        tenant: { tenantId: parsed.data.tenantId },
+        announcementId,
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -232,7 +220,20 @@ export const getMyAnnouncement = async (
   announcementId: string,
   sessionId?: string
 ): Promise<MemberAnnouncementItem | null> => {
-  const result = await readMyAnnouncement(tenantId, announcementId, sessionId);
+  const parsed = getMyAnnouncementInputSchema.safeParse({
+    announcementId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    // Same null as a missing row: a malformed id is not a distinct outcome.
+    return null;
+  }
+
+  const result = await readMyAnnouncement(
+    parsed.data.tenantId,
+    parsed.data.announcementId,
+    await resolveAccessToken(sessionId)
+  );
   if (result.error !== undefined) {
     rethrowUnclassifiedRpcError(result.error);
   }

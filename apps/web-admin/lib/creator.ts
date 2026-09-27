@@ -117,18 +117,16 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
   publicId: creator.publicId,
 });
 
-export const listCreators = async (
+const listCreatorsForSession = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -170,28 +168,22 @@ export const listCreators = async (
   }
 };
 
-/**
- * Every creator in the tenant for combobox pickers (series form, etc.).
- *
- * Walks `ListCreators` cursor pages so the client-side Combobox can search
- * beyond a single RPC page. The `/creators` list keeps {@link listCreators}
- * (one page) so list paging stays independent of picker loading.
- *
- * Sorted by name for readable search results. An incomplete walk (budget
- * exhausted or a repeated token) fails with an empty list rather than a
- * partial option set that would hide creators beyond the rows already read.
- */
-export const listAllCreators = async (
+export const listCreators = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListCreatorsResult> =>
+  listCreatorsForSession(tenantId, locale, options, await getAccessToken());
+
+const listAllCreatorsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -260,6 +252,23 @@ export const listAllCreators = async (
     };
   }
 };
+
+/**
+ * Every creator in the tenant for combobox pickers (series form, etc.).
+ *
+ * Walks `ListCreators` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/creators` list keeps {@link listCreators}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by name for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide creators beyond the rows already read.
+ */
+export const listAllCreators = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListCreatorsResult> =>
+  listAllCreatorsForSession(tenantId, locale, await getAccessToken());
 
 export const createCreator = async (
   input: {
@@ -387,21 +396,19 @@ export const updateCreator = async (
   }
 };
 
-export const getCreator = async (
+const getCreatorForSession = async (
   input: {
     tenantId: string;
     publicId: string;
   },
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetCreatorResult> => {
   "use cache: private";
   cacheTag(`creators-${input.tenantId}`);
   cacheTag(`creator-${input.tenantId}-${input.publicId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -446,3 +453,12 @@ export const getCreator = async (
     };
   }
 };
+
+export const getCreator = async (
+  input: {
+    tenantId: string;
+    publicId: string;
+  },
+  locale: Locale
+): Promise<GetCreatorResult> =>
+  getCreatorForSession(input, locale, await getAccessToken());

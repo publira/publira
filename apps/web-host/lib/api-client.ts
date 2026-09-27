@@ -53,9 +53,16 @@ export const sealSessionCookieValue = (
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
+/**
+ * The access token in the session cookie, deduplicated within a request.
+ *
+ * `stale: Infinity` keeps this read from lowering the client cache time of the
+ * routes that await it; how long a route stays fresh is for the reads that
+ * hold its data to decide.
+ */
 const getAccessTokenFromCookie = async (): Promise<string> => {
   "use cache: private";
-  cacheLife({ stale: 30 });
+  cacheLife({ stale: Number.POSITIVE_INFINITY });
   cacheTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 
   const cookieStore = await cookies();

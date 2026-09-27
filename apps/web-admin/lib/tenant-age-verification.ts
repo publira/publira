@@ -80,16 +80,14 @@ const toAgeVerificationEnum = (
   }
 };
 
-export const getTenantAgeVerification = async (
+const getTenantAgeVerificationForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<GetTenantAgeVerificationResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -132,6 +130,12 @@ export const getTenantAgeVerification = async (
     };
   }
 };
+
+export const getTenantAgeVerification = async (
+  tenantId: string,
+  locale: Locale
+): Promise<GetTenantAgeVerificationResult> =>
+  getTenantAgeVerificationForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantAgeVerification = async (
   input: { tenantId: string; ageVerification: TenantAgeVerification },

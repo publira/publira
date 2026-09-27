@@ -183,12 +183,12 @@ const noSession = async (
   };
 };
 
-export const getPlatformPolicy = async (
-  locale: Locale
+const getPlatformPolicyForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPlatformSettingsRowResult<PlatformPolicy>> => {
   "use cache: private";
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return noSession(locale);
   }
@@ -211,12 +211,17 @@ export const getPlatformPolicy = async (
   }
 };
 
-export const getPlatformRetentionDefaults = async (
+export const getPlatformPolicy = async (
   locale: Locale
+): Promise<GetPlatformSettingsRowResult<PlatformPolicy>> =>
+  getPlatformPolicyForSession(locale, await resolveAccessToken());
+
+const getPlatformRetentionDefaultsForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<GetPlatformSettingsRowResult<PlatformRetentionDefaults>> => {
   "use cache: private";
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return noSession(locale);
   }
@@ -238,6 +243,11 @@ export const getPlatformRetentionDefaults = async (
     return readFailure(error, locale);
   }
 };
+
+export const getPlatformRetentionDefaults = async (
+  locale: Locale
+): Promise<GetPlatformSettingsRowResult<PlatformRetentionDefaults>> =>
+  getPlatformRetentionDefaultsForSession(locale, await resolveAccessToken());
 
 /**
  * The screens mirror every rule the server enforces, so an `invalid-argument`

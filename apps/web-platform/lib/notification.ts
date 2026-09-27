@@ -104,15 +104,13 @@ export interface ListNotificationsInput {
 
 const readNotificationList = async (
   input: ListNotificationsInput,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<CachedListNotificationsResult> => {
   "use cache: private";
   cacheTag(notificationsCacheTag);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     dropFailedCacheEntry();
     return {
@@ -167,15 +165,13 @@ const readNotificationList = async (
 };
 
 const readUnreadNotificationCount = async (
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<CachedUnreadCountResult> => {
   "use cache: private";
   cacheTag(notificationsCacheTag);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    resolveAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     dropFailedCacheEntry();
     return {
@@ -225,7 +221,7 @@ export const listNotifications = async (
   input: ListNotificationsInput = {}
 ): Promise<ListNotificationsResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readNotificationList(input, locale),
+    readNotificationList(input, locale, await resolveAccessToken()),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(
@@ -244,7 +240,7 @@ export const countUnreadNotifications = async (
   locale: Locale
 ): Promise<CountUnreadNotificationsResult> => {
   const [{ unexpected, ...result }, t] = await Promise.all([
-    readUnreadNotificationCount(locale),
+    readUnreadNotificationCount(locale, await resolveAccessToken()),
     getMessagesFor(locale),
   ]);
   throwIfUnexpected(

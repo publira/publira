@@ -144,18 +144,16 @@ const parseLogoErrorMessage = async (
 const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
   resolveTenantThemeColors(theme);
 
-export const getTenantThemeSettings = async (
+const getTenantThemeSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
   cacheTag(tenantThemeCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -198,6 +196,12 @@ export const getTenantThemeSettings = async (
     };
   }
 };
+
+export const getTenantThemeSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantThemeSettingsResult> =>
+  getTenantThemeSettingsForSession(tenantId, locale, await getAccessToken());
 
 /**
  * Logo for the console chrome. An unset theme, a classified RPC failure, or

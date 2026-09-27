@@ -107,6 +107,12 @@ Do not reach for `revalidatePath` instead. Called from an Action it discards the
 
 No lint covers this. The unit tests of a `lib/` read assert the tag it carries, and the Action tests assert the tags each Action clears.
 
+## A cached read takes the session as an argument
+
+Only the session read (`getAccessTokenFromCookie`, with `cacheLife({ stale: Infinity })`) reads the session cookie inside a cache scope; every other cached read takes the access token as an argument, resolved by its exported caller outside the scope.
+
+No lint covers this.
+
 ## Tracing: register through `@publira/tracing`
 
 Every app's `instrumentation.ts` `register()` calls `registerTracing("publira-<app>")` after the Temporal polyfill import. Do not call `registerOTel` (or construct an OpenTelemetry SDK) in an app: the opt-in switch, the deployment tier attribute, and the parent-based sampler are one policy shared with the Go processes, and a second copy of it drifts.

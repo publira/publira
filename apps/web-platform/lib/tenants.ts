@@ -170,13 +170,13 @@ export const platformTenantsCacheTag = "platform:tenants";
 export const platformTenantCacheTag = (tenantId: string): string =>
   `platform:tenants:${tenantId}`;
 
-export const listPlatformTenants = async (
-  input: ListPlatformTenantsInput
+const listPlatformTenantsForSession = async (
+  input: ListPlatformTenantsInput,
+  sid: string
 ): Promise<ListPlatformTenantsResult> => {
   "use cache: private";
   cacheTag(platformTenantsCacheTag);
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(input.locale);
@@ -233,6 +233,11 @@ export const listPlatformTenants = async (
   }
 };
 
+export const listPlatformTenants = async (
+  input: ListPlatformTenantsInput
+): Promise<ListPlatformTenantsResult> =>
+  listPlatformTenantsForSession(input, await resolveAccessToken());
+
 /**
  * The generated `Tenant` fields {@link mapTenant} reads. Naming them against
  * the message type is what makes a proto rename fail here — a restated
@@ -260,18 +265,14 @@ const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
   };
 };
 
-/**
- * Resolves the tenant a URL names by its public ID. Everything else about the
- * tenant is addressed by the internal ID this returns.
- */
-export const getPlatformTenant = async (
+const getPlatformTenantForSession = async (
   publicId: string,
-  locale: Locale
+  locale: Locale,
+  sid: string
 ): Promise<GetPlatformTenantResult> => {
   "use cache: private";
   cacheTag(platformTenantsCacheTag);
 
-  const sid = await resolveAccessToken();
   if (!sid) {
     const { t } = await loadTenantCopy(locale);
     return {
@@ -316,6 +317,16 @@ export const getPlatformTenant = async (
   }
 };
 
+/**
+ * Resolves the tenant a URL names by its public ID. Everything else about the
+ * tenant is addressed by the internal ID this returns.
+ */
+export const getPlatformTenant = async (
+  publicId: string,
+  locale: Locale
+): Promise<GetPlatformTenantResult> =>
+  getPlatformTenantForSession(publicId, locale, await resolveAccessToken());
+
 export interface ListPlatformTenantMembersInput {
   limit?: number;
   locale: Locale;
@@ -341,14 +352,14 @@ export type ListPlatformTenantMembersResult =
       requiresSignIn: boolean;
     };
 
-export const listPlatformTenantMembers = async (
-  input: ListPlatformTenantMembersInput
+const listPlatformTenantMembersForSession = async (
+  input: ListPlatformTenantMembersInput,
+  sid: string
 ): Promise<ListPlatformTenantMembersResult> => {
   "use cache: private";
   cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
 
   const tenantId = input.tenantId.trim();
-  const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(input.locale);
@@ -402,6 +413,11 @@ export const listPlatformTenantMembers = async (
     };
   }
 };
+
+export const listPlatformTenantMembers = async (
+  input: ListPlatformTenantMembersInput
+): Promise<ListPlatformTenantMembersResult> =>
+  listPlatformTenantMembersForSession(input, await resolveAccessToken());
 
 export const suspendPlatformTenant = async (
   tenantId: string
@@ -593,15 +609,15 @@ const mapInvitation = (
   status: invitation.status,
 });
 
-export const listPlatformTenantAdminInvitations = async (
-  input: ListPlatformTenantAdminInvitationsInput
+const listPlatformTenantAdminInvitationsForSession = async (
+  input: ListPlatformTenantAdminInvitationsInput,
+  sid: string
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache: private";
   cacheTag(platformTenantsCacheTag, platformTenantCacheTag(input.tenantId));
 
   const { locale, t } = await loadTenantCopy(input.locale);
   const tenantId = input.tenantId.trim();
-  const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
     dropFailedCacheEntry();
     return {
@@ -651,6 +667,14 @@ export const listPlatformTenantAdminInvitations = async (
     };
   }
 };
+
+export const listPlatformTenantAdminInvitations = async (
+  input: ListPlatformTenantAdminInvitationsInput
+): Promise<ListPlatformTenantAdminInvitationsResult> =>
+  listPlatformTenantAdminInvitationsForSession(
+    input,
+    await resolveAccessToken()
+  );
 
 export const createPlatformTenantAdminInvitation = async (
   tenantId: string,

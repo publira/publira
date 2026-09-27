@@ -44,25 +44,16 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
   title: item.title,
 });
 
-/**
- * One page of the tenant's announcements, newest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` descending).
- * Sorting them here would only sort the rows that happen to share a page, which
- * reads as a broken order as soon as the list spans more than one page.
- */
-export const listAnnouncements = async (
+const listAnnouncementsForSession = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListAnnouncementsResult> => {
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -104,6 +95,25 @@ export const listAnnouncements = async (
     };
   }
 };
+
+/**
+ * One page of the tenant's announcements, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
+export const listAnnouncements = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListAnnouncementsResult> =>
+  listAnnouncementsForSession(
+    tenantId,
+    locale,
+    options,
+    await getAccessToken()
+  );
 
 export const createAnnouncement = async (
   input: {

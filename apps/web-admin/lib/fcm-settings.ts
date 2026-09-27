@@ -56,16 +56,14 @@ const toTenantFcmSettings = (
       }
     : emptyTenantFcmSettings;
 
-export const getTenantFcmSettings = async (
+const getTenantFcmSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantFcmSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -96,6 +94,12 @@ export const getTenantFcmSettings = async (
     };
   }
 };
+
+export const getTenantFcmSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantFcmSettingsResult> =>
+  getTenantFcmSettingsForSession(tenantId, locale, await getAccessToken());
 
 export interface SaveTenantFcmCredentialsInput {
   tenantId: string;

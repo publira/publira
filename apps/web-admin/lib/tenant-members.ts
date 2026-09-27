@@ -149,18 +149,16 @@ const invitationStateOverride = async (
   };
 };
 
-export const listTenantMembers = async (
+const listTenantMembersForSession = async (
   tenantId: string,
   locale: Locale,
-  options: CursorPageOptions = {}
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListTenantMembersResult> => {
   "use cache: private";
   cacheTag(tenantMembersCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -198,18 +196,28 @@ export const listTenantMembers = async (
   }
 };
 
-export const listTenantAdminInvitations = async (
+export const listTenantMembers = async (
   tenantId: string,
   locale: Locale,
   options: CursorPageOptions = {}
+): Promise<ListTenantMembersResult> =>
+  listTenantMembersForSession(
+    tenantId,
+    locale,
+    options,
+    await getAccessToken()
+  );
+
+const listTenantAdminInvitationsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions,
+  sessionId: string
 ): Promise<ListTenantAdminInvitationsResult> => {
   "use cache: private";
   cacheTag(tenantAdminInvitationsCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -248,6 +256,18 @@ export const listTenantAdminInvitations = async (
     };
   }
 };
+
+export const listTenantAdminInvitations = async (
+  tenantId: string,
+  locale: Locale,
+  options: CursorPageOptions = {}
+): Promise<ListTenantAdminInvitationsResult> =>
+  listTenantAdminInvitationsForSession(
+    tenantId,
+    locale,
+    options,
+    await getAccessToken()
+  );
 
 export const updateTenantMemberRole = async (
   input: { tenantId: string; userId: string; role: string },

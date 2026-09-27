@@ -92,29 +92,15 @@ const mapCreatorRole = (creatorRole: RawCreatorRole): CreatorRoleItem => ({
   publicId: creatorRole.publicId ?? "",
 });
 
-/**
- * Every creator role of the tenant, in the tenant's own priority order.
- *
- * The whole list rather than one page, because `ReorderCreatorRoles` compares
- * the order the client posts against the tenant's entire order and refuses a
- * mismatch: a screen holding one page could not name an order to send. Roles
- * are a hand-curated vocabulary, so the walk is a page or two in practice.
- *
- * An incomplete walk fails with an empty list rather than a partial one. A
- * partial list would not only hide roles — it would make every move button on
- * screen post an order that is missing rows, which the API refuses.
- */
-export const listCreatorRoles = async (
+const listCreatorRolesForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<ListCreatorRolesResult> => {
   "use cache: private";
   cacheTag(creatorRolesCacheTag(tenantId));
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   if (!sessionId) {
     return {
       creatorRoles: [],
@@ -172,6 +158,24 @@ export const listCreatorRoles = async (
     };
   }
 };
+
+/**
+ * Every creator role of the tenant, in the tenant's own priority order.
+ *
+ * The whole list rather than one page, because `ReorderCreatorRoles` compares
+ * the order the client posts against the tenant's entire order and refuses a
+ * mismatch: a screen holding one page could not name an order to send. Roles
+ * are a hand-curated vocabulary, so the walk is a page or two in practice.
+ *
+ * An incomplete walk fails with an empty list rather than a partial one. A
+ * partial list would not only hide roles — it would make every move button on
+ * screen post an order that is missing rows, which the API refuses.
+ */
+export const listCreatorRoles = async (
+  tenantId: string,
+  locale: Locale
+): Promise<ListCreatorRolesResult> =>
+  listCreatorRolesForSession(tenantId, locale, await getAccessToken());
 
 export const createCreatorRole = async (
   input: { tenantId: string; name: string },

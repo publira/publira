@@ -153,13 +153,13 @@ const toPlatformSmtpSettings = (
 /** The tag the SMTP settings read is filed under, and their save clears. */
 export const platformEmailSettingsCacheTag = "platform:email-settings";
 
-export const getPlatformEmailSettings = async (
-  locale: Locale
+const getPlatformEmailSettingsForSession = async (
+  locale: Locale,
+  sessionId: string
 ): Promise<PlatformSmtpSettingsResult> => {
   "use cache: private";
   cacheTag(platformEmailSettingsCacheTag);
 
-  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
@@ -189,6 +189,11 @@ export const getPlatformEmailSettings = async (
     };
   }
 };
+
+export const getPlatformEmailSettings = async (
+  locale: Locale
+): Promise<PlatformSmtpSettingsResult> =>
+  getPlatformEmailSettingsForSession(locale, await resolveAccessToken());
 
 export const updatePlatformEmailSettings = async (
   input: UpdatePlatformSmtpSettingsInput

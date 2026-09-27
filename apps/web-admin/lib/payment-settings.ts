@@ -105,16 +105,14 @@ const toTenantPaymentSettings = (
   webhookSecretHint: settings?.webhookSecretHint ?? "",
 });
 
-export const getTenantPaymentSettings = async (
+const getTenantPaymentSettingsForSession = async (
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  sessionId: string
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
 
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
+  const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
     return {
@@ -151,6 +149,12 @@ export const getTenantPaymentSettings = async (
     };
   }
 };
+
+export const getTenantPaymentSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantPaymentSettingsResult> =>
+  getTenantPaymentSettingsForSession(tenantId, locale, await getAccessToken());
 
 export const updateTenantPaymentSettings = async (
   input: UpdateTenantPaymentSettingsInput,
