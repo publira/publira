@@ -22,10 +22,12 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { listReaders } from "#lib/reader";
 
 import type {
   IssueAccessTicketActionState,
   ListTicketEpisodeOptionsResult,
+  ListTicketReaderOptionsResult,
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
@@ -34,7 +36,7 @@ const issueTicketSchema = async (locale: Locale) => {
 
   return z
     .object({
-      episodePublicId: requiredTrimmedString(
+      episodeId: requiredRecordId(
         t("admin.access_tickets.validation.episode_id_required")
       ),
       expiresAt: optionalTrimmedString(),
@@ -42,7 +44,7 @@ const issueTicketSchema = async (locale: Locale) => {
       tenantId: requiredTrimmedString(
         t("admin.access_tickets.validation.tenant_missing")
       ),
-      userPublicId: requiredTrimmedString(
+      userId: requiredRecordId(
         t("admin.access_tickets.validation.user_id_required")
       ),
     })
@@ -121,11 +123,11 @@ export const issueAccessTicketAction = async (
   const schema = await issueTicketSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      episodePublicId: { kind: "value", name: "episode_public_id" },
+      episodeId: { kind: "value", name: "episode_id" },
       expiresAt: { kind: "value", name: "expires_at" },
       note: "value",
       tenantId: { kind: "value", name: "tenant_id" },
-      userPublicId: { kind: "value", name: "user_public_id" },
+      userId: { kind: "value", name: "user_id" },
     })
   );
   if (!parsed.success) {
@@ -138,11 +140,11 @@ export const issueAccessTicketAction = async (
   const result = await withAdminSessionReauth(() =>
     issueAccessTicket(
       {
-        episodePublicId: parsed.data.episodePublicId,
+        episodeId: parsed.data.episodeId,
         expiresAt: parsed.data.expiresAt,
         note: parsed.data.note,
         tenantId: parsed.data.tenantId,
-        userPublicId: parsed.data.userPublicId,
+        userId: parsed.data.userId,
       },
       locale
     )
@@ -210,6 +212,7 @@ export const listEpisodeOptionsAction = async (
 
   return {
     episodes: result.episodes.map((episode) => ({
+      id: episode.id,
       publicId: episode.publicId,
       title: episode.title,
     })),
@@ -256,5 +259,34 @@ export const revokeAccessTicketAction = async (
     message: t("admin.access_tickets.revoked"),
     ok: true,
     ticketId: parsed.data.ticketId,
+  };
+};
+
+/** How many readers one search offers; a narrower query finds the rest. */
+const READER_OPTION_LIMIT = 20;
+
+export const listReaderOptionsAction = async (
+  tenantId: string,
+  query: string,
+  locale: Locale
+): Promise<ListTicketReaderOptionsResult> => {
+  // This Server Action only reads reader options; the same-origin check
+  // applies to mutations.
+  const result = await listReaders(tenantId, locale, {
+    limit: READER_OPTION_LIMIT,
+    query,
+    status: "active",
+  });
+  await redirectToLoginIfSessionRejected(result);
+  if (!result.ok) {
+    return { message: result.message, ok: false, readers: [] };
+  }
+  return {
+    ok: true,
+    readers: result.readers.map((reader) => ({
+      email: reader.email,
+      id: reader.id,
+      name: reader.name,
+    })),
   };
 };

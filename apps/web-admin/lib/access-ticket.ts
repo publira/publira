@@ -55,11 +55,11 @@ export type ListAccessTicketsResult = CursorPageTokens & {
 };
 
 export interface IssueAccessTicketInput {
-  episodePublicId: string;
+  episodeId: string;
   expiresAt?: string;
   note?: string;
   tenantId: string;
-  userPublicId: string;
+  userId: string;
 }
 
 export type IssueAccessTicketResult =
@@ -80,10 +80,10 @@ const missingTargetMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasFieldViolation(error, "user_public_id")) {
+  if (rpcErrorHasFieldViolation(error, "user_id")) {
     return t("admin.access_tickets.user_not_found");
   }
-  if (rpcErrorHasFieldViolation(error, "episode_public_id")) {
+  if (rpcErrorHasFieldViolation(error, "episode_id")) {
     return t("admin.access_tickets.episode_not_found");
   }
   return t("errors.rpc.not-found");
@@ -221,11 +221,11 @@ export const issueAccessTicket = async (
   try {
     const response = await apiClient.accessTickets.issueAccessTicket(
       {
-        episodePublicId: input.episodePublicId,
+        episodeId: input.episodeId,
         expiresAt: input.expiresAt ?? "",
         note: input.note ?? "",
         tenant: { tenantId: input.tenantId },
-        userPublicId: input.userPublicId,
+        userId: input.userId,
       },
       withSessionHeaders(sessionId)
     );

@@ -37,10 +37,14 @@ import { ClientMessage, useClientMessages } from "#components/client-message";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import { listEpisodeOptionsAction } from "../_lib/actions";
+import {
+  listEpisodeOptionsAction,
+  listReaderOptionsAction,
+} from "../_lib/actions";
 import type {
   IssueAccessTicketActionState,
   TicketEpisodeOption,
+  TicketReaderOption,
   TicketSeriesOption,
 } from "../ticket-types";
 
@@ -65,12 +69,33 @@ export const TicketForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
+  const [isReaderPending, startReaderTransition] = useTransition();
+  const [readerId, setReaderId] = useState("");
+  const [readers, setReaders] = useState<TicketReaderOption[]>([]);
+  const [selectedReader, setSelectedReader] = useState<TicketReaderOption>();
+  const [readersErrorMessage, setReadersErrorMessage] = useState<string>();
+  const readerRequestIdRef = useRef(0);
   const [seriesId, setSeriesId] = useState("");
-  const [episodePublicId, setEpisodePublicId] = useState("");
+  const [episodeId, setEpisodeId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
   const episodeRequestIdRef = useRef(0);
 
+  // The chosen reader stays an option while a later search returns others, so
+  // the picker keeps showing who was chosen.
+  const readerItems = useMemo<ComboboxItem[]>(() => {
+    const options =
+      selectedReader && !readers.some((item) => item.id === selectedReader.id)
+        ? [selectedReader, ...readers]
+        : readers;
+    return options.map((item) => ({
+      label: t("admin.access_tickets.form.user_option", {
+        email: item.email,
+        name: item.name,
+      }),
+      value: item.id,
+    }));
+  }, [readers, selectedReader, t]);
   const seriesItems = useMemo<ComboboxItem[]>(
     () =>
       series.map((item) => ({
@@ -89,18 +114,46 @@ export const TicketForm = ({
           id: item.publicId,
           title: item.title,
         }),
-        value: item.publicId,
+        value: item.id,
       })),
     [episodes, t]
   );
-  // Only the missing catalog falls back to a public_id field. An episode-list
-  // failure must keep the pickers so the operator can retry without a reload.
-  const useEpisodeFallbackInput =
-    Boolean(seriesErrorMessage) || seriesItems.length === 0;
   const canSubmit =
-    !isPending &&
-    !isEpisodePending &&
-    (useEpisodeFallbackInput || episodePublicId !== "");
+    !isPending && !isEpisodePending && readerId !== "" && episodeId !== "";
+
+  const handleReaderSearch = useCallback(
+    (query: string) => {
+      const requestId = readerRequestIdRef.current + 1;
+      readerRequestIdRef.current = requestId;
+      if (query.trim() === "") {
+        setReaders([]);
+        setReadersErrorMessage(undefined);
+        return;
+      }
+
+      startReaderTransition(async () => {
+        const result = await listReaderOptionsAction(tenantId, query, locale);
+        if (requestId !== readerRequestIdRef.current) {
+          return;
+        }
+        setReaders(result.readers);
+        setReadersErrorMessage(result.ok ? undefined : result.message);
+      });
+    },
+    [locale, tenantId]
+  );
+
+  const handleReaderChange = useCallback(
+    (nextReaderId: string) => {
+      setReaderId(nextReaderId);
+      setSelectedReader(
+        [...readers, ...(selectedReader ? [selectedReader] : [])].find(
+          (item) => item.id === nextReaderId
+        )
+      );
+    },
+    [readers, selectedReader]
+  );
 
   const loadEpisodesForSeries = useCallback(
     (nextSeriesId: string) => {
@@ -130,7 +183,7 @@ export const TicketForm = ({
   const handleSeriesChange = useCallback(
     (nextSeriesId: string) => {
       setSeriesId(nextSeriesId);
-      setEpisodePublicId("");
+      setEpisodeId("");
       setEpisodes([]);
       setEpisodesErrorMessage(undefined);
 
@@ -172,127 +225,116 @@ export const TicketForm = ({
             <ClientMessage message="admin.access_tickets.form.user" />
           </FieldLabel>
           <FieldContent>
-            <Input
-              name="user_public_id"
-              placeholder={t("admin.access_tickets.form.user_placeholder")}
-              required
-              type="text"
-            />
+            <Combobox
+              items={readerItems}
+              onSearch={handleReaderSearch}
+              onValueChange={handleReaderChange}
+              value={readerId}
+            >
+              <ComboboxInput
+                placeholder={t("admin.access_tickets.form.user_placeholder")}
+              />
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  {isReaderPending
+                    ? t("admin.access_tickets.form.user_searching")
+                    : t("admin.access_tickets.form.user_empty")}
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
+            <input name="user_id" type="hidden" value={readerId} />
+            {readersErrorMessage ? (
+              <FormMessage variant="destructive">
+                {readersErrorMessage}
+              </FormMessage>
+            ) : null}
             <FieldDescription>
               <ClientMessage message="admin.access_tickets.form.user_description" />
             </FieldDescription>
           </FieldContent>
         </Field>
 
-        {useEpisodeFallbackInput ? (
-          <Field>
-            <FieldLabel required>
-              <ClientMessage message="admin.access_tickets.form.episode_id" />
-            </FieldLabel>
-            <FieldContent>
-              {seriesErrorMessage ? (
-                <FormMessage variant="destructive">
-                  {seriesErrorMessage}
-                </FormMessage>
-              ) : null}
-              <Input
-                name="episode_public_id"
-                placeholder={t(
-                  "admin.access_tickets.form.episode_id_placeholder"
-                )}
-                required
-                type="text"
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.access_tickets.form.series" />
+          </FieldLabel>
+          <FieldContent>
+            {seriesErrorMessage ? (
+              <FormMessage variant="destructive">
+                {seriesErrorMessage}
+              </FormMessage>
+            ) : null}
+            <Combobox
+              items={seriesItems}
+              onValueChange={handleSeriesChange}
+              value={seriesId}
+            >
+              <ComboboxInput
+                placeholder={t("admin.access_tickets.form.series_placeholder")}
               />
-              <FieldDescription>
-                {seriesItems.length === 0 && !seriesErrorMessage
-                  ? t("admin.access_tickets.form.episode_id_no_series")
-                  : t("admin.access_tickets.form.episode_id_description")}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        ) : (
-          <>
-            <Field>
-              <FieldLabel required>
-                <ClientMessage message="admin.access_tickets.form.series" />
-              </FieldLabel>
-              <FieldContent>
-                <Combobox
-                  items={seriesItems}
-                  onValueChange={handleSeriesChange}
-                  value={seriesId}
-                >
-                  <ComboboxInput
-                    placeholder={t(
-                      "admin.access_tickets.form.series_placeholder"
-                    )}
-                  />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
-                      <ClientMessage message="admin.access_tickets.form.series_empty" />
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
-                </Combobox>
-                <FieldDescription>
-                  <ClientMessage message="admin.access_tickets.form.series_description" />
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  <ClientMessage message="admin.access_tickets.form.series_empty" />
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
+            <FieldDescription>
+              {seriesItems.length === 0 && !seriesErrorMessage
+                ? t("admin.access_tickets.form.episode_no_series")
+                : t("admin.access_tickets.form.series_description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
-            <Field>
-              <FieldLabel required>
-                <ClientMessage message="admin.access_tickets.form.episode" />
-              </FieldLabel>
-              <FieldContent>
-                <Combobox
-                  disabled={isEpisodePending || seriesId === ""}
-                  items={episodeItems}
-                  onValueChange={setEpisodePublicId}
-                  value={episodePublicId}
+        <Field>
+          <FieldLabel required>
+            <ClientMessage message="admin.access_tickets.form.episode" />
+          </FieldLabel>
+          <FieldContent>
+            <Combobox
+              disabled={isEpisodePending || seriesId === ""}
+              items={episodeItems}
+              onValueChange={setEpisodeId}
+              value={episodeId}
+            >
+              <ComboboxInput
+                placeholder={
+                  isEpisodePending
+                    ? t("admin.access_tickets.form.episode_loading")
+                    : t("admin.access_tickets.form.episode_placeholder")
+                }
+              />
+              <ComboboxPopup>
+                <ComboboxEmpty>
+                  <ClientMessage message="admin.access_tickets.form.episode_empty" />
+                </ComboboxEmpty>
+                <ComboboxItems />
+              </ComboboxPopup>
+            </Combobox>
+            <input name="episode_id" type="hidden" value={episodeId} />
+            {episodesErrorMessage ? (
+              <>
+                <FormMessage variant="destructive">
+                  {episodesErrorMessage}
+                </FormMessage>
+                <Button
+                  onClick={handleRetryEpisodes}
+                  type="button"
+                  variant="outline"
                 >
-                  <ComboboxInput
-                    placeholder={
-                      isEpisodePending
-                        ? t("admin.access_tickets.form.episode_loading")
-                        : t("admin.access_tickets.form.episode_placeholder")
-                    }
-                  />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
-                      <ClientMessage message="admin.access_tickets.form.episode_empty" />
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
-                </Combobox>
-                <input
-                  name="episode_public_id"
-                  type="hidden"
-                  value={episodePublicId}
-                />
-                {episodesErrorMessage ? (
-                  <>
-                    <FormMessage variant="destructive">
-                      {episodesErrorMessage}
-                    </FormMessage>
-                    <Button
-                      onClick={handleRetryEpisodes}
-                      type="button"
-                      variant="outline"
-                    >
-                      <ClientMessage message="admin.common.retry" />
-                    </Button>
-                  </>
-                ) : null}
-                <FieldDescription>
-                  {seriesId === ""
-                    ? t("admin.access_tickets.form.episode_needs_series")
-                    : t("admin.access_tickets.form.episode_description")}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          </>
-        )}
+                  <ClientMessage message="admin.common.retry" />
+                </Button>
+              </>
+            ) : null}
+            <FieldDescription>
+              {seriesId === ""
+                ? t("admin.access_tickets.form.episode_needs_series")
+                : t("admin.access_tickets.form.episode_description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
         <Field>
           <FieldLabel>

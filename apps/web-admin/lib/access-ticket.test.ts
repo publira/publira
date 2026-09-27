@@ -1,10 +1,16 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListAccessTickets } = vi.hoisted(() => ({
-  mockGetAccessToken: vi.fn(),
-  mockListAccessTickets: vi.fn(),
-}));
+const { mockGetAccessToken, mockIssueAccessTicket, mockListAccessTickets } =
+  vi.hoisted(() => ({
+    mockGetAccessToken: vi.fn(),
+    mockIssueAccessTicket: vi.fn(),
+    mockListAccessTickets: vi.fn(),
+  }));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -13,6 +19,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     accessTickets: {
+      issueAccessTicket: mockIssueAccessTicket,
       listAccessTickets: mockListAccessTickets,
     },
   },
@@ -178,6 +185,63 @@ describe("listAccessTickets", () => {
       ok: false,
       previousToken: "",
       tickets: [],
+    });
+  });
+});
+
+const notFound = (field: string) =>
+  new ConnectError("not found", Code.NotFound, undefined, [
+    { desc: BadRequestSchema, value: { fieldViolations: [{ field }] } },
+  ]);
+
+const issue = async () => {
+  const { issueAccessTicket } = await import("./access-ticket");
+  return issueAccessTicket(
+    {
+      episodeId: "EPISODE001-ID",
+      tenantId: "TENANT001",
+      userId: "USER001-ID",
+    },
+    "en"
+  );
+};
+
+describe("issueAccessTicket", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("addresses the user and the episode by their internal IDs", async () => {
+    mockIssueAccessTicket.mockRejectedValue(notFound("user_id"));
+
+    await issue();
+
+    expect(mockIssueAccessTicket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episodeId: "EPISODE001-ID",
+        userId: "USER001-ID",
+      }),
+      expect.anything()
+    );
+  });
+
+  it("says the user was not found when the server names user_id", async () => {
+    mockIssueAccessTicket.mockRejectedValue(notFound("user_id"));
+
+    expect(await issue()).toEqual({
+      message: "That user was not found.",
+      ok: false,
+    });
+  });
+
+  it("says the episode was not found when the server names episode_id", async () => {
+    mockIssueAccessTicket.mockRejectedValue(notFound("episode_id"));
+
+    expect(await issue()).toEqual({
+      message: "That episode was not found.",
+      ok: false,
     });
   });
 });
