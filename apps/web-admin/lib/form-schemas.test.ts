@@ -87,6 +87,12 @@ describe("optionalRecordId", () => {
       "Choose a record."
     );
   });
+
+  it("accepts a UUID without RFC version bits, as seeded IDs are", () => {
+    expect(schema.parse("c4ca4238-a0b9-2382-0dcc-509a6f75849b")).toBe(
+      "c4ca4238-a0b9-2382-0dcc-509a6f75849b"
+    );
+  });
 });
 
 describe("recordIdListFormSchema", () => {
@@ -97,6 +103,12 @@ describe("recordIdListFormSchema", () => {
         "",
       ])
     ).toEqual(["018f0e6a-1000-7000-8000-000000000001"]);
+  });
+
+  it("keeps UUIDs without RFC version bits, as seeded IDs are", () => {
+    expect(
+      recordIdListFormSchema.parse(["c4ca4238-a0b9-2382-0dcc-509a6f75849b"])
+    ).toEqual(["c4ca4238-a0b9-2382-0dcc-509a6f75849b"]);
   });
 
   it("refuses the list when an entry is not a UUID", () => {

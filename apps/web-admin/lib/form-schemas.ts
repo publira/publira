@@ -217,12 +217,12 @@ export const optionalRecordId = (
 ): z.ZodType<string, unknown> =>
   z.preprocess(
     (value) => (typeof value === "string" ? value.trim() : ""),
-    z.union([z.literal(""), z.uuid({ error: message })])
+    z.union([z.literal(""), z.guid({ error: message })])
   );
 
 /** Record IDs posted under one repeated field name, blanks dropped. */
 export const recordIdListFormSchema = trimmedStringListFormSchema.pipe(
-  z.array(z.uuid())
+  z.array(z.guid())
 );
 
 /**
