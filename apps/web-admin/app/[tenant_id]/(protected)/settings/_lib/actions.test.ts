@@ -100,7 +100,6 @@ describe("updateTenantTimezoneAction", () => {
     expect(result).toEqual({
       message: "The time zone was saved.",
       ok: true,
-      timezone: "America/Los_Angeles",
     });
     expect(mockUpdateTenantTimezone).toHaveBeenCalledWith(
       {
@@ -128,7 +127,6 @@ describe("updateTenantTimezoneAction", () => {
     expect(result).toEqual({
       message: "The time zone was saved.",
       ok: true,
-      timezone: "Asia/Calcutta",
     });
     expect(mockUpdateTenantTimezone).toHaveBeenCalledWith(
       {
@@ -240,7 +238,6 @@ describe("updateTenantDefaultLocaleAction", () => {
     );
 
     expect(result).toEqual({
-      defaultLocale: "en",
       message: "The default language was saved.",
       ok: true,
     });

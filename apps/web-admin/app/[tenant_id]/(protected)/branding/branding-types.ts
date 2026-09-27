@@ -1,7 +1,5 @@
 import type { TenantTheme } from "@publira/utils/theme-css-variables";
 
-import type { TenantBrandingImage } from "#lib/tenant-branding-image";
-
 export type ThemeSettingsFieldErrors = Partial<
   Record<
     | "primaryColor"
@@ -54,7 +52,6 @@ export type TenantIconActionState =
   | {
       ok: true;
       message: string;
-      icon: TenantBrandingImage | null;
     }
   | {
       ok: false;
@@ -66,7 +63,6 @@ export type TenantLogoActionState =
   | {
       ok: true;
       message: string;
-      logo: TenantBrandingImage | null;
     }
   | {
       ok: false;

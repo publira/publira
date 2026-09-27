@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -11,25 +14,35 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
-
 import type { TenantAgeVerificationActionState } from "../settings-types";
 import { TenantAgeVerificationForm } from "./tenant-age-verification-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { save } = vi.hoisted(() => ({
+  save: {
+    current: Promise.withResolvers<TenantAgeVerificationActionState>(),
+    formData: undefined as FormData | undefined,
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  updateTenantAgeVerificationAction: (_state: unknown, formData: FormData) => {
+    save.formData = formData;
+    return save.current.promise;
+  },
+}));
 
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-);
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const renderCard = async (ui: ReactNode) => {
-  await act(() => {
-    render(ui, { wrapper: EnglishConsole });
-  });
+  render(ui);
   await screen.findByRole("button", { name: "Save the age verification" });
 };
 
@@ -40,13 +53,17 @@ const submitButton = () =>
 
 afterEach(() => {
   cleanup();
+  // A submission left in flight would hold back the next test's transitions.
+  save.current.resolve(null);
+  save.current = Promise.withResolvers<TenantAgeVerificationActionState>();
+  save.formData = undefined;
 });
 
 describe("TenantAgeVerificationForm", () => {
   it("offers the three rules and marks the saved one", async () => {
     await renderCard(
       <TenantAgeVerificationForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialAgeVerification="r18"
       />
@@ -73,7 +90,7 @@ describe("TenantAgeVerificationForm", () => {
   it("explains what each rule means for readers", async () => {
     await renderCard(
       <TenantAgeVerificationForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialAgeVerification="none"
       />
@@ -99,7 +116,7 @@ describe("TenantAgeVerificationForm", () => {
   it("stays read-only for someone who is not a tenant admin", async () => {
     await renderCard(
       <TenantAgeVerificationForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit={false}
         initialAgeVerification="r18"
       />
@@ -119,7 +136,7 @@ describe("TenantAgeVerificationForm", () => {
   it("blocks editing and shows the reason when the fetch fails", async () => {
     await renderCard(
       <TenantAgeVerificationForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         loadErrorMessage="Could not load the age verification."
       />
@@ -141,13 +158,9 @@ describe("TenantAgeVerificationForm", () => {
   // made while it is in flight would sit in the controls under the success
   // message while the tenant is still on the previous rule.
   it("closes the controls while the save is in flight", async () => {
-    // Never resolved: the assertions are about the window the save is open in.
-    const save = Promise.withResolvers<TenantAgeVerificationActionState>();
-    const pendingAction = vi.fn(() => save.promise);
-
     await renderCard(
       <TenantAgeVerificationForm
-        action={pendingAction}
+        tenantId="TENANT001"
         canEdit
         initialAgeVerification="none"
       />
@@ -165,5 +178,23 @@ describe("TenantAgeVerificationForm", () => {
         expect(radio.getAttribute("aria-disabled")).toBe("true");
       }
     });
+  });
+
+  it("posts the picked rule", async () => {
+    await renderCard(
+      <TenantAgeVerificationForm
+        tenantId="TENANT001"
+        canEdit
+        initialAgeVerification="none"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: /Check R18 only/u }));
+    fireEvent.click(submitButton());
+
+    await waitFor(() => {
+      expect(save.formData?.get("age_verification")).toBe("r18");
+    });
+    expect(save.formData?.get("tenant_id")).toBe("TENANT001");
   });
 });

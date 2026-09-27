@@ -28,10 +28,6 @@ import type { TenantRetentionPeriods } from "#lib/tenant-retention-settings";
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { TenantCommunityLimitsForm } from "./_components/tenant-community-limits-form";
 import { TenantRetentionSettingsForm } from "./_components/tenant-retention-settings-form";
-import {
-  updateTenantCommunityLimitsAction,
-  updateTenantRetentionSettingsAction,
-} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -105,7 +101,6 @@ const PolicyForms = async () => {
   return (
     <AdminSections>
       <TenantCommunityLimitsForm
-        action={updateTenantCommunityLimitsAction}
         canEdit={canEdit}
         loadErrorMessage={
           communityResult.ok ? undefined : communityResult.message
@@ -117,10 +112,10 @@ const PolicyForms = async () => {
             : unreadableCommunityLimits
         }
         revision={communityResult.ok ? communityResult.revision : "0"}
+        tenantId={tenantId}
       />
 
       <TenantRetentionSettingsForm
-        action={updateTenantRetentionSettingsAction}
         canEdit={canEdit}
         loadErrorMessage={
           retentionResult.ok ? undefined : retentionResult.message
@@ -132,6 +127,7 @@ const PolicyForms = async () => {
             : unreadableRetentionPeriods
         }
         revision={retentionResult.ok ? retentionResult.revision : "0"}
+        tenantId={tenantId}
       />
     </AdminSections>
   );

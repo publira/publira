@@ -34,11 +34,6 @@ import { StoreProductList } from "./_components/store-product-list";
 import { TenantPaymentSettingsForm } from "./_components/tenant-payment-settings-form";
 import { TenantPurchaseSettingsForm } from "./_components/tenant-purchase-settings-form";
 import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payment-settings-form";
-import {
-  updateTenantPaymentSettingsAction,
-  updateTenantPurchaseSettingsAction,
-  updateTenantStorePaymentSettingsAction,
-} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -98,7 +93,6 @@ const SettingsPaymentForm = async () => {
 
   return (
     <TenantPaymentSettingsForm
-      action={updateTenantPaymentSettingsAction}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
@@ -106,6 +100,7 @@ const SettingsPaymentForm = async () => {
       loadErrorMessage={
         paymentSettingsResult.ok ? undefined : paymentSettingsResult.message
       }
+      tenantId={tenantId}
       webhookUrl={
         tenantResult.ok
           ? tenantWebhookUrl(tenantResult.tenant.domain, settings.provider)
@@ -142,7 +137,6 @@ const SettingsPurchaseForm = async () => {
 
   return (
     <TenantPurchaseSettingsForm
-      action={updateTenantPurchaseSettingsAction}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
@@ -152,6 +146,7 @@ const SettingsPurchaseForm = async () => {
       loadErrorMessage={
         purchaseSettingsResult.ok ? undefined : purchaseSettingsResult.message
       }
+      tenantId={tenantId}
     />
   );
 };
@@ -188,7 +183,6 @@ const SettingsStorePaymentForm = async () => {
 
   return (
     <TenantStorePaymentSettingsForm
-      action={updateTenantStorePaymentSettingsAction}
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
@@ -203,6 +197,7 @@ const SettingsStorePaymentForm = async () => {
           ? tenantWebhookUrl(tenantResult.tenant.domain, "app-store")
           : undefined
       }
+      tenantId={tenantId}
     />
   );
 };

@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -13,11 +17,19 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 
 import { TenantLegalPagesForm } from "./tenant-legal-pages-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+vi.mock("../_lib/actions", () => ({
+  updateTenantLegalPagesAction: vi.fn(),
 }));
 
-const noopAction = vi.fn();
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const render = (ui: ReactNode) =>
   renderBase(ui, {
@@ -49,7 +61,7 @@ describe("TenantLegalPagesForm", () => {
   it("shows each saved nomination and submits its page id", () => {
     const { container } = render(
       <TenantLegalPagesForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialPages={{
           privacyPage: { ...privacyPage, published: true },
@@ -69,7 +81,7 @@ describe("TenantLegalPagesForm", () => {
   it("shows a tenant that has nominated nothing as None", () => {
     const { container } = render(
       <TenantLegalPagesForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialPages={{}}
         publishedPages={[termsPage]}
@@ -85,7 +97,7 @@ describe("TenantLegalPagesForm", () => {
   it("offers None and every published page to choose from", async () => {
     render(
       <TenantLegalPagesForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialPages={{}}
         publishedPages={[aboutPage, termsPage]}
@@ -107,7 +119,7 @@ describe("TenantLegalPagesForm", () => {
   it("reports a nominated page that has been unpublished", () => {
     render(
       <TenantLegalPagesForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialPages={{
           privacyPage: { ...privacyPage, published: false },
@@ -129,7 +141,7 @@ describe("TenantLegalPagesForm", () => {
   it("shows the saved page to a read-only member, who gets no page list", () => {
     render(
       <TenantLegalPagesForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit={false}
         initialPages={{ termsPage: { ...termsPage, published: true } }}
         publishedPages={[]}
@@ -137,7 +149,7 @@ describe("TenantLegalPagesForm", () => {
     );
 
     expect(termsInput().value).toBe("Terms (terms)");
-    expect(termsInput().disabled).toBe(true);
+    expect(termsInput().matches(":disabled")).toBe(true);
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(
@@ -169,7 +181,7 @@ describe("TenantLegalPagesForm", () => {
     }) => {
       render(
         <TenantLegalPagesForm
-          action={noopAction}
+          tenantId="TENANT001"
           canEdit
           initialPages={loadErrorMessage ? undefined : {}}
           loadErrorMessage={loadErrorMessage}
@@ -178,8 +190,8 @@ describe("TenantLegalPagesForm", () => {
         />
       );
 
-      expect(termsInput().disabled).toBe(true);
-      expect(privacyInput().disabled).toBe(true);
+      expect(termsInput().matches(":disabled")).toBe(true);
+      expect(privacyInput().matches(":disabled")).toBe(true);
       expect(submitButton().disabled).toBe(true);
       expect(
         screen.getByText(loadErrorMessage ?? pagesErrorMessage ?? "")

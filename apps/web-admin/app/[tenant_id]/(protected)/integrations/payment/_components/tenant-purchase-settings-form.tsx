@@ -1,10 +1,11 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldError,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import {
   Field,
   FieldContent,
@@ -14,8 +15,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { useActionState, useCallback, useId, useState } from "react";
-import type { ChangeEvent } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -24,217 +25,163 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
-import { isSurfaceAvailabilityValue } from "#lib/surface-availability";
+import { Message } from "#components/message";
 import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
-import { useTenantId } from "#lib/use-tenant-id";
 
-import type {
-  TenantPurchaseSettingsFieldErrors,
-  TenantPurchaseSettingsFormState,
-} from "../payment-types";
-
-const PURCHASE_AVAILABILITY_ITEMS = [
-  {
-    label: <ClientMessage message="admin.settings.purchase.options.all" />,
-    value: "all",
-  },
-  {
-    label: <ClientMessage message="admin.settings.purchase.options.web" />,
-    value: "web",
-  },
-  {
-    label: <ClientMessage message="admin.settings.purchase.options.app" />,
-    value: "app",
-  },
-];
-
-interface PurchaseSettingsFieldsProps {
-  disabled: boolean;
-  fieldErrors?: TenantPurchaseSettingsFieldErrors;
-  initialSettings: TenantPurchaseSettings;
-}
-
-/**
- * Seeded once per mount: the form keys these by the saved settings, so a save
- * that the API normalized remounts them on what it stored. The addresses are
- * held in state because React resets an uncontrolled field once the Action
- * settles, which would wipe the address a refused save is asking to fix.
- */
-const PurchaseSettingsFields = ({
-  disabled,
-  fieldErrors,
-  initialSettings,
-}: PurchaseSettingsFieldsProps) => {
-  const [purchaseAvailability, setPurchaseAvailability] = useState(
-    () => initialSettings.purchaseAvailability
-  );
-  const [appStoreUrl, setAppStoreUrl] = useState(
-    () => initialSettings.appStoreUrl
-  );
-  const [googlePlayUrl, setGooglePlayUrl] = useState(
-    () => initialSettings.googlePlayUrl
-  );
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
-
-  const handleAppStoreUrlChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setAppStoreUrl(event.target.value);
-    },
-    []
-  );
-
-  const handleGooglePlayUrlChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setGooglePlayUrl(event.target.value);
-    },
-    []
-  );
-
-  const handleValueChange = useCallback((next: string) => {
-    if (isSurfaceAvailabilityValue(next)) {
-      setPurchaseAvailability(next);
-    }
-  }, []);
-
-  return (
-    <>
-      <Field>
-        <FieldLabel htmlFor={selectId}>
-          <ClientMessage message="admin.settings.purchase.availability" />
-        </FieldLabel>
-        <FieldContent>
-          <Select
-            disabled={disabled}
-            id={selectId}
-            items={PURCHASE_AVAILABILITY_ITEMS}
-            onValueChange={handleValueChange}
-            value={purchaseAvailability}
-          />
-          <input
-            name="purchase_availability"
-            type="hidden"
-            value={purchaseAvailability}
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.settings.purchase.availability_description" />
-          </FieldDescription>
-          {fieldErrors?.purchaseAvailability ? (
-            <FormMessage variant="destructive">
-              {fieldErrors.purchaseAvailability}
-            </FormMessage>
-          ) : null}
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.settings.purchase.app_store_url" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            disabled={disabled}
-            inputMode="url"
-            name="app_store_url"
-            onChange={handleAppStoreUrlChange}
-            placeholder="https://apps.apple.com/app/id…"
-            type="text"
-            value={appStoreUrl}
-          />
-          {fieldErrors?.appStoreUrl ? (
-            <FormMessage variant="destructive">
-              {fieldErrors.appStoreUrl}
-            </FormMessage>
-          ) : null}
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel>
-          <ClientMessage message="admin.settings.purchase.google_play_url" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            disabled={disabled}
-            inputMode="url"
-            name="google_play_url"
-            onChange={handleGooglePlayUrlChange}
-            placeholder="https://play.google.com/store/apps/details?id=…"
-            type="text"
-            value={googlePlayUrl}
-          />
-          <FieldDescription>
-            <ClientMessage message="admin.settings.purchase.store_url_description" />
-          </FieldDescription>
-          {fieldErrors?.googlePlayUrl ? (
-            <FormMessage variant="destructive">
-              {fieldErrors.googlePlayUrl}
-            </FormMessage>
-          ) : null}
-        </FieldContent>
-      </Field>
-    </>
-  );
-};
+import { updateTenantPurchaseSettingsAction } from "../_lib/actions";
 
 interface TenantPurchaseSettingsFormProps {
-  action: (
-    prevState: TenantPurchaseSettingsFormState,
-    formData: FormData
-  ) => Promise<TenantPurchaseSettingsFormState>;
   canEdit: boolean;
   /** The saved settings, absent when the read failed. */
   initialSettings?: TenantPurchaseSettings;
   loadErrorMessage?: string;
+  tenantId: string;
 }
 
 export const TenantPurchaseSettingsForm = ({
-  action,
   canEdit,
   initialSettings,
   loadErrorMessage,
+  tenantId,
 }: TenantPurchaseSettingsFormProps) => {
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const settings = state?.ok ? state.settings : initialSettings;
-
   // A failed read leaves nothing to seed the fields with, and a save from that
   // state would write whatever they happened to hold over the stored default.
-  const fieldsDisabled = !canEdit || settings === undefined || isPending;
+  const fieldsDisabled = !canEdit || initialSettings === undefined;
 
   return (
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <ClientMessage message="admin.settings.purchase.title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+              <Message message="admin.settings.purchase.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <ClientMessage message="admin.settings.purchase.description" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.settings.purchase.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form action={formAction} className="grid gap-5 sm:max-w-3xl">
+      <ActionForm
+        action={updateTenantPurchaseSettingsAction}
+        className="grid gap-5 sm:max-w-3xl"
+      >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        {settings === undefined ? null : (
-          <PurchaseSettingsFields
+        {initialSettings === undefined ? null : (
+          // A save refreshes the settings; keying on them remounts the fields
+          // on what the API stored instead of changing a mounted default.
+          <ActionFormFieldset
+            className="grid gap-5"
             disabled={fieldsDisabled}
-            fieldErrors={state?.ok ? undefined : state?.fieldErrors}
             key={[
-              settings.purchaseAvailability,
-              settings.appStoreUrl,
-              settings.googlePlayUrl,
+              initialSettings.purchaseAvailability,
+              initialSettings.appStoreUrl,
+              initialSettings.googlePlayUrl,
             ].join("\n")}
-            initialSettings={settings}
-          />
+          >
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.settings.purchase.availability" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  defaultValue={initialSettings.purchaseAvailability}
+                  items={[
+                    {
+                      label: (
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-24" />}
+                        >
+                          <Message message="admin.settings.purchase.options.all" />
+                        </Suspense>
+                      ),
+                      value: "all",
+                    },
+                    {
+                      label: (
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-20" />}
+                        >
+                          <Message message="admin.settings.purchase.options.web" />
+                        </Suspense>
+                      ),
+                      value: "web",
+                    },
+                    {
+                      label: (
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-20" />}
+                        >
+                          <Message message="admin.settings.purchase.options.app" />
+                        </Suspense>
+                      ),
+                      value: "app",
+                    },
+                  ]}
+                  name="purchase_availability"
+                />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.settings.purchase.availability_description" />
+                  </Suspense>
+                </FieldDescription>
+                <ActionFormFieldError name="purchaseAvailability" />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.settings.purchase.app_store_url" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.appStoreUrl}
+                  inputMode="url"
+                  name="app_store_url"
+                  placeholder="https://apps.apple.com/app/id…"
+                  type="text"
+                />
+                <ActionFormFieldError name="appStoreUrl" />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.settings.purchase.google_play_url" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.googlePlayUrl}
+                  inputMode="url"
+                  name="google_play_url"
+                  placeholder="https://play.google.com/store/apps/details?id=…"
+                  type="text"
+                />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.settings.purchase.store_url_description" />
+                  </Suspense>
+                </FieldDescription>
+                <ActionFormFieldError name="googlePlayUrl" />
+              </FieldContent>
+            </Field>
+          </ActionFormFieldset>
         )}
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
-            <ClientMessage message="admin.settings.admin_only" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.admin_only" />
+            </Suspense>
           </FormMessage>
         )}
 
@@ -242,23 +189,19 @@ export const TenantPurchaseSettingsForm = ({
           <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
         ) : null}
 
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
-
         <div className="flex flex-wrap gap-3">
-          <Button disabled={fieldsDisabled} type="submit">
-            <ActionFormIdle>
-              <ClientMessage message="admin.settings.purchase.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.settings.saving" />
-            </ActionFormPending>
-          </Button>
+          <ActionFormSubmit disabled={fieldsDisabled}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <ActionFormIdle>
+                <Message message="admin.settings.purchase.submit" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Message message="admin.settings.saving" />
+              </ActionFormPending>
+            </Suspense>
+          </ActionFormSubmit>
         </div>
-      </form>
+      </ActionForm>
     </AdminSection>
   );
 };

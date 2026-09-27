@@ -94,12 +94,17 @@ export const ConfirmDialogCancel = ({ children }: { children: ReactNode }) => (
 export const ConfirmDialogAction = ({
   children,
   form,
+  name,
   onClick,
+  value,
   variant = "destructiveFilled",
 }: {
   children: ReactNode;
   form?: string;
+  /** Submitted with `value` when the control submits `form`. */
+  name?: string;
   onClick?: () => void;
+  value?: string;
   variant?: NonNullable<ButtonProps["variant"]>;
 }) => {
   const disabled = useFieldsetDisabled();
@@ -109,8 +114,10 @@ export const ConfirmDialogAction = ({
       className={cn(buttonVariants({ variant }))}
       disabled={disabled}
       form={form}
+      name={name}
       onClick={onClick}
       type={form ? "submit" : "button"}
+      value={value}
     >
       {children}
     </AlertDialog.Close>

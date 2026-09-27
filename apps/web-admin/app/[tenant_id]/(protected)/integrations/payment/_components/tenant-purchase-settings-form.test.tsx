@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -16,11 +20,26 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { TenantPurchaseSettingsFormState } from "../payment-types";
 import { TenantPurchaseSettingsForm } from "./tenant-purchase-settings-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { action } = vi.hoisted(() => ({
+  action: {
+    current: (): Promise<TenantPurchaseSettingsFormState> =>
+      Promise.resolve(null),
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  updateTenantPurchaseSettingsAction: () => action.current(),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const storedSettings = {
   appStoreUrl: "https://apps.apple.com/app/id123",
@@ -48,15 +67,16 @@ const posted = (name: string) =>
 
 afterEach(() => {
   cleanup();
+  action.current = () => Promise.resolve(null);
 });
 
 describe("TenantPurchaseSettingsForm", () => {
   it("opens on the stored default and store addresses", async () => {
     await renderCard(
       <TenantPurchaseSettingsForm
-        action={noopAction}
         canEdit
         initialSettings={storedSettings}
+        tenantId="TENANT001"
       />
     );
 
@@ -77,11 +97,10 @@ describe("TenantPurchaseSettingsForm", () => {
     expect(submitButton().disabled).toBe(false);
   });
 
-  // The address a refused save names has to stay in the field: React resets
-  // an uncontrolled field once the Action settles, which would leave the
-  // operator retyping it next to the message that says it was wrong.
+  // The address a refused save names has to stay in the field, or the
+  // operator would retype it next to the message that says it was wrong.
   it("keeps what was typed and names the refused address beside it", async () => {
-    const action = vi.fn((): Promise<TenantPurchaseSettingsFormState> =>
+    const refuse = vi.fn((): Promise<TenantPurchaseSettingsFormState> =>
       Promise.resolve({
         fieldErrors: {
           googlePlayUrl:
@@ -91,11 +110,12 @@ describe("TenantPurchaseSettingsForm", () => {
         ok: false,
       })
     );
+    action.current = refuse;
     await renderCard(
       <TenantPurchaseSettingsForm
-        action={action}
         canEdit
         initialSettings={storedSettings}
+        tenantId="TENANT001"
       />
     );
 
@@ -114,7 +134,7 @@ describe("TenantPurchaseSettingsForm", () => {
         )
       ).toBeDefined();
     });
-    expect(action).toHaveBeenCalledOnce();
+    expect(refuse).toHaveBeenCalledOnce();
     expect(
       screen.getByRole<HTMLInputElement>("textbox", {
         name: "Google Play address",
@@ -127,9 +147,9 @@ describe("TenantPurchaseSettingsForm", () => {
   it("keeps saving closed when the settings could not be read", async () => {
     await renderCard(
       <TenantPurchaseSettingsForm
-        action={noopAction}
         canEdit
         loadErrorMessage="Could not load where episodes are sold. Please try again later."
+        tenantId="TENANT001"
       />
     );
 
@@ -145,16 +165,18 @@ describe("TenantPurchaseSettingsForm", () => {
   it("leaves the settings read-only for an operator who is not an admin", async () => {
     await renderCard(
       <TenantPurchaseSettingsForm
-        action={noopAction}
         canEdit={false}
         initialSettings={storedSettings}
+        tenantId="TENANT001"
       />
     );
 
     expect(
-      screen.getByRole<HTMLInputElement>("textbox", {
-        name: "App Store address",
-      }).disabled
+      screen
+        .getByRole<HTMLInputElement>("textbox", {
+          name: "App Store address",
+        })
+        .matches(":disabled")
     ).toBe(true);
     expect(submitButton().disabled).toBe(true);
   });

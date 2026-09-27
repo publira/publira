@@ -1,8 +1,9 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -22,10 +23,10 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Image from "next/image";
-import { useActionState, useRef, useState } from "react";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -34,49 +35,29 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 import { tenantBrandingVariant } from "#lib/tenant-branding-image";
 import type { TenantBrandingImage } from "#lib/tenant-branding-image";
-import { useTenantId } from "#lib/use-tenant-id";
 
-import type { TenantIconActionState } from "../branding-types";
+import { updateTenantIconAction } from "../_lib/actions";
+
+const FORM_ID = "tenant-icon-form";
 
 interface TenantIconFormProps {
-  action: (
-    prevState: TenantIconActionState,
-    formData: FormData
-  ) => Promise<TenantIconActionState>;
-  initialIcon: TenantBrandingImage | null;
+  icon: TenantBrandingImage | null;
+  tenantId: string;
 }
 
-export const TenantIconForm = ({
-  action,
-  initialIcon,
+/**
+ * Uploads and deletes the tenant's icon. Both post to one Action, told apart by
+ * `intent`, and a save redraws the card from the stored icon.
+ */
+export const TenantIconForm = async ({
+  icon,
+  tenantId,
 }: TenantIconFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const formRef = useRef<HTMLFormElement>(null);
-  const deleteButtonRef = useRef<HTMLButtonElement>(null);
-
-  // What the card shows is the last icon the server confirmed, so uploading is
-  // what replaces it. Deriving it from `state` instead would put the pre-upload
-  // image back the moment a later attempt is rejected, because a failure
-  // carries no icon of its own.
-  const [icon, setIcon] = useState(initialIcon);
-  const [state, formAction, isPending] = useActionState(
-    async (
-      previousState: TenantIconActionState,
-      formData: FormData
-    ): Promise<TenantIconActionState> => {
-      const nextState = await action(previousState, formData);
-      if (nextState?.ok) {
-        setIcon(nextState.icon);
-      }
-      return nextState;
-    },
-    null
-  );
-
+  const t = await getMessages();
   const preview = tenantBrandingVariant(icon);
 
   return (
@@ -84,19 +65,30 @@ export const TenantIconForm = ({
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <ClientMessage message="admin.settings.icon.title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+              <Message message="admin.settings.icon.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <ClientMessage message="admin.settings.icon.description" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+              <Message message="admin.settings.icon.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form action={formAction} className="grid gap-5" ref={formRef}>
+
+      <ActionForm
+        action={updateTenantIconAction}
+        className="grid gap-5"
+        id={FORM_ID}
+      >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <Field>
           <FieldLabel>
-            <ClientMessage message="admin.settings.icon.current" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.settings.icon.current" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             {preview ? (
@@ -109,93 +101,100 @@ export const TenantIconForm = ({
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                <ClientMessage message="admin.settings.icon.unset" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.settings.icon.unset" />
+                </Suspense>
               </p>
             )}
           </FieldContent>
         </Field>
 
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.settings.icon.file" />
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              accept="image/jpeg,image/png,image/webp"
-              disabled={isPending}
-              name="icon"
-              type="file"
-            />
-            <FieldDescription>
-              <ClientMessage message="admin.settings.icon.file_description" />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-
-        {state ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
+        <ActionFormFieldset>
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.settings.icon.file" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                accept="image/jpeg,image/png,image/webp"
+                name="icon"
+                type="file"
+              />
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.settings.icon.file_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        </ActionFormFieldset>
 
         <div className="flex justify-end gap-2">
           {preview ? (
-            <ConfirmDialog>
-              <ConfirmDialogTrigger
-                render={
-                  <Button disabled={isPending} type="button" variant="outline">
-                    <ClientMessage message="admin.settings.delete" />
-                  </Button>
-                }
-              />
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
-                    <ClientMessage message="admin.settings.icon.delete_title" />
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
-                    <ClientMessage message="admin.settings.icon.delete_description" />
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>
-                    <ClientMessage message="admin.common.cancel" />
-                  </ConfirmDialogCancel>
-                  <ConfirmDialogAction
-                    onClick={() => {
-                      formRef.current?.requestSubmit(deleteButtonRef.current);
-                    }}
-                  >
-                    <ClientMessage message="admin.settings.delete_action" />
-                  </ConfirmDialogAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
-            </ConfirmDialog>
+            <ActionFormFieldset>
+              <ConfirmDialog>
+                <ConfirmDialogTrigger
+                  render={<Button type="button" variant="outline" />}
+                >
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="admin.settings.delete" />
+                  </Suspense>
+                </ConfirmDialogTrigger>
+                <ConfirmDialogContent>
+                  <ConfirmDialogHeader>
+                    <ConfirmDialogTitle>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-5 w-48" />}
+                      >
+                        <Message message="admin.settings.icon.delete_title" />
+                      </Suspense>
+                    </ConfirmDialogTitle>
+                    <ConfirmDialogDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-72" />}
+                      >
+                        <Message message="admin.settings.icon.delete_description" />
+                      </Suspense>
+                    </ConfirmDialogDescription>
+                  </ConfirmDialogHeader>
+                  <ConfirmDialogFooter>
+                    <ConfirmDialogCancel>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="admin.common.cancel" />
+                      </Suspense>
+                    </ConfirmDialogCancel>
+                    <ConfirmDialogAction
+                      form={FORM_ID}
+                      name="intent"
+                      value="delete"
+                    >
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-12" />}
+                      >
+                        <Message message="admin.settings.delete_action" />
+                      </Suspense>
+                    </ConfirmDialogAction>
+                  </ConfirmDialogFooter>
+                </ConfirmDialogContent>
+              </ConfirmDialog>
+            </ActionFormFieldset>
           ) : null}
-          <button
-            className="hidden"
-            name="intent"
-            ref={deleteButtonRef}
-            type="submit"
-            value="delete"
-          >
-            <ClientMessage message="admin.settings.icon.delete_submit" />
-          </button>
-          <Button
-            disabled={isPending}
-            name="intent"
-            type="submit"
-            value="upload"
-          >
-            <ActionFormIdle>
-              <ClientMessage message="admin.settings.icon.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.settings.saving" />
-            </ActionFormPending>
-          </Button>
+          <ActionFormSubmit name="intent" value="upload">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <ActionFormIdle>
+                <Message message="admin.settings.icon.submit" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Message message="admin.settings.saving" />
+              </ActionFormPending>
+            </Suspense>
+          </ActionFormSubmit>
         </div>
-      </form>
+      </ActionForm>
     </AdminSection>
   );
 };

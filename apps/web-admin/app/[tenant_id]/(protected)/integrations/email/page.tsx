@@ -24,10 +24,6 @@ import { getTenantId } from "#lib/tenant-id";
 
 import { IntegrationsTabNav } from "../_components/integrations-tab-nav";
 import { TenantEmailSettingsForm } from "./_components/tenant-email-settings-form";
-import {
-  sendTenantSmtpTestEmailAction,
-  updateTenantEmailSettingsAction,
-} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -68,11 +64,12 @@ const SettingsEmailForm = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const [emailSettingsResult, currentUserResult, tenantResult] =
+  const [emailSettingsResult, currentUserResult, tenantResult, t] =
     await Promise.all([
       getTenantEmailSettings(tenantId, locale),
       getAdminCurrentUser(tenantId),
       getTenantForSession(tenantId),
+      getMessagesFor(locale),
     ]);
 
   await redirectToLoginIfSessionRejected(
@@ -86,15 +83,17 @@ const SettingsEmailForm = async () => {
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
+      fromNamePlaceholder={
+        (tenantResult.ok ? tenantResult.tenant.name : "") ||
+        t("admin.settings.email.from_name_fallback")
+      }
       initialSettings={
         emailSettingsResult.ok ? emailSettingsResult.settings : emptySettings
       }
       loadErrorMessage={
         emailSettingsResult.ok ? undefined : emailSettingsResult.message
       }
-      saveAction={updateTenantEmailSettingsAction}
-      tenantName={tenantResult.ok ? tenantResult.tenant.name : ""}
-      testAction={sendTenantSmtpTestEmailAction}
+      tenantId={tenantId}
     />
   );
 };

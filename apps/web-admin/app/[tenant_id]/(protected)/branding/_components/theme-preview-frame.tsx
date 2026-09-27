@@ -5,7 +5,7 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { createContext, use } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
-/** The colors currently in `ThemeSettingsForm`, saved or not. */
+/** The colors currently in the theme settings form, saved or not. */
 export const ThemePreviewThemeContext = createContext<TenantTheme | null>(null);
 
 /**
@@ -24,7 +24,7 @@ export const ThemePreviewThemeContext = createContext<TenantTheme | null>(null);
 export const ThemePreviewFrame = ({ children }: { children: ReactNode }) => {
   const theme = use(ThemePreviewThemeContext);
   if (theme === null) {
-    throw new Error("ThemeSettingsForm is required.");
+    throw new Error("ThemeSettingsScope is required.");
   }
 
   // `CSSProperties` has no index signature, which is what React's own types

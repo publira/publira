@@ -27,7 +27,6 @@ import { getTenantId } from "#lib/tenant-id";
 
 import { EmailChangeForm } from "../_components/email-change-form";
 import { MfaSettingsCard } from "../_components/mfa-settings-card";
-import { requestEmailChangeAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -56,6 +55,12 @@ const EmailChangeFormSkeleton = () => (
     <Skeleton className="ml-auto h-10 w-36" />
   </div>
 );
+
+const EmailChangeSection = async () => {
+  const tenantId = await getTenantId();
+
+  return <EmailChangeForm tenantId={tenantId} />;
+};
 
 const MfaSection = async () => {
   const tenantId = await getTenantId();
@@ -103,7 +108,7 @@ const AccountSettingsPage = () => (
     <AdminPageContent>
       <div className="grid gap-6">
         <Suspense fallback={<EmailChangeFormSkeleton />}>
-          <EmailChangeForm action={requestEmailChangeAction} />
+          <EmailChangeSection />
         </Suspense>
         <SectionErrorBoundary
           title={

@@ -1,7 +1,6 @@
-"use client";
-
 import {
   ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
@@ -17,7 +16,6 @@ import {
   DialogPopup,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
   DialogViewport,
 } from "@publira/ui-components/dialog";
 import {
@@ -26,12 +24,11 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import type { ChangeEvent } from "react";
-import { useActionState, useCallback, useId, useState } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -40,522 +37,364 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  SECRET_UPDATE_MODE_REPLACE,
-  SECRET_UPDATE_MODE_UNCHANGED,
-  TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
-  TEST_EMAIL_RECIPIENT_TYPE_SELF,
-} from "#lib/email-settings-shared";
+import { Message } from "#components/message";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
-import { useTenantId } from "#lib/use-tenant-id";
 
-import type {
-  TenantEmailSettingsFormState,
-  TenantSmtpTestFormState,
-} from "../email-types";
+import {
+  sendTenantSmtpTestEmailAction,
+  updateTenantEmailSettingsAction,
+} from "../_lib/actions";
+import {
+  SmtpOverride,
+  SmtpOverrideCheckbox,
+  SmtpOverrideFieldset,
+  SmtpOverrideLabel,
+  SmtpPassword,
+  SmtpPasswordEditor,
+  SmtpPasswordLabel,
+  SmtpPasswordStored,
+  SmtpSettingLabel,
+  SmtpTest,
+  SmtpTestRecipient,
+  SmtpTestResult,
+  SmtpTestSendToSelf,
+  SmtpTestSubmit,
+  SmtpTestTrigger,
+} from "./smtp-settings-controls";
+
+/** The screen holds one settings form, which the test dialog's fields join. */
+const formId = "tenant-smtp-settings";
 
 interface TenantEmailSettingsFormProps {
+  canEdit: boolean;
+  /** The sender name used when none is set: the tenant's, or a generic one. */
+  fromNamePlaceholder: string;
   initialSettings: TenantSmtpSettings;
   loadErrorMessage?: string;
-  canEdit: boolean;
-  tenantName: string;
-  saveAction: (
-    prevState: TenantEmailSettingsFormState,
-    formData: FormData
-  ) => Promise<TenantEmailSettingsFormState>;
-  testAction: (
-    prevState: TenantSmtpTestFormState,
-    formData: FormData
-  ) => Promise<TenantSmtpTestFormState>;
+  tenantId: string;
 }
-
-interface PasswordFieldSectionProps {
-  fieldsInteractive: boolean;
-  hasStoredPassword: boolean;
-  isPasswordEditing: boolean;
-  onCancelPasswordEdit: () => void;
-  onStartPasswordEdit: () => void;
-}
-
-const PasswordFieldSection = ({
-  fieldsInteractive,
-  hasStoredPassword,
-  isPasswordEditing,
-  onCancelPasswordEdit,
-  onStartPasswordEdit,
-}: PasswordFieldSectionProps) => {
-  const t = useClientMessages();
-
-  return (
-    <Field>
-      <FieldLabel required={fieldsInteractive && isPasswordEditing}>
-        {t("admin.settings.email.password")}
-      </FieldLabel>
-      <FieldContent>
-        {hasStoredPassword && !isPasswordEditing ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              defaultValue="****"
-              disabled
-              key="password-masked"
-              readOnly
-              type="password"
-            />
-            <Button
-              disabled={!fieldsInteractive}
-              onClick={onStartPasswordEdit}
-              type="button"
-              variant="outline"
-            >
-              {t("admin.settings.email.password_change")}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              autoComplete="new-password"
-              disabled={!fieldsInteractive}
-              key="password-editable"
-              name="password"
-              required={fieldsInteractive && isPasswordEditing}
-              type="password"
-            />
-            {hasStoredPassword ? (
-              <Button
-                disabled={!fieldsInteractive}
-                onClick={onCancelPasswordEdit}
-                type="button"
-                variant="outline"
-              >
-                {t("admin.settings.email.password_change_cancel")}
-              </Button>
-            ) : null}
-          </div>
-        )}
-
-        <input
-          name="password_update_mode"
-          type="hidden"
-          value={
-            hasStoredPassword && !isPasswordEditing
-              ? String(SECRET_UPDATE_MODE_UNCHANGED)
-              : String(SECRET_UPDATE_MODE_REPLACE)
-          }
-        />
-      </FieldContent>
-    </Field>
-  );
-};
-
-interface SmtpTestDialogProps {
-  dialogOpen: boolean;
-  formId: string;
-  isTesting: boolean;
-  sendToSelf: boolean;
-  onDialogOpenChange: (open: boolean) => void;
-  onSendToSelfChange: (checked: boolean) => void;
-  testFormAction: (formData: FormData) => void;
-  testState: TenantSmtpTestFormState;
-  canTest: boolean;
-}
-
-const SmtpTestDialog = ({
-  dialogOpen,
-  formId,
-  isTesting,
-  sendToSelf,
-  onDialogOpenChange,
-  onSendToSelfChange,
-  testFormAction,
-  testState,
-  canTest,
-}: SmtpTestDialogProps) => {
-  const handleSendToSelfChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      onSendToSelfChange(event.target.checked);
-    },
-    [onSendToSelfChange]
-  );
-
-  return (
-    <Dialog onOpenChange={onDialogOpenChange} open={dialogOpen}>
-      <DialogTrigger
-        render={
-          <Button disabled={!canTest} type="button" variant="outline">
-            <ClientMessage message="admin.settings.email.test" />
-          </Button>
-        }
-      />
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <DialogPopup>
-            <DialogHeader>
-              <DialogTitle>
-                <ClientMessage message="admin.settings.email.test_title" />
-              </DialogTitle>
-              <DialogDescription>
-                <ClientMessage message="admin.settings.email.test_description" />
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4 grid gap-4">
-              <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                <input
-                  checked={sendToSelf}
-                  disabled={isTesting}
-                  onChange={handleSendToSelfChange}
-                  type="checkbox"
-                />
-                <ClientMessage message="admin.settings.email.test_send_to_self" />
-              </label>
-              <input
-                form={formId}
-                name="recipient_type"
-                type="hidden"
-                value={
-                  sendToSelf
-                    ? String(TEST_EMAIL_RECIPIENT_TYPE_SELF)
-                    : String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
-                }
-              />
-
-              {sendToSelf ? null : (
-                <Field>
-                  <FieldLabel required>
-                    <ClientMessage message="admin.settings.email.test_recipient" />
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      disabled={isTesting}
-                      form={formId}
-                      name="recipient_email"
-                      placeholder="recipient@example.com"
-                      required={!sendToSelf}
-                      type="email"
-                    />
-                  </FieldContent>
-                </Field>
-              )}
-
-              {testState ? (
-                <FormMessage variant={testState.ok ? "success" : "destructive"}>
-                  {testState.message}
-                </FormMessage>
-              ) : null}
-            </div>
-
-            <DialogFooter>
-              <DialogClose
-                render={
-                  <Button type="button" variant="outline">
-                    <ClientMessage message="admin.settings.email.close" />
-                  </Button>
-                }
-              />
-              <ActionFormSubmit
-                form={formId}
-                formAction={testFormAction}
-                variant="outline"
-              >
-                <ActionFormIdle>
-                  <ClientMessage message="admin.settings.email.test_submit" />
-                </ActionFormIdle>
-                <ActionFormPending>
-                  <ClientMessage message="admin.settings.email.test_sending" />
-                </ActionFormPending>
-              </ActionFormSubmit>
-            </DialogFooter>
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
-  );
-};
 
 export const TenantEmailSettingsForm = ({
+  canEdit,
+  fromNamePlaceholder,
   initialSettings,
   loadErrorMessage,
-  canEdit,
-  tenantName,
-  saveAction,
-  testAction,
-}: TenantEmailSettingsFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const formId = useId();
-  const smtpOverrideId = useId();
-  // Seeded once per mount; saving is what replaces it, with the settings the
-  // server confirmed. A stored password is shown masked until the operator asks
-  // to change it, and saving puts it back behind that mask.
-  const [smtpOverrideEnabled, setSmtpOverrideEnabled] = useState(
-    initialSettings.smtpOverrideEnabled
-  );
-  const [hasStoredPassword, setHasStoredPassword] = useState(
-    initialSettings.hasPassword
-  );
-  const [isPasswordEditing, setIsPasswordEditing] = useState(
-    !initialSettings.hasPassword
-  );
-  const [sendToSelf, setSendToSelf] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  tenantId,
+}: TenantEmailSettingsFormProps) => (
+  <AdminSection>
+    <AdminSectionHeader>
+      <AdminSectionHeading>
+        <AdminSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+            <Message message="admin.settings.email.title" />
+          </Suspense>
+        </AdminSectionTitle>
+        <AdminSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.settings.email.description" />
+          </Suspense>
+        </AdminSectionDescription>
+      </AdminSectionHeading>
+    </AdminSectionHeader>
+    {/* An `ActionForm` resets the fields only after its own save succeeds,
+        so a test run from the dialog leaves what the operator typed. */}
+    <ActionForm
+      action={updateTenantEmailSettingsAction}
+      className="grid gap-5 sm:max-w-3xl"
+      id={formId}
+    >
+      <input name="tenant_id" type="hidden" value={tenantId} />
 
-  const saveSettings = async (
-    previousState: TenantEmailSettingsFormState,
-    formData: FormData
-  ): Promise<TenantEmailSettingsFormState> => {
-    const nextState = await saveAction(previousState, formData);
-    if (nextState?.ok) {
-      setSmtpOverrideEnabled(nextState.settings.smtpOverrideEnabled);
-      setHasStoredPassword(nextState.settings.hasPassword);
-      setIsPasswordEditing(!nextState.settings.hasPassword);
-    }
-    return nextState;
-  };
-  const [testState, testFormAction, isTesting] = useActionState(
-    testAction,
-    null
-  );
-
-  const fieldsInteractive = canEdit && smtpOverrideEnabled;
-
-  const handleOverrideChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setSmtpOverrideEnabled(event.target.checked);
-    },
-    []
-  );
-
-  const handleStartPasswordEdit = useCallback(() => {
-    setIsPasswordEditing(true);
-  }, []);
-
-  const handleCancelPasswordEdit = useCallback(() => {
-    setIsPasswordEditing(false);
-  }, []);
-
-  return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
-            <ClientMessage message="admin.settings.email.title" />
-          </AdminSectionTitle>
-          <AdminSectionDescription>
-            <ClientMessage message="admin.settings.email.description" />
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
-      {/* An `ActionForm` resets the fields only after its own save succeeds,
-          so a test run from the dialog leaves what the operator typed. */}
-      <ActionForm
-        action={saveSettings}
-        className="grid gap-5 sm:max-w-3xl"
-        id={formId}
+      {/* A save refreshes the settings; keying on them remounts the fields
+          on what the API stored instead of changing a mounted default. */}
+      <SmtpOverride
+        canEdit={canEdit}
+        initialEnabled={initialSettings.smtpOverrideEnabled}
+        key={JSON.stringify(initialSettings)}
       >
-        {({ isPending: isSaving, state: saveState }) => (
-          <>
-            <input name="tenant_id" type="hidden" value={tenantId} />
+        <ActionFormFieldset className="grid gap-5">
+          <Field>
+            <SmtpOverrideLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="admin.settings.email.override" />
+              </Suspense>
+            </SmtpOverrideLabel>
+            <FieldContent>
+              <SmtpOverrideCheckbox>
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <Message message="admin.settings.email.override_checkbox" />
+                </Suspense>
+              </SmtpOverrideCheckbox>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.settings.email.override_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
 
-            <Fieldset className="grid gap-5" disabled={isSaving}>
+          <SmtpOverrideFieldset className="grid gap-5">
+            <Field>
+              <SmtpSettingLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.settings.email.host" />
+                </Suspense>
+              </SmtpSettingLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.host}
+                  name="host"
+                  placeholder="smtp.example.com"
+                  required
+                  type="text"
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <SmtpSettingLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.settings.email.port" />
+                </Suspense>
+              </SmtpSettingLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={String(initialSettings.port || 587)}
+                  max={65_535}
+                  min={1}
+                  name="port"
+                  required
+                  type="number"
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <SmtpSettingLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="admin.settings.email.username" />
+                </Suspense>
+              </SmtpSettingLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.username}
+                  name="username"
+                  required
+                  type="text"
+                />
+              </FieldContent>
+            </Field>
+
+            <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
               <Field>
-                <FieldLabel htmlFor={smtpOverrideId}>
-                  <ClientMessage message="admin.settings.email.override" />
-                </FieldLabel>
+                <SmtpPasswordLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="admin.settings.email.password" />
+                  </Suspense>
+                </SmtpPasswordLabel>
                 <FieldContent>
-                  <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                    <input
-                      checked={smtpOverrideEnabled}
-                      disabled={!canEdit}
-                      id={smtpOverrideId}
-                      name="smtp_override_enabled"
-                      onChange={handleOverrideChange}
-                      type="checkbox"
-                    />
-                    <ClientMessage message="admin.settings.email.override_checkbox" />
-                  </label>
-                  <FieldDescription>
-                    <ClientMessage message="admin.settings.email.override_description" />
-                  </FieldDescription>
+                  <SmtpPasswordStored>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                      <Message message="admin.settings.email.password_change" />
+                    </Suspense>
+                  </SmtpPasswordStored>
+                  <SmtpPasswordEditor>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      <Message message="admin.settings.email.password_change_cancel" />
+                    </Suspense>
+                  </SmtpPasswordEditor>
                 </FieldContent>
               </Field>
+            </SmtpPassword>
 
-              <Field>
-                <FieldLabel required={fieldsInteractive}>
-                  <ClientMessage message="admin.settings.email.host" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={initialSettings.host}
-                    disabled={!fieldsInteractive}
-                    name="host"
-                    placeholder="smtp.example.com"
-                    required={fieldsInteractive}
-                    type="text"
-                  />
-                </FieldContent>
-              </Field>
+            <Field>
+              <SmtpSettingLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.settings.email.encryption" />
+                </Suspense>
+              </SmtpSettingLabel>
+              <FieldContent>
+                <Select
+                  defaultValue={initialSettings.encryption || "starttls"}
+                  items={[
+                    { label: "TLS", value: "tls" },
+                    { label: "STARTTLS", value: "starttls" },
+                    {
+                      label: (
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-12" />}
+                        >
+                          <Message message="admin.settings.email.encryption_none" />
+                        </Suspense>
+                      ),
+                      value: "none",
+                    },
+                  ]}
+                  name="encryption"
+                  required
+                />
+              </FieldContent>
+            </Field>
 
-              <Field>
-                <FieldLabel required={fieldsInteractive}>
-                  <ClientMessage message="admin.settings.email.port" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={String(initialSettings.port || 587)}
-                    disabled={!fieldsInteractive}
-                    max={65_535}
-                    min={1}
-                    name="port"
-                    required={fieldsInteractive}
-                    type="number"
-                  />
-                </FieldContent>
-              </Field>
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.settings.email.from_name" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.fromName}
+                  name="from_name"
+                  placeholder={fromNamePlaceholder}
+                  type="text"
+                />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.settings.email.from_name_description" />
+                  </Suspense>
+                </FieldDescription>
+              </FieldContent>
+            </Field>
 
-              <Field>
-                <FieldLabel required={fieldsInteractive}>
-                  <ClientMessage message="admin.settings.email.username" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={initialSettings.username}
-                    disabled={!fieldsInteractive}
-                    name="username"
-                    required={fieldsInteractive}
-                    type="text"
-                  />
-                </FieldContent>
-              </Field>
+            <Field>
+              <SmtpSettingLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+                  <Message message="admin.settings.email.from_address" />
+                </Suspense>
+              </SmtpSettingLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.fromAddress}
+                  name="from_address"
+                  placeholder="noreply@example.com"
+                  required
+                  type="email"
+                />
+              </FieldContent>
+            </Field>
 
-              <PasswordFieldSection
-                fieldsInteractive={fieldsInteractive}
-                hasStoredPassword={hasStoredPassword}
-                isPasswordEditing={isPasswordEditing}
-                onCancelPasswordEdit={handleCancelPasswordEdit}
-                onStartPasswordEdit={handleStartPasswordEdit}
-              />
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                  <Message message="admin.settings.email.reply_to" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSettings.replyTo}
+                  name="reply_to"
+                  placeholder="support@example.com"
+                  type="email"
+                />
+              </FieldContent>
+            </Field>
+          </SmtpOverrideFieldset>
+        </ActionFormFieldset>
 
-              <Field>
-                <FieldLabel required={fieldsInteractive}>
-                  <ClientMessage message="admin.settings.email.encryption" />
-                </FieldLabel>
-                <FieldContent>
-                  <Select
-                    defaultValue={initialSettings.encryption || "starttls"}
-                    disabled={!fieldsInteractive}
-                    items={[
-                      { label: "TLS", value: "tls" },
-                      { label: "STARTTLS", value: "starttls" },
-                      {
-                        label: t("admin.settings.email.encryption_none"),
-                        value: "none",
-                      },
-                    ]}
-                    name="encryption"
-                    required={fieldsInteractive}
-                  />
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel>
-                  <ClientMessage message="admin.settings.email.from_name" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={initialSettings.fromName}
-                    disabled={!fieldsInteractive}
-                    name="from_name"
-                    placeholder={
-                      tenantName || t("admin.settings.email.from_name_fallback")
-                    }
-                    type="text"
-                  />
-                  <FieldDescription>
-                    <ClientMessage message="admin.settings.email.from_name_description" />
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel required={fieldsInteractive}>
-                  <ClientMessage message="admin.settings.email.from_address" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={initialSettings.fromAddress}
-                    disabled={!fieldsInteractive}
-                    name="from_address"
-                    placeholder="noreply@example.com"
-                    required={fieldsInteractive}
-                    type="email"
-                  />
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel>
-                  <ClientMessage message="admin.settings.email.reply_to" />
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    defaultValue={initialSettings.replyTo}
-                    disabled={!fieldsInteractive}
-                    name="reply_to"
-                    placeholder="support@example.com"
-                    type="email"
-                  />
-                </FieldContent>
-              </Field>
-            </Fieldset>
-
-            {canEdit ? null : (
-              <FormMessage variant="destructive">
-                <ClientMessage message="admin.settings.admin_only" />
-              </FormMessage>
-            )}
-
-            {loadErrorMessage ? (
-              <FormMessage variant="destructive">
-                {loadErrorMessage}
-              </FormMessage>
-            ) : null}
-
-            {saveState ? (
-              <FormMessage variant={saveState.ok ? "success" : "destructive"}>
-                {saveState.message}
-              </FormMessage>
-            ) : null}
-
-            <div className="flex flex-wrap gap-3">
-              {/* A test sends the fields too, which a save in flight has
-                  closed and so left out of the form. */}
-              <SmtpTestDialog
-                canTest={fieldsInteractive && !isSaving}
-                dialogOpen={dialogOpen}
-                formId={formId}
-                isTesting={isTesting}
-                onDialogOpenChange={setDialogOpen}
-                onSendToSelfChange={setSendToSelf}
-                sendToSelf={sendToSelf}
-                testFormAction={testFormAction}
-                testState={testState}
-              />
-
-              <ActionFormSubmit disabled={!canEdit}>
-                <ActionFormIdle>
-                  <ClientMessage message="admin.settings.save" />
-                </ActionFormIdle>
-                <ActionFormPending>
-                  <ClientMessage message="admin.settings.saving" />
-                </ActionFormPending>
-              </ActionFormSubmit>
-            </div>
-          </>
+        {canEdit ? null : (
+          <FormMessage variant="destructive">
+            <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+              <Message message="admin.settings.admin_only" />
+            </Suspense>
+          </FormMessage>
         )}
-      </ActionForm>
-    </AdminSection>
-  );
-};
+
+        {loadErrorMessage ? (
+          <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <Dialog>
+            <SmtpTestTrigger>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.settings.email.test" />
+              </Suspense>
+            </SmtpTestTrigger>
+            <DialogPortal>
+              <DialogBackdrop />
+              <DialogViewport>
+                <DialogPopup>
+                  <SmtpTest
+                    action={sendTenantSmtpTestEmailAction}
+                    form={formId}
+                  >
+                    <DialogHeader>
+                      <DialogTitle>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-5 w-48" />}
+                        >
+                          <Message message="admin.settings.email.test_title" />
+                        </Suspense>
+                      </DialogTitle>
+                      <DialogDescription>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-72" />}
+                        >
+                          <Message message="admin.settings.email.test_description" />
+                        </Suspense>
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4 grid gap-4">
+                      <SmtpTestSendToSelf>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-32" />}
+                        >
+                          <Message message="admin.settings.email.test_send_to_self" />
+                        </Suspense>
+                      </SmtpTestSendToSelf>
+                      <SmtpTestRecipient>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-40" />}
+                        >
+                          <Message message="admin.settings.email.test_recipient" />
+                        </Suspense>
+                      </SmtpTestRecipient>
+                      <SmtpTestResult />
+                    </div>
+
+                    <DialogFooter>
+                      <DialogClose
+                        render={<Button type="button" variant="outline" />}
+                      >
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-12" />}
+                        >
+                          <Message message="admin.settings.email.close" />
+                        </Suspense>
+                      </DialogClose>
+                      <SmtpTestSubmit>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-20" />}
+                        >
+                          <ActionFormIdle>
+                            <Message message="admin.settings.email.test_submit" />
+                          </ActionFormIdle>
+                          <ActionFormPending>
+                            <Message message="admin.settings.email.test_sending" />
+                          </ActionFormPending>
+                        </Suspense>
+                      </SmtpTestSubmit>
+                    </DialogFooter>
+                  </SmtpTest>
+                </DialogPopup>
+              </DialogViewport>
+            </DialogPortal>
+          </Dialog>
+
+          <ActionFormSubmit disabled={!canEdit}>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <ActionFormIdle>
+                <Message message="admin.settings.save" />
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Message message="admin.settings.saving" />
+              </ActionFormPending>
+            </Suspense>
+          </ActionFormSubmit>
+        </div>
+      </SmtpOverride>
+    </ActionForm>
+  </AdminSection>
+);

@@ -27,13 +27,7 @@ import { getTenantThemeSettings } from "#lib/theme-settings";
 
 import { TenantIconForm } from "./_components/tenant-icon-form";
 import { TenantLogoForm } from "./_components/tenant-logo-form";
-import { ThemePreview } from "./_components/theme-preview";
 import { ThemeSettingsForm } from "./_components/theme-settings-form";
-import {
-  updateTenantIconAction,
-  updateTenantLogoAction,
-  updateTenantThemeSettingsAction,
-} from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -90,19 +84,9 @@ const BrandingForms = async () => {
 
   return (
     <>
-      <TenantLogoForm
-        action={updateTenantLogoAction}
-        initialLogo={themeResult.logo}
-      />
-      <TenantIconForm
-        action={updateTenantIconAction}
-        initialIcon={themeResult.icon}
-      />
-      <ThemeSettingsForm
-        action={updateTenantThemeSettingsAction}
-        initialTheme={themeResult.theme}
-        preview={<ThemePreview />}
-      />
+      <TenantLogoForm logo={themeResult.logo} tenantId={tenantId} />
+      <TenantIconForm icon={themeResult.icon} tenantId={tenantId} />
+      <ThemeSettingsForm initialTheme={themeResult.theme} tenantId={tenantId} />
     </>
   );
 };

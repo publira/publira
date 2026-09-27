@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -20,11 +24,33 @@ import type {
 } from "../email-types";
 import { TenantEmailSettingsForm } from "./tenant-email-settings-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { actions } = vi.hoisted(() => ({
+  actions: {
+    save: (): Promise<TenantEmailSettingsFormState> => Promise.resolve(null),
+    test: (
+      _previousState: TenantSmtpTestFormState,
+      _formData: FormData
+    ): Promise<TenantSmtpTestFormState> => Promise.resolve(null),
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  sendTenantSmtpTestEmailAction: (
+    previousState: TenantSmtpTestFormState,
+    formData: FormData
+  ) => actions.test(previousState, formData),
+  updateTenantEmailSettingsAction: () => actions.save(),
+}));
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const storedSettings = (
   overrides: Partial<TenantSmtpSettings> = {}
@@ -48,8 +74,8 @@ const EnglishConsole = ({ children }: { children: ReactNode }) => (
 const renderForm = async (
   settings: TenantSmtpSettings,
   {
-    saveAction = noopAction,
-    testAction = noopAction,
+    saveAction = () => Promise.resolve(null),
+    testAction = () => Promise.resolve(null),
   }: {
     saveAction?: () => Promise<TenantEmailSettingsFormState>;
     testAction?: (
@@ -58,14 +84,15 @@ const renderForm = async (
     ) => Promise<TenantSmtpTestFormState>;
   } = {}
 ) => {
+  actions.save = saveAction;
+  actions.test = testAction;
   await act(() => {
     render(
       <TenantEmailSettingsForm
         canEdit
+        fromNamePlaceholder="Tenant"
         initialSettings={settings}
-        saveAction={saveAction}
-        tenantName="Tenant"
-        testAction={testAction}
+        tenantId="TENANT001"
       />,
       { wrapper: EnglishConsole }
     );

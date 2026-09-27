@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -11,25 +14,35 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
-
 import type { TenantCommentSettingsActionState } from "../settings-types";
 import { TenantCommentSettingsForm } from "./tenant-comment-settings-form";
 
-vi.mock("next/navigation", () => ({
-  useParams: () => ({ tenant_id: "TENANT001" }),
+const { save } = vi.hoisted(() => ({
+  save: {
+    current: Promise.withResolvers<TenantCommentSettingsActionState>(),
+    formData: undefined as FormData | undefined,
+  },
 }));
 
-const noopAction = vi.fn();
+vi.mock("../_lib/actions", () => ({
+  updateTenantCommentSettingsAction: (_state: unknown, formData: FormData) => {
+    save.formData = formData;
+    return save.current.promise;
+  },
+}));
 
-const EnglishConsole = ({ children }: { children: ReactNode }) => (
-  <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-);
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 const renderCard = async (ui: ReactNode) => {
-  await act(() => {
-    render(ui, { wrapper: EnglishConsole });
-  });
+  render(ui);
   await screen.findByRole("button", { name: "Save the comment settings" });
 };
 
@@ -45,13 +58,17 @@ const thresholdInput = () =>
 
 afterEach(() => {
   cleanup();
+  // A submission left in flight would hold back the next test's transitions.
+  save.current.resolve(null);
+  save.current = Promise.withResolvers<TenantCommentSettingsActionState>();
+  save.formData = undefined;
 });
 
 describe("TenantCommentSettingsForm", () => {
   it("offers the three modes and marks the saved one", async () => {
     await renderCard(
       <TenantCommentSettingsForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialSettings={{
           autoHideReportThreshold: 3,
@@ -80,7 +97,7 @@ describe("TenantCommentSettingsForm", () => {
   it("explains what each mode means for readers", async () => {
     await renderCard(
       <TenantCommentSettingsForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialSettings={{
           autoHideReportThreshold: 3,
@@ -111,7 +128,7 @@ describe("TenantCommentSettingsForm", () => {
   it("shows the saved report threshold beside the mode", async () => {
     await renderCard(
       <TenantCommentSettingsForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         initialSettings={{
           autoHideReportThreshold: 5,
@@ -129,7 +146,7 @@ describe("TenantCommentSettingsForm", () => {
   it("stays read-only for someone who is not a tenant admin", async () => {
     await renderCard(
       <TenantCommentSettingsForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit={false}
         initialSettings={{
           autoHideReportThreshold: 3,
@@ -141,7 +158,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
-    expect(thresholdInput().disabled).toBe(true);
+    expect(thresholdInput().matches(":disabled")).toBe(true);
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(
@@ -153,7 +170,7 @@ describe("TenantCommentSettingsForm", () => {
   it("blocks editing and shows the reason when the fetch fails", async () => {
     await renderCard(
       <TenantCommentSettingsForm
-        action={noopAction}
+        tenantId="TENANT001"
         canEdit
         loadErrorMessage="Could not load the comment settings."
       />
@@ -162,7 +179,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
-    expect(thresholdInput().disabled).toBe(true);
+    expect(thresholdInput().matches(":disabled")).toBe(true);
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(/Could not load the comment settings./u)
@@ -176,13 +193,9 @@ describe("TenantCommentSettingsForm", () => {
   // made while it is in flight would sit in the controls under the success
   // message while the tenant is still on the previous settings.
   it("closes the controls while the save is in flight", async () => {
-    // Never resolved: the assertions are about the window the save is open in.
-    const save = Promise.withResolvers<TenantCommentSettingsActionState>();
-    const pendingAction = vi.fn(() => save.promise);
-
     await renderCard(
       <TenantCommentSettingsForm
-        action={pendingAction}
+        tenantId="TENANT001"
         canEdit
         initialSettings={{
           autoHideReportThreshold: 3,
@@ -195,7 +208,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBeNull();
     }
-    expect(thresholdInput().disabled).toBe(false);
+    expect(thresholdInput().matches(":disabled")).toBe(false);
 
     fireEvent.click(submitButton());
 
@@ -203,7 +216,69 @@ describe("TenantCommentSettingsForm", () => {
       for (const radio of screen.getAllByRole("radio")) {
         expect(radio.getAttribute("aria-disabled")).toBe("true");
       }
-      expect(thresholdInput().disabled).toBe(true);
+      expect(thresholdInput().matches(":disabled")).toBe(true);
     });
+  });
+
+  it("posts the picked mode and the typed threshold", async () => {
+    await renderCard(
+      <TenantCommentSettingsForm
+        tenantId="TENANT001"
+        canEdit
+        initialSettings={{
+          autoHideReportThreshold: 3,
+          commentMode: "disabled",
+        }}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("radio", { name: /Publish straight away/u })
+    );
+    fireEvent.change(thresholdInput(), { target: { value: "7" } });
+    fireEvent.click(submitButton());
+
+    await waitFor(() => {
+      expect(save.formData?.get("comment_mode")).toBe("immediate");
+    });
+    expect(save.formData?.get("auto_hide_report_threshold")).toBe("7");
+    expect(save.formData?.get("tenant_id")).toBe("TENANT001");
+  });
+
+  // A successful save resets the form, which must leave the picked mode posted.
+  it("posts the picked mode again after a save", async () => {
+    await renderCard(
+      <TenantCommentSettingsForm
+        tenantId="TENANT001"
+        canEdit
+        initialSettings={{
+          autoHideReportThreshold: 3,
+          commentMode: "disabled",
+        }}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("radio", { name: /Publish straight away/u })
+    );
+    fireEvent.click(submitButton());
+    save.current.resolve({
+      message: "The comment settings were saved.",
+      ok: true,
+    });
+    await screen.findByText("The comment settings were saved.");
+
+    save.current = Promise.withResolvers<TenantCommentSettingsActionState>();
+    save.formData = undefined;
+    fireEvent.click(submitButton());
+
+    await waitFor(() => {
+      expect(save.formData?.get("comment_mode")).toBe("immediate");
+    });
+    expect(
+      screen
+        .getByRole("radio", { name: /Publish straight away/u })
+        .getAttribute("aria-checked")
+    ).toBe("true");
   });
 });
