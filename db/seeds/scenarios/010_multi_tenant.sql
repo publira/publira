@@ -276,13 +276,25 @@ WITH tenant_scope AS (
     WHERE t.domain = 'other.localhost'
     LIMIT 1
 )
-INSERT INTO pages (id, tenant_id, slug, title)
+INSERT INTO pages (id, tenant_id, slug)
 SELECT
     '018f0f05-0001-7000-8000-000000000001'::uuid,
     ts.tenant_id,
-    '/boundary-page',
-    'Boundary Page 001'
+    '/boundary-page'
 FROM tenant_scope ts
-ON CONFLICT (tenant_id, slug) DO UPDATE
+ON CONFLICT (tenant_id, slug) DO NOTHING;
+
+INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+SELECT
+    '018f0f05-0002-7000-8000-000000000001'::uuid,
+    p.id,
+    p.tenant_id,
+    t.default_locale,
+    'Boundary Page 001'
+FROM pages p
+    JOIN tenants t ON t.id = p.tenant_id
+WHERE t.domain = 'other.localhost'
+  AND p.slug = '/boundary-page'
+ON CONFLICT (page_id, locale) DO UPDATE
 SET title = EXCLUDED.title,
     updated_at = NOW();

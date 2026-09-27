@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -44,6 +45,86 @@ func TestDBCreatePageDuplicateSlugReturnsAlreadyExists(t *testing.T) {
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM pages WHERE slug = $1", "/about"); count != 1 {
 		t.Fatalf("pages with slug /about = %d, want 1", count)
+	}
+}
+
+// A page is stored with its translation in the tenant's default locale, which
+// is what the console edits and the storefront serves.
+func TestDBCreatePageCreatesTheDefaultLocaleTranslation(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.pagesClient()
+
+	page, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreatePageRequest{
+		Tenant: tenant.tenantContext(),
+		Slug:   "/about",
+		Title:  "About",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage: %v", err)
+	}
+	if page.Msg.Page.Title != "About" {
+		t.Fatalf("title = %q, want About", page.Msg.Page.Title)
+	}
+	if count := env.countRows(t, `
+		SELECT count(*)
+		FROM page_translations pt
+			JOIN tenants t ON t.id = pt.tenant_id
+		WHERE pt.page_id = $1
+			AND pt.locale = t.default_locale
+			AND pt.title = 'About'
+	`, page.Msg.Page.Id); count != 1 {
+		t.Fatalf("default-locale translations titled About = %d, want 1", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM page_translations WHERE page_id = $1", page.Msg.Page.Id); count != 1 {
+		t.Fatalf("translations = %d, want 1", count)
+	}
+}
+
+// A tenant that moves to a default locale none of a page's translations is in
+// can still find and edit the page, through the translation it already had.
+func TestDBPageStaysEditableAfterADefaultLocaleChange(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.pagesClient()
+
+	page, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreatePageRequest{
+		Tenant: tenant.tenantContext(),
+		Slug:   "/about",
+		Title:  "About",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, tenant.Tenant.ID); err != nil {
+		t.Fatalf("change default locale: %v", err)
+	}
+
+	list, err := client.ListPages(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListPagesRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("ListPages: %v", err)
+	}
+	if len(list.Msg.Pages) != 1 || list.Msg.Pages[0].Id != page.Msg.Page.Id {
+		t.Fatalf("pages = %v, want the page created before the change", list.Msg.Pages)
+	}
+
+	updated, err := client.UpdatePage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdatePageRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: page.Msg.Page.Id,
+		Title:  "About Us",
+	}))
+	if err != nil {
+		t.Fatalf("UpdatePage: %v", err)
+	}
+	if updated.Msg.Page.Title != "About Us" {
+		t.Fatalf("title = %q, want About Us", updated.Msg.Page.Title)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM page_translations WHERE page_id = $1", page.Msg.Page.Id); count != 1 {
+		t.Fatalf("translations = %d, want the one the page already had", count)
 	}
 }
 

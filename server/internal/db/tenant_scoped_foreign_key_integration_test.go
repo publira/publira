@@ -208,16 +208,28 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args: []any{mustUUID(t), first.tenantID, second.episodeImageID},
 		},
 		{
-			name:       "page_versions.page_id",
-			constraint: "page_versions_tenant_page_id_fkey",
-			statement:  `INSERT INTO page_versions (id, tenant_id, page_id, version_number) VALUES ($1, $2, $3, 2)`,
+			name:       "page_translations.page_id",
+			constraint: "page_translations_tenant_page_id_fkey",
+			statement:  `INSERT INTO page_translations (id, tenant_id, page_id, locale, title) VALUES ($1, $2, $3, 'en', 'About')`,
 			args:       []any{mustUUID(t), first.tenantID, second.pageID},
 		},
 		{
-			name:       "pages.published_version_id",
-			constraint: "pages_tenant_published_version_id_fkey",
-			statement:  `UPDATE pages SET published_version_id = $2 WHERE id = $1`,
-			args:       []any{first.pageID, second.pageVersionID},
+			name:       "page_versions.page_id",
+			constraint: "page_versions_tenant_page_id_fkey",
+			statement:  `INSERT INTO page_versions (id, tenant_id, page_id, translation_id, version_number) VALUES ($1, $2, $3, $4, 2)`,
+			args:       []any{mustUUID(t), first.tenantID, second.pageID, second.pageTranslationID},
+		},
+		{
+			name:       "page_versions.translation_id",
+			constraint: "page_versions_tenant_page_translation_id_fkey",
+			statement:  `INSERT INTO page_versions (id, tenant_id, page_id, translation_id, version_number) VALUES ($1, $2, $3, $4, 2)`,
+			args:       []any{mustUUID(t), first.tenantID, first.pageID, second.pageTranslationID},
+		},
+		{
+			name:       "page_translations.published_version_id",
+			constraint: "page_translations_tenant_published_version_id_fkey",
+			statement:  `UPDATE page_translations SET published_version_id = $2 WHERE id = $1`,
+			args:       []any{first.pageTranslationID, second.pageVersionID},
 		},
 		{
 			name:       "notification_reads.notification_id",
@@ -270,7 +282,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	// has to be somebody else for the SET NULL to be observable at all.
 	staffID := mustInsertUser(t, ctx, db, seeded.tenantID, "FKNSTAFF001", "fkn-staff@example.com", "FKN Staff")
 	mustExec(t, ctx, db, `UPDATE access_tickets SET created_by_user_id = $2 WHERE id = $1`, seeded.accessTicketID, staffID)
-	mustExec(t, ctx, db, `UPDATE pages SET published_version_id = $2 WHERE id = $1`, seeded.pageID, seeded.pageVersionID)
+	mustExec(t, ctx, db, `UPDATE page_translations SET published_version_id = $2 WHERE id = $1`, seeded.pageTranslationID, seeded.pageVersionID)
 	mustExec(t, ctx, db, `UPDATE tenant_themes SET logo_image_id = $2, icon_image_id = $2 WHERE tenant_id = $1`,
 		seeded.tenantID, seeded.tenantImageID)
 	mustExec(t, ctx, db, `UPDATE labels SET eye_catch_image_id = $2 WHERE id = $1`, seeded.labelID, seeded.labelImageID)
@@ -323,11 +335,11 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			owner:    seeded.seriesID,
 		},
 		{
-			name:     "pages.published_version_id",
+			name:     "page_translations.published_version_id",
 			delete:   `DELETE FROM page_versions WHERE id = $1`,
 			deleted:  seeded.pageVersionID,
-			survivor: `SELECT tenant_id, published_version_id FROM pages WHERE id = $1`,
-			owner:    seeded.pageID,
+			survivor: `SELECT tenant_id, published_version_id FROM page_translations WHERE id = $1`,
+			owner:    seeded.pageTranslationID,
 		},
 		{
 			name:     "access_tickets.created_by_user_id",
@@ -360,23 +372,24 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 
 // One tenant holding a row of every kind the cases above pair across tenants.
 type foreignKeyTenant struct {
-	tenantID       uuid.UUID
-	userID         uuid.UUID
-	seriesID       uuid.UUID
-	seriesImageID  uuid.UUID
-	episodeImageID uuid.UUID
-	creatorID      uuid.UUID
-	creatorImageID uuid.UUID
-	labelID        uuid.UUID
-	labelImageID   uuid.UUID
-	genreID        uuid.UUID
-	genreImageID   uuid.UUID
-	tenantImageID  uuid.UUID
-	pageID         uuid.UUID
-	pageVersionID  uuid.UUID
-	notificationID uuid.UUID
-	announcementID uuid.UUID
-	accessTicketID uuid.UUID
+	tenantID          uuid.UUID
+	userID            uuid.UUID
+	seriesID          uuid.UUID
+	seriesImageID     uuid.UUID
+	episodeImageID    uuid.UUID
+	creatorID         uuid.UUID
+	creatorImageID    uuid.UUID
+	labelID           uuid.UUID
+	labelImageID      uuid.UUID
+	genreID           uuid.UUID
+	genreImageID      uuid.UUID
+	tenantImageID     uuid.UUID
+	pageID            uuid.UUID
+	pageTranslationID uuid.UUID
+	pageVersionID     uuid.UUID
+	notificationID    uuid.UUID
+	announcementID    uuid.UUID
+	accessTicketID    uuid.UUID
 }
 
 // seedForeignKeyTenant builds one whole tenant. prefix keeps the public ids
@@ -425,11 +438,14 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	mustExec(t, ctx, db, `INSERT INTO tenant_themes (tenant_id) VALUES ($1)`, seeded.tenantID)
 
 	seeded.pageID = mustUUID(t)
-	mustExec(t, ctx, db, `INSERT INTO pages (id, tenant_id, slug, title) VALUES ($1, $2, 'about', $3)`,
-		seeded.pageID, seeded.tenantID, prefix+" About")
+	mustExec(t, ctx, db, `INSERT INTO pages (id, tenant_id, slug) VALUES ($1, $2, 'about')`,
+		seeded.pageID, seeded.tenantID)
+	seeded.pageTranslationID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO page_translations (id, tenant_id, page_id, locale, title) VALUES ($1, $2, $3, 'ja', $4)`,
+		seeded.pageTranslationID, seeded.tenantID, seeded.pageID, prefix+" About")
 	seeded.pageVersionID = mustUUID(t)
-	mustExec(t, ctx, db, `INSERT INTO page_versions (id, tenant_id, page_id, version_number) VALUES ($1, $2, $3, 1)`,
-		seeded.pageVersionID, seeded.tenantID, seeded.pageID)
+	mustExec(t, ctx, db, `INSERT INTO page_versions (id, tenant_id, page_id, translation_id, version_number) VALUES ($1, $2, $3, $4, 1)`,
+		seeded.pageVersionID, seeded.tenantID, seeded.pageID, seeded.pageTranslationID)
 
 	seeded.notificationID = mustUUID(t)
 	mustExec(t, ctx, db, `

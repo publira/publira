@@ -29,8 +29,13 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedPagesForTenant)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at"}).
-			AddRow(pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now))
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "slug", "display_in_footer", "created_at", "updated_at",
+			"id", "page_id", "tenant_id", "locale", "title", "published_version_id", "created_at", "updated_at",
+		}).AddRow(
+			pageID, tenantID, "/privacy", true, now, now,
+			uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Privacy Policy", versionID, now, now,
+		))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{

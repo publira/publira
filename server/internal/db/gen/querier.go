@@ -225,7 +225,10 @@ type Querier interface {
 	// refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
 	// recipient / type / subject key is the only one an insert can conflict on.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
+	// The caller creates the page's default-locale translation in the same
+	// transaction, so no page is ever stored without one.
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
+	CreatePageTranslation(ctx context.Context, arg CreatePageTranslationParams) (PageTranslation, error)
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
 	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
@@ -435,8 +438,8 @@ type Querier interface {
 	// Where a newly created genre goes: after everything that already exists.
 	GetMaxGenreDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// The caller adds one to this to number the version it is about to create;
-	// COALESCE makes the first version of a page number 1.
-	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
+	// COALESCE makes the first version of a translation number 1.
+	GetMaxPageVersionNumberByTranslationID(ctx context.Context, translationID uuid.UUID) (int32, error)
 	// The score this reader has given the episode, or no row when they have not
 	// rated it.
 	GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRatingParams) (int16, error)
@@ -469,8 +472,9 @@ type Querier interface {
 	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	GetOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
-	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
-	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
+	// The page with the translation page_translation_for picks for the locale.
+	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (GetPageByIDForTenantRow, error)
+	GetPageVersionByIDForTranslation(ctx context.Context, arg GetPageVersionByIDForTranslationParams) (PageVersion, error)
 	// What the site shows as a banner: the newest announcement still inside its
 	// pinned window. It names no user, so a visitor with no session gets
 	// the same answer as a signed-in reader and the site caches it once per tenant.
@@ -516,6 +520,7 @@ type Querier interface {
 	// another tenant, and one whose published series are all kept off the surface
 	// return no row.
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
+	// Served in the translation ListPublishedPagesForTenant serves.
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	// A currently public series and the rating the tenant's age rule is applied
 	// to, for a read that decides access to its episodes.
@@ -648,7 +653,8 @@ type Querier interface {
 	GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantGooglePlayConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// The pages a tenant names as its terms of service and its privacy policy,
-	// each with its published version, if any. No row where the tenant has no
+	// each in the translation page_translation_for picks for the tenant's default
+	// locale, with its published version, if any. No row where the tenant has no
 	// config.
 	GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
@@ -1231,13 +1237,13 @@ type Querier interface {
 	// flips ASC rows back into display order. Do not parameterize ORDER BY.
 	// cursor rules: proto/README.md.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
-	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
+	ListPageVersionsByTranslationID(ctx context.Context, translationID uuid.UUID) ([]PageVersion, error)
 	// Admin ListPages is (created_at, id) ASC. Forward uses the ASC query;
 	// backward uses DESC so the index can be scanned in reverse. The handler
 	// flips DESC rows back into display order.
 	// cursor rules: proto/README.md.
-	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error)
-	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
+	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]ListPagesForTenantAscRow, error)
+	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]ListPagesForTenantDescRow, error)
 	// Every announcement whose pinned window has passed, across all tenants, for
 	// the ticker job that clears the flag and drops what the sites cached.
 	ListPinnedAnnouncementsDue(ctx context.Context) ([]ListPinnedAnnouncementsDueRow, error)
@@ -1382,8 +1388,9 @@ type Querier interface {
 	// superseded, each with its page. A draft is left out: no reader was shown it.
 	ListPublishedPageVersionsByIDsForTenant(ctx context.Context, arg ListPublishedPageVersionsByIDsForTenantParams) ([]ListPublishedPageVersionsByIDsForTenantRow, error)
 	// Restricted to the pages flagged for the footer, which is the only place a
-	// reader navigates to them from.
-	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
+	// reader navigates to them from. A page is served in the translation
+	// page_translation_for picks for its tenant's default locale.
+	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListPublishedPagesForTenantRow, error)
 	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
 	// The related series of a creator detail page. A keyset scan on title + id.
 	// The published predicate is the one ListActiveSeriesIDsByPublishedAtDesc
@@ -2098,7 +2105,7 @@ type Querier interface {
 	// what the row records is when the message was dealt with, and a second press
 	// is not a second handling.
 	SetContactMessageHandledByIDForTenant(ctx context.Context, arg SetContactMessageHandledByIDForTenantParams) (ContactMessage, error)
-	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
+	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like a
 	// staff account and another tenant's.
@@ -2157,6 +2164,7 @@ type Querier interface {
 	// display_in_footer keeps the stored value when the argument is omitted (NULL),
 	// so a title-only edit does not have to restate the footer flag.
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
+	UpdatePageTranslationTitle(ctx context.Context, arg UpdatePageTranslationTitleParams) (PageTranslation, error)
 	// Writes every value over the existing row. The revision moves with every
 	// write, which is what makes a save based on an earlier read detectable.
 	UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlatformPolicyConfigParams) (PlatformPolicyConfig, error)

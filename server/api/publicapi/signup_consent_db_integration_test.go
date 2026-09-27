@@ -129,9 +129,9 @@ func TestDBCreateUserRefusesConsentToAnythingButTheNamedPages(t *testing.T) {
 	defer cancel()
 	draftID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(ctx, `
-		INSERT INTO page_versions (id, tenant_id, page_id, version_number, content_markdown)
-		VALUES ($1, $2, $3, 2, 'Revised terms')
-	`, draftID, first.ID, terms.ID); err != nil {
+		INSERT INTO page_versions (id, tenant_id, page_id, translation_id, version_number, content_markdown)
+		VALUES ($1, $2, $3, $4, 2, 'Revised terms')
+	`, draftID, first.ID, terms.ID, terms.TranslationID); err != nil {
 		t.Fatalf("seed a draft of the terms: %v", err)
 	}
 
@@ -151,7 +151,7 @@ func TestDBCreateUserRefusesConsentToAnythingButTheNamedPages(t *testing.T) {
 	`, draftID); err != nil {
 		t.Fatalf("publish the revised terms: %v", err)
 	}
-	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE pages SET published_version_id = $2 WHERE id = $1`, terms.ID, draftID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE page_translations SET published_version_id = $2 WHERE id = $1`, terms.TranslationID, draftID); err != nil {
 		t.Fatalf("point the terms at the revision: %v", err)
 	}
 	if err := signUpAgreeing(env, first, "superseded@tenant-a.example.com", terms.VersionID, privacy.VersionID); err != nil {

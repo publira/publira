@@ -21,18 +21,24 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
-func pageColumns() []string {
-	return []string{
-		"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
-	}
+func pageOnlyColumns() []string {
+	return []string{"id", "tenant_id", "slug", "display_in_footer", "created_at", "updated_at"}
 }
 
+func pageTranslationColumns() []string {
+	return []string{"id", "page_id", "tenant_id", "locale", "title", "published_version_id", "created_at", "updated_at"}
+}
+
+// pageRows answers a query that reads a page together with its translation.
 func pageRows() *sqlmock.Rows {
-	return sqlmock.NewRows(pageColumns())
+	return sqlmock.NewRows(append(pageOnlyColumns(), pageTranslationColumns()...))
 }
 
 func addPageRow(rows *sqlmock.Rows, id, tenantID uuid.UUID, slug, title string, createdAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, tenantID, slug, title, uuid.NullUUID{}, false, createdAt, createdAt)
+	return rows.AddRow(
+		id, tenantID, slug, false, createdAt, createdAt,
+		uuid.Must(uuid.NewV7()), id, tenantID, "ja", title, uuid.NullUUID{}, createdAt, createdAt,
+	)
 }
 
 func newPageClient(
@@ -133,7 +139,7 @@ func TestListPagesFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPagesForTenantAsc)).
-		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs("ja", tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addPageRow(
 			addPageRow(
 				addPageRow(pageRows(), ids[0], tenantID, "/first", "First", now),
@@ -173,7 +179,7 @@ func TestListPagesFollowsNextToken(t *testing.T) {
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPagesForTenantAsc)).
-		WithArgs(tenantID, boundaryID, false, now, int32(3)).
+		WithArgs("ja", tenantID, boundaryID, false, now, int32(3)).
 		WillReturnRows(addPageRow(pageRows(), uuid.Must(uuid.NewV7()), tenantID, "/last", "Last", now.Add(time.Minute)))
 
 	req := newListPagesRequest(tenantID, sessionToken)
@@ -202,7 +208,7 @@ func TestListPagesFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPagesForTenantDesc)).
-		WithArgs(tenantID, boundaryID, false, now, int32(3)).
+		WithArgs("ja", tenantID, boundaryID, false, now, int32(3)).
 		WillReturnRows(addPageRow(
 			addPageRow(pageRows(), newerID, tenantID, "/newer", "Newer", now.Add(-time.Minute)),
 			olderID, tenantID, "/older", "Older", now.Add(-2*time.Minute),
@@ -251,7 +257,7 @@ func TestListPagesEmptyPageKeepsAWayBack(t *testing.T) {
 			client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WithArgs("ja", tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(pageRows())
 
 			req := newListPagesRequest(tenantID, sessionToken)
@@ -281,7 +287,7 @@ func TestListPagesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPagesForTenantDesc)).
-		WithArgs(tenantID, boundaryID, true, now, int32(21)).
+		WithArgs("ja", tenantID, boundaryID, true, now, int32(21)).
 		WillReturnRows(pageRows())
 
 	req := newListPagesRequest(tenantID, sessionToken)
@@ -321,7 +327,7 @@ func TestListPagesDatabaseErrorIsHidden(t *testing.T) {
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPagesForTenantAsc)).
-		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs("ja", tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "tenant_pages" does not exist`))
 
 	_, err := client.ListPages(context.Background(), newListPagesRequest(tenantID, sessionToken))
@@ -342,7 +348,7 @@ func TestGetPageDatabaseErrorIsHidden(t *testing.T) {
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPageByIDForTenant)).
-		WithArgs(pageID, tenantID).
+		WithArgs("ja", pageID, tenantID).
 		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
 
 	req := connect.NewRequest(&publiraadminv1.GetPageRequest{
@@ -375,11 +381,17 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePageTranslationTitle)).
+		WithArgs("Updated Title", pageID, "ja", tenantID).
+		WillReturnRows(sqlmock.NewRows(pageTranslationColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Updated Title", uuid.NullUUID{}, now, now))
 	// Omitted optional field → sql.NullBool{Valid: false} → driver nil arg.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePage)).
-		WithArgs("Updated Title", nil, pageID, tenantID).
-		WillReturnRows(sqlmock.NewRows(pageColumns()).
-			AddRow(pageID, tenantID, "/privacy", "Updated Title", uuid.NullUUID{}, true, now, now))
+		WithArgs(nil, pageID, tenantID).
+		WillReturnRows(sqlmock.NewRows(pageOnlyColumns()).
+			AddRow(pageID, tenantID, "/privacy", true, now, now))
+	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminPagesServiceClient(ts.Client(), ts.URL)
@@ -419,10 +431,16 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePageTranslationTitle)).
+		WithArgs("Title", pageID, "ja", tenantID).
+		WillReturnRows(sqlmock.NewRows(pageTranslationColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Title", uuid.NullUUID{}, now, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePage)).
-		WithArgs("Title", sql.NullBool{Bool: false, Valid: true}, pageID, tenantID).
-		WillReturnRows(sqlmock.NewRows(pageColumns()).
-			AddRow(pageID, tenantID, "/privacy", "Title", uuid.NullUUID{}, false, now, now))
+		WithArgs(sql.NullBool{Bool: false, Valid: true}, pageID, tenantID).
+		WillReturnRows(sqlmock.NewRows(pageOnlyColumns()).
+			AddRow(pageID, tenantID, "/privacy", false, now, now))
+	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
 	displayInFooter := false

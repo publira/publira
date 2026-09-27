@@ -18,6 +18,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 var slugSegmentPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
@@ -28,44 +29,84 @@ const (
 	maxPageListLimit     = int32(100)
 )
 
+// pageRow is a page with the translation an admin request works on: the one
+// page_translation_for picks for the tenant's default locale.
+type pageRow struct {
+	Page            dbmodels.Page
+	PageTranslation dbmodels.PageTranslation
+}
+
 func (s *adminServer) pagePage(
 	ctx context.Context,
-	tenantID uuid.UUID,
+	tenant dbmodels.Tenant,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]dbmodels.Page, error) {
+) ([]pageRow, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
-		return queries.ListPagesForTenantDesc(ctx, dbmodels.ListPagesForTenantDescParams{
-			TenantID:        tenantID,
+		rows, err := queries.ListPagesForTenantDesc(ctx, dbmodels.ListPagesForTenantDescParams{
+			Locale:          tenant.DefaultLocale,
+			TenantID:        tenant.ID,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 			Limit:           limit,
 		})
+		pages := make([]pageRow, 0, len(rows))
+		for _, row := range rows {
+			pages = append(pages, pageRow(row))
+		}
+		return pages, err
 	}
 
-	return queries.ListPagesForTenantAsc(ctx, dbmodels.ListPagesForTenantAscParams{
-		TenantID:        tenantID,
+	rows, err := queries.ListPagesForTenantAsc(ctx, dbmodels.ListPagesForTenantAscParams{
+		Locale:          tenant.DefaultLocale,
+		TenantID:        tenant.ID,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		Limit:           limit,
 	})
+	pages := make([]pageRow, 0, len(rows))
+	for _, row := range rows {
+		pages = append(pages, pageRow(row))
+	}
+	return pages, err
 }
 
-func pageFromModel(p dbmodels.Page) *publirattypesv1.Page {
+// getPage answers the page with the translation pageRow names, or not_found
+// when the tenant has no such page.
+func (s *adminServer) getPage(ctx context.Context, tenant dbmodels.Tenant, pageID uuid.UUID, operation string) (pageRow, error) {
+	row, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
+		ID:       pageID,
+		TenantID: tenant.ID,
+		Locale:   tenant.DefaultLocale,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pageRow{}, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+		}
+		return pageRow{}, s.internalDBError(ctx, "failed to get page for "+operation, err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	return pageRow(row), nil
+}
+
+func pageFromModel(p dbmodels.Page, t dbmodels.PageTranslation) *publirattypesv1.Page {
+	updatedAt := p.UpdatedAt
+	if t.UpdatedAt.After(updatedAt) {
+		updatedAt = t.UpdatedAt
+	}
 	proto := &publirattypesv1.Page{
 		Id:              p.ID.String(),
 		Slug:            p.Slug,
-		Title:           p.Title,
+		Title:           t.Title,
 		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:       p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:       updatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		DisplayInFooter: p.DisplayInFooter,
 	}
-	if p.PublishedVersionID.Valid {
-		proto.PublishedVersionId = p.PublishedVersionID.UUID.String()
+	if t.PublishedVersionID.Valid {
+		proto.PublishedVersionId = t.PublishedVersionID.UUID.String()
 	}
 	return proto
 }
@@ -211,11 +252,22 @@ func (s *adminServer) CreatePage(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	page, err := s.queriesFor(ctx).CreatePage(ctx, dbmodels.CreatePageParams{
+	translationID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin create page transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	page, err := s.queriesFor(txCtx).CreatePage(txCtx, dbmodels.CreatePageParams{
 		ID:              pageID,
 		TenantID:        tenant.ID,
 		Slug:            slug,
-		Title:           title,
 		DisplayInFooter: req.Msg.DisplayInFooter,
 	})
 	if err != nil {
@@ -223,6 +275,19 @@ func (s *adminServer) CreatePage(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a page with this slug already exists"))
 		}
 		return nil, s.internalDBError(ctx, "failed to create page", err, "tenant_id", tenant.ID.String())
+	}
+	translation, err := s.queriesFor(txCtx).CreatePageTranslation(txCtx, dbmodels.CreatePageTranslationParams{
+		ID:       translationID,
+		PageID:   page.ID,
+		TenantID: tenant.ID,
+		Locale:   tenant.DefaultLocale,
+		Title:    title,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to create page translation", err, "tenant_id", tenant.ID.String(), "page_id", page.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit create page", err, "tenant_id", tenant.ID.String(), "page_id", page.ID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -235,7 +300,7 @@ func (s *adminServer) CreatePage(
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	return connect.NewResponse(&publiraadminv1.CreatePageResponse{
-		Page: pageFromModel(page),
+		Page: pageFromModel(page, translation),
 	}), nil
 }
 
@@ -259,22 +324,41 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin update page transaction", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	translation, err := s.queriesFor(txCtx).UpdatePageTranslationTitle(txCtx, dbmodels.UpdatePageTranslationTitleParams{
+		Title:    title,
+		PageID:   pageID,
+		TenantID: tenant.ID,
+		Locale:   tenant.DefaultLocale,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to update page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
 	// Only overwrite display_in_footer when the client sets the optional field.
 	// Omitted values stay as the existing row (COALESCE in UpdatePage).
 	params := dbmodels.UpdatePageParams{
 		ID:       pageID,
 		TenantID: tenant.ID,
-		Title:    title,
 	}
 	if req.Msg.DisplayInFooter != nil {
 		params.DisplayInFooter = sql.NullBool{Bool: req.Msg.GetDisplayInFooter(), Valid: true}
 	}
-	page, err := s.queriesFor(ctx).UpdatePage(ctx, params)
+	page, err := s.queriesFor(txCtx).UpdatePage(txCtx, params)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
 		return nil, s.internalDBError(ctx, "failed to update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -289,7 +373,7 @@ func (s *adminServer) UpdatePage(
 	// Title / display_in_footer can change the public footer link list.
 	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
 	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
-		Page: pageFromModel(page),
+		Page: pageFromModel(page, translation),
 	}), nil
 }
 
@@ -318,7 +402,7 @@ func (s *adminServer) ListPages(
 		}
 	}
 
-	rows, err := s.pagePage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.pagePage(ctx, tenant, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list pages", err, "tenant_id", tenant.ID.String())
 	}
@@ -326,7 +410,7 @@ func (s *adminServer) ListPages(
 
 	pages := make([]*publirattypesv1.Page, 0, len(rows))
 	for _, p := range rows {
-		pages = append(pages, pageFromModel(p))
+		pages = append(pages, pageFromModel(p.Page, p.PageTranslation))
 	}
 	res := &publiraadminv1.ListPagesResponse{
 		Pages: pages,
@@ -335,11 +419,11 @@ func (s *adminServer) ListPages(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].Page.CreatedAt, rows[0].Page.ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.Page.CreatedAt, last.Page.ID)
 		}
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
 		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
@@ -365,18 +449,12 @@ func (s *adminServer) GetPage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-	})
+	page, err := s.getPage(ctx, tenant, pageID, "get page")
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, err
 	}
 	return connect.NewResponse(&publiraadminv1.GetPageResponse{
-		Page: pageFromModel(page),
+		Page: pageFromModel(page.Page, page.PageTranslation),
 	}), nil
 }
 
@@ -396,17 +474,11 @@ func (s *adminServer) CreateVersion(
 	if err != nil {
 		return nil, err
 	}
-	// Verify the page belongs to this tenant
-	if _, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get page for create version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	page, err := s.getPage(ctx, tenant, pageID, "create version")
+	if err != nil {
+		return nil, err
 	}
-	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByPageID(ctx, pageID)
+	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByTranslationID(ctx, page.PageTranslation.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get max page version number", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
@@ -417,6 +489,7 @@ func (s *adminServer) CreateVersion(
 	params := dbmodels.CreatePageVersionParams{
 		ID:              versionID,
 		PageID:          pageID,
+		TranslationID:   page.PageTranslation.ID,
 		VersionNumber:   maxVersion + 1,
 		ContentMarkdown: req.Msg.ContentMarkdown,
 	}
@@ -456,17 +529,11 @@ func (s *adminServer) ListVersions(
 	if err != nil {
 		return nil, err
 	}
-	// Verify the page belongs to this tenant
-	if _, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get page for list versions", err, "tenant_id", tenant.ID.String())
+	page, err := s.getPage(ctx, tenant, pageID, "list versions")
+	if err != nil {
+		return nil, err
 	}
-	rows, err := s.queriesFor(ctx).ListPageVersionsByPageID(ctx, pageID)
+	rows, err := s.queriesFor(ctx).ListPageVersionsByTranslationID(ctx, page.PageTranslation.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list page versions", err, "tenant_id", tenant.ID.String())
 	}
@@ -499,19 +566,13 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
-	// Verify the page belongs to this tenant
-	if _, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get page for publish version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	page, err := s.getPage(ctx, tenant, pageID, "publish version")
+	if err != nil {
+		return nil, err
 	}
 	version, err := s.queriesFor(ctx).PublishPageVersion(ctx, dbmodels.PublishPageVersionParams{
-		ID:     versionID,
-		PageID: pageID,
+		ID:            versionID,
+		TranslationID: page.PageTranslation.ID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -519,9 +580,8 @@ func (s *adminServer) PublishVersion(
 		}
 		return nil, s.internalDBError(ctx, "failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 	}
-	// Update the page's published_version_id
-	if _, err := s.queriesFor(ctx).SetPagePublishedVersion(ctx, dbmodels.SetPagePublishedVersionParams{
-		ID:                 pageID,
+	if _, err := s.queriesFor(ctx).SetPageTranslationPublishedVersion(ctx, dbmodels.SetPageTranslationPublishedVersionParams{
+		ID:                 page.PageTranslation.ID,
 		TenantID:           tenant.ID,
 		PublishedVersionID: uuid.NullUUID{UUID: version.ID, Valid: true},
 	}); err != nil {
@@ -566,8 +626,12 @@ func (s *adminServer) UnpublishPage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queriesFor(ctx).SetPagePublishedVersion(ctx, dbmodels.SetPagePublishedVersionParams{
-		ID:                 pageID,
+	page, err := s.getPage(ctx, tenant, pageID, "unpublish page")
+	if err != nil {
+		return nil, err
+	}
+	translation, err := s.queriesFor(ctx).SetPageTranslationPublishedVersion(ctx, dbmodels.SetPageTranslationPublishedVersionParams{
+		ID:                 page.PageTranslation.ID,
 		TenantID:           tenant.ID,
 		PublishedVersionID: uuid.NullUUID{},
 	})
@@ -583,14 +647,14 @@ func (s *adminServer) UnpublishPage(
 		ActorRole:   sessionCtx.Role,
 		Action:      "page_unpublished",
 		TargetType:  "page",
-		TargetID:    page.ID.String(),
+		TargetID:    page.Page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 	// Both the page's own URL and the footer link list have to stop serving it.
-	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.ID))
+	s.revalidateTags(ctx, tenant.ID, pageRevalidateTags(tenant.ID, page.Page.ID))
 	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
-		Page: pageFromModel(page),
+		Page: pageFromModel(page.Page, translation),
 	}), nil
 }
 
@@ -614,20 +678,14 @@ func (s *adminServer) RollbackToVersion(
 	if err != nil {
 		return nil, err
 	}
-	// Verify the page belongs to this tenant
-	if _, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-	}); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
-		return nil, s.internalDBError(ctx, "failed to get page for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	page, err := s.getPage(ctx, tenant, pageID, "rollback")
+	if err != nil {
+		return nil, err
 	}
 	// Fetch the target version to copy its content
-	target, err := s.queriesFor(ctx).GetPageVersionByIDForPage(ctx, dbmodels.GetPageVersionByIDForPageParams{
-		ID:     versionID,
-		PageID: pageID,
+	target, err := s.queriesFor(ctx).GetPageVersionByIDForTranslation(ctx, dbmodels.GetPageVersionByIDForTranslationParams{
+		ID:            versionID,
+		TranslationID: page.PageTranslation.ID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -635,7 +693,7 @@ func (s *adminServer) RollbackToVersion(
 		}
 		return nil, s.internalDBError(ctx, "failed to get page version for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 	}
-	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByPageID(ctx, pageID)
+	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByTranslationID(ctx, page.PageTranslation.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get max page version number for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
@@ -646,6 +704,7 @@ func (s *adminServer) RollbackToVersion(
 	params := dbmodels.CreatePageVersionParams{
 		ID:              newVersionID,
 		PageID:          pageID,
+		TranslationID:   page.PageTranslation.ID,
 		VersionNumber:   maxVersion + 1,
 		ContentMarkdown: target.ContentMarkdown,
 	}
