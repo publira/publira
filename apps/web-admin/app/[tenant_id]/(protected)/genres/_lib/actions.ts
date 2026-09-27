@@ -15,10 +15,11 @@ import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
-  jsonStringArrayFormSchema,
+  jsonRecordIdArrayFormSchema,
   optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import {
@@ -52,7 +53,7 @@ const tenantIdSchema = async (locale: Locale) => {
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return requiredTrimmedString(t("admin.genres.validation.id_missing"));
+  return requiredRecordId(t("admin.genres.validation.id_missing"));
 };
 const createGenreSchema = async (locale: Locale) =>
   z.object({
@@ -94,8 +95,8 @@ const genreEyeCatchAspectSchema = async (locale: Locale) => {
 };
 const reorderGenresSchema = async (locale: Locale) =>
   z.object({
-    expectedIds: jsonStringArrayFormSchema,
-    ids: jsonStringArrayFormSchema,
+    expectedIds: jsonRecordIdArrayFormSchema,
+    ids: jsonRecordIdArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
 const rowFormFields = {

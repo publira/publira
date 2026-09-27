@@ -19,7 +19,8 @@ import {
 import { CREATOR_ROLE_NAME_MAX_LENGTH } from "#lib/creator-roles-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import {
-  jsonStringArrayFormSchema,
+  jsonRecordIdArrayFormSchema,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -50,7 +51,7 @@ const tenantIdSchema = async (locale: Locale) => {
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return requiredTrimmedString(t("admin.creator_roles.validation.id_missing"));
+  return requiredRecordId(t("admin.creator_roles.validation.id_missing"));
 };
 const createCreatorRoleSchema = async (locale: Locale) =>
   z.object({
@@ -70,8 +71,8 @@ const deleteCreatorRoleSchema = async (locale: Locale) =>
   });
 const reorderCreatorRolesSchema = async (locale: Locale) =>
   z.object({
-    expectedIds: jsonStringArrayFormSchema,
-    ids: jsonStringArrayFormSchema,
+    expectedIds: jsonRecordIdArrayFormSchema,
+    ids: jsonRecordIdArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
 const rowFormFields = {

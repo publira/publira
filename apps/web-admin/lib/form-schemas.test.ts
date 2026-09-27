@@ -4,6 +4,7 @@ import {
   boundedIntFormSchema,
   checkboxOnFormSchema,
   flagOneFormSchema,
+  jsonRecordIdArrayFormSchema,
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalBoundedIntFormSchema,
@@ -36,6 +37,27 @@ describe("requiredRecordId", () => {
         "Choose a record."
       );
     }
+  });
+});
+
+describe("jsonRecordIdArrayFormSchema", () => {
+  it("reads a JSON array of UUIDs", () => {
+    expect(
+      jsonRecordIdArrayFormSchema.parse(
+        '["018f0e6a-1000-7000-8000-000000000001","018f0e6a-1000-7000-8000-000000000002"]'
+      )
+    ).toEqual([
+      "018f0e6a-1000-7000-8000-000000000001",
+      "018f0e6a-1000-7000-8000-000000000002",
+    ]);
+  });
+
+  it("refuses the list when an entry is not a UUID", () => {
+    expect(
+      jsonRecordIdArrayFormSchema.safeParse(
+        '["018f0e6a-1000-7000-8000-000000000001","SeedGNRAAAA1"]'
+      ).success
+    ).toBe(false);
   });
 });
 

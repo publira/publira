@@ -45,7 +45,7 @@ vi.mock("#lib/series", () => ({
 const renameFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
-  formData.set("label_id", "label-1");
+  formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
   formData.set("name", "Renamed label");
   formData.set("clear_eye_catch_image", "0");
   return formData;
@@ -65,7 +65,7 @@ describe("label actions", () => {
       label: {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
-        id: "label-1",
+        id: "018f0e6a-5000-7000-8000-000000000001",
         name: "Renamed label",
         publicId: "LABEL001",
       },
@@ -79,7 +79,9 @@ describe("label actions", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("labels-TENANT001");
     // The edit addresses the label by its ID; the detail page's cache is
     // filed under the public ID its URL names, which the answer carries.
-    expect(mockUpdateLabel.mock.calls[0]?.[0]).toMatchObject({ id: "label-1" });
+    expect(mockUpdateLabel.mock.calls[0]?.[0]).toMatchObject({
+      id: "018f0e6a-5000-7000-8000-000000000001",
+    });
     expect(mockUpdateTag).toHaveBeenCalledWith("label-TENANT001-LABEL001");
     expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
   });
@@ -89,7 +91,7 @@ describe("label actions", () => {
       label: {
         eyeCatchImageUpdatedAt: "",
         eyeCatchImageVariants: [],
-        id: "label-1",
+        id: "018f0e6a-5000-7000-8000-000000000001",
         name: "Renamed label",
         publicId: "LABEL001",
       },
@@ -107,7 +109,7 @@ describe("label actions", () => {
       label: {
         eyeCatchImageUpdatedAt: "2026-09-23T00:00:00Z",
         eyeCatchImageVariants: [],
-        id: "label-1",
+        id: "018f0e6a-5000-7000-8000-000000000001",
         name: "Renamed label",
         publicId: "LABEL001",
       },

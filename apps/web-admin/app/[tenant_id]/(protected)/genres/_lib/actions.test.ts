@@ -50,7 +50,7 @@ const variant = {
 const savedGenre = (overrides: Record<string, unknown> = {}) => ({
   eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
   eyeCatchImageVariants: [variant],
-  id: "GENRE001",
+  id: "018f0e6a-6000-7000-8000-000000000001",
   name: "Fantasy",
   slug: "fantasy",
   ...overrides,
@@ -59,7 +59,7 @@ const savedGenre = (overrides: Record<string, unknown> = {}) => ({
 const eyeCatchFormData = (fields: Record<string, string | File> = {}) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
-  formData.set("genre_id", "GENRE001");
+  formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
   formData.set("name", "Fantasy");
   formData.set("clear_eye_catch_image", "0");
   formData.set("current_eye_catch_image_updated_at", "");
@@ -72,7 +72,7 @@ const eyeCatchFormData = (fields: Record<string, string | File> = {}) => {
 const aspectFormData = (fields: Record<string, string | File> = {}) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
-  formData.set("genre_id", "GENRE001");
+  formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
   formData.set("variant_type", "square");
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
@@ -106,7 +106,7 @@ describe("updateGenreEyeCatchAction", () => {
         clearEyeCatchImage: false,
         eyeCatchImageContentType: "image/png",
         eyeCatchImageData: new Uint8Array([1, 2, 3]),
-        id: "GENRE001",
+        id: "018f0e6a-6000-7000-8000-000000000001",
         name: "Fantasy",
         tenantId: "TENANT001",
       },
@@ -224,7 +224,7 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     expect(mockUploadGenreEyeCatchAspectImage).toHaveBeenCalledWith(
       {
         crop: { height: 1200, width: 1200, x: 0, y: 0 },
-        id: "GENRE001",
+        id: "018f0e6a-6000-7000-8000-000000000001",
         imageContentType: "image/png",
         imageData: new Uint8Array([1, 2, 3]),
         tenantId: "TENANT001",

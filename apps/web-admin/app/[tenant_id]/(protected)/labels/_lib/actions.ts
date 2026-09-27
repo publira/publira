@@ -17,6 +17,7 @@ import {
   optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import {
@@ -54,7 +55,7 @@ const labelUpdateSchema = async (locale: Locale) => {
   return base.extend({
     clearEyeCatchImage: flagOneFormSchema,
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
-    id: requiredTrimmedString(t("admin.labels.validation.id_missing")),
+    id: requiredRecordId(t("admin.labels.validation.id_missing")),
   });
 };
 const labelFormFields = {
@@ -253,7 +254,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 
   return z.object({
     crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
-    id: requiredTrimmedString(t("admin.labels.validation.id_missing")),
+    id: requiredRecordId(t("admin.labels.validation.id_missing")),
     tenantId: requiredTrimmedString(
       t("admin.labels.validation.tenant_missing")
     ),

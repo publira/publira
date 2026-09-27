@@ -17,6 +17,7 @@ import {
   optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -44,7 +45,7 @@ const creatorUpdateSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
-    id: requiredTrimmedString(t("admin.creators.validation.id_missing")),
+    id: requiredRecordId(t("admin.creators.validation.id_missing")),
   });
 };
 const creatorFormFields = {
