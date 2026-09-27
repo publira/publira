@@ -97,7 +97,13 @@ func SaveSubject(
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
 		return dbmodels.PlatformWebpushConfig{}, ErrConflict
 	}
-	updated, err := q.UpdatePlatformWebPushSubject(ctx, NormalizeSubject(p.Subject))
+	// A pair Ensure generated just now has no subject yet, so this only ever
+	// skips a row that was already complete.
+	subject := NormalizeSubject(p.Subject)
+	if current.Subject.Valid && current.Subject.String == subject {
+		return current, nil
+	}
+	updated, err := q.UpdatePlatformWebPushSubject(ctx, subject)
 	if err != nil {
 		return dbmodels.PlatformWebpushConfig{}, fmt.Errorf("update web push subject: %w", err)
 	}

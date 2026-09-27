@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -166,7 +167,11 @@ func configParams(p SaveParams, current dbmodels.PlatformStorageConfig, encrypto
 	if err := storagesettings.ValidateKeptSecret(current.AccessKeyID.String, accessKeyID, p.SecretMode, existingEncrypted != ""); err != nil {
 		return dbmodels.UpdatePlatformStorageConfigParams{}, err
 	}
-	encrypted, err := storagesettings.EncryptUpdatedSecret(existingEncrypted, p.SecretMode, p.SecretAccessKey, encryptor)
+	// The mode is narrowed only after ValidateKeptSecret, which must still see
+	// a replacement stated alongside a new access key id.
+	decrypter, _ := encryptor.(secretupdate.Decrypter)
+	mode := secretupdate.KeepIfSame(p.SecretMode, strings.TrimSpace(p.SecretAccessKey), existingEncrypted, decrypter)
+	encrypted, err := storagesettings.EncryptUpdatedSecret(existingEncrypted, mode, p.SecretAccessKey, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformStorageConfigParams{}, secretError(err)
 	}

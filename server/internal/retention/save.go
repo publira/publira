@@ -50,7 +50,8 @@ func (p SaveDefaultsParams) Validate() error {
 
 // SaveDefaults writes p in one transaction on db, with its entry filed under
 // actor, so a change to how long every tenant's data is kept never goes
-// unrecorded. Each purge reads the row at the start of its run.
+// unrecorded. Each purge reads the row at the start of its run. A save that
+// changes no stored value writes nothing and files nothing.
 func SaveDefaults(
 	ctx context.Context,
 	db *sql.DB,
@@ -68,9 +69,9 @@ func SaveDefaults(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, err := writeDefaults(ctx, q, p)
-	if err != nil {
-		return dbmodels.PlatformRetentionConfig{}, err
+	saved, changed, err := writeDefaults(ctx, q, p)
+	if err != nil || !changed {
+		return saved, err
 	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_retention_defaults_updated",
@@ -86,35 +87,38 @@ func SaveDefaults(
 	return saved, nil
 }
 
-func writeDefaults(ctx context.Context, q *dbmodels.Queries, p SaveDefaultsParams) (dbmodels.PlatformRetentionConfig, error) {
+func writeDefaults(ctx context.Context, q *dbmodels.Queries, p SaveDefaultsParams) (dbmodels.PlatformRetentionConfig, bool, error) {
 	params := p.Defaults.PlatformConfigParams()
 	current, err := q.LockPlatformRetentionConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Any revision but zero was read from a row that has since been
 		// deleted, and creating one would resurrect values nobody confirmed.
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
-			return dbmodels.PlatformRetentionConfig{}, ErrDefaultsConflict
+			return dbmodels.PlatformRetentionConfig{}, false, ErrDefaultsConflict
 		}
 		inserted, err := q.InsertPlatformRetentionConfig(ctx, dbmodels.InsertPlatformRetentionConfigParams(params))
 		// Two first saves both find nothing to lock; the primary key settles
 		// which one wins.
 		if dberr.IsUniqueViolation(err) {
-			return dbmodels.PlatformRetentionConfig{}, ErrDefaultsConflict
+			return dbmodels.PlatformRetentionConfig{}, false, ErrDefaultsConflict
 		}
 		if err != nil {
-			return dbmodels.PlatformRetentionConfig{}, fmt.Errorf("insert platform retention defaults: %w", err)
+			return dbmodels.PlatformRetentionConfig{}, false, fmt.Errorf("insert platform retention defaults: %w", err)
 		}
-		return inserted, nil
+		return inserted, true, nil
 	}
 	if err != nil {
-		return dbmodels.PlatformRetentionConfig{}, fmt.Errorf("lock platform retention defaults: %w", err)
+		return dbmodels.PlatformRetentionConfig{}, false, fmt.Errorf("lock platform retention defaults: %w", err)
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
-		return dbmodels.PlatformRetentionConfig{}, ErrDefaultsConflict
+		return dbmodels.PlatformRetentionConfig{}, false, ErrDefaultsConflict
+	}
+	if FromPlatformConfig(current).PlatformConfigParams() == params {
+		return current, false, nil
 	}
 	updated, err := q.UpdatePlatformRetentionConfig(ctx, params)
 	if err != nil {
-		return dbmodels.PlatformRetentionConfig{}, fmt.Errorf("update platform retention defaults: %w", err)
+		return dbmodels.PlatformRetentionConfig{}, false, fmt.Errorf("update platform retention defaults: %w", err)
 	}
-	return updated, nil
+	return updated, true, nil
 }

@@ -47,3 +47,26 @@ func Resolve(mode Mode, replacement string, required error) (Mode, error) {
 		return Unspecified, fmt.Errorf("%w: %d", ErrInvalidMode, mode)
 	}
 }
+
+// Decrypter opens a stored secret, and tells one sealed with the primary key
+// from one a key rotation still has to re-encrypt.
+type Decrypter interface {
+	DecryptString(value string) (string, error)
+	EncryptedWithPrimary(value string) bool
+}
+
+// KeepIfSame is Unchanged for a Replace whose replacement is the secret already
+// stored under the primary key, so a save that repeats it leaves the stored
+// ciphertext alone. A secret stored under an older key or in the clear is still
+// replaced, which is how a rotation re-encrypts it. Every other mode, and a
+// stored secret that cannot be opened, is returned as it is.
+func KeepIfSame(mode Mode, replacement, storedEncrypted string, d Decrypter) Mode {
+	if mode != Replace || storedEncrypted == "" || d == nil || !d.EncryptedWithPrimary(storedEncrypted) {
+		return mode
+	}
+	stored, err := d.DecryptString(storedEncrypted)
+	if err != nil || stored != replacement {
+		return mode
+	}
+	return Unchanged
+}
