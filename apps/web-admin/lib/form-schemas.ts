@@ -210,10 +210,11 @@ export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
 
 /**
  * A JSON array of record IDs, as a reorder form posts it. An entry that is not
- * a UUID refuses the whole list rather than reaching the API.
+ * a UUID refuses the whole list rather than reaching the API; `guid` checks
+ * the shape only, as `requiredRecordId` does.
  */
 export const jsonRecordIdArrayFormSchema = jsonStringArrayFormSchema.pipe(
-  z.array(z.uuid())
+  z.array(z.guid())
 );
 
 /**

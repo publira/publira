@@ -52,6 +52,14 @@ describe("jsonRecordIdArrayFormSchema", () => {
     ]);
   });
 
+  it("accepts UUIDs without RFC version bits, as seeded IDs are", () => {
+    expect(
+      jsonRecordIdArrayFormSchema.parse(
+        '["c4ca4238-a0b9-2382-0dcc-509a6f75849b"]'
+      )
+    ).toEqual(["c4ca4238-a0b9-2382-0dcc-509a6f75849b"]);
+  });
+
   it("refuses the list when an entry is not a UUID", () => {
     expect(
       jsonRecordIdArrayFormSchema.safeParse(
