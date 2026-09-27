@@ -42,10 +42,10 @@ func TestDBCreateEpisodesAppendInOrder(t *testing.T) {
 	// in the database rather than against anything the client sends.
 	for index, title := range []string{"Episode One", "Episode Two", "Episode Three"} {
 		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-			Tenant:         tenant.tenantContext(),
-			SeriesPublicId: seriesPublicID,
-			Title:          title,
-			Price:          int32(100 * (index + 1)),
+			Tenant:   tenant.tenantContext(),
+			SeriesId: env.seriesID(t, seriesPublicID),
+			Title:    title,
+			Price:    int32(100 * (index + 1)),
 		}))
 		if err != nil {
 			t.Fatalf("CreateEpisode %s: %v", title, err)
@@ -59,8 +59,8 @@ func TestDBCreateEpisodesAppendInOrder(t *testing.T) {
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -89,9 +89,9 @@ func TestDBCreateEpisodeConcurrentAppendsDistinctOrderIndexes(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         tenant.tenantContext(),
-				SeriesPublicId: seriesPublicID,
-				Title:          fmt.Sprintf("Concurrent %d", i),
+				Tenant:   tenant.tenantContext(),
+				SeriesId: env.seriesID(t, seriesPublicID),
+				Title:    fmt.Sprintf("Concurrent %d", i),
 			}))
 			if err != nil {
 				errs <- err
@@ -125,8 +125,8 @@ func TestDBCreateEpisodeConcurrentAppendsDistinctOrderIndexes(t *testing.T) {
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -145,9 +145,9 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 	created := make([]string, 0, 3)
 	for _, title := range []string{"First", "Second", "Third"} {
 		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-			Tenant:         tenant.tenantContext(),
-			SeriesPublicId: seriesPublicID,
-			Title:          title,
+			Tenant:   tenant.tenantContext(),
+			SeriesId: env.seriesID(t, seriesPublicID),
+			Title:    title,
 		}))
 		if err != nil {
 			t.Fatalf("CreateEpisode %s: %v", title, err)
@@ -157,10 +157,10 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 
 	reversed := []string{created[2], created[1], created[0]}
 	reordered, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   tenant.tenantContext(),
-		SeriesPublicId:           seriesPublicID,
-		EpisodePublicIds:         reversed,
-		ExpectedEpisodePublicIds: created,
+		Tenant:             tenant.tenantContext(),
+		SeriesId:           env.seriesID(t, seriesPublicID),
+		EpisodeIds:         env.episodeIDs(t, reversed),
+		ExpectedEpisodeIds: env.episodeIDs(t, created),
 	}))
 	if err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
@@ -170,8 +170,8 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes after reorder: %v", err)
@@ -190,9 +190,9 @@ func TestDBReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 	created := make([]string, 0, 3)
 	for _, title := range []string{"First", "Second", "Third"} {
 		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-			Tenant:         tenant.tenantContext(),
-			SeriesPublicId: seriesPublicID,
-			Title:          title,
+			Tenant:   tenant.tenantContext(),
+			SeriesId: env.seriesID(t, seriesPublicID),
+			Title:    title,
 		}))
 		if err != nil {
 			t.Fatalf("CreateEpisode %s: %v", title, err)
@@ -202,27 +202,27 @@ func TestDBReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 
 	reversed := []string{created[2], created[1], created[0]}
 	if _, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   tenant.tenantContext(),
-		SeriesPublicId:           seriesPublicID,
-		EpisodePublicIds:         reversed,
-		ExpectedEpisodePublicIds: created,
+		Tenant:             tenant.tenantContext(),
+		SeriesId:           env.seriesID(t, seriesPublicID),
+		EpisodeIds:         env.episodeIDs(t, reversed),
+		ExpectedEpisodeIds: env.episodeIDs(t, created),
 	})); err != nil {
 		t.Fatalf("first ReorderEpisodes: %v", err)
 	}
 
 	_, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
-		Tenant:                   tenant.tenantContext(),
-		SeriesPublicId:           seriesPublicID,
-		EpisodePublicIds:         []string{created[1], created[0], created[2]},
-		ExpectedEpisodePublicIds: created,
+		Tenant:             tenant.tenantContext(),
+		SeriesId:           env.seriesID(t, seriesPublicID),
+		EpisodeIds:         []string{env.episodeID(t, created[1]), env.episodeID(t, created[0]), env.episodeID(t, created[2])},
+		ExpectedEpisodeIds: env.episodeIDs(t, created),
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("stale ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeFailedPrecondition, err)
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes after rejected reorder: %v", err)
@@ -241,9 +241,9 @@ func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
 	created := make([]string, 0, 3)
 	for _, title := range []string{"First", "Second", "Third"} {
 		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-			Tenant:         tenant.tenantContext(),
-			SeriesPublicId: seriesPublicID,
-			Title:          title,
+			Tenant:   tenant.tenantContext(),
+			SeriesId: env.seriesID(t, seriesPublicID),
+			Title:    title,
 		}))
 		if err != nil {
 			t.Fatalf("CreateEpisode %s: %v", title, err)
@@ -266,10 +266,10 @@ func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
 		go func(next []string) {
 			defer wg.Done()
 			resp, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
-				Tenant:                   tenant.tenantContext(),
-				SeriesPublicId:           seriesPublicID,
-				EpisodePublicIds:         next,
-				ExpectedEpisodePublicIds: created,
+				Tenant:             tenant.tenantContext(),
+				SeriesId:           env.seriesID(t, seriesPublicID),
+				EpisodeIds:         env.episodeIDs(t, next),
+				ExpectedEpisodeIds: env.episodeIDs(t, created),
 			}))
 			if err != nil {
 				outcomes <- outcome{err: err}
@@ -304,8 +304,8 @@ func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
 	}
 
 	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodes after concurrent reorder: %v", err)
@@ -322,9 +322,9 @@ func TestDBCreateEpisodeInAnotherTenantsSeriesReturnsNotFound(t *testing.T) {
 	theirSeries := createDBSeries(t, client, second, "Tenant B Series")
 
 	_, err := client.CreateEpisode(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         first.tenantContext(),
-		SeriesPublicId: theirSeries,
-		Title:          "Smuggled Episode",
+		Tenant:   first.tenantContext(),
+		SeriesId: env.seriesID(t, theirSeries),
+		Title:    "Smuggled Episode",
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("CreateEpisode across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
@@ -374,18 +374,18 @@ func TestDBUpdateEpisodePublishScheduleRejectsPastTime(t *testing.T) {
 	seriesPublicID := createDBSeries(t, client, tenant, "Schedule Host Series")
 
 	created, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Scheduled Episode",
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+		Title:    "Scheduled Episode",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
 	_, err = client.UpdateEpisodePublishSchedule(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePublishScheduleRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: created.Msg.Episode.PublicId,
-		ScheduledAt:     "2000-01-01T00:00:00Z",
+		Tenant:      tenant.tenantContext(),
+		EpisodeId:   created.Msg.Episode.Id,
+		ScheduledAt: "2000-01-01T00:00:00Z",
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateEpisodePublishSchedule code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -405,9 +405,9 @@ func TestDBGetEpisodeReturnsDraftAndScheduled(t *testing.T) {
 	seriesPublicID := createDBSeries(t, client, tenant, "GetEpisode Host Series")
 
 	draft, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Draft Episode",
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+		Title:    "Draft Episode",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode draft: %v", err)
@@ -430,10 +430,10 @@ func TestDBGetEpisodeReturnsDraftAndScheduled(t *testing.T) {
 
 	scheduledAt := "2030-01-01T01:00:00Z"
 	scheduled, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Scheduled Episode",
-		ScheduledAt:    scheduledAt,
+		Tenant:      tenant.tenantContext(),
+		SeriesId:    env.seriesID(t, seriesPublicID),
+		Title:       "Scheduled Episode",
+		ScheduledAt: scheduledAt,
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode scheduled: %v", err)
@@ -462,9 +462,9 @@ func TestDBGetEpisodeTenantBoundary(t *testing.T) {
 
 	theirSeries := createDBSeries(t, client, second, "Tenant B Series")
 	theirs, err := client.CreateEpisode(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         second.tenantContext(),
-		SeriesPublicId: theirSeries,
-		Title:          "Tenant B Episode",
+		Tenant:   second.tenantContext(),
+		SeriesId: env.seriesID(t, theirSeries),
+		Title:    "Tenant B Episode",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode for tenant B: %v", err)

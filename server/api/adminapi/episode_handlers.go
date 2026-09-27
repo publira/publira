@@ -271,7 +271,7 @@ func (s *adminServer) ListEpisodes(
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
@@ -413,27 +413,13 @@ func listEpisodeIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []uuid.UUI
 }
 
 // episodeOrderArg is the order a reorder asks for and the order it was
-// composed against, by id, or by public_id while a client still sends those.
+// composed against.
 type episodeOrderArg struct {
-	desired        []uuid.UUID
-	expected       []uuid.UUID
-	desiredPublic  []string
-	expectedPublic []string
+	desired  []uuid.UUID
+	expected []uuid.UUID
 }
 
 func parseEpisodeOrderArg(msg *publiraadminv1.ReorderEpisodesRequest) (episodeOrderArg, error) {
-	if len(msg.EpisodeIds) == 0 && len(msg.ExpectedEpisodeIds) == 0 && (len(msg.EpisodePublicIds) > 0 || len(msg.ExpectedEpisodePublicIds) > 0) {
-		if err := validateDistinctPublicIDs(msg.EpisodePublicIds, "episode_ids", "episode"); err != nil {
-			return episodeOrderArg{}, err
-		}
-		if err := validateDistinctPublicIDs(msg.ExpectedEpisodePublicIds, "expected_episode_ids", "episode"); err != nil {
-			return episodeOrderArg{}, err
-		}
-		if !samePublicIDSet(msg.EpisodePublicIds, msg.ExpectedEpisodePublicIds) {
-			return episodeOrderArg{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_ids must be a permutation of expected_episode_ids"))
-		}
-		return episodeOrderArg{desiredPublic: msg.EpisodePublicIds, expectedPublic: msg.ExpectedEpisodePublicIds}, nil
-	}
 	desired, err := recordIDsArg(msg.EpisodeIds, "episode_ids", "episode")
 	if err != nil {
 		return episodeOrderArg{}, err
@@ -449,25 +435,9 @@ func parseEpisodeOrderArg(msg *publiraadminv1.ReorderEpisodesRequest) (episodeOr
 }
 
 // resolve reads the order against the series' current rows: whether it was
-// composed against them, and the desired order by id.
+// composed against them, and the desired order.
 func (arg episodeOrderArg) resolve(rows []dbmodels.ListEpisodesBySeriesForTenantRow) ([]uuid.UUID, bool) {
-	if arg.desired != nil {
-		return arg.desired, slices.Equal(listEpisodeIDs(rows), arg.expected)
-	}
-	current := make([]string, 0, len(rows))
-	idByPublicID := make(map[string]uuid.UUID, len(rows))
-	for _, row := range rows {
-		current = append(current, row.PublicID)
-		idByPublicID[row.PublicID] = row.ID
-	}
-	if !slices.Equal(current, arg.expectedPublic) {
-		return nil, false
-	}
-	desired := make([]uuid.UUID, 0, len(arg.desiredPublic))
-	for _, publicID := range arg.desiredPublic {
-		desired = append(desired, idByPublicID[publicID])
-	}
-	return desired, true
+	return arg.desired, slices.Equal(listEpisodeIDs(rows), arg.expected)
 }
 
 func uuidStrings(ids []uuid.UUID) []string {
@@ -490,7 +460,7 @@ func (s *adminServer) ReorderEpisodes(
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +568,7 @@ func (s *adminServer) CreateEpisode(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 	}
 
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
@@ -736,16 +706,13 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	requestEpisodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	requestEpisodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
-	seriesID := uuid.Nil
-	if strings.TrimSpace(req.Msg.SeriesId) != "" || strings.TrimSpace(req.Msg.SeriesPublicId) != "" {
-		seriesID, err = s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
-		if err != nil {
-			return nil, err
-		}
+	seriesID, err := recordIDArg(req.Msg.SeriesId, "series_id")
+	if err != nil {
+		return nil, err
 	}
 	items, episodeID, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorderFor(ctx)}.Upload(ctx, episodeimages.UploadRequest{
 		Tenant:          tenant,
@@ -775,7 +742,7 @@ func (s *adminServer) ListEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -810,7 +777,7 @@ func (s *adminServer) ReorderEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -933,7 +900,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -979,7 +946,7 @@ func (s *adminServer) UpdateEpisodeLayout(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -1072,7 +1039,7 @@ func (s *adminServer) UpdateEpisodeAvailability(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -1131,7 +1098,7 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}

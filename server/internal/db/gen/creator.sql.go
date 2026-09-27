@@ -420,16 +420,12 @@ SELECT id,
     created_at
 FROM creators
 WHERE tenant_id = $1
-    AND (
-        id = ANY($2::uuid[])
-        OR public_id = ANY($3::varchar[])
-    )
+    AND id = ANY($2::uuid[])
 `
 
 type ListCreatorsByIDsForTenantParams struct {
-	TenantID  uuid.UUID   `json:"tenant_id"`
-	Ids       []uuid.UUID `json:"ids"`
-	PublicIds []string    `json:"public_ids"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
 type ListCreatorsByIDsForTenantRow struct {
@@ -442,7 +438,7 @@ type ListCreatorsByIDsForTenantRow struct {
 }
 
 func (q *Queries) ListCreatorsByIDsForTenant(ctx context.Context, arg ListCreatorsByIDsForTenantParams) ([]ListCreatorsByIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListCreatorsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListCreatorsByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

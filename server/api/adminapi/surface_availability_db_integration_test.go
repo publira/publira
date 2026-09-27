@@ -42,7 +42,7 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 
 	updated, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:       tenant.tenantContext(),
-		PublicId:     defaulted,
+		SeriesId:     env.seriesID(t, defaulted),
 		Title:        "Default Availability",
 		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB.Enum(),
 	}))
@@ -61,7 +61,7 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 	// predates it cannot put the series back on both surfaces.
 	kept, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		PublicId: created.Msg.Series.PublicId,
+		SeriesId: created.Msg.Series.Id,
 		Title:    "App Only, Retitled",
 	}))
 	if err != nil {
@@ -86,7 +86,7 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 
 	_, err = client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:       tenant.tenantContext(),
-		PublicId:     defaulted,
+		SeriesId:     env.seriesID(t, defaulted),
 		Title:        "Default Availability",
 		Availability: publirattypesv1.SurfaceAvailability(99).Enum(),
 	}))
@@ -98,7 +98,7 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 	// stores the column's default.
 	reset, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:       tenant.tenantContext(),
-		PublicId:     defaulted,
+		SeriesId:     env.seriesID(t, defaulted),
 		Title:        "Default Availability",
 		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED.Enum(),
 	}))
@@ -126,9 +126,9 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 	}
 
 	overridden, err := client.UpdateEpisodeAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeAvailabilityRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
-		Availability:    publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+		Tenant:       tenant.tenantContext(),
+		EpisodeId:    env.episodeID(t, episodePublicID),
+		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
 	}))
 	if err != nil {
 		t.Fatalf("UpdateEpisodeAvailability: %v", err)
@@ -137,7 +137,7 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 		t.Fatalf("overridden availability = %s, want APP", overridden.Msg.Episode.Availability)
 	}
 
-	list, err := client.ListEpisodes(ctx, newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{Tenant: tenant.tenantContext(), SeriesPublicId: seriesPublicID}))
+	list, err := client.ListEpisodes(ctx, newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{Tenant: tenant.tenantContext(), SeriesId: env.seriesID(t, seriesPublicID)}))
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
 	}
@@ -146,8 +146,8 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 	}
 
 	cleared, err := client.UpdateEpisodeAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeAvailabilityRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, episodePublicID),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateEpisodeAvailability clearing: %v", err)
@@ -157,10 +157,10 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 	}
 
 	created, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Chapter Two",
-		Availability:   publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
+		Tenant:       tenant.tenantContext(),
+		SeriesId:     env.seriesID(t, seriesPublicID),
+		Title:        "Chapter Two",
+		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
@@ -170,9 +170,9 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 	}
 
 	_, err = client.UpdateEpisodeAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeAvailabilityRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
-		Availability:    publirattypesv1.SurfaceAvailability(99),
+		Tenant:       tenant.tenantContext(),
+		EpisodeId:    env.episodeID(t, episodePublicID),
+		Availability: publirattypesv1.SurfaceAvailability(99),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateEpisodeAvailability with an unknown value code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -186,9 +186,9 @@ func TestDBUpdateEpisodeAvailabilityOfAnotherTenantReturnsNotFound(t *testing.T)
 	episodePublicID := createDBEpisodeWithPages(t, env, owner, seriesPublicID, 1)
 
 	_, err := env.seriesClient().UpdateEpisodeAvailability(context.Background(), newAdminDBRequest(other, &publiraadminv1.UpdateEpisodeAvailabilityRequest{
-		Tenant:          other.tenantContext(),
-		EpisodePublicId: episodePublicID,
-		Availability:    publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
+		Tenant:       other.tenantContext(),
+		EpisodeId:    env.episodeID(t, episodePublicID),
+		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateEpisodeAvailability code = %v, want not_found (err=%v)", connect.CodeOf(err), err)

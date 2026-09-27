@@ -537,14 +537,6 @@ WHERE s.tenant_id = $1
     AND s.id = $2
 LIMIT 1;
 
--- name: GetSeriesIDByPublicIDForTenant :one
--- Resolves the series a console request still names by public_id.
-SELECT s.id
-FROM series s
-WHERE s.tenant_id = $1
-    AND s.public_id = $2
-LIMIT 1;
-
 -- name: CountPublishedSeriesForTenant :one
 -- For the tenant dashboard.
 SELECT COUNT(*)::int AS published_series_count

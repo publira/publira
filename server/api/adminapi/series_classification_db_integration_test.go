@@ -34,8 +34,8 @@ func TestDBCreateSeriesCarriesItsGenresAndTags(t *testing.T) {
 		Title:  "Classified Series",
 		// Assigned in the reverse of the tenant's genre order, which is not the
 		// order a read hands back.
-		GenrePublicIds: []string{fantasy.PublicId, romance.PublicId},
-		TagNames:       []string{"time travel", "school life"},
+		GenreIds: []string{fantasy.Id, romance.Id},
+		TagNames: []string{"time travel", "school life"},
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
@@ -88,21 +88,21 @@ func TestDBUpdateSeriesReplacesTheWholeClassification(t *testing.T) {
 	mystery := createGenre(t, genres, tenant, "Mystery")
 
 	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:         tenant.tenantContext(),
-		Title:          "Classified Series",
-		GenrePublicIds: []string{fantasy.PublicId},
-		TagNames:       []string{"Time Travel"},
+		Tenant:   tenant.tenantContext(),
+		Title:    "Classified Series",
+		GenreIds: []string{fantasy.Id},
+		TagNames: []string{"Time Travel"},
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
-		Tenant:         tenant.tenantContext(),
-		PublicId:       created.Msg.Series.PublicId,
-		Title:          "Classified Series",
-		GenrePublicIds: []string{mystery.PublicId},
-		TagNames:       []string{"Detective"},
+		Tenant:   tenant.tenantContext(),
+		SeriesId: created.Msg.Series.Id,
+		Title:    "Classified Series",
+		GenreIds: []string{mystery.Id},
+		TagNames: []string{"Detective"},
 	}))
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
@@ -129,10 +129,10 @@ func TestDBUpdateSeriesClearsTheClassificationWhenTheSaveNamesNone(t *testing.T)
 
 	fantasy := createGenre(t, genres, tenant, "Fantasy")
 	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:         tenant.tenantContext(),
-		Title:          "Classified Series",
-		GenrePublicIds: []string{fantasy.PublicId},
-		TagNames:       []string{"Time Travel"},
+		Tenant:   tenant.tenantContext(),
+		Title:    "Classified Series",
+		GenreIds: []string{fantasy.Id},
+		TagNames: []string{"Time Travel"},
 	}))
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
@@ -140,7 +140,7 @@ func TestDBUpdateSeriesClearsTheClassificationWhenTheSaveNamesNone(t *testing.T)
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		PublicId: created.Msg.Series.PublicId,
+		SeriesId: created.Msg.Series.Id,
 		Title:    "Classified Series",
 	}))
 	if err != nil {
@@ -200,9 +200,9 @@ func TestDBSeriesRefusesAGenreOfAnotherTenant(t *testing.T) {
 	client := env.seriesClient()
 
 	_, err := client.CreateSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateSeriesRequest{
-		Tenant:         first.tenantContext(),
-		Title:          "Classified Series",
-		GenrePublicIds: []string{theirs.PublicId},
+		Tenant:   first.tenantContext(),
+		Title:    "Classified Series",
+		GenreIds: []string{theirs.Id},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)

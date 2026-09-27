@@ -57,9 +57,9 @@ func seedMoreEpisodes(t *testing.T, env *adminDBEnv, fixture bulkCreditFixture, 
 	episodes := make([]string, 0, count)
 	for range count {
 		created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.CreateEpisodeRequest{
-			Tenant:         fixture.tenant.tenantContext(),
-			SeriesPublicId: fixture.series.PublicID,
-			Title:          "Chapter",
+			Tenant:   fixture.tenant.tenantContext(),
+			SeriesId: fixture.series.ID.String(),
+			Title:    "Chapter",
 		}))
 		if err != nil {
 			t.Fatalf("CreateEpisode: %v", err)
@@ -89,8 +89,8 @@ func (f bulkCreditFixture) credit(t *testing.T, creatorName, roleName string) *p
 		t.Fatalf("no creator named %q was seeded", creatorName)
 	}
 	return &publiraadminv1.EpisodeCreatorCredit{
-		CreatorPublicId: creator.PublicID,
-		RolePublicId:    f.roles[roleName].PublicID,
+		CreatorId: creator.ID.String(),
+		RoleId:    f.roles[roleName].ID.String(),
 	}
 }
 
@@ -101,24 +101,24 @@ func creditEpisodeWithAGuest(t *testing.T, env *adminDBEnv, fixture bulkCreditFi
 	t.Helper()
 
 	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, episodePublicID),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
 	}
-	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(listed.Msg.Creators)+1)
-	for _, creator := range listed.Msg.Creators {
+	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(listed.Msg.CreatorCredits)+1)
+	for _, credit := range listed.Msg.CreatorCredits {
 		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
-			CreatorPublicId: creator.PublicId,
-			RolePublicId:    creator.GetRole().GetPublicId(),
+			CreatorId: credit.GetCreatorId(),
+			RoleId:    credit.GetRoleId(),
 		})
 	}
 	credits = append(credits, guest)
 	if _, err := env.seriesClient().ReplaceEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ReplaceEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
-		CreatorCredits:  credits,
+		Tenant:         fixture.tenant.tenantContext(),
+		EpisodeId:      env.episodeID(t, episodePublicID),
+		CreatorCredits: credits,
 	})); err != nil {
 		t.Fatalf("ReplaceEpisodeCredits to add the guest: %v", err)
 	}
@@ -148,9 +148,9 @@ func TestDBBulkEditEpisodeCreditsReplacesTheArtistAcrossTheRange(t *testing.T) {
 	creditEpisodeWithAGuest(t, env, fixture, fixture.episodes[6], fixture.credit(t, "Kaoru Ito", creatorroles.Defaults[3].Name))
 
 	edited, err := env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: fixture.episodes,
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, fixture.episodes),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Replace{
 			Replace: &publiraadminv1.ReplaceEpisodeCreditOperation{
 				From: fixture.credit(t, "Ren Takahashi", creatorroles.Defaults[1].Name),
@@ -169,8 +169,8 @@ func TestDBBulkEditEpisodeCreditsReplacesTheArtistAcrossTheRange(t *testing.T) {
 	}
 
 	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: fixture.episodes[6],
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, fixture.episodes[6]),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits of the guest episode: %v", err)
@@ -201,11 +201,11 @@ func TestDBBulkEditEpisodeCreditsReportsTheEpisodesThatNeverHadTheCredit(t *test
 	// never credited to them.
 	if _, err := env.seriesClient().UpdateSeries(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   fixture.tenant.tenantContext(),
-		PublicId: fixture.series.PublicID,
+		SeriesId: fixture.series.ID.String(),
 		Title:    "Long Running Series",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{{
-			CreatorPublicId: fixture.creators["Aoi Sakura"].PublicID,
-			RolePublicId:    fixture.roles[creatorroles.Defaults[0].Name].PublicID,
+			CreatorId: fixture.creators["Aoi Sakura"].ID.String(),
+			RoleId:    fixture.roles[creatorroles.Defaults[0].Name].ID.String(),
 		}},
 	})); err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
@@ -213,9 +213,9 @@ func TestDBBulkEditEpisodeCreditsReportsTheEpisodesThatNeverHadTheCredit(t *test
 	later := seedMoreEpisodes(t, env, fixture, 2)
 
 	edited, err := env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: append(slices.Clone(fixture.episodes), later...),
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, append(slices.Clone(fixture.episodes), later...)),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
 			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{
 				Credit: fixture.credit(t, "Yuki Mori", creatorroles.Defaults[2].Name),
@@ -251,9 +251,9 @@ func TestDBBulkEditEpisodeCreditsLeavesACreditWrittenOnTheEpisode(t *testing.T) 
 	creditEpisodeWithAGuest(t, env, fixture, fixture.episodes[1], guest)
 
 	edited, err := env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: fixture.episodes,
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, fixture.episodes),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
 			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{Credit: guest},
 		},
@@ -273,8 +273,8 @@ func TestDBBulkEditEpisodeCreditsLeavesACreditWrittenOnTheEpisode(t *testing.T) 
 	}
 
 	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: fixture.episodes[1],
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, fixture.episodes[1]),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
@@ -301,9 +301,9 @@ func TestDBBulkEditEpisodeCreditsAddsTheCreditWhereItIsMissing(t *testing.T) {
 	creditEpisodeWithAGuest(t, env, fixture, fixture.episodes[0], forgotten)
 
 	edited, err := env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: fixture.episodes,
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, fixture.episodes),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Add{
 			Add: &publiraadminv1.AddEpisodeCreditOperation{Credit: forgotten},
 		},
@@ -320,8 +320,8 @@ func TestDBBulkEditEpisodeCreditsAddsTheCreditWhereItIsMissing(t *testing.T) {
 	}
 
 	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: fixture.episodes[2],
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, fixture.episodes[2]),
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
@@ -351,9 +351,9 @@ func TestDBBulkEditEpisodeCreditsRefusesAReplaceThatWouldCreditTwice(t *testing.
 	}, 3)
 
 	_, err := env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: fixture.episodes,
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, fixture.episodes),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Replace{
 			Replace: &publiraadminv1.ReplaceEpisodeCreditOperation{
 				From: fixture.credit(t, "Ren Takahashi", creatorroles.Defaults[1].Name),
@@ -366,8 +366,8 @@ func TestDBBulkEditEpisodeCreditsRefusesAReplaceThatWouldCreditTwice(t *testing.
 	}
 
 	listed, listErr := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: fixture.episodes[0],
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, fixture.episodes[0]),
 	}))
 	if listErr != nil {
 		t.Fatalf("ListEpisodeCredits: %v", listErr)
@@ -391,18 +391,18 @@ func TestDBBulkEditEpisodeCreditsRefusesAnEpisodeOfAnotherSeries(t *testing.T) {
 	}, 2)
 	other := env.PG.SeedSeries(t, fixture.tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Another Series"})
 	elsewhere, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         fixture.tenant.tenantContext(),
-		SeriesPublicId: other.PublicID,
-		Title:          "Chapter One",
+		Tenant:   fixture.tenant.tenantContext(),
+		SeriesId: other.ID.String(),
+		Title:    "Chapter One",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode on the other series: %v", err)
 	}
 
 	_, err = env.seriesClient().BulkEditEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.BulkEditEpisodeCreditsRequest{
-		Tenant:           fixture.tenant.tenantContext(),
-		SeriesPublicId:   fixture.series.PublicID,
-		EpisodePublicIds: append(slices.Clone(fixture.episodes), elsewhere.Msg.Episode.PublicId),
+		Tenant:     fixture.tenant.tenantContext(),
+		SeriesId:   fixture.series.ID.String(),
+		EpisodeIds: env.episodeIDs(t, append(slices.Clone(fixture.episodes), elsewhere.Msg.Episode.PublicId)),
 		Operation: &publiraadminv1.BulkEditEpisodeCreditsRequest_Remove{
 			Remove: &publiraadminv1.RemoveEpisodeCreditOperation{
 				Credit: fixture.credit(t, "Aoi Sakura", creatorroles.Defaults[0].Name),
@@ -414,8 +414,8 @@ func TestDBBulkEditEpisodeCreditsRefusesAnEpisodeOfAnotherSeries(t *testing.T) {
 	}
 
 	listed, listErr := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(fixture.tenant, &publiraadminv1.ListEpisodeCreditsRequest{
-		Tenant:          fixture.tenant.tenantContext(),
-		EpisodePublicId: fixture.episodes[0],
+		Tenant:    fixture.tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, fixture.episodes[0]),
 	}))
 	if listErr != nil {
 		t.Fatalf("ListEpisodeCredits: %v", listErr)

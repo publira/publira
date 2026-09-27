@@ -141,18 +141,14 @@ SELECT cr.id,
     cr.display_priority
 FROM creator_roles cr
 WHERE cr.tenant_id = $1
-    AND (
-        cr.id = ANY($2::uuid[])
-        OR cr.public_id = ANY($3::text[])
-    )
+    AND cr.id = ANY($2::uuid[])
 ORDER BY cr.display_priority ASC,
     cr.id ASC
 `
 
 type ListCreatorRolesByIDsForTenantParams struct {
-	TenantID  uuid.UUID   `json:"tenant_id"`
-	Ids       []uuid.UUID `json:"ids"`
-	PublicIds []string    `json:"public_ids"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
 type ListCreatorRolesByIDsForTenantRow struct {
@@ -166,7 +162,7 @@ type ListCreatorRolesByIDsForTenantRow struct {
 // the row count against what it asked for, so an id of another tenant reads
 // as a role that does not exist.
 func (q *Queries) ListCreatorRolesByIDsForTenant(ctx context.Context, arg ListCreatorRolesByIDsForTenantParams) ([]ListCreatorRolesByIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

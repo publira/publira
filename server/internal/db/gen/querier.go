@@ -377,9 +377,6 @@ type Querier interface {
 	// what the transition was assumed to produce.
 	GetEpisodeCommentReportForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentReportForModerationByIDForTenantParams) (GetEpisodeCommentReportForModerationByIDForTenantRow, error)
 	GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error)
-	GetEpisodeFreeWindowByPublicIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByPublicIDForTenantParams) (GetEpisodeFreeWindowByPublicIDForTenantRow, error)
-	// Resolves the episode a console request still names by public_id.
-	GetEpisodeIDByPublicIDForTenant(ctx context.Context, arg GetEpisodeIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
 	// This query only answers whether the image belongs to the tenant, with no
@@ -573,8 +570,6 @@ type Querier interface {
 	GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
-	// Resolves the series a console request still names by public_id.
-	GetSeriesIDByPublicIDForTenant(ctx context.Context, arg GetSeriesIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
 	//

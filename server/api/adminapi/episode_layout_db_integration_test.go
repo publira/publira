@@ -17,9 +17,9 @@ func createDBEpisodeWithPages(t *testing.T, env *adminDBEnv, tenant adminDBTenan
 	t.Helper()
 
 	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Chapter One",
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+		Title:    "Chapter One",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
@@ -96,7 +96,7 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 
 	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:           tenant.tenantContext(),
-		PublicId:         seriesPublicID,
+		SeriesId:         env.seriesID(t, seriesPublicID),
 		Title:            "Left To Right",
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT.Enum(),
 		SpreadStartIndex: new(int32),
@@ -111,7 +111,7 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 	spreadStartIndex := int32(2)
 	overridden, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           tenant.tenantContext(),
-		EpisodePublicId:  overriding,
+		EpisodeId:        env.episodeID(t, overriding),
 		SpreadStartIndex: &spreadStartIndex,
 	}))
 	if err != nil {
@@ -129,7 +129,7 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 	// the override alone.
 	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:           tenant.tenantContext(),
-		PublicId:         seriesPublicID,
+		SeriesId:         env.seriesID(t, seriesPublicID),
 		Title:            "Left To Right",
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT.Enum(),
 		SpreadStartIndex: new(int32),
@@ -141,8 +141,8 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 
 	// Leaving both fields empty returns the episode to following the series.
 	cleared, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: overriding,
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, overriding),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateEpisodeLayout clearing: %v", err)
@@ -171,23 +171,28 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 		{
 			name: "unknown-direction",
 			req: &publiraadminv1.UpdateEpisodeLayoutRequest{
-				EpisodePublicId:  episodePublicID,
+				EpisodeId:        env.episodeID(t, episodePublicID),
 				ReadingDirection: publirattypesv1.ReadingDirection(99),
 			},
 		},
 		{
 			name: "negative-spread-start",
-			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodePublicId: episodePublicID, SpreadStartIndex: int32Ptr(-1)},
+			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodeId: env.episodeID(t, episodePublicID), SpreadStartIndex: int32Ptr(-1)},
 		},
 		{
 			// Three pages are indexes 0 to 2.
 			name: "spread-start-past-the-last-page",
-			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodePublicId: episodePublicID, SpreadStartIndex: int32Ptr(3)},
+			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodeId: env.episodeID(t, episodePublicID), SpreadStartIndex: int32Ptr(3)},
 		},
 		{
 			name: "spread-start-on-an-episode-without-pages",
-			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodePublicId: pagelessPublicID, SpreadStartIndex: int32Ptr(0)},
+			req:  &publiraadminv1.UpdateEpisodeLayoutRequest{EpisodeId: env.episodeID(t, pagelessPublicID), SpreadStartIndex: int32Ptr(0)},
 		},
+	}
+	// getDBEpisode reads the episode the way its URL names it.
+	publicIDs := map[string]string{
+		env.episodeID(t, episodePublicID):  episodePublicID,
+		env.episodeID(t, pagelessPublicID): pagelessPublicID,
 	}
 	for _, tc := range episodeCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -196,7 +201,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdateEpisodeLayout code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
-			got := getDBEpisode(t, env, tenant, seriesPublicID, tc.req.EpisodePublicId)
+			got := getDBEpisode(t, env, tenant, seriesPublicID, publicIDs[tc.req.EpisodeId])
 			if got.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED || got.SpreadStartIndex != nil {
 				t.Fatalf("overrides after a refusal = %s, %v, want none", got.ReadingDirection, got.SpreadStartIndex)
 			}
@@ -206,7 +211,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 	// The last page itself is a valid place for pairing to start.
 	if _, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           tenant.tenantContext(),
-		EpisodePublicId:  episodePublicID,
+		EpisodeId:        env.episodeID(t, episodePublicID),
 		SpreadStartIndex: int32Ptr(2),
 	})); err != nil {
 		t.Fatalf("UpdateEpisodeLayout on the last page: %v", err)
@@ -222,7 +227,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 	for _, tc := range seriesCases {
 		t.Run("series-"+tc.name, func(t *testing.T) {
 			tc.req.Tenant = tenant.tenantContext()
-			tc.req.PublicId = seriesPublicID
+			tc.req.SeriesId = env.seriesID(t, seriesPublicID)
 			tc.req.Title = "Refusals"
 			_, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, tc.req))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -240,7 +245,7 @@ func TestDBUpdateEpisodeLayoutOfAnotherTenantReturnsNotFound(t *testing.T) {
 
 	_, err := env.seriesClient().UpdateEpisodeLayout(context.Background(), newAdminDBRequest(other, &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           other.tenantContext(),
-		EpisodePublicId:  episodePublicID,
+		EpisodeId:        env.episodeID(t, episodePublicID),
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT,
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {

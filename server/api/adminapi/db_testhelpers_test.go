@@ -88,29 +88,60 @@ func (e *adminDBEnv) seedTenantWithAdmin(t *testing.T, tenantPublicID, domain, n
 	return adminDBTenant{Tenant: tenant, User: admin}
 }
 
-// leadingCreatorRolePublicID is the role tenant creation puts first, which is
-// what a series credited to one person is credited in. Tests that are about
-// something other than the role itself take this one rather than seeding a
-// vocabulary of their own.
-func (e *adminDBEnv) leadingCreatorRolePublicID(t *testing.T, tenant adminDBTenant) string {
+// leadingCreatorRoleID is the role tenant creation puts first, which is what a
+// series credited to one person is credited in. Tests that are about something
+// other than the role itself take this one rather than seeding a vocabulary of
+// their own.
+func (e *adminDBEnv) leadingCreatorRoleID(t *testing.T, tenant adminDBTenant) string {
 	t.Helper()
-	return e.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name).PublicID
+	return e.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name).ID.String()
 }
 
-// creatorCredits builds the credit list for a save from creator public IDs,
-// all in the tenant's leading role.
-func (e *adminDBEnv) creatorCredits(t *testing.T, tenant adminDBTenant, creatorPublicIDs ...string) []*publiraadminv1.SeriesCreatorCredit {
+// creatorCredits builds the credit list for a save from creator IDs, all in
+// the tenant's leading role.
+func (e *adminDBEnv) creatorCredits(t *testing.T, tenant adminDBTenant, creatorIDs ...string) []*publiraadminv1.SeriesCreatorCredit {
 	t.Helper()
 
-	rolePublicID := e.leadingCreatorRolePublicID(t, tenant)
-	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(creatorPublicIDs))
-	for _, creatorPublicID := range creatorPublicIDs {
+	roleID := e.leadingCreatorRoleID(t, tenant)
+	credits := make([]*publiraadminv1.SeriesCreatorCredit, 0, len(creatorIDs))
+	for _, creatorID := range creatorIDs {
 		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
-			CreatorPublicId: creatorPublicID,
-			RolePublicId:    rolePublicID,
+			CreatorId: creatorID,
+			RoleId:    roleID,
 		})
 	}
 	return credits
+}
+
+// recordID reads the internal ID of the row of table a test holds by the
+// public ID a URL would name it by.
+func (e *adminDBEnv) recordID(t *testing.T, table, publicID string) string {
+	t.Helper()
+
+	var id string
+	if err := e.PG.DB.QueryRowContext(t.Context(), "SELECT id::text FROM "+table+" WHERE public_id = $1", publicID).Scan(&id); err != nil {
+		t.Fatalf("read the id of %s %q: %v", table, publicID, err)
+	}
+	return id
+}
+
+func (e *adminDBEnv) seriesID(t *testing.T, publicID string) string {
+	t.Helper()
+	return e.recordID(t, "series", publicID)
+}
+
+func (e *adminDBEnv) episodeID(t *testing.T, publicID string) string {
+	t.Helper()
+	return e.recordID(t, "episodes", publicID)
+}
+
+func (e *adminDBEnv) episodeIDs(t *testing.T, publicIDs []string) []string {
+	t.Helper()
+	ids := make([]string, 0, len(publicIDs))
+	for _, publicID := range publicIDs {
+		ids = append(ids, e.episodeID(t, publicID))
+	}
+	return ids
 }
 
 // as signs subsequent requests as another user of the same tenant, which is how

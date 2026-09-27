@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -141,7 +140,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +214,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +318,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	if err != nil {
 		return nil, err
 	}
-	windowID, err := s.freeWindowIDArg(ctx, tenant.ID, req.Msg.FreeWindowId, req.Msg.PublicId)
+	windowID, err := parseRecordID(req.Msg.FreeWindowId, "free_window_id")
 	if err != nil {
 		return nil, err
 	}
@@ -353,30 +352,6 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	}
 
 	return connect.NewResponse(&publiraadminv1.DeleteEpisodeFreeWindowResponse{}), nil
-}
-
-// freeWindowIDArg resolves the window a request names: by free_window_id, or
-// by its public_id while a client still sends that.
-func (s *adminServer) freeWindowIDArg(ctx context.Context, tenantID uuid.UUID, rawID, rawPublicID string) (uuid.UUID, error) {
-	id, err := recordIDArg(rawID, "free_window_id")
-	if err != nil || id != uuid.Nil {
-		return id, err
-	}
-	publicID := strings.TrimSpace(rawPublicID)
-	if publicID == "" {
-		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("free_window_id is required"), "free_window_id")
-	}
-	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByPublicIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByPublicIDForTenantParams{
-		TenantID: tenantID,
-		PublicID: publicID,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.Nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
-		}
-		return uuid.Nil, s.internalDBError(ctx, "failed to resolve free window public id", err, "tenant_id", tenantID.String(), "free_window_public_id", publicID)
-	}
-	return row.ID, nil
 }
 
 func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {

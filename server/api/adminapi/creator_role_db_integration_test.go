@@ -249,7 +249,7 @@ func TestDBDeleteCreatorRoleRefusesOneACreditNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.PublicId)
+	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.Id)
 	if _, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
 		Title:          "Credited Series",
@@ -285,7 +285,7 @@ func TestDBDeleteCreatorRoleReportsHowManyCreditsNameIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.PublicId)
+	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.Id)
 	for _, title := range []string{"First Credited Series", "Second Credited Series", "Third Credited Series"} {
 		if _, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
 			Tenant:         tenant.tenantContext(),

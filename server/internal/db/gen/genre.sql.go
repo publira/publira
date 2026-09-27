@@ -306,18 +306,14 @@ SELECT g.id,
     g.display_order
 FROM genres g
 WHERE g.tenant_id = $1
-    AND (
-        g.id = ANY($2::uuid[])
-        OR g.public_id = ANY($3::text[])
-    )
+    AND g.id = ANY($2::uuid[])
 ORDER BY g.display_order ASC,
     g.id ASC
 `
 
 type ListGenresByIDsForTenantParams struct {
-	TenantID  uuid.UUID   `json:"tenant_id"`
-	Ids       []uuid.UUID `json:"ids"`
-	PublicIds []string    `json:"public_ids"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
 type ListGenresByIDsForTenantRow struct {
@@ -332,7 +328,7 @@ type ListGenresByIDsForTenantRow struct {
 // count against what it asked for, so an id of another tenant reads as a
 // genre that does not exist.
 func (q *Queries) ListGenresByIDsForTenant(ctx context.Context, arg ListGenresByIDsForTenantParams) ([]ListGenresByIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListGenresByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
+	rows, err := q.db.QueryContext(ctx, ListGenresByIDsForTenant, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

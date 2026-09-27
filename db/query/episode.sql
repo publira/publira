@@ -225,10 +225,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
 WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND s.id = sqlc.arg('series_id')
-    AND (
-        e.id = ANY(sqlc.arg('ids')::uuid[])
-        OR e.public_id = ANY(sqlc.arg('public_ids')::text[])
-    )
+    AND e.id = ANY(sqlc.arg('ids')::uuid[])
 ORDER BY e.id
 FOR UPDATE OF e;
 
@@ -305,14 +302,6 @@ SELECT e.id,
 FROM episodes e
 WHERE e.tenant_id = $1
     AND e.id = $2
-LIMIT 1;
-
--- name: GetEpisodeIDByPublicIDForTenant :one
--- Resolves the episode a console request still names by public_id.
-SELECT e.id
-FROM episodes e
-WHERE e.tenant_id = $1
-    AND e.public_id = $2
 LIMIT 1;
 
 -- name: GetEpisodeByPublicIDForTenantAndSeries :one

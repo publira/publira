@@ -114,7 +114,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 
 	series, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:               tenant.tenantContext(),
-		PublicId:             seriesPublicID,
+		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Sold Apart",
 		PurchaseAvailability: purchaseAll.Enum(),
 	}))
@@ -128,7 +128,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 
 	kept, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		PublicId: seriesPublicID,
+		SeriesId: env.seriesID(t, seriesPublicID),
 		Title:    "Sold Apart, Retitled",
 	}))
 	if err != nil {
@@ -140,7 +140,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 
 	overridden, err := client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               tenant.tenantContext(),
-		EpisodePublicId:      episodePublicID,
+		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: purchaseWeb,
 	}))
 	if err != nil {
@@ -152,8 +152,8 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 	assertEpisode("an episode replacing its series", purchaseWeb, purchaseWeb)
 
 	cleared, err := client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: env.episodeID(t, episodePublicID),
 	}))
 	if err != nil {
 		t.Fatalf("UpdateEpisodePurchaseAvailability clearing: %v", err)
@@ -165,7 +165,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 	// Returning the series to following the tenant takes its episodes with it.
 	followed, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
 		Tenant:               tenant.tenantContext(),
-		PublicId:             seriesPublicID,
+		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Sold Apart",
 		PurchaseAvailability: purchaseNil.Enum(),
 	}))
@@ -186,7 +186,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 
 	created, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
 		Tenant:               tenant.tenantContext(),
-		SeriesPublicId:       seriesPublicID,
+		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Chapter Two",
 		PurchaseAvailability: purchaseWeb,
 	}))
@@ -197,9 +197,9 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 		t.Fatalf("created episode override, resolved = %s, %s, want WEB, WEB", created.Msg.PurchaseAvailability, created.Msg.Episode.PurchaseAvailability)
 	}
 	inheriting, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
-		Tenant:         tenant.tenantContext(),
-		SeriesPublicId: seriesPublicID,
-		Title:          "Chapter Three",
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+		Title:    "Chapter Three",
 	}))
 	if err != nil {
 		t.Fatalf("CreateEpisode following its series: %v", err)
@@ -221,7 +221,7 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 
 	_, err = client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               tenant.tenantContext(),
-		EpisodePublicId:      episodePublicID,
+		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: publirattypesv1.SurfaceAvailability(99),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -237,7 +237,7 @@ func TestDBPurchaseAvailabilityOfAnotherTenantIsUntouched(t *testing.T) {
 
 	_, err := env.seriesClient().UpdateEpisodePurchaseAvailability(context.Background(), newAdminDBRequest(other, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               other.tenantContext(),
-		EpisodePublicId:      episodePublicID,
+		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: purchaseApp,
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {

@@ -211,9 +211,9 @@ func TestDBDeleteGenreRefusesOneASeriesCarries(t *testing.T) {
 
 	genre := createGenre(t, genres, tenant, "Fantasy")
 	if _, err := series.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
-		Tenant:         tenant.tenantContext(),
-		Title:          "Classified Series",
-		GenrePublicIds: []string{genre.PublicId},
+		Tenant:   tenant.tenantContext(),
+		Title:    "Classified Series",
+		GenreIds: []string{genre.Id},
 	})); err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}

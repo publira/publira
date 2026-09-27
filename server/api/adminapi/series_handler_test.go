@@ -900,7 +900,7 @@ var testCreatorRoleID = uuid.MustParse("01900000-0000-7000-8000-00000000d001")
 // creator lookup.
 func expectCreatorRoleLookup(mock sqlmock.Sqlmock, tenantID, roleID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorRolesByIDsForTenant)).
-		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "display_priority"}).
 			AddRow(roleID, testCreatorRolePublicID, "Original Author", int32(1)))
 }
@@ -934,7 +934,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
-		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
 			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
@@ -1008,7 +1008,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
-		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID1, tenantID, "CREATOR001", "Creator One", "", now).
 			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
@@ -1082,7 +1082,7 @@ func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
-		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -1148,7 +1148,7 @@ func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIES001", "Before", nil, nil, nil, "Old synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListCreatorsByIDsForTenant)).
-		WithArgs(tenantID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)

@@ -84,10 +84,7 @@ SELECT g.id,
     g.display_order
 FROM genres g
 WHERE g.tenant_id = sqlc.arg('tenant_id')
-    AND (
-        g.id = ANY(sqlc.arg('ids')::uuid[])
-        OR g.public_id = ANY(sqlc.arg('public_ids')::text[])
-    )
+    AND g.id = ANY(sqlc.arg('ids')::uuid[])
 ORDER BY g.display_order ASC,
     g.id ASC;
 

@@ -1223,36 +1223,6 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-// A client that still names the series by public_id is answered the same
-// page, the id resolved from it first.
-func TestListEpisodesResolvesASeriesPublicID(t *testing.T) {
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
-
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesIDByPublicIDForTenant)).
-		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(testSeriesID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodesBySeriesForTenantAsc)).
-		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
-		WillReturnRows(addEpisodeRow(episodeColumns(), episodeTestID(1), "EP001", 1))
-
-	req := connect.NewRequest(&publiraadminv1.ListEpisodesRequest{
-		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		SeriesPublicId: "SERIES001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.ListEpisodes(context.Background(), req)
-	if err != nil {
-		t.Fatalf("ListEpisodes: %v", err)
-	}
-	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].Id != episodeTestID(1).String() {
-		t.Fatalf("episodes = %v, want EP001 with its id", resp.Msg.Episodes)
-	}
-	assertExpectations(t, mock)
-}
-
 // The last page is reachable by following next_token, without an offset.
 func TestListEpisodesFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
