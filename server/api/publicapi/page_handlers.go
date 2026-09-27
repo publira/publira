@@ -155,6 +155,7 @@ func (s *apiServer) GetPublishedPage(
 		}, dbmodels.PageTranslation{
 			Title:              row.Title,
 			PublishedVersionID: row.PublishedVersionID,
+			UpdatedAt:          row.TranslationUpdatedAt,
 		}),
 		Version: pageVersionFromPublishedRow(row),
 	}), nil

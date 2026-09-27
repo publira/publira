@@ -221,6 +221,7 @@ SELECT p.id,
 	p.display_in_footer,
 	p.created_at,
 	p.updated_at,
+	pt.updated_at AS translation_updated_at,
 	pv.id AS version_id,
 	pv.page_id,
 	pv.version_number,
@@ -248,23 +249,24 @@ type GetPublishedPageBySlugForTenantParams struct {
 }
 
 type GetPublishedPageBySlugForTenantRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	TenantID           uuid.UUID     `json:"tenant_id"`
-	Slug               string        `json:"slug"`
-	Title              string        `json:"title"`
-	PublishedVersionID uuid.NullUUID `json:"published_version_id"`
-	DisplayInFooter    bool          `json:"display_in_footer"`
-	CreatedAt          time.Time     `json:"created_at"`
-	UpdatedAt          time.Time     `json:"updated_at"`
-	VersionID          uuid.UUID     `json:"version_id"`
-	PageID             uuid.UUID     `json:"page_id"`
-	VersionNumber      int32         `json:"version_number"`
-	ContentMarkdown    string        `json:"content_markdown"`
-	AuthorUserID       uuid.NullUUID `json:"author_user_id"`
-	Status             string        `json:"status"`
-	PublishAt          sql.NullTime  `json:"publish_at"`
-	VersionCreatedAt   time.Time     `json:"version_created_at"`
-	PublishedAt        sql.NullTime  `json:"published_at"`
+	ID                   uuid.UUID     `json:"id"`
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	Slug                 string        `json:"slug"`
+	Title                string        `json:"title"`
+	PublishedVersionID   uuid.NullUUID `json:"published_version_id"`
+	DisplayInFooter      bool          `json:"display_in_footer"`
+	CreatedAt            time.Time     `json:"created_at"`
+	UpdatedAt            time.Time     `json:"updated_at"`
+	TranslationUpdatedAt time.Time     `json:"translation_updated_at"`
+	VersionID            uuid.UUID     `json:"version_id"`
+	PageID               uuid.UUID     `json:"page_id"`
+	VersionNumber        int32         `json:"version_number"`
+	ContentMarkdown      string        `json:"content_markdown"`
+	AuthorUserID         uuid.NullUUID `json:"author_user_id"`
+	Status               string        `json:"status"`
+	PublishAt            sql.NullTime  `json:"publish_at"`
+	VersionCreatedAt     time.Time     `json:"version_created_at"`
+	PublishedAt          sql.NullTime  `json:"published_at"`
 }
 
 // Served in the translation ListPublishedPagesForTenant serves.
@@ -280,6 +282,7 @@ func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPu
 		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TranslationUpdatedAt,
 		&i.VersionID,
 		&i.PageID,
 		&i.VersionNumber,
