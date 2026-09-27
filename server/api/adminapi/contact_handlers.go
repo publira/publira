@@ -77,6 +77,7 @@ func normalizeContactMessageStatusFilter(raw string) (sql.NullString, error) {
 
 func contactMessageToProto(row contactMessageRow) *publiraadminv1.ContactMessage {
 	message := &publiraadminv1.ContactMessage{
+		Id:           row.ID.String(),
 		PublicId:     row.PublicID,
 		ReplyToEmail: row.ReplyToEmail,
 		Subject:      row.Subject.String,
@@ -123,48 +124,84 @@ func (s *adminServer) contactMessagePage(
 	return contactMessageRowsFromDesc(rows), nil
 }
 
-// loadContactMessage reads one message by the identifier the console carries. A
+// contactMessageRef is how a request names its message: by primary key when it
+// carries one, and by public_id otherwise.
+type contactMessageRef struct {
+	id       uuid.UUID
+	publicID string
+}
+
+// loadContactMessage reads one message by the identifier the request names. A
 // message of another tenant and one that never existed are a single not-found
 // answer, which is also what row-level security would leave of the first.
-func (s *adminServer) loadContactMessage(ctx context.Context, tenantID uuid.UUID, publicID string) (contactMessageRow, error) {
-	row, err := s.queriesFor(ctx).GetContactMessageByPublicIDForTenant(ctx, dbmodels.GetContactMessageByPublicIDForTenantParams{
-		TenantID: tenantID,
-		PublicID: publicID,
-	})
+func (s *adminServer) loadContactMessage(ctx context.Context, tenantID uuid.UUID, ref contactMessageRef) (contactMessageRow, error) {
+	var (
+		row contactMessageRow
+		err error
+	)
+	if ref.id != uuid.Nil {
+		var byID dbmodels.GetContactMessageByIDForTenantRow
+		byID, err = s.queriesFor(ctx).GetContactMessageByIDForTenant(ctx, dbmodels.GetContactMessageByIDForTenantParams{
+			TenantID: tenantID,
+			ID:       ref.id,
+		})
+		row = contactMessageRow(byID)
+	} else {
+		row, err = s.queriesFor(ctx).GetContactMessageByPublicIDForTenant(ctx, dbmodels.GetContactMessageByPublicIDForTenantParams{
+			TenantID: tenantID,
+			PublicID: ref.publicID,
+		})
+	}
 	if err == nil {
 		return row, nil
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return contactMessageRow{}, connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
 	}
-	return contactMessageRow{}, s.internalDBError(ctx, "failed to get the contact message", err, "tenant_id", tenantID.String(), "contact_message_public_id", publicID)
+	return contactMessageRow{}, s.internalDBError(ctx, "failed to get the contact message", err, "tenant_id", tenantID.String(), "contact_message_id", ref.id.String(), "contact_message_public_id", ref.publicID)
 }
 
 // contactMessageActionContext resolves the three things every contact message
-// RPC starts from: the tenant, the staff session acting, and the identifier the
-// request named.
+// RPC starts from: the tenant, the staff session acting, and the message the
+// request named. idField names the request's primary-key field, and is empty
+// for a request that names the message by public_id alone.
 func (s *adminServer) contactMessageActionContext(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	rawPublicID string,
-) (dbmodels.Tenant, rpcmiddleware.SessionContext, string, error) {
+	idField, rawID, rawPublicID string,
+) (dbmodels.Tenant, rpcmiddleware.SessionContext, contactMessageRef, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, "", err
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, contactMessageRef{}, err
 	}
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, "", err
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, contactMessageRef{}, err
+	}
+	if id := strings.TrimSpace(rawID); id != "" {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, contactMessageRef{}, rpcerrors.NewFieldViolationError(
+				connect.CodeInvalidArgument,
+				errors.New(idField+" is not an identifier"),
+				idField,
+			)
+		}
+		return tenant, sessionCtx, contactMessageRef{id: parsed}, nil
 	}
 	publicID := strings.TrimSpace(rawPublicID)
 	if publicID == "" {
-		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, "", rpcerrors.NewFieldViolationError(
+		field := "public_id"
+		if idField != "" {
+			field = idField
+		}
+		return dbmodels.Tenant{}, rpcmiddleware.SessionContext{}, contactMessageRef{}, rpcerrors.NewFieldViolationError(
 			connect.CodeInvalidArgument,
-			errors.New("public_id is required"),
-			"public_id",
+			errors.New(field+" is required"),
+			field,
 		)
 	}
-	return tenant, sessionCtx, publicID, nil
+	return tenant, sessionCtx, contactMessageRef{publicID: publicID}, nil
 }
 
 func contactMessageAuditEntry(
@@ -256,11 +293,11 @@ func (s *adminServer) GetContactMessage(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.GetContactMessageRequest],
 ) (*connect.Response[publiraadminv1.GetContactMessageResponse], error) {
-	tenant, _, publicID, err := s.contactMessageActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	tenant, _, ref, err := s.contactMessageActionContext(ctx, req.Msg.Tenant, "", "", req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.loadContactMessage(ctx, tenant.ID, publicID)
+	row, err := s.loadContactMessage(ctx, tenant.ID, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -277,26 +314,34 @@ func (s *adminServer) MarkContactMessageHandled(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.MarkContactMessageHandledRequest],
 ) (*connect.Response[publiraadminv1.MarkContactMessageHandledResponse], error) {
-	tenant, sessionCtx, publicID, err := s.contactMessageActionContext(ctx, req.Msg.Tenant, req.Msg.PublicId)
+	tenant, sessionCtx, ref, err := s.contactMessageActionContext(ctx, req.Msg.Tenant, "contact_message_id", req.Msg.ContactMessageId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
+	messageID := ref.id
+	if messageID == uuid.Nil {
+		byPublicID, err := s.loadContactMessage(ctx, tenant.ID, ref)
+		if err != nil {
+			return nil, err
+		}
+		messageID = byPublicID.ID
+	}
 
-	if _, err := s.queriesFor(ctx).SetContactMessageHandledByPublicIDForTenant(ctx, dbmodels.SetContactMessageHandledByPublicIDForTenantParams{
+	if _, err := s.queriesFor(ctx).SetContactMessageHandledByIDForTenant(ctx, dbmodels.SetContactMessageHandledByIDForTenantParams{
 		TenantID:  tenant.ID,
-		PublicID:  publicID,
+		ID:        messageID,
 		Handled:   req.Msg.Handled,
 		HandledBy: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to mark the contact message", err, "tenant_id", tenant.ID.String(), "contact_message_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to mark the contact message", err, "tenant_id", tenant.ID.String(), "contact_message_id", messageID.String())
 	}
 
 	// Read back rather than project the update's own row: the answer describes
 	// the stored message, sender included, which the update does not return.
-	updated, err := s.loadContactMessage(ctx, tenant.ID, publicID)
+	updated, err := s.loadContactMessage(ctx, tenant.ID, contactMessageRef{id: messageID})
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +350,7 @@ func (s *adminServer) MarkContactMessageHandled(
 	if req.Msg.Handled {
 		action = "contact_message_handled"
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, publicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
 
 	return connect.NewResponse(&publiraadminv1.MarkContactMessageHandledResponse{Message: contactMessageToProto(updated)}), nil
 }

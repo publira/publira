@@ -52,6 +52,8 @@ message AdminComment {
   // post from the storefront too, but it is not a reader, so GetReader does not
   // answer for it.
   bool author_is_staff = 17;
+  // The comment's primary key, which every moderation request addresses it by.
+  string id = 18;
 }
 
 // One reader's report on one comment, as the report queue reads it.
@@ -130,6 +132,8 @@ message ApproveCommentRequest {
   // Recorded on the audit log row. Optional: approving is the queue's ordinary
   // outcome and usually needs no explanation.
   string reason = 3;
+  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  string comment_id = 4;
 }
 
 message ApproveCommentResponse {
@@ -142,6 +146,8 @@ message HideCommentRequest {
   // Recorded on the audit log row, which is where a tenant reads back why a
   // comment was removed when it owes its author a statement of reasons.
   string reason = 3;
+  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  string comment_id = 4;
 }
 
 message HideCommentResponse {
@@ -153,6 +159,8 @@ message RestoreCommentRequest {
   string public_id = 2;
   // Recorded on the audit log row.
   string reason = 3;
+  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  string comment_id = 4;
 }
 
 message RestoreCommentResponse {
@@ -166,6 +174,8 @@ message PurgeCommentRequest {
   // record left that this comment ever existed, and a purge with no stated
   // reason leaves a tenant unable to account for it.
   string reason = 3;
+  // The comment's primary key (AdminComment.id). Takes precedence over public_id.
+  string comment_id = 4;
 }
 
 // Deliberately empty. The row is deleted, so there is nothing left to return.

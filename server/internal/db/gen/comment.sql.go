@@ -13,28 +13,28 @@ import (
 	"github.com/google/uuid"
 )
 
-const ApproveEpisodeCommentByPublicIDForTenant = `-- name: ApproveEpisodeCommentByPublicIDForTenant :one
+const ApproveEpisodeCommentByIDForTenant = `-- name: ApproveEpisodeCommentByIDForTenant :one
 UPDATE episode_comments
 SET status = 'published',
     published_at = NOW(),
     approved_by = $1::uuid,
     updated_at = NOW()
 WHERE tenant_id = $2
-    AND public_id = $3
+    AND id = $3
     AND status = 'pending'
 RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
-type ApproveEpisodeCommentByPublicIDForTenantParams struct {
+type ApproveEpisodeCommentByIDForTenantParams struct {
 	ApprovedBy uuid.UUID `json:"approved_by"`
 	TenantID   uuid.UUID `json:"tenant_id"`
-	PublicID   string    `json:"public_id"`
+	ID         uuid.UUID `json:"id"`
 }
 
 // Approval is what publishes a comment posted under approval_required, so it is
 // also where published_at is first written.
-func (q *Queries) ApproveEpisodeCommentByPublicIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, ApproveEpisodeCommentByPublicIDForTenant, arg.ApprovedBy, arg.TenantID, arg.PublicID)
+func (q *Queries) ApproveEpisodeCommentByIDForTenant(ctx context.Context, arg ApproveEpisodeCommentByIDForTenantParams) (EpisodeComment, error) {
+	row := q.db.QueryRowContext(ctx, ApproveEpisodeCommentByIDForTenant, arg.ApprovedBy, arg.TenantID, arg.ID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,
@@ -191,26 +191,115 @@ func (q *Queries) CreateEpisodeComment(ctx context.Context, arg CreateEpisodeCom
 	return i, err
 }
 
-const DeleteEpisodeCommentByPublicIDForTenant = `-- name: DeleteEpisodeCommentByPublicIDForTenant :execrows
+const DeleteEpisodeCommentByIDForTenant = `-- name: DeleteEpisodeCommentByIDForTenant :execrows
 DELETE FROM episode_comments
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 `
 
-type DeleteEpisodeCommentByPublicIDForTenantParams struct {
+type DeleteEpisodeCommentByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
 // The irreversible removal staff reach for when the text must not be retained
 // at all. It names no status: content under a legal takedown has to go whatever
 // state it is in, and the reversible removal is a different query.
-func (q *Queries) DeleteEpisodeCommentByPublicIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByPublicIDForTenantParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, DeleteEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+func (q *Queries) DeleteEpisodeCommentByIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByIDForTenantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteEpisodeCommentByIDForTenant, arg.TenantID, arg.ID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const GetEpisodeCommentForModerationByIDForTenant = `-- name: GetEpisodeCommentForModerationByIDForTenant :one
+SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
+    u.public_id AS author_public_id,
+    u.name AS author_name,
+    EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    ) AS author_is_staff,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_comments c
+    JOIN users u ON u.tenant_id = c.tenant_id
+        AND u.id = c.user_id
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+WHERE c.tenant_id = $1
+    AND c.id = $2
+`
+
+type GetEpisodeCommentForModerationByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetEpisodeCommentForModerationByIDForTenantRow struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	ApprovedBy      uuid.NullUUID  `json:"approved_by"`
+	HiddenBy        uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason    sql.NullString `json:"hidden_reason"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	HiddenAt        sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	AuthorIsStaff   bool           `json:"author_is_staff"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+}
+
+// One comment in the shape the moderation list returns. Every moderation action
+// reads it before deciding and again after writing, so the caller answers from
+// the stored row rather than from what it assumed the transition would produce.
+func (q *Queries) GetEpisodeCommentForModerationByIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByIDForTenantParams) (GetEpisodeCommentForModerationByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetEpisodeCommentForModerationByIDForTenant, arg.TenantID, arg.ID)
+	var i GetEpisodeCommentForModerationByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.UserID,
+		&i.Body,
+		&i.Status,
+		&i.ApprovedBy,
+		&i.HiddenBy,
+		&i.HiddenReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+		&i.HiddenAt,
+		&i.WithdrawnAt,
+		&i.OpenReportCount,
+		&i.AuthorPublicID,
+		&i.AuthorName,
+		&i.AuthorIsStaff,
+		&i.EpisodePublicID,
+		&i.EpisodeTitle,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
+	)
+	return i, err
 }
 
 const GetEpisodeCommentForModerationByPublicIDForTenant = `-- name: GetEpisodeCommentForModerationByPublicIDForTenant :one
@@ -268,9 +357,8 @@ type GetEpisodeCommentForModerationByPublicIDForTenantRow struct {
 	SeriesTitle     string         `json:"series_title"`
 }
 
-// One comment in the shape the moderation list returns. Every moderation action
-// reads it before deciding and again after writing, so the caller answers from
-// the stored row rather than from what it assumed the transition would produce.
+// The same comment by the public identifier, for a moderation request that
+// still names it that way.
 func (q *Queries) GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.Context, arg GetEpisodeCommentForModerationByPublicIDForTenantParams) (GetEpisodeCommentForModerationByPublicIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetEpisodeCommentForModerationByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var i GetEpisodeCommentForModerationByPublicIDForTenantRow
@@ -302,7 +390,7 @@ func (q *Queries) GetEpisodeCommentForModerationByPublicIDForTenant(ctx context.
 	return i, err
 }
 
-const HideEpisodeCommentByPublicIDForTenant = `-- name: HideEpisodeCommentByPublicIDForTenant :one
+const HideEpisodeCommentByIDForTenant = `-- name: HideEpisodeCommentByIDForTenant :one
 UPDATE episode_comments
 SET status = 'hidden',
     hidden_at = NOW(),
@@ -310,26 +398,26 @@ SET status = 'hidden',
     hidden_reason = $2::text,
     updated_at = NOW()
 WHERE tenant_id = $3
-    AND public_id = $4
+    AND id = $4
     AND status IN ('pending', 'published')
 RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
-type HideEpisodeCommentByPublicIDForTenantParams struct {
+type HideEpisodeCommentByIDForTenantParams struct {
 	HiddenBy     uuid.NullUUID `json:"hidden_by"`
 	HiddenReason string        `json:"hidden_reason"`
 	TenantID     uuid.UUID     `json:"tenant_id"`
-	PublicID     string        `json:"public_id"`
+	ID           uuid.UUID     `json:"id"`
 }
 
 // hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 // has no staff actor to name.
-func (q *Queries) HideEpisodeCommentByPublicIDForTenant(ctx context.Context, arg HideEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, HideEpisodeCommentByPublicIDForTenant,
+func (q *Queries) HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error) {
+	row := q.db.QueryRowContext(ctx, HideEpisodeCommentByIDForTenant,
 		arg.HiddenBy,
 		arg.HiddenReason,
 		arg.TenantID,
-		arg.PublicID,
+		arg.ID,
 	)
 	var i EpisodeComment
 	err := row.Scan(
@@ -1066,7 +1154,7 @@ func (q *Queries) PurgeWithdrawnEpisodeComments(ctx context.Context, arg PurgeWi
 	return result.RowsAffected()
 }
 
-const RestoreEpisodeCommentByPublicIDForTenant = `-- name: RestoreEpisodeCommentByPublicIDForTenant :one
+const RestoreEpisodeCommentByIDForTenant = `-- name: RestoreEpisodeCommentByIDForTenant :one
 UPDATE episode_comments
 SET status = CASE WHEN published_at IS NULL THEN 'pending' ELSE 'published' END,
     hidden_at = NULL,
@@ -1074,21 +1162,21 @@ SET status = CASE WHEN published_at IS NULL THEN 'pending' ELSE 'published' END,
     hidden_reason = NULL,
     updated_at = NOW()
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
     AND status = 'hidden'
 RETURNING id, tenant_id, public_id, episode_id, user_id, body, status, approved_by, hidden_by, hidden_reason, created_at, updated_at, published_at, hidden_at, withdrawn_at, open_report_count
 `
 
-type RestoreEpisodeCommentByPublicIDForTenantParams struct {
+type RestoreEpisodeCommentByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
+	ID       uuid.UUID `json:"id"`
 }
 
 // A restored comment returns to the state the removal interrupted, which
 // published_at records: one that was already public becomes public again, and
 // one removed while still awaiting approval goes back into that queue.
-func (q *Queries) RestoreEpisodeCommentByPublicIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByPublicIDForTenantParams) (EpisodeComment, error) {
-	row := q.db.QueryRowContext(ctx, RestoreEpisodeCommentByPublicIDForTenant, arg.TenantID, arg.PublicID)
+func (q *Queries) RestoreEpisodeCommentByIDForTenant(ctx context.Context, arg RestoreEpisodeCommentByIDForTenantParams) (EpisodeComment, error) {
+	row := q.db.QueryRowContext(ctx, RestoreEpisodeCommentByIDForTenant, arg.TenantID, arg.ID)
 	var i EpisodeComment
 	err := row.Scan(
 		&i.ID,

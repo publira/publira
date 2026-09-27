@@ -45,8 +45,10 @@ type ContactMessage struct {
 	// tenant may still owe an answer to the address on it.
 	SenderPublicId string `protobuf:"bytes,7,opt,name=sender_public_id,json=senderPublicId,proto3" json:"sender_public_id,omitempty"`
 	SenderName     string `protobuf:"bytes,8,opt,name=sender_name,json=senderName,proto3" json:"sender_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The message's primary key, which MarkContactMessageHandled addresses it by.
+	Id            string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ContactMessage) Reset() {
@@ -131,6 +133,13 @@ func (x *ContactMessage) GetSenderPublicId() string {
 func (x *ContactMessage) GetSenderName() string {
 	if x != nil {
 		return x.SenderName
+	}
+	return ""
+}
+
+func (x *ContactMessage) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -374,9 +383,12 @@ type MarkContactMessageHandledRequest struct {
 	// True marks the message dealt with, false puts it back among the ones still
 	// waiting. The flag is stated rather than toggled, so two members of staff
 	// working the same inbox cannot undo each other by pressing at once.
-	Handled       bool `protobuf:"varint,3,opt,name=handled,proto3" json:"handled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Handled bool `protobuf:"varint,3,opt,name=handled,proto3" json:"handled,omitempty"`
+	// The message's primary key (ContactMessage.id). Takes precedence over
+	// public_id.
+	ContactMessageId string `protobuf:"bytes,4,opt,name=contact_message_id,json=contactMessageId,proto3" json:"contact_message_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *MarkContactMessageHandledRequest) Reset() {
@@ -430,6 +442,13 @@ func (x *MarkContactMessageHandledRequest) GetHandled() bool {
 	return false
 }
 
+func (x *MarkContactMessageHandledRequest) GetContactMessageId() string {
+	if x != nil {
+		return x.ContactMessageId
+	}
+	return ""
+}
+
 type MarkContactMessageHandledResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       *ContactMessage        `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
@@ -478,7 +497,7 @@ var File_publira_admin_v1_contact_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x8a\x02\n" +
+	"\x1epublira/admin/v1/contact.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x9a\x02\n" +
 	"\x0eContactMessage\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12$\n" +
 	"\x0ereply_to_email\x18\x02 \x01(\tR\freplyToEmail\x12\x18\n" +
@@ -490,7 +509,8 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"handled_at\x18\x06 \x01(\tR\thandledAt\x12(\n" +
 	"\x10sender_public_id\x18\a \x01(\tR\x0esenderPublicId\x12\x1f\n" +
 	"\vsender_name\x18\b \x01(\tR\n" +
-	"senderName\"\x99\x01\n" +
+	"senderName\x12\x0e\n" +
+	"\x02id\x18\t \x01(\tR\x02id\"\x99\x01\n" +
 	"\x1aListContactMessagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +
@@ -505,11 +525,12 @@ const file_publira_admin_v1_contact_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"W\n" +
 	"\x19GetContactMessageResponse\x12:\n" +
-	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\x92\x01\n" +
+	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage\"\xc0\x01\n" +
 	" MarkContactMessageHandledRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x18\n" +
-	"\ahandled\x18\x03 \x01(\bR\ahandled\"_\n" +
+	"\ahandled\x18\x03 \x01(\bR\ahandled\x12,\n" +
+	"\x12contact_message_id\x18\x04 \x01(\tR\x10contactMessageId\"_\n" +
 	"!MarkContactMessageHandledResponse\x12:\n" +
 	"\amessage\x18\x01 \x01(\v2 .publira.admin.v1.ContactMessageR\amessage2\x84\x03\n" +
 	"\x13AdminContactService\x12t\n" +

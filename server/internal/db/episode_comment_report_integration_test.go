@@ -230,9 +230,9 @@ func TestPurgingACommentDeletesItsReports(t *testing.T) {
 		t.Fatalf("report: %v", err)
 	}
 
-	deleted, err := queries.DeleteEpisodeCommentByPublicIDForTenant(ctx, dbmodels.DeleteEpisodeCommentByPublicIDForTenantParams{
+	deleted, err := queries.DeleteEpisodeCommentByIDForTenant(ctx, dbmodels.DeleteEpisodeCommentByIDForTenantParams{
 		TenantID: seed.tenantID,
-		PublicID: comment.PublicID,
+		ID:       comment.ID,
 	})
 	if err != nil {
 		t.Fatalf("purge comment: %v", err)

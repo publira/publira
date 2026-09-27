@@ -69,6 +69,8 @@ type AdminComment struct {
 	// post from the storefront too, but it is not a reader, so GetReader does not
 	// answer for it.
 	AuthorIsStaff bool `protobuf:"varint,17,opt,name=author_is_staff,json=authorIsStaff,proto3" json:"author_is_staff,omitempty"`
+	// The comment's primary key, which every moderation request addresses it by.
+	Id            string `protobuf:"bytes,18,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -220,6 +222,13 @@ func (x *AdminComment) GetAuthorIsStaff() bool {
 		return x.AuthorIsStaff
 	}
 	return false
+}
+
+func (x *AdminComment) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 // One reader's report on one comment, as the report queue reads it.
@@ -610,7 +619,9 @@ type ApproveCommentRequest struct {
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// Recorded on the audit log row. Optional: approving is the queue's ordinary
 	// outcome and usually needs no explanation.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -666,6 +677,13 @@ func (x *ApproveCommentRequest) GetReason() string {
 	return ""
 }
 
+func (x *ApproveCommentRequest) GetCommentId() string {
+	if x != nil {
+		return x.CommentId
+	}
+	return ""
+}
+
 type ApproveCommentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Comment       *AdminComment          `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
@@ -716,7 +734,9 @@ type HideCommentRequest struct {
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// Recorded on the audit log row, which is where a tenant reads back why a
 	// comment was removed when it owes its author a statement of reasons.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -772,6 +792,13 @@ func (x *HideCommentRequest) GetReason() string {
 	return ""
 }
 
+func (x *HideCommentRequest) GetCommentId() string {
+	if x != nil {
+		return x.CommentId
+	}
+	return ""
+}
+
 type HideCommentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Comment       *AdminComment          `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
@@ -821,7 +848,9 @@ type RestoreCommentRequest struct {
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// Recorded on the audit log row.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -877,6 +906,13 @@ func (x *RestoreCommentRequest) GetReason() string {
 	return ""
 }
 
+func (x *RestoreCommentRequest) GetCommentId() string {
+	if x != nil {
+		return x.CommentId
+	}
+	return ""
+}
+
 type RestoreCommentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Comment       *AdminComment          `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
@@ -928,7 +964,9 @@ type PurgeCommentRequest struct {
 	// Required. The row is gone afterwards, so the audit log entry is the only
 	// record left that this comment ever existed, and a purge with no stated
 	// reason leaves a tenant unable to account for it.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The comment's primary key (AdminComment.id). Takes precedence over public_id.
+	CommentId     string `protobuf:"bytes,4,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -980,6 +1018,13 @@ func (x *PurgeCommentRequest) GetPublicId() string {
 func (x *PurgeCommentRequest) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *PurgeCommentRequest) GetCommentId() string {
+	if x != nil {
+		return x.CommentId
 	}
 	return ""
 }
@@ -1280,7 +1325,7 @@ var File_publira_admin_v1_comment_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/comment.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xdd\x04\n" +
+	"\x1epublira/admin/v1/comment.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xed\x04\n" +
 	"\fAdminComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x16\n" +
@@ -1302,7 +1347,8 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x10series_public_id\x18\x0e \x01(\tR\x0eseriesPublicId\x12!\n" +
 	"\fseries_title\x18\x0f \x01(\tR\vseriesTitle\x12*\n" +
 	"\x11open_report_count\x18\x10 \x01(\x05R\x0fopenReportCount\x12&\n" +
-	"\x0fauthor_is_staff\x18\x11 \x01(\bR\rauthorIsStaff\"\xbd\x02\n" +
+	"\x0fauthor_is_staff\x18\x11 \x01(\bR\rauthorIsStaff\x12\x0e\n" +
+	"\x02id\x18\x12 \x01(\tR\x02id\"\xbd\x02\n" +
 	"\rCommentReport\x12\x1b\n" +
 	"\treport_id\x18\x01 \x01(\tR\breportId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x12\n" +
@@ -1331,29 +1377,37 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x1bCountPendingCommentsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"C\n" +
 	"\x1cCountPendingCommentsResponse\x12#\n" +
-	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\"\x85\x01\n" +
+	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\"\xa4\x01\n" +
 	"\x15ApproveCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"R\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentId\"R\n" +
 	"\x16ApproveCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x82\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa1\x01\n" +
 	"\x12HideCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"O\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentId\"O\n" +
 	"\x13HideCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x85\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa4\x01\n" +
 	"\x15RestoreCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"R\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentId\"R\n" +
 	"\x16RestoreCommentResponse\x128\n" +
-	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\x83\x01\n" +
+	"\acomment\x18\x01 \x01(\v2\x1e.publira.admin.v1.AdminCommentR\acomment\"\xa2\x01\n" +
 	"\x13PurgeCommentRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"comment_id\x18\x04 \x01(\tR\tcommentId\"\x16\n" +
 	"\x14PurgeCommentResponse\"\x98\x01\n" +
 	"\x19ListCommentReportsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
