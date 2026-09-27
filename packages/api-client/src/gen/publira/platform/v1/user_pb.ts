@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/user.proto.
  */
 export const file_publira_platform_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL3VzZXIucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEikgEKB0VuZFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDgoGc3RhdHVzGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdGVuYW50X2lkcxgGIAMoCRITCgt0ZW5hbnRfbmFtZRgHIAEoCRIKCgJpZBgIIAEoCSLAAQoTTGlzdEVuZFVzZXJzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIVCg1jcmVhdGVkX2FmdGVyGAMgASgJEg4KBnN0YXR1cxgEIAEoCRIWCg5jcmVhdGVkX2JlZm9yZRgFIAEoCRISCgpwdWJsaWNfaWRzGAYgAygJEhgKEHRlbmFudF9wdWJsaWNfaWQYByABKAkSDQoFdG9rZW4YCCABKAkSEAoIdXNlcl9pZHMYCSADKAlKBAgCEANSBm9mZnNldCJvChRMaXN0RW5kVXNlcnNSZXNwb25zZRIrCgV1c2VycxgBIAMoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIiYKEUdldEVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChJHZXRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciI7ChVTdXNwZW5kRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiRAoWU3VzcGVuZEVuZFVzZXJSZXNwb25zZRIqCgR1c2VyGAEgASgLMhwucHVibGlyYS5wbGF0Zm9ybS52MS5FbmRVc2VyIj0KF1Vuc3VzcGVuZEVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIkYKGFVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZRIqCgR1c2VyGAEgASgLMhwucHVibGlyYS5wbGF0Zm9ybS52MS5FbmRVc2VyIjoKFERlbGV0ZUVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIioKFURlbGV0ZUVuZFVzZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkypwQKE1BsYXRmb3JtVXNlclNlcnZpY2USZQoMTGlzdEVuZFVzZXJzEigucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXF1ZXN0GikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXNwb25zZSIAEl8KCkdldEVuZFVzZXISJi5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldEVuZFVzZXJSZXF1ZXN0GicucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRFbmRVc2VyUmVzcG9uc2UiABJrCg5TdXNwZW5kRW5kVXNlchIqLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZEVuZFVzZXJSZXF1ZXN0GisucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kRW5kVXNlclJlc3BvbnNlIgAScQoQVW5zdXNwZW5kRW5kVXNlchIsLnB1YmxpcmEucGxhdGZvcm0udjEuVW5zdXNwZW5kRW5kVXNlclJlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZSIAEmgKDURlbGV0ZUVuZFVzZXISKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkRlbGV0ZUVuZFVzZXJSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5EZWxldGVFbmRVc2VyUmVzcG9uc2UiAEJdWltnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL3VzZXIucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEikgEKB0VuZFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDgoGc3RhdHVzGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdGVuYW50X2lkcxgGIAMoCRITCgt0ZW5hbnRfbmFtZRgHIAEoCRIKCgJpZBgIIAEoCSK+AQoTTGlzdEVuZFVzZXJzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIVCg1jcmVhdGVkX2FmdGVyGAMgASgJEg4KBnN0YXR1cxgEIAEoCRIWCg5jcmVhdGVkX2JlZm9yZRgFIAEoCRIYChB0ZW5hbnRfcHVibGljX2lkGAcgASgJEg0KBXRva2VuGAggASgJEhAKCHVzZXJfaWRzGAkgAygJSgQIAhADSgQIBhAHUgZvZmZzZXRSCnB1YmxpY19pZHMibwoUTGlzdEVuZFVzZXJzUmVzcG9uc2USKwoFdXNlcnMYASADKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXISFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSImChFHZXRFbmRVc2VyUmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiQAoSR2V0RW5kVXNlclJlc3BvbnNlEioKBHVzZXIYASABKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXIiOQoVU3VzcGVuZEVuZFVzZXJSZXF1ZXN0Eg8KB3VzZXJfaWQYAiABKAlKBAgBEAJSCXB1YmxpY19pZCJEChZTdXNwZW5kRW5kVXNlclJlc3BvbnNlEioKBHVzZXIYASABKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXIiOwoXVW5zdXNwZW5kRW5kVXNlclJlcXVlc3QSDwoHdXNlcl9pZBgCIAEoCUoECAEQAlIJcHVibGljX2lkIkYKGFVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZRIqCgR1c2VyGAEgASgLMhwucHVibGlyYS5wbGF0Zm9ybS52MS5FbmRVc2VyIjgKFERlbGV0ZUVuZFVzZXJSZXF1ZXN0Eg8KB3VzZXJfaWQYAiABKAlKBAgBEAJSCXB1YmxpY19pZCIqChVEZWxldGVFbmRVc2VyUmVzcG9uc2USEQoJcHVibGljX2lkGAEgASgJMqcEChNQbGF0Zm9ybVVzZXJTZXJ2aWNlEmUKDExpc3RFbmRVc2VycxIoLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEVuZFVzZXJzUmVxdWVzdBopLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEVuZFVzZXJzUmVzcG9uc2UiABJfCgpHZXRFbmRVc2VyEiYucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRFbmRVc2VyUmVxdWVzdBonLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0RW5kVXNlclJlc3BvbnNlIgASawoOU3VzcGVuZEVuZFVzZXISKi5wdWJsaXJhLnBsYXRmb3JtLnYxLlN1c3BlbmRFbmRVc2VyUmVxdWVzdBorLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZEVuZFVzZXJSZXNwb25zZSIAEnEKEFVuc3VzcGVuZEVuZFVzZXISLC5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZEVuZFVzZXJSZXF1ZXN0Gi0ucHVibGlyYS5wbGF0Zm9ybS52MS5VbnN1c3BlbmRFbmRVc2VyUmVzcG9uc2UiABJoCg1EZWxldGVFbmRVc2VyEikucHVibGlyYS5wbGF0Zm9ybS52MS5EZWxldGVFbmRVc2VyUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuRGVsZXRlRW5kVXNlclJlc3BvbnNlIgBCXVpbZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
 
 /**
  * An end user as the platform operator sees them.
@@ -106,11 +106,6 @@ export type ListEndUsersRequest = Message<"publira.platform.v1.ListEndUsersReque
    * @generated from field: string created_before = 5;
    */
   createdBefore: string;
-
-  /**
-   * @generated from field: repeated string public_ids = 6;
-   */
-  publicIds: string[];
 
   /**
    * Tenant public_id. Empty means every tenant.
@@ -211,12 +206,7 @@ export const GetEndUserResponseSchema: GenMessage<GetEndUserResponse> = /*@__PUR
  */
 export type SuspendEndUserRequest = Message<"publira.platform.v1.SuspendEndUserRequest"> & {
   /**
-   * @generated from field: string public_id = 1;
-   */
-  publicId: string;
-
-  /**
-   * The user's primary key (EndUser.id). Takes precedence over public_id.
+   * The user's primary key (EndUser.id).
    *
    * @generated from field: string user_id = 2;
    */
@@ -252,12 +242,7 @@ export const SuspendEndUserResponseSchema: GenMessage<SuspendEndUserResponse> = 
  */
 export type UnsuspendEndUserRequest = Message<"publira.platform.v1.UnsuspendEndUserRequest"> & {
   /**
-   * @generated from field: string public_id = 1;
-   */
-  publicId: string;
-
-  /**
-   * The user's primary key (EndUser.id). Takes precedence over public_id.
+   * The user's primary key (EndUser.id).
    *
    * @generated from field: string user_id = 2;
    */
@@ -293,12 +278,7 @@ export const UnsuspendEndUserResponseSchema: GenMessage<UnsuspendEndUserResponse
  */
 export type DeleteEndUserRequest = Message<"publira.platform.v1.DeleteEndUserRequest"> & {
   /**
-   * @generated from field: string public_id = 1;
-   */
-  publicId: string;
-
-  /**
-   * The user's primary key (EndUser.id). Takes precedence over public_id.
+   * The user's primary key (EndUser.id).
    *
    * @generated from field: string user_id = 2;
    */

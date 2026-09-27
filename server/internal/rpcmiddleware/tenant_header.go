@@ -11,28 +11,17 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-const (
-	// TenantIDHeaderName carries the tenant primary key (UUID) for internal RPC.
-	TenantIDHeaderName = "X-Publira-Tenant-Id"
-	// TenantPublicIDHeaderName is a legacy alias; values must be a tenant UUID when set.
-	// Prefer TenantIDHeaderName for new code.
-	TenantPublicIDHeaderName = "X-Publira-Tenant-Public-Id"
-)
+// TenantIDHeaderName carries the tenant primary key (UUID) for internal RPC.
+const TenantIDHeaderName = "X-Publira-Tenant-Id"
 
 // TenantIDFromHeader returns the tenant identifier carried by the request
-// headers, preferring TenantIDHeaderName over the legacy alias. Callers that
-// resolve their own identifier shape (platform public_id, for example) use this
-// so the set of accepted header names stays defined in one place.
+// headers. Callers that resolve their own identifier shape (platform public_id,
+// for example) use this so the header name stays defined in one place.
 func TenantIDFromHeader(headers http.Header) string {
 	if headers == nil {
 		return ""
 	}
-	for _, key := range []string{TenantIDHeaderName, TenantPublicIDHeaderName} {
-		if value := strings.TrimSpace(headers.Get(key)); value != "" {
-			return value
-		}
-	}
-	return ""
+	return strings.TrimSpace(headers.Get(TenantIDHeaderName))
 }
 
 // ResolveTenantID resolves the tenant primary key (UUID) from request body or HTTP headers.

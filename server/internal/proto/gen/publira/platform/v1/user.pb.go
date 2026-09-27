@@ -131,10 +131,9 @@ type ListEndUsersRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Filters.
-	CreatedAfter  string   `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC 3339
-	Status        string   `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
-	CreatedBefore string   `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC 3339
-	PublicIds     []string `protobuf:"bytes,6,rep,name=public_ids,json=publicIds,proto3" json:"public_ids,omitempty"`
+	CreatedAfter  string `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC 3339
+	Status        string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
+	CreatedBefore string `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC 3339
 	// Tenant public_id. Empty means every tenant.
 	TenantPublicId string `protobuf:"bytes,7,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
@@ -201,13 +200,6 @@ func (x *ListEndUsersRequest) GetCreatedBefore() string {
 		return x.CreatedBefore
 	}
 	return ""
-}
-
-func (x *ListEndUsersRequest) GetPublicIds() []string {
-	if x != nil {
-		return x.PublicIds
-	}
-	return nil
 }
 
 func (x *ListEndUsersRequest) GetTenantPublicId() string {
@@ -382,9 +374,8 @@ func (x *GetEndUserResponse) GetUser() *EndUser {
 }
 
 type SuspendEndUserRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The user's primary key (EndUser.id).
 	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -418,13 +409,6 @@ func (x *SuspendEndUserRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SuspendEndUserRequest.ProtoReflect.Descriptor instead.
 func (*SuspendEndUserRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_user_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *SuspendEndUserRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *SuspendEndUserRequest) GetUserId() string {
@@ -479,9 +463,8 @@ func (x *SuspendEndUserResponse) GetUser() *EndUser {
 }
 
 type UnsuspendEndUserRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The user's primary key (EndUser.id).
 	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -515,13 +498,6 @@ func (x *UnsuspendEndUserRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UnsuspendEndUserRequest.ProtoReflect.Descriptor instead.
 func (*UnsuspendEndUserRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_user_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *UnsuspendEndUserRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UnsuspendEndUserRequest) GetUserId() string {
@@ -576,9 +552,8 @@ func (x *UnsuspendEndUserResponse) GetUser() *EndUser {
 }
 
 type DeleteEndUserRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The user's primary key (EndUser.id).
 	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -612,13 +587,6 @@ func (x *DeleteEndUserRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeleteEndUserRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEndUserRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_user_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *DeleteEndUserRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *DeleteEndUserRequest) GetUserId() string {
@@ -688,17 +656,16 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\x12\x1f\n" +
 	"\vtenant_name\x18\a \x01(\tR\n" +
 	"tenantName\x12\x0e\n" +
-	"\x02id\x18\b \x01(\tR\x02id\"\x97\x02\n" +
+	"\x02id\x18\b \x01(\tR\x02id\"\x8a\x02\n" +
 	"\x13ListEndUsersRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12#\n" +
 	"\rcreated_after\x18\x03 \x01(\tR\fcreatedAfter\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12%\n" +
-	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\x12\x1d\n" +
-	"\n" +
-	"public_ids\x18\x06 \x03(\tR\tpublicIds\x12(\n" +
+	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\x12(\n" +
 	"\x10tenant_public_id\x18\a \x01(\tR\x0etenantPublicId\x12\x14\n" +
 	"\x05token\x18\b \x01(\tR\x05token\x12\x19\n" +
-	"\buser_ids\x18\t \x03(\tR\auserIdsJ\x04\b\x02\x10\x03R\x06offset\"\x90\x01\n" +
+	"\buser_ids\x18\t \x03(\tR\auserIdsJ\x04\b\x02\x10\x03J\x04\b\x06\x10\aR\x06offsetR\n" +
+	"public_ids\"\x90\x01\n" +
 	"\x14ListEndUsersResponse\x122\n" +
 	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -707,20 +674,17 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\x11GetEndUserRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"F\n" +
 	"\x12GetEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"M\n" +
-	"\x15SuspendEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"J\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"A\n" +
+	"\x15SuspendEndUserRequest\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02R\tpublic_id\"J\n" +
 	"\x16SuspendEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"O\n" +
-	"\x17UnsuspendEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"L\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"C\n" +
+	"\x17UnsuspendEndUserRequest\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02R\tpublic_id\"L\n" +
 	"\x18UnsuspendEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"L\n" +
-	"\x14DeleteEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"@\n" +
+	"\x14DeleteEndUserRequest\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userIdJ\x04\b\x01\x10\x02R\tpublic_id\"4\n" +
 	"\x15DeleteEndUserResponse\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId2\xa7\x04\n" +
 	"\x13PlatformUserService\x12e\n" +

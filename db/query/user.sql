@@ -87,7 +87,6 @@ WHERE NOT EXISTS (
         OR sqlc.narg('status')::text = ''
         OR u.status = sqlc.narg('status')::text
     )
-    AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
     AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
     AND (
         sqlc.narg('tenant_public_id')::text IS NULL
@@ -131,7 +130,6 @@ WHERE NOT EXISTS (
         OR sqlc.narg('status')::text = ''
         OR u.status = sqlc.narg('status')::text
     )
-    AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
     AND (sqlc.narg('ids')::uuid[] IS NULL OR u.id = ANY(sqlc.narg('ids')::uuid[]))
     AND (
         sqlc.narg('tenant_public_id')::text IS NULL

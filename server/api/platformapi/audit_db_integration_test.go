@@ -131,9 +131,9 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 		}
 	}
 
-	list := func(tenantPublicID string) string {
+	list := func(tenantID string) string {
 		t.Helper()
-		res, err := audit.ListAuditLogs(ctx, newDBAuthedRequest(operator, publirasplatformv1.ListAuditLogsRequest{TenantPublicId: tenantPublicID}))
+		res, err := audit.ListAuditLogs(ctx, newDBAuthedRequest(operator, publirasplatformv1.ListAuditLogsRequest{TenantId: tenantID}))
 		if err != nil {
 			t.Fatalf("ListAuditLogs: %v", err)
 		}
@@ -150,7 +150,7 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 	if got := list(""); got != want {
 		t.Fatalf("entries =\n%s\nwant\n%s", got, want)
 	}
-	if got, want := list(first.PublicID), "tenant_admin_invited user TAREADER Reader A TENANTA Tenant A"; got != want {
+	if got, want := list(first.ID.String()), "tenant_admin_invited user TAREADER Reader A TENANTA Tenant A"; got != want {
 		t.Fatalf("entries for tenant A =\n%s\nwant\n%s", got, want)
 	}
 }

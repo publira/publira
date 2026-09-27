@@ -109,34 +109,16 @@ func getOperatorRowToProto(row dbmodels.GetPlatformOperatorByIDRow) *publiraspla
 	)
 }
 
-// operatorRef is how a request names its operator: by primary key when it
-// carries one, and by public_id otherwise.
-type operatorRef struct {
-	id       uuid.UUID
-	publicID string
-}
-
-func parseOperatorRef(rawID, rawPublicID string) (operatorRef, error) {
-	if id := strings.TrimSpace(rawID); id != "" {
-		parsed, err := uuid.Parse(id)
-		if err != nil {
-			return operatorRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is not an identifier"))
-		}
-		return operatorRef{id: parsed}, nil
+func parseOperatorID(raw string) (uuid.UUID, error) {
+	id := strings.TrimSpace(raw)
+	if id == "" {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is required"))
 	}
-	publicID := strings.TrimSpace(rawPublicID)
-	if publicID == "" {
-		return operatorRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is required"))
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is not an identifier"))
 	}
-	return operatorRef{publicID: publicID}, nil
-}
-
-func loadOperator(ctx context.Context, q *dbmodels.Queries, ref operatorRef) (dbmodels.GetPlatformOperatorByIDRow, error) {
-	if ref.id != uuid.Nil {
-		return q.GetPlatformOperatorByID(ctx, ref.id)
-	}
-	row, err := q.GetPlatformOperatorByPublicID(ctx, ref.publicID)
-	return dbmodels.GetPlatformOperatorByIDRow(row), err
+	return parsed, nil
 }
 
 func createOperatorPassword() (string, error) {
@@ -391,7 +373,7 @@ func (s *platformServer) UpdateOperatorRole(
 		return nil, err
 	}
 
-	ref, err := parseOperatorRef(req.Msg.OperatorId, req.Msg.PublicId)
+	operatorID, err := parseOperatorID(req.Msg.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -408,12 +390,12 @@ func (s *platformServer) UpdateOperatorRole(
 
 	txq := dbmodels.New(tx)
 
-	operator, err := loadOperator(ctx, txq, ref)
+	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get operator", err, "operator_id", ref.id.String(), "public_id", ref.publicID)
+		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID && role != rolePlatformSuperAdmin {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot demote yourself"))
@@ -466,7 +448,7 @@ func (s *platformServer) SuspendOperator(
 		return nil, err
 	}
 
-	ref, err := parseOperatorRef(req.Msg.OperatorId, req.Msg.PublicId)
+	operatorID, err := parseOperatorID(req.Msg.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -479,12 +461,12 @@ func (s *platformServer) SuspendOperator(
 
 	txq := dbmodels.New(tx)
 
-	operator, err := loadOperator(ctx, txq, ref)
+	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get operator", err, "operator_id", ref.id.String(), "public_id", ref.publicID)
+		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot suspend yourself"))
@@ -539,7 +521,7 @@ func (s *platformServer) UnsuspendOperator(
 		return nil, err
 	}
 
-	ref, err := parseOperatorRef(req.Msg.OperatorId, req.Msg.PublicId)
+	operatorID, err := parseOperatorID(req.Msg.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -552,12 +534,12 @@ func (s *platformServer) UnsuspendOperator(
 
 	txq := dbmodels.New(tx)
 
-	operator, err := loadOperator(ctx, txq, ref)
+	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get operator", err, "operator_id", ref.id.String(), "public_id", ref.publicID)
+		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.Status != userStatusSuspended {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is not suspended"))
@@ -606,7 +588,7 @@ func (s *platformServer) DeactivateOperator(
 		return nil, err
 	}
 
-	ref, err := parseOperatorRef(req.Msg.OperatorId, req.Msg.PublicId)
+	operatorID, err := parseOperatorID(req.Msg.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -619,12 +601,12 @@ func (s *platformServer) DeactivateOperator(
 
 	txq := dbmodels.New(tx)
 
-	operator, err := loadOperator(ctx, txq, ref)
+	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get operator", err, "operator_id", ref.id.String(), "public_id", ref.publicID)
+		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot deactivate yourself"))

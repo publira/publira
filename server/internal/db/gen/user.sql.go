@@ -513,33 +513,31 @@ WHERE NOT EXISTS (
         OR $3::text = ''
         OR u.status = $3::text
     )
-    AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
-    AND ($5::uuid[] IS NULL OR u.id = ANY($5::uuid[]))
+    AND ($4::uuid[] IS NULL OR u.id = ANY($4::uuid[]))
     AND (
-        $6::text IS NULL
-        OR $6::text = ''
-        OR t.public_id = $6::text
+        $5::text IS NULL
+        OR $5::text = ''
+        OR t.public_id = $5::text
     )
     AND (
-        $7::uuid IS NULL
+        $6::uuid IS NULL
         OR (
-            $8::boolean
-            AND (u.created_at, u.id) >= ($9::timestamptz, $7::uuid)
+            $7::boolean
+            AND (u.created_at, u.id) >= ($8::timestamptz, $6::uuid)
         )
         OR (
-            NOT $8::boolean
-            AND (u.created_at, u.id) > ($9::timestamptz, $7::uuid)
+            NOT $7::boolean
+            AND (u.created_at, u.id) > ($8::timestamptz, $6::uuid)
         )
     )
 ORDER BY u.created_at ASC, u.id ASC
-LIMIT $10
+LIMIT $9
 `
 
 type ListEndUsersAscParams struct {
 	CreatedAfter    sql.NullTime   `json:"created_after"`
 	CreatedBefore   sql.NullTime   `json:"created_before"`
 	Status          sql.NullString `json:"status"`
-	PublicIds       []string       `json:"public_ids"`
 	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -564,7 +562,6 @@ func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
-		pq.Array(arg.PublicIds),
 		pq.Array(arg.Ids),
 		arg.TenantPublicID,
 		arg.CursorID,
@@ -625,33 +622,31 @@ WHERE NOT EXISTS (
         OR $3::text = ''
         OR u.status = $3::text
     )
-    AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
-    AND ($5::uuid[] IS NULL OR u.id = ANY($5::uuid[]))
+    AND ($4::uuid[] IS NULL OR u.id = ANY($4::uuid[]))
     AND (
-        $6::text IS NULL
-        OR $6::text = ''
-        OR t.public_id = $6::text
+        $5::text IS NULL
+        OR $5::text = ''
+        OR t.public_id = $5::text
     )
     AND (
-        $7::uuid IS NULL
+        $6::uuid IS NULL
         OR (
-            $8::boolean
-            AND (u.created_at, u.id) <= ($9::timestamptz, $7::uuid)
+            $7::boolean
+            AND (u.created_at, u.id) <= ($8::timestamptz, $6::uuid)
         )
         OR (
-            NOT $8::boolean
-            AND (u.created_at, u.id) < ($9::timestamptz, $7::uuid)
+            NOT $7::boolean
+            AND (u.created_at, u.id) < ($8::timestamptz, $6::uuid)
         )
     )
 ORDER BY u.created_at DESC, u.id DESC
-LIMIT $10
+LIMIT $9
 `
 
 type ListEndUsersDescParams struct {
 	CreatedAfter    sql.NullTime   `json:"created_after"`
 	CreatedBefore   sql.NullTime   `json:"created_before"`
 	Status          sql.NullString `json:"status"`
-	PublicIds       []string       `json:"public_ids"`
 	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
@@ -683,7 +678,6 @@ func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescPara
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
-		pq.Array(arg.PublicIds),
 		pq.Array(arg.Ids),
 		arg.TenantPublicID,
 		arg.CursorID,

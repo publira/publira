@@ -465,13 +465,13 @@ func TestUnsuspendOperatorRejectsInvalidState(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER004").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER004", "operator4@example.com", "Operator Four", "platform_operator", "active", now))
 	mock.ExpectRollback()
 
-	_, err := server.UnsuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendOperatorRequest{PublicId: "PLATUSER004"}))
+	_, err := server.UnsuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendOperatorRequest{OperatorId: targetID.String()}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UnsuspendOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}

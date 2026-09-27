@@ -116,7 +116,6 @@ func nullStringFilter(value string) sql.NullString {
 
 type platformAuditLogQueryFilters struct {
 	tenantID          uuid.NullUUID
-	tenantPublicID    sql.NullString
 	actorUserPublicID sql.NullString
 	action            sql.NullString
 }
@@ -131,7 +130,6 @@ func (s *platformServer) platformAuditLogPage(
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
 		rows, err := queries.ListPlatformAuditLogsAsc(ctx, dbmodels.ListPlatformAuditLogsAscParams{
-			FilterTenantPublicID:    filters.tenantPublicID,
 			FilterTenantID:          filters.tenantID,
 			FilterActorUserPublicID: filters.actorUserPublicID,
 			FilterAction:            filters.action,
@@ -148,7 +146,6 @@ func (s *platformServer) platformAuditLogPage(
 	}
 
 	rows, err := queries.ListPlatformAuditLogsDesc(ctx, dbmodels.ListPlatformAuditLogsDescParams{
-		FilterTenantPublicID:    filters.tenantPublicID,
 		FilterTenantID:          filters.tenantID,
 		FilterActorUserPublicID: filters.actorUserPublicID,
 		FilterAction:            filters.action,
@@ -190,13 +187,11 @@ func (s *platformServer) ListAuditLogs(
 	}
 	filters := platformAuditLogQueryFilters{
 		tenantID:          tenantID,
-		tenantPublicID:    nullStringFilter(req.Msg.TenantPublicId),
 		actorUserPublicID: nullStringFilter(req.Msg.ActorUserPublicId),
 		action:            nullStringFilter(req.Msg.Action),
 	}
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("tenant_id", tenantIDKey).
-		Value("tenant_public_id", filters.tenantPublicID.String).
 		Value("actor_user_public_id", filters.actorUserPublicID.String).
 		Value("action", filters.action.String)
 	var keys pagination.TimeUUIDKeys
