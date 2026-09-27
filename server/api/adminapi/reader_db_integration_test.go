@@ -541,33 +541,3 @@ func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {
 		t.Fatalf("unknown author list = %v, want an empty page", got)
 	}
 }
-
-// Until every client sends reader_id, a reader action still resolves the
-// reader a public ID names.
-func TestDBAdminReaderActionsResolveAPublicID(t *testing.T) {
-	env := newAdminDBEnv(t)
-	admin := env.seedTenantWithAdmin(t, "RPITENANT001", "reader-public-id.example.com", "Public", "RPIADMIN0001", "admin@reader-public-id.example.com")
-	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RPIREADER001", "reader@reader-public-id.example.com", "Reader")
-	client := env.userClient()
-
-	res, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
-		Tenant:   admin.tenantContext(),
-		PublicId: reader.PublicID,
-	}))
-	if err != nil {
-		t.Fatalf("SuspendReader: %v", err)
-	}
-	if res.Msg.Reader.Id != reader.ID.String() || res.Msg.Reader.Status != "suspended" {
-		t.Fatalf("reader = %+v, want %s suspended", res.Msg.Reader, reader.ID)
-	}
-	deleted, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
-		Tenant:   admin.tenantContext(),
-		PublicId: reader.PublicID,
-	}))
-	if err != nil {
-		t.Fatalf("DeleteReader: %v", err)
-	}
-	if deleted.Msg.ReaderId != reader.ID.String() || deleted.Msg.PublicId != reader.PublicID {
-		t.Fatalf("DeleteReader response = %+v, want %s / %s", deleted.Msg, reader.ID, reader.PublicID)
-	}
-}

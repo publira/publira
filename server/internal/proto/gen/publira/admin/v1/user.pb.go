@@ -561,11 +561,9 @@ func (x *GetReaderResponse) GetReader() *AdminReader {
 }
 
 type SuspendReaderRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The reader's internal ID. Takes precedence over public_id when set.
-	ReaderId      string `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	ReaderId      string                 `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -605,13 +603,6 @@ func (x *SuspendReaderRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *SuspendReaderRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *SuspendReaderRequest) GetReaderId() string {
@@ -666,11 +657,9 @@ func (x *SuspendReaderResponse) GetReader() *AdminReader {
 }
 
 type UnsuspendReaderRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The reader's internal ID. Takes precedence over public_id when set.
-	ReaderId      string `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	ReaderId      string                 `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -710,13 +699,6 @@ func (x *UnsuspendReaderRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UnsuspendReaderRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UnsuspendReaderRequest) GetReaderId() string {
@@ -771,14 +753,12 @@ func (x *UnsuspendReaderResponse) GetReader() *AdminReader {
 }
 
 type SetReaderBirthDateRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// YYYY-MM-DD, validated as a reader's own date is: a calendar date the
 	// tenant's calendar has reached, and not an implausibly old one. Empty clears
 	// the stored date.
-	BirthDate string `protobuf:"bytes,3,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
-	// The reader's internal ID. Takes precedence over public_id when set.
+	BirthDate     string `protobuf:"bytes,3,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	ReaderId      string `protobuf:"bytes,4,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -819,13 +799,6 @@ func (x *SetReaderBirthDateRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *SetReaderBirthDateRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *SetReaderBirthDateRequest) GetBirthDate() string {
@@ -887,11 +860,9 @@ func (x *SetReaderBirthDateResponse) GetReader() *AdminReader {
 }
 
 type DeleteReaderRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	// The reader's internal ID. Takes precedence over public_id when set.
-	ReaderId      string `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	ReaderId      string                 `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -931,13 +902,6 @@ func (x *DeleteReaderRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *DeleteReaderRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *DeleteReaderRequest) GetReaderId() string {
@@ -1044,31 +1008,27 @@ const file_publira_admin_v1_user_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"J\n" +
 	"\x11GetReaderResponse\x125\n" +
-	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\x89\x01\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"}\n" +
 	"\x14SuspendReaderRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1b\n" +
-	"\treader_id\x18\x03 \x01(\tR\breaderId\"N\n" +
+	"\treader_id\x18\x03 \x01(\tR\breaderIdJ\x04\b\x02\x10\x03R\tpublic_id\"N\n" +
 	"\x15SuspendReaderResponse\x125\n" +
-	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\x8b\x01\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\x7f\n" +
 	"\x16UnsuspendReaderRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1b\n" +
-	"\treader_id\x18\x03 \x01(\tR\breaderId\"P\n" +
+	"\treader_id\x18\x03 \x01(\tR\breaderIdJ\x04\b\x02\x10\x03R\tpublic_id\"P\n" +
 	"\x17UnsuspendReaderResponse\x125\n" +
-	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\xad\x01\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\xa1\x01\n" +
 	"\x19SetReaderBirthDateRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1d\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
 	"birth_date\x18\x03 \x01(\tR\tbirthDate\x12\x1b\n" +
-	"\treader_id\x18\x04 \x01(\tR\breaderId\"S\n" +
+	"\treader_id\x18\x04 \x01(\tR\breaderIdJ\x04\b\x02\x10\x03R\tpublic_id\"S\n" +
 	"\x1aSetReaderBirthDateResponse\x125\n" +
-	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"\x88\x01\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\"|\n" +
 	"\x13DeleteReaderRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1b\n" +
-	"\treader_id\x18\x03 \x01(\tR\breaderId\"P\n" +
+	"\treader_id\x18\x03 \x01(\tR\breaderIdJ\x04\b\x02\x10\x03R\tpublic_id\"P\n" +
 	"\x14DeleteReaderResponse\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1b\n" +
 	"\treader_id\x18\x02 \x01(\tR\breaderId2\xd4\x05\n" +

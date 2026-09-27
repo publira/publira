@@ -336,10 +336,6 @@ func TestRevokeAccessTicketAlreadyRevoked(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketIDByPublicIDForTenant)).
-		WithArgs(tenantID, "TICKET000001").
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(ticketID))
-
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
 		WithArgs(tenantID, ticketID).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
@@ -350,8 +346,8 @@ func TestRevokeAccessTicketAlreadyRevoked(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.RevokeAccessTicketRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId: "TICKET000001",
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		AccessTicketId: ticketID.String(),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 

@@ -234,25 +234,17 @@ func readerPublicIDArg(raw string) (string, error) {
 	return publicID, nil
 }
 
-// readerTargetID names the reader a reader action changes: readerID when it is
-// set, otherwise the reader the public ID resolves to.
-func (s *adminServer) readerTargetID(ctx context.Context, tenantID uuid.UUID, readerID, publicID string) (uuid.UUID, error) {
-	if raw := strings.TrimSpace(readerID); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reader_id must be a UUID"), "reader_id")
-		}
-		return id, nil
+// readerIDArg parses the reader_id a reader action names.
+func readerIDArg(raw string) (uuid.UUID, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reader_id is required"), "reader_id")
 	}
-	resolved, err := readerPublicIDArg(publicID)
+	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reader_id must be a UUID"), "reader_id")
 	}
-	row, err := s.tenantReader(ctx, tenantID, resolved)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return row.ID, nil
+	return id, nil
 }
 
 func (s *adminServer) tenantReaderByID(ctx context.Context, tenantID, readerID uuid.UUID) (readerRow, error) {
@@ -349,7 +341,7 @@ func (s *adminServer) SuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
+	readerID, err := readerIDArg(req.Msg.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +382,7 @@ func (s *adminServer) UnsuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
+	readerID, err := readerIDArg(req.Msg.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +425,7 @@ func (s *adminServer) SetReaderBirthDate(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
+	readerID, err := readerIDArg(req.Msg.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +496,7 @@ func (s *adminServer) DeleteReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := s.readerTargetID(ctx, tenant.ID, req.Msg.ReaderId, req.Msg.PublicId)
+	readerID, err := readerIDArg(req.Msg.ReaderId)
 	if err != nil {
 		return nil, err
 	}

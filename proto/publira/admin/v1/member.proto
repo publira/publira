@@ -40,12 +40,12 @@ message ListTenantMembersResponse {
 // Demoting the tenant's last active tenant_admin is refused with
 // FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
 message UpdateTenantMemberRoleRequest {
+  reserved 2;
+  reserved "user_public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string user_public_id = 2;
   // tenant_admin | tenant_editor | tenant_auditor
   string role = 3;
-  // The member's internal user ID. Takes precedence over user_public_id when
-  // set.
   string user_id = 4;
 }
 
@@ -57,10 +57,10 @@ message UpdateTenantMemberRoleResponse {
 // tenant. Removing the tenant's last active tenant_admin is refused with
 // FAILED_PRECONDITION and the ErrorInfo reason LAST_TENANT_ADMIN.
 message RemoveTenantMemberRequest {
+  reserved 2;
+  reserved "user_public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  string user_public_id = 2;
-  // The member's internal user ID. Takes precedence over user_public_id when
-  // set.
   string user_id = 3;
 }
 

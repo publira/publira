@@ -152,25 +152,6 @@ func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTic
 	return i, err
 }
 
-const GetAccessTicketIDByPublicIDForTenant = `-- name: GetAccessTicketIDByPublicIDForTenant :one
-SELECT id
-FROM access_tickets
-WHERE tenant_id = $1
-    AND public_id = $2
-`
-
-type GetAccessTicketIDByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-func (q *Queries) GetAccessTicketIDByPublicIDForTenant(ctx context.Context, arg GetAccessTicketIDByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, GetAccessTicketIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
 const GetNonRevokedAccessTicketForUserEpisode = `-- name: GetNonRevokedAccessTicketForUserEpisode :one
 SELECT id,
     tenant_id,
