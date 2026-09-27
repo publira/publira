@@ -801,6 +801,9 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+// testTenantID is a tenant_id no fixture holds.
+const testTenantID = "01a0deb5-0000-7000-8000-000000000001"
+
 // Each refusal names the request field publiractl names as a flag, and reads
 // nothing first.
 func TestPlatformTenantRPCsNameTheRefusedField(t *testing.T) {
@@ -819,11 +822,11 @@ func TestPlatformTenantRPCsNameTheRefusedField(t *testing.T) {
 			return err
 		}},
 		{name: "update with a blank name", field: "name", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{PublicId: "TENANT001", Domain: "tenant.example.com"}))
+			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Domain: "tenant.example.com"}))
 			return err
 		}},
 		{name: "update with a blank domain", field: "domain", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{PublicId: "TENANT001", Name: "Tenant"}))
+			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: "Tenant"}))
 			return err
 		}},
 		{name: "add a member with an unknown role", field: "role", call: func(s *platformServer) error {

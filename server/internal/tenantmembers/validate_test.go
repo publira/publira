@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/fielderr"
 )
@@ -44,5 +46,22 @@ func TestAddValidateRefusesTwoOrNoUsers(t *testing.T) {
 	}
 	if err := (AddParams{UserPublicID: "USER1", Email: "a@example.com", Role: auth.RoleTenantAdmin}).Validate(); !errors.Is(err, ErrUserAndEmailBothSet) {
 		t.Fatalf("both: err = %v, want ErrUserAndEmailBothSet", err)
+	}
+	if err := (AddParams{UserID: uuid.Must(uuid.NewV7()), Email: "a@example.com", Role: auth.RoleTenantAdmin}).Validate(); !errors.Is(err, ErrUserAndEmailBothSet) {
+		t.Fatalf("user ID and email: err = %v, want ErrUserAndEmailBothSet", err)
+	}
+}
+
+// A member named by user ID needs no public ID.
+func TestValidateTakesAUserID(t *testing.T) {
+	userID := uuid.Must(uuid.NewV7())
+	for name, err := range map[string]error{
+		"add":         AddParams{UserID: userID, Role: auth.RoleTenantAdmin}.Validate(),
+		"update-role": UpdateRoleParams{UserID: userID, Role: auth.RoleTenantAdmin}.Validate(),
+		"remove":      RemoveParams{UserID: userID}.Validate(),
+	} {
+		if err != nil {
+			t.Fatalf("%s: err = %v, want nil", name, err)
+		}
 	}
 }

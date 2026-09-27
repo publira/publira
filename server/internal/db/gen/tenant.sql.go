@@ -676,7 +676,7 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 const UpdateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
-WHERE public_id = $4
+WHERE id = $4
 RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
@@ -684,7 +684,7 @@ type UpdateTenantInfoParams struct {
 	Name        string         `json:"name"`
 	Domain      string         `json:"domain"`
 	AdminDomain sql.NullString `json:"admin_domain"`
-	PublicID    string         `json:"public_id"`
+	ID          uuid.UUID      `json:"id"`
 }
 
 // Update the tenant name and its domains.
@@ -693,7 +693,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		arg.Name,
 		arg.Domain,
 		arg.AdminDomain,
-		arg.PublicID,
+		arg.ID,
 	)
 	var i Tenant
 	err := row.Scan(
@@ -714,18 +714,18 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
-WHERE public_id = $1
+WHERE id = $1
 RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantStatusParams struct {
-	PublicID string `json:"public_id"`
-	Status   string `json:"status"`
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
 }
 
 // Update the tenant status (active / suspended).
 func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, UpdateTenantStatus, arg.PublicID, arg.Status)
+	row := q.db.QueryRowContext(ctx, UpdateTenantStatus, arg.ID, arg.Status)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,

@@ -32,7 +32,10 @@ type Tenant struct {
 	AdminDomain string                 `protobuf:"bytes,7,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
 	// IANA time zone name used for tenant wall-clock display (e.g. Asia/Tokyo).
 	// Read-only here; tenant admins change it through the admin API.
-	Timezone      string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	Timezone string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// Primary key (UUID). Every request that acts on the tenant names it by
+	// this; public_id only resolves the tenant a URL names.
+	Id            string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -112,6 +115,13 @@ func (x *Tenant) GetAdminDomain() string {
 func (x *Tenant) GetTimezone() string {
 	if x != nil {
 		return x.Timezone
+	}
+	return ""
+}
+
+func (x *Tenant) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -471,6 +481,7 @@ func (x *CreateTenantResponse) GetTenant() *Tenant {
 type SuspendTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -508,6 +519,13 @@ func (*SuspendTenantRequest) Descriptor() ([]byte, []int) {
 func (x *SuspendTenantRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *SuspendTenantRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -559,6 +577,7 @@ func (x *SuspendTenantResponse) GetTenant() *Tenant {
 type ResumeTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -596,6 +615,13 @@ func (*ResumeTenantRequest) Descriptor() ([]byte, []int) {
 func (x *ResumeTenantRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *ResumeTenantRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -653,6 +679,7 @@ type TenantMember struct {
 	Role          string                 `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
 	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UserId        string                 `protobuf:"bytes,7,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -729,6 +756,13 @@ func (x *TenantMember) GetCreatedAt() string {
 	return ""
 }
 
+func (x *TenantMember) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListTenantMembersRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -737,6 +771,7 @@ type ListTenantMembersRequest struct {
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	TenantId      string `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -788,6 +823,13 @@ func (x *ListTenantMembersRequest) GetLimit() int32 {
 func (x *ListTenantMembersRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *ListTenantMembersRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -860,6 +902,8 @@ type AddTenantMemberRequest struct {
 	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	Role           string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	Email          string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	TenantId       string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId         string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -922,6 +966,20 @@ func (x *AddTenantMemberRequest) GetEmail() string {
 	return ""
 }
 
+func (x *AddTenantMemberRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *AddTenantMemberRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type AddTenantMemberResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Member        *TenantMember          `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
@@ -971,6 +1029,8 @@ type UpdateTenantMemberRoleRequest struct {
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	Role           string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	TenantId       string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId         string                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1026,6 +1086,20 @@ func (x *UpdateTenantMemberRoleRequest) GetRole() string {
 	return ""
 }
 
+func (x *UpdateTenantMemberRoleRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *UpdateTenantMemberRoleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type UpdateTenantMemberRoleResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Member        *TenantMember          `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
@@ -1074,6 +1148,8 @@ type RemoveTenantMemberRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	UserId         string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1122,9 +1198,24 @@ func (x *RemoveTenantMemberRequest) GetUserPublicId() string {
 	return ""
 }
 
+func (x *RemoveTenantMemberRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *RemoveTenantMemberRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type RemoveTenantMemberResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserPublicId  string                 `protobuf:"bytes,1,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1162,6 +1253,13 @@ func (*RemoveTenantMemberResponse) Descriptor() ([]byte, []int) {
 func (x *RemoveTenantMemberResponse) GetUserPublicId() string {
 	if x != nil {
 		return x.UserPublicId
+	}
+	return ""
+}
+
+func (x *RemoveTenantMemberResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1266,6 +1364,7 @@ type ListTenantAdminInvitationsRequest struct {
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	TenantId      string `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1317,6 +1416,13 @@ func (x *ListTenantAdminInvitationsRequest) GetLimit() int32 {
 func (x *ListTenantAdminInvitationsRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *ListTenantAdminInvitationsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -1387,6 +1493,7 @@ type CreateTenantAdminInvitationRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	Email          string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1431,6 +1538,13 @@ func (x *CreateTenantAdminInvitationRequest) GetTenantPublicId() string {
 func (x *CreateTenantAdminInvitationRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+func (x *CreateTenantAdminInvitationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -1491,6 +1605,7 @@ type ResendTenantAdminInvitationRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1535,6 +1650,13 @@ func (x *ResendTenantAdminInvitationRequest) GetTenantPublicId() string {
 func (x *ResendTenantAdminInvitationRequest) GetInvitationId() string {
 	if x != nil {
 		return x.InvitationId
+	}
+	return ""
+}
+
+func (x *ResendTenantAdminInvitationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -1587,6 +1709,7 @@ type CancelTenantAdminInvitationRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	TenantId       string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1631,6 +1754,13 @@ func (x *CancelTenantAdminInvitationRequest) GetTenantPublicId() string {
 func (x *CancelTenantAdminInvitationRequest) GetInvitationId() string {
 	if x != nil {
 		return x.InvitationId
+	}
+	return ""
+}
+
+func (x *CancelTenantAdminInvitationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
@@ -1685,6 +1815,7 @@ type UpdateTenantRequest struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
 	AdminDomain   string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	TenantId      string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1747,6 +1878,13 @@ func (x *UpdateTenantRequest) GetAdminDomain() string {
 	return ""
 }
 
+func (x *UpdateTenantRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
 type UpdateTenantResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1795,7 +1933,7 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xcd\x01\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xdd\x01\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -1804,7 +1942,8 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\a \x01(\tR\vadminDomain\x12\x1a\n" +
-	"\btimezone\x18\b \x01(\tR\btimezoneJ\x04\b\x06\x10\a\"\x97\x01\n" +
+	"\btimezone\x18\b \x01(\tR\btimezone\x12\x0e\n" +
+	"\x02id\x18\t \x01(\tR\x02idJ\x04\b\x06\x10\a\"\x97\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
@@ -1827,15 +1966,17 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12%\n" +
 	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocaleJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"3\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"P\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"L\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"L\n" +
 	"\x15SuspendTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"2\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"O\n" +
 	"\x13ResumeTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"K\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"K\n" +
 	"\x14ResumeTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xa9\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xc2\x01\n" +
 	"\fTenantMember\x12$\n" +
 	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1843,34 +1984,43 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"~\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\auser_id\x18\a \x01(\tR\x06userId\"\x9b\x01\n" +
 	"\x18ListTenantMembersRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\x9e\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04R\x06offset\"\x9e\x01\n" +
 	"\x19ListTenantMembersResponse\x12;\n" +
 	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x92\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc8\x01\n" +
 	"\x16AddTenantMemberRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x14\n" +
-	"\x05email\x18\x04 \x01(\tR\x05email\"T\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\x12\x1b\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12\x17\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\"T\n" +
 	"\x17AddTenantMemberResponse\x129\n" +
-	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\x83\x01\n" +
+	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\xb9\x01\n" +
 	"\x1dUpdateTenantMemberRoleRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"[\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"[\n" +
 	"\x1eUpdateTenantMemberRoleResponse\x129\n" +
-	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"k\n" +
+	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\xa1\x01\n" +
 	"\x19RemoveTenantMemberRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
-	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\"B\n" +
+	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"[\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
-	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"\xd5\x01\n" +
+	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xd5\x01\n" +
 	"\x15TenantAdminInvitation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x16\n" +
@@ -1882,43 +2032,48 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\vaccepted_at\x18\x06 \x01(\tR\n" +
 	"acceptedAt\x12\x1f\n" +
 	"\vcanceled_at\x18\a \x01(\tR\n" +
-	"canceledAt\"\x87\x01\n" +
+	"canceledAt\"\xa4\x01\n" +
 	"!ListTenantAdminInvitationsRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xb8\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04R\x06offset\"\xb8\x01\n" +
 	"\"ListTenantAdminInvitationsResponse\x12L\n" +
 	"\vinvitations\x18\x01 \x03(\v2*.publira.platform.v1.TenantAdminInvitationR\vinvitations\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"d\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x81\x01\n" +
 	"\"CreateTenantAdminInvitationRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\"\xab\x01\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"\xab\x01\n" +
 	"#CreateTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
 	"invitation\x128\n" +
-	"\x18role_granted_immediately\x18\x02 \x01(\bR\x16roleGrantedImmediately\"s\n" +
+	"\x18role_granted_immediately\x18\x02 \x01(\bR\x16roleGrantedImmediately\"\x90\x01\n" +
 	"\"ResendTenantAdminInvitationRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
-	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\"q\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"q\n" +
 	"#ResendTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"s\n" +
+	"invitation\"\x90\x01\n" +
 	"\"CancelTenantAdminInvitationRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
-	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\"q\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\"q\n" +
 	"#CancelTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"\x87\x01\n" +
+	"invitation\"\xa4\x01\n" +
 	"\x13UpdateTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x04 \x01(\tR\x06domain\x12!\n" +
-	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomainJ\x04\b\x03\x10\x04\"K\n" +
+	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantIdJ\x04\b\x03\x10\x04\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xae\r\n" +
 	"\x15PlatformTenantService\x12b\n" +

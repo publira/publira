@@ -155,9 +155,11 @@ func ListMembers(ctx context.Context, q dbmodels.Querier, p ListParams) ([]Membe
 	return members, nil
 }
 
-// UpdateRoleParams replaces a member's console role with Role.
+// UpdateRoleParams replaces a member's console role with Role. The member is
+// named by UserID, or by UserPublicID when UserID is unset.
 type UpdateRoleParams struct {
 	TenantID     uuid.UUID
+	UserID       uuid.UUID
 	UserPublicID string
 	Role         string
 	// KeepAnAdmin refuses the change with [ErrLastAdmin] when it would demote
@@ -168,7 +170,7 @@ type UpdateRoleParams struct {
 // Validate refuses p over a field without reading anything, so an adapter can
 // refuse it before it looks the tenant up.
 func (p UpdateRoleParams) Validate() error {
-	if _, err := userPublicID(p.UserPublicID); err != nil {
+	if err := validateUser(p.UserID, p.UserPublicID); err != nil {
 		return err
 	}
 	_, err := normalizeRole(p.Role)
@@ -181,7 +183,7 @@ func UpdateRole(ctx context.Context, tx *sql.Tx, p UpdateRoleParams) (Member, er
 		return Member{}, err
 	}
 	role, _ := NormalizeRole(p.Role)
-	member, err := findMember(ctx, tx, p.TenantID, p.UserPublicID, p.KeepAnAdmin)
+	member, err := findMember(ctx, tx, p.TenantID, p.UserID, p.UserPublicID, p.KeepAnAdmin)
 	if err != nil {
 		return Member{}, err
 	}
@@ -199,9 +201,11 @@ func UpdateRole(ctx context.Context, tx *sql.Tx, p UpdateRoleParams) (Member, er
 }
 
 // RemoveParams takes every console role away from a member, who stays a user
-// of the tenant.
+// of the tenant. The member is named by UserID, or by UserPublicID when UserID
+// is unset.
 type RemoveParams struct {
 	TenantID     uuid.UUID
+	UserID       uuid.UUID
 	UserPublicID string
 	// KeepAnAdmin refuses the removal with [ErrLastAdmin] when it would remove
 	// the tenant's last active tenant_admin.
@@ -210,13 +214,12 @@ type RemoveParams struct {
 
 // Validate refuses p over a field without reading anything.
 func (p RemoveParams) Validate() error {
-	_, err := userPublicID(p.UserPublicID)
-	return err
+	return validateUser(p.UserID, p.UserPublicID)
 }
 
 // Remove deletes the member's roles inside tx.
 func Remove(ctx context.Context, tx *sql.Tx, p RemoveParams) (Member, error) {
-	member, err := findMember(ctx, tx, p.TenantID, p.UserPublicID, p.KeepAnAdmin)
+	member, err := findMember(ctx, tx, p.TenantID, p.UserID, p.UserPublicID, p.KeepAnAdmin)
 	if err != nil {
 		return Member{}, err
 	}
@@ -235,9 +238,8 @@ func Remove(ctx context.Context, tx *sql.Tx, p RemoveParams) (Member, error) {
 // findMember resolves the user and the role they hold now. With lock, it first
 // takes the tenant's administrator lock, so two administrators demoting each
 // other at once cannot both see the other one left.
-func findMember(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, rawPublicID string, lock bool) (Member, error) {
-	publicID, err := userPublicID(rawPublicID)
-	if err != nil {
+func findMember(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID, rawPublicID string, lock bool) (Member, error) {
+	if err := validateUser(userID, rawPublicID); err != nil {
 		return Member{}, err
 	}
 	if lock {
@@ -247,17 +249,11 @@ func findMember(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, rawPublicID
 	}
 
 	q := dbmodels.New(tx)
-	user, err := q.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
-		PublicID: publicID,
-	})
+	member, err := tenantUser(ctx, q, tenantID, userID, strings.TrimSpace(rawPublicID))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Member{}, ErrMemberNotFound
-		}
-		return Member{}, fmt.Errorf("get tenant member: %w", err)
+		return Member{}, lookupError(err)
 	}
-	roles, err := q.ListTenantUserRoles(ctx, user.ID)
+	roles, err := q.ListTenantUserRoles(ctx, member.UserID)
 	if err != nil {
 		return Member{}, fmt.Errorf("list tenant user roles: %w", err)
 	}
@@ -265,15 +261,8 @@ func findMember(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, rawPublicID
 		return Member{}, ErrMemberNotFound
 	}
 
-	return Member{
-		UserID:    user.ID,
-		PublicID:  user.PublicID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Role:      auth.ResolveTenantRole(roles),
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt,
-	}, nil
+	member.Role = auth.ResolveTenantRole(roles)
+	return member, nil
 }
 
 func refuseLastAdmin(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, member Member) error {
@@ -310,9 +299,11 @@ func ReplaceRole(ctx context.Context, q *dbmodels.Queries, tenantID, userID uuid
 }
 
 // AddParams gives a user the tenant already has a console role. The user is
-// named by public ID or by email, never both.
+// named by UserID (or UserPublicID when UserID is unset) or by email, never
+// both.
 type AddParams struct {
 	TenantID     uuid.UUID
+	UserID       uuid.UUID
 	UserPublicID string
 	Email        string
 	Role         string
@@ -327,10 +318,11 @@ func (p AddParams) Validate() error {
 func (p AddParams) normalize() (publicID, email, role string, err error) {
 	publicID = strings.TrimSpace(p.UserPublicID)
 	email = strings.TrimSpace(p.Email)
+	namesUser := p.UserID != uuid.Nil || publicID != ""
 	switch {
-	case publicID == "" && email == "":
+	case !namesUser && email == "":
 		return "", "", "", ErrUserOrEmailRequired
-	case publicID != "" && email != "":
+	case namesUser && email != "":
 		return "", "", "", ErrUserAndEmailBothSet
 	}
 	if email != "" {
@@ -355,15 +347,10 @@ func Add(ctx context.Context, tx *sql.Tx, p AddParams) (Member, error) {
 	q := dbmodels.New(tx)
 
 	var member Member
-	if publicID != "" {
-		user, err := q.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-			TenantID: uuid.NullUUID{UUID: p.TenantID, Valid: true},
-			PublicID: publicID,
-		})
-		if err != nil {
+	if email == "" {
+		if member, err = tenantUser(ctx, q, p.TenantID, p.UserID, publicID); err != nil {
 			return Member{}, lookupError(err)
 		}
-		member = Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}
 	} else {
 		user, err := q.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 			TenantID: uuid.NullUUID{UUID: p.TenantID, Valid: true},
@@ -395,6 +382,39 @@ func Add(ctx context.Context, tx *sql.Tx, p AddParams) (Member, error) {
 	}
 	member.Role = role
 	return member, nil
+}
+
+// validateUser refuses a member named by neither userID nor a public ID.
+func validateUser(userID uuid.UUID, rawPublicID string) error {
+	if userID != uuid.Nil {
+		return nil
+	}
+	_, err := userPublicID(rawPublicID)
+	return err
+}
+
+// tenantUser reads the tenant's user named by userID, or by publicID when
+// userID is unset, as a [Member] without a role. A user of another tenant
+// answers [sql.ErrNoRows].
+func tenantUser(ctx context.Context, q *dbmodels.Queries, tenantID, userID uuid.UUID, publicID string) (Member, error) {
+	if userID == uuid.Nil {
+		user, err := q.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+			PublicID: publicID,
+		})
+		if err != nil {
+			return Member{}, err
+		}
+		return Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}, nil
+	}
+	user, err := q.GetUserByID(ctx, userID)
+	if err != nil {
+		return Member{}, err
+	}
+	if !user.TenantID.Valid || user.TenantID.UUID != tenantID {
+		return Member{}, sql.ErrNoRows
+	}
+	return Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}, nil
 }
 
 func lookupError(err error) error {

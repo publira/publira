@@ -297,13 +297,13 @@ func TestSuspendTenantSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
-		WithArgs("ACTIVE01", "suspended").
+		WithArgs(id, "suspended").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "ACTIVE01"}))
+	resp, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: id.String()}))
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
@@ -319,15 +319,16 @@ func TestSuspendTenantNotFound(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	missing := uuid.Must(uuid.NewV7())
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
-		WithArgs("NOTFOUND", "suspended").
+		WithArgs(missing, "suspended").
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "NOTFOUND"}))
+	_, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: missing.String()}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendTenant code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -344,13 +345,13 @@ func TestResumeTenantSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
-		WithArgs("SUSP001", "active").
+		WithArgs(id, "active").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ResumeTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ResumeTenantRequest{PublicId: "SUSP001"}))
+	resp, err := client.ResumeTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ResumeTenantRequest{TenantId: id.String()}))
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
