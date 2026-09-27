@@ -130,6 +130,107 @@ func TestIssueAccessTicketSuccess(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestIssueAccessTicketAddressesTheUserAndTheEpisodeByID(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	memberID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	ticketID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForTenant)).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, memberID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
+			AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
+		WithArgs(tenantID, memberID, episodeID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAccessTicket)).
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), episodeID, memberID, sql.NullTime{}, sql.NullString{}, uuid.NullUUID{UUID: actorID, Valid: true}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at"}).
+			AddRow(ticketID, tenantID, "TICKET000001", episodeID, memberID, nil, nil, nil, actorID, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
+		WithArgs(tenantID, ticketID).
+		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
+			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
+			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
+			nil, nil, nil, actorID, now,
+		))
+
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.IssueAccessTicketRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		UserId:    memberID.String(),
+		EpisodeId: episodeID.String(),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.IssueAccessTicket(context.Background(), req)
+	if err != nil {
+		t.Fatalf("IssueAccessTicket: %v", err)
+	}
+	if resp.Msg.Ticket == nil {
+		t.Fatal("ticket is nil")
+	}
+	if resp.Msg.Ticket.PublicId != "TICKET000001" {
+		t.Fatalf("public_id = %q, want TICKET000001", resp.Msg.Ticket.PublicId)
+	}
+	if resp.Msg.Ticket.Id != ticketID.String() {
+		t.Fatalf("id = %q, want %s", resp.Msg.Ticket.Id, ticketID)
+	}
+	if resp.Msg.Ticket.Status != "active" {
+		t.Fatalf("status = %q, want active", resp.Msg.Ticket.Status)
+	}
+	if resp.Msg.Ticket.UserPublicId != "MEMBER001" {
+		t.Fatalf("user_public_id = %q, want MEMBER001", resp.Msg.Ticket.UserPublicId)
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestIssueAccessTicketRefusesAUserIDThatIsNotAnIdentifier(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.IssueAccessTicketRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		UserId:    "MEMBER001",
+		EpisodeId: uuid.Must(uuid.NewV7()).String(),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.IssueAccessTicket(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("IssueAccessTicket code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	assertExpectations(t, mock)
+}
+
 func TestIssueAccessTicketReturnsExistingNonRevoked(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 

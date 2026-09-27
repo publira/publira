@@ -374,38 +374,9 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, err
 	}
 
-	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
-	if userPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id is required"))
-	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
-	}
-
-	userRow, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: userPublicID,
-	})
+	userID, episodeID, err := s.resolveAccessTicketRecipient(ctx, tenant.ID, req.Msg)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), "user_public_id")
-		}
-		return nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenant.ID.String(), "user_public_id", userPublicID)
-	}
-	if userRow.Status != "active" {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("user is not active"))
-	}
-
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: episodePublicID,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_public_id")
-		}
-		return nil, s.internalDBError(ctx, "failed to get episode for issue access ticket", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, err
 	}
 
 	expiresAt, err := parseOptionalExpiresAt(req.Msg.ExpiresAt)
@@ -419,8 +390,8 @@ func (s *adminServer) IssueAccessTicket(
 	// unique partial index on non-revoked (tenant, user, episode) stays consistent.
 	existing, existingErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
 		TenantID:  tenant.ID,
-		UserID:    userRow.ID,
-		EpisodeID: episode.ID,
+		UserID:    userID,
+		EpisodeID: episodeID,
 	})
 	if existingErr == nil {
 		ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, existing.ID)
@@ -432,7 +403,7 @@ func (s *adminServer) IssueAccessTicket(
 		}), nil
 	}
 	if existingErr != nil && !errors.Is(existingErr, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to get non-revoked access ticket", existingErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get non-revoked access ticket", existingErr, "tenant_id", tenant.ID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
 	}
 
 	note := strings.TrimSpace(req.Msg.Note)
@@ -445,8 +416,8 @@ func (s *adminServer) IssueAccessTicket(
 			ID:              ticketID,
 			TenantID:        tenant.ID,
 			PublicID:        publicID,
-			EpisodeID:       episode.ID,
-			UserID:          userRow.ID,
+			EpisodeID:       episodeID,
+			UserID:          userID,
 			ExpiresAt:       expiresAt,
 			Note:            sql.NullString{String: note, Valid: note != ""},
 			CreatedByUserID: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
@@ -458,11 +429,11 @@ func (s *adminServer) IssueAccessTicket(
 		if dberr.IsUniqueViolation(err) {
 			winner, getWinnerErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
 				TenantID:  tenant.ID,
-				UserID:    userRow.ID,
-				EpisodeID: episode.ID,
+				UserID:    userID,
+				EpisodeID: episodeID,
 			})
 			if getWinnerErr != nil {
-				return nil, s.internalDBError(ctx, "failed to get winning access ticket after conflict", getWinnerErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+				return nil, s.internalDBError(ctx, "failed to get winning access ticket after conflict", getWinnerErr, "tenant_id", tenant.ID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
 			}
 			ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, winner.ID)
 			if getErr != nil {
@@ -472,7 +443,7 @@ func (s *adminServer) IssueAccessTicket(
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 			}), nil
 		}
-		return nil, s.internalDBError(ctx, "failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
 	}
 
 	ticketRow, err := s.loadAccessTicket(ctx, tenant.ID, created.ID)
@@ -569,4 +540,76 @@ func (s *adminServer) RevokeAccessTicket(
 	return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
 		Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 	}), nil
+}
+
+// resolveAccessTicketRecipient resolves the user and the episode a new ticket
+// names, by primary key when the request carries one and by public ID otherwise.
+func (s *adminServer) resolveAccessTicketRecipient(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	msg *publiraadminv1.IssueAccessTicketRequest,
+) (uuid.UUID, uuid.UUID, error) {
+	queries := s.queriesFor(ctx)
+
+	var user dbmodels.GetUserByIDForTenantRow
+	userID, err := recordIDArg(msg.GetUserId(), "user_id")
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	userField := "user_id"
+	switch {
+	case userID != uuid.Nil:
+		user, err = queries.GetUserByIDForTenant(ctx, dbmodels.GetUserByIDForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+			ID:       userID,
+		})
+	case strings.TrimSpace(msg.GetUserPublicId()) != "":
+		userField = "user_public_id"
+		var row dbmodels.GetUserByPublicIDForTenantRow
+		row, err = queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+			PublicID: strings.TrimSpace(msg.GetUserPublicId()),
+		})
+		user = dbmodels.GetUserByIDForTenantRow(row)
+	default:
+		return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("user_id is required"), "user_id")
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), userField)
+		}
+		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenantID.String())
+	}
+	if user.Status != "active" {
+		return uuid.Nil, uuid.Nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("user is not active"))
+	}
+
+	episodeID, err := recordIDArg(msg.GetEpisodeId(), "episode_id")
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	episodeField := "episode_id"
+	switch {
+	case episodeID != uuid.Nil:
+		var row dbmodels.GetEpisodeByIDForTenantRow
+		row, err = queries.GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenantID, ID: episodeID})
+		episodeID = row.ID
+	case strings.TrimSpace(msg.GetEpisodePublicId()) != "":
+		episodeField = "episode_public_id"
+		var row dbmodels.GetEpisodeByPublicIDForTenantRow
+		row, err = queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
+			TenantID: tenantID,
+			PublicID: strings.TrimSpace(msg.GetEpisodePublicId()),
+		})
+		episodeID = row.ID
+	default:
+		return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("episode_id is required"), "episode_id")
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), episodeField)
+		}
+		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get episode for issue access ticket", err, "tenant_id", tenantID.String())
+	}
+	return user.ID, episodeID, nil
 }

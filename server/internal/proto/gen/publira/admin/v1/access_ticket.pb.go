@@ -333,8 +333,12 @@ type IssueAccessTicketRequest struct {
 	UserPublicId    string `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	EpisodePublicId string `protobuf:"bytes,3,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// RFC3339; empty for no expiry.
-	ExpiresAt     string `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	Note          string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	ExpiresAt string `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	Note      string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	// The receiving user's primary key; wins over user_public_id when set.
+	UserId string `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// The episode's primary key; wins over episode_public_id when set.
+	EpisodeId     string `protobuf:"bytes,7,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -400,6 +404,20 @@ func (x *IssueAccessTicketRequest) GetExpiresAt() string {
 func (x *IssueAccessTicketRequest) GetNote() string {
 	if x != nil {
 		return x.Note
+	}
+	return ""
+}
+
+func (x *IssueAccessTicketRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *IssueAccessTicketRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
 	}
 	return ""
 }
@@ -581,14 +599,17 @@ const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"\atickets\x18\x01 \x03(\v2#.publira.admin.v1.AdminAccessTicketR\atickets\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd8\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x90\x02\n" +
 	"\x18IssueAccessTicketRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12*\n" +
 	"\x11episode_public_id\x18\x03 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x04 \x01(\tR\texpiresAt\x12\x12\n" +
-	"\x04note\x18\x05 \x01(\tR\x04note\"X\n" +
+	"\x04note\x18\x05 \x01(\tR\x04note\x12\x17\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\a \x01(\tR\tepisodeId\"X\n" +
 	"\x19IssueAccessTicketResponse\x12;\n" +
 	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket\"\x8f\x01\n" +
 	"\x19RevokeAccessTicketRequest\x127\n" +
