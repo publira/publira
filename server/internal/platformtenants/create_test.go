@@ -8,6 +8,7 @@ import (
 
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 func validParams() CreateParams {
@@ -40,6 +41,24 @@ func TestValidateNormalizesTheRequest(t *testing.T) {
 	}
 }
 
+// A blank time zone is left for Create to fill with the platform's default.
+func TestValidateTrimsTheTimeZoneAndLeavesABlankOneUnset(t *testing.T) {
+	for _, tc := range []struct{ given, want string }{
+		{given: " Asia/Tokyo ", want: "Asia/Tokyo"},
+		{given: "  ", want: ""},
+	} {
+		p := validParams()
+		p.Timezone = tc.given
+		c, err := p.Validate()
+		if err != nil {
+			t.Fatalf("Validate(%q): %v", tc.given, err)
+		}
+		if c.timezone != tc.want {
+			t.Fatalf("time zone = %q, want %q", c.timezone, tc.want)
+		}
+	}
+}
+
 func TestValidateLeavesABlankAdminDomainUnset(t *testing.T) {
 	p := validParams()
 	p.AdminDomain = "   "
@@ -63,6 +82,8 @@ func TestValidateRefusesAField(t *testing.T) {
 		{name: "blank domain", modify: func(p *CreateParams) { p.Domain = "" }, field: FieldDomain, err: ErrDomainRequired},
 		{name: "missing locale", modify: func(p *CreateParams) { p.DefaultLocale = "" }, field: FieldDefaultLocale, err: locale.ErrInvalid},
 		{name: "unsupported locale", modify: func(p *CreateParams) { p.DefaultLocale = "en-US" }, field: FieldDefaultLocale, err: locale.ErrInvalid},
+		{name: "unknown time zone", modify: func(p *CreateParams) { p.Timezone = "Mars/Olympus_Mons" }, field: FieldTimezone, err: tenanttz.ErrInvalid},
+		{name: "server-local time zone", modify: func(p *CreateParams) { p.Timezone = "Local" }, field: FieldTimezone, err: tenanttz.ErrInvalid},
 		{
 			name:   "malformed admin email",
 			modify: func(p *CreateParams) { p.InitialAdminEmails = []string{"owner@example.com", "not-an-address"} },

@@ -203,7 +203,7 @@ go run ./server/cmd/publiractl tenant admin create \
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `tenant create` | `CreateTenant` | Creates a tenant on the platform's default time zone with the default creator roles, and invites every `--initial-admin-email` |
+| `tenant create` | `CreateTenant` | Creates a tenant on `--timezone`, or on the platform's default time zone without it, with the default creator roles, and invites every `--initial-admin-email` |
 | `tenant show` | `GetTenant` | Prints the tenant |
 | `tenant update` | `UpdateTenant` | Replaces the `--name`, `--domain`, or `--admin-domain` it is given and keeps the rest; `--admin-domain ""` goes back to the default console host |
 | `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again |
@@ -224,6 +224,7 @@ go run ./server/cmd/publiractl tenant admin create \
 | `--domain` | The host the tenant's site is served on. Required, and no other tenant may hold it |
 | `--admin-domain` | The host the tenant's console is served on, when it is not the default one. No other tenant may hold it |
 | `--default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
+| `--timezone` | The IANA time zone the tenant starts on. Left out, the platform's default time zone; the tenant's administrators can change it from the console afterwards |
 | `--initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
 
 `tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a masked prompt, from stdin with `--password-stdin`, from a file with `--password-file`, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
