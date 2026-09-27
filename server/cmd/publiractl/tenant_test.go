@@ -98,6 +98,7 @@ func TestTenantCreateNamesTheRefusedFlag(t *testing.T) {
 		{name: "missing name", args: []string{"--domain", "other.example.com", "--default-locale", "en"}, want: "publiractl: --name: name is required\n"},
 		{name: "missing domain", args: []string{"--name", "Other", "--default-locale", "en"}, want: "publiractl: --domain: domain is required\n"},
 		{name: "unsupported locale", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
+		{name: "unknown time zone", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "en", "--timezone", "Mars/Olympus_Mons"}, want: "publiractl: --timezone: timezone must be a valid IANA time zone name\n"},
 		{name: "malformed admin email", args: append([]string{"--initial-admin-email", "nobody"}, valid...), want: "publiractl: --initial-admin-email: invalid initial_admin_emails\n"},
 		{name: "taken domain", args: valid, want: "publiractl: --domain: domain already exists\n"},
 	} {
@@ -127,9 +128,43 @@ func TestTenantCreateHelpListsItsFlags(t *testing.T) {
 	if code := run([]string{"tenant", "create", "-h"}, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
 	}
-	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--initial-admin-email"} {
+	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--timezone", "--initial-admin-email"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("usage = %q, want %q", stderr.String(), want)
+		}
+	}
+}
+
+// A tenant starts on the zone --timezone names, and on the platform's default
+// without it.
+func TestTenantCreateStartsOnTheTimeZoneGiven(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	ctx := context.Background()
+	if _, err := pg.DB.ExecContext(ctx, `INSERT INTO platform_config (singleton, default_timezone, default_locale) VALUES (TRUE, 'Europe/Berlin', 'en')`); err != nil {
+		t.Fatalf("save the platform default: %v", err)
+	}
+
+	for _, tc := range []struct {
+		domain string
+		extra  []string
+		want   string
+	}{
+		{domain: "tokyo.example.com", extra: []string{"--timezone", "Asia/Tokyo"}, want: "Asia/Tokyo"},
+		{domain: "berlin.example.com", want: "Europe/Berlin"},
+	} {
+		var stdout, stderr bytes.Buffer
+		args := append([]string{"create", "--name", "Example", "--domain", tc.domain, "--default-locale", "en"}, tc.extra...)
+		if code := runGroup(&tenantGroup, args, pipedConsole("", &stderr), &stdout); code != 0 {
+			t.Fatalf("create %s: exit code = %d\n%s", tc.domain, code, stderr.String())
+		}
+		var timezone string
+		if err := pg.DB.QueryRowContext(ctx, `SELECT timezone FROM tenants WHERE domain = $1`, tc.domain).Scan(&timezone); err != nil {
+			t.Fatalf("read %s: %v", tc.domain, err)
+		}
+		if timezone != tc.want {
+			t.Fatalf("%s starts on %q, want %q", tc.domain, timezone, tc.want)
 		}
 	}
 }

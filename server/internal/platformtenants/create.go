@@ -28,6 +28,7 @@ import (
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 // The fields a refusal names, spelled as the PlatformTenantService requests
@@ -39,6 +40,7 @@ const (
 	FieldDomain             = "domain"
 	FieldAdminDomain        = "admin_domain"
 	FieldDefaultLocale      = "default_locale"
+	FieldTimezone           = "timezone"
 	FieldInitialAdminEmails = "initial_admin_emails"
 )
 
@@ -54,6 +56,9 @@ type CreateParams struct {
 	Domain        string
 	AdminDomain   string
 	DefaultLocale string
+	// Timezone is the IANA time zone the tenant starts on. Left empty, it is
+	// the platform's default.
+	Timezone string
 	// InitialAdminEmails are sent an invitation to administer the tenant.
 	// Blank entries are skipped and repeats are sent one invitation.
 	InitialAdminEmails []string
@@ -66,6 +71,7 @@ type Creation struct {
 	domain             string
 	adminDomain        sql.NullString
 	defaultLocale      string
+	timezone           string
 	initialAdminEmails []string
 }
 
@@ -90,6 +96,13 @@ func (p CreateParams) Validate() (Creation, error) {
 		return Creation{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
 	c.defaultLocale = defaultLocale
+	if strings.TrimSpace(p.Timezone) != "" {
+		timezone, err := tenanttz.Normalize(p.Timezone)
+		if err != nil {
+			return Creation{}, &fielderr.Invalid{Field: FieldTimezone, Err: err}
+		}
+		c.timezone = timezone
+	}
 
 	c.initialAdminEmails = make([]string, 0, len(p.InitialAdminEmails))
 	seen := make(map[string]struct{}, len(p.InitialAdminEmails))
@@ -123,8 +136,8 @@ type Created struct {
 	Invitations []dbmodels.TenantAdminInvitation
 }
 
-// Create writes the tenant inside tx: the tenant row on the platform's default
-// time zone, its default creator roles, an invitation for every initial
+// Create writes the tenant inside tx: the tenant row on the time zone it names
+// or else the platform's default, its default creator roles, an invitation for every initial
 // administrator, and the audit entries filed under actor. The caller commits,
 // so a tenant reaches the database with all of it or not at all.
 //
@@ -140,7 +153,10 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	// The time zone is applied explicitly instead of relying on the column
 	// default, so an install that changed it starts every new tenant on it.
 	// The locale comes from the request: the server never picks a language.
-	timezone := platformconfig.DefaultTimeZone(ctx, q)
+	timezone := c.timezone
+	if timezone == "" {
+		timezone = platformconfig.DefaultTimeZone(ctx, q)
+	}
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return q.CreateTenant(ctx, dbmodels.CreateTenantParams{
