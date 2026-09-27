@@ -36,6 +36,12 @@ describe("requiredRecordId", () => {
     );
   });
 
+  it("accepts a UUID without RFC version bits, as seeded IDs are", () => {
+    expect(schema.parse("c4ca4238-a0b9-2382-0dcc-509a6f75849b")).toBe(
+      "c4ca4238-a0b9-2382-0dcc-509a6f75849b"
+    );
+  });
+
   it("rejects a blank, missing, or malformed value with the given message", () => {
     for (const value of ["", null, "SeedTNNTAAA1"]) {
       expect(schema.safeParse(value).error?.issues[0]?.message).toBe(

@@ -21,12 +21,14 @@ export const requiredTrimmedString = (
 /**
  * A record's internal ID (a UUID), as a hidden form field carries it. A blank
  * or malformed value is refused with `message` rather than sent to the API.
+ * `guid` checks the shape only: the API accepts any UUID, and seeded IDs are
+ * not RFC-versioned.
  */
 export const requiredRecordId = (message: string): z.ZodType<string, unknown> =>
   z
     .string({ error: message })
     .trim()
-    .pipe(z.uuid({ error: message }));
+    .pipe(z.guid({ error: message }));
 
 export const optionalTrimmedString = (
   maxLength = 255,
