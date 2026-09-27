@@ -90,6 +90,7 @@ afterEach(cleanup);
 
 const episode: EpisodeDetail = {
   credits: [],
+  id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   orderIndex: 2,
   price: 0,
   publicId: "EPISODE_002",
@@ -105,6 +106,7 @@ const episode: EpisodeDetail = {
 };
 
 const series: EpisodeSeriesSummary = {
+  id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
   publicId: "SERIES_001",
   title: "Long nights",
 };

@@ -15,12 +15,14 @@ import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { recordIdSchema } from "#lib/record-id";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const publicIDFormSchema = z.string().trim().min(1).max(64);
 
 const checkoutFormSchema = z.object({
+  episodeId: recordIdSchema,
   episodePublicId: publicIDFormSchema,
   locale: localeFormSchema,
   seriesPublicId: publicIDFormSchema,
@@ -41,6 +43,7 @@ export const startEpisodeCheckoutAction = async (
   await assertSameOrigin();
   const parsed = checkoutFormSchema.safeParse(
     toFormDataInput(formData, {
+      episodeId: "value",
       episodePublicId: "value",
       locale: "value",
       seriesPublicId: "value",
@@ -51,7 +54,8 @@ export const startEpisodeCheckoutAction = async (
     redirect("/");
   }
 
-  const { episodePublicId, locale, seriesPublicId, tenantId } = parsed.data;
+  const { episodeId, episodePublicId, locale, seriesPublicId, tenantId } =
+    parsed.data;
   // `returnTo` is the episode itself. Handing `episodeLoginHref()` to these
   // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
   // rejects — the reader would come back to the tenant home instead. It stays
@@ -71,7 +75,7 @@ export const startEpisodeCheckoutAction = async (
   try {
     const response = await apiClient.purchase.startEpisodeCheckout(
       {
-        episodePublicId,
+        episodeId,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)

@@ -32,7 +32,7 @@ describe("getMySeriesRating", () => {
     expect(await getMySeriesRating("tenant-1", "series-1")).toBe(3.5);
     expect(read).toHaveBeenCalledWith(
       {
-        seriesPublicId: "series-1",
+        seriesId: "series-1",
         surface: ClientSurface.WEB,
         tenant: { tenantId: "tenant-1" },
       },

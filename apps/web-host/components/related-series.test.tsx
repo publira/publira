@@ -75,6 +75,7 @@ const renderSection = async (limit = 4) =>
   render(
     await RelatedSeries({
       limit,
+      seriesId: "SERIES_ID_01",
       seriesPublicId: "SERIES01",
       tenantId: "TENANT01",
     })
@@ -125,6 +126,7 @@ describe("RelatedSeries", () => {
     expect(mockListRelatedSeries).toHaveBeenCalledWith("TENANT01", {
       limit: 3,
       locale: "en",
+      seriesId: "SERIES_ID_01",
       seriesPublicId: "SERIES01",
     });
   });

@@ -36,14 +36,14 @@ describe("POST /api/v1/views", () => {
 
   it("accepts a same-origin beacon and takes the tenant from the path", async () => {
     const response = await POST(
-      beacon({ kind: "episode", publicId: "EP_001" }),
+      beacon({ id: "e0000000-0000-4000-8000-000000000001", kind: "episode" }),
       params()
     );
 
     expect(response.status).toBe(204);
     expect(mockRecordContentView).toHaveBeenCalledWith({
+      id: "e0000000-0000-4000-8000-000000000001",
       kind: "episode",
-      publicId: "EP_001",
       tenantId: TENANT_ID,
     });
   });
@@ -51,7 +51,7 @@ describe("POST /api/v1/views", () => {
   it("records nothing for a beacon from another origin", async () => {
     const response = await POST(
       beacon(
-        { kind: "series", publicId: "SR_001" },
+        { id: "5e000000-0000-4000-8000-000000000001", kind: "series" },
         { host: "shop.example.test", origin: "https://evil.example" }
       ),
       params()
@@ -70,7 +70,17 @@ describe("POST /api/v1/views", () => {
 
   it("records nothing for a kind this app does not serve", async () => {
     const response = await POST(
-      beacon({ kind: "creator", publicId: "AU_001" }),
+      beacon({ id: "a0000000-0000-4000-8000-000000000001", kind: "creator" }),
+      params()
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockRecordContentView).not.toHaveBeenCalled();
+  });
+
+  it("records nothing for a public ID in place of the ID", async () => {
+    const response = await POST(
+      beacon({ id: "SR_001", kind: "series" }),
       params()
     );
 
@@ -80,7 +90,7 @@ describe("POST /api/v1/views", () => {
 
   it("records nothing for a tenant id the proxy would never rewrite", async () => {
     const response = await POST(
-      beacon({ kind: "series", publicId: "SR_001" }),
+      beacon({ id: "5e000000-0000-4000-8000-000000000001", kind: "series" }),
       params("not-a-tenant")
     );
 

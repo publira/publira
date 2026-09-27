@@ -122,6 +122,7 @@ describe("getPublishedCreatorDetail", () => {
     mockGetPublishedCreatorDetail.mockResolvedValueOnce({
       creator: {
         iconImageUrl: "/images/creators/creator-a",
+        id: "CREATOR_A_ID",
         name: "Creator A",
         profileText: "Creator A profile",
         publicId: "CREATOR_A",
@@ -172,6 +173,7 @@ describe("getPublishedCreatorDetail", () => {
       value: {
         iconImageUrl: "/images/creators/creator-a",
         id: "CREATOR_A",
+        internalId: "CREATOR_A_ID",
         name: "Creator A",
         nextToken: "NEXT_SERIES",
         previousToken: "",

@@ -8,7 +8,7 @@ import {
 } from "./api-client";
 
 export interface ReadingPositionTarget {
-  episodePublicId: string;
+  episodeId: string;
   tenantId: string;
 }
 
@@ -42,7 +42,7 @@ export interface ReadingPositionSave extends ReadingPositionTarget {
  */
 export const getMyReadingPosition = async ({
   accessToken,
-  episodePublicId,
+  episodeId,
   tenantId,
 }: ReadingPositionRead): Promise<number | null> => {
   const sessionId = accessToken.trim();
@@ -52,7 +52,7 @@ export const getMyReadingPosition = async ({
 
   try {
     const response = await apiClient.episodeRead.getMyReadingPosition(
-      { episodePublicId, surface: ClientSurface.WEB, tenant: { tenantId } },
+      { episodeId, surface: ClientSurface.WEB, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
     return response.position?.pageIndex ?? null;
@@ -80,7 +80,7 @@ export const getMyReadingPosition = async ({
  * so the Route Handler fails loudly enough to appear in the logs.
  */
 export const saveReadingPosition = async ({
-  episodePublicId,
+  episodeId,
   pageIndex,
   tenantId,
 }: ReadingPositionSave): Promise<void> => {
@@ -92,7 +92,7 @@ export const saveReadingPosition = async ({
   try {
     await apiClient.episodeRead.saveReadingPosition(
       {
-        episodePublicId,
+        episodeId,
         pageIndex,
         surface: ClientSurface.WEB,
         tenant: { tenantId },

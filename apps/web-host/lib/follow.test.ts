@@ -95,7 +95,7 @@ describe("getMyFollowStatus", () => {
     expect(mockGetMyFollowStatus).toHaveBeenCalledWith(
       {
         surface: ClientSurface.WEB,
-        target: { publicId: "CREATOR01", type: FollowTargetType.CREATOR },
+        target: { id: "CREATOR01", type: FollowTargetType.CREATOR },
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -158,7 +158,7 @@ describe("followTarget / unfollowTarget", () => {
     await expect(
       followTarget({
         locale: "en",
-        publicId: "SERIES01",
+        targetId: "SERIES01",
         targetKind: "series",
         tenantId,
       })
@@ -166,7 +166,7 @@ describe("followTarget / unfollowTarget", () => {
     expect(mockFollow).toHaveBeenCalledWith(
       {
         surface: ClientSurface.WEB,
-        target: { publicId: "SERIES01", type: FollowTargetType.SERIES },
+        target: { id: "SERIES01", type: FollowTargetType.SERIES },
         tenant: { tenantId },
       },
       { headers: { Authorization: "Bearer session-token" } }
@@ -179,7 +179,7 @@ describe("followTarget / unfollowTarget", () => {
     await expect(
       unfollowTarget({
         locale: "en",
-        publicId: "CREATOR01",
+        targetId: "CREATOR01",
         targetKind: "creator",
         tenantId,
       })
@@ -198,7 +198,7 @@ describe("followTarget / unfollowTarget", () => {
     await expect(
       followTarget({
         locale: "en",
-        publicId: "SERIES01",
+        targetId: "SERIES01",
         targetKind: "series",
         tenantId,
       })

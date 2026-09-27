@@ -19,8 +19,9 @@ const contentViewTargetTypeByKind: Record<
 };
 
 export interface ContentView {
+  /** The internal ID of the series or episode the page shows. */
+  id: string;
   kind: ContentViewKind;
-  publicId: string;
   tenantId: string;
 }
 
@@ -143,8 +144,8 @@ const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
  * swallowed here the same way the API swallows a failed insert.
  */
 export const recordContentView = async ({
+  id,
   kind,
-  publicId,
   tenantId,
 }: ContentView): Promise<void> => {
   const headers = await buildViewActorHeaders();
@@ -152,7 +153,7 @@ export const recordContentView = async ({
     await apiClient.contentView.recordContentView(
       {
         surface: ClientSurface.WEB,
-        target: { publicId, type: contentViewTargetTypeByKind[kind] },
+        target: { id, type: contentViewTargetTypeByKind[kind] },
         tenant: { tenantId },
       },
       { headers }

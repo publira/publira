@@ -23,11 +23,13 @@ import { getLocale } from "#lib/locale";
  */
 export const RelatedSeries = async ({
   limit,
+  seriesId,
   seriesPublicId,
   tenantId,
 }: {
   /** How many covers this caller has room for. */
   limit: number;
+  seriesId: string;
   seriesPublicId: string;
   tenantId: string;
 }) => {
@@ -35,6 +37,7 @@ export const RelatedSeries = async ({
   const result = await listRelatedSeries(tenantId, {
     limit,
     locale,
+    seriesId,
     seriesPublicId,
   });
 

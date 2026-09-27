@@ -46,7 +46,9 @@ vi.mock("./api-client", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const episodeId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const episodePublicId = "SeedEPSDAAA1";
+const commentId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const author = { name: "Sample Member", publicId: "SeedMMBRAAA1" };
 
 const comment = (
@@ -56,7 +58,7 @@ const comment = (
   authorPublicId: "SeedMMBRAAA1",
   awaitingApproval: false,
   body: "A comment",
-  publicId: `C${overrides.createdAt}`,
+  id: `C${overrides.createdAt}`,
   ...overrides,
 });
 
@@ -82,7 +84,7 @@ describe("listEpisodeComments", () => {
           authorPublicId: "SeedMMBRAAA1",
           body: "Loved this episode",
           createdAt: "2026-09-01T10:00:00Z",
-          publicId: "CmntAAAAAAA1",
+          id: "CmntAAAAAAA1",
         },
       ],
       nextToken: "next",
@@ -90,11 +92,13 @@ describe("listEpisodeComments", () => {
     });
 
     const result = await listEpisodeComments(tenantId, {
+      episodeId,
       episodePublicId,
       locale: "en",
     });
 
     expect(mockListEpisodeComments.mock.calls[0]?.[0]).toMatchObject({
+      episodeId,
       surface: ClientSurface.WEB,
     });
     expect(result).toEqual({
@@ -107,7 +111,7 @@ describe("listEpisodeComments", () => {
             awaitingApproval: false,
             body: "Loved this episode",
             createdAt: "2026-09-01T10:00:00Z",
-            publicId: "CmntAAAAAAA1",
+            id: "CmntAAAAAAA1",
           },
         ],
         nextToken: "next",
@@ -122,6 +126,7 @@ describe("listEpisodeComments", () => {
     );
 
     const result = await listEpisodeComments(tenantId, {
+      episodeId,
       episodePublicId,
       locale: "en",
     });
@@ -138,6 +143,7 @@ describe("listEpisodeComments", () => {
     );
 
     const result = await listEpisodeComments(tenantId, {
+      episodeId,
       episodePublicId,
       locale: "en",
     });
@@ -159,18 +165,20 @@ describe("listMyEpisodeComments", () => {
           awaitingApproval: true,
           body: "Waiting for approval",
           createdAt: "2026-09-02T10:00:00Z",
-          publicId: "CmntAAAAAAA2",
+          id: "CmntAAAAAAA2",
         },
       ],
     });
 
     const result = await listMyEpisodeComments(tenantId, {
       author,
+      episodeId,
       episodePublicId,
       locale: "en",
     });
 
     expect(mockListMyEpisodeComments.mock.calls[0]?.[0]).toMatchObject({
+      episodeId,
       surface: ClientSurface.WEB,
     });
     expect(result).toEqual({
@@ -182,7 +190,7 @@ describe("listMyEpisodeComments", () => {
           awaitingApproval: true,
           body: "Waiting for approval",
           createdAt: "2026-09-02T10:00:00Z",
-          publicId: "CmntAAAAAAA2",
+          id: "CmntAAAAAAA2",
         },
       ],
     });
@@ -193,6 +201,7 @@ describe("listMyEpisodeComments", () => {
 
     const result = await listMyEpisodeComments(tenantId, {
       author,
+      episodeId,
       episodePublicId,
       locale: "en",
     });
@@ -206,55 +215,53 @@ describe("mergeOwnEpisodeComments", () => {
   it("places the caller's own comments among the public ones by date", () => {
     const merged = mergeOwnEpisodeComments(
       page([
-        comment({ createdAt: "2026-09-03T00:00:00Z", publicId: "P3" }),
-        comment({ createdAt: "2026-09-01T00:00:00Z", publicId: "P1" }),
+        comment({ createdAt: "2026-09-03T00:00:00Z", id: "P3" }),
+        comment({ createdAt: "2026-09-01T00:00:00Z", id: "P1" }),
       ]),
       [
         comment({
           awaitingApproval: true,
           createdAt: "2026-09-02T00:00:00Z",
-          publicId: "O2",
+          id: "O2",
         }),
       ]
     );
 
-    expect(merged.map((item) => item.publicId)).toEqual(["P3", "O2", "P1"]);
+    expect(merged.map((item) => item.id)).toEqual(["P3", "O2", "P1"]);
   });
 
   it("keeps an own comment newer than the page off every page but the first", () => {
     const merged = mergeOwnEpisodeComments(
       page(
         [
-          comment({ createdAt: "2026-09-03T00:00:00Z", publicId: "P3" }),
-          comment({ createdAt: "2026-09-01T00:00:00Z", publicId: "P1" }),
+          comment({ createdAt: "2026-09-03T00:00:00Z", id: "P3" }),
+          comment({ createdAt: "2026-09-01T00:00:00Z", id: "P1" }),
         ],
         { previousToken: "previous" }
       ),
-      [comment({ createdAt: "2026-09-09T00:00:00Z", publicId: "O9" })]
+      [comment({ createdAt: "2026-09-09T00:00:00Z", id: "O9" })]
     );
 
-    expect(merged.map((item) => item.publicId)).toEqual(["P3", "P1"]);
+    expect(merged.map((item) => item.id)).toEqual(["P3", "P1"]);
   });
 
   it("keeps an own comment older than the page off a page that has a next one", () => {
     const merged = mergeOwnEpisodeComments(
       page(
         [
-          comment({ createdAt: "2026-09-03T00:00:00Z", publicId: "P3" }),
-          comment({ createdAt: "2026-09-02T00:00:00Z", publicId: "P2" }),
+          comment({ createdAt: "2026-09-03T00:00:00Z", id: "P3" }),
+          comment({ createdAt: "2026-09-02T00:00:00Z", id: "P2" }),
         ],
         { nextToken: "next" }
       ),
-      [comment({ createdAt: "2026-09-01T00:00:00Z", publicId: "O1" })]
+      [comment({ createdAt: "2026-09-01T00:00:00Z", id: "O1" })]
     );
 
-    expect(merged.map((item) => item.publicId)).toEqual(["P3", "P2"]);
+    expect(merged.map((item) => item.id)).toEqual(["P3", "P2"]);
   });
 
   it("shows own comments on an empty list only while it is the one page there is", () => {
-    const own = [
-      comment({ createdAt: "2026-09-01T00:00:00Z", publicId: "O1" }),
-    ];
+    const own = [comment({ createdAt: "2026-09-01T00:00:00Z", id: "O1" })];
 
     expect(mergeOwnEpisodeComments(page([]), own)).toHaveLength(1);
     expect(
@@ -271,14 +278,14 @@ describe("mergeOwnEpisodeComments", () => {
         comment({
           body: "the cached copy",
           createdAt: "2026-09-02T00:00:00Z",
-          publicId: "P2",
+          id: "P2",
         }),
       ]),
       [
         comment({
           body: "the caller's own copy",
           createdAt: "2026-09-02T00:00:00Z",
-          publicId: "P2",
+          id: "P2",
         }),
       ]
     );
@@ -302,12 +309,13 @@ describe("postEpisodeComment", () => {
     await expect(
       postEpisodeComment({
         body: "A comment",
-        episodePublicId,
+        episodeId,
         locale: "en",
         tenantId,
       })
     ).resolves.toEqual({ awaitingApproval: true, ok: true });
     expect(mockPostEpisodeComment.mock.calls[0]?.[0]).toMatchObject({
+      episodeId,
       surface: ClientSurface.WEB,
     });
   });
@@ -319,7 +327,7 @@ describe("postEpisodeComment", () => {
 
     const result = await postEpisodeComment({
       body: "A comment",
-      episodePublicId,
+      episodeId,
       locale: "en",
       tenantId,
     });
@@ -335,7 +343,7 @@ describe("postEpisodeComment", () => {
     await expect(
       postEpisodeComment({
         body: "A comment",
-        episodePublicId,
+        episodeId,
         locale: "en",
         tenantId,
       })
@@ -354,7 +362,7 @@ describe("withdrawEpisodeComment", () => {
 
     await expect(
       withdrawEpisodeComment({
-        commentPublicId: "CmntAAAAAAA1",
+        commentId,
         locale: "en",
         tenantId,
       })
@@ -367,7 +375,7 @@ describe("withdrawEpisodeComment", () => {
     );
 
     const result = await withdrawEpisodeComment({
-      commentPublicId: "CmntAAAAAAA1",
+      commentId,
       locale: "en",
       tenantId,
     });
@@ -387,7 +395,7 @@ describe("reportEpisodeComment", () => {
 
     await expect(
       reportEpisodeComment({
-        commentPublicId: "CmntAAAAAAA1",
+        commentId,
         locale: "en",
         note: "  Nothing to do with the episode.  ",
         reason: "spoiler",
@@ -396,7 +404,7 @@ describe("reportEpisodeComment", () => {
     ).resolves.toEqual({ ok: true });
     expect(mockReportEpisodeComment).toHaveBeenCalledWith(
       {
-        commentPublicId: "CmntAAAAAAA1",
+        commentId,
         note: "  Nothing to do with the episode.  ",
         reason: CommentReportReason.SPOILER,
         surface: ClientSurface.WEB,
@@ -415,7 +423,7 @@ describe("reportEpisodeComment", () => {
     );
 
     const result = await reportEpisodeComment({
-      commentPublicId: "CmntAAAAAAA1",
+      commentId,
       locale: "en",
       note: "",
       reason: "spam",
@@ -432,7 +440,7 @@ describe("reportEpisodeComment", () => {
 
     await expect(
       reportEpisodeComment({
-        commentPublicId: "CmntAAAAAAA1",
+        commentId,
         locale: "en",
         note: "",
         reason: "spam",

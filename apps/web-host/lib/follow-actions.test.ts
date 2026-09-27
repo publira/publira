@@ -62,8 +62,8 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "follow",
         locale: "en",
-        publicId: "SERIES01",
         returnTo: "/series/SERIES01",
+        targetId: "5e000000-0000-4000-8000-000000000001",
         targetKind: "series",
         tenantId,
       })
@@ -76,7 +76,7 @@ describe("toggleFollowAction", () => {
     });
     expect(mockFollowTarget).toHaveBeenCalledWith({
       locale: "en",
-      publicId: "SERIES01",
+      targetId: "5e000000-0000-4000-8000-000000000001",
       targetKind: "series",
       tenantId,
     });
@@ -98,8 +98,8 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "unfollow",
         locale: "en",
-        publicId: "CREATOR01",
         returnTo: "/creators/CREATOR01",
+        targetId: "c0000000-0000-4000-8000-000000000001",
         targetKind: "creator",
         tenantId,
       })
@@ -112,7 +112,7 @@ describe("toggleFollowAction", () => {
     });
     expect(mockUnfollowTarget).toHaveBeenCalledWith({
       locale: "en",
-      publicId: "CREATOR01",
+      targetId: "c0000000-0000-4000-8000-000000000001",
       targetKind: "creator",
       tenantId,
     });
@@ -128,8 +128,8 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "unfollow",
         locale: "en",
-        publicId: "SERIES01",
         returnTo: "/settings/follows",
+        targetId: "5e000000-0000-4000-8000-000000000001",
         targetKind: "series",
         tenantId,
       })
@@ -156,8 +156,8 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "follow",
         locale: "en",
-        publicId: "SERIES01",
         returnTo: "/series/SERIES01",
+        targetId: "5e000000-0000-4000-8000-000000000001",
         targetKind: "episode",
         tenantId,
       })
@@ -184,8 +184,8 @@ describe("toggleFollowAction", () => {
       formData({
         intent: "follow",
         locale: "en",
-        publicId: "MISSING01",
         returnTo: "/series/MISSING01",
+        targetId: "00000000-0000-4000-8000-00000000dead",
         targetKind: "series",
         tenantId,
       })

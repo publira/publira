@@ -41,9 +41,11 @@ vi.mock("#lib/tenant-locale-path", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const episodeId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
 const checkoutForm = (): FormData => {
   const data = new FormData();
+  data.set("episodeId", episodeId);
   data.set("episodePublicId", "EP_001");
   data.set("locale", "en");
   data.set("seriesPublicId", "SERIES_001");
@@ -68,6 +70,10 @@ describe("startEpisodeCheckoutAction", () => {
     await expect(startEpisodeCheckoutAction(checkoutForm())).rejects.toThrow(
       "NEXT_REDIRECT:https://checkout.stripe.test/session"
     );
+    expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toEqual({
+      episodeId,
+      tenant: { tenantId },
+    });
   });
 
   it("Return the reader to the episode when the web may not sell it", async () => {

@@ -14,7 +14,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
+import type { EpisodeDetail } from "#lib/catalog";
 
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 
@@ -27,6 +27,7 @@ const SPREAD_START_INDEX = 1;
 
 const episode: EpisodeDetail = {
   credits: [],
+  id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   orderIndex: 1,
   price: 0,
   publicId: "EPISODE_001",
@@ -39,11 +40,6 @@ const episode: EpisodeDetail = {
   spreadStartIndex: 1,
   status: "published",
   title: "First light",
-};
-
-const series: EpisodeSeriesSummary = {
-  publicId: "SERIES_001",
-  title: "Long nights",
 };
 
 const buildPages = (pageCount: number): ViewerPage[] =>
@@ -92,7 +88,7 @@ const renderViewer = ({
       <NextPageButton>Next</NextPageButton>
       <GestureNavigation />
       <PageStatus />
-      <EpisodeReadRecorder episode={episode} series={series} />
+      <EpisodeReadRecorder episode={episode} />
     </ViewerProvider>
   );
 
@@ -135,7 +131,7 @@ describe("EpisodeReadRecorder", () => {
     // The episode is named by the path, and the tenant by the segment the
     // proxy rewrote in front of it.
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "/api/v1/series/SERIES_001/episodes/EPISODE_001/read"
+      "/api/v1/episodes/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/read"
     );
   });
 

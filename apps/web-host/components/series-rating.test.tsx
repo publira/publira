@@ -49,7 +49,7 @@ describe("SeriesRating", () => {
       <SeriesRating average={3.2} count={12} locale="en">
         {await MySeriesRating({
           locale: "en",
-          seriesPublicId: "series-1",
+          seriesId: "series-1",
           tenantId: "tenant-1",
         })}
       </SeriesRating>
@@ -62,7 +62,7 @@ describe("SeriesRating", () => {
     const { container } = render(
       await MySeriesRating({
         locale: "en",
-        seriesPublicId: "series-1",
+        seriesId: "series-1",
         tenantId: "tenant-1",
       })
     );

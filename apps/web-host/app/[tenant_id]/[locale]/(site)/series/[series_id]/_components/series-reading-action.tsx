@@ -63,15 +63,17 @@ export const ReadingActionLink = ({
  */
 export const SeriesReadingAction = async ({
   episodes,
+  seriesId,
   seriesPublicId,
   tenantId,
 }: {
   episodes: EpisodeItem[];
+  seriesId: string;
   seriesPublicId: string;
   tenantId: string;
 }) => {
   const locale = await getLocale();
-  const result = await getMySeriesProgress(tenantId, seriesPublicId, locale);
+  const result = await getMySeriesProgress(tenantId, seriesId, locale);
   const offer = resolveContinueOffer(
     episodes,
     result.ok ? result.progress : null

@@ -164,7 +164,7 @@ export const FollowList = async ({
                       aria-label={t("host.follow.unfollow_aria", {
                         name: item.title,
                       })}
-                      publicId={item.publicId}
+                      targetId={item.targetId}
                       returnTo={returnTo}
                       targetKind={item.targetKind}
                       tenantId={tenantId}

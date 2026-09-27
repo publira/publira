@@ -35,11 +35,12 @@ const VIEW_BEACON_PATH = "/api/v1/views";
  * ref that suppressed it would only be suppressing it in development.
  */
 export const ContentViewTracker = ({
+  id,
   kind,
-  publicId,
 }: {
+  /** The internal ID of the series or episode the page shows. */
+  id: string;
   kind: ContentViewKind;
-  publicId: string;
 }) => {
   useEffect(() => {
     // A JSON body is not a CORS-safelisted content type, so a cross-origin
@@ -47,11 +48,11 @@ export const ContentViewTracker = ({
     // endpoint is the guard, and this is the layer above it.
     navigator.sendBeacon(
       VIEW_BEACON_PATH,
-      new Blob([JSON.stringify({ kind, publicId })], {
+      new Blob([JSON.stringify({ id, kind })], {
         type: "application/json",
       })
     );
-  }, [kind, publicId]);
+  }, [id, kind]);
 
   return null;
 };

@@ -3,7 +3,7 @@
 import { useViewerContext } from "@publira/comic-viewer";
 import { useEffect, useRef } from "react";
 
-import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
+import type { EpisodeDetail } from "#lib/catalog";
 
 import type { Report } from "../_lib/delivery";
 import { createReport, postReport } from "../_lib/delivery";
@@ -14,11 +14,8 @@ import { isLastPageVisible } from "../_lib/viewer-progress";
  * onto the resolved tenant, so the reader's URL carries no tenant and no
  * locale segment.
  */
-const episodeReadBeaconPath = (
-  seriesPublicId: string,
-  episodePublicId: string
-): string =>
-  `/api/v1/series/${encodeURIComponent(seriesPublicId)}/episodes/${encodeURIComponent(episodePublicId)}/read`;
+const episodeReadBeaconPath = (episodeId: string): string =>
+  `/api/v1/episodes/${encodeURIComponent(episodeId)}/read`;
 
 /**
  * Reports the episode as read once its last page is on screen. Renders
@@ -43,10 +40,8 @@ const episodeReadBeaconPath = (
  */
 export const EpisodeReadRecorder = ({
   episode,
-  series,
 }: {
   episode: EpisodeDetail;
-  series: EpisodeSeriesSummary;
 }) => {
   const { currentIndex, pages, spreadStartIndex, viewMode } =
     useViewerContext();
@@ -61,13 +56,12 @@ export const EpisodeReadRecorder = ({
   useEffect(() => {
     // The episode is named by the path, so the body is an empty object.
     reportRef.current = createReport({
-      deliver: () =>
-        postReport(episodeReadBeaconPath(series.publicId, episode.publicId)),
+      deliver: () => postReport(episodeReadBeaconPath(episode.id)),
     });
     return () => {
       reportRef.current = null;
     };
-  }, [episode.publicId, series.publicId]);
+  }, [episode.id]);
 
   useEffect(() => {
     if (isFinished) {

@@ -12,7 +12,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EpisodeDetail, EpisodeSeriesSummary } from "#lib/catalog";
+import type { EpisodeDetail } from "#lib/catalog";
 
 import { READING_POSITION_SAVE_DELAY_MS } from "../_lib/reading-position";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
@@ -25,6 +25,7 @@ const SPREAD_START_INDEX = 1;
 
 const episode: EpisodeDetail = {
   credits: [],
+  id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   orderIndex: 1,
   price: 0,
   publicId: "EPISODE_001",
@@ -37,11 +38,6 @@ const episode: EpisodeDetail = {
   spreadStartIndex: 1,
   status: "published",
   title: "First light",
-};
-
-const series: EpisodeSeriesSummary = {
-  publicId: "SERIES_001",
-  title: "Long nights",
 };
 
 const buildPages = (pageCount: number): ViewerPage[] =>
@@ -73,7 +69,7 @@ const renderViewer = ({
       <PreviousPageButton>Previous</PreviousPageButton>
       <NextPageButton>Next</NextPageButton>
       <PageStatus />
-      <EpisodeReadingPositionRecorder episode={episode} series={series} />
+      <EpisodeReadingPositionRecorder episode={episode} />
     </ViewerProvider>
   );
 
@@ -126,7 +122,7 @@ describe("EpisodeReadingPositionRecorder", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "/api/v1/series/SERIES_001/episodes/EPISODE_001/reading-position"
+      "/api/v1/episodes/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/reading-position"
     );
     expect(savedPageIndex(0)).toBe(1);
   });

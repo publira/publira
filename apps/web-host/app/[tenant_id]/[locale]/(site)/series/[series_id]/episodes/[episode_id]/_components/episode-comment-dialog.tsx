@@ -80,6 +80,7 @@ const EpisodeCommentBodyFieldSkeleton = () => (
  */
 export const EpisodeCommentDialog = ({
   children,
+  episodeId,
   episodePublicId,
   /**
    * Whether the URL asks for the comments — a page of them followed from the
@@ -91,6 +92,7 @@ export const EpisodeCommentDialog = ({
   tenantId,
 }: {
   children: ReactNode;
+  episodeId: string;
   episodePublicId: string;
   initialOpen?: boolean;
   /** Shown in place of the box where the reader has no session. */
@@ -123,6 +125,7 @@ export const EpisodeCommentDialog = ({
               className="grid gap-3"
             >
               <LocaleField />
+              <input name="episodeId" type="hidden" value={episodeId} />
               <input
                 name="episodePublicId"
                 type="hidden"

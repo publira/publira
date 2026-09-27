@@ -23,6 +23,8 @@ export interface PublishedCreatorListItem {
 
 export interface PublishedCreatorDetail {
   id: string;
+  /** Internal ID (`id`), which following the creator takes. */
+  internalId: string;
   name: string;
   iconImageUrl: string;
   profileText: string;
@@ -50,7 +52,12 @@ export interface PublishedCreatorListResult {
  */
 type RawPublishedCreator = Pick<
   PublishedCreator,
-  "iconImageUrl" | "name" | "profileText" | "publicId" | "publishedSeriesCount"
+  | "iconImageUrl"
+  | "id"
+  | "name"
+  | "profileText"
+  | "publicId"
+  | "publishedSeriesCount"
 >;
 
 const mapPublishedCreator = (
@@ -58,6 +65,7 @@ const mapPublishedCreator = (
 ): Omit<PublishedCreatorDetail, "nextToken" | "previousToken" | "series"> => ({
   iconImageUrl: creator.iconImageUrl?.trim() ?? "",
   id: creator.publicId ?? "",
+  internalId: creator.id ?? "",
   name: (creator.name ?? "").trim(),
   profileText: (creator.profileText ?? "").trim(),
   seriesCount: creator.publishedSeriesCount ?? 0,

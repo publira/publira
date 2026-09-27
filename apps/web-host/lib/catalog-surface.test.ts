@@ -73,6 +73,7 @@ describe("storefront catalog reads", () => {
       () =>
         listRelatedSeries("TENANT_1", {
           locale: "en",
+          seriesId: "SERIES_ID_1",
           seriesPublicId: "SERIES_1",
         }),
     ],

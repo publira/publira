@@ -18,7 +18,7 @@ vi.mock("./api-client", () => ({
 }));
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const PUBLIC_ID = "EPISODE_001";
+const EPISODE_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
 describe("recordEpisodeRead", () => {
   beforeEach(() => {
@@ -27,11 +27,11 @@ describe("recordEpisodeRead", () => {
   });
 
   it("records the read for the signed-in member", async () => {
-    await recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID });
+    await recordEpisodeRead({ episodeId: EPISODE_ID, tenantId: TENANT_ID });
 
     expect(mockMarkEpisodeAsRead).toHaveBeenCalledWith(
       {
-        episodePublicId: PUBLIC_ID,
+        episodeId: EPISODE_ID,
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
       },
@@ -42,7 +42,7 @@ describe("recordEpisodeRead", () => {
   it("writes nothing for a reader without a session", async () => {
     mockResolveAccessToken.mockResolvedValue("");
 
-    await recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID });
+    await recordEpisodeRead({ episodeId: EPISODE_ID, tenantId: TENANT_ID });
 
     expect(mockMarkEpisodeAsRead).not.toHaveBeenCalled();
   });
@@ -53,7 +53,7 @@ describe("recordEpisodeRead", () => {
     );
 
     await expect(
-      recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID })
+      recordEpisodeRead({ episodeId: EPISODE_ID, tenantId: TENANT_ID })
     ).resolves.toBeUndefined();
   });
 
@@ -63,7 +63,7 @@ describe("recordEpisodeRead", () => {
     );
 
     await expect(
-      recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID })
+      recordEpisodeRead({ episodeId: EPISODE_ID, tenantId: TENANT_ID })
     ).resolves.toBeUndefined();
   });
 
@@ -73,7 +73,7 @@ describe("recordEpisodeRead", () => {
     );
 
     await expect(
-      recordEpisodeRead({ publicId: PUBLIC_ID, tenantId: TENANT_ID })
+      recordEpisodeRead({ episodeId: EPISODE_ID, tenantId: TENANT_ID })
     ).rejects.toThrow("boom");
   });
 });

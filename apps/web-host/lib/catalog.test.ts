@@ -1616,12 +1616,13 @@ describe("catalog.listRelatedSeries", () => {
     const result = await listRelatedSeries("  TENANT_001  ", {
       limit: 4,
       locale: "en",
+      seriesId: "  dddddddd-dddd-4ddd-8ddd-dddddddddddd  ",
       seriesPublicId: "  SERIES_1  ",
     });
 
     expect(mockListRelatedSeries).toHaveBeenCalledWith({
       limit: 4,
-      seriesPublicId: "SERIES_1",
+      seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
       token: "",
@@ -1646,6 +1647,7 @@ describe("catalog.listRelatedSeries", () => {
     await expect(
       listRelatedSeries("TENANT_001", {
         locale: "en",
+        seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
         seriesPublicId: "SERIES_1",
       })
     ).resolves.toEqual({
@@ -1662,6 +1664,7 @@ describe("catalog.listRelatedSeries", () => {
     await expect(
       listRelatedSeries("TENANT_001", {
         locale: "en",
+        seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
         seriesPublicId: "SERIES_1",
       })
     ).resolves.toEqual({

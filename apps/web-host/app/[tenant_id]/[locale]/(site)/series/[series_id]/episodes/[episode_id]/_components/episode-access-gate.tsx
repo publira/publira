@@ -75,6 +75,7 @@ const AppStoreLinks = ({
 export const EpisodeAccessGate = ({
   acceptsPayments,
   appStoreUrl,
+  episodeId,
   episodePublicId,
   googlePlayUrl,
   purchaseSurface,
@@ -85,6 +86,7 @@ export const EpisodeAccessGate = ({
   acceptsPayments: boolean;
   /** Where the tenant's app is listed; absent where it is not. */
   appStoreUrl?: string;
+  episodeId: string;
   episodePublicId: string;
   googlePlayUrl?: string;
   purchaseSurface: EpisodePurchaseSurface;
@@ -134,6 +136,7 @@ export const EpisodeAccessGate = ({
         <input name="tenantId" type="hidden" value={tenantId} />
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <input name="episodePublicId" type="hidden" value={episodePublicId} />
+        <input name="episodeId" type="hidden" value={episodeId} />
         <Button size="lg" type="submit" variant="secondary">
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="host.episode.gate.purchase" />

@@ -314,7 +314,7 @@ const SeriesDetailContent = async (
       <SeriesAgeRatingConfirmation series={series} />
       <AgeRatingGateContent>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
-          <ContentViewTracker kind="series" publicId={series.publicId} />
+          <ContentViewTracker id={series.id} kind="series" />
 
           <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
             {/* The one image a series page is about, so it keeps its title as its
@@ -353,7 +353,7 @@ const SeriesDetailContent = async (
                     <Suspense fallback={null}>
                       <MySeriesRating
                         tenantId={tenantId}
-                        seriesPublicId={series.publicId}
+                        seriesId={series.id}
                         locale={locale}
                       />
                     </Suspense>
@@ -477,6 +477,7 @@ const SeriesDetailContent = async (
                     >
                       <SeriesReadingAction
                         episodes={episodes}
+                        seriesId={series.id}
                         seriesPublicId={series.publicId}
                         tenantId={tenantId}
                       />
@@ -492,7 +493,7 @@ const SeriesDetailContent = async (
                 >
                   <Suspense fallback={<FollowControlSkeleton />}>
                     <FollowControl
-                      publicId={series.publicId}
+                      targetId={series.id}
                       returnTo={`/series/${series.publicId}`}
                       targetKind="series"
                       targetName={series.title}
@@ -533,7 +534,7 @@ const SeriesDetailContent = async (
                         <EpisodeReadMark
                           episodePublicId={episode.publicId}
                           episodes={episodes}
-                          seriesPublicId={series.publicId}
+                          seriesId={series.id}
                           tenantId={tenantId}
                         />
                       </Suspense>
@@ -578,7 +579,7 @@ const SeriesDetailContent = async (
                             <Suspense fallback={null}>
                               <EpisodeReadMarker
                                 episodePublicId={episode.publicId}
-                                seriesPublicId={series.publicId}
+                                seriesId={series.id}
                                 tenantId={tenantId}
                               />
                             </Suspense>
@@ -615,6 +616,7 @@ const SeriesDetailContent = async (
             >
               <RelatedSeries
                 limit={RELATED_SERIES_COUNT}
+                seriesId={series.id}
                 seriesPublicId={series.publicId}
                 tenantId={tenantId}
               />

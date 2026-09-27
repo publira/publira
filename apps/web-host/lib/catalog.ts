@@ -202,6 +202,7 @@ export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
   );
 
 export interface EpisodeItem {
+  id: string;
   publicId: string;
   title: string;
   orderIndex: number;
@@ -229,6 +230,7 @@ export interface EpisodeDetail {
    * the series lists today.
    */
   credits: CreatorCredit[];
+  id: string;
   orderIndex: number;
   price: number;
   publicId: string;
@@ -262,6 +264,7 @@ export interface EpisodeDetail {
 type RawEpisode = Pick<
   Episode,
   | "creators"
+  | "id"
   | "orderIndex"
   | "price"
   | "publicId"
@@ -322,6 +325,7 @@ export const toEpisodePurchaseSurface = (
 
 const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
+  id: episode.id ?? "",
   orderIndex: episode.orderIndex ?? 0,
   price: episode.price ?? 0,
   publicId: episode.publicId ?? "",
@@ -463,6 +467,7 @@ export interface EpisodeSeriesSummary {
    * to a neighbouring episode shows at the head of its row.
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
+  id: string;
   publicId: string;
   title: string;
 }
@@ -544,6 +549,7 @@ export interface SeriesDetail {
   ratingCount: number;
   /** How this series publishes reader comments after its override is resolved. */
   commentMode: SeriesCommentMode;
+  id: string;
   publicId: string;
   title: string;
   synopsis: string;
@@ -1024,8 +1030,7 @@ export const listRecommendedSeries = async (
 };
 
 /**
- * The tenant's other published series, the most related to `seriesPublicId`
- * first.
+ * The tenant's other published series, the most related to `seriesId` first.
  *
  * Relatedness is the server's: shared creators weigh most, then the label, then
  * each genre and each tag. The list does not stop at the related ones — a
@@ -1048,11 +1053,14 @@ export const listRelatedSeries = async (
   {
     limit = 4,
     locale,
+    seriesId,
     seriesPublicId,
     token = "",
   }: {
     limit?: number;
     locale: Locale;
+    seriesId: string;
+    /** Keys the tag the API drops this entry by. */
     seriesPublicId: string;
     token?: string;
   }
@@ -1074,7 +1082,7 @@ export const listRelatedSeries = async (
   try {
     response = await apiClient.catalog.listRelatedSeries({
       limit,
-      seriesPublicId: normalizedSeriesPublicId,
+      seriesId: seriesId.trim(),
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
@@ -1401,6 +1409,7 @@ export const getSeriesDetail = async (
   const result = {
     episodes: (response.episodes ?? [])
       .map((e) => ({
+        id: e.id ?? "",
         orderIndex: e.orderIndex ?? 0,
         price: e.price ?? 0,
         publicId: e.publicId ?? "",
@@ -1421,6 +1430,7 @@ export const getSeriesDetail = async (
               response.series.eyeCatchImageVariants
             ),
             genres: (response.series.genres ?? []).flatMap(toSeriesGenreItem),
+            id: response.series.id ?? "",
             labelName: response.series.label?.name?.trim() ?? "",
             labelPublicId: response.series.label?.publicId?.trim() ?? "",
             publicId: response.series.publicId ?? "",
@@ -1512,6 +1522,7 @@ export const getEpisodeDetail = async (
           eyeCatchImageVariants: toEyeCatchImageVariants(
             response.series.eyeCatchImageVariants
           ),
+          id: response.series.id,
           publicId: response.series.publicId,
           title: response.series.title,
         },

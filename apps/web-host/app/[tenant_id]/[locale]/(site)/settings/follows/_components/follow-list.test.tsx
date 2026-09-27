@@ -56,11 +56,11 @@ vi.mock("#lib/locale", () => ({
 vi.mock("./unfollow-button", () => ({
   UnfollowButton: ({
     "aria-label": ariaLabel,
-    publicId,
+    targetId,
   }: {
     "aria-label": string;
-    publicId: string;
-  }) => <button type="button">{`${ariaLabel} ${publicId}`}</button>,
+    targetId: string;
+  }) => <button type="button">{`${ariaLabel} ${targetId}`}</button>,
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -69,6 +69,7 @@ const follow = (overrides: Partial<FollowListItem> = {}): FollowListItem => ({
   followedAt: "2026-06-01T00:00:00Z",
   href: "/series/SERIES01",
   publicId: "SERIES01",
+  targetId: "SERIES01-ID",
   targetKind: "series",
   title: "Published Series",
   unavailable: false,
@@ -137,6 +138,7 @@ describe("FollowList", () => {
           followedAt: "2026-05-31T00:00:00Z",
           href: "/creators/CREATOR01",
           publicId: "CREATOR01",
+          targetId: "CREATOR01-ID",
           targetKind: "creator",
           title: "Published Creator",
         }),
@@ -154,7 +156,7 @@ describe("FollowList", () => {
     expect(screen.getByText("Author")).toBeDefined();
     expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(
-      screen.getByText("Unfollow Published Series SERIES01")
+      screen.getByText("Unfollow Published Series SERIES01-ID")
     ).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Previous page" }).getAttribute("href")
@@ -180,7 +182,7 @@ describe("FollowList", () => {
       screen.queryByRole("link", { name: "Not currently published" })
     ).toBeNull();
     expect(
-      screen.queryByText("Unfollow Not currently published SERIES01")
+      screen.queryByText("Unfollow Not currently published SERIES01-ID")
     ).toBeNull();
   });
 

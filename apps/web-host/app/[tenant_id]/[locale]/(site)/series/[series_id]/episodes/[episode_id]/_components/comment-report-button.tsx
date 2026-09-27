@@ -114,17 +114,17 @@ const CommentReportNoteFieldSkeleton = () => (
  */
 export const CommentReportButton = ({
   "aria-label": ariaLabel,
-  commentPublicId,
+  commentId,
   returnTo,
   tenantId,
 }: {
   /** Names the comment the trigger reports: who wrote it, and when. */
   "aria-label": string;
-  commentPublicId: string;
+  commentId: string;
   returnTo: string;
   tenantId: string;
 }) => {
-  const formId = `comment-report-${commentPublicId}`;
+  const formId = `comment-report-${commentId}`;
 
   return (
     <ActionForm
@@ -133,7 +133,7 @@ export const CommentReportButton = ({
       id={formId}
     >
       <LocaleField />
-      <input name="commentPublicId" type="hidden" value={commentPublicId} />
+      <input name="commentId" type="hidden" value={commentId} />
       <input name="returnTo" type="hidden" value={returnTo} />
       <input name="tenantId" type="hidden" value={tenantId} />
       <UntilActionSucceeds>

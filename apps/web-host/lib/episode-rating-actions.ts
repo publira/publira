@@ -19,6 +19,7 @@ import {
   localeFormSchema,
   requireFormLocale,
 } from "./locale-form";
+import { recordIdSchema } from "./record-id";
 
 export type RateEpisodeActionState =
   | { ok: true; ratingCount: number; score: number }
@@ -28,7 +29,7 @@ export type RateEpisodeActionState =
 const publicIdFormSchema = z.string().trim().min(1).max(64);
 
 const rateEpisodeFormSchema = z.object({
-  episodePublicId: publicIdFormSchema,
+  episodeId: recordIdSchema,
   locale: localeFormSchema,
   presses: z.coerce.number().int().min(1).max(MAX_EPISODE_REACTION_SCORE),
   returnTo: returnToFormSchema,
@@ -44,7 +45,7 @@ export const rateEpisodeAction = async (
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = rateEpisodeFormSchema.safeParse(
     toFormDataInput(formData, {
-      episodePublicId: "value",
+      episodeId: "value",
       locale: "value",
       presses: "value",
       returnTo: "value",
@@ -56,19 +57,13 @@ export const rateEpisodeAction = async (
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }
 
-  const {
-    episodePublicId,
-    locale,
-    presses,
-    returnTo,
-    seriesPublicId,
-    tenantId,
-  } = parsed.data;
+  const { episodeId, locale, presses, returnTo, seriesPublicId, tenantId } =
+    parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
-    () => rateEpisode({ episodePublicId, locale, presses, tenantId }),
+    () => rateEpisode({ episodeId, locale, presses, tenantId }),
     tenantId
   );
   if (!result.ok) {

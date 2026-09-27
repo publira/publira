@@ -221,7 +221,7 @@ export const EpisodeEndPanel = async ({
                   section around it stays on the shared public cache. */}
               <Suspense fallback={<FollowControlSkeleton />}>
                 <FollowControl
-                  publicId={series.publicId}
+                  targetId={series.id}
                   returnTo={returnTo}
                   targetKind="series"
                   targetName={series.title}
@@ -254,6 +254,7 @@ export const EpisodeEndPanel = async ({
           >
             <RelatedSeries
               limit={RELATED_SERIES_COUNT}
+              seriesId={series.id}
               seriesPublicId={series.publicId}
               tenantId={tenantId}
             />
