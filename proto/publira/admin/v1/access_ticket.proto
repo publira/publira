@@ -62,6 +62,10 @@ message IssueAccessTicketRequest {
   // RFC3339; empty for no expiry.
   string expires_at = 4;
   string note = 5;
+  // The receiving user's primary key; wins over user_public_id when set.
+  string user_id = 6;
+  // The episode's primary key; wins over episode_public_id when set.
+  string episode_id = 7;
 }
 
 message IssueAccessTicketResponse {

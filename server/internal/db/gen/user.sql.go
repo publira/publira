@@ -391,6 +391,50 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const GetUserByIDForTenant = `-- name: GetUserByIDForTenant :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+LIMIT 1
+`
+
+type GetUserByIDForTenantParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	ID       uuid.UUID     `json:"id"`
+}
+
+type GetUserByIDForTenantRow struct {
+	ID        uuid.UUID     `json:"id"`
+	PublicID  string        `json:"public_id"`
+	Name      string        `json:"name"`
+	Email     string        `json:"email"`
+	Status    string        `json:"status"`
+	TenantID  uuid.NullUUID `json:"tenant_id"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+func (q *Queries) GetUserByIDForTenant(ctx context.Context, arg GetUserByIDForTenantParams) (GetUserByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetUserByIDForTenant, arg.TenantID, arg.ID)
+	var i GetUserByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.TenantID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const GetUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
 SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 FROM users

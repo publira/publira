@@ -602,6 +602,19 @@ WHERE u.tenant_id = $1
     AND u.public_id = $2
 LIMIT 1;
 
+-- name: GetUserByIDForTenant :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.id = $2
+LIMIT 1;
+
 -- name: UnsuspendUserByID :one
 -- A user who never confirmed their address goes back to inactive, the state
 -- VerifyUserEmail activates.
