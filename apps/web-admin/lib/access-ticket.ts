@@ -28,6 +28,7 @@ export interface AccessTicketItem {
   episodePublicId: string;
   episodeTitle: string;
   expiresAt: string;
+  id: string;
   note: string;
   publicId: string;
   revokedAt: string;
@@ -111,6 +112,7 @@ type RawAccessTicket = Pick<
   | "episodePublicId"
   | "episodeTitle"
   | "expiresAt"
+  | "id"
   | "note"
   | "publicId"
   | "revokedAt"
@@ -127,6 +129,7 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
   episodePublicId: item.episodePublicId,
   episodeTitle: item.episodeTitle,
   expiresAt: item.expiresAt,
+  id: item.id,
   note: item.note,
   publicId: item.publicId,
   revokedAt: item.revokedAt,
@@ -254,7 +257,7 @@ export const issueAccessTicket = async (
 
 export const revokeAccessTicket = async (
   tenantId: string,
-  publicId: string,
+  ticketId: string,
   locale: Locale
 ): Promise<RevokeAccessTicketResult> => {
   const [t, sessionId] = await Promise.all([
@@ -271,7 +274,7 @@ export const revokeAccessTicket = async (
   try {
     const response = await apiClient.accessTickets.revokeAccessTicket(
       {
-        publicId,
+        accessTicketId: ticketId,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)

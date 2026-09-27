@@ -26,6 +26,7 @@ interface SuspendReaderButtonProps {
   /** The name the confirmation calls the reader by. */
   name: string;
   publicId: string;
+  readerId: string;
   tenantId: string;
 }
 
@@ -33,6 +34,7 @@ interface SuspendReaderButtonProps {
 export const SuspendReaderButton = ({
   name,
   publicId,
+  readerId,
   tenantId,
 }: SuspendReaderButtonProps) => {
   const formId = `suspend-reader-${publicId}`;
@@ -41,6 +43,7 @@ export const SuspendReaderButton = ({
     <ActionForm action={suspendReaderAction} className="grid gap-1" id={formId}>
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
+      <input name="reader_id" type="hidden" value={readerId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={<Button type="button" variant="outline" />}

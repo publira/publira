@@ -66,18 +66,21 @@ export const ReaderAccount = async ({
           {reader.status === "suspended" ? (
             <UnsuspendReaderButton
               publicId={reader.publicId}
+              readerId={reader.id}
               tenantId={tenantId}
             />
           ) : (
             <SuspendReaderButton
               name={reader.name || reader.email}
               publicId={reader.publicId}
+              readerId={reader.id}
               tenantId={tenantId}
             />
           )}
           <DeleteReaderButton
             name={reader.name || reader.email}
             publicId={reader.publicId}
+            readerId={reader.id}
             tenantId={tenantId}
           />
         </AdminSectionActions>
@@ -188,6 +191,7 @@ export const ReaderAccount = async ({
             birthDate={reader.birthDate}
             name={reader.name || reader.email}
             publicId={reader.publicId}
+            readerId={reader.id}
             tenantId={tenantId}
           />
         </dd>

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   cancelTenantAdminInvitation,
@@ -34,9 +34,7 @@ const memberSchema = async (locale: Locale) => {
 
   return z.object({
     tenantId: await tenantIdSchema(locale),
-    userPublicId: requiredTrimmedString(
-      t("admin.members.validation.member_missing")
-    ),
+    userId: requiredRecordId(t("admin.members.validation.member_missing")),
   });
 };
 const memberRoleSchema = async (locale: Locale) => {
@@ -74,7 +72,7 @@ const inviteSchema = async (locale: Locale) => {
 
 const memberFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
-  userPublicId: { kind: "value", name: "user_public_id" },
+  userId: { kind: "value", name: "user_id" },
 } as const;
 const invitationFormFields = {
   invitationId: { kind: "value", name: "invitation_id" },
@@ -98,9 +96,9 @@ export const updateTenantMemberRoleAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { role, tenantId, userPublicId } = parsed.data;
+  const { role, tenantId, userId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    updateTenantMemberRole({ role, tenantId, userPublicId }, locale)
+    updateTenantMemberRole({ role, tenantId, userId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -126,9 +124,9 @@ export const removeTenantMemberAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { tenantId, userPublicId } = parsed.data;
+  const { tenantId, userId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    removeTenantMember({ tenantId, userPublicId }, locale)
+    removeTenantMember({ tenantId, userId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };

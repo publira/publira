@@ -17,6 +17,8 @@ export interface AccessTicketItem {
   episodePublicId: string;
   episodeTitle: string;
   expiresAt: string;
+  /** The internal ID RevokeAccessTicket addresses the ticket by. */
+  id: string;
   note: string;
   publicId: string;
   revokedAt: string;
@@ -36,5 +38,5 @@ export type IssueAccessTicketActionState = {
 export type RevokeAccessTicketActionState = {
   message: string;
   ok: boolean;
-  publicId?: string;
+  ticketId?: string;
 } | null;

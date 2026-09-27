@@ -248,7 +248,7 @@ const TicketListBody = ({
             </TableCell>
             <TableCell>
               {ticket.status === "active" ? (
-                <RevokeTicketButton publicId={ticket.publicId} />
+                <RevokeTicketButton ticketId={ticket.id} />
               ) : (
                 <span className="text-sm text-muted-foreground">—</span>
               )}

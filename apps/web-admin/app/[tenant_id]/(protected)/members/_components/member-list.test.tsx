@@ -72,7 +72,7 @@ describe("MemberList", () => {
             name: "Grace Hopper",
             role: "tenant_editor",
             status: "active",
-            userPublicId: "USER001",
+            userId: "USER001",
           },
         ],
         pageSize: 20,

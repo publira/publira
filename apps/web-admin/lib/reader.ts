@@ -46,12 +46,13 @@ const toReaderStatus = (raw: string): ReaderStatus =>
 /** The generated `AdminReader` fields {@link mapReader} reads (see `series.ts`). */
 type RawReader = Pick<
   AdminReader,
-  "createdAt" | "email" | "name" | "publicId" | "status"
+  "createdAt" | "email" | "id" | "name" | "publicId" | "status"
 >;
 
 const mapReader = (item: RawReader): ReaderItem => ({
   createdAt: item.createdAt ?? "",
   email: item.email ?? "",
+  id: item.id ?? "",
   name: item.name ?? "",
   publicId: item.publicId ?? "",
   status: toReaderStatus(item.status ?? ""),
@@ -175,7 +176,7 @@ export type ReaderModerationAction = "delete" | "suspend" | "unsuspend";
 
 export interface ModerateReaderInput {
   action: ReaderModerationAction;
-  publicId: string;
+  readerId: string;
   tenantId: string;
 }
 
@@ -188,7 +189,7 @@ const callReaderModeration = async (
   sessionId: string
 ): Promise<void> => {
   const request = {
-    publicId: input.publicId,
+    readerId: input.readerId,
     tenant: { tenantId: input.tenantId },
   };
   const headers = withSessionHeaders(sessionId);
@@ -229,7 +230,7 @@ const readerModerationFailedMessage = async (
 export interface SetReaderBirthDateInput {
   /** `YYYY-MM-DD`, or empty to clear the stored date. */
   birthDate: string;
-  publicId: string;
+  readerId: string;
   tenantId: string;
 }
 
@@ -253,7 +254,7 @@ export const setReaderBirthDate = async (
     await apiClient.users.setReaderBirthDate(
       {
         birthDate: input.birthDate,
-        publicId: input.publicId,
+        readerId: input.readerId,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

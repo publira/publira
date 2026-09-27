@@ -31,6 +31,7 @@ interface ChangeBirthDateButtonProps {
   /** The name the dialog calls the reader by. */
   name: string;
   publicId: string;
+  readerId: string;
   tenantId: string;
 }
 
@@ -42,6 +43,7 @@ export const ChangeBirthDateButton = ({
   birthDate,
   name,
   publicId,
+  readerId,
   tenantId,
 }: ChangeBirthDateButtonProps) => {
   const formId = `birth-date-reader-${publicId}`;
@@ -54,6 +56,7 @@ export const ChangeBirthDateButton = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
+      <input name="reader_id" type="hidden" value={readerId} />
       <ActionFormFieldset>
         <ConfirmDialog>
           <ConfirmDialogTrigger

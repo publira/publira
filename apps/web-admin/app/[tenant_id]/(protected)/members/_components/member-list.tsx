@@ -125,7 +125,7 @@ const MemberRoleForm = ({
 }) => (
   <ActionForm action={updateTenantMemberRoleAction} className="grid gap-2">
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <input name="user_public_id" type="hidden" value={member.userPublicId} />
+    <input name="user_id" type="hidden" value={member.userId} />
     <div className="flex flex-wrap items-center gap-2">
       <ActionFormFieldset>
         <Field className="min-w-36">
@@ -199,7 +199,7 @@ const MemberTable = ({
     </TableHeader>
     <TableBody>
       {members.map((member) => (
-        <TableRow key={member.userPublicId}>
+        <TableRow key={member.userId}>
           <TableCell className="font-medium">{member.name}</TableCell>
           <TableCell>{member.email}</TableCell>
           <TableCell>
@@ -214,7 +214,7 @@ const MemberTable = ({
           <TableCell>
             <MemberRemoveButton
               name={member.name || member.email}
-              userPublicId={member.userPublicId}
+              userId={member.userId}
             />
           </TableCell>
         </TableRow>

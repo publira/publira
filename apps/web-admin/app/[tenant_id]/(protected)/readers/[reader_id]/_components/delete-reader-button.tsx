@@ -26,6 +26,7 @@ interface DeleteReaderButtonProps {
   /** The name the confirmation calls the reader by. */
   name: string;
   publicId: string;
+  readerId: string;
   tenantId: string;
 }
 
@@ -36,6 +37,7 @@ interface DeleteReaderButtonProps {
 export const DeleteReaderButton = ({
   name,
   publicId,
+  readerId,
   tenantId,
 }: DeleteReaderButtonProps) => {
   const formId = `delete-reader-${publicId}`;
@@ -44,6 +46,7 @@ export const DeleteReaderButton = ({
     <ActionForm action={deleteReaderAction} className="grid gap-1" id={formId}>
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
+      <input name="reader_id" type="hidden" value={readerId} />
       <ConfirmDialog>
         <ConfirmDialogTrigger
           render={<Button type="button" variant="destructive" />}
