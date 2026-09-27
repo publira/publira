@@ -229,10 +229,12 @@ func (s *adminServer) syncSeriesCredits(
 			return nil, nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", credit.creator.ID.String())
 		}
 		items = append(items, &publirattypesv1.Creator{
+			Id:          credit.creator.ID.String(),
 			PublicId:    credit.creator.PublicID,
 			Name:        credit.creator.Name,
 			ProfileText: credit.creator.ProfileText.String,
 			Role: &publirattypesv1.CreatorRole{
+				Id:       credit.role.ID.String(),
 				PublicId: credit.role.PublicID,
 				Name:     credit.role.Name,
 			},
@@ -240,6 +242,8 @@ func (s *adminServer) syncSeriesCredits(
 		records = append(records, &publiraadminv1.SeriesCreatorCredit{
 			CreatorPublicId: credit.creator.PublicID,
 			RolePublicId:    credit.role.PublicID,
+			CreatorId:       credit.creator.ID.String(),
+			RoleId:          credit.role.ID.String(),
 			ShareBps:        credit.shareBps,
 		})
 	}
@@ -275,6 +279,7 @@ func seriesCreatorsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsRow) ma
 	items := make(map[uuid.UUID][]*publirattypesv1.Creator)
 	for _, row := range rows {
 		creator := &publirattypesv1.Creator{
+			Id:       row.CreatorID.String(),
 			PublicId: row.PublicID,
 			Name:     row.Name,
 		}
@@ -282,6 +287,7 @@ func seriesCreatorsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsRow) ma
 		// leaving the field unset rather than by naming an empty role.
 		if row.RolePublicID.Valid {
 			creator.Role = &publirattypesv1.CreatorRole{
+				Id:       nullUUIDString(row.RoleID),
 				PublicId: row.RolePublicID.String,
 				Name:     row.RoleName.String,
 			}
@@ -297,6 +303,8 @@ func seriesCreatorCreditsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsR
 		credits = append(credits, &publiraadminv1.SeriesCreatorCredit{
 			CreatorPublicId: row.PublicID,
 			RolePublicId:    row.RolePublicID.String,
+			CreatorId:       row.CreatorID.String(),
+			RoleId:          nullUUIDString(row.RoleID),
 			ShareBps:        row.ShareBps,
 		})
 	}
@@ -308,41 +316,87 @@ func seriesCreatorCreditsFromRows(rows []dbmodels.ListSeriesCreatorsBySeriesIDsR
 // with everything and therefore with nothing.
 const maxSeriesTags = 20
 
-// resolveGenresByPublicIDs reads the genres a save assigned, in the tenant's
-// genre order. A public_id naming no genre of this tenant is a bad request
-// rather than a silently dropped assignment.
-func (s *adminServer) resolveGenresByPublicIDs(
+// resolveGenres reads the genres a save assigned, in the tenant's genre order:
+// by genre_ids, or by genre_public_ids while a client still sends those. An
+// identifier naming no genre of this tenant is a bad request rather than a
+// silently dropped assignment.
+func (s *adminServer) resolveGenres(
 	ctx context.Context,
 	tenantID uuid.UUID,
+	genreIDs []string,
 	genrePublicIDs []string,
-) ([]dbmodels.ListGenresByPublicIDsForTenantRow, error) {
-	normalized := make([]string, 0, len(genrePublicIDs))
-	seen := make(map[string]struct{}, len(genrePublicIDs))
-	for _, value := range genrePublicIDs {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_public_ids contains empty value"), "genre_public_ids")
+) ([]dbmodels.ListGenresByIDsForTenantRow, error) {
+	params := dbmodels.ListGenresByIDsForTenantParams{TenantID: tenantID, Ids: []uuid.UUID{}, PublicIds: []string{}}
+	if len(genreIDs) > 0 {
+		seen := make(map[uuid.UUID]struct{}, len(genreIDs))
+		for _, value := range genreIDs {
+			if strings.TrimSpace(value) == "" {
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains empty value"), "genre_ids")
+			}
+			id, err := recordIDArg(value, "genre_ids")
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := seen[id]; ok {
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains duplicate value"), "genre_ids")
+			}
+			seen[id] = struct{}{}
+			params.Ids = append(params.Ids, id)
 		}
-		if _, ok := seen[trimmed]; ok {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_public_ids contains duplicate value"), "genre_public_ids")
+	} else {
+		seen := make(map[string]struct{}, len(genrePublicIDs))
+		for _, value := range genrePublicIDs {
+			trimmed := strings.TrimSpace(value)
+			if trimmed == "" {
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains empty value"), "genre_ids")
+			}
+			if _, ok := seen[trimmed]; ok {
+				return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre_ids contains duplicate value"), "genre_ids")
+			}
+			seen[trimmed] = struct{}{}
+			params.PublicIds = append(params.PublicIds, trimmed)
 		}
-		seen[trimmed] = struct{}{}
-		normalized = append(normalized, trimmed)
 	}
-	if len(normalized) == 0 {
-		return []dbmodels.ListGenresByPublicIDsForTenantRow{}, nil
+	requested := len(params.Ids) + len(params.PublicIds)
+	if requested == 0 {
+		return []dbmodels.ListGenresByIDsForTenantRow{}, nil
 	}
-	rows, err := s.queriesFor(ctx).ListGenresByPublicIDsForTenant(ctx, dbmodels.ListGenresByPublicIDsForTenantParams{
-		TenantID:  tenantID,
-		PublicIds: normalized,
-	})
+	rows, err := s.queriesFor(ctx).ListGenresByIDsForTenant(ctx, params)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list genres by public ids", err, "tenant_id", tenantID.String())
+		return nil, s.internalDBError(ctx, "failed to list genres by ids", err, "tenant_id", tenantID.String())
 	}
-	if len(rows) != len(normalized) {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre not found"), "genre_public_ids")
+	if len(rows) != requested {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("genre not found"), "genre_ids")
 	}
 	return rows, nil
+}
+
+// labelIDArg resolves the label a series save names: by label_id, or by
+// label_public_id while a client still sends that. A request naming neither
+// names no label.
+func (s *adminServer) labelIDArg(ctx context.Context, tenantID uuid.UUID, rawID, rawPublicID string) (uuid.NullUUID, error) {
+	id, err := recordIDArg(rawID, "label_id")
+	if err != nil {
+		return uuid.NullUUID{}, err
+	}
+	publicID := strings.TrimSpace(rawPublicID)
+	switch {
+	case id != uuid.Nil:
+		_, err = s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id})
+	case publicID != "":
+		var label dbmodels.GetLabelByPublicIDForTenantRow
+		label, err = s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenantID, PublicID: publicID})
+		id = label.ID
+	default:
+		return uuid.NullUUID{}, nil
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
+		}
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to get label for series", err, "tenant_id", tenantID.String())
+	}
+	return uuid.NullUUID{UUID: id, Valid: true}, nil
 }
 
 // syncSeriesGenres writes the whole genre assignment of a series. replace is
@@ -350,7 +404,7 @@ func (s *adminServer) resolveGenresByPublicIDs(
 func (s *adminServer) syncSeriesGenres(
 	ctx context.Context,
 	tenantID, seriesID uuid.UUID,
-	genres []dbmodels.ListGenresByPublicIDsForTenantRow,
+	genres []dbmodels.ListGenresByIDsForTenantRow,
 	replace bool,
 ) ([]*publirattypesv1.Genre, error) {
 	if replace {
@@ -367,7 +421,7 @@ func (s *adminServer) syncSeriesGenres(
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create series genre", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "genre_id", genre.ID.String())
 		}
-		items = append(items, &publirattypesv1.Genre{PublicId: genre.PublicID, Name: genre.Name, Slug: genre.Slug})
+		items = append(items, &publirattypesv1.Genre{Id: genre.ID.String(), PublicId: genre.PublicID, Name: genre.Name, Slug: genre.Slug})
 	}
 	return items, nil
 }
@@ -486,6 +540,7 @@ func (s *adminServer) seriesGenresBySeriesIDs(
 	items := make(map[uuid.UUID][]*publirattypesv1.Genre, len(seriesIDs))
 	for _, row := range rows {
 		items[row.SeriesID] = append(items[row.SeriesID], &publirattypesv1.Genre{
+			Id:       row.GenreID.String(),
 			PublicId: row.PublicID,
 			Name:     row.Name,
 			Slug:     row.Slug,
@@ -622,16 +677,9 @@ func (s *adminServer) CreateSeries(
 	if !publishedAt.Valid && req.Msg.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	labelID := uuid.NullUUID{}
-	if strings.TrimSpace(req.Msg.LabelPublicId) != "" {
-		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
-			}
-			return nil, s.internalDBError(ctx, "failed to get label for create series", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.LabelPublicId)
-		}
-		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId, req.Msg.LabelPublicId)
+	if err != nil {
+		return nil, err
 	}
 	shares := make([]int32, len(req.Msg.CreatorCredits))
 	for index, credit := range req.Msg.CreatorCredits {
@@ -645,7 +693,7 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds, req.Msg.GenrePublicIds)
 	if err != nil {
 		return nil, err
 	}
@@ -745,11 +793,11 @@ func (s *adminServer) CreateSeries(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	created, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: base.PublicID})
+	created, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: base.ID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
-	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
+	series, err := protomapper.SeriesFromGetSeriesByIDForTenantRow(created)
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
@@ -819,12 +867,16 @@ func (s *adminServer) UpdateSeries(
 	if !publishedAt.Valid && req.Msg.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	current, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: seriesID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 	availability := current.Availability
 	if req.Msg.Availability != nil {
@@ -840,20 +892,12 @@ func (s *adminServer) UpdateSeries(
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 		}
 	}
-	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
-	if labelPublicID == "" && current.LabelPublicID.Valid {
-		labelPublicID = current.LabelPublicID.String
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId, req.Msg.LabelPublicId)
+	if err != nil {
+		return nil, err
 	}
-	labelID := uuid.NullUUID{}
-	if labelPublicID != "" {
-		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: labelPublicID})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
-			}
-			return nil, s.internalDBError(ctx, "failed to get label for update series", err, "tenant_id", tenant.ID.String(), "label_public_id", labelPublicID)
-		}
-		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
+	if !labelID.Valid {
+		labelID = current.LabelID
 	}
 	shares := make([]int32, len(req.Msg.CreatorCredits))
 	for index, credit := range req.Msg.CreatorCredits {
@@ -867,7 +911,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenresByPublicIDs(ctx, tenant.ID, req.Msg.GenrePublicIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds, req.Msg.GenrePublicIds)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +1002,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, s.internalDBError(ctx, "failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	s.reval.Send(ctx, owed)
-	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: current.ID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
@@ -974,7 +1018,7 @@ func (s *adminServer) UpdateSeries(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
+	series, err := protomapper.SeriesFromGetSeriesByIDForTenantRow(updated)
 	if err != nil {
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
@@ -1204,6 +1248,7 @@ func (s *adminServer) ListSeries(
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
 		item := &publirattypesv1.Series{
+			Id:               row.id.String(),
 			PublicId:         row.publicID,
 			Title:            row.title,
 			IsPublished:      row.isPublished,

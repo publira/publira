@@ -8,8 +8,10 @@
 -- none, and it is still a credit. Those come last, which is where a name with
 -- nothing said about it belongs.
 SELECT sc.series_id,
+    c.id AS creator_id,
     c.public_id,
     c.name,
+    cr.id AS role_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     sc.display_order,

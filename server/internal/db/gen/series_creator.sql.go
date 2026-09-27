@@ -68,8 +68,10 @@ func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID u
 
 const ListSeriesCreatorsBySeriesIDs = `-- name: ListSeriesCreatorsBySeriesIDs :many
 SELECT sc.series_id,
+    c.id AS creator_id,
     c.public_id,
     c.name,
+    cr.id AS role_id,
     cr.public_id AS role_public_id,
     cr.name AS role_name,
     sc.display_order,
@@ -86,8 +88,10 @@ ORDER BY sc.series_id ASC,
 
 type ListSeriesCreatorsBySeriesIDsRow struct {
 	SeriesID     uuid.UUID      `json:"series_id"`
+	CreatorID    uuid.UUID      `json:"creator_id"`
 	PublicID     string         `json:"public_id"`
 	Name         string         `json:"name"`
+	RoleID       uuid.NullUUID  `json:"role_id"`
 	RolePublicID sql.NullString `json:"role_public_id"`
 	RoleName     sql.NullString `json:"role_name"`
 	DisplayOrder int32          `json:"display_order"`
@@ -113,8 +117,10 @@ func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds [
 		var i ListSeriesCreatorsBySeriesIDsRow
 		if err := rows.Scan(
 			&i.SeriesID,
+			&i.CreatorID,
 			&i.PublicID,
 			&i.Name,
+			&i.RoleID,
 			&i.RolePublicID,
 			&i.RoleName,
 			&i.DisplayOrder,

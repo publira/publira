@@ -24,8 +24,10 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     s.title AS series_title
 FROM episode_free_windows w
@@ -35,14 +37,34 @@ WHERE w.tenant_id = $1
     AND w.public_id = $2
 LIMIT 1;
 
--- name: DeleteEpisodeFreeWindowByPublicIDForTenant :one
+-- name: GetEpisodeFreeWindowByIDForTenant :one
+SELECT w.id,
+    w.public_id,
+    w.starts_at,
+    w.ends_at,
+    w.created_at,
+    e.id AS episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.id AS series_id,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM episode_free_windows w
+    JOIN episodes e ON e.id = w.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE w.tenant_id = $1
+    AND w.id = $2
+LIMIT 1;
+
+-- name: DeleteEpisodeFreeWindowByIDForTenant :one
 -- Returns the deleted row so a concurrent second delete is told apart from a
--- public_id that never existed. What the caller audits and revalidates comes
+-- window that never existed. What the caller audits and revalidates comes
 -- from the read it did first.
 DELETE FROM episode_free_windows
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 RETURNING id,
+    public_id,
     episode_id,
     starts_at,
     ends_at;

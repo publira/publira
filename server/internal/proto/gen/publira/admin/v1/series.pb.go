@@ -90,7 +90,9 @@ type SeriesCreatorCredit struct {
 	RolePublicId string `protobuf:"bytes,2,opt,name=role_public_id,json=rolePublicId,proto3" json:"role_public_id,omitempty"`
 	// The creator's share of an episode's sales, in basis points. 10000 is
 	// 100%; a zero share records a credit without compensation.
-	ShareBps      int32 `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
+	ShareBps      int32  `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
+	CreatorId     string `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	RoleId        string `protobuf:"bytes,5,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -146,6 +148,20 @@ func (x *SeriesCreatorCredit) GetShareBps() int32 {
 	return 0
 }
 
+func (x *SeriesCreatorCredit) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *SeriesCreatorCredit) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
 type CreateSeriesRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -194,8 +210,11 @@ type CreateSeriesRequest struct {
 	// tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED follows the tenant,
 	// including afterwards, when its default changes.
 	PurchaseAvailability v1.SurfaceAvailability `protobuf:"varint,23,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	LabelId              string                 `protobuf:"bytes,24,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`
+	// Genres of this tenant, by id, with the same rules genre_public_ids has.
+	GenreIds      []string `protobuf:"bytes,25,rep,name=genre_ids,json=genreIds,proto3" json:"genre_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSeriesRequest) Reset() {
@@ -366,6 +385,20 @@ func (x *CreateSeriesRequest) GetPurchaseAvailability() v1.SurfaceAvailability {
 		return x.PurchaseAvailability
 	}
 	return v1.SurfaceAvailability(0)
+}
+
+func (x *CreateSeriesRequest) GetLabelId() string {
+	if x != nil {
+		return x.LabelId
+	}
+	return ""
+}
+
+func (x *CreateSeriesRequest) GetGenreIds() []string {
+	if x != nil {
+		return x.GenreIds
+	}
+	return nil
 }
 
 type CreateSeriesResponse struct {
@@ -561,8 +594,12 @@ type UpdateSeriesRequest struct {
 	// tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
 	// returns the series to following the tenant.
 	PurchaseAvailability *v1.SurfaceAvailability `protobuf:"varint,23,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability,oneof" json:"purchase_availability,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	SeriesId             string                  `protobuf:"bytes,25,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	LabelId              string                  `protobuf:"bytes,26,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`
+	// The whole assignment by id, as genre_public_ids is.
+	GenreIds      []string `protobuf:"bytes,27,rep,name=genre_ids,json=genreIds,proto3" json:"genre_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateSeriesRequest) Reset() {
@@ -747,6 +784,27 @@ func (x *UpdateSeriesRequest) GetPurchaseAvailability() v1.SurfaceAvailability {
 		return *x.PurchaseAvailability
 	}
 	return v1.SurfaceAvailability(0)
+}
+
+func (x *UpdateSeriesRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *UpdateSeriesRequest) GetLabelId() string {
+	if x != nil {
+		return x.LabelId
+	}
+	return ""
+}
+
+func (x *UpdateSeriesRequest) GetGenreIds() []string {
+	if x != nil {
+		return x.GenreIds
+	}
+	return nil
 }
 
 type UpdateSeriesResponse struct {
@@ -1144,6 +1202,7 @@ type ListEpisodesRequest struct {
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	SeriesId      string `protobuf:"bytes,5,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1202,6 +1261,13 @@ func (x *ListEpisodesRequest) GetLimit() int32 {
 func (x *ListEpisodesRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *ListEpisodesRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
 	}
 	return ""
 }
@@ -1416,6 +1482,7 @@ type UpdateEpisodeLayoutRequest struct {
 	// negative index, or one at or past the page count, is invalid_argument, so
 	// an episode with no pages yet can only follow its series.
 	SpreadStartIndex *int32 `protobuf:"varint,4,opt,name=spread_start_index,json=spreadStartIndex,proto3,oneof" json:"spread_start_index,omitempty"`
+	EpisodeId        string `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1476,6 +1543,13 @@ func (x *UpdateEpisodeLayoutRequest) GetSpreadStartIndex() int32 {
 		return *x.SpreadStartIndex
 	}
 	return 0
+}
+
+func (x *UpdateEpisodeLayoutRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type UpdateEpisodeLayoutResponse struct {
@@ -1550,6 +1624,7 @@ type UpdateEpisodeAvailabilityRequest struct {
 	// SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
 	// series.
 	Availability  v1.SurfaceAvailability `protobuf:"varint,3,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	EpisodeId     string                 `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1603,6 +1678,13 @@ func (x *UpdateEpisodeAvailabilityRequest) GetAvailability() v1.SurfaceAvailabil
 		return x.Availability
 	}
 	return v1.SurfaceAvailability(0)
+}
+
+func (x *UpdateEpisodeAvailabilityRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type UpdateEpisodeAvailabilityResponse struct {
@@ -1660,6 +1742,7 @@ type UpdateEpisodePurchaseAvailabilityRequest struct {
 	// SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
 	// series.
 	PurchaseAvailability v1.SurfaceAvailability `protobuf:"varint,3,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
+	EpisodeId            string                 `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1713,6 +1796,13 @@ func (x *UpdateEpisodePurchaseAvailabilityRequest) GetPurchaseAvailability() v1.
 		return x.PurchaseAvailability
 	}
 	return v1.SurfaceAvailability(0)
+}
+
+func (x *UpdateEpisodePurchaseAvailabilityRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type UpdateEpisodePurchaseAvailabilityResponse struct {
@@ -1780,8 +1870,13 @@ type ReorderEpisodesRequest struct {
 	// The RPC locks the series, re-reads the current order, and rejects the
 	// write with failed_precondition when this no longer matches.
 	ExpectedEpisodePublicIds []string `protobuf:"bytes,4,rep,name=expected_episode_public_ids,json=expectedEpisodePublicIds,proto3" json:"expected_episode_public_ids,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	SeriesId                 string   `protobuf:"bytes,5,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	// episode_ids and expected_episode_ids follow the rules the public_id lists
+	// above do.
+	EpisodeIds         []string `protobuf:"bytes,6,rep,name=episode_ids,json=episodeIds,proto3" json:"episode_ids,omitempty"`
+	ExpectedEpisodeIds []string `protobuf:"bytes,7,rep,name=expected_episode_ids,json=expectedEpisodeIds,proto3" json:"expected_episode_ids,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ReorderEpisodesRequest) Reset() {
@@ -1838,6 +1933,27 @@ func (x *ReorderEpisodesRequest) GetEpisodePublicIds() []string {
 func (x *ReorderEpisodesRequest) GetExpectedEpisodePublicIds() []string {
 	if x != nil {
 		return x.ExpectedEpisodePublicIds
+	}
+	return nil
+}
+
+func (x *ReorderEpisodesRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *ReorderEpisodesRequest) GetEpisodeIds() []string {
+	if x != nil {
+		return x.EpisodeIds
+	}
+	return nil
+}
+
+func (x *ReorderEpisodesRequest) GetExpectedEpisodeIds() []string {
+	if x != nil {
+		return x.ExpectedEpisodeIds
 	}
 	return nil
 }
@@ -1903,6 +2019,7 @@ type CreateEpisodeRequest struct {
 	// Which surfaces this episode may be bought on, replacing its series'.
 	// SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
 	PurchaseAvailability v1.SurfaceAvailability `protobuf:"varint,9,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
+	SeriesId             string                 `protobuf:"bytes,10,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1998,6 +2115,13 @@ func (x *CreateEpisodeRequest) GetPurchaseAvailability() v1.SurfaceAvailability 
 		return x.PurchaseAvailability
 	}
 	return v1.SurfaceAvailability(0)
+}
+
+func (x *CreateEpisodeRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
 }
 
 type CreateEpisodeResponse struct {
@@ -2130,6 +2254,8 @@ type UploadEpisodeImagesRequest struct {
 	ArchiveData        []byte                 `protobuf:"bytes,5,opt,name=archive_data,json=archiveData,proto3" json:"archive_data,omitempty"`
 	ArchiveFilename    string                 `protobuf:"bytes,6,opt,name=archive_filename,json=archiveFilename,proto3" json:"archive_filename,omitempty"`
 	ArchiveContentType string                 `protobuf:"bytes,7,opt,name=archive_content_type,json=archiveContentType,proto3" json:"archive_content_type,omitempty"`
+	EpisodeId          string                 `protobuf:"bytes,8,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	SeriesId           string                 `protobuf:"bytes,9,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2213,6 +2339,20 @@ func (x *UploadEpisodeImagesRequest) GetArchiveContentType() string {
 	return ""
 }
 
+func (x *UploadEpisodeImagesRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
+func (x *UploadEpisodeImagesRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
 type UploadEpisodeImagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Images        []*v1.EpisodeImage     `protobuf:"bytes,1,rep,name=images,proto3" json:"images,omitempty"`
@@ -2261,6 +2401,7 @@ type ListEpisodeImagesRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	EpisodeId       string                 `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2305,6 +2446,13 @@ func (x *ListEpisodeImagesRequest) GetTenant() *v1.TenantContext {
 func (x *ListEpisodeImagesRequest) GetEpisodePublicId() string {
 	if x != nil {
 		return x.EpisodePublicId
+	}
+	return ""
+}
+
+func (x *ListEpisodeImagesRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
 	}
 	return ""
 }
@@ -2358,6 +2506,7 @@ type ReorderEpisodeImagesRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	ImageIds        []string               `protobuf:"bytes,3,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
+	EpisodeId       string                 `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2413,6 +2562,13 @@ func (x *ReorderEpisodeImagesRequest) GetImageIds() []string {
 	return nil
 }
 
+func (x *ReorderEpisodeImagesRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
 type ReorderEpisodeImagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Images        []*v1.EpisodeImage     `protobuf:"bytes,1,rep,name=images,proto3" json:"images,omitempty"`
@@ -2462,6 +2618,7 @@ type UpdateEpisodePublishScheduleRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	ScheduledAt     string                 `protobuf:"bytes,3,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
+	EpisodeId       string                 `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2513,6 +2670,13 @@ func (x *UpdateEpisodePublishScheduleRequest) GetEpisodePublicId() string {
 func (x *UpdateEpisodePublishScheduleRequest) GetScheduledAt() string {
 	if x != nil {
 		return x.ScheduledAt
+	}
+	return ""
+}
+
+func (x *UpdateEpisodePublishScheduleRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
 	}
 	return ""
 }
@@ -2572,6 +2736,8 @@ type EpisodeCreatorCredit struct {
 	// across roles: the role's priority is what puts the leading one first.
 	RolePublicId  string `protobuf:"bytes,2,opt,name=role_public_id,json=rolePublicId,proto3" json:"role_public_id,omitempty"`
 	ShareBps      int32  `protobuf:"varint,3,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
+	CreatorId     string `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	RoleId        string `protobuf:"bytes,5,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2627,10 +2793,25 @@ func (x *EpisodeCreatorCredit) GetShareBps() int32 {
 	return 0
 }
 
+func (x *EpisodeCreatorCredit) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *EpisodeCreatorCredit) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
 type ListEpisodeCreditsRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	EpisodeId       string                 `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2675,6 +2856,13 @@ func (x *ListEpisodeCreditsRequest) GetTenant() *v1.TenantContext {
 func (x *ListEpisodeCreditsRequest) GetEpisodePublicId() string {
 	if x != nil {
 		return x.EpisodePublicId
+	}
+	return ""
+}
+
+func (x *ListEpisodeCreditsRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
 	}
 	return ""
 }
@@ -2743,6 +2931,7 @@ type ReplaceEpisodeCreditsRequest struct {
 	Tenant          *v1.TenantContext       `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	EpisodePublicId string                  `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	CreatorCredits  []*EpisodeCreatorCredit `protobuf:"bytes,3,rep,name=creator_credits,json=creatorCredits,proto3" json:"creator_credits,omitempty"`
+	EpisodeId       string                  `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2796,6 +2985,13 @@ func (x *ReplaceEpisodeCreditsRequest) GetCreatorCredits() []*EpisodeCreatorCred
 		return x.CreatorCredits
 	}
 	return nil
+}
+
+func (x *ReplaceEpisodeCreditsRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
 }
 
 type ReplaceEpisodeCreditsResponse struct {
@@ -3058,7 +3254,10 @@ type BulkEditEpisodeCreditsRequest struct {
 	//	*BulkEditEpisodeCreditsRequest_Replace
 	//	*BulkEditEpisodeCreditsRequest_Remove
 	//	*BulkEditEpisodeCreditsRequest_SetShare
-	Operation     isBulkEditEpisodeCreditsRequest_Operation `protobuf_oneof:"operation"`
+	Operation isBulkEditEpisodeCreditsRequest_Operation `protobuf_oneof:"operation"`
+	SeriesId  string                                    `protobuf:"bytes,8,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	// The episodes to act on by id, with the rules episode_public_ids has.
+	EpisodeIds    []string `protobuf:"bytes,9,rep,name=episode_ids,json=episodeIds,proto3" json:"episode_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3157,6 +3356,20 @@ func (x *BulkEditEpisodeCreditsRequest) GetSetShare() *SetEpisodeCreditShareOper
 	return nil
 }
 
+func (x *BulkEditEpisodeCreditsRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *BulkEditEpisodeCreditsRequest) GetEpisodeIds() []string {
+	if x != nil {
+		return x.EpisodeIds
+	}
+	return nil
+}
+
 type isBulkEditEpisodeCreditsRequest_Operation interface {
 	isBulkEditEpisodeCreditsRequest_Operation()
 }
@@ -3189,6 +3402,7 @@ type UnchangedEpisodeCredit struct {
 	state           protoimpl.MessageState       `protogen:"open.v1"`
 	EpisodePublicId string                       `protobuf:"bytes,1,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	Reason          EpisodeCreditUnchangedReason `protobuf:"varint,2,opt,name=reason,proto3,enum=publira.admin.v1.EpisodeCreditUnchangedReason" json:"reason,omitempty"`
+	EpisodeId       string                       `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -3237,6 +3451,13 @@ func (x *UnchangedEpisodeCredit) GetReason() EpisodeCreditUnchangedReason {
 	return EpisodeCreditUnchangedReason_EPISODE_CREDIT_UNCHANGED_REASON_UNSPECIFIED
 }
 
+func (x *UnchangedEpisodeCredit) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
 type BulkEditEpisodeCreditsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The episodes the operation wrote on, in the order the request listed them.
@@ -3245,6 +3466,8 @@ type BulkEditEpisodeCreditsResponse struct {
 	// it did. A deliberate deviation is a visible skip here rather than a silent
 	// one, which is the point of reporting them at all.
 	UnchangedEpisodes []*UnchangedEpisodeCredit `protobuf:"bytes,2,rep,name=unchanged_episodes,json=unchangedEpisodes,proto3" json:"unchanged_episodes,omitempty"`
+	// changed_episode_public_ids by id, in the same order.
+	ChangedEpisodeIds []string `protobuf:"bytes,3,rep,name=changed_episode_ids,json=changedEpisodeIds,proto3" json:"changed_episode_ids,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -3293,6 +3516,13 @@ func (x *BulkEditEpisodeCreditsResponse) GetUnchangedEpisodes() []*UnchangedEpis
 	return nil
 }
 
+func (x *BulkEditEpisodeCreditsResponse) GetChangedEpisodeIds() []string {
+	if x != nil {
+		return x.ChangedEpisodeIds
+	}
+	return nil
+}
+
 // Replaces the image of one aspect ratio of a series eye-catch. The other
 // ratios keep the images they already hold.
 type UploadSeriesEyeCatchAspectImageRequest struct {
@@ -3306,6 +3536,7 @@ type UploadSeriesEyeCatchAspectImageRequest struct {
 	// Where in the upload the cut is taken. Omitted, the image is cut from its
 	// centre as it always has been.
 	Crop          *v1.ImageCropRect `protobuf:"bytes,6,opt,name=crop,proto3" json:"crop,omitempty"`
+	SeriesId      string            `protobuf:"bytes,7,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3382,6 +3613,13 @@ func (x *UploadSeriesEyeCatchAspectImageRequest) GetCrop() *v1.ImageCropRect {
 	return nil
 }
 
+func (x *UploadSeriesEyeCatchAspectImageRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
 type UploadSeriesEyeCatchAspectImageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
@@ -3439,6 +3677,9 @@ type AdminEpisodeFreeWindow struct {
 	StartsAt      string `protobuf:"bytes,5,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
 	EndsAt        string `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	CreatedAt     string `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Id            string `protobuf:"bytes,8,opt,name=id,proto3" json:"id,omitempty"`
+	EpisodeId     string `protobuf:"bytes,9,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	SeriesId      string `protobuf:"bytes,10,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3522,6 +3763,27 @@ func (x *AdminEpisodeFreeWindow) GetCreatedAt() string {
 	return ""
 }
 
+func (x *AdminEpisodeFreeWindow) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AdminEpisodeFreeWindow) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
+func (x *AdminEpisodeFreeWindow) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
 type CreateEpisodeFreeWindowRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -3531,6 +3793,7 @@ type CreateEpisodeFreeWindowRequest struct {
 	// rather than a silently merged period.
 	StartsAt      string `protobuf:"bytes,3,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
 	EndsAt        string `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	EpisodeId     string `protobuf:"bytes,5,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3593,6 +3856,13 @@ func (x *CreateEpisodeFreeWindowRequest) GetEndsAt() string {
 	return ""
 }
 
+func (x *CreateEpisodeFreeWindowRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
 type CreateEpisodeFreeWindowResponse struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
 	FreeWindow    *AdminEpisodeFreeWindow `protobuf:"bytes,1,opt,name=free_window,json=freeWindow,proto3" json:"free_window,omitempty"`
@@ -3647,6 +3917,7 @@ type CreateSeriesFreeWindowsRequest struct {
 	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	StartsAt       string                 `protobuf:"bytes,3,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
 	EndsAt         string                 `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	SeriesId       string                 `protobuf:"bytes,5,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -3709,6 +3980,13 @@ func (x *CreateSeriesFreeWindowsRequest) GetEndsAt() string {
 	return ""
 }
 
+func (x *CreateSeriesFreeWindowsRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
 type CreateSeriesFreeWindowsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// One per episode of the series, in the series' own episode order.
@@ -3760,6 +4038,7 @@ type DeleteEpisodeFreeWindowRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	FreeWindowId  string                 `protobuf:"bytes,3,opt,name=free_window_id,json=freeWindowId,proto3" json:"free_window_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3808,6 +4087,13 @@ func (x *DeleteEpisodeFreeWindowRequest) GetPublicId() string {
 	return ""
 }
 
+func (x *DeleteEpisodeFreeWindowRequest) GetFreeWindowId() string {
+	if x != nil {
+		return x.FreeWindowId
+	}
+	return ""
+}
+
 type DeleteEpisodeFreeWindowResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -3848,11 +4134,14 @@ var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x84\x01\n" +
+	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xbc\x01\n" +
 	"\x13SeriesCreatorCredit\x12*\n" +
 	"\x11creator_public_id\x18\x01 \x01(\tR\x0fcreatorPublicId\x12$\n" +
 	"\x0erole_public_id\x18\x02 \x01(\tR\frolePublicId\x12\x1b\n" +
-	"\tshare_bps\x18\x03 \x01(\x05R\bshareBps\"\xed\b\n" +
+	"\tshare_bps\x18\x03 \x01(\x05R\bshareBps\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x04 \x01(\tR\tcreatorId\x12\x17\n" +
+	"\arole_id\x18\x05 \x01(\tR\x06roleId\"\xa5\t\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -3874,7 +4163,9 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x11reading_direction\x18\x14 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x121\n" +
 	"\x12spread_start_index\x18\x15 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01\x12I\n" +
 	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
-	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailabilityB\x15\n" +
+	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x19\n" +
+	"\blabel_id\x18\x18 \x01(\tR\alabelId\x12\x1b\n" +
+	"\tgenre_ids\x18\x19 \x03(\tR\bgenreIdsB\x15\n" +
 	"\x13_spread_start_indexJ\x04\b\a\x10\bR\x12creator_public_ids\"\xb5\x03\n" +
 	"\x14CreateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12@\n" +
@@ -3884,7 +4175,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x0fcreator_credits\x18\x05 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12Z\n" +
 	"\x15purchase_availability\x18\x06 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"4\n" +
 	"\x16SeriesScheduleWeekdays\x12\x1a\n" +
-	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\xb6\v\n" +
+	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\x8b\f\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -3909,7 +4200,10 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x11reading_direction\x18\x14 \x01(\x0e2\".publira.types.v1.ReadingDirectionH\x05R\x10readingDirection\x88\x01\x01\x121\n" +
 	"\x12spread_start_index\x18\x15 \x01(\x05H\x06R\x10spreadStartIndex\x88\x01\x01\x12N\n" +
 	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\aR\favailability\x88\x01\x01\x12_\n" +
-	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\bR\x14purchaseAvailability\x88\x01\x01B\v\n" +
+	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\bR\x14purchaseAvailability\x88\x01\x01\x12\x1b\n" +
+	"\tseries_id\x18\x19 \x01(\tR\bseriesId\x12\x19\n" +
+	"\blabel_id\x18\x1a \x01(\tR\alabelId\x12\x1b\n" +
+	"\tgenre_ids\x18\x1b \x03(\tR\bgenreIdsB\v\n" +
 	"\t_synopsisB\x17\n" +
 	"\x15_reading_period_hoursB\t\n" +
 	"\a_statusB\r\n" +
@@ -3948,12 +4242,13 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x11reading_direction\x18\x03 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x12,\n" +
 	"\x12spread_start_index\x18\x04 \x01(\x05R\x10spreadStartIndex\x12N\n" +
 	"\x0fcreator_credits\x18\x05 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12Z\n" +
-	"\x15purchase_availability\x18\x06 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xa4\x01\n" +
+	"\x15purchase_availability\x18\x06 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xc1\x01\n" +
 	"\x13ListEpisodesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"\x93\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12\x1b\n" +
+	"\tseries_id\x18\x05 \x01(\tR\bseriesId\"\x93\x01\n" +
 	"\x14ListEpisodesResponse\x125\n" +
 	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -3968,38 +4263,48 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x11reading_direction\x18\x02 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x121\n" +
 	"\x12spread_start_index\x18\x03 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01\x12Z\n" +
 	"\x15purchase_availability\x18\x04 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailabilityB\x15\n" +
-	"\x13_spread_start_index\"\x9c\x02\n" +
+	"\x13_spread_start_index\"\xbb\x02\n" +
 	"\x1aUpdateEpisodeLayoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12O\n" +
 	"\x11reading_direction\x18\x03 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x121\n" +
-	"\x12spread_start_index\x18\x04 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01B\x15\n" +
+	"\x12spread_start_index\x18\x04 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x05 \x01(\tR\tepisodeIdB\x15\n" +
 	"\x13_spread_start_index\"\xed\x01\n" +
 	"\x1bUpdateEpisodeLayoutResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12O\n" +
 	"\x11reading_direction\x18\x02 \x01(\x0e2\".publira.types.v1.ReadingDirectionR\x10readingDirection\x121\n" +
 	"\x12spread_start_index\x18\x03 \x01(\x05H\x00R\x10spreadStartIndex\x88\x01\x01B\x15\n" +
-	"\x13_spread_start_index\"\xd2\x01\n" +
+	"\x13_spread_start_index\"\xf1\x01\n" +
 	" UpdateEpisodeAvailabilityRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12I\n" +
-	"\favailability\x18\x03 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\"X\n" +
+	"\favailability\x18\x03 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"X\n" +
 	"!UpdateEpisodeAvailabilityResponse\x123\n" +
-	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xeb\x01\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\x8a\x02\n" +
 	"(UpdateEpisodePurchaseAvailabilityRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12Z\n" +
-	"\x15purchase_availability\x18\x03 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xbc\x01\n" +
+	"\x15purchase_availability\x18\x03 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"\xbc\x01\n" +
 	")UpdateEpisodePurchaseAvailabilityResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12Z\n" +
-	"\x15purchase_availability\x18\x02 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xe8\x01\n" +
+	"\x15purchase_availability\x18\x02 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xd8\x02\n" +
 	"\x16ReorderEpisodesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12,\n" +
 	"\x12episode_public_ids\x18\x03 \x03(\tR\x10episodePublicIds\x12=\n" +
-	"\x1bexpected_episode_public_ids\x18\x04 \x03(\tR\x18expectedEpisodePublicIds\"P\n" +
+	"\x1bexpected_episode_public_ids\x18\x04 \x03(\tR\x18expectedEpisodePublicIds\x12\x1b\n" +
+	"\tseries_id\x18\x05 \x01(\tR\bseriesId\x12\x1f\n" +
+	"\vepisode_ids\x18\x06 \x03(\tR\n" +
+	"episodeIds\x120\n" +
+	"\x14expected_episode_ids\x18\a \x03(\tR\x12expectedEpisodeIds\"P\n" +
 	"\x17ReorderEpisodesResponse\x125\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\xc2\x03\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\xdf\x03\n" +
 	"\x14CreateEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x14\n" +
@@ -4010,7 +4315,9 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12!\n" +
 	"\fscheduled_at\x18\a \x01(\tR\vscheduledAt\x12I\n" +
 	"\favailability\x18\b \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
-	"\x15purchase_availability\x18\t \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xa8\x01\n" +
+	"\x15purchase_availability\x18\t \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x1b\n" +
+	"\tseries_id\x18\n" +
+	" \x01(\tR\bseriesId\"\xa8\x01\n" +
 	"\x15CreateEpisodeResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12Z\n" +
 	"\x15purchase_availability\x18\x02 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\x8c\x01\n" +
@@ -4018,7 +4325,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x12\n" +
 	"\x04data\x18\x03 \x01(\fR\x04data\x12#\n" +
-	"\rdisplay_order\x18\x04 \x01(\x05R\fdisplayOrder\"\xe9\x02\n" +
+	"\rdisplay_order\x18\x04 \x01(\x05R\fdisplayOrder\"\xa5\x03\n" +
 	"\x1aUploadEpisodeImagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12<\n" +
@@ -4026,40 +4333,56 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x10series_public_id\x18\x04 \x01(\tR\x0eseriesPublicId\x12!\n" +
 	"\farchive_data\x18\x05 \x01(\fR\varchiveData\x12)\n" +
 	"\x10archive_filename\x18\x06 \x01(\tR\x0farchiveFilename\x120\n" +
-	"\x14archive_content_type\x18\a \x01(\tR\x12archiveContentType\"U\n" +
+	"\x14archive_content_type\x18\a \x01(\tR\x12archiveContentType\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\b \x01(\tR\tepisodeId\x12\x1b\n" +
+	"\tseries_id\x18\t \x01(\tR\bseriesId\"U\n" +
 	"\x1bUploadEpisodeImagesResponse\x126\n" +
-	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\x7f\n" +
+	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\x9e\x01\n" +
 	"\x18ListEpisodeImagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"S\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\"S\n" +
 	"\x19ListEpisodeImagesResponse\x126\n" +
-	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\x9f\x01\n" +
+	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\xbe\x01\n" +
 	"\x1bReorderEpisodeImagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1b\n" +
-	"\timage_ids\x18\x03 \x03(\tR\bimageIds\"V\n" +
+	"\timage_ids\x18\x03 \x03(\tR\bimageIds\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"V\n" +
 	"\x1cReorderEpisodeImagesResponse\x126\n" +
-	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\xad\x01\n" +
+	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\xcc\x01\n" +
 	"#UpdateEpisodePublishScheduleRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12!\n" +
-	"\fscheduled_at\x18\x03 \x01(\tR\vscheduledAt\"[\n" +
+	"\fscheduled_at\x18\x03 \x01(\tR\vscheduledAt\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"[\n" +
 	"$UpdateEpisodePublishScheduleResponse\x123\n" +
-	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\x85\x01\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xbd\x01\n" +
 	"\x14EpisodeCreatorCredit\x12*\n" +
 	"\x11creator_public_id\x18\x01 \x01(\tR\x0fcreatorPublicId\x12$\n" +
 	"\x0erole_public_id\x18\x02 \x01(\tR\frolePublicId\x12\x1b\n" +
-	"\tshare_bps\x18\x03 \x01(\x05R\bshareBps\"\x80\x01\n" +
+	"\tshare_bps\x18\x03 \x01(\x05R\bshareBps\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x04 \x01(\tR\tcreatorId\x12\x17\n" +
+	"\arole_id\x18\x05 \x01(\tR\x06roleId\"\x9f\x01\n" +
 	"\x19ListEpisodeCreditsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\"\xa4\x01\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\"\xa4\x01\n" +
 	"\x1aListEpisodeCreditsResponse\x125\n" +
 	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12O\n" +
-	"\x0fcreator_credits\x18\x02 \x03(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x0ecreatorCredits\"\xd4\x01\n" +
+	"\x0fcreator_credits\x18\x02 \x03(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x0ecreatorCredits\"\xf3\x01\n" +
 	"\x1cReplaceEpisodeCreditsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12O\n" +
-	"\x0fcreator_credits\x18\x03 \x03(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x0ecreatorCredits\"V\n" +
+	"\x0fcreator_credits\x18\x03 \x03(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x0ecreatorCredits\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\"V\n" +
 	"\x1dReplaceEpisodeCreditsResponse\x125\n" +
 	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"[\n" +
 	"\x19AddEpisodeCreditOperation\x12>\n" +
@@ -4070,7 +4393,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x1cRemoveEpisodeCreditOperation\x12>\n" +
 	"\x06credit\x18\x01 \x01(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x06credit\"`\n" +
 	"\x1eSetEpisodeCreditShareOperation\x12>\n" +
-	"\x06credit\x18\x01 \x01(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x06credit\"\xe6\x03\n" +
+	"\x06credit\x18\x01 \x01(\v2&.publira.admin.v1.EpisodeCreatorCreditR\x06credit\"\xa4\x04\n" +
 	"\x1dBulkEditEpisodeCreditsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12,\n" +
@@ -4078,14 +4401,20 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x03add\x18\x04 \x01(\v2+.publira.admin.v1.AddEpisodeCreditOperationH\x00R\x03add\x12K\n" +
 	"\areplace\x18\x05 \x01(\v2/.publira.admin.v1.ReplaceEpisodeCreditOperationH\x00R\areplace\x12H\n" +
 	"\x06remove\x18\x06 \x01(\v2..publira.admin.v1.RemoveEpisodeCreditOperationH\x00R\x06remove\x12O\n" +
-	"\tset_share\x18\a \x01(\v20.publira.admin.v1.SetEpisodeCreditShareOperationH\x00R\bsetShareB\v\n" +
-	"\toperation\"\x8c\x01\n" +
+	"\tset_share\x18\a \x01(\v20.publira.admin.v1.SetEpisodeCreditShareOperationH\x00R\bsetShare\x12\x1b\n" +
+	"\tseries_id\x18\b \x01(\tR\bseriesId\x12\x1f\n" +
+	"\vepisode_ids\x18\t \x03(\tR\n" +
+	"episodeIdsB\v\n" +
+	"\toperation\"\xab\x01\n" +
 	"\x16UnchangedEpisodeCredit\x12*\n" +
 	"\x11episode_public_id\x18\x01 \x01(\tR\x0fepisodePublicId\x12F\n" +
-	"\x06reason\x18\x02 \x01(\x0e2..publira.admin.v1.EpisodeCreditUnchangedReasonR\x06reason\"\xb6\x01\n" +
+	"\x06reason\x18\x02 \x01(\x0e2..publira.admin.v1.EpisodeCreditUnchangedReasonR\x06reason\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\"\xe6\x01\n" +
 	"\x1eBulkEditEpisodeCreditsResponse\x12;\n" +
 	"\x1achanged_episode_public_ids\x18\x01 \x03(\tR\x17changedEpisodePublicIds\x12W\n" +
-	"\x12unchanged_episodes\x18\x02 \x03(\v2(.publira.admin.v1.UnchangedEpisodeCreditR\x11unchangedEpisodes\"\xa3\x02\n" +
+	"\x12unchanged_episodes\x18\x02 \x03(\v2(.publira.admin.v1.UnchangedEpisodeCreditR\x11unchangedEpisodes\x12.\n" +
+	"\x13changed_episode_ids\x18\x03 \x03(\tR\x11changedEpisodeIds\"\xc0\x02\n" +
 	"&UploadSeriesEyeCatchAspectImageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12!\n" +
@@ -4093,9 +4422,10 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
 	"image_data\x18\x04 \x01(\fR\timageData\x12,\n" +
 	"\x12image_content_type\x18\x05 \x01(\tR\x10imageContentType\x123\n" +
-	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\"[\n" +
+	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\x12\x1b\n" +
+	"\tseries_id\x18\a \x01(\tR\bseriesId\"[\n" +
 	"'UploadSeriesEyeCatchAspectImageResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\x85\x02\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xd1\x02\n" +
 	"\x16AdminEpisodeFreeWindow\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12#\n" +
@@ -4104,25 +4434,34 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\tstarts_at\x18\x05 \x01(\tR\bstartsAt\x12\x17\n" +
 	"\aends_at\x18\x06 \x01(\tR\x06endsAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\a \x01(\tR\tcreatedAt\"\xbb\x01\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x0e\n" +
+	"\x02id\x18\b \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\t \x01(\tR\tepisodeId\x12\x1b\n" +
+	"\tseries_id\x18\n" +
+	" \x01(\tR\bseriesId\"\xda\x01\n" +
 	"\x1eCreateEpisodeFreeWindowRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1b\n" +
 	"\tstarts_at\x18\x03 \x01(\tR\bstartsAt\x12\x17\n" +
-	"\aends_at\x18\x04 \x01(\tR\x06endsAt\"l\n" +
+	"\aends_at\x18\x04 \x01(\tR\x06endsAt\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x05 \x01(\tR\tepisodeId\"l\n" +
 	"\x1fCreateEpisodeFreeWindowResponse\x12I\n" +
 	"\vfree_window\x18\x01 \x01(\v2(.publira.admin.v1.AdminEpisodeFreeWindowR\n" +
-	"freeWindow\"\xb9\x01\n" +
+	"freeWindow\"\xd6\x01\n" +
 	"\x1eCreateSeriesFreeWindowsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x1b\n" +
 	"\tstarts_at\x18\x03 \x01(\tR\bstartsAt\x12\x17\n" +
-	"\aends_at\x18\x04 \x01(\tR\x06endsAt\"n\n" +
+	"\aends_at\x18\x04 \x01(\tR\x06endsAt\x12\x1b\n" +
+	"\tseries_id\x18\x05 \x01(\tR\bseriesId\"n\n" +
 	"\x1fCreateSeriesFreeWindowsResponse\x12K\n" +
-	"\ffree_windows\x18\x01 \x03(\v2(.publira.admin.v1.AdminEpisodeFreeWindowR\vfreeWindows\"v\n" +
+	"\ffree_windows\x18\x01 \x03(\v2(.publira.admin.v1.AdminEpisodeFreeWindowR\vfreeWindows\"\x9c\x01\n" +
 	"\x1eDeleteEpisodeFreeWindowRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"!\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12$\n" +
+	"\x0efree_window_id\x18\x03 \x01(\tR\ffreeWindowId\"!\n" +
 	"\x1fDeleteEpisodeFreeWindowResponse*\xf4\x01\n" +
 	"\x1cEpisodeCreditUnchangedReason\x12/\n" +
 	"+EPISODE_CREDIT_UNCHANGED_REASON_UNSPECIFIED\x10\x00\x124\n" +

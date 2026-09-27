@@ -137,24 +137,23 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	if err != nil {
 		return nil, err
 	}
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	if episodePublicID == "" {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"), "episode_public_id")
-	}
 	period, err := parseFreeWindowPeriod(req.Msg.StartsAt, req.Msg.EndsAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
-
-	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
+	episodeID, err := s.episodeIDArg(ctx, tenant.ID, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: episodePublicID,
+		ID:       episodeID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_public_id")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_id")
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode for create free window", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for create free window", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 
 	windowID, err := uuid.NewV7()
@@ -176,15 +175,15 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		if dberr.IsExclusionViolation(err) {
 			return nil, freeWindowOverlapError()
 		}
-		return nil, s.internalDBError(ctx, "failed to create episode free window", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to create episode free window", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 
-	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByPublicIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByPublicIDForTenantParams{
+	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: created.PublicID,
+		ID:       created.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to load created episode free window", err, "tenant_id", tenant.ID.String(), "free_window_public_id", created.PublicID)
+		return nil, s.internalDBError(ctx, "failed to load created episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", created.ID.String())
 	}
 
 	s.recordFreeWindowAudit(
@@ -212,11 +211,11 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	if err != nil {
 		return nil, err
 	}
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	if seriesPublicID == "" {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("series_public_id is required"), "series_public_id")
-	}
 	period, err := parseFreeWindowPeriod(req.Msg.StartsAt, req.Msg.EndsAt, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.SeriesPublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -231,22 +230,23 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	// The lock is what keeps a concurrent CreateEpisode out of the series while
 	// the windows are written, so the campaign covers the episode list the
 	// caller is answered with.
-	if _, err := q.LockSeriesByPublicIDForTenant(ctx, dbmodels.LockSeriesByPublicIDForTenantParams{
+	series, err := q.LockSeriesByIDForTenant(ctx, dbmodels.LockSeriesByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: seriesPublicID,
-	}); err != nil {
+		ID:       seriesID,
+	})
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("series not found"), "series_public_id")
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("series not found"), "series_id")
 		}
-		return nil, s.internalDBError(ctx, "failed to lock series for create series free windows", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to lock series for create series free windows", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	episodes, err := q.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: seriesPublicID,
+		SeriesID: series.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list episodes for create series free windows", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to list episodes for create series free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
 	if len(episodes) == 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no episodes"))
@@ -279,10 +279,13 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		}
 		windowIDs = append(windowIDs, created.ID)
 		windows = append(windows, &publiraadminv1.AdminEpisodeFreeWindow{
+			Id:              created.ID.String(),
 			PublicId:        created.PublicID,
+			EpisodeId:       episode.ID.String(),
 			EpisodePublicId: episode.PublicID,
 			EpisodeTitle:    episode.Title,
-			SeriesPublicId:  seriesPublicID,
+			SeriesId:        series.ID.String(),
+			SeriesPublicId:  series.PublicID,
 			StartsAt:        created.StartsAt.UTC().Format(time.RFC3339),
 			EndsAt:          created.EndsAt.UTC().Format(time.RFC3339),
 			CreatedAt:       created.CreatedAt.UTC().Format(time.RFC3339),
@@ -290,7 +293,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit create series free windows", err, "tenant_id", tenant.ID.String(), "series_public_id", seriesPublicID)
+		return nil, s.internalDBError(ctx, "failed to commit create series free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
 
 	s.recordFreeWindowAudit(
@@ -298,7 +301,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		tenant.ID,
 		"series_free_windows_created",
 		"series",
-		seriesPublicID,
+		series.PublicID,
 		auditlog.ClientIPFromHeader(req.Header()),
 	)
 	if period.openAt(time.Now()) {
@@ -316,20 +319,20 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	if err != nil {
 		return nil, err
 	}
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("public_id is required"), "public_id")
+	windowID, err := s.freeWindowIDArg(ctx, tenant.ID, req.Msg.FreeWindowId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
 	}
 
-	deleted, err := s.queriesFor(ctx).DeleteEpisodeFreeWindowByPublicIDForTenant(ctx, dbmodels.DeleteEpisodeFreeWindowByPublicIDForTenantParams{
+	deleted, err := s.queriesFor(ctx).DeleteEpisodeFreeWindowByIDForTenant(ctx, dbmodels.DeleteEpisodeFreeWindowByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: publicID,
+		ID:       windowID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 	}
 
 	s.recordFreeWindowAudit(
@@ -337,7 +340,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		tenant.ID,
 		"episode_free_window_deleted",
 		"episode_free_window",
-		publicID,
+		deleted.PublicID,
 		auditlog.ClientIPFromHeader(req.Header()),
 	)
 
@@ -352,11 +355,38 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	return connect.NewResponse(&publiraadminv1.DeleteEpisodeFreeWindowResponse{}), nil
 }
 
-func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByPublicIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {
+// freeWindowIDArg resolves the window a request names: by free_window_id, or
+// by its public_id while a client still sends that.
+func (s *adminServer) freeWindowIDArg(ctx context.Context, tenantID uuid.UUID, rawID, rawPublicID string) (uuid.UUID, error) {
+	id, err := recordIDArg(rawID, "free_window_id")
+	if err != nil || id != uuid.Nil {
+		return id, err
+	}
+	publicID := strings.TrimSpace(rawPublicID)
+	if publicID == "" {
+		return uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("free_window_id is required"), "free_window_id")
+	}
+	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByPublicIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByPublicIDForTenantParams{
+		TenantID: tenantID,
+		PublicID: publicID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
+		}
+		return uuid.Nil, s.internalDBError(ctx, "failed to resolve free window public id", err, "tenant_id", tenantID.String(), "free_window_public_id", publicID)
+	}
+	return row.ID, nil
+}
+
+func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {
 	return &publiraadminv1.AdminEpisodeFreeWindow{
+		Id:              row.ID.String(),
 		PublicId:        row.PublicID,
+		EpisodeId:       row.EpisodeID.String(),
 		EpisodePublicId: row.EpisodePublicID,
 		EpisodeTitle:    row.EpisodeTitle,
+		SeriesId:        row.SeriesID.String(),
 		SeriesPublicId:  row.SeriesPublicID,
 		StartsAt:        row.StartsAt.UTC().Format(time.RFC3339),
 		EndsAt:          row.EndsAt.UTC().Format(time.RFC3339),

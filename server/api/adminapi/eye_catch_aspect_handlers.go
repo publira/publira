@@ -117,12 +117,16 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	current, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	seriesID, err := s.seriesIDArg(ctx, tenant.ID, req.Msg.SeriesId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: seriesID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 	// A ratio image replaces one slot of an existing eye-catch. Creating the
 	// eye-catch from a single ratio would leave the other three with no image
@@ -149,13 +153,13 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	// them; the eye-catch is re-read behind it as a separate statement,
 	// because READ COMMITTED froze the read above before the wait and a whole
 	// eye-catch replacement may have repointed it since.
-	if _, err := s.queriesFor(txCtx).LockSeriesByPublicIDForTenant(txCtx, dbmodels.LockSeriesByPublicIDForTenantParams{
+	if _, err := s.queriesFor(txCtx).LockSeriesByIDForTenant(txCtx, dbmodels.LockSeriesByIDForTenantParams{
 		TenantID: tenant.ID,
-		PublicID: current.PublicID,
+		ID:       current.ID,
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
-	locked, err := s.queriesFor(txCtx).GetSeriesByPublicIDForTenant(txCtx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: current.PublicID})
+	locked, err := s.queriesFor(txCtx).GetSeriesByIDForTenant(txCtx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: current.ID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to re-read series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
@@ -225,7 +229,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
-	series, err := s.seriesWithEyeCatchVariants(ctx, tenant.ID, req.Msg.PublicId)
+	series, err := s.seriesWithEyeCatchVariants(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -234,18 +238,18 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 
 // seriesWithEyeCatchVariants re-reads the series so the response carries the
 // variant list delivery would now serve.
-func (s *adminServer) seriesWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, publicID string) (*publirattypesv1.Series, error) {
-	row, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenantID, PublicID: publicID})
+func (s *adminServer) seriesWithEyeCatchVariants(ctx context.Context, tenantID, seriesID uuid.UUID) (*publirattypesv1.Series, error) {
+	row, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenantID, ID: seriesID})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get series after eye catch aspect upload", err, "tenant_id", tenantID.String(), "series_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to get series after eye catch aspect upload", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 	}
 	creatorsBySeriesID, err := s.seriesCreatorsBySeriesIDs(ctx, []uuid.UUID{row.ID})
 	if err != nil {
 		return nil, err
 	}
-	series, err := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	series, err := protomapper.SeriesFromGetSeriesByIDForTenantRow(row)
 	if err != nil {
-		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenantID.String(), "series_public_id", publicID)
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 	}
 	series.Creators = creatorsBySeriesID[row.ID]
 	if row.EyeCatchImageID.Valid {

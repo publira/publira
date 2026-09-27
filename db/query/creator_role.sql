@@ -60,17 +60,20 @@ WHERE cr.tenant_id = $1
     AND cr.id = $2
 LIMIT 1;
 
--- name: ListCreatorRolesByPublicIDsForTenant :many
+-- name: ListCreatorRolesByIDsForTenant :many
 -- Resolves the roles a series form credited creators in. The caller compares
--- the row count against what it asked for, so a public_id of another tenant
--- reads as a role that does not exist.
+-- the row count against what it asked for, so an id of another tenant reads
+-- as a role that does not exist.
 SELECT cr.id,
     cr.public_id,
     cr.name,
     cr.display_priority
 FROM creator_roles cr
 WHERE cr.tenant_id = sqlc.arg('tenant_id')
-    AND cr.public_id = ANY(sqlc.arg('public_ids')::text[])
+    AND (
+        cr.id = ANY(sqlc.arg('ids')::uuid[])
+        OR cr.public_id = ANY(sqlc.arg('public_ids')::text[])
+    )
 ORDER BY cr.display_priority ASC,
     cr.id ASC;
 

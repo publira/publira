@@ -299,7 +299,7 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     )
 LIMIT 1;
 
--- name: ListCreatorsByPublicIDsForTenant :many
+-- name: ListCreatorsByIDsForTenant :many
 SELECT id,
     tenant_id,
     public_id,
@@ -307,8 +307,11 @@ SELECT id,
     profile_text,
     created_at
 FROM creators
-WHERE tenant_id = $1
-    AND public_id = ANY(sqlc.arg('public_ids')::varchar[]);
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND (
+        id = ANY(sqlc.arg('ids')::uuid[])
+        OR public_id = ANY(sqlc.arg('public_ids')::varchar[])
+    );
 
 -- Admin ListCreators is (created_at, id) DESC. Forward uses the DESC query;
 -- backward uses ASC so the index can be scanned in reverse. The handler

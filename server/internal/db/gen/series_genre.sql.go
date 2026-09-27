@@ -44,6 +44,7 @@ func (q *Queries) DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uui
 
 const ListSeriesGenresBySeriesIDs = `-- name: ListSeriesGenresBySeriesIDs :many
 SELECT sg.series_id,
+    g.id AS genre_id,
     g.public_id,
     g.name,
     g.slug
@@ -57,6 +58,7 @@ ORDER BY sg.series_id ASC,
 
 type ListSeriesGenresBySeriesIDsRow struct {
 	SeriesID uuid.UUID `json:"series_id"`
+	GenreID  uuid.UUID `json:"genre_id"`
 	PublicID string    `json:"public_id"`
 	Name     string    `json:"name"`
 	Slug     string    `json:"slug"`
@@ -76,6 +78,7 @@ func (q *Queries) ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []u
 		var i ListSeriesGenresBySeriesIDsRow
 		if err := rows.Scan(
 			&i.SeriesID,
+			&i.GenreID,
 			&i.PublicID,
 			&i.Name,
 			&i.Slug,

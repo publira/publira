@@ -134,24 +134,28 @@ func (q *Queries) GetMaxCreatorRoleDisplayPriorityForTenant(ctx context.Context,
 	return max_display_priority, err
 }
 
-const ListCreatorRolesByPublicIDsForTenant = `-- name: ListCreatorRolesByPublicIDsForTenant :many
+const ListCreatorRolesByIDsForTenant = `-- name: ListCreatorRolesByIDsForTenant :many
 SELECT cr.id,
     cr.public_id,
     cr.name,
     cr.display_priority
 FROM creator_roles cr
 WHERE cr.tenant_id = $1
-    AND cr.public_id = ANY($2::text[])
+    AND (
+        cr.id = ANY($2::uuid[])
+        OR cr.public_id = ANY($3::text[])
+    )
 ORDER BY cr.display_priority ASC,
     cr.id ASC
 `
 
-type ListCreatorRolesByPublicIDsForTenantParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	PublicIds []string  `json:"public_ids"`
+type ListCreatorRolesByIDsForTenantParams struct {
+	TenantID  uuid.UUID   `json:"tenant_id"`
+	Ids       []uuid.UUID `json:"ids"`
+	PublicIds []string    `json:"public_ids"`
 }
 
-type ListCreatorRolesByPublicIDsForTenantRow struct {
+type ListCreatorRolesByIDsForTenantRow struct {
 	ID              uuid.UUID `json:"id"`
 	PublicID        string    `json:"public_id"`
 	Name            string    `json:"name"`
@@ -159,17 +163,17 @@ type ListCreatorRolesByPublicIDsForTenantRow struct {
 }
 
 // Resolves the roles a series form credited creators in. The caller compares
-// the row count against what it asked for, so a public_id of another tenant
-// reads as a role that does not exist.
-func (q *Queries) ListCreatorRolesByPublicIDsForTenant(ctx context.Context, arg ListCreatorRolesByPublicIDsForTenantParams) ([]ListCreatorRolesByPublicIDsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+// the row count against what it asked for, so an id of another tenant reads
+// as a role that does not exist.
+func (q *Queries) ListCreatorRolesByIDsForTenant(ctx context.Context, arg ListCreatorRolesByIDsForTenantParams) ([]ListCreatorRolesByIDsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListCreatorRolesByIDsForTenant, arg.TenantID, pq.Array(arg.Ids), pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCreatorRolesByPublicIDsForTenantRow
+	var items []ListCreatorRolesByIDsForTenantRow
 	for rows.Next() {
-		var i ListCreatorRolesByPublicIDsForTenantRow
+		var i ListCreatorRolesByIDsForTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,

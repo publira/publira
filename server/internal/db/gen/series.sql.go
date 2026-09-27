@@ -227,10 +227,108 @@ func (q *Queries) GetPublishedSeriesID(ctx context.Context, arg GetPublishedSeri
 	return id, err
 }
 
+const GetSeriesByIDForTenant = `-- name: GetSeriesByIDForTenant :one
+SELECT s.id,
+    s.public_id,
+    s.title,
+    l.id AS label_id,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
+    sl.synopsis,
+    sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
+    sl.comment_mode,
+    sl.reading_direction,
+    sl.spread_start_index,
+    s.is_published,
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability,
+    -- The series' own purchase availability, NULL where it follows the tenant.
+    s.purchase_availability
+FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
+WHERE s.tenant_id = $1
+    AND s.id = $2
+LIMIT 1
+`
+
+type GetSeriesByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetSeriesByIDForTenantRow struct {
+	ID                         uuid.UUID      `json:"id"`
+	PublicID                   string         `json:"public_id"`
+	Title                      string         `json:"title"`
+	LabelID                    uuid.NullUUID  `json:"label_id"`
+	LabelPublicID              sql.NullString `json:"label_public_id"`
+	LabelName                  sql.NullString `json:"label_name"`
+	Synopsis                   sql.NullString `json:"synopsis"`
+	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	Status                     sql.NullString `json:"status"`
+	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
+	AgeRating                  sql.NullString `json:"age_rating"`
+	CommentMode                sql.NullString `json:"comment_mode"`
+	ReadingDirection           sql.NullString `json:"reading_direction"`
+	SpreadStartIndex           sql.NullInt32  `json:"spread_start_index"`
+	IsPublished                bool           `json:"is_published"`
+	PublishedAt                sql.NullTime   `json:"published_at"`
+	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
+	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
+	Availability               string         `json:"availability"`
+	PurchaseAvailability       sql.NullString `json:"purchase_availability"`
+}
+
+func (q *Queries) GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSeriesByIDForTenant, arg.TenantID, arg.ID)
+	var i GetSeriesByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.LabelID,
+		&i.LabelPublicID,
+		&i.LabelName,
+		&i.Synopsis,
+		&i.ReadingPeriodHours,
+		&i.Status,
+		pq.Array(&i.ScheduleWeekdays),
+		&i.AgeRating,
+		&i.CommentMode,
+		&i.ReadingDirection,
+		&i.SpreadStartIndex,
+		&i.IsPublished,
+		&i.PublishedAt,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
+		&i.EyeCatchImageFileSizeBytes,
+		&i.Availability,
+		&i.PurchaseAvailability,
+	)
+	return i, err
+}
+
 const GetSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
     s.title,
+    l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
     sl.synopsis,
@@ -274,6 +372,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	ID                         uuid.UUID      `json:"id"`
 	PublicID                   string         `json:"public_id"`
 	Title                      string         `json:"title"`
+	LabelID                    uuid.NullUUID  `json:"label_id"`
 	LabelPublicID              sql.NullString `json:"label_public_id"`
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   sql.NullString `json:"synopsis"`
@@ -300,6 +399,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.ID,
 		&i.PublicID,
 		&i.Title,
+		&i.LabelID,
 		&i.LabelPublicID,
 		&i.LabelName,
 		&i.Synopsis,
@@ -552,6 +652,27 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.Episodes,
 	)
 	return i, err
+}
+
+const GetSeriesIDByPublicIDForTenant = `-- name: GetSeriesIDByPublicIDForTenant :one
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+LIMIT 1
+`
+
+type GetSeriesIDByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Resolves the series a console request still names by public_id.
+func (q *Queries) GetSeriesIDByPublicIDForTenant(ctx context.Context, arg GetSeriesIDByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetSeriesIDByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const ListSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
@@ -823,17 +944,23 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 	return items, nil
 }
 
-const LockSeriesByPublicIDForTenant = `-- name: LockSeriesByPublicIDForTenant :one
+const LockSeriesByIDForTenant = `-- name: LockSeriesByIDForTenant :one
 
-SELECT id
+SELECT id,
+    public_id
 FROM series
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 FOR UPDATE
 `
 
-type LockSeriesByPublicIDForTenantParams struct {
+type LockSeriesByIDForTenantParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type LockSeriesByIDForTenantRow struct {
+	ID       uuid.UUID `json:"id"`
 	PublicID string    `json:"public_id"`
 }
 
@@ -844,11 +971,11 @@ type LockSeriesByPublicIDForTenantParams struct {
 // MAX(order_index)) must be a separate statement: READ COMMITTED
 // freezes its snapshot at statement start, so waiting for the lock in
 // the same statement would still see the pre-wait rows.
-func (q *Queries) LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, LockSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByIDForTenantParams) (LockSeriesByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, LockSeriesByIDForTenant, arg.TenantID, arg.ID)
+	var i LockSeriesByIDForTenantRow
+	err := row.Scan(&i.ID, &i.PublicID)
+	return i, err
 }
 
 const UpdateSeriesBase = `-- name: UpdateSeriesBase :exec

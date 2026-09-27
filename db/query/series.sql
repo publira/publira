@@ -1,16 +1,17 @@
 -- A series as one row: locked, read, written, and listed for the console. The
 -- keyset scans behind the public series list are in published_series.sql.
 
--- name: LockSeriesByPublicIDForTenant :one
+-- name: LockSeriesByIDForTenant :one
 -- Lock the series row so concurrent CreateEpisode and ReorderEpisodes
 -- calls serialize. The following read of the current order (or
 -- MAX(order_index)) must be a separate statement: READ COMMITTED
 -- freezes its snapshot at statement start, so waiting for the lock in
 -- the same statement would still see the pre-wait rows.
-SELECT id
+SELECT id,
+    public_id
 FROM series
 WHERE tenant_id = $1
-    AND public_id = $2
+    AND id = $2
 FOR UPDATE;
 
 -- name: GetSeriesDetail :one
@@ -464,6 +465,7 @@ LIMIT 1;
 SELECT s.id,
     s.public_id,
     s.title,
+    l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
     sl.synopsis,
@@ -493,6 +495,52 @@ FROM series s
         ORDER BY width DESC
         LIMIT 1
     ) siv ON true
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+LIMIT 1;
+
+-- name: GetSeriesByIDForTenant :one
+SELECT s.id,
+    s.public_id,
+    s.title,
+    l.id AS label_id,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
+    sl.synopsis,
+    sl.reading_period_hours,
+    sl.status,
+    sl.schedule_weekdays,
+    sl.age_rating,
+    sl.comment_mode,
+    sl.reading_direction,
+    sl.spread_start_index,
+    s.is_published,
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
+    s.availability,
+    -- The series' own purchase availability, NULL where it follows the tenant.
+    s.purchase_availability
+FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
+WHERE s.tenant_id = $1
+    AND s.id = $2
+LIMIT 1;
+
+-- name: GetSeriesIDByPublicIDForTenant :one
+-- Resolves the series a console request still names by public_id.
+SELECT s.id
+FROM series s
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 LIMIT 1;

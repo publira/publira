@@ -38,8 +38,7 @@ const (
 type Querier interface {
 	CreateEpisodeImage(ctx context.Context, arg dbmodels.CreateEpisodeImageParams) (dbmodels.EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg dbmodels.CreateEpisodeImageVariantParams) (dbmodels.EpisodeImageVariant, error)
-	GetEpisodeByPublicIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeByPublicIDForTenantParams) (dbmodels.GetEpisodeByPublicIDForTenantRow, error)
-	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg dbmodels.GetEpisodeByPublicIDForTenantAndSeriesParams) (dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow, error)
+	GetEpisodeSeriesByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeSeriesByIDForTenantParams) (dbmodels.GetEpisodeSeriesByIDForTenantRow, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 }
 
@@ -50,9 +49,11 @@ type Service struct {
 }
 
 type UploadRequest struct {
-	Tenant          dbmodels.Tenant
-	SeriesPublicID  string
-	EpisodePublicID string
+	Tenant dbmodels.Tenant
+	// SeriesID is uuid.Nil where the upload names no series. An archive needs
+	// one, and a series named must be the episode's own.
+	SeriesID        uuid.UUID
+	EpisodeID       uuid.UUID
 	Images          []*publiraadminv1.EpisodeImageUpload
 	ArchiveData     []byte
 	ArchiveFilename string
@@ -71,12 +72,12 @@ func storageUploadError(err error) error {
 }
 
 func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, uuid.UUID, error) {
-	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesPublicID)
+	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesID != uuid.Nil)
 	if err != nil {
 		return nil, uuid.Nil, err
 	}
 
-	episodeID, episodePublicID, err := s.resolveEpisode(ctx, req.Tenant.ID, req.SeriesPublicID, req.EpisodePublicID)
+	episodeID, episodePublicID, err := s.resolveEpisode(ctx, req.Tenant.ID, req.SeriesID, req.EpisodeID)
 	if err != nil {
 		return nil, uuid.Nil, err
 	}
@@ -92,13 +93,13 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 	return items, episodeID, nil
 }
 
-func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, archiveFilename string, archiveType string, seriesPublicID string) ([]archiveimages.Input, error) {
+func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, archiveFilename string, archiveType string, hasSeries bool) ([]archiveimages.Input, error) {
 	hasArchive := len(archiveData) > 0
 	if hasArchive && len(images) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images and archive_data cannot be used together"))
 	}
-	if hasArchive && strings.TrimSpace(seriesPublicID) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required when archive_data is provided"))
+	if hasArchive && !hasSeries {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_id is required when archive_data is provided"))
 	}
 	if !hasArchive && len(images) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images are required"))
@@ -157,33 +158,16 @@ func shouldExtractFromEPUB(archiveFilename string, archiveContentType string) bo
 	return strings.Contains(contentType, "application/epub+zip")
 }
 
-func (s Service) resolveEpisode(ctx context.Context, tenantID uuid.UUID, seriesPublicID string, episodePublicID string) (uuid.UUID, string, error) {
-	episodePublicID = strings.TrimSpace(episodePublicID)
-	if episodePublicID == "" {
-		return uuid.Nil, "", connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
-	}
-	seriesPublicID = strings.TrimSpace(seriesPublicID)
-	if seriesPublicID != "" {
-		episode, err := s.Queries.GetEpisodeByPublicIDForTenantAndSeries(ctx, dbmodels.GetEpisodeByPublicIDForTenantAndSeriesParams{
-			TenantID:   tenantID,
-			PublicID:   seriesPublicID,
-			PublicID_2: episodePublicID,
-		})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return uuid.Nil, "", connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
-			}
-			return uuid.Nil, "", connect.NewError(connect.CodeInternal, err)
-		}
-		return episode.ID, episode.PublicID, nil
-	}
-
-	episode, err := s.Queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenantID, PublicID: episodePublicID})
+func (s Service) resolveEpisode(ctx context.Context, tenantID, seriesID, episodeID uuid.UUID) (uuid.UUID, string, error) {
+	episode, err := s.Queries.GetEpisodeSeriesByIDForTenant(ctx, dbmodels.GetEpisodeSeriesByIDForTenantParams{TenantID: tenantID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return uuid.Nil, "", connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
 		return uuid.Nil, "", connect.NewError(connect.CodeInternal, err)
+	}
+	if seriesID != uuid.Nil && episode.SeriesID != seriesID {
+		return uuid.Nil, "", connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
 	return episode.ID, episode.PublicID, nil
 }

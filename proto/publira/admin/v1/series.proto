@@ -17,6 +17,8 @@ message SeriesCreatorCredit {
   // The creator's share of an episode's sales, in basis points. 10000 is
   // 100%; a zero share records a credit without compensation.
   int32 share_bps = 3;
+  string creator_id = 4;
+  string role_id = 5;
 }
 
 message CreateSeriesRequest {
@@ -70,6 +72,9 @@ message CreateSeriesRequest {
   // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED follows the tenant,
   // including afterwards, when its default changes.
   publira.types.v1.SurfaceAvailability purchase_availability = 23;
+  string label_id = 24;
+  // Genres of this tenant, by id, with the same rules genre_public_ids has.
+  repeated string genre_ids = 25;
 }
 
 message CreateSeriesResponse {
@@ -158,6 +163,10 @@ message UpdateSeriesRequest {
   // tenant's default. SURFACE_AVAILABILITY_UNSPECIFIED, sent explicitly,
   // returns the series to following the tenant.
   optional publira.types.v1.SurfaceAvailability purchase_availability = 23;
+  string series_id = 25;
+  string label_id = 26;
+  // The whole assignment by id, as genre_public_ids is.
+  repeated string genre_ids = 27;
 }
 
 message UpdateSeriesResponse {
@@ -232,6 +241,7 @@ message ListEpisodesRequest {
   int32 limit = 3;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  string series_id = 5;
 }
 
 message ListEpisodesResponse {
@@ -274,6 +284,7 @@ message UpdateEpisodeLayoutRequest {
   // negative index, or one at or past the page count, is invalid_argument, so
   // an episode with no pages yet can only follow its series.
   optional int32 spread_start_index = 4;
+  string episode_id = 5;
 }
 
 message UpdateEpisodeLayoutResponse {
@@ -293,6 +304,7 @@ message UpdateEpisodeAvailabilityRequest {
   // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
   // series.
   publira.types.v1.SurfaceAvailability availability = 3;
+  string episode_id = 4;
 }
 
 message UpdateEpisodeAvailabilityResponse {
@@ -309,6 +321,7 @@ message UpdateEpisodePurchaseAvailabilityRequest {
   // SURFACE_AVAILABILITY_UNSPECIFIED returns the episode to following its
   // series.
   publira.types.v1.SurfaceAvailability purchase_availability = 3;
+  string episode_id = 4;
 }
 
 message UpdateEpisodePurchaseAvailabilityResponse {
@@ -328,6 +341,11 @@ message ReorderEpisodesRequest {
   // The RPC locks the series, re-reads the current order, and rejects the
   // write with failed_precondition when this no longer matches.
   repeated string expected_episode_public_ids = 4;
+  string series_id = 5;
+  // episode_ids and expected_episode_ids follow the rules the public_id lists
+  // above do.
+  repeated string episode_ids = 6;
+  repeated string expected_episode_ids = 7;
 }
 
 message ReorderEpisodesResponse {
@@ -350,6 +368,7 @@ message CreateEpisodeRequest {
   // Which surfaces this episode may be bought on, replacing its series'.
   // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
   publira.types.v1.SurfaceAvailability purchase_availability = 9;
+  string series_id = 10;
 }
 
 message CreateEpisodeResponse {
@@ -373,6 +392,8 @@ message UploadEpisodeImagesRequest {
   bytes archive_data = 5;
   string archive_filename = 6;
   string archive_content_type = 7;
+  string episode_id = 8;
+  string series_id = 9;
 }
 
 message UploadEpisodeImagesResponse {
@@ -382,6 +403,7 @@ message UploadEpisodeImagesResponse {
 message ListEpisodeImagesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
+  string episode_id = 3;
 }
 
 message ListEpisodeImagesResponse {
@@ -392,6 +414,7 @@ message ReorderEpisodeImagesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
   repeated string image_ids = 3;
+  string episode_id = 4;
 }
 
 message ReorderEpisodeImagesResponse {
@@ -402,6 +425,7 @@ message UpdateEpisodePublishScheduleRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
   string scheduled_at = 3;
+  string episode_id = 4;
 }
 
 message UpdateEpisodePublishScheduleResponse {
@@ -418,11 +442,14 @@ message EpisodeCreatorCredit {
   // across roles: the role's priority is what puts the leading one first.
   string role_public_id = 2;
   int32 share_bps = 3;
+  string creator_id = 4;
+  string role_id = 5;
 }
 
 message ListEpisodeCreditsRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
+  string episode_id = 3;
 }
 
 message ListEpisodeCreditsResponse {
@@ -441,6 +468,7 @@ message ReplaceEpisodeCreditsRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
   repeated EpisodeCreatorCredit creator_credits = 3;
+  string episode_id = 4;
 }
 
 message ReplaceEpisodeCreditsResponse {
@@ -494,6 +522,9 @@ message BulkEditEpisodeCreditsRequest {
     RemoveEpisodeCreditOperation remove = 6;
     SetEpisodeCreditShareOperation set_share = 7;
   }
+  string series_id = 8;
+  // The episodes to act on by id, with the rules episode_public_ids has.
+  repeated string episode_ids = 9;
 }
 
 // Why an episode in the range came out of the operation as it went in.
@@ -511,6 +542,7 @@ enum EpisodeCreditUnchangedReason {
 message UnchangedEpisodeCredit {
   string episode_public_id = 1;
   EpisodeCreditUnchangedReason reason = 2;
+  string episode_id = 3;
 }
 
 message BulkEditEpisodeCreditsResponse {
@@ -520,6 +552,8 @@ message BulkEditEpisodeCreditsResponse {
   // it did. A deliberate deviation is a visible skip here rather than a silent
   // one, which is the point of reporting them at all.
   repeated UnchangedEpisodeCredit unchanged_episodes = 2;
+  // changed_episode_public_ids by id, in the same order.
+  repeated string changed_episode_ids = 3;
 }
 
 // Replaces the image of one aspect ratio of a series eye-catch. The other
@@ -534,6 +568,7 @@ message UploadSeriesEyeCatchAspectImageRequest {
   // Where in the upload the cut is taken. Omitted, the image is cut from its
   // centre as it always has been.
   publira.types.v1.ImageCropRect crop = 6;
+  string series_id = 7;
 }
 
 message UploadSeriesEyeCatchAspectImageResponse {
@@ -552,6 +587,9 @@ message AdminEpisodeFreeWindow {
   string starts_at = 5;
   string ends_at = 6;
   string created_at = 7;
+  string id = 8;
+  string episode_id = 9;
+  string series_id = 10;
 }
 
 message CreateEpisodeFreeWindowRequest {
@@ -562,6 +600,7 @@ message CreateEpisodeFreeWindowRequest {
   // rather than a silently merged period.
   string starts_at = 3;
   string ends_at = 4;
+  string episode_id = 5;
 }
 
 message CreateEpisodeFreeWindowResponse {
@@ -577,6 +616,7 @@ message CreateSeriesFreeWindowsRequest {
   string series_public_id = 2;
   string starts_at = 3;
   string ends_at = 4;
+  string series_id = 5;
 }
 
 message CreateSeriesFreeWindowsResponse {
@@ -589,6 +629,7 @@ message CreateSeriesFreeWindowsResponse {
 message DeleteEpisodeFreeWindowRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  string free_window_id = 3;
 }
 
 message DeleteEpisodeFreeWindowResponse {}
