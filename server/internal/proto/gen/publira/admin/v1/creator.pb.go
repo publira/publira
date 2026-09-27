@@ -200,8 +200,11 @@ func (x *GetCreatorRequest) GetPublicId() string {
 }
 
 type GetCreatorResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Creator *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	// The reader accounts linked to the creator, oldest link first. Readers are
+	// the tenant admin's to see, so it is empty for any other role.
+	Accounts      []*CreatorAccount `protobuf:"bytes,2,rep,name=accounts,proto3" json:"accounts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -243,6 +246,69 @@ func (x *GetCreatorResponse) GetCreator() *v1.Creator {
 	return nil
 }
 
+func (x *GetCreatorResponse) GetAccounts() []*CreatorAccount {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+// A reader account linked to a creator: the tenant's record that this account
+// belongs to the person credited under that creator.
+type CreatorAccount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// birth_date is always empty here, as it is in ListReaders.
+	Reader *AdminReader `protobuf:"bytes,1,opt,name=reader,proto3" json:"reader,omitempty"`
+	// When the link was made, RFC3339.
+	LinkedAt      string `protobuf:"bytes,2,opt,name=linked_at,json=linkedAt,proto3" json:"linked_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatorAccount) Reset() {
+	*x = CreatorAccount{}
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatorAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatorAccount) ProtoMessage() {}
+
+func (x *CreatorAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatorAccount.ProtoReflect.Descriptor instead.
+func (*CreatorAccount) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CreatorAccount) GetReader() *AdminReader {
+	if x != nil {
+		return x.Reader
+	}
+	return nil
+}
+
+func (x *CreatorAccount) GetLinkedAt() string {
+	if x != nil {
+		return x.LinkedAt
+	}
+	return ""
+}
+
 type CreateCreatorRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Tenant               *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -259,7 +325,7 @@ type CreateCreatorRequest struct {
 
 func (x *CreateCreatorRequest) Reset() {
 	*x = CreateCreatorRequest{}
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -271,7 +337,7 @@ func (x *CreateCreatorRequest) String() string {
 func (*CreateCreatorRequest) ProtoMessage() {}
 
 func (x *CreateCreatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -284,7 +350,7 @@ func (x *CreateCreatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCreatorRequest.ProtoReflect.Descriptor instead.
 func (*CreateCreatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateCreatorRequest) GetTenant() *v1.TenantContext {
@@ -338,7 +404,7 @@ type CreateCreatorResponse struct {
 
 func (x *CreateCreatorResponse) Reset() {
 	*x = CreateCreatorResponse{}
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -350,7 +416,7 @@ func (x *CreateCreatorResponse) String() string {
 func (*CreateCreatorResponse) ProtoMessage() {}
 
 func (x *CreateCreatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -363,7 +429,7 @@ func (x *CreateCreatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCreatorResponse.ProtoReflect.Descriptor instead.
 func (*CreateCreatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateCreatorResponse) GetCreator() *v1.Creator {
@@ -392,7 +458,7 @@ type UpdateCreatorRequest struct {
 
 func (x *UpdateCreatorRequest) Reset() {
 	*x = UpdateCreatorRequest{}
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -404,7 +470,7 @@ func (x *UpdateCreatorRequest) String() string {
 func (*UpdateCreatorRequest) ProtoMessage() {}
 
 func (x *UpdateCreatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -417,7 +483,7 @@ func (x *UpdateCreatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCreatorRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCreatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateCreatorRequest) GetTenant() *v1.TenantContext {
@@ -485,7 +551,7 @@ type UpdateCreatorResponse struct {
 
 func (x *UpdateCreatorResponse) Reset() {
 	*x = UpdateCreatorResponse{}
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -497,7 +563,7 @@ func (x *UpdateCreatorResponse) String() string {
 func (*UpdateCreatorResponse) ProtoMessage() {}
 
 func (x *UpdateCreatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_creator_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -510,7 +576,7 @@ func (x *UpdateCreatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCreatorResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCreatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{7}
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateCreatorResponse) GetCreator() *v1.Creator {
@@ -520,11 +586,225 @@ func (x *UpdateCreatorResponse) GetCreator() *v1.Creator {
 	return nil
 }
 
+type LinkCreatorAccountRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The creator's primary key (Creator.id).
+	CreatorId string `protobuf:"bytes,2,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	// The reader's primary key (AdminReader.id).
+	ReaderId      string `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LinkCreatorAccountRequest) Reset() {
+	*x = LinkCreatorAccountRequest{}
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkCreatorAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkCreatorAccountRequest) ProtoMessage() {}
+
+func (x *LinkCreatorAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkCreatorAccountRequest.ProtoReflect.Descriptor instead.
+func (*LinkCreatorAccountRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *LinkCreatorAccountRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *LinkCreatorAccountRequest) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *LinkCreatorAccountRequest) GetReaderId() string {
+	if x != nil {
+		return x.ReaderId
+	}
+	return ""
+}
+
+type LinkCreatorAccountResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Every account linked to the creator after the write, oldest link first.
+	Accounts      []*CreatorAccount `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LinkCreatorAccountResponse) Reset() {
+	*x = LinkCreatorAccountResponse{}
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkCreatorAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkCreatorAccountResponse) ProtoMessage() {}
+
+func (x *LinkCreatorAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkCreatorAccountResponse.ProtoReflect.Descriptor instead.
+func (*LinkCreatorAccountResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *LinkCreatorAccountResponse) GetAccounts() []*CreatorAccount {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+type UnlinkCreatorAccountRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The creator's primary key (Creator.id).
+	CreatorId string `protobuf:"bytes,2,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	// The reader's primary key (AdminReader.id).
+	ReaderId      string `protobuf:"bytes,3,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnlinkCreatorAccountRequest) Reset() {
+	*x = UnlinkCreatorAccountRequest{}
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnlinkCreatorAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnlinkCreatorAccountRequest) ProtoMessage() {}
+
+func (x *UnlinkCreatorAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnlinkCreatorAccountRequest.ProtoReflect.Descriptor instead.
+func (*UnlinkCreatorAccountRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UnlinkCreatorAccountRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UnlinkCreatorAccountRequest) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *UnlinkCreatorAccountRequest) GetReaderId() string {
+	if x != nil {
+		return x.ReaderId
+	}
+	return ""
+}
+
+type UnlinkCreatorAccountResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Every account linked to the creator after the write, oldest link first.
+	Accounts      []*CreatorAccount `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnlinkCreatorAccountResponse) Reset() {
+	*x = UnlinkCreatorAccountResponse{}
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnlinkCreatorAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnlinkCreatorAccountResponse) ProtoMessage() {}
+
+func (x *UnlinkCreatorAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_creator_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnlinkCreatorAccountResponse.ProtoReflect.Descriptor instead.
+func (*UnlinkCreatorAccountResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_creator_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UnlinkCreatorAccountResponse) GetAccounts() []*CreatorAccount {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
 var File_publira_admin_v1_creator_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/creator.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x88\x01\n" +
+	"\x1epublira/admin/v1/creator.proto\x12\x10publira.admin.v1\x1a\x1bpublira/admin/v1/user.proto\x1a\x1cpublira/types/v1/types.proto\"\x88\x01\n" +
 	"\x13ListCreatorsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -536,9 +816,13 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"i\n" +
 	"\x11GetCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"I\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x87\x01\n" +
 	"\x12GetCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xae\x02\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\x12<\n" +
+	"\baccounts\x18\x02 \x03(\v2 .publira.admin.v1.CreatorAccountR\baccounts\"d\n" +
+	"\x0eCreatorAccount\x125\n" +
+	"\x06reader\x18\x01 \x01(\v2\x1d.publira.admin.v1.AdminReaderR\x06reader\x12\x1b\n" +
+	"\tlinked_at\x18\x02 \x01(\tR\blinkedAt\"\xae\x02\n" +
 	"\x14CreateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -559,13 +843,29 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\n" +
 	"creator_id\x18\t \x01(\tR\tcreatorIdJ\x04\b\x02\x10\x03R\tpublic_id\"L\n" +
 	"\x15UpdateCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator2\x99\x03\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\x90\x01\n" +
+	"\x19LinkCreatorAccountRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x02 \x01(\tR\tcreatorId\x12\x1b\n" +
+	"\treader_id\x18\x03 \x01(\tR\breaderId\"Z\n" +
+	"\x1aLinkCreatorAccountResponse\x12<\n" +
+	"\baccounts\x18\x01 \x03(\v2 .publira.admin.v1.CreatorAccountR\baccounts\"\x92\x01\n" +
+	"\x1bUnlinkCreatorAccountRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x02 \x01(\tR\tcreatorId\x12\x1b\n" +
+	"\treader_id\x18\x03 \x01(\tR\breaderId\"\\\n" +
+	"\x1cUnlinkCreatorAccountResponse\x12<\n" +
+	"\baccounts\x18\x01 \x03(\v2 .publira.admin.v1.CreatorAccountR\baccounts2\x85\x05\n" +
 	"\x13AdminCreatorService\x12_\n" +
 	"\fListCreators\x12%.publira.admin.v1.ListCreatorsRequest\x1a&.publira.admin.v1.ListCreatorsResponse\"\x00\x12Y\n" +
 	"\n" +
 	"GetCreator\x12#.publira.admin.v1.GetCreatorRequest\x1a$.publira.admin.v1.GetCreatorResponse\"\x00\x12b\n" +
 	"\rCreateCreator\x12&.publira.admin.v1.CreateCreatorRequest\x1a'.publira.admin.v1.CreateCreatorResponse\"\x00\x12b\n" +
-	"\rUpdateCreator\x12&.publira.admin.v1.UpdateCreatorRequest\x1a'.publira.admin.v1.UpdateCreatorResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\rUpdateCreator\x12&.publira.admin.v1.UpdateCreatorRequest\x1a'.publira.admin.v1.UpdateCreatorResponse\"\x00\x12q\n" +
+	"\x12LinkCreatorAccount\x12+.publira.admin.v1.LinkCreatorAccountRequest\x1a,.publira.admin.v1.LinkCreatorAccountResponse\"\x00\x12w\n" +
+	"\x14UnlinkCreatorAccount\x12-.publira.admin.v1.UnlinkCreatorAccountRequest\x1a..publira.admin.v1.UnlinkCreatorAccountResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_creator_proto_rawDescOnce sync.Once
@@ -579,44 +879,60 @@ func file_publira_admin_v1_creator_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_creator_proto_rawDescData
 }
 
-var file_publira_admin_v1_creator_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_publira_admin_v1_creator_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_admin_v1_creator_proto_goTypes = []any{
-	(*ListCreatorsRequest)(nil),   // 0: publira.admin.v1.ListCreatorsRequest
-	(*ListCreatorsResponse)(nil),  // 1: publira.admin.v1.ListCreatorsResponse
-	(*GetCreatorRequest)(nil),     // 2: publira.admin.v1.GetCreatorRequest
-	(*GetCreatorResponse)(nil),    // 3: publira.admin.v1.GetCreatorResponse
-	(*CreateCreatorRequest)(nil),  // 4: publira.admin.v1.CreateCreatorRequest
-	(*CreateCreatorResponse)(nil), // 5: publira.admin.v1.CreateCreatorResponse
-	(*UpdateCreatorRequest)(nil),  // 6: publira.admin.v1.UpdateCreatorRequest
-	(*UpdateCreatorResponse)(nil), // 7: publira.admin.v1.UpdateCreatorResponse
-	(*v1.TenantContext)(nil),      // 8: publira.types.v1.TenantContext
-	(*v1.Creator)(nil),            // 9: publira.types.v1.Creator
-	(*v1.ImageCropRect)(nil),      // 10: publira.types.v1.ImageCropRect
+	(*ListCreatorsRequest)(nil),          // 0: publira.admin.v1.ListCreatorsRequest
+	(*ListCreatorsResponse)(nil),         // 1: publira.admin.v1.ListCreatorsResponse
+	(*GetCreatorRequest)(nil),            // 2: publira.admin.v1.GetCreatorRequest
+	(*GetCreatorResponse)(nil),           // 3: publira.admin.v1.GetCreatorResponse
+	(*CreatorAccount)(nil),               // 4: publira.admin.v1.CreatorAccount
+	(*CreateCreatorRequest)(nil),         // 5: publira.admin.v1.CreateCreatorRequest
+	(*CreateCreatorResponse)(nil),        // 6: publira.admin.v1.CreateCreatorResponse
+	(*UpdateCreatorRequest)(nil),         // 7: publira.admin.v1.UpdateCreatorRequest
+	(*UpdateCreatorResponse)(nil),        // 8: publira.admin.v1.UpdateCreatorResponse
+	(*LinkCreatorAccountRequest)(nil),    // 9: publira.admin.v1.LinkCreatorAccountRequest
+	(*LinkCreatorAccountResponse)(nil),   // 10: publira.admin.v1.LinkCreatorAccountResponse
+	(*UnlinkCreatorAccountRequest)(nil),  // 11: publira.admin.v1.UnlinkCreatorAccountRequest
+	(*UnlinkCreatorAccountResponse)(nil), // 12: publira.admin.v1.UnlinkCreatorAccountResponse
+	(*v1.TenantContext)(nil),             // 13: publira.types.v1.TenantContext
+	(*v1.Creator)(nil),                   // 14: publira.types.v1.Creator
+	(*AdminReader)(nil),                  // 15: publira.admin.v1.AdminReader
+	(*v1.ImageCropRect)(nil),             // 16: publira.types.v1.ImageCropRect
 }
 var file_publira_admin_v1_creator_proto_depIdxs = []int32{
-	8,  // 0: publira.admin.v1.ListCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 1: publira.admin.v1.ListCreatorsResponse.creators:type_name -> publira.types.v1.Creator
-	8,  // 2: publira.admin.v1.GetCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 3: publira.admin.v1.GetCreatorResponse.creator:type_name -> publira.types.v1.Creator
-	8,  // 4: publira.admin.v1.CreateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 5: publira.admin.v1.CreateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
-	9,  // 6: publira.admin.v1.CreateCreatorResponse.creator:type_name -> publira.types.v1.Creator
-	8,  // 7: publira.admin.v1.UpdateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 8: publira.admin.v1.UpdateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
-	9,  // 9: publira.admin.v1.UpdateCreatorResponse.creator:type_name -> publira.types.v1.Creator
-	0,  // 10: publira.admin.v1.AdminCreatorService.ListCreators:input_type -> publira.admin.v1.ListCreatorsRequest
-	2,  // 11: publira.admin.v1.AdminCreatorService.GetCreator:input_type -> publira.admin.v1.GetCreatorRequest
-	4,  // 12: publira.admin.v1.AdminCreatorService.CreateCreator:input_type -> publira.admin.v1.CreateCreatorRequest
-	6,  // 13: publira.admin.v1.AdminCreatorService.UpdateCreator:input_type -> publira.admin.v1.UpdateCreatorRequest
-	1,  // 14: publira.admin.v1.AdminCreatorService.ListCreators:output_type -> publira.admin.v1.ListCreatorsResponse
-	3,  // 15: publira.admin.v1.AdminCreatorService.GetCreator:output_type -> publira.admin.v1.GetCreatorResponse
-	5,  // 16: publira.admin.v1.AdminCreatorService.CreateCreator:output_type -> publira.admin.v1.CreateCreatorResponse
-	7,  // 17: publira.admin.v1.AdminCreatorService.UpdateCreator:output_type -> publira.admin.v1.UpdateCreatorResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	13, // 0: publira.admin.v1.ListCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 1: publira.admin.v1.ListCreatorsResponse.creators:type_name -> publira.types.v1.Creator
+	13, // 2: publira.admin.v1.GetCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 3: publira.admin.v1.GetCreatorResponse.creator:type_name -> publira.types.v1.Creator
+	4,  // 4: publira.admin.v1.GetCreatorResponse.accounts:type_name -> publira.admin.v1.CreatorAccount
+	15, // 5: publira.admin.v1.CreatorAccount.reader:type_name -> publira.admin.v1.AdminReader
+	13, // 6: publira.admin.v1.CreateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 7: publira.admin.v1.CreateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
+	14, // 8: publira.admin.v1.CreateCreatorResponse.creator:type_name -> publira.types.v1.Creator
+	13, // 9: publira.admin.v1.UpdateCreatorRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 10: publira.admin.v1.UpdateCreatorRequest.icon_image_crop:type_name -> publira.types.v1.ImageCropRect
+	14, // 11: publira.admin.v1.UpdateCreatorResponse.creator:type_name -> publira.types.v1.Creator
+	13, // 12: publira.admin.v1.LinkCreatorAccountRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4,  // 13: publira.admin.v1.LinkCreatorAccountResponse.accounts:type_name -> publira.admin.v1.CreatorAccount
+	13, // 14: publira.admin.v1.UnlinkCreatorAccountRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4,  // 15: publira.admin.v1.UnlinkCreatorAccountResponse.accounts:type_name -> publira.admin.v1.CreatorAccount
+	0,  // 16: publira.admin.v1.AdminCreatorService.ListCreators:input_type -> publira.admin.v1.ListCreatorsRequest
+	2,  // 17: publira.admin.v1.AdminCreatorService.GetCreator:input_type -> publira.admin.v1.GetCreatorRequest
+	5,  // 18: publira.admin.v1.AdminCreatorService.CreateCreator:input_type -> publira.admin.v1.CreateCreatorRequest
+	7,  // 19: publira.admin.v1.AdminCreatorService.UpdateCreator:input_type -> publira.admin.v1.UpdateCreatorRequest
+	9,  // 20: publira.admin.v1.AdminCreatorService.LinkCreatorAccount:input_type -> publira.admin.v1.LinkCreatorAccountRequest
+	11, // 21: publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount:input_type -> publira.admin.v1.UnlinkCreatorAccountRequest
+	1,  // 22: publira.admin.v1.AdminCreatorService.ListCreators:output_type -> publira.admin.v1.ListCreatorsResponse
+	3,  // 23: publira.admin.v1.AdminCreatorService.GetCreator:output_type -> publira.admin.v1.GetCreatorResponse
+	6,  // 24: publira.admin.v1.AdminCreatorService.CreateCreator:output_type -> publira.admin.v1.CreateCreatorResponse
+	8,  // 25: publira.admin.v1.AdminCreatorService.UpdateCreator:output_type -> publira.admin.v1.UpdateCreatorResponse
+	10, // 26: publira.admin.v1.AdminCreatorService.LinkCreatorAccount:output_type -> publira.admin.v1.LinkCreatorAccountResponse
+	12, // 27: publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount:output_type -> publira.admin.v1.UnlinkCreatorAccountResponse
+	22, // [22:28] is the sub-list for method output_type
+	16, // [16:22] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_creator_proto_init() }
@@ -624,13 +940,14 @@ func file_publira_admin_v1_creator_proto_init() {
 	if File_publira_admin_v1_creator_proto != nil {
 		return
 	}
+	file_publira_admin_v1_user_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_creator_proto_rawDesc), len(file_publira_admin_v1_creator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
