@@ -120,9 +120,9 @@ func TestDBUpdateGenreRenamesAndReSlugs(t *testing.T) {
 	genre := createGenre(t, client, tenant, "Fantasy")
 
 	updated, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: genre.PublicId,
-		Name:     "High Fantasy",
+		Tenant:  tenant.tenantContext(),
+		GenreId: genre.Id,
+		Name:    "High Fantasy",
 	}))
 	if err != nil {
 		t.Fatalf("UpdateGenre: %v", err)
@@ -147,19 +147,19 @@ func TestDBReorderGenresWritesTheRequestedOrder(t *testing.T) {
 	second := createGenre(t, client, tenant, "Mystery")
 	third := createGenre(t, client, tenant, "Romance")
 
-	wanted := []string{third.PublicId, first.PublicId, second.PublicId}
+	wanted := []string{third.Id, first.Id, second.Id}
 	reordered, err := client.ReorderGenres(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderGenresRequest{
-		Tenant:                 tenant.tenantContext(),
-		GenrePublicIds:         wanted,
-		ExpectedGenrePublicIds: []string{first.PublicId, second.PublicId, third.PublicId},
+		Tenant:           tenant.tenantContext(),
+		GenreIds:         wanted,
+		ExpectedGenreIds: []string{first.Id, second.Id, third.Id},
 	}))
 	if err != nil {
 		t.Fatalf("ReorderGenres: %v", err)
 	}
-	if got := genrePublicIDs(reordered.Msg.Genres); !slices.Equal(got, wanted) {
+	if got := genreIDs(reordered.Msg.Genres); !slices.Equal(got, wanted) {
 		t.Fatalf("ReorderGenres = %v, want %v", got, wanted)
 	}
-	if got := genrePublicIDs(listGenres(t, client, tenant)); !slices.Equal(got, wanted) {
+	if got := genreIDs(listGenres(t, client, tenant)); !slices.Equal(got, wanted) {
 		t.Fatalf("genre order = %v, want %v", got, wanted)
 	}
 }
@@ -176,9 +176,9 @@ func TestDBReorderGenresRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
 	createGenre(t, client, tenant, "Romance")
 
 	_, err := client.ReorderGenres(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderGenresRequest{
-		Tenant:                 tenant.tenantContext(),
-		GenrePublicIds:         []string{second.PublicId, first.PublicId},
-		ExpectedGenrePublicIds: []string{first.PublicId, second.PublicId},
+		Tenant:           tenant.tenantContext(),
+		GenreIds:         []string{second.Id, first.Id},
+		ExpectedGenreIds: []string{first.Id, second.Id},
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ReorderGenres code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
@@ -193,8 +193,8 @@ func TestDBDeleteGenreRemovesAnUnusedOne(t *testing.T) {
 	genre := createGenre(t, client, tenant, "Fantasy")
 
 	if _, err := client.DeleteGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: genre.PublicId,
+		Tenant:  tenant.tenantContext(),
+		GenreId: genre.Id,
 	})); err != nil {
 		t.Fatalf("DeleteGenre: %v", err)
 	}
@@ -219,8 +219,8 @@ func TestDBDeleteGenreRefusesOneASeriesCarries(t *testing.T) {
 	}
 
 	_, err := genres.DeleteGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: genre.PublicId,
+		Tenant:  tenant.tenantContext(),
+		GenreId: genre.Id,
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteGenre code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
@@ -244,9 +244,9 @@ func TestDBGenresOfAnotherTenantAreOutOfReach(t *testing.T) {
 		t.Fatalf("genres of tenant A = %v, want only its own", got)
 	}
 	_, err := client.UpdateGenre(context.Background(), newAdminDBRequest(first, &publiraadminv1.UpdateGenreRequest{
-		Tenant:   first.tenantContext(),
-		PublicId: theirs.PublicId,
-		Name:     "Renamed",
+		Tenant:  first.tenantContext(),
+		GenreId: theirs.Id,
+		Name:    "Renamed",
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateGenre code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
@@ -312,15 +312,15 @@ func TestDBGenreChangesAreAudited(t *testing.T) {
 
 	genre := createGenre(t, client, tenant, "Fantasy")
 	if _, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: genre.PublicId,
-		Name:     "High Fantasy",
+		Tenant:  tenant.tenantContext(),
+		GenreId: genre.Id,
+		Name:    "High Fantasy",
 	})); err != nil {
 		t.Fatalf("UpdateGenre: %v", err)
 	}
 	if _, err := client.DeleteGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteGenreRequest{
-		Tenant:   tenant.tenantContext(),
-		PublicId: genre.PublicId,
+		Tenant:  tenant.tenantContext(),
+		GenreId: genre.Id,
 	})); err != nil {
 		t.Fatalf("DeleteGenre: %v", err)
 	}

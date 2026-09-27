@@ -69,7 +69,7 @@ func TestDBUpdateCreatorPersists(t *testing.T) {
 
 	if _, err := creators.UpdateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateCreatorRequest{
 		Tenant:      tenant.tenantContext(),
-		PublicId:    created.Msg.Creator.PublicId,
+		CreatorId:   created.Msg.Creator.Id,
 		Name:        "After Rename",
 		ProfileText: "Updated profile",
 	})); err != nil {
@@ -379,7 +379,7 @@ func TestDBUpdateLabelWithAnUnusableImageLeavesNoImage(t *testing.T) {
 
 	_, err = labels.UpdateLabel(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateLabelRequest{
 		Tenant:                   tenant.tenantContext(),
-		PublicId:                 created.Msg.Label.PublicId,
+		LabelId:                  created.Msg.Label.Id,
 		Name:                     "Seinen",
 		EyeCatchImageData:        aspectJPEG(t, 600, 800),
 		EyeCatchImageContentType: "image/jpeg",
@@ -455,7 +455,7 @@ func TestDBUpdateCreatorWhoseIconTheStoreRefusesLeavesNoImage(t *testing.T) {
 	store.refuse.Store(true)
 	_, err = creators.UpdateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateCreatorRequest{
 		Tenant:               tenant.tenantContext(),
-		PublicId:             created.Msg.Creator.PublicId,
+		CreatorId:            created.Msg.Creator.Id,
 		Name:                 "Sakura Aoi",
 		IconImageData:        aspectJPEG(t, 300, 300),
 		IconImageContentType: "image/jpeg",

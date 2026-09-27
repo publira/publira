@@ -488,7 +488,7 @@ func (s *adminServer) CreateGenre(
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_created", created.PublicID)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, recordRef{publicID: created.PublicID})
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, created.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -497,8 +497,8 @@ func (s *adminServer) CreateGenre(
 
 // genreWithEyeCatch re-reads a genre after a write, so the answer carries the
 // eye-catch delivery now serves.
-func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID uuid.UUID, ref recordRef) (*publirattypesv1.Genre, error) {
-	row, err := s.genreByRef(ctx, tenantID, ref)
+func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID, id uuid.UUID) (*publirattypesv1.Genre, error) {
+	row, err := s.genreByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func (s *adminServer) UpdateGenre(
 	if err != nil {
 		return nil, err
 	}
-	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
@@ -553,10 +553,10 @@ func (s *adminServer) UpdateGenre(
 	// Every update writes eye_catch_image_id back, so it is read behind the
 	// lock: a rename racing a clear or a replacement would otherwise restore
 	// the eye-catch the other write had just changed.
-	if err := s.lockGenreByRef(txCtx, tenant.ID, ref); err != nil {
+	if err := s.lockGenreByID(txCtx, tenant.ID, id); err != nil {
 		return nil, err
 	}
-	current, err := s.genreByRef(txCtx, tenant.ID, ref)
+	current, err := s.genreByID(txCtx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +592,7 @@ func (s *adminServer) UpdateGenre(
 
 	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_updated", current.PublicID)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, ref)
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -607,11 +607,9 @@ func (s *adminServer) ReorderGenres(
 	if err != nil {
 		return nil, err
 	}
-	order, expected, byID, err := reorderKeys(
+	order, expected, err := reorderIDs(
 		reorderList{req.Msg.GenreIds, "genre_ids"},
 		reorderList{req.Msg.ExpectedGenreIds, "expected_genre_ids"},
-		reorderList{req.Msg.GenrePublicIds, "genre_public_ids"},
-		reorderList{req.Msg.ExpectedGenrePublicIds, "expected_genre_public_ids"},
 		"genre",
 	)
 	if err != nil {
@@ -635,10 +633,7 @@ func (s *adminServer) ReorderGenres(
 	byKey := make(map[string]dbmodels.LockGenresForTenantRow, len(locked))
 	currentOrder := make([]string, 0, len(locked))
 	for _, row := range locked {
-		key := row.PublicID
-		if byID {
-			key = row.ID.String()
-		}
+		key := row.ID.String()
 		byKey[key] = row
 		currentOrder = append(currentOrder, key)
 	}
@@ -690,11 +685,11 @@ func (s *adminServer) DeleteGenre(
 	if err != nil {
 		return nil, err
 	}
-	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.genreByRef(ctx, tenant.ID, ref)
+	current, err := s.genreByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -734,42 +729,26 @@ func genreInUseError(assigned int32) error {
 	)
 }
 
-// genreByRef reads the genre a request names, by primary key or by public_id.
-func (s *adminServer) genreByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) (dbmodels.GetGenreByIDForTenantRow, error) {
-	var (
-		row dbmodels.GetGenreByIDForTenantRow
-		err error
-	)
-	if ref.id != uuid.Nil {
-		row, err = s.queriesFor(ctx).GetGenreByIDForTenant(ctx, dbmodels.GetGenreByIDForTenantParams{TenantID: tenantID, ID: ref.id})
-	} else {
-		var byPublicID dbmodels.GetGenreByPublicIDForTenantRow
-		byPublicID, err = s.queriesFor(ctx).GetGenreByPublicIDForTenant(ctx, dbmodels.GetGenreByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
-		row = dbmodels.GetGenreByIDForTenantRow(byPublicID)
-	}
+// genreByID reads the genre a request names.
+func (s *adminServer) genreByID(ctx context.Context, tenantID, id uuid.UUID) (dbmodels.GetGenreByIDForTenantRow, error) {
+	row, err := s.queriesFor(ctx).GetGenreByIDForTenant(ctx, dbmodels.GetGenreByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.GetGenreByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
 		}
-		return dbmodels.GetGenreByIDForTenantRow{}, s.internalDBError(ctx, "failed to get genre", err, "tenant_id", tenantID.String(), "genre_id", ref.id.String(), "genre_public_id", ref.publicID)
+		return dbmodels.GetGenreByIDForTenantRow{}, s.internalDBError(ctx, "failed to get genre", err, "tenant_id", tenantID.String(), "genre_id", id.String())
 	}
 	return row, nil
 }
 
-// lockGenreByRef takes the row lock every eye-catch write on one genre
+// lockGenreByID takes the row lock every eye-catch write on one genre
 // serializes behind; the caller re-reads eye_catch_image_id after it.
-func (s *adminServer) lockGenreByRef(ctx context.Context, tenantID uuid.UUID, ref recordRef) error {
-	var err error
-	if ref.id != uuid.Nil {
-		_, err = s.queriesFor(ctx).LockGenreByIDForTenant(ctx, dbmodels.LockGenreByIDForTenantParams{TenantID: tenantID, ID: ref.id})
-	} else {
-		_, err = s.queriesFor(ctx).LockGenreByPublicIDForTenant(ctx, dbmodels.LockGenreByPublicIDForTenantParams{TenantID: tenantID, PublicID: ref.publicID})
-	}
-	if err != nil {
+func (s *adminServer) lockGenreByID(ctx context.Context, tenantID, id uuid.UUID) error {
+	if _, err := s.queriesFor(ctx).LockGenreByIDForTenant(ctx, dbmodels.LockGenreByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
 		}
-		return s.internalDBError(ctx, "failed to lock genre", err, "tenant_id", tenantID.String(), "genre_id", ref.id.String(), "genre_public_id", ref.publicID)
+		return s.internalDBError(ctx, "failed to lock genre", err, "tenant_id", tenantID.String(), "genre_id", id.String())
 	}
 	return nil
 }

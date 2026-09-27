@@ -58,21 +58,6 @@ ORDER BY g.display_order DESC,
     g.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: GetGenreByPublicIDForTenant :one
-SELECT g.id,
-    g.public_id,
-    g.name,
-    g.slug,
-    g.display_order,
-    g.created_at,
-    g.eye_catch_image_id,
-    gi.updated_at AS eye_catch_image_updated_at
-FROM genres g
-    LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
-WHERE g.tenant_id = $1
-    AND g.public_id = $2
-LIMIT 1;
-
 -- name: GetGenreByIDForTenant :one
 SELECT g.id,
     g.public_id,

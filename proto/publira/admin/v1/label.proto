@@ -49,12 +49,13 @@ message CreateLabelResponse {
 
 message UpdateLabelRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   string name = 3;
   bytes eye_catch_image_data = 4;
   string eye_catch_image_content_type = 5;
   bool clear_eye_catch_image = 6;
-  // The label's primary key (Label.id). Takes precedence over public_id.
+  // The label's primary key (Label.id).
   string label_id = 7;
 }
 
@@ -66,7 +67,8 @@ message UpdateLabelResponse {
 // ratios keep the images they already hold.
 message UploadLabelEyeCatchAspectImageRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   // portrait / square / landscape / og
   string variant_type = 3;
   bytes image_data = 4;
@@ -74,7 +76,7 @@ message UploadLabelEyeCatchAspectImageRequest {
   // Where in the upload the cut is taken. Omitted, the image is cut from its
   // centre as it always has been.
   publira.types.v1.ImageCropRect crop = 6;
-  // The label's primary key (Label.id). Takes precedence over public_id.
+  // The label's primary key (Label.id).
   string label_id = 7;
 }
 

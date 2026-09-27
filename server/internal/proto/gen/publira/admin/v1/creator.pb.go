@@ -376,7 +376,6 @@ func (x *CreateCreatorResponse) GetCreator() *v1.Creator {
 type UpdateCreatorRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Tenant               *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId             string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Name                 string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	ProfileText          string                 `protobuf:"bytes,4,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
 	IconImageData        []byte                 `protobuf:"bytes,5,opt,name=icon_image_data,json=iconImageData,proto3" json:"icon_image_data,omitempty"`
@@ -385,7 +384,7 @@ type UpdateCreatorRequest struct {
 	// Where in the upload the square icon is cut. Omitted, the image is cut
 	// from its centre as it always has been.
 	IconImageCrop *v1.ImageCropRect `protobuf:"bytes,8,opt,name=icon_image_crop,json=iconImageCrop,proto3" json:"icon_image_crop,omitempty"`
-	// The creator's primary key (Creator.id). Takes precedence over public_id.
+	// The creator's primary key (Creator.id).
 	CreatorId     string `protobuf:"bytes,9,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -426,13 +425,6 @@ func (x *UpdateCreatorRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateCreatorRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
 }
 
 func (x *UpdateCreatorRequest) GetName() string {
@@ -555,10 +547,9 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x17icon_image_content_type\x18\x05 \x01(\tR\x14iconImageContentType\x12G\n" +
 	"\x0ficon_image_crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\"L\n" +
 	"\x15CreateCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\x94\x03\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\x88\x03\n" +
 	"\x14UpdateCreatorRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12!\n" +
 	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\x12&\n" +
 	"\x0ficon_image_data\x18\x05 \x01(\fR\riconImageData\x125\n" +
@@ -566,7 +557,7 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x10clear_icon_image\x18\a \x01(\bR\x0eclearIconImage\x12G\n" +
 	"\x0ficon_image_crop\x18\b \x01(\v2\x1f.publira.types.v1.ImageCropRectR\riconImageCrop\x12\x1d\n" +
 	"\n" +
-	"creator_id\x18\t \x01(\tR\tcreatorId\"L\n" +
+	"creator_id\x18\t \x01(\tR\tcreatorIdJ\x04\b\x02\x10\x03R\tpublic_id\"L\n" +
 	"\x15UpdateCreatorResponse\x123\n" +
 	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator2\x99\x03\n" +
 	"\x13AdminCreatorService\x12_\n" +

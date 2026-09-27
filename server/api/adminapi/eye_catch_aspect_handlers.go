@@ -281,11 +281,11 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	ref, err := recordRefArg(req.Msg.LabelId, req.Msg.PublicId, "label_id")
+	id, err := parseRecordID(req.Msg.LabelId, "label_id")
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.labelByRef(ctx, tenant.ID, ref)
+	current, err := s.labelByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -306,10 +306,10 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	// Serialized and re-read behind the lock, like the series upload above.
-	if err := s.lockLabelByRef(txCtx, tenant.ID, ref); err != nil {
+	if err := s.lockLabelByID(txCtx, tenant.ID, id); err != nil {
 		return nil, err
 	}
-	locked, err := s.labelByRef(txCtx, tenant.ID, ref)
+	locked, err := s.labelByID(txCtx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -376,15 +376,15 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
-	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, ref)
+	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}), nil
 }
 
-func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID uuid.UUID, ref recordRef) (*publirattypesv1.Label, error) {
-	row, err := s.labelByRef(ctx, tenantID, ref)
+func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID, id uuid.UUID) (*publirattypesv1.Label, error) {
+	row, err := s.labelByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -441,11 +441,11 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
 	}
 
-	ref, err := recordRefArg(req.Msg.GenreId, req.Msg.PublicId, "genre_id")
+	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.genreByRef(ctx, tenant.ID, ref)
+	current, err := s.genreByID(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -466,10 +466,10 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	// Serialized and re-read behind the lock, like the series upload above.
-	if err := s.lockGenreByRef(txCtx, tenant.ID, ref); err != nil {
+	if err := s.lockGenreByID(txCtx, tenant.ID, id); err != nil {
 		return nil, err
 	}
-	locked, err := s.genreByRef(txCtx, tenant.ID, ref)
+	locked, err := s.genreByID(txCtx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 
 	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
-	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, ref)
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}

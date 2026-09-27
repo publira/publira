@@ -420,15 +420,15 @@ func TestUploadLabelEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
-		WithArgs(tenantID, "LABEL001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "LABEL001",
+		LabelId:          labelID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 2400, 2400),
 		ImageContentType: "image/jpeg",
@@ -456,17 +456,17 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
-		WithArgs(tenantID, "LABEL001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockLabelByPublicIDForTenant)).
-		WithArgs(tenantID, "LABEL001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(labelID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
-		WithArgs(tenantID, "LABEL001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteLabelImageVariantsByType)).
@@ -483,8 +483,8 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByPublicIDForTenant)).
-		WithArgs(tenantID, "LABEL001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLabelByIDForTenant)).
+		WithArgs(tenantID, labelID).
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
@@ -495,7 +495,7 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "LABEL001",
+		LabelId:          labelID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
@@ -528,15 +528,15 @@ func TestUploadGenreEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T) 
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
-		WithArgs(tenantID, "GENRE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
 		WillReturnRows(sqlmock.NewRows(genreRowColumns()).
 			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, nil, nil))
 
 	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "GENRE001",
+		GenreId:          genreID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
@@ -566,16 +566,16 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
-		WithArgs(tenantID, "GENRE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
 		WillReturnRows(genreRow())
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockGenreByPublicIDForTenant)).
-		WithArgs(tenantID, "GENRE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(genreID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
-		WithArgs(tenantID, "GENRE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
 		WillReturnRows(genreRow())
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteGenreImageVariantsByType)).
 		WithArgs(imageID, "square").
@@ -591,8 +591,8 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByPublicIDForTenant)).
-		WithArgs(tenantID, "GENRE001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
+		WithArgs(tenantID, genreID).
 		WillReturnRows(genreRow())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
@@ -602,7 +602,7 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		PublicId:         "GENRE001",
+		GenreId:          genreID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",

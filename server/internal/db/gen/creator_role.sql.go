@@ -120,41 +120,6 @@ func (q *Queries) GetCreatorRoleByIDForTenant(ctx context.Context, arg GetCreato
 	return i, err
 }
 
-const GetCreatorRoleByPublicIDForTenant = `-- name: GetCreatorRoleByPublicIDForTenant :one
-SELECT cr.id,
-    cr.public_id,
-    cr.name,
-    cr.display_priority
-FROM creator_roles cr
-WHERE cr.tenant_id = $1
-    AND cr.public_id = $2
-LIMIT 1
-`
-
-type GetCreatorRoleByPublicIDForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-}
-
-type GetCreatorRoleByPublicIDForTenantRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	Name            string    `json:"name"`
-	DisplayPriority int32     `json:"display_priority"`
-}
-
-func (q *Queries) GetCreatorRoleByPublicIDForTenant(ctx context.Context, arg GetCreatorRoleByPublicIDForTenantParams) (GetCreatorRoleByPublicIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetCreatorRoleByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i GetCreatorRoleByPublicIDForTenantRow
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.Name,
-		&i.DisplayPriority,
-	)
-	return i, err
-}
-
 const GetMaxCreatorRoleDisplayPriorityForTenant = `-- name: GetMaxCreatorRoleDisplayPriorityForTenant :one
 SELECT COALESCE(MAX(display_priority), 0)::int4 AS max_display_priority
 FROM creator_roles

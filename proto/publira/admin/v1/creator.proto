@@ -53,7 +53,8 @@ message CreateCreatorResponse {
 
 message UpdateCreatorRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string public_id = 2;
+  reserved 2;
+  reserved "public_id";
   string name = 3;
   string profile_text = 4;
   bytes icon_image_data = 5;
@@ -62,7 +63,7 @@ message UpdateCreatorRequest {
   // Where in the upload the square icon is cut. Omitted, the image is cut
   // from its centre as it always has been.
   publira.types.v1.ImageCropRect icon_image_crop = 8;
-  // The creator's primary key (Creator.id). Takes precedence over public_id.
+  // The creator's primary key (Creator.id).
   string creator_id = 9;
 }
 

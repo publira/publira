@@ -91,26 +91,6 @@ func TestDBCreatorRolesAreAddressedByID(t *testing.T) {
 	}
 }
 
-// A reorder by ID compares the stale list the client read the same way the
-// public ID lists are compared.
-func TestDBReorderCreatorRolesByIDRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
-	env := newAdminDBEnv(t)
-	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	client := env.creatorRoleClient()
-
-	current := creatorRoleIDs(listCreatorRoles(t, client, tenant))
-	createCreatorRole(t, client, tenant, "Letterer")
-
-	_, err := client.ReorderCreatorRoles(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderCreatorRolesRequest{
-		Tenant:                 tenant.tenantContext(),
-		CreatorRoleIds:         []string{current[1], current[0], current[2], current[3]},
-		ExpectedCreatorRoleIds: current,
-	}))
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("ReorderCreatorRoles code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
-	}
-}
-
 func TestDBCreatorRoleIDThatIsNotAnIdentifierIsRefused(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
