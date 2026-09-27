@@ -10,6 +10,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/contentranking"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -31,10 +33,10 @@ func rankingPeriodDate(daysBack int) time.Time {
 	return time.Date(2026, time.March, 14, 0, 0, 0, 0, time.UTC).AddDate(0, 0, -daysBack)
 }
 
-// seedPeriodRankingSnapshot files one tenant-wide snapshot under a ranking
-// key, over the single day given, in the order the ids are given, for each
-// surface alike. computed_at follows the period, so snapshots of older periods
-// are also the older computations.
+// seedPeriodRankingSnapshot files one tenant-wide all-ages snapshot under a
+// ranking key, over the single day given, in the order the ids are given, for
+// each surface alike. computed_at follows the period, so snapshots of older
+// periods are also the older computations.
 func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
@@ -43,15 +45,43 @@ func (e *publicDBEnv) seedPeriodRankingSnapshot(
 	seriesIDs ...uuid.UUID,
 ) {
 	t.Helper()
-	e.seedGenrePeriodRankingSnapshot(t, tenantID, uuid.NullUUID{}, rankingKey, period, seriesIDs...)
+	e.seedLeaderboardSnapshot(t, tenantID, uuid.NullUUID{}, ageverification.RatingAll, rankingKey, period, seriesIDs...)
+}
+
+// seedRatedPeriodRankingSnapshot is seedPeriodRankingSnapshot for the
+// tenant-wide ranking of one age rating.
+func (e *publicDBEnv) seedRatedPeriodRankingSnapshot(
+	t *testing.T,
+	tenantID uuid.UUID,
+	ageRating string,
+	rankingKey string,
+	period time.Time,
+	seriesIDs ...uuid.UUID,
+) {
+	t.Helper()
+	e.seedLeaderboardSnapshot(t, tenantID, uuid.NullUUID{}, ageRating, rankingKey, period, seriesIDs...)
 }
 
 // seedGenrePeriodRankingSnapshot is seedPeriodRankingSnapshot for one genre's
-// ranking. A null genre is the tenant-wide ranking.
+// ranking, which is only ever all-ages. A null genre is the tenant-wide
+// ranking.
 func (e *publicDBEnv) seedGenrePeriodRankingSnapshot(
 	t *testing.T,
 	tenantID uuid.UUID,
 	genreID uuid.NullUUID,
+	rankingKey string,
+	period time.Time,
+	seriesIDs ...uuid.UUID,
+) {
+	t.Helper()
+	e.seedLeaderboardSnapshot(t, tenantID, genreID, ageverification.RatingAll, rankingKey, period, seriesIDs...)
+}
+
+func (e *publicDBEnv) seedLeaderboardSnapshot(
+	t *testing.T,
+	tenantID uuid.UUID,
+	genreID uuid.NullUUID,
+	ageRating string,
 	rankingKey string,
 	period time.Time,
 	seriesIDs ...uuid.UUID,
@@ -71,12 +101,12 @@ func (e *publicDBEnv) seedGenrePeriodRankingSnapshot(
 		if _, err := e.PG.DB.ExecContext(context.Background(), `
 			INSERT INTO content_ranking_snapshots (
 				id, tenant_id, ranking_key, period_start, period_end,
-				entity_type, items, algorithm_version, computed_at, genre_id, surface
+				entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 			) VALUES (
 				uuidv7(), $1, $2, $3::date, $3::date,
-				'series', $4::jsonb, $5, $3::date + interval '1 day', $6, $7
+				'series', $4::jsonb, $5, $3::date + interval '1 day', $6, $7, $8
 			)
-		`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion, genreID, surface); err != nil {
+		`, tenantID, rankingKey, period.Format(time.DateOnly), items, contentranking.AlgorithmVersion, genreID, surface, ageRating); err != nil {
 			t.Fatalf("insert content_ranking_snapshots: %v", err)
 		}
 	}
@@ -532,5 +562,231 @@ func TestDBRankingReadsTheLeaderboardOfTheCallingSurface(t *testing.T) {
 				t.Fatalf("recommended series = %v, want %v", got, tc.ordered)
 			}
 		})
+	}
+}
+
+// The batch ranks each age rating on its own, so a rating's chart runs in
+// consecutive positions however the ratings are mixed in the catalogue, the
+// default chart names no rated work, and the recommendation order still ranks
+// the whole catalogue together.
+func TestDBRankingCutsALeaderboardPerAgeRating(t *testing.T) {
+	env := newPublicDBEnv(t)
+	ctx := context.Background()
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	now := time.Now()
+	seed := func(publicID, ageRating string, views int64) {
+		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:    publicID,
+			Title:       publicID,
+			Published:   true,
+			PublishedAt: now.Add(-24 * time.Hour),
+			AgeRating:   ageRating,
+		})
+		if _, err := env.PG.DB.ExecContext(ctx, `
+			INSERT INTO content_daily_stats (id, tenant_id, stat_date, entity_type, entity_id, view_count)
+			VALUES (uuidv7(), $1, $2::date, 'series', $3, $4)
+		`, tenant.ID, rankingPeriodDate(0).Format(time.DateOnly), series.ID, views); err != nil {
+			t.Fatalf("insert content_daily_stats: %v", err)
+		}
+	}
+	seed("R18FIRST0001", ageverification.RatingR18, 100)
+	seed("R15FIRST0001", ageverification.RatingR15, 90)
+	seed("ALLFIRST0001", ageverification.RatingAll, 80)
+	seed("R18SECOND001", ageverification.RatingR18, 70)
+	seed("ALLSECOND001", ageverification.RatingAll, 60)
+
+	options := contentranking.Options{ReferenceDate: rankingPeriodDate(0)}
+	if _, err := contentranking.New(env.PG.OpenPlatformDB(t)).Run(ctx, options); err != nil {
+		t.Fatalf("rank: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		ageRating publirattypesv1.SeriesAgeRating
+		want      []string
+	}{
+		{
+			name: "unspecified is all-ages",
+			want: []string{"ALLFIRST0001@1", "ALLSECOND001@2"},
+		},
+		{
+			name:      "r15",
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15,
+			want:      []string{"R15FIRST0001@1"},
+		},
+		{
+			name:      "r18",
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+			want:      []string{"R18FIRST0001@1", "R18SECOND001@2"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{
+				Tenant:    tenantContext(tenant),
+				AgeRating: tc.ageRating,
+			})
+			if got := rankedPositions(resp.RankedSeries); !slices.Equal(got, tc.want) {
+				t.Fatalf("ranked series = %v, want %v", got, tc.want)
+			}
+		})
+	}
+
+	recommended := env.listRecommendedSeries(t, &publirav1.ListRecommendedSeriesRequest{
+		Tenant: tenantContext(tenant),
+	})
+	got := make([]string, 0, len(recommended.Series))
+	for _, series := range recommended.Series {
+		got = append(got, series.PublicId)
+	}
+	if want := []string{"R18FIRST0001", "R15FIRST0001", "ALLFIRST0001", "R18SECOND001", "ALLSECOND001"}; !slices.Equal(got, want) {
+		t.Fatalf("recommended series = %v, want %v", got, want)
+	}
+}
+
+func TestDBListRankedSeriesAppliesTheTenantAgeRule(t *testing.T) {
+	tests := []struct {
+		name      string
+		rule      string
+		ageRating publirattypesv1.SeriesAgeRating
+		// signedIn sends the request as a reader, aged age when hasBirthDate is
+		// set; a guest sends no bearer at all.
+		signedIn     bool
+		hasBirthDate bool
+		age          int
+		wantCode     connect.Code
+		wantPrivate  bool
+	}{
+		{
+			name:      "a tenant verifying nothing shows a rated chart to a guest",
+			rule:      ageverification.None,
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+		},
+		{
+			name:      "a guest is refused a chart the rule covers",
+			rule:      ageverification.R18,
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+			wantCode:  connect.CodePermissionDenied,
+		},
+		{
+			name:      "so is a reader who has given no birth date",
+			rule:      ageverification.R18,
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+			signedIn:  true,
+			wantCode:  connect.CodePermissionDenied,
+		},
+		{
+			name:         "and a reader who is seventeen",
+			rule:         ageverification.R18,
+			ageRating:    publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+			signedIn:     true,
+			hasBirthDate: true,
+			age:          17,
+			wantCode:     connect.CodePermissionDenied,
+		},
+		{
+			name:         "a reader who is eighteen gets the chart, privately",
+			rule:         ageverification.R18,
+			ageRating:    publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+			signedIn:     true,
+			hasBirthDate: true,
+			age:          18,
+			wantPrivate:  true,
+		},
+		{
+			name:      "the r18 rule leaves the r15 chart public",
+			rule:      ageverification.R18,
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15,
+		},
+		{
+			name:      "the wider rule covers the r15 chart as well",
+			rule:      ageverification.R15AndR18,
+			ageRating: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15,
+			wantCode:  connect.CodePermissionDenied,
+		},
+		{
+			name: "the all-ages chart asks nothing of anyone",
+			rule: ageverification.R15AndR18,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newPublicDBEnv(t)
+			tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+			setTenantAgeVerification(t, env, tenant.ID, tt.rule)
+
+			stored, err := protomapper.SeriesAgeRatingToStored(tt.ageRating)
+			if err != nil {
+				t.Fatalf("SeriesAgeRatingToStored(%v): %v", tt.ageRating, err)
+			}
+			series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+				PublicID:    "SERIESA00001",
+				Title:       "Ranked Series",
+				Published:   true,
+				PublishedAt: time.Now().Add(-24 * time.Hour),
+				AgeRating:   stored,
+			})
+			env.seedRatedPeriodRankingSnapshot(t, tenant.ID, stored, contentranking.DailyRankingKey, rankingPeriodDate(0), series.ID)
+
+			request := connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+				Tenant:    tenantContext(tenant),
+				AgeRating: tt.ageRating,
+			})
+			if tt.signedIn {
+				reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+				if tt.hasBirthDate {
+					setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, tt.age, false))
+				}
+				request = newBearerRequest(request.Msg, tokenFor(t, tenant, reader))
+			}
+
+			resp, err := env.catalogClient().ListRankedSeries(context.Background(), request)
+			if tt.wantCode != 0 {
+				if connect.CodeOf(err) != tt.wantCode {
+					t.Fatalf("error code = %v (%v), want %v", connect.CodeOf(err), err, tt.wantCode)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ListRankedSeries: %v", err)
+			}
+			if got, want := rankedPositions(resp.Msg.RankedSeries), []string{"SERIESA00001@1"}; !slices.Equal(got, want) {
+				t.Fatalf("ranked series = %v, want %v", got, want)
+			}
+			if got := resp.Header().Get("Cache-Control"); (got == "private, no-store") != tt.wantPrivate {
+				t.Fatalf("Cache-Control = %q, want private: %v", got, tt.wantPrivate)
+			}
+		})
+	}
+}
+
+// A series re-rated since the batch ran still sits in the snapshot of the
+// rating it had, and the read leaves its place empty rather than show it under
+// a rating it no longer carries.
+func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasReRated(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	seed := func(publicID string) testutil.Series {
+		return env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
+			PublicID:    publicID,
+			Title:       publicID,
+			Published:   true,
+			PublishedAt: time.Now().Add(-24 * time.Hour),
+		})
+	}
+	top, reRated, tail := seed("SERIESATOP01"), seed("SERIESARATE1"), seed("SERIESATAIL1")
+	env.seedPeriodRankingSnapshot(t, tenant.ID, contentranking.DailyRankingKey, rankingPeriodDate(0), top.ID, reRated.ID, tail.ID)
+
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE series_listings SET age_rating = 'r18' WHERE series_id = $1", reRated.ID,
+	); err != nil {
+		t.Fatalf("re-rate series: %v", err)
+	}
+
+	resp := env.listRankedSeries(t, &publirav1.ListRankedSeriesRequest{Tenant: tenantContext(tenant)})
+	if got, want := rankedPositions(resp.RankedSeries), []string{"SERIESATOP01@1", "SERIESATAIL1@3"}; !slices.Equal(got, want) {
+		t.Fatalf("ranked series = %v, want %v", got, want)
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
@@ -52,6 +54,53 @@ func rankingKeyForPeriod(period publirav1.RankingPeriod) (string, error) {
 	}
 }
 
+// rankingLeaderboard names the snapshots one ranking is read from: the
+// surface the batch cut them for, the period they cover, and the age rating
+// whose series they rank.
+type rankingLeaderboard struct {
+	surface    string
+	rankingKey string
+	ageRating  string
+}
+
+// readerMayListRanking refuses the ranking of a rating the tenant's age rule
+// covers to a reader who has not cleared it, as GetEpisodeDetail withholds a
+// rated body, and reports whether the answer therefore depends on the reader.
+// A rejected session reads as a guest; any other auth failure is reported.
+func (s *apiServer) readerMayListRanking(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListRankedSeriesRequest],
+	tenant dbmodels.Tenant,
+	ageRating string,
+) (private bool, err error) {
+	minimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, sql.NullString{String: ageRating, Valid: true})
+	if err != nil {
+		return false, s.internalError(ctx, "failed to resolve the tenant age rule for a ranking", err, "tenant_id", tenant.ID.String())
+	}
+	if minimumAge == 0 {
+		return false, nil
+	}
+
+	var birthDate sql.NullTime
+	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
+		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+		switch {
+		case authErr == nil:
+			birthDate = session.User.BirthDate
+		case connect.CodeOf(authErr) != connect.CodeUnauthenticated:
+			return false, authErr
+		}
+	}
+	clears, err := s.readerClearsMinimumAge(ctx, tenant, minimumAge, birthDate)
+	if err != nil {
+		return false, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String())
+	}
+	if !clears {
+		return false, connect.NewError(connect.CodePermissionDenied, errors.New("the reader has not proven the age this rating asks for"))
+	}
+	return true, nil
+}
+
 // rankingItem is one entry of a snapshot's items array, cut down to what a
 // position needs. The rank is a pointer so an item written without one is told
 // apart from an item at position 0 instead of folded into it.
@@ -73,8 +122,7 @@ type rankingSnapshots struct {
 }
 
 // rankingSnapshotsForPage reads the snapshot a page is built from together with
-// the period before it, both from the leaderboards the batch cut for the
-// calling surface.
+// the period before it, both from the leaderboard the request names.
 //
 // The first page takes the newest period. Every page after it is pinned to the
 // snapshot its token names, so a chart stays the chart the reader started
@@ -89,8 +137,7 @@ type rankingSnapshots struct {
 func (s *apiServer) rankingSnapshotsForPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	surface string,
-	rankingKey string,
+	leaderboard rankingLeaderboard,
 	pinned uuid.NullUUID,
 ) (rankingSnapshots, error) {
 	queries := s.queriesFor(ctx)
@@ -99,8 +146,9 @@ func (s *apiServer) rankingSnapshotsForPage(
 		current, err := queries.GetContentRankingSnapshotByID(ctx, dbmodels.GetContentRankingSnapshotByIDParams{
 			TenantID:   tenantID,
 			ID:         pinned.UUID,
-			Surface:    surface,
-			RankingKey: rankingKey,
+			Surface:    leaderboard.surface,
+			AgeRating:  leaderboard.ageRating,
+			RankingKey: leaderboard.rankingKey,
 			EntityType: seriesRankingEntityType,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -109,13 +157,14 @@ func (s *apiServer) rankingSnapshotsForPage(
 		if err != nil {
 			return rankingSnapshots{}, err
 		}
-		return s.rankingSnapshotsPrecededBy(ctx, tenantID, surface, rankingKey, current)
+		return s.rankingSnapshotsPrecededBy(ctx, tenantID, leaderboard, current)
 	}
 
 	rows, err := queries.ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:   tenantID,
-		Surface:    surface,
-		RankingKey: rankingKey,
+		Surface:    leaderboard.surface,
+		AgeRating:  leaderboard.ageRating,
+		RankingKey: leaderboard.rankingKey,
 		EntityType: seriesRankingEntityType,
 		Limit:      rankingSnapshotPairSize,
 	})
@@ -139,14 +188,14 @@ func (s *apiServer) rankingSnapshotsForPage(
 func (s *apiServer) rankingSnapshotsPrecededBy(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	surface string,
-	rankingKey string,
+	leaderboard rankingLeaderboard,
 	current dbmodels.ContentRankingSnapshot,
 ) (rankingSnapshots, error) {
 	rows, err := s.queriesFor(ctx).ListLatestContentRankingSnapshots(ctx, dbmodels.ListLatestContentRankingSnapshotsParams{
 		TenantID:          tenantID,
-		Surface:           surface,
-		RankingKey:        rankingKey,
+		Surface:           leaderboard.surface,
+		AgeRating:         leaderboard.ageRating,
+		RankingKey:        leaderboard.rankingKey,
 		EntityType:        seriesRankingEntityType,
 		BeforePeriodStart: sql.NullTime{Time: current.PeriodStart, Valid: true},
 		Limit:             rankingSnapshotPrecedingSize,
@@ -195,25 +244,28 @@ func (s *apiServer) rankPositions(ctx context.Context, snapshot dbmodels.Content
 	return positions
 }
 
-// The ListRankedSeries cursor carries the period it was built for and the
-// snapshot it was built from, then the sort keys of the scan: the position the
-// row holds in that snapshot, and the series id that keeps the key unique.
+// The ListRankedSeries cursor carries the period and the age rating it was
+// built for and the snapshot it was built from, then the sort keys of the
+// scan: the position the row holds in that snapshot, and the series id that
+// keeps the key unique.
 //
-// Both of the leading keys refuse a token rather than reinterpret it, for the
+// The three leading keys refuse a token rather than reinterpret it, for the
 // same reason: a position means nothing without the ranking it counts in. The
-// period is checked first because a client sends it, and the snapshot second
-// because the batch changes it — the pinned id is also what keeps the rest of a
-// traversal inside the ranking it started in. Token rules: proto/README.md.
+// period and the rating are checked first because a client sends them, and the
+// snapshot last because the batch changes it — the pinned id is also what keeps
+// the rest of a traversal inside the ranking it started in. Token rules:
+// proto/README.md.
 func encodeRankedSeriesCursor(
 	direction pagination.Direction,
-	rankingKey string,
+	leaderboard rankingLeaderboard,
 	snapshotID uuid.UUID,
 	rank int32,
 	id uuid.UUID,
 ) string {
 	return pagination.Encode(
 		direction,
-		rankingKey,
+		leaderboard.rankingKey,
+		leaderboard.ageRating,
 		snapshotID.String(),
 		strconv.FormatInt(int64(rank), 10),
 		id.String(),
@@ -225,12 +277,13 @@ func encodeRankedSeriesCursor(
 // was issued.
 func encodeRankedSeriesRecoveryToken(
 	direction pagination.Direction,
-	rankingKey string,
+	leaderboard rankingLeaderboard,
 	keys rankedSeriesCursorKeys,
 ) string {
 	return pagination.Encode(
 		direction,
-		rankingKey,
+		leaderboard.rankingKey,
+		leaderboard.ageRating,
 		keys.snapshotID.UUID.String(),
 		strconv.FormatInt(int64(keys.rank.Int32), 10),
 		keys.id.UUID.String(),
@@ -247,27 +300,30 @@ type rankedSeriesCursorKeys struct {
 	inclusive  bool
 }
 
-func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, rankingKey string) (rankedSeriesCursorKeys, error) {
+func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, leaderboard rankingLeaderboard) (rankedSeriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 4 && len(cursor.Keys) != 5 {
+	if len(cursor.Keys) != 5 && len(cursor.Keys) != 6 {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	inclusive := len(cursor.Keys) == 5
-	if inclusive && cursor.Keys[4] != seriesInclusiveKey {
+	inclusive := len(cursor.Keys) == 6
+	if inclusive && cursor.Keys[5] != seriesInclusiveKey {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != rankingKey {
+	if cursor.Keys[0] != leaderboard.rankingKey {
 		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another period"))
 	}
-	snapshotID, err := uuid.Parse(cursor.Keys[1])
+	if cursor.Keys[1] != leaderboard.ageRating {
+		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another age rating"))
+	}
+	snapshotID, err := uuid.Parse(cursor.Keys[2])
 	if err != nil {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	rank, err := strconv.ParseInt(cursor.Keys[2], 10, 32)
+	rank, err := strconv.ParseInt(cursor.Keys[3], 10, 32)
 	if err != nil {
 		return rankedSeriesCursorKeys{}, invalid
 	}
-	id, err := uuid.Parse(cursor.Keys[3])
+	id, err := uuid.Parse(cursor.Keys[4])
 	if err != nil {
 		return rankedSeriesCursorKeys{}, invalid
 	}
@@ -289,7 +345,7 @@ type rankedSeriesPageRow struct {
 func (s *apiServer) rankedSeriesPageRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	surface string,
+	leaderboard rankingLeaderboard,
 	items json.RawMessage,
 	reversed bool,
 	keys rankedSeriesCursorKeys,
@@ -299,7 +355,8 @@ func (s *apiServer) rankedSeriesPageRows(
 
 	if reversed {
 		rows, err := queries.ListRankedSeriesIDsReversed(ctx, dbmodels.ListRankedSeriesIDsReversedParams{
-			Surface:         surface,
+			Surface:         leaderboard.surface,
+			AgeRating:       leaderboard.ageRating,
 			CursorID:        keys.id,
 			CursorInclusive: keys.inclusive,
 			CursorRank:      keys.rank,
@@ -318,7 +375,8 @@ func (s *apiServer) rankedSeriesPageRows(
 	}
 
 	rows, err := queries.ListRankedSeriesIDs(ctx, dbmodels.ListRankedSeriesIDsParams{
-		Surface:         surface,
+		Surface:         leaderboard.surface,
+		AgeRating:       leaderboard.ageRating,
 		CursorID:        keys.id,
 		CursorInclusive: keys.inclusive,
 		CursorRank:      keys.rank,
@@ -336,8 +394,8 @@ func (s *apiServer) rankedSeriesPageRows(
 	return page, nil
 }
 
-// ListRankedSeries pages through the latest ranking snapshot of one period,
-// in the positions that snapshot recorded.
+// ListRankedSeries pages through the latest ranking snapshot of one period and
+// one age rating, in the positions that snapshot recorded.
 //
 // This is the leaderboard, not the storefront's recommendation order: it shows
 // only what the batch ranked, at the positions it assigned, so a series that
@@ -360,6 +418,11 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
+	ageRating, err := protomapper.SeriesAgeRatingToStored(req.Msg.AgeRating)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("age_rating is unknown"))
+	}
+	leaderboard := rankingLeaderboard{surface: surface, rankingKey: rankingKey, ageRating: ageRating}
 	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
 	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
 	if err != nil {
@@ -367,13 +430,23 @@ func (s *apiServer) ListRankedSeries(
 	}
 	var keys rankedSeriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeRankedSeriesCursorKeys(cursor, rankingKey)
+		keys, err = decodeRankedSeriesCursorKeys(cursor, leaderboard)
 		if err != nil {
 			return nil, err
 		}
 	}
+	private, err := s.readerMayListRanking(ctx, req, tenant, ageRating)
+	if err != nil {
+		return nil, err
+	}
+	respond := func(res *publirav1.ListRankedSeriesResponse) *connect.Response[publirav1.ListRankedSeriesResponse] {
+		if private {
+			return noStorePrivateResponse(res)
+		}
+		return connect.NewResponse(res)
+	}
 
-	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, surface, rankingKey, keys.snapshotID)
+	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, leaderboard, keys.snapshotID)
 	if errors.Is(err, errRankingSnapshotUnavailable) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is no longer valid"))
 	}
@@ -384,14 +457,14 @@ func (s *apiServer) ListRankedSeries(
 	// describe a snapshot that does not exist, so they stay empty too, and
 	// there is no page in either direction to hand a token back to.
 	if !snapshots.found {
-		return connect.NewResponse(&publirav1.ListRankedSeriesResponse{}), nil
+		return respond(&publirav1.ListRankedSeriesResponse{}), nil
 	}
 
 	// One row past the page: its presence is what says another page exists.
 	pageRows, err := s.rankedSeriesPageRows(
 		ctx,
 		tenant.ID,
-		surface,
+		leaderboard,
 		snapshots.current.Items,
 		cursor.Direction == pagination.Backward,
 		keys,
@@ -439,12 +512,12 @@ func (s *apiServer) ListRankedSeries(
 		if hasPrevious {
 			first := rows[0]
 			res.PreviousToken = encodeRankedSeriesCursor(
-				pagination.Backward, rankingKey, snapshots.current.ID, rankByID[first.ID], first.ID)
+				pagination.Backward, leaderboard, snapshots.current.ID, rankByID[first.ID], first.ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
 			res.NextToken = encodeRankedSeriesCursor(
-				pagination.Forward, rankingKey, snapshots.current.ID, rankByID[last.ID], last.ID)
+				pagination.Forward, leaderboard, snapshots.current.ID, rankByID[last.ID], last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -452,10 +525,10 @@ func (s *apiServer) ListRankedSeries(
 	// recovery token that comes back empty leaves both tokens empty rather
 	// than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeRankedSeriesRecoveryToken(pagination.Backward, rankingKey, keys)
+		res.PreviousToken = encodeRankedSeriesRecoveryToken(pagination.Backward, leaderboard, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeRankedSeriesRecoveryToken(pagination.Forward, rankingKey, keys)
+		res.NextToken = encodeRankedSeriesRecoveryToken(pagination.Forward, leaderboard, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return respond(res), nil
 }

@@ -88,7 +88,7 @@ func (q *Queries) GetContentEventByID(ctx context.Context, id uuid.UUID) (Conten
 }
 
 const GetContentRankingSnapshot = `-- name: GetContentRankingSnapshot :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND ranking_key = $2
@@ -98,6 +98,7 @@ WHERE tenant_id = $1
     AND algorithm_version = $6
     AND genre_id IS NULL
     AND surface IS NOT DISTINCT FROM $7
+    AND age_rating IS NOT DISTINCT FROM $8
 `
 
 type GetContentRankingSnapshotParams struct {
@@ -108,6 +109,7 @@ type GetContentRankingSnapshotParams struct {
 	EntityType       string         `json:"entity_type"`
 	AlgorithmVersion int32          `json:"algorithm_version"`
 	Surface          sql.NullString `json:"surface"`
+	AgeRating        sql.NullString `json:"age_rating"`
 }
 
 func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error) {
@@ -119,6 +121,7 @@ func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentR
 		arg.EntityType,
 		arg.AlgorithmVersion,
 		arg.Surface,
+		arg.AgeRating,
 	)
 	var i ContentRankingSnapshot
 	err := row.Scan(
@@ -133,25 +136,28 @@ func (q *Queries) GetContentRankingSnapshot(ctx context.Context, arg GetContentR
 		&i.ComputedAt,
 		&i.GenreID,
 		&i.Surface,
+		&i.AgeRating,
 	)
 	return i, err
 }
 
 const GetContentRankingSnapshotByID = `-- name: GetContentRankingSnapshotByID :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND id = $2
     AND genre_id IS NULL
     AND surface = $3::text
-    AND ranking_key = $4
-    AND entity_type = $5
+    AND age_rating = $4::text
+    AND ranking_key = $5
+    AND entity_type = $6
 `
 
 type GetContentRankingSnapshotByIDParams struct {
 	TenantID   uuid.UUID `json:"tenant_id"`
 	ID         uuid.UUID `json:"id"`
 	Surface    string    `json:"surface"`
+	AgeRating  string    `json:"age_rating"`
 	RankingKey string    `json:"ranking_key"`
 	EntityType string    `json:"entity_type"`
 }
@@ -163,7 +169,7 @@ type GetContentRankingSnapshotByIDParams struct {
 // from, so a numbered chart cannot take its positions from two different runs
 // when the batch lands mid-pagination. This is the read that pins it.
 //
-// ranking_key, entity_type, the genre, and the surface are checked here rather than after
+// ranking_key, entity_type, the genre, the surface, and the age rating are checked here rather than after
 // the row comes back: an id is the only part of a token a client could put
 // there on purpose, and a snapshot of another ranking has to be no answer
 // rather than a chart served under the wrong heading. A snapshot the retention
@@ -174,6 +180,7 @@ func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetCont
 		arg.TenantID,
 		arg.ID,
 		arg.Surface,
+		arg.AgeRating,
 		arg.RankingKey,
 		arg.EntityType,
 	)
@@ -190,6 +197,7 @@ func (q *Queries) GetContentRankingSnapshotByID(ctx context.Context, arg GetCont
 		&i.ComputedAt,
 		&i.GenreID,
 		&i.Surface,
+		&i.AgeRating,
 	)
 	return i, err
 }
@@ -256,11 +264,12 @@ func (q *Queries) GetItemRecommendFeatures(ctx context.Context, arg GetItemRecom
 }
 
 const GetLatestContentRankingSnapshot = `-- name: GetLatestContentRankingSnapshot :one
-SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface
+SELECT id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND genre_id IS NULL
     AND surface = $2::text
+    AND age_rating IS NULL
     AND ranking_key = $3
     AND entity_type = $4
 ORDER BY computed_at DESC
@@ -275,7 +284,9 @@ type GetLatestContentRankingSnapshotParams struct {
 }
 
 // The newest snapshot of one surface for one ranking key and entity type,
-// whichever period and algorithm version produced it. A reader on a request path cannot know
+// ranking every age rating together, whichever period and algorithm version
+// produced it. This is the order the recommendation list is built on, which
+// lists the whole catalogue rather than the leaderboard of one rating. A reader on a request path cannot know
 // which day the last batch run covered, so it asks for the most recently
 // computed row instead of naming period bounds. A bumped algorithm_version
 // files its snapshots beside the old ones rather than replacing them, and wins
@@ -300,6 +311,7 @@ func (q *Queries) GetLatestContentRankingSnapshot(ctx context.Context, arg GetLa
 		&i.ComputedAt,
 		&i.GenreID,
 		&i.Surface,
+		&i.AgeRating,
 	)
 	return i, err
 }
@@ -395,11 +407,11 @@ type InsertContentEventParams struct {
 //	GetContentRankingSnapshot
 //	  -> idx_content_ranking_snapshots_unique
 //	GetLatestContentRankingSnapshot
-//	  -> idx_content_ranking_snapshots_tenant_genre_surface_key_computed
+//	  -> idx_content_ranking_snapshots_tenant_leaderboard_computed
 //	GetContentRankingSnapshotByID
 //	  -> content_ranking_snapshots_pkey
 //	ListLatestContentRankingSnapshots
-//	  -> idx_content_ranking_snapshots_tenant_genre_surface_key_computed for the scan,
+//	  -> idx_content_ranking_snapshots_tenant_leaderboard_computed for the scan,
 //	     then a sort by period (see the note there)
 //	ListRankedSeriesIDs / ListRankedSeriesIDsReversed
 //	  -> no index; expands one snapshot's items (see the note there)
@@ -1142,32 +1154,34 @@ func (q *Queries) ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisod
 }
 
 const ListLatestContentRankingSnapshots = `-- name: ListLatestContentRankingSnapshots :many
-SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface
+SELECT DISTINCT ON (period_start, period_end) id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 FROM content_ranking_snapshots
 WHERE tenant_id = $1
     AND genre_id IS NULL
     AND surface = $2::text
-    AND ranking_key = $3
-    AND entity_type = $4
+    AND age_rating = $3::text
+    AND ranking_key = $4
+    AND entity_type = $5
     AND (
-        $5::date IS NULL
-        OR period_start < $5::date
+        $6::date IS NULL
+        OR period_start < $6::date
     )
 ORDER BY period_start DESC, period_end DESC, computed_at DESC, id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListLatestContentRankingSnapshotsParams struct {
 	TenantID          uuid.UUID    `json:"tenant_id"`
 	Surface           string       `json:"surface"`
+	AgeRating         string       `json:"age_rating"`
 	RankingKey        string       `json:"ranking_key"`
 	EntityType        string       `json:"entity_type"`
 	BeforePeriodStart sql.NullTime `json:"before_period_start"`
 	Limit             int32        `json:"limit"`
 }
 
-// The newest computation of each period for one surface and ranking key,
-// newest period first. A ranking screen takes two of them: the period to show, and the one
+// The newest computation of each period for one surface, age rating, and
+// ranking key, newest period first. A ranking screen takes two of them: the period to show, and the one
 // before it, which is where a position's previous rank comes from.
 //
 // DISTINCT ON is what makes those two different periods. algorithm_version is
@@ -1188,13 +1202,14 @@ type ListLatestContentRankingSnapshotsParams struct {
 // NULL asks for the newest periods.
 //
 // No index serves the order.
-// idx_content_ranking_snapshots_tenant_genre_surface_key_computed narrows the
-// scan to one tenant's surface and ranking key, and what is left is the periods
+// idx_content_ranking_snapshots_tenant_leaderboard_computed narrows the scan to
+// one tenant's surface, age rating, and ranking key, and what is left is the periods
 // purge-content-rankings has not yet dropped — a sort over days, not over rows.
 func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg ListLatestContentRankingSnapshotsParams) ([]ContentRankingSnapshot, error) {
 	rows, err := q.db.QueryContext(ctx, ListLatestContentRankingSnapshots,
 		arg.TenantID,
 		arg.Surface,
+		arg.AgeRating,
 		arg.RankingKey,
 		arg.EntityType,
 		arg.BeforePeriodStart,
@@ -1219,6 +1234,7 @@ func (q *Queries) ListLatestContentRankingSnapshots(ctx context.Context, arg Lis
 			&i.ComputedAt,
 			&i.GenreID,
 			&i.Surface,
+			&i.AgeRating,
 		); err != nil {
 			return nil, err
 		}
@@ -1237,45 +1253,48 @@ const ListRankedSeriesIDs = `-- name: ListRankedSeriesIDs :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($7::jsonb) AS item
+    FROM jsonb_array_elements($8::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
 SELECT r.entity_id AS id, r.rank
 FROM ranked r
     JOIN series s ON s.tenant_id = $1 AND s.id = r.entity_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND COALESCE(sl.age_rating, 'all') = $2::text
     AND EXISTS (
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
+            AND ss.surface = $3::text
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (r.rank, r.entity_id) >= (
-                $5::int,
-                $3::uuid
+                $6::int,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (r.rank, r.entity_id) > (
-                $5::int,
-                $3::uuid
+                $6::int,
+                $4::uuid
             )
         )
     )
 ORDER BY r.rank ASC, r.entity_id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListRankedSeriesIDsParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
+	AgeRating       string          `json:"age_rating"`
 	Surface         string          `json:"surface"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
@@ -1291,14 +1310,15 @@ type ListRankedSeriesIDsRow struct {
 
 // The keyset scan behind the ranking screen: one snapshot's items, in the
 // positions it recorded, restricted to the series that are still published on
-// the surface.
+// the surface and still carry the age rating the snapshot was cut for.
 //
 // Unlike ListRecommendedSeriesIDs this scan starts from the snapshot rather
 // than from the catalogue, so an unpublished series does not move the ones
 // behind it: it drops out and leaves its position empty. The ranks are the
 // snapshot's own and are never renumbered here. The snapshot was cut for the
-// surface, so only a series whose availability changed since the batch ran
-// leaves such a gap.
+// surface and the rating, so only a series whose availability or rating
+// changed since the batch ran leaves such a gap. A series without a listing is
+// all-ages, as it is everywhere else.
 //
 // Duplicate entity ids are folded with min() exactly as the recommendation
 // scan folds them, which is also what makes entity_id unique in the result.
@@ -1316,6 +1336,7 @@ type ListRankedSeriesIDsRow struct {
 func (q *Queries) ListRankedSeriesIDs(ctx context.Context, arg ListRankedSeriesIDsParams) ([]ListRankedSeriesIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRankedSeriesIDs,
 		arg.TenantID,
+		arg.AgeRating,
 		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -1348,45 +1369,48 @@ const ListRankedSeriesIDsReversed = `-- name: ListRankedSeriesIDsReversed :many
 WITH ranked AS (
     SELECT (item->>'entity_id')::uuid AS entity_id,
         min((item->>'rank')::int)::int AS rank
-    FROM jsonb_array_elements($7::jsonb) AS item
+    FROM jsonb_array_elements($8::jsonb) AS item
     WHERE item->>'rank' IS NOT NULL
     GROUP BY (item->>'entity_id')::uuid
 )
 SELECT r.entity_id AS id, r.rank
 FROM ranked r
     JOIN series s ON s.tenant_id = $1 AND s.id = r.entity_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND COALESCE(sl.age_rating, 'all') = $2::text
     AND EXISTS (
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
+            AND ss.surface = $3::text
     )
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (r.rank, r.entity_id) <= (
-                $5::int,
-                $3::uuid
+                $6::int,
+                $4::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (r.rank, r.entity_id) < (
-                $5::int,
-                $3::uuid
+                $6::int,
+                $4::uuid
             )
         )
     )
 ORDER BY r.rank DESC, r.entity_id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListRankedSeriesIDsReversedParams struct {
 	TenantID        uuid.UUID       `json:"tenant_id"`
+	AgeRating       string          `json:"age_rating"`
 	Surface         string          `json:"surface"`
 	CursorID        uuid.NullUUID   `json:"cursor_id"`
 	CursorInclusive bool            `json:"cursor_inclusive"`
@@ -1405,6 +1429,7 @@ type ListRankedSeriesIDsReversedRow struct {
 func (q *Queries) ListRankedSeriesIDsReversed(ctx context.Context, arg ListRankedSeriesIDsReversedParams) ([]ListRankedSeriesIDsReversedRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRankedSeriesIDsReversed,
 		arg.TenantID,
+		arg.AgeRating,
 		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -2545,6 +2570,7 @@ INSERT INTO content_ranking_snapshots (
     period_end,
     entity_type,
     surface,
+    age_rating,
     items,
     algorithm_version,
     computed_at
@@ -2558,12 +2584,13 @@ INSERT INTO content_ranking_snapshots (
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11
 )
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface) DO UPDATE
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating) DO UPDATE
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at
-RETURNING id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface
+RETURNING id, tenant_id, ranking_key, period_start, period_end, entity_type, items, algorithm_version, computed_at, genre_id, surface, age_rating
 `
 
 type UpsertContentRankingSnapshotParams struct {
@@ -2574,6 +2601,7 @@ type UpsertContentRankingSnapshotParams struct {
 	PeriodEnd        time.Time       `json:"period_end"`
 	EntityType       string          `json:"entity_type"`
 	Surface          sql.NullString  `json:"surface"`
+	AgeRating        sql.NullString  `json:"age_rating"`
 	Items            json.RawMessage `json:"items"`
 	AlgorithmVersion int32           `json:"algorithm_version"`
 	ComputedAt       time.Time       `json:"computed_at"`
@@ -2588,6 +2616,7 @@ func (q *Queries) UpsertContentRankingSnapshot(ctx context.Context, arg UpsertCo
 		arg.PeriodEnd,
 		arg.EntityType,
 		arg.Surface,
+		arg.AgeRating,
 		arg.Items,
 		arg.AlgorithmVersion,
 		arg.ComputedAt,
@@ -2605,6 +2634,7 @@ func (q *Queries) UpsertContentRankingSnapshot(ctx context.Context, arg UpsertCo
 		&i.ComputedAt,
 		&i.GenreID,
 		&i.Surface,
+		&i.AgeRating,
 	)
 	return i, err
 }

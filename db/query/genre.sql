@@ -256,6 +256,7 @@ WITH leaderboards AS (
     WHERE crs.tenant_id = sqlc.arg('tenant_id')
         AND crs.genre_id = ANY(sqlc.arg('genre_ids')::uuid[])
         AND crs.surface = sqlc.arg('surface')::text
+        AND crs.age_rating = 'all'
         AND crs.ranking_key = sqlc.arg('ranking_key')::text
         AND crs.entity_type = 'series'
     ORDER BY crs.genre_id,

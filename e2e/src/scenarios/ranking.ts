@@ -1,6 +1,7 @@
 /**
  * The rankings `db/seeds/scenarios/170_ranking.sql` writes for the development
- * seed tenant: tenant-wide, and for each genre.
+ * seed tenant: tenant-wide, and for each genre. These are the all-ages
+ * positions, which are the ones the storefront shows without proof of age.
  *
  * `task e2e:db` applies that file, so these positions are part of the state
  * every suite starts from — the screenshot projects included.
@@ -25,7 +26,7 @@ export const RANKING_SERIES = {
   },
   /** Led the week before and gave up two places. */
   fell: {
-    title: "Seed Series 007",
+    title: "Seed Series 008",
     weeklyMovement: "Down 2",
     weeklyRank: 3,
   },

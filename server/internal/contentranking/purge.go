@@ -90,8 +90,8 @@ func NewPurger(db *sql.DB) *Purger {
 // there. Deleting is idempotent — a second run at the same time finds nothing
 // left.
 //
-// The newest period a tenant has for a ranking key, entity type, genre, and
-// surface always survives, whatever the cutoff says. That row is what the
+// The newest period a tenant has for a ranking key, entity type, genre,
+// surface, and age rating always survives, whatever the cutoff says. That row is what the
 // public site reads, and a tenant whose rebuilds have stopped for longer than
 // its retention period would otherwise lose its ranking entirely rather than
 // serve a stale one.
@@ -225,9 +225,9 @@ func listTenantIDs(ctx context.Context, db *sql.DB) ([]uuid.UUID, error) {
 // one of its snapshots.
 //
 // latest names the newest period the tenant still holds per ranking key,
-// entity type, genre, and surface; the grouping keys are the leading columns of
-// idx_content_ranking_snapshots_tenant_genre_surface_key_computed, so it can be
-// answered from that index. It is re-derived on every chunk rather than read once for
+// entity type, genre, surface, and age rating; the grouping keys are the leading
+// columns of idx_content_ranking_snapshots_tenant_leaderboard_computed, so it
+// can be answered from that index. It is re-derived on every chunk rather than read once for
 // the run, which keeps the guarantee exact even while aggregate-rankings is
 // writing a newer period underneath the purge.
 const retentionCTEs = `
@@ -235,10 +235,10 @@ WITH retention AS (
 	SELECT ranking_key, cutoff
 	FROM unnest($2::text[], $3::date[]) AS t(ranking_key, cutoff)
 ), latest AS (
-	SELECT genre_id, surface, ranking_key, entity_type, max(period_end) AS period_end
+	SELECT genre_id, surface, age_rating, ranking_key, entity_type, max(period_end) AS period_end
 	FROM content_ranking_snapshots
 	WHERE tenant_id = $1
-	GROUP BY genre_id, surface, ranking_key, entity_type
+	GROUP BY genre_id, surface, age_rating, ranking_key, entity_type
 )`
 
 // expiredSnapshots selects the tenant's rows past their retention period that
@@ -257,6 +257,7 @@ JOIN retention r ON r.ranking_key = s.ranking_key
 JOIN latest l
 	ON l.genre_id IS NOT DISTINCT FROM s.genre_id
 	AND l.surface IS NOT DISTINCT FROM s.surface
+	AND l.age_rating IS NOT DISTINCT FROM s.age_rating
 	AND l.ranking_key = s.ranking_key
 	AND l.entity_type = s.entity_type
 WHERE s.tenant_id = $1

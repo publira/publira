@@ -569,9 +569,9 @@ message RankedSeries {
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
 // There is no order field: a ranking has one order, the one it was computed
-// in. The token carries the period it was built for, because the same
-// position names a different series in the other period; sending it with a
-// different period is invalid_argument.
+// in. The token carries the period and the age rating it was built for,
+// because the same position names a different series in another ranking;
+// sending it with a different period or rating is invalid_argument.
 // It also pins the snapshot the first page came from, so the rest of a
 // traversal keeps the positions of one ranking even when the batch writes a
 // new one in between. A token whose snapshot has since been dropped by the
@@ -587,6 +587,16 @@ message ListRankedSeriesRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // Which age rating to rank. Each rating is a leaderboard of its own, and
+  // unspecified is the all-ages one, which every reader may see. A series with
+  // no rating is ranked as all-ages.
+  //
+  // A rating the tenant's age verification rule covers is answered only to a
+  // signed-in reader whose birth date clears it, and that answer is private to
+  // them. Anyone else gets permission_denied, as a rated body is withheld from
+  // them, rather than an empty page. A rating the rule does not cover is as
+  // public as the all-ages ranking.
+  publira.types.v1.SeriesAgeRating age_rating = 6;
 }
 
 message ListRankedSeriesResponse {
@@ -697,8 +707,8 @@ service CatalogService {
   // A ranking rebuilt between two pages moves the boundary the same way an
   // unpublished series does; the token names a position, not a snapshot.
   rpc ListRecommendedSeries(ListRecommendedSeriesRequest) returns (ListRecommendedSeriesResponse) {}
-  // One page of the latest ranking snapshot for a period, in the positions
-  // that snapshot recorded. A tenant the batch has not ranked yet gets an
+  // One page of the latest ranking snapshot for a period and an age rating, in
+  // the positions that snapshot recorded. A tenant the batch has not ranked yet gets an
   // empty list rather than an error: nothing has been computed, which is not
   // a failure. A series unpublished since the snapshot was written drops out
   // and leaves a gap in the positions, because a snapshot describes a past

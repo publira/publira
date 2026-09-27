@@ -1,6 +1,6 @@
 // Package contentranking turns the daily engagement aggregates into the
-// ranking snapshots the public site and the app read, tenant-wide and per
-// genre. It owns the score formula for this repository: which signals count,
+// ranking snapshots the public site and the app read, tenant-wide, per age
+// rating, and per genre. It owns the score formula for this repository: which signals count,
 // how much each is worth, and how quickly an older day fades. Every run
 // recomputes a whole period from content_daily_stats, so re-running a day
 // replaces its snapshot instead of adding to it. It also owns the retention
@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -125,10 +126,10 @@ type window struct {
 	days int
 }
 
-// windows, entityTypes, and surfaces together decide how many snapshots one
-// tenant gets: each combination is its own row, because a reader asks for one
-// period and one kind of entity at a time, and each of the tenant's genres adds
-// a series snapshot per window and surface. Every combination is written on
+// windows, entityTypes, surfaces, and ageRatings together decide how many
+// snapshots one tenant gets: each combination is its own row, because a reader
+// asks for one period and one kind of entity at a time, and each of the
+// tenant's genres adds a series snapshot per window and surface. Every combination is written on
 // every run, the empty ones included — an empty leaderboard is the answer that
 // a run happened and found nothing, which a missing row cannot say — so a
 // silent tenant costs the same rows a busy one does, and purge.go is what
@@ -144,6 +145,13 @@ var (
 // places to series only the other may show. Episode rankings are not read by
 // surface and are written once.
 var surfaces = []string{"web", "app"}
+
+// ageRatings are the ratings a tenant-wide series ranking is cut for, for the
+// same reason as surfaces: filtering a mixed leaderboard at read time would
+// leave a rating's page with gaps and a handful of entries. The mixed ranking
+// is still written beside them, because the recommendation order ranks the
+// whole catalogue. A genre's ranking is all-ages alone.
+var ageRatings = []string{ageverification.RatingAll, ageverification.RatingR15, ageverification.RatingR18}
 
 // Run rebuilds every ranking snapshot ending on the reference date, for every
 // tenant. Each tenant is its own transaction, so a failure part-way through
@@ -234,8 +242,8 @@ func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
 	return nil
 }
 
-// rankTenant writes every window, entity type, genre, and surface for one
-// tenant in a single transaction, so a reader never sees the daily ranking of
+// rankTenant writes every window, entity type, genre, surface, and age rating
+// for one tenant in a single transaction, so a reader never sees the daily ranking of
 // this run beside the weekly ranking of the last one, or a genre's ranking of
 // this run beside the tenant-wide ranking of the last one.
 //
@@ -277,7 +285,7 @@ func (a *Aggregator) rankTenant(
 	for _, w := range windows {
 		periodEnd := referenceDate
 		periodStart := periodEnd.AddDate(0, 0, -(w.days - 1))
-		requests := make([]snapshotRequest, 0, (1+len(genreIDs))*len(surfaces)+1)
+		requests := make([]snapshotRequest, 0, (1+len(ageRatings)+len(genreIDs))*len(surfaces)+1)
 		for _, entityType := range entityTypes {
 			if entityType != "series" {
 				requests = append(requests, snapshotRequest{entityType: entityType})
@@ -285,6 +293,13 @@ func (a *Aggregator) rankTenant(
 			}
 			for _, surface := range surfaces {
 				requests = append(requests, snapshotRequest{entityType: entityType, surface: sql.NullString{String: surface, Valid: true}})
+				for _, ageRating := range ageRatings {
+					requests = append(requests, snapshotRequest{
+						entityType: entityType,
+						surface:    sql.NullString{String: surface, Valid: true},
+						ageRating:  sql.NullString{String: ageRating, Valid: true},
+					})
+				}
 			}
 		}
 		for _, genreID := range genreIDs {
@@ -293,6 +308,7 @@ func (a *Aggregator) rankTenant(
 					entityType: "series",
 					genreID:    uuid.NullUUID{UUID: genreID, Valid: true},
 					surface:    sql.NullString{String: surface, Valid: true},
+					ageRating:  sql.NullString{String: ageverification.RatingAll, Valid: true},
 				})
 			}
 		}
@@ -328,12 +344,18 @@ type snapshotRequest struct {
 	genreID uuid.NullUUID
 	// surface narrows a series snapshot to the series that surface may show.
 	// Null ranks every entity, which only an episode ranking does.
-	surface   sql.NullString
+	surface sql.NullString
+	// ageRating narrows a series snapshot to the series carrying that rating.
+	// Null ranks every rating together.
+	ageRating sql.NullString
 	itemLimit int
 }
 
 func (r snapshotRequest) String() string {
 	name := fmt.Sprintf("%s %s snapshot", r.rankingKey, r.entityType)
+	if r.ageRating.Valid {
+		name = fmt.Sprintf("%s %s", r.ageRating.String, name)
+	}
 	if r.surface.Valid {
 		name = fmt.Sprintf("%s %s", r.surface.String, name)
 	}
@@ -372,8 +394,8 @@ func writeSnapshot(ctx context.Context, tx *sql.Tx, req snapshotRequest) (int, e
 
 	var items int
 	err = tx.QueryRowContext(ctx, upsertSnapshotSQL,
-		req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface, req.rankingKey,
-		req.itemLimit, AlgorithmVersion,
+		req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface, req.ageRating,
+		req.rankingKey, req.itemLimit, AlgorithmVersion,
 		viewWeight, uniqueViewerWeight, purchaseWeight, favoriteWeight, ratingWeight,
 		recencyHalfLifeDays, commentWeight,
 	).Scan(&items)
@@ -405,6 +427,7 @@ func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (in
 			AND cds.entity_type = $4
 			AND `+genreMemberSQL+`
 			AND `+surfaceMemberSQL+`
+			AND `+ratingMemberSQL+`
 			AND (
 				cds.view_count > 0
 				OR cds.unique_viewer_count > 0
@@ -413,27 +436,25 @@ func countRankableRows(ctx context.Context, tx *sql.Tx, req snapshotRequest) (in
 				OR cds.comment_count > 0
 				OR cds.rating_sum > 0
 			)
-	`, req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface).Scan(&rankable)
+	`, req.tenantID, req.periodStart, req.periodEnd, req.entityType, req.genreID, req.surface, req.ageRating).Scan(&rankable)
 	return rankable, err
 }
 
-// genreMemberSQL admits a daily row cds to genre $5's ranking only for a series
-// of that genre any reader may be shown, published and all-ages, because the
-// ranking is shown without proof of age; a null $5 admits every row.
+// genreMemberSQL admits a daily row cds to genre $5's ranking only for a
+// published series of that genre; a null $5 admits every row. A genre is only
+// ever ranked all-ages, which ratingMemberSQL enforces.
 const genreMemberSQL = `(
 	$5::uuid IS NULL
 	OR EXISTS (
 		SELECT 1
 		FROM series_genres sg
 			JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
-			JOIN series_listings sl ON sl.series_id = s.id
 		WHERE sg.tenant_id = $1
 			AND sg.genre_id = $5
 			AND sg.series_id = cds.entity_id
 			AND s.is_published = true
 			AND s.published_at IS NOT NULL
 			AND s.published_at <= now()
-			AND sl.age_rating = 'all'
 	)
 )`
 
@@ -453,6 +474,19 @@ const surfaceMemberSQL = `(
 	)
 )`
 
+// ratingMemberSQL admits a daily row cds to a ranking of age rating $7 only for
+// a series carrying that rating at the time of the run, a series with no
+// listing counting as all-ages; a null $7 admits every row.
+const ratingMemberSQL = `(
+	$7::text IS NULL
+	OR COALESCE((
+		SELECT sl.age_rating
+		FROM series_listings sl
+		WHERE sl.tenant_id = $1
+			AND sl.series_id = cds.entity_id
+	), 'all') = $7
+)`
+
 // upsertSnapshotSQL scores one window and files the leaderboard under the
 // snapshot's unique key.
 //
@@ -462,8 +496,8 @@ const surfaceMemberSQL = `(
 // who disliked the episode. Because the fade is measured against the window
 // rather than against now, re-running a past day produces exactly the snapshot
 // the first run produced — except that a genre's ranking admits the series
-// that are its members at the time of the run, and a surface's the series it
-// may show at that time.
+// that are its members at the time of the run, a surface's the series it may
+// show at that time, and a rating's the series carrying it at that time.
 //
 // The order is fully determined — score, then purchases, then viewers, then
 // entity id — so two runs over unchanged stats agree on every position, not
@@ -484,13 +518,13 @@ WITH bounds AS (
 		max(cds.stat_date) AS last_active_date,
 		sum(
 			(
-				$10::numeric * cds.view_count
-				+ $11::numeric * cds.unique_viewer_count
-				+ $12::numeric * cds.purchase_count
-				+ $13::numeric * cds.favorite_count
-				+ $16::numeric * cds.comment_count
-				+ $14::numeric * cds.rating_sum
-			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $15::numeric)
+				$11::numeric * cds.view_count
+				+ $12::numeric * cds.unique_viewer_count
+				+ $13::numeric * cds.purchase_count
+				+ $14::numeric * cds.favorite_count
+				+ $17::numeric * cds.comment_count
+				+ $15::numeric * cds.rating_sum
+			) * power(0.5, (b.window_end - cds.stat_date)::numeric / $16::numeric)
 		) AS score
 	FROM content_daily_stats cds
 	CROSS JOIN bounds b
@@ -500,6 +534,7 @@ WITH bounds AS (
 		AND cds.stat_date <= b.window_end
 		AND ` + genreMemberSQL + `
 		AND ` + surfaceMemberSQL + `
+		AND ` + ratingMemberSQL + `
 	GROUP BY cds.entity_id
 ), ranked AS (
 	SELECT
@@ -512,11 +547,11 @@ WITH bounds AS (
 )
 INSERT INTO content_ranking_snapshots (
 	id, tenant_id, ranking_key, period_start, period_end, entity_type, genre_id,
-	surface, items, algorithm_version, computed_at
+	surface, age_rating, items, algorithm_version, computed_at
 )
 SELECT
-	uuidv7(), $1, $7, b.window_start, b.window_end, $4, $5,
-	$6, COALESCE((
+	uuidv7(), $1, $8, b.window_start, b.window_end, $4, $5,
+	$6, $7, COALESCE((
 		SELECT jsonb_agg(
 			jsonb_build_object(
 				'rank', r.position,
@@ -534,12 +569,12 @@ SELECT
 			ORDER BY r.position
 		)
 		FROM ranked r
-		WHERE r.position <= $8::int
+		WHERE r.position <= $9::int
 	), '[]'::jsonb),
-	$9::int,
+	$10::int,
 	now()
 FROM bounds b
-ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface)
+ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version, genre_id, surface, age_rating)
 DO UPDATE SET items = EXCLUDED.items, computed_at = EXCLUDED.computed_at
 RETURNING jsonb_array_length(items)
 `
