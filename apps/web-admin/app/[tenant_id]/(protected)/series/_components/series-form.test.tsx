@@ -614,10 +614,41 @@ it("shows the label read error beside the picker and keeps the series' label", (
   );
 
   expect(screen.getByText("Could not load the labels.")).toBeDefined();
+  // The read failed, so the list being empty says nothing about the tenant.
+  expect(screen.queryByRole("link", { name: "Create a label" })).toBeNull();
   expect(
     container.querySelector<HTMLInputElement>('input[name="label_id"]')?.type
   ).toBe("hidden");
   expect(
     container.querySelector<HTMLInputElement>('input[name="label_id"]')?.value
   ).toBe(series.labelId);
+});
+
+it("points a tenant with no labels at creating one while keeping the picker", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={[]}
+      mode="create"
+      tagSuggestions={tagSuggestions}
+      timeZone="UTC"
+    />
+  );
+
+  expect(screen.getByRole("combobox", { name: /Label/u })).toBeDefined();
+  expect(
+    screen.getByText("A series needs a label, and this tenant has none yet.", {
+      exact: false,
+    })
+  ).toBeDefined();
+  expect(
+    screen.getByRole("link", { name: "Create a label" }).getAttribute("href")
+  ).toBe("/labels/new");
+  expect(
+    screen.queryByText("Select a label to associate with this series.")
+  ).toBeNull();
 });

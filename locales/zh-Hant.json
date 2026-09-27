@@ -1333,6 +1333,8 @@
         "label_placeholder": "搜尋品牌",
         "label_empty": "沒有相符的品牌。",
         "label_description": "請選擇要關聯到該系列的品牌。",
+        "label_none": "系列需要品牌，但該租戶還沒有品牌。",
+        "label_create": "建立品牌",
         "eye_catch": "封面圖",
         "eye_catch_preview": "上傳預覽",
         "eye_catch_preview_alt": "已上傳圖片的預覽",

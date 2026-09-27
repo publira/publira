@@ -1333,6 +1333,8 @@
         "label_placeholder": "레이블 검색",
         "label_empty": "일치하는 레이블이 없습니다.",
         "label_description": "이 시리즈에 연결할 레이블을 선택해 주세요.",
+        "label_none": "시리즈에는 레이블이 필요하지만 이 테넌트에는 아직 레이블이 없습니다.",
+        "label_create": "레이블 만들기",
         "eye_catch": "커버 이미지",
         "eye_catch_preview": "업로드 전 미리보기",
         "eye_catch_preview_alt": "업로드 이미지 미리보기",

@@ -1333,6 +1333,8 @@
         "label_placeholder": "レーベル名で検索",
         "label_empty": "一致するレーベルが見つかりません。",
         "label_description": "シリーズに紐づけるレーベルを選択してください。",
+        "label_none": "シリーズにはレーベルが必要ですが、このテナントにはまだレーベルがありません。",
+        "label_create": "レーベルを作成する",
         "eye_catch": "アイキャッチ画像",
         "eye_catch_preview": "アップロード前プレビュー",
         "eye_catch_preview_alt": "アップロード画像プレビュー",

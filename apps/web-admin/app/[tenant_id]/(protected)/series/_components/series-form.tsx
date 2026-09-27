@@ -22,6 +22,7 @@ import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import { toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
+import Link from "next/link";
 import {
   useActionState,
   useCallback,
@@ -205,9 +206,23 @@ const LabelField = ({
 
         <input name="label_id" type="hidden" value={selectedLabelId} />
 
-        <FieldDescription>
-          <ClientMessage message="admin.series.form.label_description" />
-        </FieldDescription>
+        {/* An empty list that was read successfully is a tenant with no
+            labels yet, which has to make one before it can save a series. */}
+        {labelItems.length === 0 && !labelsErrorMessage ? (
+          <FieldDescription>
+            <ClientMessage message="admin.series.form.label_none" />{" "}
+            <Link
+              className="text-primary underline underline-offset-4"
+              href="/labels/new"
+            >
+              <ClientMessage message="admin.series.form.label_create" />
+            </Link>
+          </FieldDescription>
+        ) : (
+          <FieldDescription>
+            <ClientMessage message="admin.series.form.label_description" />
+          </FieldDescription>
+        )}
       </FieldContent>
     </Field>
   );
