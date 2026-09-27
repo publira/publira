@@ -47,9 +47,13 @@ const storedSettings: PlatformSmtpSettings = {
   username: "platform-user",
 };
 
+const idleSaveAction = () =>
+  Promise.resolve<PlatformEmailSettingsFormState>(null);
+const idleTestAction = () => Promise.resolve<PlatformSmtpTestFormState>(null);
+
 const renderForm = ({
-  saveAction = () => Promise.resolve<PlatformEmailSettingsFormState>(null),
-  testAction = () => Promise.resolve<PlatformSmtpTestFormState>(null),
+  saveAction = idleSaveAction,
+  testAction = idleTestAction,
 }: {
   saveAction?: (
     previousState: PlatformEmailSettingsFormState,
@@ -74,6 +78,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("EmailSettingsForm", () => {
@@ -204,6 +209,33 @@ describe("EmailSettingsForm", () => {
     expect(next?.get("revision")).toBe("2");
     expect(next?.get("password_update_mode")).toBe(
       String(SECRET_UPDATE_MODE_UNCHANGED)
+    );
+  });
+
+  // A save refreshes the page with the settings it wrote, which reach the
+  // mounted form as new defaults.
+  it("shows the saved settings without changing a mounted field's default", () => {
+    const consoleError = vi.spyOn(console, "error");
+    const { rerender } = renderForm({});
+
+    rerender(
+      <EmailSettingsForm
+        initialSettings={{
+          ...storedSettings,
+          host: "smtp.saved.example",
+          revision: "2",
+        }}
+        saveAction={idleSaveAction}
+        testAction={idleTestAction}
+      />
+    );
+
+    expect(screen.getByLabelText(/Host/u)).toHaveProperty(
+      "value",
+      "smtp.saved.example"
+    );
+    expect(consoleError).not.toHaveBeenCalledWith(
+      expect.stringContaining("Base UI")
     );
   });
 });

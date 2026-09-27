@@ -53,7 +53,9 @@ export const RetentionDefaultsForm = ({
           <Message message="platform.policy.retention.help" />
         </Suspense>
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* A save refreshes the policy; the new revision remounts the fields
+          instead of changing a mounted field's default. */}
+      <div className="grid gap-4 sm:grid-cols-2" key={revision}>
         <PolicyLimitField
           defaultValue={values.contentEventDays}
           disabled={Boolean(loadErrorMessage)}

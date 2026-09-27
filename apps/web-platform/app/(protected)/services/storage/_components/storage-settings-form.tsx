@@ -12,7 +12,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 
 import { Message } from "#components/message";
 import {
@@ -78,138 +78,142 @@ export const StorageSettingsForm = ({
       >
         <input name="revision" type="hidden" value={settings.revision} />
 
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="platform.storage.form.bucket" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="off"
-              defaultValue={settings.bucket}
-              disabled={Boolean(loadErrorMessage)}
-              name="bucket"
-              placeholder="publira-media"
-              required
-              spellCheck={false}
-              type="text"
-            />
-          </FieldContent>
-          <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-              <Message message="platform.storage.form.bucket_help" />
-            </Suspense>
-          </FieldDescription>
-        </Field>
-
-        <Field>
-          <FieldLabel required>
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="platform.storage.form.region" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="off"
-              defaultValue={settings.region}
-              disabled={Boolean(loadErrorMessage)}
-              name="region"
-              placeholder="us-east-1"
-              required
-              spellCheck={false}
-              type="text"
-            />
-          </FieldContent>
-          <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-              <Message message="platform.storage.form.region_help" />
-            </Suspense>
-          </FieldDescription>
-        </Field>
-
-        <Field>
-          <FieldLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="platform.storage.form.public_base_url" />
-            </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="off"
-              defaultValue={settings.publicBaseUrl}
-              disabled={Boolean(loadErrorMessage)}
-              name="public_base_url"
-              placeholder="https://media.example.com"
-              spellCheck={false}
-              type="url"
-            />
-          </FieldContent>
-          <FieldDescription>
-            <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-              <Message message="platform.storage.form.public_base_url_help" />
-            </Suspense>
-          </FieldDescription>
-        </Field>
-
-        <fieldset className="grid gap-4">
-          <legend className="mb-1 text-sm font-medium text-foreground">
-            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <Message message="platform.storage.form.advanced_legend" />
-            </Suspense>
-          </legend>
-          <p className="text-xs text-muted-foreground">
-            <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
-              <Message message="platform.storage.form.advanced_help" />
-            </Suspense>
-          </p>
-
+        {/* A save refreshes the settings; the new revision remounts the fields
+            instead of changing a mounted field's default. */}
+        <Fragment key={settings.revision}>
           <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="platform.storage.form.endpoint" />
+            <FieldLabel required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="platform.storage.form.bucket" />
               </Suspense>
             </FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="off"
-                defaultValue={settings.endpoint}
+                defaultValue={settings.bucket}
                 disabled={Boolean(loadErrorMessage)}
-                name="endpoint"
-                placeholder="https://s3.example.com"
+                name="bucket"
+                placeholder="publira-media"
+                required
+                spellCheck={false}
+                type="text"
+              />
+            </FieldContent>
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+                <Message message="platform.storage.form.bucket_help" />
+              </Suspense>
+            </FieldDescription>
+          </Field>
+
+          <Field>
+            <FieldLabel required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="platform.storage.form.region" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="off"
+                defaultValue={settings.region}
+                disabled={Boolean(loadErrorMessage)}
+                name="region"
+                placeholder="us-east-1"
+                required
+                spellCheck={false}
+                type="text"
+              />
+            </FieldContent>
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+                <Message message="platform.storage.form.region_help" />
+              </Suspense>
+            </FieldDescription>
+          </Field>
+
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="platform.storage.form.public_base_url" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="off"
+                defaultValue={settings.publicBaseUrl}
+                disabled={Boolean(loadErrorMessage)}
+                name="public_base_url"
+                placeholder="https://media.example.com"
                 spellCheck={false}
                 type="url"
               />
             </FieldContent>
             <FieldDescription>
               <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-                <Message message="platform.storage.form.endpoint_help" />
+                <Message message="platform.storage.form.public_base_url_help" />
               </Suspense>
             </FieldDescription>
           </Field>
 
-          <Field>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                defaultChecked={settings.forcePathStyle}
-                disabled={Boolean(loadErrorMessage)}
-                name="force_path_style"
-              />
+          <fieldset className="grid gap-4">
+            <legend className="mb-1 text-sm font-medium text-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="platform.storage.form.advanced_legend" />
+              </Suspense>
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
+                <Message message="platform.storage.form.advanced_help" />
+              </Suspense>
+            </p>
+
+            <Field>
               <FieldLabel>
-                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-                  <Message message="platform.storage.form.force_path_style" />
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="platform.storage.form.endpoint" />
                 </Suspense>
               </FieldLabel>
-            </div>
-            <FieldDescription>
-              <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-                <Message message="platform.storage.form.force_path_style_help" />
-              </Suspense>
-            </FieldDescription>
-          </Field>
-        </fieldset>
+              <FieldContent>
+                <Input
+                  autoComplete="off"
+                  defaultValue={settings.endpoint}
+                  disabled={Boolean(loadErrorMessage)}
+                  name="endpoint"
+                  placeholder="https://s3.example.com"
+                  spellCheck={false}
+                  type="url"
+                />
+              </FieldContent>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+                  <Message message="platform.storage.form.endpoint_help" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
 
-        <StorageCredentialFields key={settings.revision} settings={settings} />
+            <Field>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  defaultChecked={settings.forcePathStyle}
+                  disabled={Boolean(loadErrorMessage)}
+                  name="force_path_style"
+                />
+                <FieldLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                    <Message message="platform.storage.form.force_path_style" />
+                  </Suspense>
+                </FieldLabel>
+              </div>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
+                  <Message message="platform.storage.form.force_path_style_help" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
+          </fieldset>
+
+          <StorageCredentialFields settings={settings} />
+        </Fragment>
 
         <StorageConnectionTest action={testPlatformStorageConnectionAction} />
 

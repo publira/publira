@@ -76,7 +76,9 @@ export const WebPushSettingsForm = ({
     >
       <input name="revision" type="hidden" value={settings.revision} />
 
-      <Field>
+      {/* A save refreshes the settings; the new revision remounts the field
+          instead of changing a mounted field's default. */}
+      <Field key={settings.revision}>
         <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.webpush.form.subject" />

@@ -23,7 +23,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 
 import { Message } from "#components/message";
 import {
@@ -100,138 +100,142 @@ export const EmailSettingsForm = ({
     >
       <SmtpRevisionField revision={initialSettings.revision} />
 
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="platform.settings.host" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={initialSettings.host}
-            name="host"
-            placeholder="smtp.example.com"
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="platform.settings.port" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={String(initialSettings.port || 587)}
-            min={1}
-            max={65_535}
-            name="port"
-            required
-            type="number"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message message="platform.settings.username" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={initialSettings.username}
-            name="username"
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
-
-      <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
+      {/* A save refreshes the settings; the new revision remounts the fields
+          instead of changing a mounted field's default. */}
+      <Fragment key={initialSettings.revision}>
         <Field>
-          <SmtpPasswordLabel>
-            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-              <Message message="platform.settings.password" />
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.settings.host" />
             </Suspense>
-          </SmtpPasswordLabel>
+          </FieldLabel>
           <FieldContent>
-            <SmtpPasswordStored>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="platform.settings.password_change" />
-              </Suspense>
-            </SmtpPasswordStored>
-            <SmtpPasswordEditor>
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="platform.settings.password_undo" />
-              </Suspense>
-            </SmtpPasswordEditor>
+            <Input
+              defaultValue={initialSettings.host}
+              name="host"
+              placeholder="smtp.example.com"
+              required
+              type="text"
+            />
           </FieldContent>
         </Field>
-      </SmtpPassword>
 
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="platform.settings.smtp_encryption" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Select
-            defaultValue={initialSettings.encryption || "starttls"}
-            items={[
-              { label: "TLS", value: "tls" },
-              { label: "STARTTLS", value: "starttls" },
-              {
-                label: (
-                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                    <Message message="platform.settings.encryption_none" />
-                  </Suspense>
-                ),
-                value: "none",
-              },
-            ]}
-            name="encryption"
-            required
-          />
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="platform.settings.port" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={String(initialSettings.port || 587)}
+              min={1}
+              max={65_535}
+              name="port"
+              required
+              type="number"
+            />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <Message message="platform.settings.from_address" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={initialSettings.fromAddress}
-            name="from_address"
-            placeholder="noreply@example.com"
-            required
-            type="email"
-          />
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="platform.settings.username" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.username}
+              name="username"
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="platform.settings.reply_to" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            defaultValue={initialSettings.replyTo}
-            name="reply_to"
-            placeholder="support@example.com"
-            type="email"
-          />
-        </FieldContent>
-      </Field>
+        <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
+          <Field>
+            <SmtpPasswordLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.settings.password" />
+              </Suspense>
+            </SmtpPasswordLabel>
+            <FieldContent>
+              <SmtpPasswordStored>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="platform.settings.password_change" />
+                </Suspense>
+              </SmtpPasswordStored>
+              <SmtpPasswordEditor>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="platform.settings.password_undo" />
+                </Suspense>
+              </SmtpPasswordEditor>
+            </FieldContent>
+          </Field>
+        </SmtpPassword>
+
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.settings.smtp_encryption" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              defaultValue={initialSettings.encryption || "starttls"}
+              items={[
+                { label: "TLS", value: "tls" },
+                { label: "STARTTLS", value: "starttls" },
+                {
+                  label: (
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.settings.encryption_none" />
+                    </Suspense>
+                  ),
+                  value: "none",
+                },
+              ]}
+              name="encryption"
+              required
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.settings.from_address" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.fromAddress}
+              name="from_address"
+              placeholder="noreply@example.com"
+              required
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="platform.settings.reply_to" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialSettings.replyTo}
+              name="reply_to"
+              placeholder="support@example.com"
+              type="email"
+            />
+          </FieldContent>
+        </Field>
+      </Fragment>
 
       {loadErrorMessage ? (
         <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
