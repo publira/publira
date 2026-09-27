@@ -1,20 +1,18 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useRef, useState } from "react";
-import type { ChangeEvent, DragEvent } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -23,10 +21,17 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
+import {
+  EpisodePagesDropZone,
+  EpisodePagesModeButton,
+  EpisodePagesSelectedFiles,
+  EpisodePagesUpload,
+  EpisodePagesWhile,
+} from "./episode-pages-upload-controls";
 
 interface EpisodePagesFormProps {
   seriesId: string;
@@ -37,261 +42,174 @@ interface EpisodePagesFormProps {
     prevState: EpisodeEditActionState,
     formData: FormData
   ) => Promise<EpisodeEditActionState>;
+  tenantId: string;
 }
 
-export const EpisodePagesForm = ({
+/** Awaits the catalog for the progress bar's name, which is an attribute rather than a node. */
+export const EpisodePagesForm = async ({
   seriesId,
   seriesPublicId,
   episodeId,
   episodePublicId,
   action,
+  tenantId,
 }: EpisodePagesFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
-    "pages"
-  );
-  const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const updateFiles = useCallback((files: FileList | null) => {
-    setSelectedFileNames(files ? [...files].map((file) => file.name) : []);
-  }, []);
-
-  const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setIsDragOver(false);
-      const { files } = event.dataTransfer;
-      // A closed input belongs to an upload already in flight.
-      if (
-        !inputRef.current ||
-        inputRef.current.disabled ||
-        files.length === 0
-      ) {
-        return;
-      }
-
-      const droppedFiles =
-        uploadMode === "pages" ? [...files] : [files[0]].filter(Boolean);
-
-      const dataTransfer = new DataTransfer();
-      for (const file of droppedFiles) {
-        dataTransfer.items.add(file);
-      }
-      inputRef.current.files = dataTransfer.files;
-      updateFiles(dataTransfer.files);
-    },
-    [updateFiles, uploadMode]
-  );
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      updateFiles(event.currentTarget.files);
-    },
-    [updateFiles]
-  );
-
-  const handleSelectPages = useCallback(() => {
-    setUploadMode("pages");
-    setSelectedFileNames([]);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  }, []);
-
-  const handleSelectZip = useCallback(() => {
-    setUploadMode("zip");
-    setSelectedFileNames([]);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  }, []);
-
-  const handleSelectEpub = useCallback(() => {
-    setUploadMode("epub");
-    setSelectedFileNames([]);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  }, []);
-
-  let fileLabel = t("admin.series.episodes.pages.image");
-  let dropMessage = t("admin.series.episodes.pages.drop_image");
-  let acceptValue = "image/*";
-  let fieldDescription = t("admin.series.episodes.pages.image_description");
-
-  if (uploadMode === "zip") {
-    fileLabel = t("admin.series.episodes.pages.zip");
-    dropMessage = t("admin.series.episodes.pages.drop_zip");
-    acceptValue = ".zip,application/zip";
-    fieldDescription = t("admin.series.episodes.pages.zip_description");
-  }
-
-  if (uploadMode === "epub") {
-    fileLabel = t("admin.series.episodes.pages.epub");
-    dropMessage = t("admin.series.episodes.pages.drop_epub");
-    acceptValue = ".epub,application/epub+zip";
-    fieldDescription = t("admin.series.episodes.pages.epub_description");
-  }
+  const t = await getMessages();
 
   return (
     <AdminSection>
       <AdminSectionHeader>
         <AdminSectionHeading>
           <AdminSectionTitle>
-            <ClientMessage message="admin.series.episodes.pages.title" />
+            <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+              <Message message="admin.series.episodes.pages.title" />
+            </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
-            <ClientMessage message="admin.series.episodes.pages.description" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="admin.series.episodes.pages.description" />
+            </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <form action={formAction} className="grid gap-4">
+      <ActionForm action={action} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_id" type="hidden" value={seriesId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_id" type="hidden" value={episodeId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
-        <input name="upload_mode" type="hidden" value={uploadMode} />
 
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.series.episodes.pages.target" />
-          </FieldLabel>
-          <FieldContent>
-            <p className="text-sm text-muted-foreground">
-              Series: {seriesPublicId} / Episode: {episodePublicId}
-            </p>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.series.episodes.pages.method" />
-          </FieldLabel>
-          <FieldContent>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={isPending}
-                onClick={handleSelectPages}
-                type="button"
-                variant={uploadMode === "pages" ? "default" : "outline"}
-              >
-                <ClientMessage message="admin.series.episodes.pages.select_images" />
-              </Button>
-              <Button
-                disabled={isPending}
-                onClick={handleSelectZip}
-                type="button"
-                variant={uploadMode === "zip" ? "default" : "outline"}
-              >
-                <ClientMessage message="admin.series.episodes.pages.select_zip" />
-              </Button>
-              <Button
-                disabled={isPending}
-                onClick={handleSelectEpub}
-                type="button"
-                variant={uploadMode === "epub" ? "default" : "outline"}
-              >
-                <ClientMessage message="admin.series.episodes.pages.select_epub" />
-              </Button>
-            </div>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel required>{fileLabel}</FieldLabel>
-          <FieldContent>
-            <div
-              className={
-                isDragOver
-                  ? "border-2 border-dashed border-foreground/60 bg-muted/50 p-4"
-                  : "border-2 border-dashed border-border p-4"
-              }
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <p className="mb-3 text-sm text-muted-foreground">
-                {dropMessage}
-              </p>
-              <Input
-                accept={acceptValue}
-                disabled={isPending}
-                multiple={uploadMode === "pages"}
-                name={uploadMode === "pages" ? "pages" : "archive"}
-                onChange={handleChange}
-                ref={inputRef}
-                required
-                type="file"
-              />
-            </div>
-            <FieldDescription>{fieldDescription}</FieldDescription>
-            {selectedFileNames.length > 0 ? (
-              <div className="grid gap-1 text-xs text-muted-foreground">
-                {selectedFileNames.map((fileName) => (
-                  <p key={fileName}>{fileName}</p>
-                ))}
-              </div>
-            ) : null}
-            {isPending ? (
-              <div className="grid gap-2">
-                <progress
-                  aria-label={t("admin.series.episodes.pages.upload_progress")}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  <ClientMessage message="admin.series.episodes.pages.processing" />
+        <EpisodePagesUpload>
+          <ActionFormFieldset className="grid gap-4">
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.series.episodes.pages.target" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <p className="text-sm text-muted-foreground">
+                  Series: {seriesPublicId} / Episode: {episodePublicId}
                 </p>
-              </div>
-            ) : null}
-          </FieldContent>
-        </Field>
+              </FieldContent>
+            </Field>
 
-        {state && state.mode === "pages" ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.series.episodes.pages.method" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <div className="flex flex-wrap gap-2">
+                  <EpisodePagesModeButton mode="pages">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      <Message message="admin.series.episodes.pages.select_images" />
+                    </Suspense>
+                  </EpisodePagesModeButton>
+                  <EpisodePagesModeButton mode="zip">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                      <Message message="admin.series.episodes.pages.select_zip" />
+                    </Suspense>
+                  </EpisodePagesModeButton>
+                  <EpisodePagesModeButton mode="epub">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                      <Message message="admin.series.episodes.pages.select_epub" />
+                    </Suspense>
+                  </EpisodePagesModeButton>
+                </div>
+              </FieldContent>
+            </Field>
 
-        <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={isPending} type="submit">
-            <ActionFormIdle>
-              {uploadMode === "pages" ? (
-                <ClientMessage message="admin.series.episodes.pages.submit_image" />
-              ) : null}
-              {uploadMode === "zip" ? (
-                <ClientMessage message="admin.series.episodes.pages.submit_zip" />
-              ) : null}
-              {uploadMode === "epub" ? (
-                <ClientMessage message="admin.series.episodes.pages.submit_epub" />
-              ) : null}
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.series.episodes.pages.adding" />
-            </ActionFormPending>
-          </Button>
-        </div>
-      </form>
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <EpisodePagesWhile mode="pages">
+                    <Message message="admin.series.episodes.pages.image" />
+                  </EpisodePagesWhile>
+                  <EpisodePagesWhile mode="zip">
+                    <Message message="admin.series.episodes.pages.zip" />
+                  </EpisodePagesWhile>
+                  <EpisodePagesWhile mode="epub">
+                    <Message message="admin.series.episodes.pages.epub" />
+                  </EpisodePagesWhile>
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <EpisodePagesDropZone>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                      <EpisodePagesWhile mode="pages">
+                        <Message message="admin.series.episodes.pages.drop_image" />
+                      </EpisodePagesWhile>
+                      <EpisodePagesWhile mode="zip">
+                        <Message message="admin.series.episodes.pages.drop_zip" />
+                      </EpisodePagesWhile>
+                      <EpisodePagesWhile mode="epub">
+                        <Message message="admin.series.episodes.pages.drop_epub" />
+                      </EpisodePagesWhile>
+                    </Suspense>
+                  </p>
+                </EpisodePagesDropZone>
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <EpisodePagesWhile mode="pages">
+                      <Message message="admin.series.episodes.pages.image_description" />
+                    </EpisodePagesWhile>
+                    <EpisodePagesWhile mode="zip">
+                      <Message message="admin.series.episodes.pages.zip_description" />
+                    </EpisodePagesWhile>
+                    <EpisodePagesWhile mode="epub">
+                      <Message message="admin.series.episodes.pages.epub_description" />
+                    </EpisodePagesWhile>
+                  </Suspense>
+                </FieldDescription>
+                <EpisodePagesSelectedFiles />
+                <ActionFormPending>
+                  <div className="grid gap-2">
+                    <progress
+                      aria-label={t(
+                        "admin.series.episodes.pages.upload_progress"
+                      )}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      <Suspense
+                        fallback={<SkeletonLine className="h-3 w-48" />}
+                      >
+                        <Message message="admin.series.episodes.pages.processing" />
+                      </Suspense>
+                    </p>
+                  </div>
+                </ActionFormPending>
+              </FieldContent>
+            </Field>
+          </ActionFormFieldset>
+
+          <div className="mt-2 flex justify-end gap-2">
+            <ActionFormSubmit>
+              <ActionFormIdle>
+                <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                  <EpisodePagesWhile mode="pages">
+                    <Message message="admin.series.episodes.pages.submit_image" />
+                  </EpisodePagesWhile>
+                  <EpisodePagesWhile mode="zip">
+                    <Message message="admin.series.episodes.pages.submit_zip" />
+                  </EpisodePagesWhile>
+                  <EpisodePagesWhile mode="epub">
+                    <Message message="admin.series.episodes.pages.submit_epub" />
+                  </EpisodePagesWhile>
+                </Suspense>
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                  <Message message="admin.series.episodes.pages.adding" />
+                </Suspense>
+              </ActionFormPending>
+            </ActionFormSubmit>
+          </div>
+        </EpisodePagesUpload>
+      </ActionForm>
     </AdminSection>
   );
 };

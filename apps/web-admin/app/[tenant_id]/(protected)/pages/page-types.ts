@@ -43,9 +43,9 @@ export const formatPagePath = (slug: string): string => {
   return normalized || "/";
 };
 
-/** `field` puts the message beside that input instead of above the save button. */
+/** `fieldErrors.slug` puts the reason beside the slug input. */
 export type PageFormState = {
-  field?: "slug";
+  fieldErrors?: { slug?: string };
   ok: false;
   message: string;
 } | null;

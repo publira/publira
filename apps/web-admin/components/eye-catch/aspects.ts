@@ -1,3 +1,5 @@
+import type { AdminMessageAccessor } from "#lib/messages";
+
 /**
  * The aspect ratios an eye-catch is delivered in, in the order the console
  * shows them. This mirrors `imageproc.EyeCatchAspects()` on the API side: the
@@ -70,4 +72,24 @@ const ASPECT_ORDER: string[] = EYE_CATCH_ASPECTS.map(
 export const eyeCatchAspectOrder = (variantType: string): number => {
   const index = ASPECT_ORDER.indexOf(variantType);
   return index === -1 ? ASPECT_ORDER.length : index;
+};
+
+/**
+ * Why the API refused an image for a ratio, naming the minimum that ratio asks
+ * for. Only a key no slot posts has no minimum to name.
+ */
+export const eyeCatchAspectImageInvalidMessage = (
+  t: AdminMessageAccessor,
+  variantType: string
+): string => {
+  const aspect = EYE_CATCH_ASPECTS.find(
+    (entry) => entry.variantType === variantType
+  );
+
+  return aspect
+    ? t("admin.eye_catch.aspect.image_invalid", {
+        height: String(aspect.minHeight),
+        width: String(aspect.minWidth),
+      })
+    : t("errors.validation");
 };

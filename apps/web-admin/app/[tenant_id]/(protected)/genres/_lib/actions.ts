@@ -7,6 +7,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects";
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
@@ -352,10 +353,6 @@ export const updateGenreEyeCatchAction = async (
   return { message: t("admin.genres.eye_catch_updated"), ok: true };
 };
 
-/**
- * The ratio is echoed back in every result so the slot that submitted is the
- * only one that shows the message — four slots share this Action.
- */
 export const uploadGenreEyeCatchAspectImageAction = async (
   _prevState: EyeCatchAspectActionState,
   formData: FormData
@@ -378,7 +375,6 @@ export const uploadGenreEyeCatchAspectImageAction = async (
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
-      variantType: "",
     };
   }
 
@@ -387,7 +383,6 @@ export const uploadGenreEyeCatchAspectImageAction = async (
     return {
       message: t("admin.eye_catch.aspect.image_required"),
       ok: false,
-      variantType,
     };
   }
 
@@ -406,9 +401,13 @@ export const uploadGenreEyeCatchAspectImageAction = async (
     )
   );
   if (!result.ok) {
-    return "imageRejected" in result
-      ? { imageInvalid: true, ok: false, variantType }
-      : { message: result.message, ok: false, variantType };
+    return {
+      message:
+        "imageRejected" in result
+          ? eyeCatchAspectImageInvalidMessage(t, variantType)
+          : result.message,
+      ok: false,
+    };
   }
 
   updateTag(genresCacheTag(tenantId));
@@ -416,6 +415,5 @@ export const uploadGenreEyeCatchAspectImageAction = async (
   return {
     message: t("admin.eye_catch.aspect.uploaded"),
     ok: true,
-    variantType,
   };
 };

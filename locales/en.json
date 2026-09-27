@@ -1141,7 +1141,6 @@
       "hidden": "Hidden",
       "form": {
         "create": "Create page",
-        "update": "Update details",
         "submitting": "Submitting...",
         "title": "Title",
         "title_placeholder": "Privacy policy",

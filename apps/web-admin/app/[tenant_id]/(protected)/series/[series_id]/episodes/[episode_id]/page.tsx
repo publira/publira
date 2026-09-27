@@ -200,6 +200,7 @@ const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       scheduledAt={episodeResult.episode.scheduledAt}
       seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
       timeZone={timeZone}
     />
   );
@@ -347,6 +348,7 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       initialCredits={creditsResult.credits}
       seriesPublicId={context.seriesId}
+      tenantId={tenantId}
     />
   );
 };
@@ -389,6 +391,7 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       seriesId={seriesResult.series.id}
       seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
     />
   );
 };

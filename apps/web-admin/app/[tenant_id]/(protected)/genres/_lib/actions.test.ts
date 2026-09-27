@@ -235,7 +235,6 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     expect(result).toEqual({
       message: "The image for this ratio was replaced.",
       ok: true,
-      variantType: "square",
     });
     expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
   });
@@ -250,12 +249,11 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     expect(result).toEqual({
       message: "Select an image to upload.",
       ok: false,
-      variantType: "square",
     });
     expect(mockUploadGenreEyeCatchAspectImage).not.toHaveBeenCalled();
   });
 
-  it("leaves the wording of a refused image to the slot that sent it", async () => {
+  it("names the minimum of the ratio a refused image was sent for", async () => {
     mockUploadGenreEyeCatchAspectImage.mockResolvedValueOnce({
       imageRejected: true,
       ok: false,
@@ -268,9 +266,9 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     );
 
     expect(result).toEqual({
-      imageInvalid: true,
+      message:
+        "Check the image. For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1200x1200px, then try again.",
       ok: false,
-      variantType: "square",
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });

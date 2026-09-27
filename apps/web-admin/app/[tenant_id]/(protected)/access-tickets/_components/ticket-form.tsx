@@ -1,13 +1,10 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
 import {
-  Combobox,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxItems,
@@ -19,31 +16,29 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import {
-  useActionState,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { Suspense } from "react";
 
-import { useAdminLocale } from "#components/admin-locale-context";
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { ReaderPicker } from "#components/reader-picker";
-import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
-import { useTenantId } from "#lib/use-tenant-id";
+import { InstantInput } from "#components/instant-input";
+import { Message } from "#components/message";
+import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
+import { getMessages } from "#lib/get-messages";
 
-import { listEpisodeOptionsAction } from "../_lib/actions";
 import type {
   IssueAccessTicketActionState,
-  TicketEpisodeOption,
   TicketSeriesOption,
 } from "../ticket-types";
+import {
+  TicketEpisodeCombobox,
+  TicketEpisodeInput,
+  TicketEpisodeLoadError,
+  TicketReaderPicker,
+  TicketSeriesCombobox,
+  TicketSeriesWhile,
+  TicketTarget,
+} from "./ticket-target-controls";
 
 interface TicketFormProps {
   action: (
@@ -52,255 +47,187 @@ interface TicketFormProps {
   ) => Promise<IssueAccessTicketActionState>;
   series: TicketSeriesOption[];
   seriesErrorMessage?: string;
+  tenantId: string;
   timeZone: string;
 }
 
-export const TicketForm = ({
+/**
+ * Awaits the catalog for its placeholders and the series choices, which are
+ * attributes and option labels rather than nodes. An issued ticket redirects
+ * from the Action to the list.
+ */
+export const TicketForm = async ({
   action,
   series,
   seriesErrorMessage,
+  tenantId,
   timeZone,
 }: TicketFormProps) => {
-  const locale = useAdminLocale();
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const [readerId, setReaderId] = useState("");
-  const [seriesId, setSeriesId] = useState("");
-  const [episodeId, setEpisodeId] = useState("");
-  const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
-  const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
-  const episodeRequestIdRef = useRef(0);
-
-  const seriesItems = useMemo<ComboboxItem[]>(
-    () =>
-      series.map((item) => ({
-        label: t("admin.access_tickets.form.option", {
-          id: item.publicId,
-          title: item.title,
-        }),
-        value: item.id,
-      })),
-    [series, t]
-  );
-  const episodeItems = useMemo<ComboboxItem[]>(
-    () =>
-      episodes.map((item) => ({
-        label: t("admin.access_tickets.form.option", {
-          id: item.publicId,
-          title: item.title,
-        }),
-        value: item.id,
-      })),
-    [episodes, t]
-  );
-  const canSubmit =
-    !isPending && !isEpisodePending && readerId !== "" && episodeId !== "";
-
-  const loadEpisodesForSeries = useCallback(
-    (nextSeriesId: string) => {
-      const requestId = episodeRequestIdRef.current + 1;
-      episodeRequestIdRef.current = requestId;
-
-      startEpisodeTransition(async () => {
-        const result = await listEpisodeOptionsAction(
-          tenantId,
-          nextSeriesId,
-          locale
-        );
-        if (requestId !== episodeRequestIdRef.current) {
-          return;
-        }
-        if (result.ok) {
-          setEpisodes(result.episodes);
-          setEpisodesErrorMessage(undefined);
-          return;
-        }
-        setEpisodesErrorMessage(result.message);
-      });
-    },
-    [locale, tenantId]
-  );
-
-  const handleSeriesChange = useCallback(
-    (nextSeriesId: string) => {
-      setSeriesId(nextSeriesId);
-      setEpisodeId("");
-      setEpisodes([]);
-      setEpisodesErrorMessage(undefined);
-
-      if (nextSeriesId === "") {
-        return;
-      }
-
-      loadEpisodesForSeries(nextSeriesId);
-    },
-    [loadEpisodesForSeries]
-  );
-
-  const handleRetryEpisodes = useCallback(() => {
-    if (seriesId === "") {
-      return;
-    }
-    setEpisodesErrorMessage(undefined);
-    loadEpisodesForSeries(seriesId);
-  }, [loadEpisodesForSeries, seriesId]);
-
-  const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      fillInstantFromDateTimeLocal(event.currentTarget, {
-        isoName: "expires_at",
-        localName: "expires_at_local",
-        timeZone,
-      });
-    },
-    [timeZone]
-  );
+  const t = await getMessages();
+  const seriesItems = series.map((item) => ({
+    label: t("admin.access_tickets.form.option", {
+      id: item.publicId,
+      title: item.title,
+    }),
+    value: item.id,
+  }));
 
   return (
-    <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
+    <ActionForm action={action} className="grid gap-5" showSuccess={false}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <Fieldset className="grid gap-5" disabled={isPending}>
-        <Field>
-          <FieldLabel required>
-            <ClientMessage message="admin.access_tickets.form.user" />
-          </FieldLabel>
-          <FieldContent>
-            <ReaderPicker name="user_id" onValueChange={setReaderId} />
-            <FieldDescription>
-              <ClientMessage message="admin.access_tickets.form.user_description" />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+      <SubmitGate initialSubmittable={false}>
+        <ActionFormFieldset className="grid gap-5">
+          <TicketTarget seriesItems={seriesItems} tenantId={tenantId}>
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.access_tickets.form.user" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <TicketReaderPicker />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.access_tickets.form.user_description" />
+                  </Suspense>
+                </FieldDescription>
+              </FieldContent>
+            </Field>
 
-        <Field>
-          <FieldLabel required>
-            <ClientMessage message="admin.access_tickets.form.series" />
-          </FieldLabel>
-          <FieldContent>
-            {seriesErrorMessage ? (
-              <FormMessage variant="destructive">
-                {seriesErrorMessage}
-              </FormMessage>
-            ) : null}
-            <Combobox
-              items={seriesItems}
-              onValueChange={handleSeriesChange}
-              value={seriesId}
-            >
-              <ComboboxInput
-                placeholder={t("admin.access_tickets.form.series_placeholder")}
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.access_tickets.form.series" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                {seriesErrorMessage ? (
+                  <FormMessage variant="destructive">
+                    {seriesErrorMessage}
+                  </FormMessage>
+                ) : null}
+                <TicketSeriesCombobox>
+                  <ComboboxInput
+                    placeholder={t(
+                      "admin.access_tickets.form.series_placeholder"
+                    )}
+                  />
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-40" />}
+                      >
+                        <Message message="admin.access_tickets.form.series_empty" />
+                      </Suspense>
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </TicketSeriesCombobox>
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    {series.length === 0 && !seriesErrorMessage ? (
+                      <Message message="admin.access_tickets.form.episode_no_series" />
+                    ) : (
+                      <Message message="admin.access_tickets.form.series_description" />
+                    )}
+                  </Suspense>
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel required>
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.access_tickets.form.episode" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <TicketEpisodeCombobox>
+                  <TicketEpisodeInput />
+                  <ComboboxPopup>
+                    <ComboboxEmpty>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-40" />}
+                      >
+                        <Message message="admin.access_tickets.form.episode_empty" />
+                      </Suspense>
+                    </ComboboxEmpty>
+                    <ComboboxItems />
+                  </ComboboxPopup>
+                </TicketEpisodeCombobox>
+                <TicketEpisodeLoadError>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                    <Message message="admin.common.retry" />
+                  </Suspense>
+                </TicketEpisodeLoadError>
+                <FieldDescription>
+                  <TicketSeriesWhile chosen={false}>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                      <Message message="admin.access_tickets.form.episode_needs_series" />
+                    </Suspense>
+                  </TicketSeriesWhile>
+                  <TicketSeriesWhile chosen>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                      <Message message="admin.access_tickets.form.episode_description" />
+                    </Suspense>
+                  </TicketSeriesWhile>
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          </TicketTarget>
+
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.access_tickets.form.expires_at" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <InstantInput name="expires_at" timeZone={timeZone} />
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message
+                    message="admin.access_tickets.form.expires_at_description"
+                    values={{ time_zone: timeZone }}
+                  />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.access_tickets.form.note" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Textarea
+                maxLength={1000}
+                name="note"
+                placeholder={t("admin.access_tickets.form.note_placeholder")}
+                rows={3}
               />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  <ClientMessage message="admin.access_tickets.form.series_empty" />
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
-            <FieldDescription>
-              {seriesItems.length === 0 && !seriesErrorMessage
-                ? t("admin.access_tickets.form.episode_no_series")
-                : t("admin.access_tickets.form.series_description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </FieldContent>
+          </Field>
+        </ActionFormFieldset>
 
-        <Field>
-          <FieldLabel required>
-            <ClientMessage message="admin.access_tickets.form.episode" />
-          </FieldLabel>
-          <FieldContent>
-            <Combobox
-              disabled={isEpisodePending || seriesId === ""}
-              items={episodeItems}
-              onValueChange={setEpisodeId}
-              value={episodeId}
-            >
-              <ComboboxInput
-                placeholder={
-                  isEpisodePending
-                    ? t("admin.access_tickets.form.episode_loading")
-                    : t("admin.access_tickets.form.episode_placeholder")
-                }
-              />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  <ClientMessage message="admin.access_tickets.form.episode_empty" />
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
-            <input name="episode_id" type="hidden" value={episodeId} />
-            {episodesErrorMessage ? (
-              <>
-                <FormMessage variant="destructive">
-                  {episodesErrorMessage}
-                </FormMessage>
-                <Button
-                  onClick={handleRetryEpisodes}
-                  type="button"
-                  variant="outline"
-                >
-                  <ClientMessage message="admin.common.retry" />
-                </Button>
-              </>
-            ) : null}
-            <FieldDescription>
-              {seriesId === ""
-                ? t("admin.access_tickets.form.episode_needs_series")
-                : t("admin.access_tickets.form.episode_description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.access_tickets.form.expires_at" />
-          </FieldLabel>
-          <FieldContent>
-            <Input name="expires_at_local" type="datetime-local" />
-            <input defaultValue="" name="expires_at" type="hidden" />
-            <FieldDescription>
-              <ClientMessage
-                message="admin.access_tickets.form.expires_at_description"
-                values={{ time_zone: timeZone }}
-              />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.access_tickets.form.note" />
-          </FieldLabel>
-          <FieldContent>
-            <Textarea
-              maxLength={1000}
-              name="note"
-              placeholder={t("admin.access_tickets.form.note_placeholder")}
-              rows={3}
-            />
-          </FieldContent>
-        </Field>
-      </Fieldset>
-
-      {state && !state.ok ? (
-        <FormMessage variant="destructive">{state.message}</FormMessage>
-      ) : null}
-
-      <div className="flex justify-end">
-        <Button disabled={!canSubmit} type="submit">
-          <ActionFormIdle>
-            <ClientMessage message="admin.access_tickets.form.submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
-            <ClientMessage message="admin.access_tickets.form.submitting" />
-          </ActionFormPending>
-        </Button>
-      </div>
-    </form>
+        <div className="flex justify-end">
+          <SubmitGateSubmit>
+            <ActionFormIdle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.access_tickets.form.submit" />
+              </Suspense>
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.access_tickets.form.submitting" />
+              </Suspense>
+            </ActionFormPending>
+          </SubmitGateSubmit>
+        </div>
+      </SubmitGate>
+    </ActionForm>
   );
 };

@@ -24,8 +24,8 @@ const savable = vi.hoisted(() => ({
   onChange: (_savable: boolean): void => undefined,
 }));
 
-vi.mock("./series-form-save", () => ({
-  useSetSeriesFormSavable: () => (next: boolean) => savable.onChange(next),
+vi.mock("#components/submit-gate", () => ({
+  useSetSubmittable: () => (next: boolean) => savable.onChange(next),
 }));
 
 vi.mock("#lib/messages", () => ({

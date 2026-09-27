@@ -1141,7 +1141,6 @@
       "hidden": "숨김",
       "form": {
         "create": "페이지 만들기",
-        "update": "기본 정보 변경",
         "submitting": "보내는 중...",
         "title": "제목",
         "title_placeholder": "개인정보 처리방침",

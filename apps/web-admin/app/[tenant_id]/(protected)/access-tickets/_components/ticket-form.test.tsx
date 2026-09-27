@@ -7,11 +7,10 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
-  render as renderBase,
+  render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,6 +32,21 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
+}));
+
+// The reader picker is shared, and reads the tenant from the route itself.
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",
 }));
@@ -134,12 +148,19 @@ const fillTicket = async () => {
   fireEvent.change(episodeCombobox(), { target: { value: episodeOne.id } });
 };
 
-const render = (ui: ReactNode) =>
-  renderBase(ui, {
-    wrapper: ({ children }) => (
-      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-    ),
-  });
+const renderForm = async (
+  props: Omit<Parameters<typeof TicketForm>[0], "tenantId" | "timeZone">
+) =>
+  render(
+    await TicketForm({ ...props, tenantId: "TENANT001", timeZone: "UTC" }),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AdminLocaleTestProvider locale="en">
+          {children}
+        </AdminLocaleTestProvider>
+      ),
+    }
+  );
 
 afterEach(() => {
   cleanup();
@@ -162,8 +183,8 @@ describe("TicketForm", () => {
     mockListReaderOptionsAction.mockResolvedValue({ ok: true, readers: [] });
   });
 
-  it("blocks issuing until a reader and an episode are chosen", () => {
-    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+  it("blocks issuing until a reader and an episode are chosen", async () => {
+    await renderForm({ action, series: [seriesA] });
 
     expect(readerCombobox()).toBeDefined();
     expect(seriesCombobox()).toBeDefined();
@@ -185,9 +206,7 @@ describe("TicketForm", () => {
       return Promise.resolve<IssueAccessTicketActionState>(null);
     };
 
-    render(
-      <TicketForm action={recordingAction} series={[seriesA]} timeZone="UTC" />
-    );
+    await renderForm({ action: recordingAction, series: [seriesA] });
     await fillTicket();
     await waitFor(() => {
       expect(issueButton().hasAttribute("disabled")).toBe(false);
@@ -205,8 +224,8 @@ describe("TicketForm", () => {
     expect(formData.has("episode_public_id")).toBe(false);
   });
 
-  it("says there is no episode to grant when the series list is empty", () => {
-    render(<TicketForm action={action} series={[]} timeZone="UTC" />);
+  it("says there is no episode to grant when the series list is empty", async () => {
+    await renderForm({ action, series: [] });
 
     expect(
       screen.getByText(
@@ -216,15 +235,12 @@ describe("TicketForm", () => {
     expect(issueButton().hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows the series fetch error beside the series picker", () => {
-    render(
-      <TicketForm
-        action={action}
-        series={[]}
-        seriesErrorMessage="Could not load the series."
-        timeZone="UTC"
-      />
-    );
+  it("shows the series fetch error beside the series picker", async () => {
+    await renderForm({
+      action,
+      series: [],
+      seriesErrorMessage: "Could not load the series.",
+    });
 
     expect(screen.getByText("Could not load the series.")).toBeDefined();
     expect(seriesCombobox()).toBeDefined();
@@ -236,7 +252,7 @@ describe("TicketForm", () => {
       ok: true,
     });
 
-    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+    await renderForm({ action, series: [seriesA] });
 
     selectSeries(seriesA);
 
@@ -265,7 +281,7 @@ describe("TicketForm", () => {
         ok: true,
       });
 
-    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
+    await renderForm({ action, series: [seriesA] });
 
     selectSeries(seriesA);
 
@@ -301,9 +317,7 @@ describe("TicketForm", () => {
         ok: true,
       });
 
-    render(
-      <TicketForm action={action} series={[seriesA, seriesB]} timeZone="UTC" />
-    );
+    await renderForm({ action, series: [seriesA, seriesB] });
 
     selectSeries(seriesA);
     selectSeries(seriesB);
@@ -337,13 +351,7 @@ describe("TicketForm", () => {
     // Never resolved: the assertions are about the window the save is open in.
     const issue = Promise.withResolvers<IssueAccessTicketActionState>();
 
-    render(
-      <TicketForm
-        action={() => issue.promise}
-        series={[seriesA]}
-        timeZone="UTC"
-      />
-    );
+    await renderForm({ action: () => issue.promise, series: [seriesA] });
     await fillTicket();
 
     for (const control of submittedControls()) {

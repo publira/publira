@@ -41,9 +41,11 @@ const PageFormSkeleton = () => (
   </div>
 );
 
-const NewPageFormData = () => (
-  <PageForm action={createPageAction} mode="create" />
-);
+const NewPageFormData = async () => {
+  const tenantId = await getTenantId();
+
+  return <PageForm action={createPageAction} tenantId={tenantId} />;
+};
 
 const NewPagePage = () => (
   <AdminPage>

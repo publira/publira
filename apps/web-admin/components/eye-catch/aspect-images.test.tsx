@@ -5,19 +5,30 @@ import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import {
+  act,
   cleanup,
   fireEvent,
   render as renderBase,
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { EyeCatchAspectImages } from "./aspect-images";
-import type { EyeCatchVariantItem } from "./types";
+import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
+
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({
@@ -30,30 +41,38 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
-}));
-
 const action = () => Promise.resolve(null);
 
-/** What the Action answers when the API refuses the image for a ratio. */
-const refuseImage = () =>
-  Promise.resolve({
-    imageInvalid: true as const,
-    ok: false as const,
-    variantType: "landscape",
-  });
-
-const render = (ui: React.ReactNode) =>
+const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
       <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
+
+const renderImages = ({
+  id = "series-1",
+  idField = "series_id",
+  uploadAction = action,
+  variants,
+}: {
+  id?: string;
+  idField?: string;
+  uploadAction?: (
+    prevState: EyeCatchAspectActionState,
+    formData: FormData
+  ) => Promise<EyeCatchAspectActionState>;
+  variants: EyeCatchVariantItem[];
+}) =>
+  render(
+    <EyeCatchAspectImages
+      id={id}
+      idField={idField}
+      tenantId="TENANT001"
+      uploadAction={uploadAction}
+      variants={variants}
+    />
+  );
 
 const variant = (
   variantType: string,
@@ -69,16 +88,25 @@ const variant = (
   width,
 });
 
+/** One ratio's form. */
+const slotForm = (container: HTMLElement, variantType: string) => {
+  const form = container
+    .querySelector(`input[name="variant_type"][value="${variantType}"]`)
+    ?.closest("form");
+  if (!form) {
+    throw new Error(`the ${variantType} slot has no form`);
+  }
+  return form;
+};
+
 /** Picks a file in one ratio's slot and returns that slot's form. */
 const pickImage = (
   container: HTMLElement,
   variantType: string
 ): HTMLFormElement => {
-  const form = container
-    .querySelector(`input[name="variant_type"][value="${variantType}"]`)
-    ?.closest("form");
-  const fileInput = form?.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!(form && fileInput)) {
+  const form = slotForm(container, variantType);
+  const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!fileInput) {
     throw new Error(`the ${variantType} slot has no file input`);
   }
   fireEvent.change(fileInput, {
@@ -102,19 +130,22 @@ const decodePickedImage = (width: number, height: number) => {
   fireEvent.load(framed);
 };
 
+/** Stubs the object URLs jsdom lacks, which the slot creates and revokes. */
+const stubObjectUrls = () => {
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: vi.fn(() => "blob:picked-file"),
+    revokeObjectURL: vi.fn(),
+  });
+};
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 it("shows a slot for every delivered ratio", () => {
-  render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[variant("portrait", 1200, 1600)]}
-    />
-  );
+  renderImages({ variants: [variant("portrait", 1200, 1600)] });
 
   for (const variantType of ["portrait", "square", "landscape", "og"]) {
     expect(screen.getByText(variantType)).toBeTruthy();
@@ -122,65 +153,38 @@ it("shows a slot for every delivered ratio", () => {
 });
 
 it("shows the size of the image a ratio currently holds", () => {
-  render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[
-        variant("portrait", 1200, 1600),
-        variant("landscape", 1600, 900),
-      ]}
-    />
-  );
+  renderImages({
+    variants: [
+      variant("portrait", 1200, 1600),
+      variant("landscape", 1600, 900),
+    ],
+  });
 
   expect(screen.getByText("1200×1600")).toBeTruthy();
   expect(screen.getByText("1600×900")).toBeTruthy();
 });
 
 it("marks a ratio the eye-catch holds no image for", () => {
-  render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[variant("portrait", 1200, 1600)]}
-    />
-  );
+  renderImages({ variants: [variant("portrait", 1200, 1600)] });
 
   // portrait is filled, so the other three report an empty slot.
   expect(screen.getAllByText("No image yet")).toHaveLength(3);
 });
 
 it("asks for a cover image before opening the ratio slots", () => {
-  render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[]}
-    />
-  );
+  renderImages({ variants: [] });
 
   expect(screen.queryByText("portrait")).toBeNull();
   expect(screen.getByText(/Register a cover image first/u)).toBeTruthy();
 });
 
-it("stops showing the picked file once the form is submitted", () => {
-  // jsdom has no object URLs, and the component revokes whatever it created,
-  // so both halves are stubbed.
-  const createObjectURL = vi.fn(() => "blob:picked-file");
-  const revokeObjectURL = vi.fn();
-  vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
-
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
+it("stops showing the picked file once the upload is stored", async () => {
+  stubObjectUrls();
+  const upload = Promise.withResolvers<EyeCatchAspectActionState>();
+  const { container } = renderImages({
+    uploadAction: () => upload.promise,
+    variants: [variant("landscape", 1600, 900)],
+  });
 
   const stored = "/images/series/img/landscape/1600";
   const image = () =>
@@ -190,89 +194,62 @@ it("stops showing the picked file once the form is submitted", () => {
 
   expect(image()?.getAttribute("src")).toBe(stored);
 
-  // The img sits in the slot's own <button>, so its closest div is that slot.
-  const fileInput = image()
-    ?.closest("div")
-    ?.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!fileInput) {
-    throw new Error("the landscape slot has no file input");
-  }
-  fireEvent.change(fileInput, {
-    target: {
-      files: [new File(["x"], "landscape.jpg", { type: "image/jpeg" })],
-    },
-  });
+  const form = pickImage(container, "landscape");
   expect(image()?.getAttribute("src")).toBe("blob:picked-file");
 
-  const form = fileInput.closest("form");
-  if (!form) {
-    throw new Error("the file input is not inside a form");
-  }
   fireEvent.submit(form);
+  await act(async () => {
+    upload.resolve({
+      message: "The image for this ratio was replaced.",
+      ok: true,
+    });
+    await upload.promise;
+  });
 
-  // The stored crop is the truth once the upload is on its way; a preview left
-  // set would keep the uncropped file on screen, because the Action re-renders
-  // the screen without remounting this slot.
+  // The stored crop is the truth once the upload is stored; a preview left set
+  // would keep the uncropped file on screen, because the page redraws the
+  // screen without remounting this slot.
+  expect(
+    await screen.findByText("The image for this ratio was replaced.")
+  ).toBeTruthy();
   expect(image()?.getAttribute("src")).toBe(stored);
+});
 
-  vi.unstubAllGlobals();
+it("keeps the picked file when the upload is refused", async () => {
+  stubObjectUrls();
+  const { container } = renderImages({
+    uploadAction: () =>
+      Promise.resolve({ message: "Could not upload.", ok: false }),
+    variants: [variant("landscape", 1600, 900)],
+  });
+
+  fireEvent.submit(pickImage(container, "landscape"));
+
+  expect(await screen.findByText("Could not upload.")).toBeTruthy();
+  expect(
+    container
+      .querySelector('img[alt="Generated image landscape"]')
+      ?.getAttribute("src")
+  ).toBe("blob:picked-file");
 });
 
 it("posts the record's ID under the field its upload action reads", () => {
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="label-1"
-      idField="label_id"
-      uploadAction={action}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
+  const { container } = renderImages({
+    id: "label-1",
+    idField: "label_id",
+    variants: [variant("landscape", 1600, 900)],
+  });
 
-  const form = container
-    .querySelector('input[name="variant_type"][value="landscape"]')
-    ?.closest("form");
-  if (!form) {
-    throw new Error("the landscape slot has no form");
-  }
-  expect(new FormData(form).get("label_id")).toBe("label-1");
-});
-
-it("names the minimum of the ratio the API refused the image for", async () => {
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={refuseImage}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
-
-  const form = container
-    .querySelector('input[name="variant_type"][value="landscape"]')
-    ?.closest("form");
-  if (!form) {
-    throw new Error("the landscape slot has no form");
-  }
-  fireEvent.submit(form);
-
-  // 1600x900 is landscape's own minimum. A whole eye-catch asks for
-  // 2400x3200px, which would send the editor after the wrong image.
-  expect(await screen.findByText(/at least 1600x900px/u)).toBeTruthy();
+  const formData = new FormData(slotForm(container, "landscape"));
+  expect(formData.get("label_id")).toBe("label-1");
+  expect(formData.get("tenant_id")).toBe("TENANT001");
 });
 
 it("frames the picked file where the API would have cut it anyway", () => {
-  const createObjectURL = vi.fn(() => "blob:picked-file");
-  const revokeObjectURL = vi.fn();
-  vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
-
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
+  stubObjectUrls();
+  const { container } = renderImages({
+    variants: [variant("landscape", 1600, 900)],
+  });
 
   const form = pickImage(container, "landscape");
   // Nothing has been decoded yet, so the upload states no rectangle and the
@@ -286,23 +263,13 @@ it("frames the picked file where the API would have cut it anyway", () => {
   expect(
     form.querySelector<HTMLInputElement>('input[name="crop"]')?.value
   ).toBe("0,925,2400,1350");
-
-  vi.unstubAllGlobals();
 });
 
 it("previews the framed region rather than the whole picked file", () => {
-  const createObjectURL = vi.fn(() => "blob:picked-file");
-  const revokeObjectURL = vi.fn();
-  vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
-
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      uploadAction={action}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
+  stubObjectUrls();
+  const { container } = renderImages({
+    variants: [variant("landscape", 1600, 900)],
+  });
 
   pickImage(container, "landscape");
   decodePickedImage(2400, 3200);
@@ -314,41 +281,35 @@ it("previews the framed region rather than the whole picked file", () => {
   // shows it at its own width, shifted up by the part above the frame.
   expect(preview?.style.width).toBe("100%");
   expect(preview?.style.top).toBe(`${(-925 / 1350) * 100}%`);
-
-  vi.unstubAllGlobals();
 });
 
 // The Action carries the file picked when the slot was submitted, so a file
 // picked while it is in flight would show in the slot without being uploaded.
+// A control its `<fieldset>` closes keeps `disabled` false and matches
+// `:disabled` instead.
 it("closes the slot's picker while its upload is in flight", async () => {
-  const { container } = render(
-    <EyeCatchAspectImages
-      id="series-1"
-      idField="series_id"
-      // Never resolved: the assertions are about the window the upload is open in.
-      uploadAction={() => Promise.withResolvers<never>().promise}
-      variants={[variant("landscape", 1600, 900)]}
-    />
-  );
+  const { container } = renderImages({
+    // Never resolved: the assertions are about the window the upload is open in.
+    uploadAction: () => Promise.withResolvers<never>().promise,
+    variants: [variant("landscape", 1600, 900)],
+  });
 
-  const form = container
-    .querySelector('input[name="variant_type"][value="landscape"]')
-    ?.closest("form");
-  const fileInput = form?.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!(form && fileInput)) {
+  const form = slotForm(container, "landscape");
+  const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!fileInput) {
     throw new Error("the landscape slot has no file input");
   }
   const picker = screen.getByRole<HTMLButtonElement>("button", {
     name: "Select an image for landscape",
   });
 
-  expect(picker.disabled).toBe(false);
-  expect(fileInput.disabled).toBe(false);
+  expect(picker.matches(":disabled")).toBe(false);
+  expect(fileInput.matches(":disabled")).toBe(false);
 
   fireEvent.submit(form);
 
   await waitFor(() => {
-    expect(picker.disabled).toBe(true);
-    expect(fileInput.disabled).toBe(true);
+    expect(picker.matches(":disabled")).toBe(true);
+    expect(fileInput.matches(":disabled")).toBe(true);
   });
 });

@@ -16,7 +16,9 @@ import { Textarea } from "@publira/ui-components/textarea";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
+import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
 import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import {
   DEFAULT_READING_DIRECTION,
@@ -51,10 +53,8 @@ import type {
   CreatorRoleOption,
 } from "./series-creator-credits-field";
 import { SeriesEyeCatchUpload } from "./series-eye-catch-upload";
-import { SeriesFormSaveScope, SeriesFormSubmit } from "./series-form-save";
 import { SeriesLabelField } from "./series-label-field";
 import type { LabelOption } from "./series-label-field";
-import { SeriesPublishedAtInput } from "./series-published-at-input";
 import { SeriesPurchaseAvailabilityField } from "./series-purchase-availability-field";
 import { SeriesReadingDirectionField } from "./series-reading-layout-fields";
 
@@ -181,7 +181,9 @@ export const SeriesForm = ({
         <input name="series_id" type="hidden" value={initialSeries.id} />
       ) : null}
 
-      <SeriesFormSaveScope>
+      {/* The stored shares already passed the server's cap, so the form opens
+          submittable. */}
+      <SubmitGate initialSubmittable>
         <ActionFormFieldset className="grid gap-4">
           <Field>
             <FieldLabel required>
@@ -314,8 +316,9 @@ export const SeriesForm = ({
               </Suspense>
             </FieldLabel>
             <FieldContent>
-              <SeriesPublishedAtInput
+              <InstantInput
                 initialValue={values.publishedAt}
+                name="published_at"
                 timeZone={timeZone}
               />
               <FieldDescription>
@@ -574,7 +577,7 @@ export const SeriesForm = ({
         </ActionFormFieldset>
 
         <div className="flex justify-end">
-          <SeriesFormSubmit>
+          <SubmitGateSubmit>
             <ActionFormIdle>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 {mode === "update" ? (
@@ -589,9 +592,9 @@ export const SeriesForm = ({
                 <Message message="admin.series.form.submitting" />
               </Suspense>
             </ActionFormPending>
-          </SeriesFormSubmit>
+          </SubmitGateSubmit>
         </div>
-      </SeriesFormSaveScope>
+      </SubmitGate>
     </ActionForm>
   );
 };

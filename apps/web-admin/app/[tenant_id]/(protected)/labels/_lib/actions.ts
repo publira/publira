@@ -7,6 +7,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects";
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
@@ -225,7 +226,6 @@ export const updateLabelAction = async (
   }
 
   return {
-    label: saved.label,
     message: saved.t("admin.labels.updated"),
     mode: "update",
     ok: true,
@@ -242,7 +242,6 @@ export const updateLabelEyeCatchAction = async (
   }
 
   return {
-    label: saved.label,
     message: saved.t("admin.labels.eye_catch_updated"),
     mode: "update",
     ok: true,
@@ -270,14 +269,10 @@ const eyeCatchAspectFormFields = {
   variantType: { kind: "value", name: "variant_type" },
 } as const;
 
-/**
- * The ratio is echoed back in every result so the slot that submitted is the
- * only one that shows the message — four slots share this Action.
- */
-const toAspectFailure = (
-  message: string,
-  variantType: string
-): EyeCatchAspectActionState => ({ message, ok: false, variantType });
+const toAspectFailure = (message: string): EyeCatchAspectActionState => ({
+  message,
+  ok: false,
+});
 
 export const uploadLabelEyeCatchAspectImageAction = async (
   _prevState: EyeCatchAspectActionState,
@@ -298,15 +293,12 @@ export const uploadLabelEyeCatchAspectImageAction = async (
       })
     );
   if (!parsed.success) {
-    return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
+    return toAspectFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
-    return toAspectFailure(
-      t("admin.eye_catch.aspect.image_required"),
-      variantType
-    );
+    return toAspectFailure(t("admin.eye_catch.aspect.image_required"));
   }
 
   const imageData = new Uint8Array(await aspectImage.arrayBuffer());
@@ -325,9 +317,11 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   );
 
   if (!result.ok) {
-    return "imageRejected" in result
-      ? { imageInvalid: true, ok: false, variantType }
-      : toAspectFailure(result.message, variantType);
+    return toAspectFailure(
+      "imageRejected" in result
+        ? eyeCatchAspectImageInvalidMessage(t, variantType)
+        : result.message
+    );
   }
 
   updateTag(`labels-${tenantId}`);
@@ -336,6 +330,5 @@ export const uploadLabelEyeCatchAspectImageAction = async (
   return {
     message: t("admin.eye_catch.aspect.uploaded"),
     ok: true,
-    variantType,
   };
 };

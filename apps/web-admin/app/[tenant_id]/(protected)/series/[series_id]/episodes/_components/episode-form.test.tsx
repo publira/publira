@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -7,7 +11,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -15,48 +19,72 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeForm } from "./episode-form";
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
 
 const action = () => Promise.resolve(null);
 
-const render = (ui: React.ReactNode) =>
+// The availability fields are client controls, which read their own copy from
+// the catalog the console layout provides.
+const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
       <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 
+const renderForm = async (
+  props: Omit<Parameters<typeof EpisodeForm>[0], "tenantId">
+) => render(await EpisodeForm({ ...props, tenantId: "TENANT001" }));
+
 /**
  * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
  * for its router bfcache, so two episode create forms can sit in the document
  * at the same time.
  */
-const renderBothForms = () =>
+const renderBothForms = async () => {
+  const [first, second] = await Promise.all([
+    EpisodeForm({
+      action,
+      seriesId: "SERIES001-ID",
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+      timeZone: "UTC",
+    }),
+    EpisodeForm({
+      action,
+      seriesId: "SERIES002-ID",
+      seriesPublicId: "SERIES002",
+      tenantId: "TENANT001",
+      timeZone: "UTC",
+    }),
+  ]);
+
   render(
     <>
-      <EpisodeForm
-        action={action}
-        seriesId="SERIES001-ID"
-        seriesPublicId="SERIES001"
-        timeZone="UTC"
-      />
-      <EpisodeForm
-        action={action}
-        seriesId="SERIES002-ID"
-        seriesPublicId="SERIES002"
-        timeZone="UTC"
-      />
+      {first}
+      {second}
     </>
   );
+};
 
 afterEach(() => {
   cleanup();
 });
 
-it("keeps the ids unique when it is mounted twice", () => {
-  renderBothForms();
+it("keeps the ids unique when it is mounted twice", async () => {
+  await renderBothForms();
 
   const ids = [...document.querySelectorAll("[id]")].map(
     (element) => element.id
@@ -66,8 +94,8 @@ it("keeps the ids unique when it is mounted twice", () => {
   expect(ids).toHaveLength(new Set(ids).size);
 });
 
-it("points each label at its own input when it is mounted twice", () => {
-  renderBothForms();
+it("points each label at its own input when it is mounted twice", async () => {
+  await renderBothForms();
 
   const titles = screen.getAllByLabelText<HTMLInputElement>(/Title/u);
 
@@ -75,8 +103,8 @@ it("points each label at its own input when it is mounted twice", () => {
   expect(titles.map((input) => input.value)).toEqual(["", ""]);
 });
 
-it("finds each input by its role and label", () => {
-  renderBothForms();
+it("finds each input by its role and label", async () => {
+  await renderBothForms();
 
   expect(screen.getAllByRole("textbox", { name: /Title/u })).toHaveLength(2);
   expect(screen.getAllByRole("spinbutton", { name: /Price/u })).toHaveLength(2);
@@ -90,16 +118,14 @@ it("finds each input by its role and label", () => {
 
 // A new episode starts out following its series, and the option says what
 // that series is shown on.
-it("creates an episode that follows its series unless told otherwise", () => {
-  render(
-    <EpisodeForm
-      action={action}
-      seriesAvailability="app"
-      seriesId="SERIES001-ID"
-      seriesPublicId="SERIES001"
-      timeZone="UTC"
-    />
-  );
+it("creates an episode that follows its series unless told otherwise", async () => {
+  await renderForm({
+    action,
+    seriesAvailability: "app",
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    timeZone: "UTC",
+  });
 
   expect(
     [
@@ -115,16 +141,14 @@ it("creates an episode that follows its series unless told otherwise", () => {
 
 // Where it may be bought follows the series too, and the option names where
 // the series sells once the tenant's default has been resolved into it.
-it("creates an episode sold where its series is unless told otherwise", () => {
-  render(
-    <EpisodeForm
-      action={action}
-      seriesId="SERIES001-ID"
-      seriesPublicId="SERIES001"
-      seriesPurchaseAvailability="web"
-      timeZone="UTC"
-    />
-  );
+it("creates an episode sold where its series is unless told otherwise", async () => {
+  await renderForm({
+    action,
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    seriesPurchaseAvailability: "web",
+    timeZone: "UTC",
+  });
 
   expect(
     [
@@ -138,15 +162,13 @@ it("creates an episode sold where its series is unless told otherwise", () => {
   );
 });
 
-it("says that a publication time already passed publishes the episode as it is created", () => {
-  render(
-    <EpisodeForm
-      action={action}
-      seriesId="SERIES001-ID"
-      seriesPublicId="SERIES001"
-      timeZone="Asia/Tokyo"
-    />
-  );
+it("says that a publication time already passed publishes the episode as it is created", async () => {
+  await renderForm({
+    action,
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    timeZone: "Asia/Tokyo",
+  });
 
   expect(
     screen.getByText(
@@ -173,14 +195,12 @@ it("closes every field while the save is in flight", async () => {
   const save = Promise.withResolvers<EpisodeActionState>();
   const pendingAction = vi.fn(() => save.promise);
 
-  render(
-    <EpisodeForm
-      action={pendingAction}
-      seriesId="SERIES001-ID"
-      seriesPublicId="SERIES001"
-      timeZone="UTC"
-    />
-  );
+  await renderForm({
+    action: pendingAction,
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    timeZone: "UTC",
+  });
 
   fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {
     target: { value: "Chapter 1" },

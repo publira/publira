@@ -1,211 +1,34 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import Image from "next/image";
-import type { ChangeEventHandler, ReactEventHandler } from "react";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { CropAspect, CropSource } from "#components/image-crop/crop";
-import {
-  centreCropRect,
-  framedPreviewStyle,
-} from "#components/image-crop/crop";
-import {
-  ImageCropDialog,
-  ImageCropDialogTitle,
-} from "#components/image-crop/crop-dialog";
-import type { CropRect } from "#lib/crop-rect";
-import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
-import { useTenantId } from "#lib/use-tenant-id";
+import { ImageCropDialogTitle } from "#components/image-crop/crop-dialog";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
-
-/**
- * An author icon is one square, cut out of whatever was uploaded for it. The
- * minimum is the API's own (`creatorIconMinDimension`), so a frame this control
- * allows is a frame the upload will be accepted with.
- */
-const ICON_ASPECT: CropAspect = {
-  aspectHeight: 1,
-  aspectWidth: 1,
-  minWidth: 256,
-};
-
-interface IconImageFieldProps {
-  initialCreator?: CreatorListItem;
-  isUpdate: boolean;
-}
-
-const IconImageField = ({ initialCreator, isUpdate }: IconImageFieldProps) => {
-  const t = useClientMessages();
-  const iconImageUrl = initialCreator?.iconImageUrl ?? "";
-  const hasExistingIconImage = iconImageUrl.length > 0;
-
-  const [clearIconImage, setClearIconImage] = useState(false);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
-  /** The picked file's own size, and the part of it the editor framed. */
-  const [source, setSource] = useState<CropSource | null>(null);
-  const [crop, setCrop] = useState<CropRect | null>(null);
-  const [isFraming, setIsFraming] = useState(false);
-
-  useEffect(
-    () => () => {
-      if (localPreviewUrl) {
-        URL.revokeObjectURL(localPreviewUrl);
-      }
-    },
-    [localPreviewUrl]
-  );
-
-  const handleClearIconImageChange: ChangeEventHandler<HTMLInputElement> = (
-    event
-  ) => {
-    setClearIconImage(event.target.checked);
-  };
-
-  const handleImageFileChange: ChangeEventHandler<HTMLInputElement> = (
-    event
-  ) => {
-    const file = event.currentTarget.files?.[0];
-    if (!file) {
-      return;
-    }
-    setLocalPreviewUrl((current) => {
-      if (current) {
-        URL.revokeObjectURL(current);
-      }
-      return URL.createObjectURL(file);
-    });
-    // Both belong to the file that was just replaced. The new one reports its
-    // own size when it is decoded, and the frame is derived from that.
-    setSource(null);
-    setCrop(null);
-    setIsFraming(true);
-  };
-
-  /**
-   * The frame starts where the API would have cut on its own, so an editor who
-   * touches nothing gets the icon this form has always produced. A file whose
-   * frame is already set keeps it: the dialog remounts its image every time it
-   * is opened, and this runs again each time.
-   */
-  const handleCropImageLoad: ReactEventHandler<HTMLImageElement> = (event) => {
-    const size = {
-      height: event.currentTarget.naturalHeight,
-      width: event.currentTarget.naturalWidth,
-    };
-    setSource(size);
-    setCrop((current) => current ?? centreCropRect(size, ICON_ASPECT));
-  };
-
-  const framedStyle = crop && source ? framedPreviewStyle(crop, source) : null;
-
-  return (
-    <Field>
-      <FieldLabel>
-        <ClientMessage message="admin.creators.form.icon" />
-      </FieldLabel>
-      <FieldContent>
-        {localPreviewUrl ? (
-          <div className="relative size-20 overflow-hidden rounded-full border">
-            {/* The picked file is a blob of unknown size, so next/image cannot
-                carry it. */}
-            {/* oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element */}
-            <img
-              alt={t("admin.creators.form.icon_preview_alt")}
-              className={
-                framedStyle
-                  ? "absolute max-w-none"
-                  : "h-full w-full object-cover"
-              }
-              src={localPreviewUrl}
-              style={framedStyle ?? undefined}
-            />
-          </div>
-        ) : null}
-        {hasExistingIconImage && !(clearIconImage || localPreviewUrl) ? (
-          <Image
-            alt={t("admin.creators.form.current_icon_alt")}
-            className="size-20 rounded-full border object-cover"
-            height={80}
-            src={iconImageUrl}
-            width={80}
-          />
-        ) : null}
-        <Input
-          accept="image/jpeg,image/png,image/webp"
-          name="icon_image"
-          onChange={handleImageFileChange}
-          type="file"
-        />
-        {localPreviewUrl ? (
-          <Button
-            className="mt-2 w-fit"
-            onClick={() => setIsFraming(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <ClientMessage message="admin.image_crop.adjust" />
-          </Button>
-        ) : null}
-        {crop ? (
-          <input
-            name={CROP_RECT_FIELD}
-            type="hidden"
-            value={formatCropRect(crop)}
-          />
-        ) : null}
-        {isUpdate && hasExistingIconImage ? (
-          <label className="mt-2 flex items-center gap-2 text-sm">
-            <input
-              checked={clearIconImage}
-              onChange={handleClearIconImageChange}
-              type="checkbox"
-            />
-            <ClientMessage message="admin.creators.form.clear_icon" />
-          </label>
-        ) : null}
-        <input
-          name="clear_icon_image"
-          type="hidden"
-          value={clearIconImage ? "1" : "0"}
-        />
-        <FieldDescription>
-          <ClientMessage message="admin.creators.form.icon_description" />
-        </FieldDescription>
-      </FieldContent>
-
-      {localPreviewUrl ? (
-        <ImageCropDialog
-          aspect={ICON_ASPECT}
-          crop={crop}
-          imageUrl={localPreviewUrl}
-          onCropChange={setCrop}
-          onImageLoad={handleCropImageLoad}
-          onOpenChange={setIsFraming}
-          open={isFraming}
-          source={source}
-        >
-          <ImageCropDialogTitle>
-            {t("admin.creators.form.icon_crop_title")}
-          </ImageCropDialogTitle>
-        </ImageCropDialog>
-      ) : null}
-    </Field>
-  );
-};
+import {
+  CreatorIcon,
+  CreatorIconAdjust,
+  CreatorIconClear,
+  CreatorIconCropDialog,
+  CreatorIconFileInput,
+  CreatorIconPreview,
+} from "./creator-icon-controls";
 
 interface CreatorFormProps {
   mode: "create" | "update";
@@ -214,83 +37,60 @@ interface CreatorFormProps {
     formData: FormData
   ) => Promise<CreatorActionState>;
   initialCreator?: CreatorListItem;
+  tenantId: string;
 }
 
-export const CreatorForm = ({
+/** Awaits the catalog for its placeholders, which are attributes rather than nodes. */
+export const CreatorForm = async ({
   mode,
   action,
   initialCreator,
+  tenantId,
 }: CreatorFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  // Seeded once per mount: the edit route keys this form by the creator's
-  // public id, so switching to another creator remounts it with that creator's
-  // values.
-  const [name, setName] = useState(initialCreator?.name ?? "");
-  const [profileText, setProfileText] = useState(
-    initialCreator?.profileText ?? ""
-  );
-
-  const handleNameChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setName(event.target.value);
-    },
-    []
-  );
-
-  const handleProfileTextChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setProfileText(event.target.value);
-    },
-    []
-  );
-
+  const t = await getMessages();
   const isUpdate = mode === "update";
-  let submitLabel = t("admin.creators.form.create");
-  if (isUpdate) {
-    submitLabel = t("admin.creators.form.update");
-  }
-  if (isPending) {
-    submitLabel = t("admin.creators.form.submitting");
-  }
+  const iconImageUrl = initialCreator?.iconImageUrl ?? "";
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <ActionForm action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="creator_id" type="hidden" value={initialCreator?.id ?? ""} />
 
-      <Fieldset className="grid gap-4" disabled={isPending}>
+      <ActionFormFieldset className="grid gap-4">
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.creators.form.name" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.creators.form.name" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
+              defaultValue={initialCreator?.name}
               name="name"
-              onChange={handleNameChange}
               placeholder={t("admin.creators.form.name_placeholder")}
               required
               type="text"
-              value={name}
             />
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel>
-            <ClientMessage message="admin.creators.form.profile" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.creators.form.profile" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Textarea
+              defaultValue={initialCreator?.profileText}
               name="profile_text"
-              onChange={handleProfileTextChange}
               placeholder={t("admin.creators.form.profile_placeholder")}
               rows={5}
-              value={profileText}
             />
             <FieldDescription>
-              <ClientMessage message="admin.creators.form.profile_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.creators.form.profile_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -301,24 +101,67 @@ export const CreatorForm = ({
           deletion checkbox all belong to that save and none of them mean
           anything afterwards.
         */}
-        <IconImageField
-          initialCreator={initialCreator}
-          isUpdate={isUpdate}
+        <CreatorIcon
+          iconImageUrl={iconImageUrl}
           key={initialCreator?.iconImageUpdatedAt ?? ""}
-        />
-      </Fieldset>
+        >
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.creators.form.icon" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <CreatorIconPreview />
+              <CreatorIconFileInput />
+              <CreatorIconAdjust>
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.image_crop.adjust" />
+                </Suspense>
+              </CreatorIconAdjust>
+              {isUpdate && iconImageUrl ? (
+                <CreatorIconClear>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                    <Message message="admin.creators.form.clear_icon" />
+                  </Suspense>
+                </CreatorIconClear>
+              ) : null}
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.creators.form.icon_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
 
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
+            <CreatorIconCropDialog>
+              <ImageCropDialogTitle>
+                <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+                  <Message message="admin.creators.form.icon_crop_title" />
+                </Suspense>
+              </ImageCropDialogTitle>
+            </CreatorIconCropDialog>
+          </Field>
+        </CreatorIcon>
+      </ActionFormFieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <Button disabled={isPending} type="submit">
-          {submitLabel}
-        </Button>
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              {isUpdate ? (
+                <Message message="admin.creators.form.update" />
+              ) : (
+                <Message message="admin.creators.form.create" />
+              )}
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.creators.form.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </div>
-    </form>
+    </ActionForm>
   );
 };

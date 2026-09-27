@@ -63,6 +63,7 @@ const NewAccessTicketFormData = async () => {
         title: item.title,
       }))}
       seriesErrorMessage={seriesResult.ok ? undefined : seriesResult.message}
+      tenantId={tenantId}
       timeZone={timeZone}
     />
   );

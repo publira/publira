@@ -1,32 +1,36 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
-  render as renderBase,
+  render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
-
-import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
 import { LabelForm } from "./label-form";
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
 
 const action = () => Promise.resolve(null);
-
-const render = (ui: React.ReactNode) =>
-  renderBase(ui, {
-    wrapper: ({ children }) => (
-      <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
-    ),
-  });
 
 const label: LabelListItem = {
   eyeCatchImageUpdatedAt: "",
@@ -41,20 +45,31 @@ const label: LabelListItem = {
  * for its router bfcache, so the create form and the edit form are in the
  * document at the same time.
  */
-const renderBothForms = () =>
+const renderBothForms = async () => {
+  const [createForm, updateForm] = await Promise.all([
+    LabelForm({ action, mode: "create", tenantId: "TENANT001" }),
+    LabelForm({
+      action,
+      initialLabel: label,
+      mode: "update",
+      tenantId: "TENANT001",
+    }),
+  ]);
+
   render(
     <>
-      <LabelForm action={action} mode="create" />
-      <LabelForm action={action} initialLabel={label} mode="update" />
+      {createForm}
+      {updateForm}
     </>
   );
+};
 
 afterEach(() => {
   cleanup();
 });
 
-it("keeps the ids unique when it is mounted twice", () => {
-  renderBothForms();
+it("keeps the ids unique when it is mounted twice", async () => {
+  await renderBothForms();
 
   const ids = [...document.querySelectorAll("[id]")].map(
     (element) => element.id
@@ -64,8 +79,8 @@ it("keeps the ids unique when it is mounted twice", () => {
   expect(ids).toHaveLength(new Set(ids).size);
 });
 
-it("points each label at its own input when it is mounted twice", () => {
-  renderBothForms();
+it("points each label at its own input when it is mounted twice", async () => {
+  await renderBothForms();
 
   const names = screen.getAllByLabelText<HTMLInputElement>(/Label name/u);
 
@@ -81,19 +96,32 @@ it("closes the fields while the save is in flight", async () => {
   const save = Promise.withResolvers<LabelActionState>();
   const pendingAction = vi.fn(() => save.promise);
 
-  render(<LabelForm action={pendingAction} mode="create" />);
+  render(
+    await LabelForm({
+      action: pendingAction,
+      mode: "create",
+      tenantId: "TENANT001",
+    })
+  );
 
   const name = screen.getByLabelText<HTMLInputElement>(/Label name/u);
   const image = screen.getByLabelText<HTMLInputElement>("Label cover image");
   fireEvent.change(name, { target: { value: "Monthly Novels" } });
 
-  expect(name.disabled).toBe(false);
-  expect(image.disabled).toBe(false);
+  expect(name.matches(":disabled")).toBe(false);
+  expect(image.matches(":disabled")).toBe(false);
 
   fireEvent.click(screen.getByRole("button", { name: "Create label" }));
 
   await waitFor(() => {
-    expect(name.disabled).toBe(true);
-    expect(image.disabled).toBe(true);
+    expect(name.matches(":disabled")).toBe(true);
+    expect(image.matches(":disabled")).toBe(true);
   });
+  expect(pendingAction).toHaveBeenCalledOnce();
+  const [, formData] = pendingAction.mock.calls[0] as unknown as [
+    LabelActionState,
+    FormData,
+  ];
+  expect(formData.get("tenant_id")).toBe("TENANT001");
+  expect(formData.get("name")).toBe("Monthly Novels");
 });

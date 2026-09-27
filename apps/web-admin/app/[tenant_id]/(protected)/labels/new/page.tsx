@@ -40,9 +40,13 @@ const NewLabelFormSkeleton = () => (
   </div>
 );
 
-const NewLabelFormData = () => (
-  <LabelForm action={createLabelAction} mode="create" />
-);
+const NewLabelFormData = async () => {
+  const tenantId = await getTenantId();
+
+  return (
+    <LabelForm action={createLabelAction} mode="create" tenantId={tenantId} />
+  );
+};
 
 const NewLabelPage = () => (
   <AdminPage>
