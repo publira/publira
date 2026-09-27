@@ -3200,6 +3200,19 @@
       "untitled": "Page"
     },
     "ranking": {
+      "age_gate": {
+        "add_birth_date": "Add your date of birth",
+        "guest_description": "This site checks your age before showing this ranking. Sign in with an account that has your date of birth.",
+        "login": "Sign in",
+        "no_birth_date_description": "This site checks your age before showing this ranking. Add your date of birth in your settings.",
+        "r15_description": "Confirm that you are 15 or older to see this ranking.",
+        "r15_title": "This is the ranking of works rated R15",
+        "r18_description": "Confirm that you are 18 or older to see this ranking.",
+        "r18_title": "This is the ranking of works rated R18",
+        "title": "This ranking is age-restricted",
+        "too_young_description": "This ranking is not available for your age."
+      },
+      "back_to_all_ages": "Show the all-ages ranking",
       "computed_at": "Updated {$datetime}",
       "description": "The works being read the most right now.",
       "first_page": "Show the top of the ranking",
@@ -3216,7 +3229,9 @@
       "period_daily": "Daily",
       "period_nav": "Ranking period",
       "period_weekly": "Weekly",
-      "rank_position": "No. {$rank}"
+      "rank_position": "No. {$rank}",
+      "rating_all": "All ages",
+      "rating_nav": "Ranking age rating"
     },
     "related": {
       "heading": "You may also like",

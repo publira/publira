@@ -7,6 +7,7 @@ import {
   RANKED_GENRE,
   RANKING_COMPUTED_ON,
   RANKING_ENTRY_COUNT,
+  R18_RANKED_SERIES,
   RANKING_SERIES,
   seedSeriesImageId,
 } from "../src/scenarios/ranking";
@@ -14,8 +15,8 @@ import { hostPath, WEB_HOST_OTHER_TENANT_BASE_URL } from "../src/urls";
 
 /**
  * The ranking a reader sees: the numbered module the top page opens with, the
- * chart behind it, the two periods that chart is kept in, and the order a
- * genre tile draws its covers in.
+ * chart behind it, the two periods and the age ratings that chart is kept in,
+ * and the order a genre tile draws its covers in.
  *
  * The positions come from `db/seeds/scenarios/170_ranking.sql`, which
  * `task e2e:db` applies for the whole stack, so this suite seeds nothing of its
@@ -97,6 +98,35 @@ test.describe("web-host ranking", () => {
     await expect(page).toHaveURL(/period=weekly/u);
     await expect(chartRow(page, RANKING_SERIES.held.title)).toContainText(
       `No. ${RANKING_SERIES.held.weeklyRank}`
+    );
+  });
+
+  test("a rated ranking is a chart of its own behind the rating confirmation, and keeps its rating across periods", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/ranking?period=weekly"));
+
+    await expect(page.locator("main ol > li")).not.toHaveCount(0);
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
+
+    await page
+      .getByRole("navigation", { name: "Ranking age rating" })
+      .getByRole("link", { name: "R18" })
+      .click();
+
+    await expect(page).toHaveURL(/period=weekly&rating=r18/u);
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toHaveCount(0);
+    await page.getByRole("button", { name: "I am 18 or older" }).click();
+
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toContainText(
+      `No. ${R18_RANKED_SERIES.weeklyRank}`
+    );
+
+    await page.getByRole("link", { name: "Daily" }).click();
+
+    await expect(page).toHaveURL(/rating=r18/u);
+    await expect(chartRow(page, R18_RANKED_SERIES.title)).toContainText(
+      `No. ${R18_RANKED_SERIES.dailyRank}`
     );
   });
 

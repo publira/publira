@@ -22,6 +22,7 @@ import {
   ClientSurface,
   CommentMode,
   ReadingDirection,
+  SeriesAgeRating,
   SeriesStatus,
   SurfaceAvailability,
 } from "@publira/api-client/public/types";
@@ -1146,8 +1147,49 @@ const rankingPeriods: Record<RankingPeriodName, RankingPeriod> = {
 };
 
 /**
- * One page of the latest ranking snapshot for a period, in the positions that
- * snapshot recorded.
+ * Which rating's leaderboard to read. Each rating is ranked on its own, and
+ * `all` is the one every reader may see.
+ */
+export type RankingAgeRatingName = "all" | RestrictedAgeRating;
+
+const rankingAgeRatings: Record<RankingAgeRatingName, SeriesAgeRating> = {
+  all: SeriesAgeRating.ALL,
+  r15: SeriesAgeRating.R15,
+  r18: SeriesAgeRating.R18,
+};
+
+interface RankedSeriesQuery {
+  ageRating: RankingAgeRatingName;
+  limit?: number;
+  locale: Locale;
+  period: RankingPeriodName;
+  token?: string;
+}
+
+const toRankedSeriesPage = (
+  response: ListRankedSeriesResponse
+): RankedSeriesPage => ({
+  computedAt: response.computedAt ?? "",
+  nextToken: response.nextToken ?? "",
+  periodEnd: response.periodEnd ?? "",
+  periodStart: response.periodStart ?? "",
+  previousToken: response.previousToken ?? "",
+  rankedSeries: (response.rankedSeries ?? []).flatMap((ranked) =>
+    ranked.series
+      ? [
+          {
+            previousRank: ranked.previousRank,
+            rank: ranked.rank,
+            series: toSeriesListItem(ranked.series),
+          },
+        ]
+      : []
+  ),
+});
+
+/**
+ * One page of the latest ranking snapshot for a period and rating, in the
+ * positions that snapshot recorded.
  *
  * Unlike {@link listRecommendedSeries} this is the leaderboard itself: only
  * what the batch ranked, at the positions it assigned, so a series unpublished
@@ -1155,24 +1197,17 @@ const rankingPeriods: Record<RankingPeriodName, RankingPeriod> = {
  * the chart up. A tenant the batch has not ranked yet answers with an empty
  * page and an empty `computedAt` instead of an error.
  *
+ * This is the shared read, so it serves only a rating the tenant's age rule
+ * does not cover; a covered one goes through {@link listReaderRankedSeries}.
+ *
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`. A token carries the period it was built for, so changing
- * the period restarts at page 1.
+ * `proto/README.md`. A token carries the period and rating it was built for,
+ * so changing either restarts at page 1.
  */
 export const listRankedSeries = async (
   tenantId: string,
-  {
-    limit = 20,
-    locale,
-    period,
-    token = "",
-  }: {
-    limit?: number;
-    locale: Locale;
-    period: RankingPeriodName;
-    token?: string;
-  }
+  { ageRating, limit = 20, locale, period, token = "" }: RankedSeriesQuery
 ): Promise<CachedReadResult<RankedSeriesPage>> => {
   "use cache";
 
@@ -1187,6 +1222,7 @@ export const listRankedSeries = async (
   let response: ListRankedSeriesResponse;
   try {
     response = await apiClient.catalog.listRankedSeries({
+      ageRating: rankingAgeRatings[ageRating],
       limit,
       period: rankingPeriods[period],
       surface: ClientSurface.WEB,
@@ -1197,28 +1233,69 @@ export const listRankedSeries = async (
     return localizedReadFailure(error, locale, "host.ranking.list_failed");
   }
 
-  const rankedSeries = (response.rankedSeries ?? []).flatMap((ranked) =>
-    ranked.series
-      ? [
-          {
-            previousRank: ranked.previousRank,
-            rank: ranked.rank,
-            series: toSeriesListItem(ranked.series),
-          },
-        ]
-      : []
-  );
+  return { ok: true, value: toRankedSeriesPage(response) };
+};
+
+/**
+ * A rating the tenant's age rule covers, as the server answers it to this
+ * reader: the page, or `age_restricted` when the rule withholds that rating
+ * from them.
+ */
+export type ReaderRankedSeriesPage =
+  | { access: "open"; page: RankedSeriesPage }
+  | { access: "age_restricted" };
+
+/**
+ * {@link listRankedSeries} for a rating the tenant's age rule covers, which
+ * the server answers only with the reader's session and privately to them.
+ * A guest skips the RPC, since the server would refuse them the same way.
+ *
+ * `accessToken` is an argument so the private cache key includes the session.
+ */
+export const listReaderRankedSeries = async (
+  tenantId: string,
+  accessToken: string,
+  { ageRating, limit = 20, locale, period, token = "" }: RankedSeriesQuery
+): Promise<CachedReadResult<ReaderRankedSeriesPage>> => {
+  "use cache: private";
+  try {
+    cacheLife({ stale: 30 });
+  } catch {
+    // Unit tests run without the Next.js cache runtime, same as applyCacheTag.
+  }
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantCreatorsTag(normalizedTenantId));
+
+  const sessionId = accessToken.trim();
+  if (!sessionId) {
+    return { ok: true, value: { access: "age_restricted" } };
+  }
+
+  let response: ListRankedSeriesResponse;
+  try {
+    response = await apiClient.catalog.listRankedSeries(
+      {
+        ageRating: rankingAgeRatings[ageRating],
+        limit,
+        period: rankingPeriods[period],
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: normalizedTenantId },
+        token,
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    if (isRpcError(error, Code.PermissionDenied)) {
+      return { ok: true, value: { access: "age_restricted" } };
+    }
+    return localizedReadFailure(error, locale, "host.ranking.list_failed");
+  }
 
   return {
     ok: true,
-    value: {
-      computedAt: response.computedAt ?? "",
-      nextToken: response.nextToken ?? "",
-      periodEnd: response.periodEnd ?? "",
-      periodStart: response.periodStart ?? "",
-      previousToken: response.previousToken ?? "",
-      rankedSeries,
-    },
+    value: { access: "open", page: toRankedSeriesPage(response) },
   };
 };
 

@@ -3200,6 +3200,19 @@
       "untitled": "頁面"
     },
     "ranking": {
+      "age_gate": {
+        "add_birth_date": "登錄出生日期",
+        "guest_description": "顯示本排行榜前需要核對年齡。請使用已登錄出生日期的帳戶登入。",
+        "login": "登入",
+        "no_birth_date_description": "顯示本排行榜前需要核對年齡。請在設定中登錄您的出生日期。",
+        "r15_description": "確認已滿 15 歲後即可查看本排行榜。",
+        "r15_title": "這是 R15 作品的排行榜",
+        "r18_description": "確認已滿 18 歲後即可查看本排行榜。",
+        "r18_title": "這是 R18 作品的排行榜",
+        "title": "本排行榜設有年齡限制",
+        "too_young_description": "本排行榜不適用於您的年齡。"
+      },
+      "back_to_all_ages": "查看全年齡排行榜",
       "computed_at": "更新於 {$datetime}",
       "description": "目前閱讀量最高的作品。",
       "first_page": "回到排行榜頂端",
@@ -3216,7 +3229,9 @@
       "period_daily": "日榜",
       "period_nav": "排行榜週期",
       "period_weekly": "週榜",
-      "rank_position": "第 {$rank} 名"
+      "rank_position": "第 {$rank} 名",
+      "rating_all": "全年齡",
+      "rating_nav": "排行榜年齡分級"
     },
     "related": {
       "heading": "你可能也喜歡",

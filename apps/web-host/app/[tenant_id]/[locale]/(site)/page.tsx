@@ -656,11 +656,9 @@ const PopularSeriesShelf = ({
     return (
       <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
         {popular.rankedSeries.map(({ rank, series }) => (
-          <AgeRatedVisibility key={series.publicId} rating={series.ageRating}>
-            <li>
-              <PopularSeriesCard rank={rank} series={series} />
-            </li>
-          </AgeRatedVisibility>
+          <li key={series.publicId}>
+            <PopularSeriesCard rank={rank} series={series} />
+          </li>
         ))}
       </ul>
     );

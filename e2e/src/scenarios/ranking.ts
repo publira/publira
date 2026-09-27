@@ -40,6 +40,16 @@ export const RANKING_SERIES = {
   },
 } as const;
 
+/**
+ * An `r18` series and its place in the seeded `r18` rankings, which the
+ * all-ages ranking never lists.
+ */
+export const R18_RANKED_SERIES = {
+  dailyRank: 2,
+  title: "Seed Series 007",
+  weeklyRank: 1,
+} as const;
+
 /** Positions in each of the seeded snapshots. */
 export const RANKING_ENTRY_COUNT = 10;
 

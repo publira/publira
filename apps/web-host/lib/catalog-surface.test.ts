@@ -79,7 +79,12 @@ describe("storefront catalog reads", () => {
     ],
     [
       "listRankedSeries",
-      () => listRankedSeries("TENANT_1", { locale: "en", period: "daily" }),
+      () =>
+        listRankedSeries("TENANT_1", {
+          ageRating: "all",
+          locale: "en",
+          period: "daily",
+        }),
     ],
     [
       "searchPublishedSeries",

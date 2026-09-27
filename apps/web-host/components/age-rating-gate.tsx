@@ -113,17 +113,25 @@ export const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
   <EmptyStateTitle>{children}</EmptyStateTitle>
 );
 
-/** What confirming asserts, worded for the gate's rating. */
-export const AgeRatingGateDescription = () => {
+/**
+ * What confirming asserts, worded for the gate's rating. A gate standing in
+ * front of something other than a series says it in `children`.
+ */
+export const AgeRatingGateDescription = ({
+  children,
+}: {
+  children?: ReactNode;
+}) => {
   const { rating } = useAgeRatingGateState();
 
   return (
     <EmptyStateDescription>
-      {rating === "r18" ? (
-        <ClientMessage message="host.series.age_gate.r18_description" />
-      ) : (
-        <ClientMessage message="host.series.age_gate.r15_description" />
-      )}
+      {children ??
+        (rating === "r18" ? (
+          <ClientMessage message="host.series.age_gate.r18_description" />
+        ) : (
+          <ClientMessage message="host.series.age_gate.r15_description" />
+        ))}
     </EmptyStateDescription>
   );
 };
