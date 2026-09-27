@@ -1,4 +1,5 @@
 export interface TicketSeriesOption {
+  id: string;
   publicId: string;
   title: string;
 }

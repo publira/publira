@@ -22,6 +22,8 @@ import {
   optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
+  recordIdListFormSchema,
+  requiredRecordId,
   requiredTrimmedString,
   spreadStartPageFormSchema,
   trimmedStringListFormSchema,
@@ -84,8 +86,8 @@ const creatorCreditListFormSchema = (
     },
     z.array(
       z.object({
-        creatorPublicId: requiredTrimmedString(message),
-        rolePublicId: requiredTrimmedString(message),
+        creatorId: requiredRecordId(message),
+        roleId: requiredRecordId(message),
         shareBps: creditShareBpsSchema(message),
       }),
       { error: message }
@@ -130,11 +132,9 @@ const seriesCommonSchema = async (locale: Locale) => {
       t("admin.series.validation.creator_credits_invalid")
     ),
     eyeCatchImage: optionalFileFormSchema,
-    genrePublicIds: trimmedStringListFormSchema,
+    genreIds: recordIdListFormSchema,
     isPublished: checkboxOnFormSchema,
-    labelPublicId: requiredTrimmedString(
-      t("admin.series.validation.label_required")
-    ),
+    labelId: requiredRecordId(t("admin.series.validation.label_required")),
     publishedAt: optionalTrimmedString(),
     // The empty value follows the tenant's default.
     purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
@@ -176,7 +176,7 @@ const seriesUpdateSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
-    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
   });
 };
 const seriesEyeCatchSchema = async (locale: Locale) => {
@@ -209,9 +209,9 @@ const seriesFormFields = {
   commentMode: { kind: "value", name: "comment_mode" },
   creatorCredits: { kind: "value", name: "creator_credits" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
-  genrePublicIds: { kind: "values", name: "genre_public_ids" },
+  genreIds: { kind: "values", name: "genre_ids" },
   isPublished: { kind: "value", name: "is_published" },
-  labelPublicId: { kind: "value", name: "label_public_id" },
+  labelId: { kind: "value", name: "label_id" },
   publishedAt: { kind: "value", name: "published_at" },
   purchaseAvailability: { kind: "value", name: "purchase_availability" },
   readingDirection: { kind: "value", name: "reading_direction" },
@@ -307,9 +307,9 @@ export const createSeriesAction = async (
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
-        genrePublicIds: parsed.data.genrePublicIds,
+        genreIds: parsed.data.genreIds,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-        labelPublicId: parsed.data.labelPublicId,
+        labelId: parsed.data.labelId,
         publishedAt: schedule.publishedAt,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
@@ -346,7 +346,7 @@ export const updateSeriesAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
-      publicId: { kind: "value", name: "public_id" },
+      id: { kind: "value", name: "series_id" },
     })
   );
   if (!parsed.success) {
@@ -376,10 +376,10 @@ export const updateSeriesAction = async (
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
-        genrePublicIds: parsed.data.genrePublicIds,
+        genreIds: parsed.data.genreIds,
+        id: parsed.data.id,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-        labelPublicId: parsed.data.labelPublicId,
-        publicId: parsed.data.publicId,
+        labelId: parsed.data.labelId,
         publishedAt: schedule.publishedAt,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
@@ -400,11 +400,11 @@ export const updateSeriesAction = async (
     return toFailure(result.message, "update");
   }
 
-  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesCacheTag(parsed.data.tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
-  redirect(`/series/${parsed.data.publicId}?updated=1`);
+  redirect(`/series/${result.series.publicId}?updated=1`);
 };
 
 export const updateSeriesEyeCatchAction = async (
@@ -425,7 +425,7 @@ export const updateSeriesEyeCatchAction = async (
         kind: "value",
         name: "current_eye_catch_image_updated_at",
       },
-      publicId: { kind: "value", name: "public_id" },
+      id: { kind: "value", name: "series_id" },
     })
   );
   if (!parsed.success) {
@@ -457,10 +457,10 @@ export const updateSeriesEyeCatchAction = async (
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
         eyeCatchImageData,
-        genrePublicIds: parsed.data.genrePublicIds,
+        genreIds: parsed.data.genreIds,
+        id: parsed.data.id,
         isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-        labelPublicId: parsed.data.labelPublicId,
-        publicId: parsed.data.publicId,
+        labelId: parsed.data.labelId,
         publishedAt: schedule.publishedAt,
         tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
@@ -495,7 +495,7 @@ export const updateSeriesEyeCatchAction = async (
     );
   }
 
-  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesCacheTag(parsed.data.tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
 
   return {
@@ -511,7 +511,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 
   return z.object({
     crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
-    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
     tenantId: requiredTrimmedString(
       t("admin.series.validation.tenant_missing")
     ),
@@ -522,7 +522,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 };
 const eyeCatchAspectFormFields = {
   crop: { kind: "value", name: CROP_RECT_FIELD },
-  publicId: { kind: "value", name: "public_id" },
+  id: { kind: "value", name: "series_id" },
   tenantId: { kind: "value", name: "tenant_id" },
   variantType: { kind: "value", name: "variant_type" },
 } as const;
@@ -558,7 +558,7 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
     return toAspectFailure(toFormErrorMessage(parsed.error, { locale }), "");
   }
 
-  const { aspectImage, crop, publicId, tenantId, variantType } = parsed.data;
+  const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
   if (!aspectImage) {
     return toAspectFailure(
       t("admin.eye_catch.aspect.image_required"),
@@ -571,9 +571,9 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
     uploadSeriesEyeCatchAspectImage(
       {
         crop,
+        id,
         imageContentType: aspectImage.type || undefined,
         imageData,
-        publicId,
         tenantId,
         variantType,
       },
@@ -587,7 +587,7 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
       : toAspectFailure(result.message, variantType);
   }
 
-  updateTag(seriesCacheTag(tenantId, publicId));
+  updateTag(seriesCacheTag(tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(tenantId));
 
   return {

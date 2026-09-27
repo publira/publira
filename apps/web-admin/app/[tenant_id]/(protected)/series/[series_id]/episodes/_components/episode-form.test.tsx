@@ -36,8 +36,18 @@ const render = (ui: React.ReactNode) =>
 const renderBothForms = () =>
   render(
     <>
-      <EpisodeForm action={action} seriesPublicId="SERIES001" timeZone="UTC" />
-      <EpisodeForm action={action} seriesPublicId="SERIES002" timeZone="UTC" />
+      <EpisodeForm
+        action={action}
+        seriesId="SERIES001-ID"
+        seriesPublicId="SERIES001"
+        timeZone="UTC"
+      />
+      <EpisodeForm
+        action={action}
+        seriesId="SERIES002-ID"
+        seriesPublicId="SERIES002"
+        timeZone="UTC"
+      />
     </>
   );
 
@@ -83,6 +93,7 @@ it("creates an episode that follows its series unless told otherwise", () => {
     <EpisodeForm
       action={action}
       seriesAvailability="app"
+      seriesId="SERIES001-ID"
       seriesPublicId="SERIES001"
       timeZone="UTC"
     />
@@ -106,6 +117,7 @@ it("creates an episode sold where its series is unless told otherwise", () => {
   render(
     <EpisodeForm
       action={action}
+      seriesId="SERIES001-ID"
       seriesPublicId="SERIES001"
       seriesPurchaseAvailability="web"
       timeZone="UTC"
@@ -145,6 +157,7 @@ it("closes every field while the save is in flight", async () => {
   render(
     <EpisodeForm
       action={pendingAction}
+      seriesId="SERIES001-ID"
       seriesPublicId="SERIES001"
       timeZone="UTC"
     />

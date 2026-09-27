@@ -63,6 +63,7 @@ vi.mock("#lib/tenant-timezone", () => ({
 const createEpisodeFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
+  formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
   formData.set("series_public_id", "SERIES001");
   formData.set("title", "Episode title");
   formData.set("price", "0");
@@ -202,6 +203,7 @@ describe("episode create actions", () => {
 });
 
 const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
+  id: `018f0e6a-4000-7000-8000-0000000000${String(index + 1).padStart(2, "0")}`,
   publicId: `EP${String(index + 1).padStart(2, "0")}`,
   title: `Episode ${index + 1}`,
 }));
@@ -209,26 +211,24 @@ const fortyEpisodes = Array.from({ length: 40 }, (_, index) => ({
 const bulkCreditFormData = (): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
-  formData.set("series_public_id", "SERIES001");
+  formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
   formData.set("operation", "replace");
   formData.set(
-    "episode_public_ids",
-    JSON.stringify(
-      fortyEpisodes.slice(0, 11).map((episode) => episode.publicId)
-    )
+    "episode_ids",
+    JSON.stringify(fortyEpisodes.slice(0, 11).map((episode) => episode.id))
   );
-  formData.set("from_creator_public_id", "CREATOR_B");
-  formData.set("from_role_public_id", "ROLE_ARTIST");
-  formData.set("to_creator_public_id", "CREATOR_C");
-  formData.set("to_role_public_id", "ROLE_ARTIST");
+  formData.set("from_creator_id", "018f0e6a-7000-7000-8000-00000000000b");
+  formData.set("from_role_id", "018f0e6a-8000-7000-8000-00000000000a");
+  formData.set("to_creator_id", "018f0e6a-7000-7000-8000-00000000000c");
+  formData.set("to_role_id", "018f0e6a-8000-7000-8000-00000000000a");
   return formData;
 };
 
 const setShareFormData = (share: string): FormData => {
   const formData = bulkCreditFormData();
   formData.set("operation", "set_share");
-  formData.set("creator_public_id", "CREATOR_B");
-  formData.set("role_public_id", "ROLE_ARTIST");
+  formData.set("creator_id", "018f0e6a-7000-7000-8000-00000000000b");
+  formData.set("role_id", "018f0e6a-8000-7000-8000-00000000000a");
   formData.set("share", share);
   return formData;
 };
@@ -246,9 +246,9 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("resolves the checked episodes of a 40-episode series and sends only those public ids", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: fortyEpisodes
+      changedEpisodeIds: fortyEpisodes
         .slice(0, 11)
-        .map((episode) => episode.publicId),
+        .map((episode) => episode.id),
       ok: true,
       unchangedEpisodes: [],
     });
@@ -261,15 +261,19 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       {
-        episodePublicIds: fortyEpisodes
-          .slice(0, 11)
-          .map((episode) => episode.publicId),
+        episodeIds: fortyEpisodes.slice(0, 11).map((episode) => episode.id),
         operation: {
-          from: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
-          to: { creatorPublicId: "CREATOR_C", rolePublicId: "ROLE_ARTIST" },
+          from: {
+            creatorId: "018f0e6a-7000-7000-8000-00000000000b",
+            roleId: "018f0e6a-8000-7000-8000-00000000000a",
+          },
+          to: {
+            creatorId: "018f0e6a-7000-7000-8000-00000000000c",
+            roleId: "018f0e6a-8000-7000-8000-00000000000a",
+          },
           type: "replace",
         },
-        seriesPublicId: "SERIES001",
+        seriesId: "018f0e6a-2000-7000-8000-000000000001",
         tenantId: "TENANT001",
       },
       "en"
@@ -280,22 +284,35 @@ describe("bulkEditEpisodeCreditsAction", () => {
     if (!result?.ok) {
       return;
     }
-    expect(result.changedEpisodePublicIds).toHaveLength(11);
-    expect(result.changedEpisodePublicIds.at(-1)).toBe("EP11");
-    expect(result.changedEpisodePublicIds.includes("EP12")).toBe(false);
+    expect(result.changedEpisodeIds).toHaveLength(11);
+    expect(result.changedEpisodeIds.at(-1)).toBe(
+      "018f0e6a-4000-7000-8000-000000000011"
+    );
+    expect(
+      result.changedEpisodeIds.includes("018f0e6a-4000-7000-8000-000000000012")
+    ).toBe(false);
   });
 
   it("sends a sparse selection in reading order and drops ids that are not on the series", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: ["EP01", "EP07", "EP11"],
+      changedEpisodeIds: [
+        "018f0e6a-4000-7000-8000-000000000001",
+        "018f0e6a-4000-7000-8000-000000000007",
+        "018f0e6a-4000-7000-8000-000000000011",
+      ],
       ok: true,
       unchangedEpisodes: [],
     });
 
     const formData = bulkCreditFormData();
     formData.set(
-      "episode_public_ids",
-      JSON.stringify(["EP11", "MISSING", "EP01", "EP07"])
+      "episode_ids",
+      JSON.stringify([
+        "018f0e6a-4000-7000-8000-000000000011",
+        "018f0e6a-4000-7000-8000-0000000000ff",
+        "018f0e6a-4000-7000-8000-000000000001",
+        "018f0e6a-4000-7000-8000-000000000007",
+      ])
     );
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
@@ -303,7 +320,11 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       expect.objectContaining({
-        episodePublicIds: ["EP01", "EP07", "EP11"],
+        episodeIds: [
+          "018f0e6a-4000-7000-8000-000000000001",
+          "018f0e6a-4000-7000-8000-000000000007",
+          "018f0e6a-4000-7000-8000-000000000011",
+        ],
       }),
       "en"
     );
@@ -312,7 +333,10 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("refuses when nothing checked is on the series", async () => {
     const formData = bulkCreditFormData();
-    formData.set("episode_public_ids", JSON.stringify(["MISSING"]));
+    formData.set(
+      "episode_ids",
+      JSON.stringify(["018f0e6a-4000-7000-8000-0000000000ff"])
+    );
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
     const result = await bulkEditEpisodeCreditsAction(null, formData);
@@ -326,7 +350,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
 
   it("sends a set-share with the typed percentage in basis points", async () => {
     mockBulkEditEpisodeCredits.mockResolvedValueOnce({
-      changedEpisodePublicIds: ["EP01"],
+      changedEpisodeIds: ["EP01"],
       ok: true,
       unchangedEpisodes: [],
     });
@@ -337,7 +361,10 @@ describe("bulkEditEpisodeCreditsAction", () => {
     expect(mockBulkEditEpisodeCredits).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: {
-          credit: { creatorPublicId: "CREATOR_B", rolePublicId: "ROLE_ARTIST" },
+          credit: {
+            creatorId: "018f0e6a-7000-7000-8000-00000000000b",
+            roleId: "018f0e6a-8000-7000-8000-00000000000a",
+          },
           shareBps: 3333,
           type: "set_share",
         },

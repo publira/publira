@@ -1,4 +1,10 @@
 import { LinkButton } from "@publira/ui-components/button";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -6,6 +12,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -91,21 +98,36 @@ const NewEpisodeFormData = async ({
   const locale = await getLocale(tenantId);
   const [timeZone, seriesResult, purchaseSettingsResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
-    // Only to name what the options that follow the series follow, so a read
-    // that failed leaves them unnamed rather than the form unusable.
     getSeries({ publicId: seriesId, tenantId }, locale),
     getTenantPurchaseSettings(tenantId, locale),
   ]);
   await redirectToLoginIfSessionRejected(seriesResult, purchaseSettingsResult);
 
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Message message="admin.series.detail_error" />
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            {seriesResult.message}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
   return (
     <EpisodeForm
       action={createEpisodeAction}
-      seriesAvailability={
-        seriesResult.ok ? seriesResult.series.availability : undefined
-      }
+      seriesAvailability={seriesResult.series.availability}
+      seriesId={seriesResult.series.id}
       seriesPurchaseAvailability={
-        seriesResult.ok && purchaseSettingsResult.ok
+        purchaseSettingsResult.ok
           ? resolvePurchaseAvailability(
               purchaseSettingsResult.settings.purchaseAvailability,
               seriesResult.purchaseAvailability

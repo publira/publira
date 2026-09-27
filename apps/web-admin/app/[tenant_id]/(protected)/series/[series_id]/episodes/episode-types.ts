@@ -17,12 +17,13 @@ export type EpisodeActionState =
   | null;
 
 export interface EpisodeCreditRangeOption {
+  id: string;
   publicId: string;
   title: string;
 }
 
 export interface CreditPickerOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 
@@ -38,7 +39,7 @@ export interface ListEpisodeCreditRangeCatalogResult {
 export type BulkEditEpisodeCreditsActionState =
   | {
       ok: true;
-      changedEpisodePublicIds: string[];
+      changedEpisodeIds: string[];
       unchangedEpisodes: UnchangedEpisodeCreditItem[];
     }
   | { ok: false; message: string }

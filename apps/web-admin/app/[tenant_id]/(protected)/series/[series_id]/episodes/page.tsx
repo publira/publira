@@ -18,6 +18,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -103,6 +104,27 @@ const SeriesEpisodesListSkeleton = () => (
   </div>
 );
 
+/**
+ * The dialog writes credits on the series by its ID, so it waits for the
+ * series read and stays out while that read fails.
+ */
+const SeriesEpisodeCreditsRange = async ({
+  params,
+}: Pick<SeriesEpisodesPageProps, "params">) => {
+  const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  guardPlaceholder(series_id);
+  const locale = await getLocale(tenantId);
+  const seriesResult = await getSeries(
+    { publicId: series_id, tenantId },
+    locale
+  );
+  await redirectToLoginIfSessionRejected(seriesResult);
+
+  return seriesResult.ok ? (
+    <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
+  ) : null;
+};
+
 const SeriesEpisodesChrome = async ({
   params,
 }: Pick<SeriesEpisodesPageProps, "params">) => {
@@ -127,7 +149,9 @@ const SeriesEpisodesChrome = async ({
           >
             <Message message="admin.series.episodes.new_action" />
           </LinkButton>
-          <EpisodeCreditsRangeDialog seriesPublicId={series_id} />
+          <Suspense fallback={null}>
+            <SeriesEpisodeCreditsRange params={params} />
+          </Suspense>
           <LinkButton
             render={<Link href={`/series/${series_id}`} />}
             variant="outline"
@@ -153,23 +177,36 @@ const SeriesEpisodesData = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, seriesResult, timeZone, t] = await Promise.all([
-    listEpisodes(
-      {
-        seriesPublicId: series_id,
-        tenantId,
-        token,
-      },
-      locale
-    ),
-    // Only to mark the rows by where the series bounds them, so a read that
-    // failed leaves each row marked by its own value rather than the list
-    // unusable.
+  const [seriesResult, timeZone, t] = await Promise.all([
     getSeries({ publicId: series_id, tenantId }, locale),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
   ]);
-  await redirectToLoginIfSessionRejected(result, seriesResult);
+  await redirectToLoginIfSessionRejected(seriesResult);
+
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Message message="admin.series.episodes.list_error" />
+          </SectionErrorTitle>
+          <SectionErrorDescription>
+            {seriesResult.message}
+          </SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
+  const result = await listEpisodes(
+    { seriesId: seriesResult.series.id, tenantId, token },
+    locale
+  );
+  await redirectToLoginIfSessionRejected(result);
 
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
@@ -239,9 +276,8 @@ const SeriesEpisodesData = async ({
         <EpisodesSortableList
           episodes={result.episodes}
           reorderAction={reorderEpisodesAction}
-          seriesAvailability={
-            seriesResult.ok ? seriesResult.series.availability : undefined
-          }
+          seriesAvailability={seriesResult.series.availability}
+          seriesId={seriesResult.series.id}
           seriesPublicId={series_id}
           timeZone={timeZone}
         />

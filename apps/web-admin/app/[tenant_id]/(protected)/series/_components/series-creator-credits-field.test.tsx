@@ -86,14 +86,14 @@ vi.mock("@dnd-kit/react/sortable", () => ({
 }));
 
 const creators = [
-  { name: "Original A", publicId: "CREATOR001" },
-  { name: "Artist B", publicId: "CREATOR002" },
-  { name: "Artist C", publicId: "CREATOR003" },
+  { id: "CREATOR001", name: "Original A" },
+  { id: "CREATOR002", name: "Artist B" },
+  { id: "CREATOR003", name: "Artist C" },
 ];
 
 const creatorRoles = [
-  { name: "Original Author", publicId: "ROLE001" },
-  { name: "Artist", publicId: "ROLE002" },
+  { id: "ROLE001", name: "Original Author" },
+  { id: "ROLE002", name: "Artist" },
 ];
 
 const render = (
@@ -160,9 +160,9 @@ describe("SeriesCreatorCreditsField", () => {
   // moment its author was chosen would move out from under the editor.
   it("keeps the order it was given and posts it unchanged", () => {
     const credits = [
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR003", rolePublicId: "ROLE002", shareBps: 0 },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR003", roleId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
     ];
 
     render(credits);
@@ -174,17 +174,15 @@ describe("SeriesCreatorCreditsField", () => {
   // The row an editor is filling in stays where the Add button put it, which
   // is the end of the list, whatever role it ends up stating.
   it("leaves a new row at the end while it is being filled in", () => {
-    render([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
-    ]);
+    render([{ creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 }]);
 
     fireEvent.click(screen.getByRole("button", { name: "Add author" }));
     fireEvent.change(creatorPicker(2), { target: { value: "CREATOR001" } });
 
     expect(namesOnScreen()).toEqual(["Artist B", "Original A"]);
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
     ]);
   });
 
@@ -193,8 +191,8 @@ describe("SeriesCreatorCreditsField", () => {
   // visually hidden label `Field` ties to each one.
   it("names both pickers on a row after the position it sits at", () => {
     render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
     ]);
 
     expect(creatorPicker(1).value).toBe("CREATOR001");
@@ -206,26 +204,22 @@ describe("SeriesCreatorCreditsField", () => {
   // Correcting a credit is changing the row, not deleting it and writing it
   // again — the author is a picker for as long as the row exists.
   it("re-credits a row by changing the author on it", () => {
-    render([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
-    ]);
+    render([{ creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 }]);
 
     fireEvent.change(creatorPicker(1), { target: { value: "CREATOR003" } });
 
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR003", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR003", roleId: "ROLE002", shareBps: 0 },
     ]);
   });
 
   it("re-credits a row by changing the role on it", () => {
-    render([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
-    ]);
+    render([{ creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 }]);
 
     fireEvent.change(rolePicker(1), { target: { value: "ROLE001" } });
 
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE001", shareBps: 0 },
     ]);
   });
 
@@ -242,7 +236,7 @@ describe("SeriesCreatorCreditsField", () => {
     fireEvent.change(creatorPicker(1), { target: { value: "CREATOR002" } });
 
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE001", shareBps: 0 },
     ]);
   });
 
@@ -250,24 +244,22 @@ describe("SeriesCreatorCreditsField", () => {
   // twice under two roles. The API refuses the same pair twice, and the role
   // that would repeat one is simply not offered.
   it("keeps offering the roles an author does not hold yet", () => {
-    render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-    ]);
+    render([{ creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 }]);
 
     fireEvent.click(screen.getByRole("button", { name: "Add author" }));
     fireEvent.change(creatorPicker(2), { target: { value: "CREATOR001" } });
 
     expect(optionLabels(rolePicker(2))).toEqual(["Artist"]);
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE002", shareBps: 0 },
     ]);
   });
 
   it("says so when an author holds every role already", () => {
     render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE002", shareBps: 0 },
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Add author" }));
@@ -285,8 +277,8 @@ describe("SeriesCreatorCreditsField", () => {
   // offers the handle at all.
   it("gives every row a drag handle", () => {
     render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
     ]);
 
     expect(
@@ -299,14 +291,14 @@ describe("SeriesCreatorCreditsField", () => {
 
   it("drops the credit the remove button sits on", () => {
     render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Remove author 2" }));
 
     expect(postedCredits()).toEqual([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
     ]);
   });
 
@@ -324,11 +316,11 @@ describe("SeriesCreatorCreditsField", () => {
   it("opens a stored share as the percentage it stands for", () => {
     render([
       {
-        creatorPublicId: "CREATOR001",
-        rolePublicId: "ROLE001",
+        creatorId: "CREATOR001",
+        roleId: "ROLE001",
         shareBps: 3333,
       },
-      { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
     ]);
 
     expect(shareInput(1).value).toBe("33.33");
@@ -339,8 +331,8 @@ describe("SeriesCreatorCreditsField", () => {
     const onSavableChange = vi.fn();
     render(
       [
-        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+        { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
       ],
       onSavableChange
     );
@@ -358,16 +350,14 @@ describe("SeriesCreatorCreditsField", () => {
   // A float product would post 3332.9999999999995 or 3333.3; the API takes an
   // integer.
   it("converts two decimal places to a whole number of basis points", () => {
-    render([
-      { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-    ]);
+    render([{ creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 }]);
 
     fireEvent.change(shareInput(1), { target: { value: "33.33" } });
 
     expect(postedCredits()).toEqual([
       {
-        creatorPublicId: "CREATOR001",
-        rolePublicId: "ROLE001",
+        creatorId: "CREATOR001",
+        roleId: "ROLE001",
         shareBps: 3333,
       },
     ]);
@@ -377,8 +367,8 @@ describe("SeriesCreatorCreditsField", () => {
     const onSavableChange = vi.fn();
     render(
       [
-        { creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 },
-        { creatorPublicId: "CREATOR002", rolePublicId: "ROLE002", shareBps: 0 },
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 },
+        { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
       ],
       onSavableChange
     );
@@ -403,7 +393,7 @@ describe("SeriesCreatorCreditsField", () => {
   it("blocks the save while a share box holds something that is not a share", () => {
     const onSavableChange = vi.fn();
     render(
-      [{ creatorPublicId: "CREATOR001", rolePublicId: "ROLE001", shareBps: 0 }],
+      [{ creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 0 }],
       onSavableChange
     );
 

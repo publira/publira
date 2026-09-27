@@ -10,7 +10,9 @@ import {
   optionalBoundedIntFormSchema,
   optionalCropRectFormSchema,
   optionalHttpsUrlFormSchema,
+  optionalRecordId,
   optionalTrimmedString,
+  recordIdListFormSchema,
   requiredRecordId,
   requiredTrimmedString,
   trimmedStringListFormSchema,
@@ -66,6 +68,53 @@ describe("jsonRecordIdArrayFormSchema", () => {
         '["018f0e6a-1000-7000-8000-000000000001","SeedGNRAAAA1"]'
       ).success
     ).toBe(false);
+  });
+});
+
+describe("optionalRecordId", () => {
+  const schema = optionalRecordId("Choose a record.");
+
+  it("reads a blank or missing value as an empty string", () => {
+    expect(schema.parse("  ")).toBe("");
+    expect(schema.parse(null)).toBe("");
+  });
+
+  it("accepts a UUID and refuses anything else", () => {
+    expect(schema.parse("018f0e6a-1000-7000-8000-000000000001")).toBe(
+      "018f0e6a-1000-7000-8000-000000000001"
+    );
+    expect(schema.safeParse("SeedCRTRAAA1").error?.issues[0]?.message).toBe(
+      "Choose a record."
+    );
+  });
+
+  it("accepts a UUID without RFC version bits, as seeded IDs are", () => {
+    expect(schema.parse("c4ca4238-a0b9-2382-0dcc-509a6f75849b")).toBe(
+      "c4ca4238-a0b9-2382-0dcc-509a6f75849b"
+    );
+  });
+});
+
+describe("recordIdListFormSchema", () => {
+  it("drops blanks and keeps UUIDs", () => {
+    expect(
+      recordIdListFormSchema.parse([
+        " 018f0e6a-1000-7000-8000-000000000001 ",
+        "",
+      ])
+    ).toEqual(["018f0e6a-1000-7000-8000-000000000001"]);
+  });
+
+  it("keeps UUIDs without RFC version bits, as seeded IDs are", () => {
+    expect(
+      recordIdListFormSchema.parse(["c4ca4238-a0b9-2382-0dcc-509a6f75849b"])
+    ).toEqual(["c4ca4238-a0b9-2382-0dcc-509a6f75849b"]);
+  });
+
+  it("refuses the list when an entry is not a UUID", () => {
+    expect(recordIdListFormSchema.safeParse(["SeedGNRAAAA1"]).success).toBe(
+      false
+    );
   });
 });
 

@@ -81,15 +81,23 @@ const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
 
 const action = () => Promise.resolve({ message: "", ok: false });
 
-const seriesA = { publicId: "SERIES001", title: "Series A" };
-const seriesB = { publicId: "SERIES002", title: "Series B" };
+const seriesA = {
+  id: "SERIES001-ID",
+  publicId: "SERIES001",
+  title: "Series A",
+};
+const seriesB = {
+  id: "SERIES002-ID",
+  publicId: "SERIES002",
+  title: "Series B",
+};
 
 const seriesCombobox = () => screen.getByLabelText(/Series/u);
 const episodeCombobox = () => screen.getByLabelText(/^Episode/u);
 
-const selectSeries = (item: { publicId: string; title: string }) => {
+const selectSeries = (item: { id: string; title: string }) => {
   fireEvent.change(seriesCombobox(), {
-    target: { value: item.publicId },
+    target: { value: item.id },
   });
 };
 
@@ -170,7 +178,7 @@ describe("TicketForm", () => {
     await waitFor(() => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
         "TENANT001",
-        "SERIES001",
+        seriesA.id,
         "en"
       );
     });

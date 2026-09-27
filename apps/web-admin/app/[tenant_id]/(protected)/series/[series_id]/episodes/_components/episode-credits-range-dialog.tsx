@@ -26,7 +26,7 @@ import type { ListEpisodeCreditRangeCatalogResult } from "../episode-types";
 import { EpisodeCreditsRangeForm } from "./episode-credits-range-form";
 
 interface EpisodeCreditsRangeDialogProps {
-  seriesPublicId: string;
+  seriesId: string;
 }
 
 const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
@@ -48,7 +48,7 @@ const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
  * episodes; this writes on the ones that already exist.
  */
 export const EpisodeCreditsRangeDialog = ({
-  seriesPublicId,
+  seriesId,
 }: EpisodeCreditsRangeDialogProps) => {
   const locale = useAdminLocale();
   const t = useClientMessages();
@@ -68,7 +68,7 @@ export const EpisodeCreditsRangeDialog = ({
     startCatalogTransition(async () => {
       const result = await listEpisodeCreditRangeOptionsAction(
         tenantId,
-        seriesPublicId,
+        seriesId,
         locale
       );
       if (requestId !== catalogRequestIdRef.current) {
@@ -77,7 +77,7 @@ export const EpisodeCreditsRangeDialog = ({
       setCatalog(result);
       setHasLoaded(true);
     });
-  }, [locale, seriesPublicId, tenantId]);
+  }, [locale, seriesId, tenantId]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -130,7 +130,7 @@ export const EpisodeCreditsRangeDialog = ({
                   isEpisodePending={isCatalogPending}
                   key={sessionKey}
                   onRetryEpisodes={loadCatalog}
-                  seriesPublicId={seriesPublicId}
+                  seriesId={seriesId}
                 />
               ) : (
                 <p className="text-xs text-muted-foreground">

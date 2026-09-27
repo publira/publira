@@ -18,6 +18,7 @@ import { useTenantId } from "#lib/use-tenant-id";
 
 interface EpisodeImagesSortableGridProps {
   seriesPublicId: string;
+  episodeId: string;
   episodePublicId: string;
   images: EpisodeImageItem[];
   reorderAction: (
@@ -29,6 +30,7 @@ const imageId = (image: EpisodeImageItem): string => image.id;
 
 export const EpisodeImagesSortableGrid = ({
   seriesPublicId,
+  episodeId,
   episodePublicId,
   images,
   reorderAction,
@@ -48,6 +50,7 @@ export const EpisodeImagesSortableGrid = ({
       const formData = new FormData();
       formData.set("tenant_id", tenantId);
       formData.set("series_public_id", seriesPublicId);
+      formData.set("episode_id", episodeId);
       formData.set("episode_public_id", episodePublicId);
       formData.set("ordered_image_ids", JSON.stringify(nextItems.map(imageId)));
       try {
@@ -75,7 +78,16 @@ export const EpisodeImagesSortableGrid = ({
         router.refresh();
       }
     },
-    [add, episodePublicId, reorderAction, t, router, seriesPublicId, tenantId]
+    [
+      add,
+      episodeId,
+      episodePublicId,
+      reorderAction,
+      t,
+      router,
+      seriesPublicId,
+      tenantId,
+    ]
   );
 
   const handleDragEnd = useCallback(

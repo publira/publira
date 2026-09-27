@@ -81,13 +81,9 @@ export const SeriesEyeCatchForm = ({
   return (
     <form action={formAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={initialSeries.publicId} />
+      <input name="series_id" type="hidden" value={initialSeries.id} />
       <input name="title" type="hidden" value={initialSeries.title} />
-      <input
-        name="label_public_id"
-        type="hidden"
-        value={initialSeries.labelPublicId}
-      />
+      <input name="label_id" type="hidden" value={initialSeries.labelId} />
       <input
         name="published_at"
         type="hidden"
@@ -98,13 +94,8 @@ export const SeriesEyeCatchForm = ({
         type="hidden"
         value={effectiveSeries.eyeCatchImageUpdatedAt}
       />
-      {initialSeries.genrePublicIds.map((publicId) => (
-        <input
-          key={publicId}
-          name="genre_public_ids"
-          type="hidden"
-          value={publicId}
-        />
+      {initialSeries.genreIds.map((id) => (
+        <input key={id} name="genre_ids" type="hidden" value={id} />
       ))}
       {initialSeries.tagNames.map((tagName) => (
         <input key={tagName} name="tag_names" type="hidden" value={tagName} />

@@ -65,7 +65,7 @@ export const TicketForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const [seriesPublicId, setSeriesPublicId] = useState("");
+  const [seriesId, setSeriesId] = useState("");
   const [episodePublicId, setEpisodePublicId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
@@ -78,7 +78,7 @@ export const TicketForm = ({
           id: item.publicId,
           title: item.title,
         }),
-        value: item.publicId,
+        value: item.id,
       })),
     [series, t]
   );
@@ -103,14 +103,14 @@ export const TicketForm = ({
     (useEpisodeFallbackInput || episodePublicId !== "");
 
   const loadEpisodesForSeries = useCallback(
-    (nextSeriesPublicId: string) => {
+    (nextSeriesId: string) => {
       const requestId = episodeRequestIdRef.current + 1;
       episodeRequestIdRef.current = requestId;
 
       startEpisodeTransition(async () => {
         const result = await listEpisodeOptionsAction(
           tenantId,
-          nextSeriesPublicId,
+          nextSeriesId,
           locale
         );
         if (requestId !== episodeRequestIdRef.current) {
@@ -128,28 +128,28 @@ export const TicketForm = ({
   );
 
   const handleSeriesChange = useCallback(
-    (nextSeriesPublicId: string) => {
-      setSeriesPublicId(nextSeriesPublicId);
+    (nextSeriesId: string) => {
+      setSeriesId(nextSeriesId);
       setEpisodePublicId("");
       setEpisodes([]);
       setEpisodesErrorMessage(undefined);
 
-      if (nextSeriesPublicId === "") {
+      if (nextSeriesId === "") {
         return;
       }
 
-      loadEpisodesForSeries(nextSeriesPublicId);
+      loadEpisodesForSeries(nextSeriesId);
     },
     [loadEpisodesForSeries]
   );
 
   const handleRetryEpisodes = useCallback(() => {
-    if (seriesPublicId === "") {
+    if (seriesId === "") {
       return;
     }
     setEpisodesErrorMessage(undefined);
-    loadEpisodesForSeries(seriesPublicId);
-  }, [loadEpisodesForSeries, seriesPublicId]);
+    loadEpisodesForSeries(seriesId);
+  }, [loadEpisodesForSeries, seriesId]);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -220,7 +220,7 @@ export const TicketForm = ({
                 <Combobox
                   items={seriesItems}
                   onValueChange={handleSeriesChange}
-                  value={seriesPublicId}
+                  value={seriesId}
                 >
                   <ComboboxInput
                     placeholder={t(
@@ -246,7 +246,7 @@ export const TicketForm = ({
               </FieldLabel>
               <FieldContent>
                 <Combobox
-                  disabled={isEpisodePending || seriesPublicId === ""}
+                  disabled={isEpisodePending || seriesId === ""}
                   items={episodeItems}
                   onValueChange={setEpisodePublicId}
                   value={episodePublicId}
@@ -285,7 +285,7 @@ export const TicketForm = ({
                   </>
                 ) : null}
                 <FieldDescription>
-                  {seriesPublicId === ""
+                  {seriesId === ""
                     ? t("admin.access_tickets.form.episode_needs_series")
                     : t("admin.access_tickets.form.episode_description")}
                 </FieldDescription>

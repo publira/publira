@@ -51,22 +51,22 @@ vi.mock("@publira/ui-components/combobox", () => ({
 }));
 
 const guestCredit: EpisodeCreatorCredit = {
-  creatorPublicId: "CREATOR001",
-  rolePublicId: "ROLE001",
+  creatorId: "CREATOR001",
+  roleId: "ROLE001",
   shareBps: 0,
   source: CreatorCreditSource.EPISODE,
 };
 
 const teamCredits: EpisodeCreatorCredit[] = [
   {
-    creatorPublicId: "CREATOR001",
-    rolePublicId: "ROLE001",
+    creatorId: "CREATOR001",
+    roleId: "ROLE001",
     shareBps: 0,
     source: CreatorCreditSource.SERIES,
   },
   {
-    creatorPublicId: "CREATOR002",
-    rolePublicId: "ROLE001",
+    creatorId: "CREATOR002",
+    roleId: "ROLE001",
     shareBps: 0,
     source: CreatorCreditSource.SERIES,
   },
@@ -79,11 +79,12 @@ const renderForm = (
   render(
     <EpisodeCreatorCreditsForm
       action={action}
-      creatorRoles={[{ name: "Artist", publicId: "ROLE001" }]}
+      creatorRoles={[{ id: "ROLE001", name: "Artist" }]}
       creators={[
-        { name: "Guest", publicId: "CREATOR001" },
-        { name: "Colorist", publicId: "CREATOR002" },
+        { id: "CREATOR001", name: "Guest" },
+        { id: "CREATOR002", name: "Colorist" },
       ]}
+      episodeId="EP001-ID"
       episodePublicId="EP001"
       initialCredits={initialCredits}
       seriesPublicId="SERIES001"
@@ -100,7 +101,7 @@ const postedCredits = () =>
   JSON.parse(
     document.querySelector<HTMLInputElement>('input[name="creator_credits"]')
       ?.value ?? "[]"
-  ) as { creatorPublicId: string; rolePublicId: string; shareBps: number }[];
+  ) as { creatorId: string; roleId: string; shareBps: number }[];
 
 const typeShare = (position: number, value: string) => {
   fireEvent.change(

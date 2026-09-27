@@ -35,7 +35,9 @@ const renderForm = () =>
   render(
     <EpisodePagesForm
       action={action}
+      episodeId="EP001-ID"
       episodePublicId="EP001"
+      seriesId="SERIES001-ID"
       seriesPublicId="SERIES001"
     />
   );
@@ -50,12 +52,16 @@ const renderBothForms = () =>
     <>
       <EpisodePagesForm
         action={action}
+        episodeId="EP001-ID"
         episodePublicId="EP001"
+        seriesId="SERIES001-ID"
         seriesPublicId="SERIES001"
       />
       <EpisodePagesForm
         action={action}
+        episodeId="EP002-ID"
         episodePublicId="EP002"
+        seriesId="SERIES001-ID"
         seriesPublicId="SERIES001"
       />
     </>
@@ -153,7 +159,9 @@ describe("EpisodePagesForm", () => {
     render(
       <EpisodePagesForm
         action={pendingAction}
+        episodeId="EP001-ID"
         episodePublicId="EP001"
+        seriesId="SERIES001-ID"
         seriesPublicId="SERIES001"
       />
     );

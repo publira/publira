@@ -58,6 +58,7 @@ const NewAccessTicketFormData = async () => {
     <TicketForm
       action={issueAccessTicketAction}
       series={seriesResult.series.map((item) => ({
+        id: item.id,
         publicId: item.publicId,
         title: item.title,
       }))}

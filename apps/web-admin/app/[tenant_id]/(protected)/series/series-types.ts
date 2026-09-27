@@ -13,19 +13,20 @@ export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
  * never twice under the same one.
  */
 export interface SeriesCreatorCredit {
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
   /** Basis points: 10000 is 100%. */
   shareBps: number;
 }
 
 export interface SeriesListItem {
+  id: string;
   publicId: string;
   title: string;
   synopsis: string;
   readingPeriodHours: number;
   publishedAt: string;
-  labelPublicId: string;
+  labelId: string;
   labelName: string;
   /** In role priority order, then the order the editor gave within a role. */
   creatorCredits: SeriesCreatorCredit[];
@@ -33,7 +34,7 @@ export interface SeriesListItem {
   status: SeriesStatusValue;
   scheduleWeekdays: number[];
   ageRating: SeriesAgeRatingValue;
-  genrePublicIds: string[];
+  genreIds: string[];
   tagNames: string[];
   eyeCatchImageVariants: SeriesEyeCatchVariantItem[];
   eyeCatchImageUpdatedAt: string;

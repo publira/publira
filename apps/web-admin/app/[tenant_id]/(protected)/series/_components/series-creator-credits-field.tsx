@@ -35,12 +35,12 @@ import {
 import type { SeriesCreatorCredit } from "../series-types";
 
 export interface CreatorOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 
 export interface CreatorRoleOption {
-  publicId: string;
+  id: string;
   name: string;
 }
 
@@ -54,8 +54,8 @@ export interface CreatorRoleOption {
  */
 interface CreditRow {
   key: string;
-  creatorPublicId: string;
-  rolePublicId: string;
+  creatorId: string;
+  roleId: string;
   /** The share box as typed, parsed when the list is summed and posted. */
   shareText: string;
 }
@@ -64,7 +64,7 @@ const rowKey = (row: CreditRow): string => row.key;
 
 /** A row says something only once it names both halves of a credit. */
 const isComplete = (row: CreditRow): boolean =>
-  row.creatorPublicId.length > 0 && row.rolePublicId.length > 0;
+  row.creatorId.length > 0 && row.roleId.length > 0;
 
 /**
  * The rows the editor opens on, in the order the API read them back: role
@@ -83,12 +83,12 @@ const toInitialRows = (
   credits: SeriesCreatorCredit[],
   creatorRoles: CreatorRoleOption[]
 ): CreditRow[] => {
-  const leadingRolePublicId = creatorRoles.at(0)?.publicId ?? "";
+  const leadingRoleId = creatorRoles.at(0)?.id ?? "";
 
   return credits.map((credit, index) => ({
-    creatorPublicId: credit.creatorPublicId,
+    creatorId: credit.creatorId,
     key: String(index),
-    rolePublicId: credit.rolePublicId || leadingRolePublicId,
+    roleId: credit.roleId || leadingRoleId,
     shareText: shareBpsToPercentText(credit.shareBps),
   }));
 };
@@ -106,40 +106,35 @@ const toRoleItems = (
 ): ComboboxItem[] => {
   const heldElsewhere = new Set(
     rows.flatMap((other) =>
-      other.key !== row.key && other.creatorPublicId === row.creatorPublicId
-        ? [other.rolePublicId]
+      other.key !== row.key && other.creatorId === row.creatorId
+        ? [other.roleId]
         : []
     )
   );
 
   return creatorRoles.flatMap((role) =>
-    heldElsewhere.has(role.publicId)
-      ? []
-      : [{ label: role.name, value: role.publicId }]
+    heldElsewhere.has(role.id) ? [] : [{ label: role.name, value: role.id }]
   );
 };
 
 /** The role a row ends up stating, which is the one it can still be given. */
-const toResolvedRolePublicId = (
-  roleItems: ComboboxItem[],
-  rolePublicId: string
-): string =>
-  roleItems.some((item) => item.value === rolePublicId)
-    ? rolePublicId
+const toResolvedRoleId = (roleItems: ComboboxItem[], roleId: string): string =>
+  roleItems.some((item) => item.value === roleId)
+    ? roleId
     : (roleItems.at(0)?.value ?? "");
 
 interface CreatorCreditRowProps {
   creatorItems: ComboboxItem[];
-  creatorPublicId: string;
+  creatorId: string;
   id: string;
   index: number;
-  onCreatorChange: (nextCreatorPublicId: string) => void;
+  onCreatorChange: (nextCreatorId: string) => void;
   onRemove: () => void;
-  onRoleChange: (nextRolePublicId: string) => void;
+  onRoleChange: (nextRoleId: string) => void;
   onShareChange: (nextShareText: string) => void;
   position: number;
   roleItems: ComboboxItem[];
-  rolePublicId: string;
+  roleId: string;
   shareText: string;
 }
 
@@ -160,7 +155,7 @@ interface CreatorCreditRowProps {
  */
 const CreatorCreditRow = ({
   creatorItems,
-  creatorPublicId,
+  creatorId,
   id,
   index,
   onCreatorChange,
@@ -169,7 +164,7 @@ const CreatorCreditRow = ({
   onShareChange,
   position,
   roleItems,
-  rolePublicId,
+  roleId,
   shareText,
 }: CreatorCreditRowProps) => {
   const t = useClientMessages();
@@ -177,19 +172,19 @@ const CreatorCreditRow = ({
   const roleComboboxId = useId();
   // The author the row credits, or the position its unfilled picker is named by.
   const label =
-    creatorItems.find((item) => item.value === creatorPublicId)?.label ??
+    creatorItems.find((item) => item.value === creatorId)?.label ??
     t("admin.series.form.creators_creator_field_label", {
       position: String(position),
     });
 
   return (
     <SortableItem
-      accept={rolePublicId}
+      accept={roleId}
       className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3"
       id={id}
       index={index}
       label={label}
-      type={rolePublicId}
+      type={roleId}
     >
       <SortableItemHandle>
         <ClientMessage
@@ -209,7 +204,7 @@ const CreatorCreditRow = ({
             id={creatorComboboxId}
             items={creatorItems}
             onValueChange={onCreatorChange}
-            value={creatorPublicId}
+            value={creatorId}
           >
             <ComboboxInput
               placeholder={t("admin.series.form.creators_search")}
@@ -235,7 +230,7 @@ const CreatorCreditRow = ({
             id={roleComboboxId}
             items={roleItems}
             onValueChange={onRoleChange}
-            value={rolePublicId}
+            value={roleId}
           >
             <ComboboxInput
               placeholder={t("admin.series.form.creators_role_search")}
@@ -324,7 +319,7 @@ export const SeriesCreatorCreditsField = ({
   const creatorItems = useMemo<ComboboxItem[]>(
     () =>
       creators
-        .map((creator) => ({ label: creator.name, value: creator.publicId }))
+        .map((creator) => ({ label: creator.name, value: creator.id }))
         .toSorted((left, right) =>
           left.label.localeCompare(right.label, toIntlLocale(locale))
         ),
@@ -336,16 +331,16 @@ export const SeriesCreatorCreditsField = ({
     const roleItems = toRoleItems(rows, creatorRoles, row);
     return {
       ...row,
+      roleId: toResolvedRoleId(roleItems, row.roleId),
       roleItems,
-      rolePublicId: toResolvedRolePublicId(roleItems, row.rolePublicId),
     };
   });
   const credits = resolvedRows.flatMap((row) =>
     isComplete(row)
       ? [
           {
-            creatorPublicId: row.creatorPublicId,
-            rolePublicId: row.rolePublicId,
+            creatorId: row.creatorId,
+            roleId: row.roleId,
             shareBps: sharePercentToBps(row.shareText) ?? 0,
           },
         ]
@@ -353,7 +348,7 @@ export const SeriesCreatorCreditsField = ({
   );
   const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
   const hasExhaustedAuthor = resolvedRows.some(
-    (row) => row.creatorPublicId.length > 0 && row.rolePublicId.length === 0
+    (row) => row.creatorId.length > 0 && row.roleId.length === 0
   );
 
   const handleAdd = useCallback(() => {
@@ -362,9 +357,9 @@ export const SeriesCreatorCreditsField = ({
     setRows((currentRows) => [
       ...currentRows,
       {
-        creatorPublicId: "",
+        creatorId: "",
         key,
-        rolePublicId: creatorRoles.at(0)?.publicId ?? "",
+        roleId: creatorRoles.at(0)?.id ?? "",
         shareText: "",
       },
     ]);
@@ -409,18 +404,18 @@ export const SeriesCreatorCreditsField = ({
    * written here rather than left to differ from what is on screen.
    */
   const handleCreatorChange = useCallback(
-    (key: string, nextCreatorPublicId: string) => {
+    (key: string, nextCreatorId: string) => {
       setRows((currentRows) =>
         currentRows.map((row) => {
           if (row.key !== key) {
             return row;
           }
-          const next = { ...row, creatorPublicId: nextCreatorPublicId };
+          const next = { ...row, creatorId: nextCreatorId };
           return {
             ...next,
-            rolePublicId: toResolvedRolePublicId(
+            roleId: toResolvedRoleId(
               toRoleItems(currentRows, creatorRoles, next),
-              row.rolePublicId
+              row.roleId
             ),
           };
         })
@@ -429,16 +424,13 @@ export const SeriesCreatorCreditsField = ({
     [creatorRoles]
   );
 
-  const handleRoleChange = useCallback(
-    (key: string, nextRolePublicId: string) => {
-      setRows((currentRows) =>
-        currentRows.map((row) =>
-          row.key === key ? { ...row, rolePublicId: nextRolePublicId } : row
-        )
-      );
-    },
-    []
-  );
+  const handleRoleChange = useCallback((key: string, nextRoleId: string) => {
+    setRows((currentRows) =>
+      currentRows.map((row) =>
+        row.key === key ? { ...row, roleId: nextRoleId } : row
+      )
+    );
+  }, []);
 
   const canAdd = creatorItems.length > 0 && creatorRoles.length > 0;
 
@@ -466,23 +458,23 @@ export const SeriesCreatorCreditsField = ({
           {resolvedRows.map((row, index) => (
             <CreatorCreditRow
               creatorItems={creatorItems}
-              creatorPublicId={row.creatorPublicId}
+              creatorId={row.creatorId}
               id={row.key}
               index={index}
               key={row.key}
-              onCreatorChange={(nextCreatorPublicId) =>
-                handleCreatorChange(row.key, nextCreatorPublicId)
+              onCreatorChange={(nextCreatorId) =>
+                handleCreatorChange(row.key, nextCreatorId)
               }
               onRemove={() => handleRemove(row.key)}
-              onRoleChange={(nextRolePublicId) =>
-                handleRoleChange(row.key, nextRolePublicId)
+              onRoleChange={(nextRoleId) =>
+                handleRoleChange(row.key, nextRoleId)
               }
               onShareChange={(nextShareText) =>
                 handleShareChange(row.key, nextShareText)
               }
               position={index + 1}
               roleItems={row.roleItems}
-              rolePublicId={row.rolePublicId}
+              roleId={row.roleId}
               shareText={row.shareText}
             />
           ))}

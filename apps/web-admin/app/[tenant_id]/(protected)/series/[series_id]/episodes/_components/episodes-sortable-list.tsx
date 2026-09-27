@@ -29,6 +29,9 @@ import {
 } from "./episode-credits-selection";
 
 interface EpisodesSortableListProps {
+  /** The series the reorder is sent for. */
+  seriesId: string;
+  /** The series as the URL names it, for the links to each episode. */
   seriesPublicId: string;
   /**
    * What the series is shown on, which bounds every episode. Absent when that
@@ -42,9 +45,10 @@ interface EpisodesSortableListProps {
   timeZone: string;
 }
 
-const episodeId = (episode: EpisodeItem): string => episode.publicId;
+const episodeId = (episode: EpisodeItem): string => episode.id;
 
 export const EpisodesSortableList = ({
+  seriesId,
   seriesPublicId,
   seriesAvailability = DEFAULT_SURFACE_AVAILABILITY,
   episodes,
@@ -63,9 +67,7 @@ export const EpisodesSortableList = ({
     (_currentItems, nextItems: EpisodeItem[]) => nextItems
   );
   const pageIds = optimisticItems.map(episodeId);
-  const selectedOnPage = pageIds.filter((publicId) =>
-    selectedIds.has(publicId)
-  );
+  const selectedOnPage = pageIds.filter((id) => selectedIds.has(id));
   const allOnPageSelected =
     pageIds.length > 0 && selectedOnPage.length === pageIds.length;
   const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
@@ -74,15 +76,15 @@ export const EpisodesSortableList = ({
     async (currentItems: EpisodeItem[], nextItems: EpisodeItem[]) => {
       const formData = new FormData();
       formData.set("tenant_id", tenantId);
-      formData.set("series_public_id", seriesPublicId);
+      formData.set("series_id", seriesId);
       // Both orders go up: the server merges the new one into the series, and
       // refuses when the series no longer matches the old one.
       formData.set(
-        "current_episode_public_ids",
+        "current_episode_ids",
         JSON.stringify(currentItems.map(episodeId))
       );
       formData.set(
-        "ordered_episode_public_ids",
+        "ordered_episode_ids",
         JSON.stringify(nextItems.map(episodeId))
       );
       try {
@@ -109,7 +111,7 @@ export const EpisodesSortableList = ({
         router.refresh();
       }
     },
-    [add, t, reorderAction, router, seriesPublicId, tenantId]
+    [add, t, reorderAction, router, seriesId, tenantId]
   );
 
   const handleDragEnd = useCallback(
@@ -167,18 +169,18 @@ export const EpisodesSortableList = ({
           <SortableItem
             className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
             disabled={isPending}
-            id={episode.publicId}
+            id={episode.id}
             index={index}
-            key={episode.publicId}
+            key={episode.id}
             label={episode.title}
           >
             <Checkbox
               aria-label={t("admin.series.episodes.credits.select_episode", {
                 title: episode.title,
               })}
-              checked={selectedIds.has(episode.publicId)}
+              checked={selectedIds.has(episode.id)}
               onCheckedChange={(checked) => {
-                toggle(episode.publicId, checked);
+                toggle(episode.id, checked);
               }}
             />
             <SortableItemHandle>

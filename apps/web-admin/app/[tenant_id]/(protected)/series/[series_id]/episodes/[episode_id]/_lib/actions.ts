@@ -15,6 +15,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   episodeCacheTag,
+  getEpisode,
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
@@ -28,7 +29,9 @@ import {
   fileListFormSchema,
   jsonStringArrayFormSchema,
   optionalFileFormSchema,
+  optionalRecordId,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
   spreadStartPageFormSchema,
 } from "#lib/form-schemas";
@@ -47,9 +50,14 @@ const hiddenParamsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    episodeId: requiredRecordId(
+      t("admin.series.episodes.validation.episode_missing")
+    ),
     episodePublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.episode_missing")
     ),
+    // Only the page upload names the series, which an archive needs.
+    seriesId: optionalRecordId(),
     seriesPublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.series_missing")
     ),
@@ -85,8 +93,8 @@ const creditsFormSchema = async (locale: Locale) => {
       },
       z.array(
         z.object({
-          creatorPublicId: requiredTrimmedString(message),
-          rolePublicId: requiredTrimmedString(message),
+          creatorId: requiredRecordId(message),
+          roleId: requiredRecordId(message),
           shareBps: creditShareBpsSchema(message),
         }),
         { error: message }
@@ -118,6 +126,9 @@ const reorderImagesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    episodeId: requiredRecordId(
+      t("admin.series.episodes.validation.sort_data_missing")
+    ),
     episodePublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.sort_data_missing")
     ),
@@ -131,10 +142,44 @@ const reorderImagesSchema = async (locale: Locale) => {
   });
 };
 const hiddenFormFields = {
+  episodeId: { kind: "value", name: "episode_id" },
   episodePublicId: { kind: "value", name: "episode_public_id" },
+  seriesId: { kind: "value", name: "series_id" },
   seriesPublicId: { kind: "value", name: "series_public_id" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
+
+/**
+ * Refuses a save whose URL-named episode is not the one its internal ID
+ * addresses: the save acts on the ID and redirects to the URL, so a mismatched
+ * pair would change one episode and show another.
+ */
+const confirmEpisodeTarget = async (
+  target: {
+    episodeId: string;
+    episodePublicId: string;
+    seriesPublicId: string;
+    tenantId: string;
+  },
+  locale: Locale
+): Promise<string | undefined> => {
+  const result = await getEpisode(
+    {
+      publicId: target.episodePublicId,
+      seriesPublicId: target.seriesPublicId,
+      tenantId: target.tenantId,
+    },
+    locale
+  );
+  if (result.ok && result.episode.id === target.episodeId) {
+    return;
+  }
+  if (!result.ok && "message" in result && result.message) {
+    return result.message;
+  }
+  const t = await getMessagesFor(locale);
+  return t("admin.series.episodes.validation.episode_missing");
+};
 
 const toFailure = (
   message: string,
@@ -206,10 +251,15 @@ export const updateEpisodeScheduleAction = async (
     return schedule;
   }
 
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "schedule");
+  }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodePublishSchedule(
       {
-        episodePublicId: parsed.data.episodePublicId,
+        episodeId: parsed.data.episodeId,
         publishAt: schedule.iso,
         tenantId: parsed.data.tenantId,
       },
@@ -222,7 +272,7 @@ export const updateEpisodeScheduleAction = async (
   }
 
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
-  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodePublicId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
@@ -260,19 +310,20 @@ export const updateEpisodeAvailabilityAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { availability, episodePublicId, seriesPublicId, tenantId } =
+  const { availability, episodeId, episodePublicId, seriesPublicId, tenantId } =
     parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
-    updateEpisodeAvailability(
-      { availability, episodePublicId, tenantId },
-      locale
-    )
+    updateEpisodeAvailability({ availability, episodeId, tenantId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
-  updateTag(episodeCacheTag(tenantId, episodePublicId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?availability_updated=1`
@@ -312,11 +363,20 @@ export const updateEpisodePurchaseAvailabilityAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { episodePublicId, purchaseAvailability, seriesPublicId, tenantId } =
-    parsed.data;
+  const {
+    episodeId,
+    episodePublicId,
+    purchaseAvailability,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodePurchaseAvailability(
-      { episodePublicId, purchaseAvailability, tenantId },
+      { episodeId, purchaseAvailability, tenantId },
       locale
     )
   );
@@ -324,7 +384,7 @@ export const updateEpisodePurchaseAvailabilityAction = async (
     return { message: result.message, ok: false };
   }
 
-  updateTag(episodeCacheTag(tenantId, episodePublicId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?purchase_availability_updated=1`
@@ -383,12 +443,21 @@ export const updateEpisodeLayoutAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { episodePublicId, readingDirection, seriesPublicId, spreadStart } =
-    parsed.data;
+  const {
+    episodeId,
+    episodePublicId,
+    readingDirection,
+    seriesPublicId,
+    spreadStart,
+  } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodeLayout(
       {
-        episodePublicId,
+        episodeId,
         readingDirection,
         spreadStartIndex:
           spreadStart.source === "episode" ? spreadStart.page : undefined,
@@ -401,7 +470,7 @@ export const updateEpisodeLayoutAction = async (
     return { message: result.message, ok: false };
   }
 
-  updateTag(episodeCacheTag(parsed.data.tenantId, episodePublicId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, episodeId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?layout_updated=1`
@@ -424,11 +493,15 @@ export const replaceEpisodeCreditsAction = async (
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "credits");
   }
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "credits");
+  }
   const result = await withAdminSessionReauth(() =>
     replaceEpisodeCredits(
       {
         creatorCredits: parsed.data.creatorCredits,
-        episodePublicId: parsed.data.episodePublicId,
+        episodeId: parsed.data.episodeId,
         tenantId: parsed.data.tenantId,
       },
       locale
@@ -466,14 +539,28 @@ export const uploadEpisodePagesAction = async (
 
   const {
     archive,
+    episodeId,
     episodePublicId,
     pages,
+    seriesId,
     seriesPublicId,
     tenantId,
     uploadMode,
   } = parsed.data;
 
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "pages");
+  }
+
   if (uploadMode === "zip" || uploadMode === "epub") {
+    // An archive is unpacked against its series, which the API cannot infer.
+    if (seriesId === "") {
+      return toFailure(
+        t("admin.series.episodes.validation.series_missing"),
+        "pages"
+      );
+    }
     if (!archive) {
       return toFailure(
         uploadMode === "zip"
@@ -504,8 +591,8 @@ export const uploadEpisodePagesAction = async (
       uploadEpisodePages(
         {
           archive,
-          episodePublicId,
-          seriesPublicId,
+          episodeId,
+          seriesId,
           tenantId,
         },
         locale
@@ -516,7 +603,7 @@ export const uploadEpisodePagesAction = async (
       return toFailure(result.message, "pages");
     }
 
-    updateTag(episodeCacheTag(tenantId, episodePublicId));
+    updateTag(episodeCacheTag(tenantId, episodeId));
 
     redirect(
       `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
@@ -533,7 +620,7 @@ export const uploadEpisodePagesAction = async (
   const result = await withAdminSessionReauth(() =>
     uploadEpisodePages(
       {
-        episodePublicId,
+        episodeId,
         pages,
         tenantId,
       },
@@ -545,7 +632,7 @@ export const uploadEpisodePagesAction = async (
     return toFailure(result.message, "pages");
   }
 
-  updateTag(episodeCacheTag(tenantId, episodePublicId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
@@ -587,7 +674,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   const result = await withAdminSessionReauth(() =>
     reorderEpisodeImages(
       {
-        episodePublicId: parsed.data.episodePublicId,
+        episodeId: parsed.data.episodeId,
         imageIds: parsed.data.orderedImageIds,
         tenantId: parsed.data.tenantId,
       },
@@ -599,7 +686,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
     return result;
   }
 
-  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodePublicId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
 
   return {
     ok: true,

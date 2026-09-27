@@ -209,6 +209,23 @@ export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
 }, z.array(z.string()));
 
 /**
+ * {@link requiredRecordId} for a field that may be left blank, which reads as
+ * an empty string.
+ */
+export const optionalRecordId = (
+  message?: string
+): z.ZodType<string, unknown> =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z.union([z.literal(""), z.guid({ error: message })])
+  );
+
+/** Record IDs posted under one repeated field name, blanks dropped. */
+export const recordIdListFormSchema = trimmedStringListFormSchema.pipe(
+  z.array(z.guid())
+);
+
+/**
  * A JSON array of record IDs, as a reorder form posts it. An entry that is not
  * a UUID refuses the whole list rather than reaching the API; `guid` checks
  * the shape only, as `requiredRecordId` does.
