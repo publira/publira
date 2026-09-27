@@ -46,7 +46,9 @@ describe("EpisodeScheduleForm", () => {
       />
     );
 
-    const localInput = screen.getByLabelText<HTMLInputElement>(/publish_at/u);
+    const localInput = screen.getByLabelText<HTMLInputElement>(
+      /Publication date and time/u
+    );
 
     expect(localInput.value).toBe("2030-01-01T10:00");
   });
@@ -62,7 +64,9 @@ describe("EpisodeScheduleForm", () => {
       />
     );
 
-    const localInput = screen.getByLabelText<HTMLInputElement>(/publish_at/u);
+    const localInput = screen.getByLabelText<HTMLInputElement>(
+      /Publication date and time/u
+    );
 
     expect(localInput.value).toBe("");
   });
@@ -93,7 +97,9 @@ describe("EpisodeScheduleForm", () => {
 
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toHaveLength(new Set(ids).size);
-    expect(screen.getAllByLabelText(/publish_at/u)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/Publication date and time/u)).toHaveLength(
+      2
+    );
   });
 
   // The Action carries the time the field held when the form was submitted, so
@@ -113,11 +119,15 @@ describe("EpisodeScheduleForm", () => {
       />
     );
 
-    const localInput = screen.getByLabelText<HTMLInputElement>(/publish_at/u);
+    const localInput = screen.getByLabelText<HTMLInputElement>(
+      /Publication date and time/u
+    );
 
     expect(localInput.matches(":disabled")).toBe(false);
 
-    fireEvent.click(screen.getByRole("button", { name: "Update publish_at" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Update publication date and time" })
+    );
 
     await waitFor(() => {
       expect(localInput.matches(":disabled")).toBe(true);

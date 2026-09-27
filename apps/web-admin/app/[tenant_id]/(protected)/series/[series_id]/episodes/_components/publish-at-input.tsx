@@ -8,7 +8,7 @@ import {
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 
-import { useClientMessages } from "#components/client-message";
+import { ClientMessage, useClientMessages } from "#components/client-message";
 
 interface PublishAtInputProps {
   defaultValue?: string;
@@ -25,7 +25,9 @@ export const PublishAtInput = ({
 
   return (
     <Field>
-      <FieldLabel>publish_at</FieldLabel>
+      <FieldLabel>
+        <ClientMessage message="admin.series.episodes.form.publish_at" />
+      </FieldLabel>
       <FieldContent>
         <input defaultValue="" name={name} type="hidden" />
         <Input
