@@ -48,7 +48,7 @@ const actions = vi.hoisted(() => ({
 
 vi.mock("../../_lib/actions", () => actions);
 
-const tenantId = "SeedTNNTAAA1";
+const tenantId = "01a0deb5-0000-7000-8000-00000000000a";
 
 const member: PlatformTenantMemberSummary = {
   createdAt: "2026-06-01T00:00:00Z",
@@ -56,7 +56,7 @@ const member: PlatformTenantMemberSummary = {
   name: "Avery Editor",
   role: "tenant_editor",
   status: "active",
-  userPublicId: "SeedUSERAAA1",
+  userId: "01a0deb5-0000-7000-8000-00000000000b",
 };
 
 const renderManager = async () =>
@@ -108,7 +108,7 @@ describe("TenantMembersManager", () => {
     const formData: FormData =
       actions.updateTenantMemberRoleAction.mock.calls[0]?.[1];
     expect(formData.get("member_role")).toBe("tenant_admin");
-    expect(formData.get("member_user_public_id")).toBe(member.userPublicId);
+    expect(formData.get("member_user_id")).toBe(member.userId);
     expect(formData.get("tenant_id")).toBe(tenantId);
   });
 
@@ -150,7 +150,7 @@ describe("TenantMembersManager", () => {
     expect(membersRow().contains(message)).toBe(false);
     const formData: FormData =
       actions.removeTenantMemberAction.mock.calls[0]?.[1];
-    expect(formData.get("member_user_public_id")).toBe(member.userPublicId);
+    expect(formData.get("member_user_id")).toBe(member.userId);
     expect(formData.get("tenant_id")).toBe(tenantId);
   });
 

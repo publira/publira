@@ -131,30 +131,14 @@ const TenantMembersContent = async ({
   const pageFilters = parseMemberInvitationFilters(await searchParams);
   const locale = await getPlatformLocale();
 
-  const [tenantResult, membersResult, invitationsResult, timeZone] =
-    await Promise.all([
-      getPlatformTenant(tenantId, locale),
-      listPlatformTenantMembers({
-        locale,
-        tenantId,
-        token: pageFilters.membersToken || undefined,
-      }),
-      listPlatformTenantAdminInvitations({
-        limit: invitationPageSize,
-        locale,
-        tenantId,
-        token: pageFilters.token || undefined,
-      }),
-      getPlatformDisplayTimeZone(),
-    ]);
+  const [tenantResult, timeZone] = await Promise.all([
+    getPlatformTenant(tenantId, locale),
+    getPlatformDisplayTimeZone(),
+  ]);
 
-  // Before both branches below: a rejected session reads every record as
-  // missing, and a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(
-    tenantResult,
-    membersResult,
-    invitationsResult
-  );
+  // Before both branches below: a rejected session reads the tenant as missing,
+  // and a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult);
 
   if (!tenantResult.ok) {
     return <TenantMembersLoadError message={tenantResult.message} />;
@@ -164,6 +148,21 @@ const TenantMembersContent = async ({
   if (!tenant) {
     notFound();
   }
+
+  const [membersResult, invitationsResult] = await Promise.all([
+    listPlatformTenantMembers({
+      locale,
+      tenantId: tenant.id,
+      token: pageFilters.membersToken || undefined,
+    }),
+    listPlatformTenantAdminInvitations({
+      limit: invitationPageSize,
+      locale,
+      tenantId: tenant.id,
+      token: pageFilters.token || undefined,
+    }),
+  ]);
+  await redirectToLoginIfSessionRejected(membersResult, invitationsResult);
 
   const previousHref = invitationsResult.previousToken
     ? buildMemberInvitationsPath(tenant.publicId, {
@@ -234,7 +233,7 @@ const TenantMembersContent = async ({
             }
             membersNextHref={membersNextHref}
             membersPreviousHref={membersPreviousHref}
-            tenantId={tenant.publicId}
+            tenantId={tenant.id}
             timeZone={timeZone}
           />
         </div>

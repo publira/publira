@@ -14,6 +14,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { platformDashboardCacheTag } from "#lib/dashboard";
 import {
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
@@ -41,7 +42,7 @@ import { platformEndUsersCacheTag } from "#lib/users";
 const tenantIdFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return requiredTrimmedString(t("platform.common.required"));
+  return requiredRecordId(t("platform.common.required"));
 };
 
 const tenantMemberRoleFormSchema = async (locale: Locale) => {
@@ -105,7 +106,7 @@ const updateTenantMemberRoleFormSchema = async (locale: Locale) => {
   return z.object({
     role,
     tenantId,
-    userPublicId: requiredTrimmedString(t("platform.common.required")),
+    userId: requiredRecordId(t("platform.common.required")),
   });
 };
 
@@ -117,7 +118,7 @@ const removeTenantMemberFormSchema = async (locale: Locale) => {
 
   return z.object({
     tenantId,
-    userPublicId: requiredTrimmedString(t("platform.common.required")),
+    userId: requiredRecordId(t("platform.common.required")),
   });
 };
 
@@ -137,7 +138,7 @@ const invitationIdFormSchema = async (locale: Locale) => {
   ]);
 
   return z.object({
-    invitationId: requiredTrimmedString(t("platform.common.required")),
+    invitationId: requiredRecordId(t("platform.common.required")),
     tenantId,
   });
 };
@@ -316,7 +317,7 @@ export const updateTenantMemberRoleAction = async (
     toFormDataInput(formData, {
       role: { kind: "value", name: "member_role" },
       tenantId: { kind: "value", name: "tenant_id" },
-      userPublicId: { kind: "value", name: "member_user_public_id" },
+      userId: { kind: "value", name: "member_user_id" },
     })
   );
   if (!parsed.success) {
@@ -326,7 +327,7 @@ export const updateTenantMemberRoleAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenantMemberRole(
       parsed.data.tenantId,
-      parsed.data.userPublicId,
+      parsed.data.userId,
       parsed.data.role,
       locale
     )
@@ -357,7 +358,7 @@ export const removeTenantMemberAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
-      userPublicId: { kind: "value", name: "member_user_public_id" },
+      userId: { kind: "value", name: "member_user_id" },
     })
   );
   if (!parsed.success) {
@@ -365,11 +366,7 @@ export const removeTenantMemberAction = async (
   }
 
   const result = await withPlatformSessionReauth(() =>
-    removePlatformTenantMember(
-      parsed.data.tenantId,
-      parsed.data.userPublicId,
-      locale
-    )
+    removePlatformTenantMember(parsed.data.tenantId, parsed.data.userId, locale)
   );
 
   updateTag(platformTenantCacheTag(parsed.data.tenantId));

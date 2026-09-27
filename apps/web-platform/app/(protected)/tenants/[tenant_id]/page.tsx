@@ -209,7 +209,7 @@ const TenantDetailContent = async ({
           </LinkButton>
           {tenant.status === "suspended" ? (
             <form action={resumeTenantAction}>
-              <input name="tenant_id" type="hidden" value={tenant.publicId} />
+              <input name="tenant_id" type="hidden" value={tenant.id} />
               <Button type="submit">
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.tenants.resume" />
@@ -218,7 +218,7 @@ const TenantDetailContent = async ({
             </form>
           ) : (
             <form action={suspendTenantAction}>
-              <input name="tenant_id" type="hidden" value={tenant.publicId} />
+              <input name="tenant_id" type="hidden" value={tenant.id} />
               <Button type="submit" variant="destructive">
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.tenants.suspend" />
@@ -249,7 +249,7 @@ const TenantDetailContent = async ({
                 </PlatformSectionHeading>
               </PlatformSectionHeader>
               <ActionForm action={updateTenantNameAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <input name="tenant_id" type="hidden" value={tenant.id} />
                 <input
                   name="tenant_current_domain"
                   type="hidden"
@@ -328,7 +328,7 @@ const TenantDetailContent = async ({
               </PlatformSectionHeader>
               <TenantDomainCautions showUpdateCaution />
               <ActionForm action={updateTenantDomainAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <input name="tenant_id" type="hidden" value={tenant.id} />
                 <input
                   name="tenant_current_name"
                   type="hidden"

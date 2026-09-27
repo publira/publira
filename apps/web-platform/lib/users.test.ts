@@ -241,7 +241,6 @@ describe("searchPlatformTenantFilterOptions", () => {
       {
         limit: 20,
         name: "Tenant",
-        publicId: "",
         status: "",
         token: "",
       },

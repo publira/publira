@@ -47,7 +47,7 @@ vi.mock("#lib/tenants", () => ({
   addPlatformTenantMember: mockAddPlatformTenantMember,
   cancelPlatformTenantAdminInvitation: mockCancelPlatformTenantAdminInvitation,
   createPlatformTenantAdminInvitation: mockCreatePlatformTenantAdminInvitation,
-  platformTenantCacheTag: (publicId: string) => `platform:tenants:${publicId}`,
+  platformTenantCacheTag: (tenantId: string) => `platform:tenants:${tenantId}`,
   platformTenantsCacheTag: "platform:tenants",
   removePlatformTenantMember: mockRemovePlatformTenantMember,
   resendPlatformTenantAdminInvitation: mockResendPlatformTenantAdminInvitation,
@@ -92,8 +92,12 @@ describe("tenant detail actions", () => {
     const { resumeTenantAction, suspendTenantAction } =
       await import("./actions");
 
-    await suspendTenantAction(formData({ tenant_id: "TENANT00001" }));
-    await resumeTenantAction(formData({ tenant_id: "TENANT00001" }));
+    await suspendTenantAction(
+      formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+    );
+    await resumeTenantAction(
+      formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+    );
 
     const expected = [
       "platform:tenants",
@@ -112,7 +116,7 @@ describe("tenant detail actions", () => {
       null,
       formData({
         tenant_current_domain: "tenant.example.com",
-        tenant_id: "TENANT00001",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
         tenant_name: "Renamed Tenant",
       })
     );
@@ -134,7 +138,7 @@ describe("tenant detail actions", () => {
       formData({
         tenant_current_name: "Example Tenant",
         tenant_domain: "renamed.example.com",
-        tenant_id: "TENANT00001",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
       })
     );
 
@@ -153,19 +157,19 @@ describe("tenant detail actions", () => {
       formData({
         member_email: "editor@example.com",
         member_role: "tenant_editor",
-        tenant_id: "TENANT00001",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
       })
     );
     await removeTenantMemberAction(
       null,
       formData({
-        member_user_public_id: "USER00000001",
-        tenant_id: "TENANT00001",
+        member_user_id: "01a0deb5-0000-7000-8000-000000000003",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
       })
     );
 
     const expected = [
-      "platform:tenants:TENANT00001",
+      "platform:tenants:01a0deb5-0000-7000-8000-000000000002",
       "platform:users",
       "platform:dashboard",
     ];
@@ -181,12 +185,20 @@ describe("tenant detail actions", () => {
       null,
       formData({
         member_role: "tenant_admin",
-        member_user_public_id: "USER00000001",
-        tenant_id: "TENANT00001",
+        member_user_id: "01a0deb5-0000-7000-8000-000000000003",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
       })
     );
 
-    expect(clearedTags()).toEqual(["platform:tenants:TENANT00001"]);
+    expect(mockUpdatePlatformTenantMemberRole).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      "01a0deb5-0000-7000-8000-000000000003",
+      "tenant_admin",
+      expect.any(String)
+    );
+    expect(clearedTags()).toEqual([
+      "platform:tenants:01a0deb5-0000-7000-8000-000000000002",
+    ]);
   });
 
   it("inviting an admin also clears the end users and the dashboard, since an existing account is granted the role at once", async () => {
@@ -199,11 +211,14 @@ describe("tenant detail actions", () => {
 
     await createTenantAdminInvitationAction(
       null,
-      formData({ invite_email: "admin@example.com", tenant_id: "TENANT00001" })
+      formData({
+        invite_email: "admin@example.com",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+      })
     );
 
     expect(clearedTags()).toEqual([
-      "platform:tenants:TENANT00001",
+      "platform:tenants:01a0deb5-0000-7000-8000-000000000002",
       "platform:users",
       "platform:dashboard",
       "platform:audit-logs",
@@ -219,11 +234,17 @@ describe("tenant detail actions", () => {
       resendTenantAdminInvitationAction,
     } = await import("./actions");
 
-    const invitation = { invitation_id: "INVITE001", tenant_id: "TENANT00001" };
+    const invitation = {
+      invitation_id: "01a0deb5-0000-7000-8000-000000000004",
+      tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+    };
     await resendTenantAdminInvitationAction(null, formData(invitation));
     await cancelTenantAdminInvitationAction(null, formData(invitation));
 
-    const expected = ["platform:tenants:TENANT00001", "platform:audit-logs"];
+    const expected = [
+      "platform:tenants:01a0deb5-0000-7000-8000-000000000002",
+      "platform:audit-logs",
+    ];
     expect(clearedTags()).toEqual([...expected, ...expected]);
   });
 
@@ -234,5 +255,22 @@ describe("tenant detail actions", () => {
 
     expect(mockSuspendPlatformTenant).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("sends no request for a tenant or member ID that is not a UUID", async () => {
+    const { removeTenantMemberAction, suspendTenantAction } =
+      await import("./actions");
+
+    await suspendTenantAction(formData({ tenant_id: "SeedTNNTAAA1" }));
+    await removeTenantMemberAction(
+      null,
+      formData({
+        member_user_id: "SeedUSERAAA1",
+        tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+      })
+    );
+
+    expect(mockSuspendPlatformTenant).not.toHaveBeenCalled();
+    expect(mockRemovePlatformTenantMember).not.toHaveBeenCalled();
   });
 });

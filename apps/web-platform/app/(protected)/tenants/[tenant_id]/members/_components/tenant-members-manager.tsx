@@ -270,11 +270,7 @@ const TenantMemberRoleForm = ({
           >
             <CloseTenantMemberRoleDialogOnSuccess />
             <input name="tenant_id" type="hidden" value={tenantId} />
-            <input
-              name="member_user_public_id"
-              type="hidden"
-              value={member.userPublicId}
-            />
+            <input name="member_user_id" type="hidden" value={member.userId} />
 
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
@@ -360,12 +356,12 @@ const TenantMemberRoleForm = ({
  */
 const TenantMemberDeleteButton = ({
   tenantId,
-  userPublicId,
+  userId,
 }: {
   tenantId: string;
-  userPublicId: string;
+  userId: string;
 }) => {
-  const formId = `tenant-member-remove-${userPublicId}`;
+  const formId = `tenant-member-remove-${userId}`;
 
   return (
     <ActionForm
@@ -376,7 +372,7 @@ const TenantMemberDeleteButton = ({
     >
       <ReportTenantMemberRemoval />
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="member_user_public_id" type="hidden" value={userPublicId} />
+      <input name="member_user_id" type="hidden" value={userId} />
       <ActionFormFieldset>
         <ConfirmDialog>
           <ConfirmDialogTrigger
@@ -756,7 +752,7 @@ export const TenantMembersManager = async ({
                     </TableRow>
                   ) : null}
                   {members.map((member) => (
-                    <TableRow key={member.userPublicId || member.email}>
+                    <TableRow key={member.userId || member.email}>
                       <TableCell>
                         <p className="font-medium text-foreground">
                           {member.name}
@@ -786,7 +782,7 @@ export const TenantMembersManager = async ({
                           />
                           <TenantMemberDeleteButton
                             tenantId={tenantId}
-                            userPublicId={member.userPublicId}
+                            userId={member.userId}
                           />
                         </div>
                       </TableCell>
