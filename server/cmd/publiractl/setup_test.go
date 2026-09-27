@@ -320,3 +320,27 @@ func TestSetupRefusesMismatchedAdministratorPasswords(t *testing.T) {
 		t.Fatalf("users = %d, want none", got)
 	}
 }
+
+// An address that belongs to a user of the tenant without the admin role is
+// refused rather than reported as the administrator kept.
+func TestSetupRefusesAnExistingUserWithoutTheAdminRole(t *testing.T) {
+	env := startSetupEnv(t)
+	args := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password")
+	var stderr bytes.Buffer
+	if code, _ := runSetup(t, pipedConsole("", &stderr), args...); code != 0 {
+		t.Fatalf("first run: exit code = %d\n%s", code, stderr.String())
+	}
+	if _, err := env.pg.DB.ExecContext(context.Background(), `UPDATE tenant_user_roles SET role = 'tenant_editor'`); err != nil {
+		t.Fatalf("demote the administrator: %v", err)
+	}
+
+	stderr.Reset()
+	code, stdout := runSetup(t, pipedConsole("", &stderr), args...)
+	want := "publiractl: --admin-email: owner@comics.example.com is a user of the tenant with tenant_editor, not tenant_admin"
+	if code != 1 || !strings.HasPrefix(stderr.String()[strings.LastIndex(stderr.String(), "publiractl:"):], want) {
+		t.Fatalf("exit code = %d, stderr = %q; want 1 and %q", code, stderr.String(), want)
+	}
+	if strings.Contains(stdout, "First administrator") {
+		t.Fatalf("summary reports the administrator:\n%s", stdout)
+	}
+}

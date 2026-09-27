@@ -621,12 +621,19 @@ func (r *setupRun) adminStep(ctx context.Context) error {
 	if err != nil {
 		return named(err, setupAdminFlags)
 	}
+	// An address that already signs in to the tenant is kept only when it can
+	// administer it; anything less would report a tenant nobody can manage as
+	// set up.
 	if found {
-		role := existing.Role
-		if role == "" {
-			role = "no console role"
+		if existing.Role != auth.RoleTenantAdmin {
+			role := existing.Role
+			if role == "" {
+				role = "no console role"
+			}
+			return fmt.Errorf("--admin-email: %s is a user of the tenant with %s, not %s; give it the role with publiractl tenant member, or name another address",
+				existing.Email, role, auth.RoleTenantAdmin)
 		}
-		r.done("First administrator", outcomeKept, existing.Email+" ("+role+")")
+		r.done("First administrator", outcomeKept, existing.Email)
 		return r.printSummary()
 	}
 
