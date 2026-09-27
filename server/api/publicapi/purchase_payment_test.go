@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -71,6 +73,18 @@ func stripeWebhookRequest(tenantID string, payload []byte, headers http.Header) 
 	return paymentWebhookRequest(tenantID, stripe.ID, payload, headers)
 }
 
+// stripeSettings enables Stripe with the given secret key and webhook secret.
+func stripeSettings(secretKey, webhookSecret string) paymentsettings.UpdateInput {
+	return paymentsettings.UpdateInput{
+		Provider: stripe.ID,
+		Enabled:  true,
+		Fields: []paymentsettings.FieldUpdate{
+			{Name: stripe.FieldSecretKey, Mode: secretupdate.Replace, Value: secretKey},
+			{Name: stripe.FieldWebhookSecret, Mode: secretupdate.Replace, Value: webhookSecret},
+		},
+	}
+}
+
 func newPublicTestEncryptor(t *testing.T) *secretcrypto.Manager {
 	t.Helper()
 	mgr, err := secretcrypto.NewManager(map[string][]byte{"k1": bytes.Repeat([]byte{5}, 32)}, "k1")
@@ -83,10 +97,34 @@ func newPublicTestEncryptor(t *testing.T) *secretcrypto.Manager {
 func publicPaymentColumns() []string {
 	return []string{
 		"tenant_id", "provider", "enabled",
-		"secret_key_encrypted", "webhook_secret_encrypted",
-		"secret_key_hint", "webhook_secret_hint",
 		"created_at", "updated_at",
+		"credentials_encrypted", "credential_hints",
 	}
+}
+
+// stripePaymentConfigRow is an enabled Stripe settings row holding the given
+// ciphertexts and hints for its secret key and webhook secret.
+func stripePaymentConfigRow(t *testing.T, tenantID uuid.UUID, secretEnc, webhookEnc, secretHint, webhookHint string, now time.Time) *sqlmock.Rows {
+	t.Helper()
+	fields := func(secretKey, webhookSecret string) []byte {
+		encoded, err := json.Marshal(map[string]string{
+			stripe.FieldSecretKey:     secretKey,
+			stripe.FieldWebhookSecret: webhookSecret,
+		})
+		if err != nil {
+			t.Fatalf("json.Marshal: %v", err)
+		}
+		return encoded
+	}
+	return sqlmock.NewRows(publicPaymentColumns()).AddRow(
+		tenantID,
+		stripe.ID,
+		true,
+		now,
+		now,
+		fields(secretEnc, webhookEnc),
+		fields(secretHint, webhookHint),
+	)
 }
 
 type publicPaymentServer struct {
@@ -129,17 +167,8 @@ func expectEnabledPaymentConfig(t *testing.T, mock sqlmock.Sqlmock, tenantID uui
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
-			tenantID,
-			paymentsettings.ProviderStripe,
-			true,
-			sql.NullString{String: secretEnc, Valid: true},
-			sql.NullString{String: webhookEnc, Valid: true},
-			sql.NullString{String: paymentsettings.MaskSecret(secretKey), Valid: true},
-			sql.NullString{String: paymentsettings.MaskSecret(webhookSecret), Valid: true},
-			now,
-			now,
-		))
+		WillReturnRows(stripePaymentConfigRow(t, tenantID, secretEnc, webhookEnc,
+			paymentsettings.MaskSecret(secretKey), paymentsettings.MaskSecret(webhookSecret), now))
 }
 
 func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
@@ -517,17 +546,9 @@ func TestProcessPaymentWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T)
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
-			tenantID,
-			paymentsettings.ProviderStripe,
-			true,
-			sql.NullString{String: "enc:v1:other:dGVzdA:dGVzdA", Valid: true},
-			sql.NullString{String: "enc:v1:other:dGVzdA:dGVzdA", Valid: true},
-			sql.NullString{String: "sk_test_••••••••XXXX", Valid: true},
-			sql.NullString{String: "whsec_••••••••YYYY", Valid: true},
-			now,
-			now,
-		))
+		WillReturnRows(stripePaymentConfigRow(t, tenantID,
+			"enc:v1:other:dGVzdA:dGVzdA", "enc:v1:other:dGVzdA:dGVzdA",
+			"sk_test_••••••••XXXX", "whsec_••••••••YYYY", now))
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_decrypt",

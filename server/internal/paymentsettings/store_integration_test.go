@@ -16,6 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
@@ -40,13 +42,7 @@ func TestStorePersistsEncryptedSecretsAndAudit(t *testing.T) {
 
 	var logs bytes.Buffer
 	store := newIntegrationStore(t, pg.DB, &logs)
-	cfg, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               integrationSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           integrationWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{
+	cfg, err := store.Upsert(ctx, tenant.ID, stripeUpdate(integrationSecretKey, integrationWebhookSecret), paymentsettings.AuditMeta{
 		ActorUserID: actor.ID,
 		ActorRole:   auth.RoleTenantAdmin,
 		TargetID:    tenant.PublicID,
@@ -62,7 +58,11 @@ func TestStorePersistsEncryptedSecretsAndAudit(t *testing.T) {
 	var secretEncrypted, webhookEncrypted, secretHint, webhookHint string
 	var enabled bool
 	err = pg.DB.QueryRowContext(ctx, `
-		SELECT enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint
+		SELECT enabled,
+			credentials_encrypted ->> 'secret_key',
+			credentials_encrypted ->> 'webhook_secret',
+			credential_hints ->> 'secret_key',
+			credential_hints ->> 'webhook_secret'
 		FROM tenant_payment_config
 		WHERE tenant_id = $1
 	`, tenant.ID).Scan(&enabled, &secretEncrypted, &webhookEncrypted, &secretHint, &webhookHint)
@@ -103,12 +103,16 @@ func TestStorePersistsEncryptedSecretsAndAudit(t *testing.T) {
 		t.Fatal("audit or logs contain plaintext secrets")
 	}
 
-	_, secrets, err := store.LoadEnabledSecrets(ctx, tenant.ID)
+	if want := "fields: stripe.secret_key, stripe.webhook_secret"; reason != want {
+		t.Fatalf("audit reason = %q, want %q", reason, want)
+	}
+
+	_, credentials, err := store.LoadEnabledSecrets(ctx, tenant.ID)
 	if err != nil {
 		t.Fatalf("LoadEnabledSecrets: %v", err)
 	}
-	if secrets.SecretKey != integrationSecretKey || secrets.WebhookSecret != integrationWebhookSecret {
-		t.Fatalf("decrypted secrets do not match input")
+	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+		t.Fatalf("decrypted credentials do not match input")
 	}
 }
 
@@ -125,13 +129,7 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 	actorB := pg.SeedTenantAdmin(t, tenantB.ID, "PAYADMB00001", "pay-b@example.com", "Pay Admin B")
 
 	superStore := newIntegrationStore(t, pg.DB, &bytes.Buffer{})
-	if _, err := superStore.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               integrationSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           integrationWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{
+	if _, err := superStore.Upsert(ctx, tenantB.ID, stripeUpdate(integrationSecretKey, integrationWebhookSecret), paymentsettings.AuditMeta{
 		ActorUserID: actorB.ID,
 		ActorRole:   auth.RoleTenantAdmin,
 		TargetID:    tenantB.PublicID,
@@ -141,13 +139,7 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 
 	withAdminTenant(t, pg, tenantA.ID, func(ctx context.Context, conn *sql.Conn) {
 		store := newIntegrationStore(t, conn, &bytes.Buffer{})
-		own, err := store.Upsert(ctx, tenantA.ID, paymentsettings.UpdateInput{
-			Enabled:                 true,
-			SecretKey:               "sk_test_51TenantAOwnKeyXXXX",
-			SecretKeyUpdateMode:     secretupdate.Replace,
-			WebhookSecret:           "whsec_TenantAOwnWebhookYYYY",
-			WebhookSecretUpdateMode: secretupdate.Replace,
-		}, paymentsettings.AuditMeta{
+		own, err := store.Upsert(ctx, tenantA.ID, stripeUpdate("sk_test_51TenantAOwnKeyXXXX", "whsec_TenantAOwnWebhookYYYY"), paymentsettings.AuditMeta{
 			ActorUserID: actorA.ID,
 			ActorRole:   auth.RoleTenantAdmin,
 			TargetID:    tenantA.PublicID,
@@ -163,7 +155,7 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetPublic other tenant: %v", err)
 		}
-		if cfg.Enabled || cfg.SecretKeyConfigured {
+		if cfg.Enabled || len(cfg.Fields) != 0 {
 			t.Fatalf("tenant A saw tenant B config: %+v", cfg)
 		}
 
@@ -172,13 +164,7 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 			t.Fatalf("LoadEnabledSecrets other tenant error = %v, want ErrNotEnabled", err)
 		}
 
-		_, err = store.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
-			Enabled:                 true,
-			SecretKey:               "sk_test_51PlantedByTenantA",
-			SecretKeyUpdateMode:     secretupdate.Replace,
-			WebhookSecret:           "whsec_PlantedByTenantAXXXX",
-			WebhookSecretUpdateMode: secretupdate.Replace,
-		}, paymentsettings.AuditMeta{
+		_, err = store.Upsert(ctx, tenantB.ID, stripeUpdate("sk_test_51PlantedByTenantA", "whsec_PlantedByTenantAXXXX"), paymentsettings.AuditMeta{
 			ActorUserID: actorA.ID,
 			ActorRole:   auth.RoleTenantAdmin,
 			TargetID:    tenantB.PublicID,
@@ -192,7 +178,7 @@ func TestStoreRLSHidesOtherTenantPaymentConfig(t *testing.T) {
 	var enabled bool
 	var secretEncrypted string
 	if err := pg.DB.QueryRowContext(ctx, `
-		SELECT enabled, secret_key_encrypted
+		SELECT enabled, credentials_encrypted ->> 'secret_key'
 		FROM tenant_payment_config
 		WHERE tenant_id = $1
 	`, tenantB.ID).Scan(&enabled, &secretEncrypted); err != nil {
@@ -223,17 +209,119 @@ func TestStoreRejectsPlaintextAtDatabase(t *testing.T) {
 	defer cancel()
 
 	tenant := pg.SeedTenant(t, "PAYTNT00000P", "pay-plain.example.com", "Pay Tenant Plain")
-	_, err := pg.DB.ExecContext(ctx, `
-		INSERT INTO tenant_payment_config (
-			tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted
-		) VALUES ($1, 'stripe', false, $2, $3)
-	`, tenant.ID, integrationSecretKey, integrationWebhookSecret)
-	if !isCheckViolation(err) {
-		t.Fatalf("plaintext insert error = %v, want check_violation", err)
+	for name, credentials := range map[string]string{
+		"plaintext value":  `{"secret_key": "` + integrationSecretKey + `"}`,
+		"non-string value": `{"secret_key": 42}`,
+		"array":            `["enc:v1:k1:abc"]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := pg.DB.ExecContext(ctx, `
+				INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted)
+				VALUES ($1, 'stripe', false, $2)
+			`, tenant.ID, credentials)
+			if !isCheckViolation(err) {
+				t.Fatalf("insert error = %v, want check_violation", err)
+			}
+		})
 	}
 }
 
-func newIntegrationStore(t *testing.T, db dbmodels.DBTX, logs *bytes.Buffer) *paymentsettings.Store {
+// The migration versions the credential map test steps between: the last one
+// before the fields moved into a map, and the one that moved them.
+const (
+	beforeCredentialFieldsVersion = 20260927014651
+	credentialFieldsVersion       = 20260927143544
+)
+
+// A tenant that saved its Stripe secret key and webhook secret before the
+// settings held a map of fields keeps both, under the field names Stripe
+// declares, and stays ready to take payments.
+func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	pg.MigrateTo(t, beforeCredentialFieldsVersion)
+	t.Cleanup(func() { pg.MigrateUp(t) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	mgr := integrationEncryptor(t)
+	ready := pg.SeedTenant(t, "PAYMIG000001", "pay-ready.example.com", "Pay Ready")
+	disabled := pg.SeedTenant(t, "PAYMIG000002", "pay-disabled.example.com", "Pay Disabled")
+	secretEncrypted, err := mgr.EncryptString(integrationSecretKey)
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	webhookEncrypted, err := mgr.EncryptString(integrationWebhookSecret)
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_payment_config (
+			tenant_id, provider, enabled,
+			secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint
+		) VALUES ($1, 'stripe', true, $2, $3, $4, $5)
+	`, ready.ID, secretEncrypted, webhookEncrypted,
+		paymentsettings.MaskSecret(integrationSecretKey), paymentsettings.MaskSecret(integrationWebhookSecret)); err != nil {
+		t.Fatalf("insert ready settings: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO tenant_payment_config (tenant_id, provider, enabled, secret_key_encrypted, secret_key_hint)
+		VALUES ($1, 'stripe', false, $2, $3)
+	`, disabled.ID, secretEncrypted, paymentsettings.MaskSecret(integrationSecretKey)); err != nil {
+		t.Fatalf("insert disabled settings: %v", err)
+	}
+
+	pg.MigrateTo(t, credentialFieldsVersion)
+
+	store := newIntegrationStore(t, pg.DB, &bytes.Buffer{})
+	cfg, credentials, err := store.LoadEnabledSecrets(ctx, ready.ID)
+	if err != nil {
+		t.Fatalf("LoadEnabledSecrets: %v", err)
+	}
+	if !cfg.Ready || cfg.Provider != stripe.ID {
+		t.Fatalf("migrated config = %+v, want ready stripe", cfg)
+	}
+	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
+		t.Fatal("migrated credentials do not decrypt to what was stored")
+	}
+	for name, want := range map[string]string{
+		stripe.FieldSecretKey:     paymentsettings.MaskSecret(integrationSecretKey),
+		stripe.FieldWebhookSecret: paymentsettings.MaskSecret(integrationWebhookSecret),
+	} {
+		field, ok := cfg.Field(name)
+		if !ok || !field.Configured || field.Hint != want {
+			t.Fatalf("migrated field %s = %+v, want configured with hint %q", name, field, want)
+		}
+	}
+
+	partial, err := store.GetPublic(ctx, disabled.ID)
+	if err != nil {
+		t.Fatalf("GetPublic: %v", err)
+	}
+	if partial.Ready || partial.Enabled {
+		t.Fatalf("migrated disabled config = %+v, want not ready", partial)
+	}
+	if field, _ := partial.Field(stripe.FieldWebhookSecret); field.Configured {
+		t.Fatal("a secret that was never stored is configured after the migration")
+	}
+	if field, _ := partial.Field(stripe.FieldSecretKey); !field.Configured {
+		t.Fatal("the stored secret key did not survive the migration")
+	}
+}
+
+func stripeUpdate(secretKey, webhookSecret string) paymentsettings.UpdateInput {
+	return paymentsettings.UpdateInput{
+		Provider: stripe.ID,
+		Enabled:  true,
+		Fields: []paymentsettings.FieldUpdate{
+			{Name: stripe.FieldSecretKey, Mode: secretupdate.Replace, Value: secretKey},
+			{Name: stripe.FieldWebhookSecret, Mode: secretupdate.Replace, Value: webhookSecret},
+		},
+	}
+}
+
+func integrationEncryptor(t *testing.T) *secretcrypto.Manager {
 	t.Helper()
 	mgr, err := secretcrypto.NewManager(map[string][]byte{
 		"k1": bytes.Repeat([]byte{7}, 32),
@@ -241,9 +329,14 @@ func newIntegrationStore(t *testing.T, db dbmodels.DBTX, logs *bytes.Buffer) *pa
 	if err != nil {
 		t.Fatalf("NewManager: %v", err)
 	}
+	return mgr
+}
+
+func newIntegrationStore(t *testing.T, db dbmodels.DBTX, logs *bytes.Buffer) *paymentsettings.Store {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(logs, nil))
 	queries := dbmodels.New(db)
-	return paymentsettings.New(queries, mgr, auditlog.New(queries, logger), logger)
+	return paymentsettings.New(queries, integrationEncryptor(t), providers.Registry(), auditlog.New(queries, logger), logger)
 }
 
 func withAdminTenant(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, fn func(ctx context.Context, conn *sql.Conn)) {

@@ -1,5 +1,9 @@
 export const PAYMENT_PROVIDER_STRIPE = "stripe";
 
+/** The credential fields Stripe declares, as the server names them. */
+export const STRIPE_FIELD_SECRET_KEY = "secret_key";
+export const STRIPE_FIELD_WEBHOOK_SECRET = "webhook_secret";
+
 export const SECRET_UPDATE_MODE_UNCHANGED = 1;
 export const SECRET_UPDATE_MODE_REPLACE = 2;
 

@@ -18,6 +18,8 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -55,6 +57,8 @@ type adminServer struct {
 	policy platformpolicy.Source
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
+	// paymentProviders are the providers a tenant's payment settings may name.
+	paymentProviders *paymentprovider.Registry
 }
 
 func invalidSessionError() error {
@@ -309,8 +313,9 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 		reval:                 revalidator,
 		tokens:                tokens,
 
-		policy: policy,
-		mail:   mail,
+		policy:           policy,
+		mail:             mail,
+		paymentProviders: providers.Registry(),
 	}
 	return &API{server: server}, nil
 }

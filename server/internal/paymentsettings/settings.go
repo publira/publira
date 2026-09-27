@@ -1,29 +1,27 @@
-// Package paymentsettings stores tenant payment-provider credentials.
+// Package paymentsettings stores a tenant's web payment provider and the
+// credential fields that provider declares.
 //
 // Encrypted material never leaves this package except through [Store.LoadEnabledSecrets],
 // which is the server-internal read boundary for Checkout and Webhook processing.
-// Public reads return [PublicConfig] only: provider, enabled flag, configuration
-// booleans, and masked hints. Callers must not log, persist, or attach [Secrets]
-// to RPC responses or audit records.
+// Public reads return [PublicConfig] only: provider, enabled flag, and per field
+// whether it is stored, its masked hint, and the value of a public field.
+// Callers must not log, persist, or attach the credentials LoadEnabledSecrets
+// answers to RPC responses or audit records.
 package paymentsettings
 
 import (
 	"errors"
-	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
-	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
-	ProviderStripe = "stripe"
-
 	ActionUpdated = "tenant_payment_settings_updated"
 	TargetType    = "payment_config"
 
@@ -34,21 +32,26 @@ const (
 var (
 	ErrSecretManagerUnavailable = errors.New("secret manager is not configured")
 	ErrSecretRequired           = errors.New("secret is required")
-	ErrSecretsRequired          = errors.New("secret key and webhook signing secret are required when payment is enabled")
-	ErrInvalidProvider          = errors.New("provider must be stripe")
-	ErrEncryptFailed            = errors.New("failed to encrypt payment secret")
-	ErrDecryptFailed            = errors.New("failed to decrypt payment secret")
-	ErrInvalidCiphertext        = errors.New("payment secret is not an encrypted envelope")
-	ErrSecretMissing            = errors.New("payment secret is not configured")
+	ErrFieldsRequired           = errors.New("every required credential field must be stored when payment is enabled")
+	ErrInvalidProvider          = errors.New("provider is not registered")
+	ErrUnknownField             = errors.New("credential field is not declared by the provider")
+	ErrDuplicateField           = errors.New("credential field is updated twice")
+	ErrEncryptFailed            = errors.New("failed to encrypt payment credential")
+	ErrDecryptFailed            = errors.New("failed to decrypt payment credential")
+	ErrInvalidCiphertext        = errors.New("payment credential is not an encrypted envelope")
+	ErrSecretMissing            = errors.New("required payment credential is not configured")
 	ErrNotEnabled               = errors.New("tenant payment settings are not enabled")
+	ErrProviderUnavailable      = errors.New("stored payment provider is not registered")
 )
 
 // IsUnavailable reports errors that mean Checkout and Webhook must not run:
-// missing or disabled settings, missing ciphertext, or a decrypt failure.
-// Other errors (for example a database outage) are not unavailable in this
-// sense and should surface as internal failures.
+// missing or disabled settings, a provider this build does not register, a
+// missing required field, or a decrypt failure. Other errors (for example a
+// database outage) are not unavailable in this sense and should surface as
+// internal failures.
 func IsUnavailable(err error) bool {
 	return errors.Is(err, ErrNotEnabled) ||
+		errors.Is(err, ErrProviderUnavailable) ||
 		errors.Is(err, ErrDecryptFailed) ||
 		errors.Is(err, ErrInvalidCiphertext) ||
 		errors.Is(err, ErrSecretMissing) ||
@@ -60,56 +63,56 @@ type SecretManager interface {
 	DecryptString(value string) (string, error)
 }
 
+// FieldState is what is stored for one field the provider declares.
+type FieldState struct {
+	Name       string
+	Configured bool
+	// Hint is the masked value of a secret field and the value itself of any
+	// other, derived when it was stored.
+	Hint string
+	// PublicValue is the stored value of a field the provider declares public,
+	// and empty for every other field.
+	PublicValue string
+}
+
 // PublicConfig is the non-secret view of a tenant's payment settings.
 // It is safe to return from APIs and to log.
 type PublicConfig struct {
-	TenantID                uuid.UUID
-	Provider                string
-	Enabled                 bool
-	SecretKeyConfigured     bool
-	WebhookSecretConfigured bool
-	SecretKeyHint           string
-	WebhookSecretHint       string
-	Ready                   bool
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	TenantID uuid.UUID
+	// Provider is empty until the tenant saves one.
+	Provider string
+	Enabled  bool
+	// Fields has one entry per field the provider declares, in its order.
+	Fields    []FieldState
+	Ready     bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-// Secrets is decrypted Stripe credential material. Only [Store.LoadEnabledSecrets]
-// returns it. fmt, slog, and similar dump it as "redacted".
-type Secrets struct {
-	SecretKey     string
-	WebhookSecret string
-}
-
-func (s Secrets) String() string {
-	return "paymentsettings.Secrets{redacted}"
-}
-
-func (s Secrets) GoString() string {
-	return s.String()
-}
-
-func (s Secrets) LogValue() slog.Value {
-	return slog.StringValue("redacted")
-}
-
-// Credentials answers the secrets under the field names the Stripe provider
-// declares, the only provider these settings can hold.
-func (s Secrets) Credentials() paymentprovider.Credentials {
-	return paymentprovider.Credentials{
-		stripe.FieldSecretKey:     s.SecretKey,
-		stripe.FieldWebhookSecret: s.WebhookSecret,
+// Field answers the state of the field named name.
+func (c PublicConfig) Field(name string) (FieldState, bool) {
+	for _, field := range c.Fields {
+		if field.Name == name {
+			return field, true
+		}
 	}
+	return FieldState{}, false
+}
+
+// FieldUpdate changes one credential field.
+type FieldUpdate struct {
+	Name string
+	Mode secretupdate.Mode
+	// Value is read only when Mode is [secretupdate.Replace].
+	Value string
 }
 
 type UpdateInput struct {
-	Provider                string
-	Enabled                 bool
-	SecretKey               string
-	SecretKeyUpdateMode     secretupdate.Mode
-	WebhookSecret           string
-	WebhookSecretUpdateMode secretupdate.Mode
+	Provider string
+	Enabled  bool
+	// Fields the input leaves out are left as they are, unless the provider
+	// changes, which clears every field stored for the previous one.
+	Fields []FieldUpdate
 }
 
 type AuditMeta struct {
@@ -117,17 +120,6 @@ type AuditMeta struct {
 	ActorRole   string
 	ClientIP    string
 	TargetID    string
-}
-
-func NormalizeProvider(provider string) (string, error) {
-	provider = strings.TrimSpace(provider)
-	if provider == "" {
-		return ProviderStripe, nil
-	}
-	if provider != ProviderStripe {
-		return "", ErrInvalidProvider
-	}
-	return provider, nil
 }
 
 // MaskSecret turns a live credential into a display hint (prefix + bullets +
@@ -153,6 +145,14 @@ func splitSecretPrefix(value string) (string, string) {
 	return value[:i+1], value[i+1:]
 }
 
+// hintFor answers what the console shows for a stored value of field.
+func hintFor(field paymentprovider.Field, value string) string {
+	if field.Secret {
+		return MaskSecret(value)
+	}
+	return value
+}
+
 func applySecretUpdate(existingEncrypted, existingHint string, mode secretupdate.Mode, newPlaintext string, mgr SecretManager) (string, string, error) {
 	resolved, err := secretupdate.Resolve(mode, newPlaintext, ErrSecretRequired)
 	if err != nil {
@@ -169,17 +169,25 @@ func applySecretUpdate(existingEncrypted, existingHint string, mode secretupdate
 }
 
 func encryptSecret(plaintext string, mgr SecretManager) (string, string, error) {
+	encrypted, err := encryptValue(plaintext, mgr)
+	if err != nil {
+		return "", "", err
+	}
+	return encrypted, MaskSecret(plaintext), nil
+}
+
+func encryptValue(plaintext string, mgr SecretManager) (string, error) {
 	if mgr == nil {
-		return "", "", ErrSecretManagerUnavailable
+		return "", ErrSecretManagerUnavailable
 	}
 	encrypted, err := mgr.EncryptString(plaintext)
 	if err != nil {
-		return "", "", ErrEncryptFailed
+		return "", ErrEncryptFailed
 	}
 	if !secretcrypto.IsEncryptedEnvelope(encrypted) {
-		return "", "", ErrEncryptFailed
+		return "", ErrEncryptFailed
 	}
-	return encrypted, MaskSecret(plaintext), nil
+	return encrypted, nil
 }
 
 func decryptEnvelope(encrypted string, mgr SecretManager) (string, error) {

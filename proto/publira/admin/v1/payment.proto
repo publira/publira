@@ -7,22 +7,64 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 import "publira/admin/v1/email.proto";
 import "publira/types/v1/types.proto";
 
-// Non-secret view of a tenant's payment-provider settings. Secret key and
-// webhook signing secret never appear here; callers see configuration flags
-// and masked hints only.
+// One credential a payment provider declares.
+message PaymentCredentialField {
+  // The key the value is stored and sent under. The console names the field
+  // from its own catalogs by the provider id and this name.
+  string name = 1;
+  // A secret field is stored encrypted and never answered back in full.
+  bool secret = 2;
+  // A public field is handed to the reader's browser, as a publishable key is,
+  // and its value is answered back as stored.
+  bool public = 3;
+  // Every required field has to be stored before the provider takes payments.
+  bool required = 4;
+}
+
+// A payment provider a tenant may choose, as the server registers it.
+message PaymentProvider {
+  // The id stored in a tenant's settings and named in the webhook route.
+  string id = 1;
+  string display_name = 2;
+  repeated PaymentCredentialField fields = 3;
+  // The path on the tenant's storefront the provider's notifications are
+  // received on, such as "/api/v1/webhook/payment/stripe".
+  string webhook_path = 4;
+}
+
+message ListPaymentProvidersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListPaymentProvidersResponse {
+  // Ordered by id.
+  repeated PaymentProvider providers = 1;
+}
+
+// What is stored for one credential field of the tenant's provider. A secret
+// value never appears here.
+message PaymentCredentialFieldState {
+  string name = 1;
+  bool configured = 2;
+  // Display hint derived at write time: prefix + bullets + last four for a
+  // secret field, and the value itself for one that is not secret. Empty when
+  // the field is not stored.
+  string hint = 3;
+  // The stored value of a field the provider declares public, which the
+  // checkout page is given. Empty for every other field.
+  string public_value = 4;
+}
+
+// Non-secret view of a tenant's payment-provider settings.
 message TenantPaymentSettings {
-  // Provider id. Currently only "stripe".
+  // The id of the provider the tenant chose, or empty before one is saved.
   string provider = 1;
   bool enabled = 2;
-  bool secret_key_configured = 3;
-  bool webhook_secret_configured = 4;
-  // Display hint derived at write time (prefix + bullets + last four). Empty
-  // when the corresponding secret is not stored.
-  string secret_key_hint = 5;
-  string webhook_secret_hint = 6;
-  // True when enabled and both secrets are stored. Checkout and Webhook use
-  // this tenant's settings only when ready.
-  bool ready = 7;
+  // One entry per field the provider declares, in its declared order.
+  repeated PaymentCredentialFieldState fields = 3;
+  // True when enabled and every field the provider requires is stored.
+  // Checkout and Webhook use this tenant's settings only when ready.
+  bool ready = 4;
 }
 
 message GetTenantPaymentSettingsRequest {
@@ -33,14 +75,22 @@ message GetTenantPaymentSettingsResponse {
   TenantPaymentSettings settings = 1;
 }
 
+// A change to one credential field. A field the request leaves out is left as
+// it is.
+message PaymentCredentialFieldUpdate {
+  string name = 1;
+  SecretUpdateMode mode = 2;
+  // The new value; read only when mode is SECRET_UPDATE_MODE_REPLACE.
+  string value = 3;
+}
+
 message UpdateTenantPaymentSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // A registered provider id. Choosing a provider other than the stored one
+  // clears every field stored for the previous one.
   string provider = 2;
   bool enabled = 3;
-  SecretUpdateMode secret_key_update_mode = 4;
-  string secret_key = 5;
-  SecretUpdateMode webhook_secret_update_mode = 6;
-  string webhook_secret = 7;
+  repeated PaymentCredentialFieldUpdate fields = 4;
 }
 
 message UpdateTenantPaymentSettingsResponse {
@@ -152,6 +202,7 @@ message ListTenantStoreProductsResponse {
 }
 
 service AdminPaymentSettingsService {
+  rpc ListPaymentProviders(ListPaymentProvidersRequest) returns (ListPaymentProvidersResponse) {}
   rpc GetTenantPaymentSettings(GetTenantPaymentSettingsRequest) returns (GetTenantPaymentSettingsResponse) {}
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {}
   rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}

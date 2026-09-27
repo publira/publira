@@ -8,6 +8,7 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -177,7 +178,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 }
 
 const GetEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
-SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
+SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
 FROM tenant_payment_config
 WHERE tenant_id = $1
     AND enabled = TRUE
@@ -191,12 +192,10 @@ func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, t
 		&i.TenantID,
 		&i.Provider,
 		&i.Enabled,
-		&i.SecretKeyEncrypted,
-		&i.WebhookSecretEncrypted,
-		&i.SecretKeyHint,
-		&i.WebhookSecretHint,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialsEncrypted,
+		&i.CredentialHints,
 	)
 	return i, err
 }
@@ -267,7 +266,7 @@ func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPur
 }
 
 const GetTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
-SELECT tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
+SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
 FROM tenant_payment_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -280,12 +279,10 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 		&i.TenantID,
 		&i.Provider,
 		&i.Enabled,
-		&i.SecretKeyEncrypted,
-		&i.WebhookSecretEncrypted,
-		&i.SecretKeyHint,
-		&i.WebhookSecretHint,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialsEncrypted,
+		&i.CredentialHints,
 	)
 	return i, err
 }
@@ -670,32 +667,26 @@ INSERT INTO tenant_payment_config (
         tenant_id,
         provider,
         enabled,
-        secret_key_encrypted,
-        webhook_secret_encrypted,
-        secret_key_hint,
-        webhook_secret_hint,
+        credentials_encrypted,
+        credential_hints,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) ON CONFLICT (tenant_id) DO
+VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
 SET provider = EXCLUDED.provider,
     enabled = EXCLUDED.enabled,
-    secret_key_encrypted = EXCLUDED.secret_key_encrypted,
-    webhook_secret_encrypted = EXCLUDED.webhook_secret_encrypted,
-    secret_key_hint = EXCLUDED.secret_key_hint,
-    webhook_secret_hint = EXCLUDED.webhook_secret_hint,
+    credentials_encrypted = EXCLUDED.credentials_encrypted,
+    credential_hints = EXCLUDED.credential_hints,
     updated_at = NOW()
-RETURNING tenant_id, provider, enabled, secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint, created_at, updated_at
+RETURNING tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
 `
 
 type UpsertTenantPaymentConfigParams struct {
-	TenantID               uuid.UUID      `json:"tenant_id"`
-	Provider               string         `json:"provider"`
-	Enabled                bool           `json:"enabled"`
-	SecretKeyEncrypted     sql.NullString `json:"secret_key_encrypted"`
-	WebhookSecretEncrypted sql.NullString `json:"webhook_secret_encrypted"`
-	SecretKeyHint          sql.NullString `json:"secret_key_hint"`
-	WebhookSecretHint      sql.NullString `json:"webhook_secret_hint"`
+	TenantID             uuid.UUID       `json:"tenant_id"`
+	Provider             string          `json:"provider"`
+	Enabled              bool            `json:"enabled"`
+	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
+	CredentialHints      json.RawMessage `json:"credential_hints"`
 }
 
 func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error) {
@@ -703,22 +694,18 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 		arg.TenantID,
 		arg.Provider,
 		arg.Enabled,
-		arg.SecretKeyEncrypted,
-		arg.WebhookSecretEncrypted,
-		arg.SecretKeyHint,
-		arg.WebhookSecretHint,
+		arg.CredentialsEncrypted,
+		arg.CredentialHints,
 	)
 	var i TenantPaymentConfig
 	err := row.Scan(
 		&i.TenantID,
 		&i.Provider,
 		&i.Enabled,
-		&i.SecretKeyEncrypted,
-		&i.WebhookSecretEncrypted,
-		&i.SecretKeyHint,
-		&i.WebhookSecretHint,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialsEncrypted,
+		&i.CredentialHints,
 	)
 	return i, err
 }

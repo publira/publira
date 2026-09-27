@@ -15,7 +15,6 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/providers/providerstest"
-	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretupdate"
@@ -71,17 +70,19 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 		PublishedAt: time.Now().Add(-time.Hour),
 	})
 
-	// The settings hold a secret key and a webhook secret until they store
-	// each provider's own fields.
+	var fields []paymentsettings.FieldUpdate
+	for _, field := range provider.Declaration().Fields {
+		if value, ok := credentials[field.Name]; ok {
+			fields = append(fields, paymentsettings.FieldUpdate{Name: field.Name, Mode: secretupdate.Replace, Value: value})
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := paymentsettings.New(dbmodels.New(h.pg.DB), h.encryptor, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Provider:                provider.Declaration().ID,
-		Enabled:                 true,
-		SecretKey:               credentials[stripe.FieldSecretKey],
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           credentials[stripe.FieldWebhookSecret],
-		WebhookSecretUpdateMode: secretupdate.Replace,
+	store := paymentsettings.New(dbmodels.New(h.pg.DB), h.encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
+		Provider: provider.Declaration().ID,
+		Enabled:  true,
+		Fields:   fields,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}

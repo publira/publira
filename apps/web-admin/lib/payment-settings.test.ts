@@ -33,6 +33,26 @@ vi.mock("./api", () => ({
   }),
 }));
 
+const rpcSettings = {
+  enabled: true,
+  fields: [
+    {
+      configured: true,
+      hint: "sk_test_••••••••KLMN",
+      name: "secret_key",
+      publicValue: "",
+    },
+    {
+      configured: true,
+      hint: "whsec_••••••••WXYZ",
+      name: "webhook_secret",
+      publicValue: "",
+    },
+  ],
+  provider: "stripe",
+  ready: true,
+};
+
 const publicSettings = {
   enabled: true,
   provider: "stripe",
@@ -55,7 +75,7 @@ describe("payment-settings", () => {
 
   it("returns only the settings that may be exposed on a successful fetch", async () => {
     mockGetTenantPaymentSettingsApi.mockResolvedValueOnce({
-      settings: publicSettings,
+      settings: rpcSettings,
     });
 
     const { getTenantPaymentSettings } = await import("./payment-settings");
@@ -75,7 +95,12 @@ describe("payment-settings", () => {
   it("keeps a plaintext secret in the response out of the settings meant for the screen", async () => {
     mockGetTenantPaymentSettingsApi.mockResolvedValueOnce({
       settings: {
-        ...publicSettings,
+        ...rpcSettings,
+        fields: rpcSettings.fields.map((field) => ({
+          ...field,
+          value:
+            field.name === "secret_key" ? leakedSecretKey : leakedWebhookSecret,
+        })),
         secretKey: leakedSecretKey,
         webhookSecret: leakedWebhookSecret,
       },
@@ -93,6 +118,32 @@ describe("payment-settings", () => {
       expect(result.settings).not.toHaveProperty("secretKey");
       expect(result.settings).not.toHaveProperty("webhookSecret");
     }
+  });
+
+  it("reads a credential field the response does not list as not stored", async () => {
+    mockGetTenantPaymentSettingsApi.mockResolvedValueOnce({
+      settings: {
+        ...rpcSettings,
+        fields: rpcSettings.fields.filter(
+          (field) => field.name === "secret_key"
+        ),
+        ready: false,
+      },
+    });
+
+    const { getTenantPaymentSettings } = await import("./payment-settings");
+
+    const result = await getTenantPaymentSettings("TENANT001", "en");
+
+    expect(result).toEqual({
+      ok: true,
+      settings: {
+        ...publicSettings,
+        ready: false,
+        webhookSecretConfigured: false,
+        webhookSecretHint: "",
+      },
+    });
   });
 
   it("returns an error when there is no session", async () => {
@@ -141,7 +192,7 @@ describe("payment-settings", () => {
 
   it("returns the public view and keeps no plaintext on a successful update", async () => {
     mockUpdateTenantPaymentSettingsApi.mockResolvedValueOnce({
-      settings: publicSettings,
+      settings: rpcSettings,
     });
 
     const { SECRET_UPDATE_MODE_REPLACE, updateTenantPaymentSettings } =
@@ -165,12 +216,20 @@ describe("payment-settings", () => {
     expect(mockUpdateTenantPaymentSettingsApi).toHaveBeenCalledWith(
       {
         enabled: true,
+        fields: [
+          {
+            mode: SECRET_UPDATE_MODE_REPLACE,
+            name: "secret_key",
+            value: leakedSecretKey,
+          },
+          {
+            mode: SECRET_UPDATE_MODE_REPLACE,
+            name: "webhook_secret",
+            value: leakedWebhookSecret,
+          },
+        ],
         provider: "stripe",
-        secretKey: leakedSecretKey,
-        secretKeyUpdateMode: SECRET_UPDATE_MODE_REPLACE,
         tenant: { tenantId: "TENANT001" },
-        webhookSecret: leakedWebhookSecret,
-        webhookSecretUpdateMode: SECRET_UPDATE_MODE_REPLACE,
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -179,7 +238,7 @@ describe("payment-settings", () => {
   it("returns the message of the server as it is for invalid_argument on an update", async () => {
     mockUpdateTenantPaymentSettingsApi.mockRejectedValueOnce(
       new ConnectError(
-        "secret key and webhook signing secret are required when payment is enabled",
+        "every required credential field must be stored when payment is enabled: secret_key, webhook_secret",
         Code.InvalidArgument
       )
     );
@@ -201,7 +260,7 @@ describe("payment-settings", () => {
 
     expect(result).toEqual({
       message:
-        "secret key and webhook signing secret are required when payment is enabled",
+        "every required credential field must be stored when payment is enabled: secret_key, webhook_secret",
       ok: false,
     });
   });

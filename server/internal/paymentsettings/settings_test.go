@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -41,44 +43,22 @@ func TestMaskSecret(t *testing.T) {
 	}
 }
 
-func TestNormalizeProvider(t *testing.T) {
-	t.Parallel()
-
-	got, err := NormalizeProvider("")
-	if err != nil {
-		t.Fatalf("empty provider error = %v", err)
-	}
-	if got != ProviderStripe {
-		t.Fatalf("empty provider = %q, want %q", got, ProviderStripe)
-	}
-
-	got, err = NormalizeProvider("stripe")
-	if err != nil {
-		t.Fatalf("stripe provider error = %v", err)
-	}
-	if got != ProviderStripe {
-		t.Fatalf("stripe provider = %q, want %q", got, ProviderStripe)
-	}
-
-	_, err = NormalizeProvider("paypal")
-	if !errors.Is(err, ErrInvalidProvider) {
-		t.Fatalf("paypal provider error = %v, want ErrInvalidProvider", err)
-	}
-}
-
-func TestSecretsRedactsPlaintext(t *testing.T) {
+func TestLoadedCredentialsRedactPlaintext(t *testing.T) {
 	t.Parallel()
 
 	const secretKey = "sk_test_leak_me_now_please"
 	const webhookSecret = "whsec_also_must_not_appear"
-	secrets := Secrets{SecretKey: secretKey, WebhookSecret: webhookSecret}
+	credentials := paymentprovider.Credentials{
+		stripe.FieldSecretKey:     secretKey,
+		stripe.FieldWebhookSecret: webhookSecret,
+	}
 
 	dumps := []string{
-		secrets.String(),
-		secrets.GoString(),
-		fmt.Sprintf("%v", secrets),
-		fmt.Sprintf("%+v", secrets),
-		fmt.Sprintf("%#v", secrets),
+		credentials.String(),
+		credentials.GoString(),
+		fmt.Sprintf("%v", credentials),
+		fmt.Sprintf("%+v", credentials),
+		fmt.Sprintf("%#v", credentials),
 	}
 	for _, dump := range dumps {
 		if containsAny(dump, secretKey, webhookSecret) {
@@ -91,7 +71,7 @@ func TestSecretsRedactsPlaintext(t *testing.T) {
 
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, nil))
-	logger.Info("loaded", "secrets", secrets)
+	logger.Info("loaded", "credentials", credentials)
 	if containsAny(buf.String(), secretKey, webhookSecret) {
 		t.Fatalf("slog output leaked a secret: %s", buf.String())
 	}
@@ -101,13 +81,13 @@ func TestPublicConfigJSONOmitsSecrets(t *testing.T) {
 	t.Parallel()
 
 	cfg := PublicConfig{
-		Provider:                ProviderStripe,
-		Enabled:                 true,
-		SecretKeyConfigured:     true,
-		WebhookSecretConfigured: true,
-		SecretKeyHint:           MaskSecret("sk_test_51ABCDEFGHIJKLMN"),
-		WebhookSecretHint:       MaskSecret("whsec_abcdefghijklmnopqrstuv"),
-		Ready:                   true,
+		Provider: stripe.ID,
+		Enabled:  true,
+		Fields: []FieldState{
+			{Name: stripe.FieldSecretKey, Configured: true, Hint: MaskSecret("sk_test_51ABCDEFGHIJKLMN")},
+			{Name: stripe.FieldWebhookSecret, Configured: true, Hint: MaskSecret("whsec_abcdefghijklmnopqrstuv")},
+		},
+		Ready: true,
 	}
 	encoded, err := json.Marshal(cfg)
 	if err != nil {
@@ -117,7 +97,7 @@ func TestPublicConfigJSONOmitsSecrets(t *testing.T) {
 	if containsAny(body, "sk_test_51ABCDEFGHIJKLMN", "whsec_abcdefghijklmnopqrstuv") {
 		t.Fatalf("public JSON leaked a secret: %s", body)
 	}
-	if !strings.Contains(body, "SecretKeyHint") {
+	if !strings.Contains(body, "Hint") {
 		t.Fatalf("public JSON missing hint: %s", body)
 	}
 }
@@ -196,7 +176,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 
 func TestIsUnavailable(t *testing.T) {
 	t.Parallel()
-	if !IsUnavailable(ErrNotEnabled) || !IsUnavailable(fmt.Errorf("wrap: %w", ErrDecryptFailed)) {
+	if !IsUnavailable(ErrNotEnabled) || !IsUnavailable(fmt.Errorf("wrap: %w", ErrDecryptFailed)) || !IsUnavailable(ErrProviderUnavailable) {
 		t.Fatal("sentinel payment errors must be unavailable")
 	}
 	if IsUnavailable(errors.New("pq: connection refused")) {

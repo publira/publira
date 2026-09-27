@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -37,9 +39,8 @@ func TestTenantPaymentRevalidateTags(t *testing.T) {
 func tenantPaymentColumns() []string {
 	return []string{
 		"tenant_id", "provider", "enabled",
-		"secret_key_encrypted", "webhook_secret_encrypted",
-		"secret_key_hint", "webhook_secret_hint",
 		"created_at", "updated_at",
+		"credentials_encrypted", "credential_hints",
 	}
 }
 
@@ -63,24 +64,112 @@ func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, 
 	return ts, mock
 }
 
+// stripeFieldsJSON is a Stripe row's field map holding the values given for
+// the secret key and the webhook secret.
+func stripeFieldsJSON(t *testing.T, secretKey, webhookSecret string) []byte {
+	t.Helper()
+	encoded, err := json.Marshal(map[string]string{
+		stripe.FieldSecretKey:     secretKey,
+		stripe.FieldWebhookSecret: webhookSecret,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	return encoded
+}
+
 func addPaymentConfigRow(
+	t *testing.T,
 	rows *sqlmock.Rows,
 	tenantID uuid.UUID,
 	enabled bool,
 	secretEnc, webhookEnc, secretHint, webhookHint string,
 	now time.Time,
 ) *sqlmock.Rows {
+	t.Helper()
 	return rows.AddRow(
 		tenantID,
-		paymentsettings.ProviderStripe,
+		stripe.ID,
 		enabled,
-		sql.NullString{String: secretEnc, Valid: secretEnc != ""},
-		sql.NullString{String: webhookEnc, Valid: webhookEnc != ""},
-		sql.NullString{String: secretHint, Valid: secretHint != ""},
-		sql.NullString{String: webhookHint, Valid: webhookHint != ""},
 		now,
 		now,
+		stripeFieldsJSON(t, secretEnc, webhookEnc),
+		stripeFieldsJSON(t, secretHint, webhookHint),
 	)
+}
+
+func stripeFieldState(t *testing.T, settings *publiraadminv1.TenantPaymentSettings, name string) *publiraadminv1.PaymentCredentialFieldState {
+	t.Helper()
+	for _, field := range settings.Fields {
+		if field.Name == name {
+			return field
+		}
+	}
+	t.Fatalf("settings have no field %q: %+v", name, settings.Fields)
+	return nil
+}
+
+func TestListPaymentProvidersAnswersEachProvidersDeclaration(t *testing.T) {
+	ts, mock := newPaymentAdminServer(t, nil)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.ListPaymentProvidersRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	resp, err := client.ListPaymentProviders(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListPaymentProviders: %v", err)
+	}
+	var found *publiraadminv1.PaymentProvider
+	for _, provider := range resp.Msg.Providers {
+		if provider.Id == stripe.ID {
+			found = provider
+		}
+	}
+	if found == nil {
+		t.Fatalf("providers = %+v, want stripe among them", resp.Msg.Providers)
+	}
+	if found.DisplayName != "Stripe" || found.WebhookPath != "/api/v1/webhook/payment/stripe" {
+		t.Fatalf("stripe = %+v", found)
+	}
+	var names []string
+	for _, field := range found.Fields {
+		if !field.Secret || field.Public || !field.Required {
+			t.Fatalf("stripe field %+v, want secret, not public, required", field)
+		}
+		names = append(names, field.Name)
+	}
+	if strings.Join(names, ",") != stripe.FieldSecretKey+","+stripe.FieldWebhookSecret {
+		t.Fatalf("stripe fields = %v", names)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListPaymentProvidersRejectsEditorRole(t *testing.T) {
+	ts, mock := newPaymentAdminServer(t, nil)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.ListPaymentProvidersRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	if _, err := client.ListPaymentProviders(context.Background(), req); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("ListPaymentProviders code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
 }
 
 func TestGetTenantPaymentSettingsRejectsEditorRole(t *testing.T) {
@@ -126,11 +215,8 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
 	settings := resp.Msg.Settings
-	if settings.Provider != paymentsettings.ProviderStripe || settings.Enabled || settings.Ready || settings.SecretKeyConfigured {
-		t.Fatalf("settings = %+v, want empty disabled stripe", settings)
-	}
-	if settings.SecretKeyHint != "" || settings.WebhookSecretHint != "" {
-		t.Fatalf("hints = (%q, %q), want empty", settings.SecretKeyHint, settings.WebhookSecretHint)
+	if settings.Provider != "" || settings.Enabled || settings.Ready || len(settings.Fields) != 0 {
+		t.Fatalf("settings = %+v, want empty with no provider", settings)
 	}
 	assertExpectations(t, mock)
 }
@@ -149,6 +235,7 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(addPaymentConfigRow(
+			t,
 			sqlmock.NewRows(tenantPaymentColumns()),
 			tenantID,
 			true,
@@ -169,11 +256,14 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
 	settings := resp.Msg.Settings
-	if !settings.Enabled || !settings.Ready || !settings.SecretKeyConfigured || !settings.WebhookSecretConfigured {
-		t.Fatalf("settings = %+v, want ready enabled config", settings)
+	if settings.Provider != stripe.ID || !settings.Enabled || !settings.Ready {
+		t.Fatalf("settings = %+v, want ready enabled stripe", settings)
 	}
-	if settings.SecretKeyHint != secretHint || settings.WebhookSecretHint != webhookHint {
-		t.Fatalf("hints = (%q, %q)", settings.SecretKeyHint, settings.WebhookSecretHint)
+	for name, hint := range map[string]string{stripe.FieldSecretKey: secretHint, stripe.FieldWebhookSecret: webhookHint} {
+		field := stripeFieldState(t, settings, name)
+		if !field.Configured || field.Hint != hint || field.PublicValue != "" {
+			t.Fatalf("field %s = %+v, want configured with hint %q", name, field, hint)
+		}
 	}
 	dump := settings.String() + logs.String()
 	if strings.Contains(dump, testPaymentSecretKey) || strings.Contains(dump, testPaymentWebhookSecret) {
@@ -217,8 +307,9 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
-		Enabled: true,
-		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Provider: stripe.ID,
+		Enabled:  true,
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	_, err := client.UpdateTenantPaymentSettings(context.Background(), req)
@@ -273,14 +364,13 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantPaymentConfig)).
 		WithArgs(
 			tenantID,
-			paymentsettings.ProviderStripe,
+			stripe.ID,
 			true,
 			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sql.NullString{String: secretHint, Valid: true},
-			sql.NullString{String: webhookHint, Valid: true},
+			stripeFieldsJSON(t, secretHint, webhookHint),
 		).
 		WillReturnRows(addPaymentConfigRow(
+			t,
 			sqlmock.NewRows(tenantPaymentColumns()),
 			tenantID,
 			true,
@@ -294,12 +384,13 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
-		Enabled:                 true,
-		SecretKey:               testPaymentSecretKey,
-		SecretKeyUpdateMode:     publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
-		WebhookSecret:           testPaymentWebhookSecret,
-		WebhookSecretUpdateMode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE,
-		Tenant:                  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Provider: stripe.ID,
+		Enabled:  true,
+		Fields: []*publiraadminv1.PaymentCredentialFieldUpdate{
+			{Name: stripe.FieldSecretKey, Mode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE, Value: testPaymentSecretKey},
+			{Name: stripe.FieldWebhookSecret, Mode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE, Value: testPaymentWebhookSecret},
+		},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.UpdateTenantPaymentSettings(context.Background(), req)
@@ -307,7 +398,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 		t.Fatalf("UpdateTenantPaymentSettings: %v", err)
 	}
 	settings := resp.Msg.Settings
-	if !settings.Ready || settings.SecretKeyHint != secretHint {
+	if !settings.Ready || stripeFieldState(t, settings, stripe.FieldSecretKey).Hint != secretHint {
 		t.Fatalf("settings = %+v", settings)
 	}
 	dump := settings.String() + logs.String() + errString(err)

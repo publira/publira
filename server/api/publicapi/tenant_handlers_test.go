@@ -18,7 +18,6 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/ageverification"
-	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -552,17 +551,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).AddRow(
-			tenantID,
-			paymentsettings.ProviderStripe,
-			true,
-			sql.NullString{String: "enc:invalid", Valid: true},
-			sql.NullString{String: "enc:invalid", Valid: true},
-			sql.NullString{String: "********", Valid: true},
-			sql.NullString{String: "********", Valid: true},
-			now,
-			now,
-		))
+		WillReturnRows(stripePaymentConfigRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
