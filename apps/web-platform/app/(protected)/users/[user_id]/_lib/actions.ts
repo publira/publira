@@ -11,7 +11,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { platformDashboardCacheTag } from "#lib/dashboard";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { canManageEndUsers } from "#lib/roles";
@@ -33,7 +33,7 @@ const userIdSchema = async () => {
 
   return {
     locale,
-    schema: requiredTrimmedString(t("platform.common.required")),
+    schema: requiredRecordId(t("platform.common.required")),
   };
 };
 

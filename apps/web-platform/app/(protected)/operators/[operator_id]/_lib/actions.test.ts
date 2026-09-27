@@ -148,4 +148,12 @@ describe("operator detail actions", () => {
     expect(mockSuspendPlatformOperator).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+
+  it("sends no request for an operator ID that is not a UUID", async () => {
+    const { suspendOperatorAction } = await import("./actions");
+
+    await suspendOperatorAction({ id: "OPERATOR002", publicId: "OPERATOR002" });
+
+    expect(mockSuspendPlatformOperator).not.toHaveBeenCalled();
+  });
 });

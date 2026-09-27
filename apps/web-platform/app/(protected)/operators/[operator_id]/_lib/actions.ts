@@ -17,7 +17,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { platformDashboardCacheTag } from "#lib/dashboard";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -38,9 +38,12 @@ type OperatorTarget = Pick<PlatformOperatorSummary, "id" | "publicId">;
 
 const operatorTargetSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
-  const required = requiredTrimmedString(t("platform.common.required"));
+  const message = t("platform.common.required");
 
-  return z.object({ id: required, publicId: required });
+  return z.object({
+    id: requiredRecordId(message),
+    publicId: requiredTrimmedString(message),
+  });
 };
 
 /**

@@ -123,4 +123,12 @@ describe("end-user detail actions", () => {
     expect(mockSuspendPlatformEndUser).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+
+  it("sends no request for a user ID that is not a UUID", async () => {
+    const { suspendEndUserAction } = await import("./actions");
+
+    await suspendEndUserAction("SeedUSERAAA1");
+
+    expect(mockSuspendPlatformEndUser).not.toHaveBeenCalled();
+  });
 });
