@@ -72,10 +72,13 @@ export const PlatformDefaultLocaleForm = async ({
           </FieldLabel>
           <FieldContent>
             <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+              {/* A save refreshes the default; keying on it remounts the
+                  select instead of changing a mounted field's default. */}
               <Select
                 defaultValue={initialDefaultLocale}
                 disabled={hasLoadError}
                 items={items}
+                key={initialDefaultLocale}
                 name="default_locale"
                 placeholder={t("platform.settings.default_locale_placeholder")}
               />

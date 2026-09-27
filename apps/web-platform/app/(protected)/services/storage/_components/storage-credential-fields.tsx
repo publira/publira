@@ -52,7 +52,7 @@ interface StorageCredentialFieldsProps {
  * two are replaced together because the server refuses to pair a kept secret
  * with a different id.
  *
- * The page remounts this with the settings' revision as its key, so a save
+ * The form remounts this whenever the settings' revision changes, so a save
  * puts a newly stored key back behind "Replace access key".
  */
 export const StorageCredentialFields = ({
