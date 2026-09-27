@@ -1,6 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -9,7 +10,12 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
-import { createCreator, updateCreator } from "#lib/creator";
+import {
+  createCreator,
+  linkCreatorAccount,
+  unlinkCreatorAccount,
+  updateCreator,
+} from "#lib/creator";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
@@ -175,4 +181,95 @@ export const updateCreatorAction = async (
     mode: "update",
     ok: true,
   };
+};
+
+const creatorAccountSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    creatorId: requiredRecordId(
+      t("admin.creators.accounts.validation.creator_missing")
+    ),
+    creatorPublicId: requiredTrimmedString(
+      t("admin.creators.accounts.validation.creator_missing")
+    ),
+    readerId: requiredRecordId(
+      t("admin.creators.accounts.validation.reader_required")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.creators.validation.tenant_missing")
+    ),
+  });
+};
+const creatorAccountFormFields = {
+  creatorId: { kind: "value", name: "creator_id" },
+  creatorPublicId: { kind: "value", name: "creator_public_id" },
+  readerId: { kind: "value", name: "reader_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+export const linkCreatorAccountAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    creatorAccountSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, creatorAccountFormFields)
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { creatorId, creatorPublicId, readerId, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    linkCreatorAccount({ creatorId, readerId, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(`creator-${tenantId}-${creatorPublicId}`);
+
+  const account = result.accounts.find((item) => item.id === readerId);
+  return {
+    message: t("admin.creators.accounts.linked", {
+      name: account?.name || account?.email || "",
+    }),
+    ok: true,
+  };
+};
+
+export const unlinkCreatorAccountAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    creatorAccountSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, creatorAccountFormFields)
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { creatorId, creatorPublicId, readerId, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    unlinkCreatorAccount({ creatorId, readerId, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(`creator-${tenantId}-${creatorPublicId}`);
+
+  return { message: t("admin.creators.accounts.unlinked"), ok: true };
 };

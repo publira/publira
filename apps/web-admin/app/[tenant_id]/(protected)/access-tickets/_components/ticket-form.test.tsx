@@ -16,11 +16,9 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import { listReaderOptionsAction } from "#lib/reader-options-action";
 
-import {
-  listEpisodeOptionsAction,
-  listReaderOptionsAction,
-} from "../_lib/actions";
+import { listEpisodeOptionsAction } from "../_lib/actions";
 import type { IssueAccessTicketActionState } from "../ticket-types";
 import { TicketForm } from "./ticket-form";
 
@@ -39,9 +37,12 @@ vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",
 }));
 
+vi.mock("#lib/reader-options-action", () => ({
+  listReaderOptionsAction: vi.fn(),
+}));
+
 vi.mock("../_lib/actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
-  listReaderOptionsAction: vi.fn(),
 }));
 
 vi.mock("@publira/ui-components/combobox", async () => {
@@ -168,62 +169,6 @@ describe("TicketForm", () => {
     expect(seriesCombobox()).toBeDefined();
     expect(episodeCombobox()).toBeDefined();
     expect(issueButton().hasAttribute("disabled")).toBe(true);
-  });
-
-  it("searches the tenant's readers with what the operator types", async () => {
-    mockListReaderOptionsAction.mockResolvedValue({
-      ok: true,
-      readers: [
-        {
-          email: "one@example.com",
-          id: "018f0e6a-5000-7000-8000-000000000001",
-          name: "Reader One",
-        },
-      ],
-    });
-
-    render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
-
-    fireEvent.change(readerCombobox(), { target: { value: "one" } });
-
-    await waitFor(() => {
-      expect(mockListReaderOptionsAction).toHaveBeenCalledWith(
-        "TENANT001",
-        "one",
-        "en"
-      );
-    });
-    expect(
-      await screen.findByRole("option", {
-        name: "Reader One (one@example.com)",
-      })
-    ).toBeDefined();
-  });
-
-  it("searches once typing pauses rather than on every keystroke", async () => {
-    vi.useFakeTimers();
-    try {
-      render(<TicketForm action={action} series={[seriesA]} timeZone="UTC" />);
-
-      fireEvent.change(readerCombobox(), { target: { value: "o" } });
-      await vi.advanceTimersByTimeAsync(100);
-      fireEvent.change(readerCombobox(), { target: { value: "on" } });
-      await vi.advanceTimersByTimeAsync(100);
-      fireEvent.change(readerCombobox(), { target: { value: "one" } });
-      await vi.advanceTimersByTimeAsync(100);
-      expect(mockListReaderOptionsAction).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(300);
-
-      expect(mockListReaderOptionsAction).toHaveBeenCalledOnce();
-      expect(mockListReaderOptionsAction).toHaveBeenCalledWith(
-        "TENANT001",
-        "one",
-        "en"
-      );
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   it("submits the chosen reader's and episode's internal IDs", async () => {

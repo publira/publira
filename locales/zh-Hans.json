@@ -746,7 +746,38 @@
       "updated": "作者已更新。",
       "created": "作者已创建。",
       "list_failed": "无法加载作者。请稍后再试。",
-      "save_failed": "无法保存该作者。请稍后再试。"
+      "save_failed": "无法保存该作者。请稍后再试。",
+      "accounts": {
+        "title": "读者账号",
+        "description": "以该作者署名的本人所持有的读者账号。只有租户管理员可以关联和解除关联。",
+        "list_error": "无法显示读者账号",
+        "reader": "读者账号",
+        "reader_description": "按姓名或电子邮件地址搜索租户中的有效读者。",
+        "link": "关联账号",
+        "linking": "正在关联…",
+        "linked": "已关联 {$name}。",
+        "columns": {
+          "name": "姓名",
+          "email": "邮箱",
+          "linked_at": "关联时间",
+          "actions": "操作"
+        },
+        "empty_title": "该作者尚未关联任何读者账号。",
+        "empty_description": "在上方搜索读者即可关联其账号。",
+        "unlink": "解除关联",
+        "unlinking": "正在解除关联…",
+        "unlink_confirm_title": "要解除与 {$name} 的关联吗？",
+        "unlink_confirm_description": "该账号仍是读者账号，但不再记录为该作者本人。",
+        "unlink_confirm_action": "解除关联",
+        "unlinked": "已解除关联。",
+        "reader_not_active": "只能关联已验证电子邮件地址的有效读者。",
+        "link_failed": "无法关联该账号。请稍后再试。",
+        "unlink_failed": "无法解除关联。请稍后再试。",
+        "validation": {
+          "reader_required": "请选择读者账号。",
+          "creator_missing": "缺少作者 ID。"
+        }
+      }
     },
     "creator_roles": {
       "title": "作者角色",
@@ -1260,6 +1291,16 @@
       "validation": {
         "target_missing": "无法确定要操作的读者。请刷新页面后重试。",
         "tenant_missing": "无法确定要操作的租户。请刷新页面后重试。"
+      }
+    },
+    "reader_picker": {
+      "placeholder": "按姓名或电子邮件地址搜索",
+      "empty": "没有匹配的读者。",
+      "searching": "正在搜索…",
+      "option": "{$name}（{$email}）",
+      "validation": {
+        "query_too_long": "搜索内容请控制在 {$count} 个字符以内。",
+        "tenant_missing": "缺少租户 ID。"
       }
     },
     "series": {
@@ -2541,11 +2582,7 @@
       "form": {
         "option": "{$title}（{$id}）",
         "user": "读者",
-        "user_placeholder": "按姓名或电子邮件地址搜索",
         "user_description": "选择将获得阅读权限的读者。",
-        "user_empty": "没有匹配的读者。",
-        "user_searching": "正在搜索…",
-        "user_option": "{$name}（{$email}）",
         "series": "系列",
         "series_placeholder": "按系列标题搜索",
         "series_empty": "没有匹配的系列。",
@@ -2571,8 +2608,7 @@
         "expires_at_invalid": "有效期不是有效的日期和时间。",
         "expires_at_past": "有效期必须是将来的时间。",
         "revoke_target": "要撤销的阅读券无效。",
-        "series_required": "请选择系列。",
-        "reader_query_too_long": "搜索内容请控制在 {$count} 个字符以内。"
+        "series_required": "请选择系列。"
       }
     },
     "engagement": {

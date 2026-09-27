@@ -6,16 +6,16 @@ const { mockListReaders } = vi.hoisted(() => ({
   mockListReaders: vi.fn(),
 }));
 
-vi.mock("#lib/messages", () => ({
+vi.mock("./messages", () => ({
   getMessagesFor: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
 
-vi.mock("#lib/auth-session", () => ({
+vi.mock("./auth-session", () => ({
   redirectToLoginIfSessionRejected: () => Promise.resolve(),
   withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
 }));
 
-vi.mock("#lib/reader", () => ({
+vi.mock("./reader", () => ({
   listReaders: mockListReaders,
 }));
 
@@ -26,7 +26,7 @@ describe("listReaderOptionsAction", () => {
   });
 
   it("searches the active readers with the trimmed query", async () => {
-    const { listReaderOptionsAction } = await import("./actions");
+    const { listReaderOptionsAction } = await import("./reader-options-action");
 
     await listReaderOptionsAction("TENANT001", "  one  ", "en");
 
@@ -38,7 +38,7 @@ describe("listReaderOptionsAction", () => {
   });
 
   it("refuses a query longer than an email address before it is searched", async () => {
-    const { listReaderOptionsAction } = await import("./actions");
+    const { listReaderOptionsAction } = await import("./reader-options-action");
 
     const result = await listReaderOptionsAction(
       "TENANT001",
@@ -55,7 +55,7 @@ describe("listReaderOptionsAction", () => {
   });
 
   it("refuses a value that is not a string", async () => {
-    const { listReaderOptionsAction } = await import("./actions");
+    const { listReaderOptionsAction } = await import("./reader-options-action");
 
     const result = await listReaderOptionsAction(
       "TENANT001",

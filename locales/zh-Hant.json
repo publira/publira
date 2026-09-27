@@ -746,7 +746,38 @@
       "updated": "作者已更新。",
       "created": "作者已建立。",
       "list_failed": "無法載入作者。請稍後再試。",
-      "save_failed": "無法儲存該作者。請稍後再試。"
+      "save_failed": "無法儲存該作者。請稍後再試。",
+      "accounts": {
+        "title": "讀者帳號",
+        "description": "以該作者署名的本人所持有的讀者帳號。只有租戶管理員可以連結與解除連結。",
+        "list_error": "無法顯示讀者帳號",
+        "reader": "讀者帳號",
+        "reader_description": "依姓名或電子郵件地址搜尋租戶中的有效讀者。",
+        "link": "連結帳號",
+        "linking": "正在連結…",
+        "linked": "已連結 {$name}。",
+        "columns": {
+          "name": "姓名",
+          "email": "電子郵件",
+          "linked_at": "連結時間",
+          "actions": "操作"
+        },
+        "empty_title": "此作者尚未連結任何讀者帳號。",
+        "empty_description": "在上方搜尋讀者即可連結其帳號。",
+        "unlink": "解除連結",
+        "unlinking": "正在解除連結…",
+        "unlink_confirm_title": "要解除與 {$name} 的連結嗎？",
+        "unlink_confirm_description": "該帳號仍是讀者帳號，但不再記錄為此作者本人。",
+        "unlink_confirm_action": "解除連結",
+        "unlinked": "已解除連結。",
+        "reader_not_active": "只能連結已驗證電子郵件地址的有效讀者。",
+        "link_failed": "無法連結該帳號。請稍後再試。",
+        "unlink_failed": "無法解除連結。請稍後再試。",
+        "validation": {
+          "reader_required": "請選擇讀者帳號。",
+          "creator_missing": "缺少作者 ID。"
+        }
+      }
     },
     "creator_roles": {
       "title": "作者角色",
@@ -1260,6 +1291,16 @@
       "validation": {
         "target_missing": "無法確定要操作的讀者。請重新整理頁面後再試。",
         "tenant_missing": "無法確定要操作的租戶。請重新整理頁面後再試。"
+      }
+    },
+    "reader_picker": {
+      "placeholder": "依姓名或電子郵件地址搜尋",
+      "empty": "沒有相符的讀者。",
+      "searching": "正在搜尋…",
+      "option": "{$name}（{$email}）",
+      "validation": {
+        "query_too_long": "搜尋內容請控制在 {$count} 個字元以內。",
+        "tenant_missing": "缺少租戶 ID。"
       }
     },
     "series": {
@@ -2541,11 +2582,7 @@
       "form": {
         "option": "{$title}（{$id}）",
         "user": "讀者",
-        "user_placeholder": "依姓名或電子郵件地址搜尋",
         "user_description": "選擇將取得閱讀權限的讀者。",
-        "user_empty": "沒有相符的讀者。",
-        "user_searching": "正在搜尋…",
-        "user_option": "{$name}（{$email}）",
         "series": "系列",
         "series_placeholder": "依系列標題搜尋",
         "series_empty": "沒有相符的系列。",
@@ -2571,8 +2608,7 @@
         "expires_at_invalid": "有效期限不是有效的日期與時間。",
         "expires_at_past": "有效期限必須是未來的時間。",
         "revoke_target": "要撤銷的閱讀券無效。",
-        "series_required": "請選擇系列。",
-        "reader_query_too_long": "搜尋內容請控制在 {$count} 個字元以內。"
+        "series_required": "請選擇系列。"
       }
     },
     "engagement": {

@@ -746,7 +746,38 @@
       "updated": "Author updated.",
       "created": "Author created.",
       "list_failed": "Could not load the authors. Please try again later.",
-      "save_failed": "Could not save the author. Please try again later."
+      "save_failed": "Could not save the author. Please try again later.",
+      "accounts": {
+        "title": "Reader accounts",
+        "description": "The reader accounts that belong to the person credited as this author. Only tenant admins can link and unlink them.",
+        "list_error": "Could not display the reader accounts",
+        "reader": "Reader account",
+        "reader_description": "Search the tenant's active readers by name or email address.",
+        "link": "Link account",
+        "linking": "Linking…",
+        "linked": "Linked {$name}.",
+        "columns": {
+          "name": "Name",
+          "email": "Email",
+          "linked_at": "Linked",
+          "actions": "Actions"
+        },
+        "empty_title": "No reader account is linked to this author.",
+        "empty_description": "Search for a reader above to link their account.",
+        "unlink": "Unlink",
+        "unlinking": "Unlinking…",
+        "unlink_confirm_title": "Unlink {$name}?",
+        "unlink_confirm_description": "The account stays a reader account, but is no longer recorded as belonging to this author.",
+        "unlink_confirm_action": "Unlink",
+        "unlinked": "Account unlinked.",
+        "reader_not_active": "Only an active reader who has confirmed their email address can be linked.",
+        "link_failed": "Could not link the account. Please try again later.",
+        "unlink_failed": "Could not unlink the account. Please try again later.",
+        "validation": {
+          "reader_required": "Select a reader account.",
+          "creator_missing": "The author ID is missing."
+        }
+      }
     },
     "creator_roles": {
       "title": "Author roles",
@@ -1260,6 +1291,16 @@
       "validation": {
         "target_missing": "Could not tell which reader this applies to. Reload the page and try again.",
         "tenant_missing": "Could not tell which tenant this applies to. Reload the page and try again."
+      }
+    },
+    "reader_picker": {
+      "placeholder": "Search by name or email address",
+      "empty": "No reader matches.",
+      "searching": "Searching…",
+      "option": "{$name} ({$email})",
+      "validation": {
+        "query_too_long": "Shorten the search to {$count} characters or fewer.",
+        "tenant_missing": "The tenant ID is missing."
       }
     },
     "series": {
@@ -2541,11 +2582,7 @@
       "form": {
         "option": "{$title} ({$id})",
         "user": "Reader",
-        "user_placeholder": "Search by name or email address",
         "user_description": "Pick the reader who gets access.",
-        "user_empty": "No reader matches.",
-        "user_searching": "Searching…",
-        "user_option": "{$name} ({$email})",
         "series": "Series",
         "series_placeholder": "Search by series title",
         "series_empty": "No series matches.",
@@ -2571,8 +2608,7 @@
         "expires_at_invalid": "The expiry is not a valid date and time.",
         "expires_at_past": "The expiry must be in the future.",
         "revoke_target": "The ticket to revoke is not valid.",
-        "series_required": "Select a series.",
-        "reader_query_too_long": "Shorten the search to {$count} characters or fewer."
+        "series_required": "Select a series."
       }
     },
     "engagement": {
