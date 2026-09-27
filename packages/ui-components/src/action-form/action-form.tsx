@@ -64,10 +64,22 @@ export interface ActionFormRenderProps<
 /** An Action a submit control sends the form's fields to in place of the form's own. */
 export type ActionFormControlAction = (formData: FormData) => void;
 
+/** The name and value a control submits, as a submit button's pair is. */
+interface ActionFormSubmitterEntry {
+  name: string;
+  value: string;
+}
+
+/** A control's own Action, and the pair that control adds to the fields. */
+interface ActionFormControlSubmission {
+  action: ActionFormControlAction;
+  entry: ActionFormSubmitterEntry | null;
+}
+
 interface ActionFormContextValue {
   /** Where the submission in flight went: a control's own Action, or `null` for the form's. */
   submittedTo: ActionFormControlAction | null;
-  submitTo: (action: ActionFormControlAction) => void;
+  submitTo: (submission: ActionFormControlSubmission) => void;
 }
 
 const ActionFormContext = createContext<ActionFormContextValue | null>(null);
@@ -248,7 +260,10 @@ export const ActionFormSubmit = ({
         onClick={
           submitsThroughActionForm
             ? () => {
-                form.submitTo(formAction);
+                form.submitTo({
+                  action: formAction,
+                  entry: name ? { name, value: value ?? "" } : null,
+                });
               }
             : undefined
         }
@@ -353,7 +368,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   showSuccess = true,
 }: ActionFormProps<State>) => {
   const formRef = useRef<HTMLFormElement>(null);
-  const controlActionRef = useRef<ActionFormControlAction | null>(null);
+  const controlSubmissionRef = useRef<ActionFormControlSubmission | null>(null);
   const listenersRef = useRef(new Set<ActionFormSettledListener>());
   const [submittedTo, setSubmittedTo] =
     useState<ActionFormControlAction | null>(null);
@@ -379,12 +394,21 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   // when it succeeds; a refused submission keeps what was typed.
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const controlAction = controlActionRef.current;
-    controlActionRef.current = null;
+    const controlSubmission = controlSubmissionRef.current;
+    controlSubmissionRef.current = null;
+    const controlAction = controlSubmission?.action ?? null;
     const formData = new FormData(
       event.currentTarget,
       event.nativeEvent.submitter
     );
+    // A control with its own Action is not a submit button, so the browser
+    // leaves its pair out and it is added here.
+    if (controlSubmission?.entry) {
+      formData.append(
+        controlSubmission.entry.name,
+        controlSubmission.entry.value
+      );
+    }
     setSubmittedTo(() => controlAction);
     startTransition(() => {
       if (controlAction) {
@@ -398,11 +422,14 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   // `requestSubmit` dispatches the submit event before it returns, so the
   // Action is read by `handleSubmit` above or, when validation stops the
   // submission, cleared here.
-  const submitTo = useCallback((controlAction: ActionFormControlAction) => {
-    controlActionRef.current = controlAction;
-    formRef.current?.requestSubmit();
-    controlActionRef.current = null;
-  }, []);
+  const submitTo = useCallback(
+    (controlSubmission: ActionFormControlSubmission) => {
+      controlSubmissionRef.current = controlSubmission;
+      formRef.current?.requestSubmit();
+      controlSubmissionRef.current = null;
+    },
+    []
+  );
 
   const context = useMemo(
     () => ({ submitTo, submittedTo }),

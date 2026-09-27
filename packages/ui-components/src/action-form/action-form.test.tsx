@@ -217,6 +217,60 @@ describe("ActionForm", () => {
     expect(screen.getByLabelText("Bucket")).toHaveProperty("value", "archive");
   });
 
+  it("sends a control's name and value to its own formAction", async () => {
+    const test = vi.fn((_previousState: null, _formData: FormData) =>
+      Promise.resolve(null)
+    );
+
+    const Form = () => {
+      const [, dispatchTest] = useActionState(test, null);
+
+      return (
+        <ActionForm action={succeed}>
+          <input aria-label="Bucket" defaultValue="media" name="bucket" />
+          <ActionFormSubmit
+            formAction={dispatchTest}
+            name="intent"
+            value="test"
+          >
+            Test
+          </ActionFormSubmit>
+        </ActionForm>
+      );
+    };
+
+    render(<Form />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Test" }));
+
+    await waitFor(() => {
+      expect(test).toHaveBeenCalledOnce();
+    });
+    expect(test.mock.calls[0]?.[1].get("intent")).toBe("test");
+    expect(test.mock.calls[0]?.[1].get("bucket")).toBe("media");
+  });
+
+  it("sends a submit control's name and value to the form's Action", async () => {
+    const save = vi.fn((_previousState: unknown, _formData: FormData) =>
+      Promise.resolve<FormActionState>({ message: "Deleted.", ok: true })
+    );
+
+    render(
+      <ActionForm action={save}>
+        <ActionFormSubmit name="intent" value="delete">
+          Delete
+        </ActionFormSubmit>
+      </ActionForm>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledOnce();
+    });
+    expect(save.mock.calls[0]?.[1].get("intent")).toBe("delete");
+  });
+
   it("shows the pending wording of the control whose submission is in flight", async () => {
     const run = Promise.withResolvers<null>();
 
