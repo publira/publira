@@ -18,6 +18,7 @@ import type { CommentModerationAction } from "#lib/comment";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -38,9 +39,7 @@ const moderationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    commentId: requiredTrimmedString(
-      t("admin.comments.validation.target_missing")
-    ),
+    commentId: requiredRecordId(t("admin.comments.validation.target_missing")),
     reason: optionalTrimmedString(1000),
     tenantId: requiredTrimmedString(
       t("admin.comments.validation.tenant_missing")

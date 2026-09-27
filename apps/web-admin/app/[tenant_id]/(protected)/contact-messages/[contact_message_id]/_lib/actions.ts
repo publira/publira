@@ -11,14 +11,14 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { markContactMessageHandled } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 const contactMessageActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    contactMessageId: requiredTrimmedString(
+    contactMessageId: requiredRecordId(
       t("admin.contact_messages.validation.target_missing")
     ),
     publicId: requiredTrimmedString(
