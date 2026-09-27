@@ -199,7 +199,10 @@ export interface ActionFormSubmitProps {
    * form's own Action. In a plain `<form>` it is the button's `formAction`.
    */
   formAction?: ActionFormControlAction;
+  /** Submitted with `value` when this control submits the form, as a submit button's name is. */
+  name?: string;
   size?: ButtonProps["size"];
+  value?: string;
   variant?: ButtonProps["variant"];
 }
 
@@ -220,7 +223,9 @@ export const ActionFormSubmit = ({
   disabled,
   form: formId,
   formAction,
+  name,
   size,
+  value,
   variant,
 }: ActionFormSubmitProps) => {
   const { pending } = useFormStatus();
@@ -239,6 +244,7 @@ export const ActionFormSubmit = ({
         disabled={disabled || pending}
         form={formId}
         formAction={submitsThroughActionForm ? undefined : formAction}
+        name={name}
         onClick={
           submitsThroughActionForm
             ? () => {
@@ -248,6 +254,7 @@ export const ActionFormSubmit = ({
         }
         size={size}
         type={submitsThroughActionForm ? "button" : "submit"}
+        value={value}
         variant={variant}
       >
         {children}
