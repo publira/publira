@@ -53,6 +53,28 @@ describe("EpisodeScheduleForm", () => {
     expect(localInput.value).toBe("2030-01-01T10:00");
   });
 
+  // Rescheduling keeps its future-only rule, so the field does not promise
+  // what the create form's does.
+  it("names the tenant time zone without promising to publish a past time", () => {
+    render(
+      <EpisodeScheduleForm
+        action={action}
+        episodeId="EP001-ID"
+        episodePublicId="EP001"
+        scheduledAt=""
+        seriesPublicId="SERIES001"
+        timeZone="Asia/Seoul"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "The date and time are interpreted as wall-clock time in the tenant time zone (Asia/Seoul)."
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText(/as soon as it is created/u)).toBeNull();
+  });
+
   it("leaves the input empty when nothing is scheduled", () => {
     render(
       <EpisodeScheduleForm

@@ -127,7 +127,12 @@ export const EpisodeForm = ({
           </FieldContent>
         </Field>
 
-        <PublishAtInput timeZone={timeZone} />
+        <PublishAtInput>
+          <ClientMessage
+            message="admin.series.episodes.form.publish_at_description"
+            values={{ time_zone: timeZone }}
+          />
+        </PublishAtInput>
 
         <EpisodeAvailabilityField
           initialValue=""

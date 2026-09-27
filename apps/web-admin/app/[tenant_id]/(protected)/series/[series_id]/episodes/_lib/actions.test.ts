@@ -183,6 +183,39 @@ describe("episode create actions", () => {
     expect(mockCreateEpisode).not.toHaveBeenCalled();
   });
 
+  it("sends a publication time that has already passed, which publishes the episode as it is created", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+    const formData = createEpisodeFormData();
+    formData.set("publish_at", "2000-01-01T00:00:00Z");
+
+    const { createEpisodeAction } = await import("./actions");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ publishAt: "2000-01-01T00:00:00Z" }),
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?created=1"
+    );
+  });
+
+  it("refuses a publication time that does not parse", async () => {
+    const formData = createEpisodeFormData();
+    formData.set("publish_at", "not a time");
+
+    const { createEpisodeAction } = await import("./actions");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toMatchObject({ mode: "create", ok: false });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
+  });
+
   it("leaves the cache alone when the episode cannot be created", async () => {
     mockCreateEpisode.mockResolvedValueOnce({
       message: "Could not create the episode.",
