@@ -343,8 +343,8 @@ func TestCreateOperatorSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), newOperatorID, "platform_operator").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_operator", now, newOperatorID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATNEW001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(newOperatorID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "New Operator", "platform_operator", "active", now))
 	mock.ExpectCommit()
@@ -358,8 +358,8 @@ func TestCreateOperatorSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateOperator: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATNEW001" {
-		t.Fatalf("operator = %v, want public_id=PLATNEW001", resp.Msg.Operator)
+	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATNEW001" || resp.Msg.Operator.Id != newOperatorID.String() {
+		t.Fatalf("operator = %v, want id=%s public_id=PLATNEW001", resp.Msg.Operator, newOperatorID)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -389,8 +389,8 @@ func TestUpdateOperatorRoleSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER002").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_operator", "active", now))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserRolesByPlatformUserID)).
@@ -400,16 +400,16 @@ func TestUpdateOperatorRoleSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), targetID, "platform_auditor").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_auditor", now, targetID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER002").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "active", now))
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdateOperatorRole(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UpdateOperatorRoleRequest{
-		PublicId: "PLATUSER002",
-		Role:     "platform_auditor",
+		OperatorId: targetID.String(),
+		Role:       "platform_auditor",
 	}))
 	if err != nil {
 		t.Fatalf("UpdateOperatorRole: %v", err)
@@ -428,26 +428,26 @@ func TestSuspendOperatorSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER003").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "active", now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatus)).
-		WithArgs("PLATUSER003", "suspended").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatusByID)).
+		WithArgs(targetID, "suspended").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "hash", "Operator Three", "suspended", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpPlatformUserCredentialsVersion)).
 		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER003").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "suspended", now))
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.SuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendOperatorRequest{PublicId: "PLATUSER003"}))
+	resp, err := server.SuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendOperatorRequest{OperatorId: targetID.String()}))
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)
 	}
@@ -486,26 +486,26 @@ func TestDeactivateOperatorSuccess(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER005").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "active", now))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatus)).
-		WithArgs("PLATUSER005", "inactive").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformUserStatusByID)).
+		WithArgs(targetID, "inactive").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "hash", "Operator Five", "inactive", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpPlatformUserCredentialsVersion)).
 		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER005").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "inactive", now))
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER005"}))
+	resp, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()}))
 	if err != nil {
 		t.Fatalf("DeactivateOperator: %v", err)
 	}
@@ -521,7 +521,7 @@ func TestDeactivateOperatorRequiresSuperAdmin(t *testing.T) {
 	operatorID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, operatorID, "platform_operator", now)
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER005"}))
+	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: uuid.Must(uuid.NewV7()).String()}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeactivateOperator code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -535,13 +535,13 @@ func TestDeactivateOperatorSelfDeactivationForbidden(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER001").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(adminID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(adminID, "PLATUSER001", "platform@example.com", "Platform User", "platform_super_admin", "active", now))
 	mock.ExpectRollback()
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER001"}))
+	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: adminID.String()}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -556,15 +556,28 @@ func TestDeactivateOperatorAlreadyInactiveRejected(t *testing.T) {
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByPublicID)).
-		WithArgs("PLATUSER006").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
+		WithArgs(targetID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER006", "operator6@example.com", "Operator Six", "platform_operator", "inactive", now))
 	mock.ExpectRollback()
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER006"}))
+	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestSuspendOperatorRejectsMalformedOperatorID(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	adminID := uuid.Must(uuid.NewV7())
+	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
+
+	_, err := server.SuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendOperatorRequest{OperatorId: "PLATUSER003"}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("SuspendOperator code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

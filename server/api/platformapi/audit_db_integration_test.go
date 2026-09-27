@@ -43,10 +43,10 @@ func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
 		t.Fatalf("CreateTenantAdminInvitation for tenant B: %v", err)
 	}
 
-	list := func(limit int32, token, tenantPublicID string) *publirasplatformv1.ListAuditLogsResponse {
+	list := func(limit int32, token, tenantID string) *publirasplatformv1.ListAuditLogsResponse {
 		t.Helper()
 		res, err := audit.ListAuditLogs(ctx, newDBAuthedRequest(operator, publirasplatformv1.ListAuditLogsRequest{
-			Limit: limit, Token: token, TenantPublicId: tenantPublicID,
+			Limit: limit, Token: token, TenantId: tenantID,
 		}))
 		if err != nil {
 			t.Fatalf("ListAuditLogs: %v", err)
@@ -82,7 +82,7 @@ func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
 		t.Fatalf("page read backward =\n%s\nwant\n%s", got, want)
 	}
 
-	filtered := list(0, "", second.PublicID)
+	filtered := list(0, "", second.ID.String())
 	if got, want := summarize(filtered.GetAuditLogs()), "tenant_admin_invited TENANTB Tenant B "+email; got != want {
 		t.Fatalf("entries for tenant B =\n%s\nwant\n%s", got, want)
 	}

@@ -30,8 +30,9 @@ func tenantIDs(publicID string) []string {
 	return []string{publicID}
 }
 
-func newEndUser(publicID, name, email, status string, createdAt time.Time, tenantPublicID, tenantName string) *publirasplatformv1.EndUser {
+func newEndUser(id uuid.UUID, publicID, name, email, status string, createdAt time.Time, tenantPublicID, tenantName string) *publirasplatformv1.EndUser {
 	return &publirasplatformv1.EndUser{
+		Id:         id.String(),
 		PublicId:   publicID,
 		Name:       name,
 		Email:      email,
@@ -80,7 +81,7 @@ func endUserPageFromAsc(row dbmodels.ListEndUsersAscRow) endUserPageRow {
 }
 
 func endUserFromListRow(u endUserPageRow) *publirasplatformv1.EndUser {
-	return newEndUser(u.publicID, u.name, u.email, u.status, u.createdAt, u.tenantPublicID, u.tenantName)
+	return newEndUser(u.id, u.publicID, u.name, u.email, u.status, u.createdAt, u.tenantPublicID, u.tenantName)
 }
 
 func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (publicID, name string, err error) {
@@ -120,30 +121,99 @@ func normalizePublicIDs(values []string) []string {
 	return publicIDs
 }
 
-func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID string) (dbmodels.GetUserByPublicIDRow, error) {
-	user, err := s.queriesFor(ctx).GetUserByPublicID(ctx, userID)
+// endUserRef is how a request names its user: by primary key when it carries
+// one, and by public_id otherwise.
+type endUserRef struct {
+	id       uuid.UUID
+	publicID string
+}
+
+func parseEndUserRef(rawID, rawPublicID string) (endUserRef, error) {
+	if id := strings.TrimSpace(rawID); id != "" {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			return endUserRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is not an identifier"))
+		}
+		return endUserRef{id: parsed}, nil
+	}
+	publicID := strings.TrimSpace(rawPublicID)
+	if publicID == "" {
+		return endUserRef{}, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
+	}
+	return endUserRef{publicID: publicID}, nil
+}
+
+// ensureManageableEndUser resolves the user a request names, refusing a tenant
+// member, whom only the tenant manages.
+func (s *platformServer) ensureManageableEndUser(ctx context.Context, ref endUserRef) (endUserRef, error) {
+	resolved := ref
+	var err error
+	if ref.id != uuid.Nil {
+		var user dbmodels.User
+		user, err = s.queriesFor(ctx).GetUserByID(ctx, ref.id)
+		resolved.publicID = user.PublicID
+	} else {
+		var user dbmodels.GetUserByPublicIDRow
+		user, err = s.queriesFor(ctx).GetUserByPublicID(ctx, ref.publicID)
+		resolved.id = user.ID
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return endUserRef{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError(ctx, "failed to get user by public id", err, "public_id", userID)
+		return endUserRef{}, s.internalDBError(ctx, "failed to get user", err, "user_id", ref.id.String(), "public_id", ref.publicID)
 	}
 
-	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
+	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, resolved.id)
 	if err != nil {
-		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", user.ID.String(), "public_id", userID)
+		return endUserRef{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", resolved.id.String())
 	}
 	if len(tenantRoles) > 0 {
-		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
+		return endUserRef{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
 	}
 
-	return user, nil
+	return resolved, nil
+}
+
+// parseUserIDs reads the user_ids filter, refusing a value that is not a
+// primary key rather than matching nothing for it.
+func parseUserIDs(values []string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(values))
+	seen := make(map[uuid.UUID]struct{}, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		id, err := uuid.Parse(trimmed)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_ids contains a value that is not an identifier"))
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return ids, nil
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	values := make([]string, len(ids))
+	for index, id := range ids {
+		values[index] = id.String()
+	}
+	return values
 }
 
 type endUserQueryFilters struct {
 	createdAfter   sql.NullTime
 	createdBefore  sql.NullTime
 	publicIDs      []string
+	userIDs        []uuid.UUID
 	status         sql.NullString
 	tenantPublicID sql.NullString
 }
@@ -161,6 +231,7 @@ func (s *platformServer) endUserPage(
 			CreatedAfter:    filters.createdAfter,
 			CreatedBefore:   filters.createdBefore,
 			PublicIds:       filters.publicIDs,
+			Ids:             filters.userIDs,
 			Status:          filters.status,
 			TenantPublicID:  filters.tenantPublicID,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -179,6 +250,7 @@ func (s *platformServer) endUserPage(
 		CreatedAfter:    filters.createdAfter,
 		CreatedBefore:   filters.createdBefore,
 		PublicIds:       filters.publicIDs,
+		Ids:             filters.userIDs,
 		Status:          filters.status,
 		TenantPublicID:  filters.tenantPublicID,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -225,12 +297,17 @@ func (s *platformServer) ListEndUsers(
 		createdBeforeFilter = sql.NullTime{Time: t, Valid: true}
 	}
 
+	userIDs, err := parseUserIDs(req.Msg.UserIds)
+	if err != nil {
+		return nil, err
+	}
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 	filterTenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
 	filters := endUserQueryFilters{
 		createdAfter:   createdAfterFilter,
 		createdBefore:  createdBeforeFilter,
 		publicIDs:      normalizePublicIDs(req.Msg.PublicIds),
+		userIDs:        userIDs,
 		status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 		tenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
 	}
@@ -239,6 +316,7 @@ func (s *platformServer) ListEndUsers(
 		Time("created_before", createdBeforeFilter.Time, createdBeforeFilter.Valid).
 		Value("status", filterStatus).
 		Values("public_ids", filters.publicIDs).
+		Values("user_ids", uuidStrings(userIDs)).
 		Value("tenant_public_id", filterTenantPublicID)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
@@ -312,7 +390,7 @@ func (s *platformServer) GetEndUser(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.GetEndUserResponse{
-		User: newEndUser(user.PublicID, user.Name, user.Email, user.Status, user.CreatedAt, tenantPublicID, tenantName),
+		User: newEndUser(user.ID, user.PublicID, user.Name, user.Email, user.Status, user.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 
@@ -326,27 +404,27 @@ func (s *platformServer) SuspendEndUser(
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
 	}
-
-	if _, err := s.ensureManageableEndUser(ctx, publicID); err != nil {
+	user, err := s.ensureManageableEndUser(ctx, ref)
+	if err != nil {
 		return nil, err
 	}
 
 	// Update the status.
-	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
-		PublicID: publicID,
-		Status:   userStatusSuspended,
+	updated, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{
+		ID:     user.id,
+		Status: userStatusSuspended,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "user_id", user.id.String())
 	}
 
 	// Invalidate the existing sessions.
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, updated.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to bump end user credentials version", err, "user_id", updated.ID.String(), "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to bump end user credentials version", err, "user_id", updated.ID.String())
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
@@ -365,7 +443,7 @@ func (s *platformServer) SuspendEndUser(
 	})
 
 	return connect.NewResponse(&publirasplatformv1.SuspendEndUserResponse{
-		User: newEndUser(updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
+		User: newEndUser(updated.ID, updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 
@@ -379,21 +457,21 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
+	if err != nil {
+		return nil, err
 	}
-
-	if _, err := s.ensureManageableEndUser(ctx, publicID); err != nil {
+	user, err := s.ensureManageableEndUser(ctx, ref)
+	if err != nil {
 		return nil, err
 	}
 
-	updated, err := s.queriesFor(ctx).UnsuspendUser(ctx, publicID)
+	updated, err := s.queriesFor(ctx).UnsuspendUserByID(ctx, user.id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "user_id", user.id.String())
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
@@ -412,7 +490,7 @@ func (s *platformServer) UnsuspendEndUser(
 	})
 
 	return connect.NewResponse(&publirasplatformv1.UnsuspendEndUserResponse{
-		User: newEndUser(updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
+		User: newEndUser(updated.ID, updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 
@@ -426,19 +504,17 @@ func (s *platformServer) DeleteEndUser(
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
-	}
-
-	user, err := s.ensureManageableEndUser(ctx, publicID)
+	ref, err := parseEndUserRef(req.Msg.UserId, req.Msg.PublicId)
 	if err != nil {
 		return nil, err
 	}
-
+	user, err := s.ensureManageableEndUser(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
 	// Delete the user row itself.
-	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.ID.String(), "public_id", publicID)
+	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.id); err != nil {
+		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.id.String())
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -446,12 +522,12 @@ func (s *platformServer) DeleteEndUser(
 		ActorRole:           actor.Role,
 		Action:              "user_deleted",
 		TargetType:          "user",
-		TargetID:            user.ID.String(),
+		TargetID:            user.id.String(),
 		Outcome:             auditlog.OutcomeSuccess,
 		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.DeleteEndUserResponse{
-		PublicId: publicID,
+		PublicId: user.publicID,
 	}), nil
 }

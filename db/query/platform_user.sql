@@ -38,10 +38,10 @@ INSERT INTO platform_users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
--- name: UpdatePlatformUserStatus :one
+-- name: UpdatePlatformUserStatusByID :one
 UPDATE platform_users
 SET status = $2
-WHERE public_id = $1
+WHERE id = $1
 RETURNING *;
 
 -- name: UpdatePlatformUserPasswordHashByID :one
@@ -179,6 +179,33 @@ SELECT pu.id,
     pu.created_at
 FROM platform_users pu
 WHERE pu.public_id = $1
+LIMIT 1;
+
+-- name: GetPlatformOperatorByID :one
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.platform_user_id = pu.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE pu.id = $1
 LIMIT 1;
 
 -- name: DeletePlatformUserRolesByPlatformUserID :exec

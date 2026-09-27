@@ -22,13 +22,16 @@ const (
 )
 
 type PlatformOperator struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	Role          string                 `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
-	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	PublicId  string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name      string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email     string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Role      string                 `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	Status    string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The operator's primary key, which every request that changes an operator
+	// addresses it by.
+	Id            string `protobuf:"bytes,7,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -101,6 +104,13 @@ func (x *PlatformOperator) GetStatus() string {
 func (x *PlatformOperator) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *PlatformOperator) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -414,9 +424,12 @@ func (x *CreateOperatorResponse) GetOperator() *PlatformOperator {
 }
 
 type UpdateOperatorRoleRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Role     string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	// The operator's primary key (PlatformOperator.id). Takes precedence over
+	// public_id.
+	OperatorId    string `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -461,6 +474,13 @@ func (x *UpdateOperatorRoleRequest) GetPublicId() string {
 func (x *UpdateOperatorRoleRequest) GetRole() string {
 	if x != nil {
 		return x.Role
+	}
+	return ""
+}
+
+func (x *UpdateOperatorRoleRequest) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
 	}
 	return ""
 }
@@ -510,8 +530,11 @@ func (x *UpdateOperatorRoleResponse) GetOperator() *PlatformOperator {
 }
 
 type SuspendOperatorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The operator's primary key (PlatformOperator.id). Takes precedence over
+	// public_id.
+	OperatorId    string `protobuf:"bytes,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -549,6 +572,13 @@ func (*SuspendOperatorRequest) Descriptor() ([]byte, []int) {
 func (x *SuspendOperatorRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *SuspendOperatorRequest) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
 	}
 	return ""
 }
@@ -598,8 +628,11 @@ func (x *SuspendOperatorResponse) GetOperator() *PlatformOperator {
 }
 
 type UnsuspendOperatorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The operator's primary key (PlatformOperator.id). Takes precedence over
+	// public_id.
+	OperatorId    string `protobuf:"bytes,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -637,6 +670,13 @@ func (*UnsuspendOperatorRequest) Descriptor() ([]byte, []int) {
 func (x *UnsuspendOperatorRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *UnsuspendOperatorRequest) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
 	}
 	return ""
 }
@@ -686,8 +726,11 @@ func (x *UnsuspendOperatorResponse) GetOperator() *PlatformOperator {
 }
 
 type DeactivateOperatorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The operator's primary key (PlatformOperator.id). Takes precedence over
+	// public_id.
+	OperatorId    string `protobuf:"bytes,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -725,6 +768,13 @@ func (*DeactivateOperatorRequest) Descriptor() ([]byte, []int) {
 func (x *DeactivateOperatorRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *DeactivateOperatorRequest) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
 	}
 	return ""
 }
@@ -777,7 +827,7 @@ var File_publira_platform_v1_operator_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\n" +
-	"\"publira/platform/v1/operator.proto\x12\x13publira.platform.v1\"\xa4\x01\n" +
+	"\"publira/platform/v1/operator.proto\x12\x13publira.platform.v1\"\xb4\x01\n" +
 	"\x10PlatformOperator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -785,7 +835,8 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"B\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x0e\n" +
+	"\x02id\x18\a \x01(\tR\x02id\"B\n" +
 	"\x14ListOperatorsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"\xa2\x01\n" +
@@ -803,22 +854,30 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\"[\n" +
 	"\x16CreateOperatorResponse\x12A\n" +
-	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"L\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"m\n" +
 	"\x19UpdateOperatorRoleRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04role\x18\x02 \x01(\tR\x04role\"_\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\"_\n" +
 	"\x1aUpdateOperatorRoleResponse\x12A\n" +
-	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"5\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"V\n" +
 	"\x16SuspendOperatorRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"\\\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1f\n" +
+	"\voperator_id\x18\x02 \x01(\tR\n" +
+	"operatorId\"\\\n" +
 	"\x17SuspendOperatorResponse\x12A\n" +
-	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"7\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"X\n" +
 	"\x18UnsuspendOperatorRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"^\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1f\n" +
+	"\voperator_id\x18\x02 \x01(\tR\n" +
+	"operatorId\"^\n" +
 	"\x19UnsuspendOperatorResponse\x12A\n" +
-	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"8\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"Y\n" +
 	"\x19DeactivateOperatorRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"_\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x1f\n" +
+	"\voperator_id\x18\x02 \x01(\tR\n" +
+	"operatorId\"_\n" +
 	"\x1aDeactivateOperatorResponse\x12A\n" +
 	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator2\xac\x06\n" +
 	"\x17PlatformOperatorService\x12h\n" +

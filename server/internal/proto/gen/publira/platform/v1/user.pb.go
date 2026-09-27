@@ -31,7 +31,10 @@ type EndUser struct {
 	CreatedAt string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	TenantIds []string               `protobuf:"bytes,6,rep,name=tenant_ids,json=tenantIds,proto3" json:"tenant_ids,omitempty"`
 	// Display name of the user's tenant. Empty when the user has no tenant.
-	TenantName    string `protobuf:"bytes,7,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
+	TenantName string `protobuf:"bytes,7,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
+	// The user's primary key, which every request that changes a user addresses
+	// it by.
+	Id            string `protobuf:"bytes,8,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -115,6 +118,13 @@ func (x *EndUser) GetTenantName() string {
 	return ""
 }
 
+func (x *EndUser) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListEndUsersRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -128,7 +138,9 @@ type ListEndUsersRequest struct {
 	// Tenant public_id. Empty means every tenant.
 	TenantPublicId string `protobuf:"bytes,7,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
+	// Restricts the list to these users, by primary key (EndUser.id).
+	UserIds       []string `protobuf:"bytes,9,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,6 +222,13 @@ func (x *ListEndUsersRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListEndUsersRequest) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
 }
 
 type ListEndUsersResponse struct {
@@ -363,8 +382,10 @@ func (x *GetEndUserResponse) GetUser() *EndUser {
 }
 
 type SuspendEndUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -402,6 +423,13 @@ func (*SuspendEndUserRequest) Descriptor() ([]byte, []int) {
 func (x *SuspendEndUserRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *SuspendEndUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -451,8 +479,10 @@ func (x *SuspendEndUserResponse) GetUser() *EndUser {
 }
 
 type UnsuspendEndUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -490,6 +520,13 @@ func (*UnsuspendEndUserRequest) Descriptor() ([]byte, []int) {
 func (x *UnsuspendEndUserRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *UnsuspendEndUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -539,8 +576,10 @@ func (x *UnsuspendEndUserResponse) GetUser() *EndUser {
 }
 
 type DeleteEndUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	PublicId string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// The user's primary key (EndUser.id). Takes precedence over public_id.
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -578,6 +617,13 @@ func (*DeleteEndUserRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteEndUserRequest) GetPublicId() string {
 	if x != nil {
 		return x.PublicId
+	}
+	return ""
+}
+
+func (x *DeleteEndUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -630,7 +676,7 @@ var File_publira_platform_v1_user_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/platform/v1/user.proto\x12\x13publira.platform.v1\"\xc7\x01\n" +
+	"\x1epublira/platform/v1/user.proto\x12\x13publira.platform.v1\"\xd7\x01\n" +
 	"\aEndUser\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -641,7 +687,8 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\x12\x1f\n" +
 	"\vtenant_name\x18\a \x01(\tR\n" +
-	"tenantName\"\xfc\x01\n" +
+	"tenantName\x12\x0e\n" +
+	"\x02id\x18\b \x01(\tR\x02id\"\x97\x02\n" +
 	"\x13ListEndUsersRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12#\n" +
 	"\rcreated_after\x18\x03 \x01(\tR\fcreatedAfter\x12\x16\n" +
@@ -650,7 +697,8 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"public_ids\x18\x06 \x03(\tR\tpublicIds\x12(\n" +
 	"\x10tenant_public_id\x18\a \x01(\tR\x0etenantPublicId\x12\x14\n" +
-	"\x05token\x18\b \x01(\tR\x05tokenJ\x04\b\x02\x10\x03R\x06offset\"\x90\x01\n" +
+	"\x05token\x18\b \x01(\tR\x05token\x12\x19\n" +
+	"\buser_ids\x18\t \x03(\tR\auserIdsJ\x04\b\x02\x10\x03R\x06offset\"\x90\x01\n" +
 	"\x14ListEndUsersResponse\x122\n" +
 	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -659,17 +707,20 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\x11GetEndUserRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"F\n" +
 	"\x12GetEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"4\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"M\n" +
 	"\x15SuspendEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"J\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"J\n" +
 	"\x16SuspendEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"6\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"O\n" +
 	"\x17UnsuspendEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"L\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"L\n" +
 	"\x18UnsuspendEndUserResponse\x120\n" +
-	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"3\n" +
+	"\x04user\x18\x01 \x01(\v2\x1c.publira.platform.v1.EndUserR\x04user\"L\n" +
 	"\x14DeleteEndUserRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"4\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
 	"\x15DeleteEndUserResponse\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId2\xa7\x04\n" +
 	"\x13PlatformUserService\x12e\n" +

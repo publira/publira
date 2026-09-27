@@ -14,6 +14,9 @@ message EndUser {
   repeated string tenant_ids = 6;
   // Display name of the user's tenant. Empty when the user has no tenant.
   string tenant_name = 7;
+  // The user's primary key, which every request that changes a user addresses
+  // it by.
+  string id = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -33,6 +36,8 @@ message ListEndUsersRequest {
   string tenant_public_id = 7;
   // Opaque token from a previous response. Empty for the first page.
   string token = 8;
+  // Restricts the list to these users, by primary key (EndUser.id).
+  repeated string user_ids = 9;
 }
 
 message ListEndUsersResponse {
@@ -53,6 +58,8 @@ message GetEndUserResponse {
 
 message SuspendEndUserRequest {
   string public_id = 1;
+  // The user's primary key (EndUser.id). Takes precedence over public_id.
+  string user_id = 2;
 }
 
 message SuspendEndUserResponse {
@@ -61,6 +68,8 @@ message SuspendEndUserResponse {
 
 message UnsuspendEndUserRequest {
   string public_id = 1;
+  // The user's primary key (EndUser.id). Takes precedence over public_id.
+  string user_id = 2;
 }
 
 message UnsuspendEndUserResponse {
@@ -69,6 +78,8 @@ message UnsuspendEndUserResponse {
 
 message DeleteEndUserRequest {
   string public_id = 1;
+  // The user's primary key (EndUser.id). Takes precedence over public_id.
+  string user_id = 2;
 }
 
 message DeleteEndUserResponse {

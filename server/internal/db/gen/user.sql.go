@@ -514,24 +514,25 @@ WHERE NOT EXISTS (
         OR u.status = $3::text
     )
     AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
+    AND ($5::uuid[] IS NULL OR u.id = ANY($5::uuid[]))
     AND (
-        $5::text IS NULL
-        OR $5::text = ''
-        OR t.public_id = $5::text
+        $6::text IS NULL
+        OR $6::text = ''
+        OR t.public_id = $6::text
     )
     AND (
-        $6::uuid IS NULL
+        $7::uuid IS NULL
         OR (
-            $7::boolean
-            AND (u.created_at, u.id) >= ($8::timestamptz, $6::uuid)
+            $8::boolean
+            AND (u.created_at, u.id) >= ($9::timestamptz, $7::uuid)
         )
         OR (
-            NOT $7::boolean
-            AND (u.created_at, u.id) > ($8::timestamptz, $6::uuid)
+            NOT $8::boolean
+            AND (u.created_at, u.id) > ($9::timestamptz, $7::uuid)
         )
     )
 ORDER BY u.created_at ASC, u.id ASC
-LIMIT $9
+LIMIT $10
 `
 
 type ListEndUsersAscParams struct {
@@ -539,6 +540,7 @@ type ListEndUsersAscParams struct {
 	CreatedBefore   sql.NullTime   `json:"created_before"`
 	Status          sql.NullString `json:"status"`
 	PublicIds       []string       `json:"public_ids"`
+	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -563,6 +565,7 @@ func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams
 		arg.CreatedBefore,
 		arg.Status,
 		pq.Array(arg.PublicIds),
+		pq.Array(arg.Ids),
 		arg.TenantPublicID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -623,24 +626,25 @@ WHERE NOT EXISTS (
         OR u.status = $3::text
     )
     AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
+    AND ($5::uuid[] IS NULL OR u.id = ANY($5::uuid[]))
     AND (
-        $5::text IS NULL
-        OR $5::text = ''
-        OR t.public_id = $5::text
+        $6::text IS NULL
+        OR $6::text = ''
+        OR t.public_id = $6::text
     )
     AND (
-        $6::uuid IS NULL
+        $7::uuid IS NULL
         OR (
-            $7::boolean
-            AND (u.created_at, u.id) <= ($8::timestamptz, $6::uuid)
+            $8::boolean
+            AND (u.created_at, u.id) <= ($9::timestamptz, $7::uuid)
         )
         OR (
-            NOT $7::boolean
-            AND (u.created_at, u.id) < ($8::timestamptz, $6::uuid)
+            NOT $8::boolean
+            AND (u.created_at, u.id) < ($9::timestamptz, $7::uuid)
         )
     )
 ORDER BY u.created_at DESC, u.id DESC
-LIMIT $9
+LIMIT $10
 `
 
 type ListEndUsersDescParams struct {
@@ -648,6 +652,7 @@ type ListEndUsersDescParams struct {
 	CreatedBefore   sql.NullTime   `json:"created_before"`
 	Status          sql.NullString `json:"status"`
 	PublicIds       []string       `json:"public_ids"`
+	Ids             []uuid.UUID    `json:"ids"`
 	TenantPublicID  sql.NullString `json:"tenant_public_id"`
 	CursorID        uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive bool           `json:"cursor_inclusive"`
@@ -679,6 +684,7 @@ func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescPara
 		arg.CreatedBefore,
 		arg.Status,
 		pq.Array(arg.PublicIds),
+		pq.Array(arg.Ids),
 		arg.TenantPublicID,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -1650,17 +1656,17 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 	return i, err
 }
 
-const UnsuspendUser = `-- name: UnsuspendUser :one
+const UnsuspendUserByID = `-- name: UnsuspendUserByID :one
 UPDATE users
 SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
-WHERE public_id = $1
+WHERE id = $1
 RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
 `
 
 // A user who never confirmed their address goes back to inactive, the state
 // VerifyUserEmail activates.
-func (q *Queries) UnsuspendUser(ctx context.Context, publicID string) (User, error) {
-	row := q.db.QueryRowContext(ctx, UnsuspendUser, publicID)
+func (q *Queries) UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, UnsuspendUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1785,37 +1791,6 @@ type UpdateUserPasswordHashByIDParams struct {
 
 func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUserPasswordHashByID, arg.ID, arg.PasswordHash)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.Email,
-		&i.PasswordHash,
-		&i.Name,
-		&i.CreatedAt,
-		&i.Status,
-		&i.TenantID,
-		&i.EmailVerifiedAt,
-		&i.CredentialsVersion,
-		&i.BirthDate,
-	)
-	return i, err
-}
-
-const UpdateUserStatus = `-- name: UpdateUserStatus :one
-UPDATE users
-SET status = $2
-WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date
-`
-
-type UpdateUserStatusParams struct {
-	PublicID string `json:"public_id"`
-	Status   string `json:"status"`
-}
-
-func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, UpdateUserStatus, arg.PublicID, arg.Status)
 	var i User
 	err := row.Scan(
 		&i.ID,

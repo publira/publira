@@ -75,6 +75,7 @@ FROM platform_audit_logs a
     LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id) = sqlc.narg('filter_tenant_public_id')::text)
+    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -132,6 +133,7 @@ FROM platform_audit_logs a
     LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_tenant_public_id')::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id) = sqlc.narg('filter_tenant_public_id')::text)
+    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

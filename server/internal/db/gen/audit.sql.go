@@ -367,25 +367,27 @@ FROM platform_audit_logs a
     LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
     AND ($2::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id) = $2::text)
-    AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($3::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = $3::uuid)
+    AND ($4::text IS NULL OR a.action = $4::text)
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (a.created_at, a.id) >= ($6::timestamptz, $4::uuid)
+            $6::boolean
+            AND (a.created_at, a.id) >= ($7::timestamptz, $5::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (a.created_at, a.id) > ($6::timestamptz, $4::uuid)
+            NOT $6::boolean
+            AND (a.created_at, a.id) > ($7::timestamptz, $5::uuid)
         )
     )
 ORDER BY a.created_at ASC, a.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPlatformAuditLogsAscParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantPublicID    sql.NullString `json:"filter_tenant_public_id"`
+	FilterTenantID          uuid.NullUUID  `json:"filter_tenant_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive         bool           `json:"cursor_inclusive"`
@@ -416,6 +418,7 @@ func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatform
 	rows, err := q.db.QueryContext(ctx, ListPlatformAuditLogsAsc,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
+		arg.FilterTenantID,
 		arg.FilterAction,
 		arg.CursorID,
 		arg.CursorInclusive,
@@ -502,25 +505,27 @@ FROM platform_audit_logs a
     LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
 WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
     AND ($2::text IS NULL OR COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id) = $2::text)
-    AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($3::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = $3::uuid)
+    AND ($4::text IS NULL OR a.action = $4::text)
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (a.created_at, a.id) <= ($6::timestamptz, $4::uuid)
+            $6::boolean
+            AND (a.created_at, a.id) <= ($7::timestamptz, $5::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (a.created_at, a.id) < ($6::timestamptz, $4::uuid)
+            NOT $6::boolean
+            AND (a.created_at, a.id) < ($7::timestamptz, $5::uuid)
         )
     )
 ORDER BY a.created_at DESC, a.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPlatformAuditLogsDescParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantPublicID    sql.NullString `json:"filter_tenant_public_id"`
+	FilterTenantID          uuid.NullUUID  `json:"filter_tenant_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive         bool           `json:"cursor_inclusive"`
@@ -559,6 +564,7 @@ func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatfor
 	rows, err := q.db.QueryContext(ctx, ListPlatformAuditLogsDesc,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
+		arg.FilterTenantID,
 		arg.FilterAction,
 		arg.CursorID,
 		arg.CursorInclusive,

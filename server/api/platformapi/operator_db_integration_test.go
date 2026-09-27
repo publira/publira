@@ -211,7 +211,7 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
 	suspendResp, err := client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)
@@ -221,14 +221,14 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 	}
 
 	_, err = client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second SuspendOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
 	unsuspendResp, err := client.UnsuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UnsuspendOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("UnsuspendOperator: %v", err)
@@ -238,14 +238,14 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 	}
 
 	_, err = client.UnsuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UnsuspendOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second UnsuspendOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
 	deactivateResp, err := client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if err != nil {
 		t.Fatalf("DeactivateOperator: %v", err)
@@ -255,7 +255,7 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 	}
 
 	_, err = client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
-		PublicId: target.PublicID,
+		OperatorId: target.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second DeactivateOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
@@ -274,12 +274,12 @@ func TestDBOperatorStatusChangesRejectSelf(t *testing.T) {
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
 	if _, err := client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
-		PublicId: superAdmin.PublicID,
+		OperatorId: superAdmin.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("SuspendOperator on self code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 	if _, err := client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
-		PublicId: superAdmin.PublicID,
+		OperatorId: superAdmin.ID.String(),
 	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator on self code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
