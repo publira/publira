@@ -948,7 +948,7 @@
         "name": "Label name",
         "name_placeholder": "Example: Monthly Novels",
         "eye_catch": "Label cover image",
-        "eye_catch_description": "We recommend a 3:4 image at least 2400x3200px and no larger than 10MB.",
+        "eye_catch_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px.",
         "eye_catch_update": "Update cover image"
       },
       "validation": {
@@ -1417,7 +1417,7 @@
       "eye_catch_upload_not_reflected": "The upload has not been applied. Select the image again and try again.",
       "list_failed": "Could not load the series. Please try again later.",
       "save_failed": "Could not save the series. Please try again later.",
-      "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB that meets the recommended size, then try again.",
+      "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
       "input_invalid": "Check the information you entered. Review required fields such as the title, label, and authors, then try again.",
       "not_found": "The series could not be found. Reload the page and try again.",
       "episodes": {

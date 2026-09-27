@@ -948,7 +948,7 @@
         "name": "レーベル名",
         "name_placeholder": "例: 月刊ノベルズ",
         "eye_catch": "レーベルアイキャッチ画像",
-        "eye_catch_description": "3:4 基準で 2400x3200px 以上、10MB 以下の画像を推奨します。",
+        "eye_catch_description": "JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。",
         "eye_catch_update": "アイキャッチを更新"
       },
       "validation": {
@@ -1417,7 +1417,7 @@
       "eye_catch_upload_not_reflected": "アップロード処理が反映されていません。画像を選び直して再試行してください。",
       "list_failed": "シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。",
       "save_failed": "シリーズの保存に失敗しました。時間をおいて再試行してください。",
-      "image_invalid": "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。",
+      "image_invalid": "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。",
       "input_invalid": "入力内容を確認してください。タイトル・ラベル・著者などの必須項目を見直して、もう一度お試しください。",
       "not_found": "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。",
       "episodes": {

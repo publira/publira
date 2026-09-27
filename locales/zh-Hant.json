@@ -948,7 +948,7 @@
         "name": "品牌名稱",
         "name_placeholder": "範例：月刊小說",
         "eye_catch": "品牌封面圖",
-        "eye_catch_description": "建議使用 3:4、尺寸至少 2400x3200px 且不超過 10MB 的圖片。",
+        "eye_catch_description": "請選擇不超過 10MB、尺寸至少為 2400x3200px 的 JPEG、PNG 或 WebP 圖片。",
         "eye_catch_update": "更新封面圖"
       },
       "validation": {
@@ -1417,7 +1417,7 @@
       "eye_catch_upload_not_reflected": "上傳尚未生效。請重新選擇圖片後再試。",
       "list_failed": "無法載入系列。請稍後再試。",
       "save_failed": "無法儲存該系列。請稍後再試。",
-      "image_invalid": "請檢查圖片設定。請選擇不超過 10MB 且符合建議尺寸的 JPEG、PNG 或 WebP 圖片，然後重試。",
+      "image_invalid": "請檢查圖片設定。請選擇不超過 10MB、尺寸至少為 2400x3200px 的 JPEG、PNG 或 WebP 圖片，然後重試。",
       "input_invalid": "請檢查您輸入的內容。確認標題、品牌、作者等必填項目後重試。",
       "not_found": "找不到該系列。請重新載入頁面後再試。",
       "episodes": {

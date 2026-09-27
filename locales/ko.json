@@ -948,7 +948,7 @@
         "name": "레이블 이름",
         "name_placeholder": "예: 월간 노벨스",
         "eye_catch": "레이블 커버 이미지",
-        "eye_catch_description": "3:4 비율로 2400x3200px 이상, 10MB 이하인 이미지를 권장합니다.",
+        "eye_catch_description": "JPEG, PNG, WebP 형식으로 10MB 이하, 2400x3200px 이상인 이미지를 선택해 주세요.",
         "eye_catch_update": "커버 이미지 변경"
       },
       "validation": {
@@ -1417,7 +1417,7 @@
       "eye_catch_upload_not_reflected": "업로드가 반영되지 않았습니다. 이미지를 다시 선택해 시도해 주세요.",
       "list_failed": "시리즈 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "save_failed": "시리즈를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      "image_invalid": "이미지 설정을 확인해 주세요. JPEG, PNG, WebP 형식으로 10MB 이하이면서 권장 크기를 만족하는 이미지를 선택한 뒤 다시 시도해 주세요.",
+      "image_invalid": "이미지 설정을 확인해 주세요. JPEG, PNG, WebP 형식으로 10MB 이하, 2400x3200px 이상인 이미지를 선택한 뒤 다시 시도해 주세요.",
       "input_invalid": "입력한 내용을 확인해 주세요. 제목, 레이블, 작가 같은 필수 항목을 다시 살펴본 뒤 시도해 주세요.",
       "not_found": "해당 시리즈를 찾을 수 없습니다. 페이지를 새로 고친 뒤 다시 시도해 주세요.",
       "episodes": {
