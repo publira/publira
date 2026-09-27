@@ -516,17 +516,43 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestAddTenantMemberRequiresPublicIDOrEmail(t *testing.T) {
-	server, mock := newOperatorHandlerTestServer(t)
-
-	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
-		TenantId: testTenantID,
-		Role:     "tenant_admin",
-	}))
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("AddTenantMember code = %v, want invalid_argument", connect.CodeOf(err))
+func TestAddTenantMemberRefusesNamingTheUserByUserID(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     *publirasplatformv1.AddTenantMemberRequest
+		message string
+	}{
+		{
+			name:    "neither user_id nor email",
+			req:     &publirasplatformv1.AddTenantMemberRequest{TenantId: testTenantID, Role: "tenant_admin"},
+			message: "user_id or email is required",
+		},
+		{
+			name: "both user_id and email",
+			req: &publirasplatformv1.AddTenantMemberRequest{
+				TenantId: testTenantID,
+				UserId:   uuid.Must(uuid.NewV7()).String(),
+				Email:    "alice@example.com",
+				Role:     "tenant_admin",
+			},
+			message: "user_id and email cannot both be set",
+		},
 	}
-	assertOperatorHandlerExpectations(t, mock)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+
+			_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(tt.req))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("AddTenantMember code = %v, want invalid_argument", connect.CodeOf(err))
+			}
+			var connectErr *connect.Error
+			if !errors.As(err, &connectErr) || connectErr.Message() != tt.message {
+				t.Fatalf("AddTenantMember message = %v, want %q", err, tt.message)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
 }
 
 func TestAddTenantMemberTenantNotFound(t *testing.T) {

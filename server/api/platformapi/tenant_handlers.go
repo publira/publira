@@ -201,8 +201,8 @@ func (s *platformServer) tenantError(ctx context.Context, msg string, err error,
 	case errors.As(err, &connectErr):
 		return connectErr
 	case errors.Is(err, platformtenants.ErrNoChange),
-		errors.Is(err, tenantmembers.ErrUserOrEmailRequired),
-		errors.Is(err, tenantmembers.ErrUserAndEmailBothSet):
+		errors.Is(err, errUserOrEmailRequired),
+		errors.Is(err, errUserAndEmailBothSet):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, platformtenants.ErrNotFound),
 		errors.Is(err, tenantmembers.ErrMemberNotFound),
@@ -411,7 +411,7 @@ func (s *platformServer) AddTenantMember(
 		Role:   req.Msg.Role,
 	}
 	if err := params.Validate(); err != nil {
-		return nil, s.tenantError(ctx, "invalid add tenant member request", err)
+		return nil, s.tenantError(ctx, "invalid add tenant member request", addMemberRefusal(err))
 	}
 	actor, err := s.auditActor(ctx, req)
 	if err != nil {
@@ -568,6 +568,21 @@ func requireUserID(raw string) (uuid.UUID, error) {
 const fieldUserID = "user_id"
 
 var (
-	errUserIDRequired = errors.New("user_id is required")
-	errUserIDInvalid  = errors.New("user_id must be a UUID")
+	errUserIDRequired      = errors.New("user_id is required")
+	errUserIDInvalid       = errors.New("user_id must be a UUID")
+	errUserOrEmailRequired = errors.New("user_id or email is required")
+	errUserAndEmailBothSet = errors.New("user_id and email cannot both be set")
 )
+
+// addMemberRefusal words tenantmembers' user-or-email refusals with the field
+// this API names the user by; tenantmembers speaks for its public-ID callers.
+func addMemberRefusal(err error) error {
+	switch {
+	case errors.Is(err, tenantmembers.ErrUserOrEmailRequired):
+		return errUserOrEmailRequired
+	case errors.Is(err, tenantmembers.ErrUserAndEmailBothSet):
+		return errUserAndEmailBothSet
+	default:
+		return err
+	}
+}
