@@ -55,16 +55,16 @@ message ListAccessTicketsResponse {
 }
 
 message IssueAccessTicketRequest {
+  reserved 2, 3;
+  reserved "user_public_id", "episode_public_id";
+
   publira.types.v1.TenantContext tenant = 1;
-  // End-user who receives viewing rights (public_id).
-  string user_public_id = 2;
-  string episode_public_id = 3;
   // RFC3339; empty for no expiry.
   string expires_at = 4;
   string note = 5;
-  // The receiving user's primary key; wins over user_public_id when set.
+  // The primary key of the user who receives viewing rights.
   string user_id = 6;
-  // The episode's primary key; wins over episode_public_id when set.
+  // The primary key of the episode the ticket grants.
   string episode_id = 7;
 }
 

@@ -543,73 +543,41 @@ func (s *adminServer) RevokeAccessTicket(
 }
 
 // resolveAccessTicketRecipient resolves the user and the episode a new ticket
-// names, by primary key when the request carries one and by public ID otherwise.
+// names by their primary keys.
 func (s *adminServer) resolveAccessTicketRecipient(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	msg *publiraadminv1.IssueAccessTicketRequest,
 ) (uuid.UUID, uuid.UUID, error) {
-	queries := s.queriesFor(ctx)
-
-	var user dbmodels.GetUserByIDForTenantRow
-	userID, err := recordIDArg(msg.GetUserId(), "user_id")
+	userID, err := parseRecordID(msg.GetUserId(), "user_id")
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
-	userField := "user_id"
-	switch {
-	case userID != uuid.Nil:
-		user, err = queries.GetUserByIDForTenant(ctx, dbmodels.GetUserByIDForTenantParams{
-			TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
-			ID:       userID,
-		})
-	case strings.TrimSpace(msg.GetUserPublicId()) != "":
-		userField = "user_public_id"
-		var row dbmodels.GetUserByPublicIDForTenantRow
-		row, err = queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-			TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
-			PublicID: strings.TrimSpace(msg.GetUserPublicId()),
-		})
-		user = dbmodels.GetUserByIDForTenantRow(row)
-	default:
-		return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("user_id is required"), "user_id")
+	episodeID, err := parseRecordID(msg.GetEpisodeId(), "episode_id")
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
+	queries := s.queriesFor(ctx)
+
+	user, err := queries.GetUserByIDForTenant(ctx, dbmodels.GetUserByIDForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		ID:       userID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), userField)
+			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), "user_id")
 		}
-		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenantID.String())
+		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
 	if user.Status != "active" {
 		return uuid.Nil, uuid.Nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("user is not active"))
 	}
 
-	episodeID, err := recordIDArg(msg.GetEpisodeId(), "episode_id")
-	if err != nil {
-		return uuid.Nil, uuid.Nil, err
-	}
-	episodeField := "episode_id"
-	switch {
-	case episodeID != uuid.Nil:
-		var row dbmodels.GetEpisodeByIDForTenantRow
-		row, err = queries.GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenantID, ID: episodeID})
-		episodeID = row.ID
-	case strings.TrimSpace(msg.GetEpisodePublicId()) != "":
-		episodeField = "episode_public_id"
-		var row dbmodels.GetEpisodeByPublicIDForTenantRow
-		row, err = queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{
-			TenantID: tenantID,
-			PublicID: strings.TrimSpace(msg.GetEpisodePublicId()),
-		})
-		episodeID = row.ID
-	default:
-		return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("episode_id is required"), "episode_id")
-	}
-	if err != nil {
+	if _, err := queries.GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenantID, ID: episodeID}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), episodeField)
+			return uuid.Nil, uuid.Nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_id")
 		}
-		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get episode for issue access ticket", err, "tenant_id", tenantID.String())
+		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get episode for issue access ticket", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
 	}
-	return user.ID, episodeID, nil
+	return userID, episodeID, nil
 }
