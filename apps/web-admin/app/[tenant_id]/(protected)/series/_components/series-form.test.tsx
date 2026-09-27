@@ -48,10 +48,6 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog(mockLocale.current)),
 }));
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
-}));
-
 const action = () => Promise.resolve(null);
 
 const render = (ui: React.ReactNode) =>
@@ -110,8 +106,11 @@ const renderBothForms = () =>
         genres={genres}
         labels={labels}
         mode="create"
+        synopsisPlaceholder="Synopsis"
         tagSuggestions={tagSuggestions}
+        tenantId="TENANT001"
         timeZone="UTC"
+        titlePlaceholder="Title"
       />
       <SeriesForm
         action={action}
@@ -122,8 +121,11 @@ const renderBothForms = () =>
         initialSeries={series}
         labels={labels}
         mode="update"
+        synopsisPlaceholder="Synopsis"
         tagSuggestions={tagSuggestions}
+        tenantId="TENANT001"
         timeZone="UTC"
+        titlePlaceholder="Title"
       />
     </>
   );
@@ -164,7 +166,7 @@ it("points each label at its own input when it is mounted twice", () => {
 // The e2e suite locates these fields by role and label instead of by id, so
 // that the hidden bfcache page's fields stay out of its way (`seriesFormFields`
 // in `e2e/src/admin.ts`).
-it("finds each input by its role and label", async () => {
+it("finds each input by its role and label", () => {
   renderBothForms();
 
   expect(screen.getAllByRole("textbox", { name: /Title/u })).toHaveLength(2);
@@ -178,27 +180,20 @@ it("finds each input by its role and label", async () => {
   expect(screen.getAllByRole("combobox", { name: "Author 1" })).toHaveLength(1);
   expect(screen.getAllByRole("combobox", { name: "Role 1" })).toHaveLength(1);
   expect(screen.getAllByLabelText(/Publication date/u)).toHaveLength(2);
-  // The weekday names come from `Intl` and are on screen at once; the labels of
-  // the classification controls are catalog strings, each behind a `<Suspense>`
-  // of its own, so they arrive once `<ClientMessage>` has the catalog.
   expect(screen.getAllByRole("checkbox", { name: "Mon" })).toHaveLength(2);
-  expect(
-    await screen.findAllByRole("combobox", { name: /Genres/u })
-  ).toHaveLength(2);
+  expect(screen.getAllByRole("combobox", { name: /Genres/u })).toHaveLength(2);
   // A text input carrying a `list` is a combobox rather than a textbox: the
   // datalist of tags already in use is what the role names.
+  expect(screen.getAllByRole("combobox", { name: /Tags/u })).toHaveLength(2);
   expect(
-    await screen.findAllByRole("combobox", { name: /Tags/u })
+    screen.getAllByRole("combobox", { name: /Serialization status/u })
   ).toHaveLength(2);
-  expect(
-    await screen.findAllByRole("combobox", { name: /Serialization status/u })
-  ).toHaveLength(2);
-  expect(
-    await screen.findAllByRole("combobox", { name: /Age rating/u })
-  ).toHaveLength(2);
-  expect(
-    await screen.findAllByRole("combobox", { name: /Comments/u })
-  ).toHaveLength(2);
+  expect(screen.getAllByRole("combobox", { name: /Age rating/u })).toHaveLength(
+    2
+  );
+  expect(screen.getAllByRole("combobox", { name: /Comments/u })).toHaveLength(
+    2
+  );
 });
 
 // The classification the API stored is what the form opens on. Without this a
@@ -215,8 +210,11 @@ it("opens on the classification the series carries", () => {
       initialSeries={series}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -254,8 +252,11 @@ it("opens on the comment mode the series states", () => {
       initialSeries={series}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -276,8 +277,11 @@ it("opens on the layout the series states", () => {
       initialSeries={series}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -299,8 +303,11 @@ it("opens a new series on the layout the viewers use today", async () => {
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -328,9 +335,12 @@ it("names the tenant's own mode in the option that follows it", async () => {
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
       tenantCommentMode="approval_required"
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -354,8 +364,11 @@ it("leaves that option unnamed when the tenant setting could not be read", async
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -378,9 +391,12 @@ it("opens on where the series states its episodes are sold", async () => {
       initialSeries={series}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       tenantPurchaseAvailability="all"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -402,9 +418,12 @@ it("names where the tenant sells in the option that follows it", async () => {
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       tenantPurchaseAvailability="web"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -423,8 +442,11 @@ it("leaves where the tenant sells unnamed when it could not be read", async () =
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -444,12 +466,77 @@ it("names the empty schedule as irregular", async () => {
       genres={genres}
       labels={labels}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
   expect(await screen.findByText(/presented as irregular/u)).toBeDefined();
+});
+
+// Editing the credit list is editing the template the next episode is baked
+// from, so the form says as much rather than leaving an editor to assume a save
+// re-credits the episodes that already shipped.
+it("says that the credits reach episodes created from now on", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      titlePlaceholder="Title"
+    />
+  );
+
+  expect(
+    screen.getByText(/template new episodes are created from/u)
+  ).toBeDefined();
+});
+
+// The wall clock is read in the zone the form was rendered in, and the instant
+// it names is what the Action receives, so a change to the tenant zone made in
+// another tab cannot move the date that was typed.
+it("posts the publication date as the instant its wall clock names", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialSeries={{ ...series, publishedAt: "2030-01-01T00:00:00Z" }}
+      labels={labels}
+      mode="update"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="Asia/Tokyo"
+      titlePlaceholder="Title"
+    />
+  );
+  const publicationDate =
+    screen.getByLabelText<HTMLInputElement>(/Publication date/u);
+
+  expect(publicationDate.value).toBe("2030-01-01T09:00");
+  expect(posted("published_at")).toEqual(["2030-01-01T00:00:00Z"]);
+
+  fireEvent.change(publicationDate, { target: { value: "2030-02-03T04:05" } });
+
+  expect(posted("published_at")).toEqual(["2030-02-02T19:05:00Z"]);
+
+  fireEvent.change(publicationDate, { target: { value: "" } });
+
+  expect(posted("published_at")).toEqual([""]);
 });
 
 // The share boxes sit in a field of their own, and the save button belongs to
@@ -479,8 +566,11 @@ it("disables the save while the credit shares pass 100%", () => {
       }}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="Asia/Tokyo"
+      titlePlaceholder="Title"
     />
   );
   const save = screen.getByRole<HTMLButtonElement>("button", {
@@ -547,8 +637,11 @@ it("closes every field while the save is in flight", async () => {
       initialSeries={series}
       labels={labels}
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -581,8 +674,11 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
         genres={genres}
         labels={labels}
         mode="create"
+        synopsisPlaceholder="Synopsis"
         tagSuggestions={tagSuggestions}
+        tenantId="TENANT001"
         timeZone="UTC"
+        titlePlaceholder="Title"
       />
     </AdminLocaleTestProvider>
   );
@@ -608,8 +704,11 @@ it("shows the label read error beside the picker and keeps the series' label", (
       labels={[]}
       labelsErrorMessage="Could not load the labels."
       mode="update"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 
@@ -634,8 +733,11 @@ it("points a tenant with no labels at creating one while keeping the picker", ()
       genres={genres}
       labels={[]}
       mode="create"
+      synopsisPlaceholder="Synopsis"
       tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
       timeZone="UTC"
+      titlePlaceholder="Title"
     />
   );
 

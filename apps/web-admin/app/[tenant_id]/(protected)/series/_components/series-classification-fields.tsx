@@ -16,18 +16,17 @@ import {
   MultiComboboxInputGroup,
 } from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
 import { useCallback, useId, useMemo, useState } from "react";
-import type { ChangeEventHandler, KeyboardEventHandler } from "react";
+import type {
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  ReactNode,
+} from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -74,32 +73,30 @@ const SERIES_AGE_RATING_ITEMS = [
 ];
 
 export const SeriesStatusField = ({
-  onChange,
-  value,
+  description,
+  initialValue,
+  label,
 }: {
-  onChange: (next: SeriesStatusValue) => void;
-  value: SeriesStatusValue;
+  description: ReactNode;
+  initialValue: SeriesStatusValue;
+  label: ReactNode;
 }) => {
+  const [value, setValue] = useState(initialValue);
   // `Select` renders a trigger rather than a Field control, so the label needs
   // an id to point at.
   const selectId = useId();
 
-  const handleValueChange = useCallback(
-    (next: string) => {
-      // The trigger only ever offers the three above; the guard is what keeps
-      // the state's type honest without a cast.
-      if (next === "ongoing" || next === "completed" || next === "hiatus") {
-        onChange(next);
-      }
-    },
-    [onChange]
-  );
+  const handleValueChange = useCallback((next: string) => {
+    // The trigger only ever offers the three above; the guard is what keeps
+    // the state's type honest without a cast.
+    if (next === "ongoing" || next === "completed" || next === "hiatus") {
+      setValue(next);
+    }
+  }, []);
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
-        <ClientMessage message="admin.series.form.status" />
-      </FieldLabel>
+      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
       <FieldContent>
         <Select
           id={selectId}
@@ -108,37 +105,33 @@ export const SeriesStatusField = ({
           value={value}
         />
         <input name="status" type="hidden" value={value} />
-        <FieldDescription>
-          <ClientMessage message="admin.series.form.status_description" />
-        </FieldDescription>
+        {description}
       </FieldContent>
     </Field>
   );
 };
 
 export const SeriesAgeRatingField = ({
-  onChange,
-  value,
+  description,
+  initialValue,
+  label,
 }: {
-  onChange: (next: SeriesAgeRatingValue) => void;
-  value: SeriesAgeRatingValue;
+  description: ReactNode;
+  initialValue: SeriesAgeRatingValue;
+  label: ReactNode;
 }) => {
+  const [value, setValue] = useState(initialValue);
   const selectId = useId();
 
-  const handleValueChange = useCallback(
-    (next: string) => {
-      if (next === "all" || next === "r15" || next === "r18") {
-        onChange(next);
-      }
-    },
-    [onChange]
-  );
+  const handleValueChange = useCallback((next: string) => {
+    if (next === "all" || next === "r15" || next === "r18") {
+      setValue(next);
+    }
+  }, []);
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
-        <ClientMessage message="admin.series.form.age_rating" />
-      </FieldLabel>
+      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
       <FieldContent>
         <Select
           id={selectId}
@@ -147,55 +140,46 @@ export const SeriesAgeRatingField = ({
           value={value}
         />
         <input name="age_rating" type="hidden" value={value} />
-        {/* What each rating means, so the choice is made from the form rather
-            than from the guide. */}
-        <ul className="grid gap-1 text-xs text-muted-foreground">
-          <li>
-            <ClientMessage message="admin.series.form.age_rating_all_hint" />
-          </li>
-          <li>
-            <ClientMessage message="admin.series.form.age_rating_r15_hint" />
-          </li>
-          <li>
-            <ClientMessage message="admin.series.form.age_rating_r18_hint" />
-          </li>
-        </ul>
+        {description}
       </FieldContent>
     </Field>
   );
 };
 
+/** `irregular` is shown while no weekday is chosen. */
 export const SeriesScheduleField = ({
-  onChange,
-  value,
+  description,
+  initialValue,
+  irregular,
+  legend,
 }: {
-  onChange: (next: number[]) => void;
-  value: number[];
+  description: ReactNode;
+  initialValue: number[];
+  irregular: ReactNode;
+  legend: ReactNode;
 }) => {
   const locale = useAdminLocale();
+  const [value, setValue] = useState(initialValue);
   // One group of seven controls rather than seven fields, so the ids are
   // numbered off a single base and the legend names the whole set.
   const groupId = useId();
   const selected = new Set(value);
 
-  const handleToggle = useCallback(
-    (weekday: number, checked: boolean) => {
-      const next = new Set(value);
+  const handleToggle = useCallback((weekday: number, checked: boolean) => {
+    setValue((current) => {
+      const next = new Set(current);
       if (checked) {
         next.add(weekday);
       } else {
         next.delete(weekday);
       }
-      onChange([...next].toSorted((a, b) => a - b));
-    },
-    [onChange, value]
-  );
+      return [...next].toSorted((a, b) => a - b);
+    });
+  }, []);
 
   return (
     <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium text-foreground">
-        <ClientMessage message="admin.series.form.schedule" />
-      </legend>
+      <legend className="text-sm font-medium text-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {WEEKDAY_NUMBERS.map((weekday) => (
           <div className="flex items-center gap-2" key={weekday}>
@@ -223,32 +207,32 @@ export const SeriesScheduleField = ({
           value={String(weekday)}
         />
       ))}
-      <p className="text-xs text-muted-foreground">
-        <ClientMessage message="admin.series.form.schedule_description" />
-      </p>
-      {value.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          <ClientMessage message="admin.series.form.schedule_irregular" />
-        </p>
-      ) : null}
+      {description}
+      {value.length === 0 ? irregular : null}
     </fieldset>
   );
 };
 
+/** `empty` stands in for the picker when the tenant has no genre to offer. */
 export const SeriesGenreField = ({
+  description,
+  empty,
   genres,
   genresErrorMessage,
-  onChange,
-  value,
+  initialValue,
+  label,
 }: {
+  description: ReactNode;
+  empty: ReactNode;
   genres: GenreOption[];
   genresErrorMessage?: string;
-  onChange: (next: string[]) => void;
-  value: string[];
+  initialValue: string[];
+  label: ReactNode;
 }) => {
+  const t = useClientMessages();
+  const [value, setValue] = useState(initialValue);
   // `MultiCombobox` renders its own input instead of a Field control, so the
   // label needs an id to point at.
-  const t = useClientMessages();
   const comboboxId = useId();
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
@@ -259,23 +243,19 @@ export const SeriesGenreField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={comboboxId}>
-        <ClientMessage message="admin.series.form.genres" />
-      </FieldLabel>
+      <FieldLabel htmlFor={comboboxId}>{label}</FieldLabel>
       <FieldContent>
         {genresErrorMessage ? (
           <FormMessage variant="destructive">{genresErrorMessage}</FormMessage>
         ) : null}
 
         {items.length === 0 ? (
-          <FieldDescription>
-            <ClientMessage message="admin.series.form.genres_empty" />
-          </FieldDescription>
+          empty
         ) : (
           <MultiCombobox
             id={comboboxId}
             items={items}
-            onValueChange={onChange}
+            onValueChange={setValue}
             value={value}
           >
             <MultiComboboxInputGroup>
@@ -314,9 +294,7 @@ export const SeriesGenreField = ({
           <input key={id} name="genre_ids" type="hidden" value={id} />
         ))}
 
-        <FieldDescription>
-          <ClientMessage message="admin.series.form.genres_description" />
-        </FieldDescription>
+        {description}
       </FieldContent>
     </Field>
   );
@@ -331,17 +309,20 @@ const sameTagName = (left: string, right: string): boolean =>
   left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
 
 export const SeriesTagField = ({
-  onChange,
+  description,
+  initialValue,
+  label,
   suggestions,
   suggestionsErrorMessage,
-  value,
 }: {
-  onChange: (next: string[]) => void;
+  description: ReactNode;
+  initialValue: string[];
+  label: ReactNode;
   suggestions: string[];
   suggestionsErrorMessage?: string;
-  value: string[];
 }) => {
   const locale = useAdminLocale();
+  const [value, setValue] = useState(initialValue);
   const inputId = useId();
   const suggestionsId = useId();
   const [draft, setDraft] = useState("");
@@ -372,10 +353,10 @@ export const SeriesTagField = ({
       return;
     }
     if (!value.some((tagName) => sameTagName(tagName, name))) {
-      onChange([...value, name]);
+      setValue([...value, name]);
     }
     setDraft("");
-  }, [draft, isFull, onChange, value]);
+  }, [draft, isFull, value]);
 
   const handleDraftKeyDown = useCallback<
     KeyboardEventHandler<HTMLInputElement>
@@ -392,18 +373,13 @@ export const SeriesTagField = ({
     [addDraft]
   );
 
-  const handleRemove = useCallback(
-    (tagName: string) => {
-      onChange(value.filter((current) => current !== tagName));
-    },
-    [onChange, value]
-  );
+  const handleRemove = useCallback((tagName: string) => {
+    setValue((current) => current.filter((other) => other !== tagName));
+  }, []);
 
   return (
     <Field>
-      <FieldLabel htmlFor={inputId}>
-        <ClientMessage message="admin.series.form.tags" />
-      </FieldLabel>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <FieldContent>
         {suggestionsErrorMessage ? (
           <FormMessage variant="destructive">
@@ -468,12 +444,7 @@ export const SeriesTagField = ({
           <input key={tagName} name="tag_names" type="hidden" value={tagName} />
         ))}
 
-        <FieldDescription>
-          <ClientMessage
-            message="admin.series.form.tags_description"
-            values={{ count: String(MAX_SERIES_TAGS) }}
-          />
-        </FieldDescription>
+        {description}
       </FieldContent>
     </Field>
   );

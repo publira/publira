@@ -1,150 +1,80 @@
-"use client";
-
 import {
+  ActionForm,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  useActionState,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import type { ChangeEventHandler } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage } from "#components/client-message";
-import { EyeCatchImageField } from "#components/eye-catch/image-field";
-import { useTenantId } from "#lib/use-tenant-id";
+import { EyeCatchFormField } from "#components/eye-catch/form-field";
+import { Message } from "#components/message";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 
 interface SeriesEyeCatchFormProps {
-  initialSeries: SeriesListItem;
   action: (
     prevState: SeriesActionState,
     formData: FormData
   ) => Promise<SeriesActionState>;
+  series: SeriesListItem;
+  tenantId: string;
 }
 
 export const SeriesEyeCatchForm = ({
-  initialSeries,
   action,
-}: SeriesEyeCatchFormProps) => {
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
-  const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
-    null
-  );
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  series,
+  tenantId,
+}: SeriesEyeCatchFormProps) => (
+  <ActionForm action={action} className="grid gap-4">
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <input name="series_id" type="hidden" value={series.id} />
+    <input name="title" type="hidden" value={series.title} />
+    <input name="label_id" type="hidden" value={series.labelId} />
+    <input name="published_at" type="hidden" value={series.publishedAt} />
+    {series.genreIds.map((id) => (
+      <input key={id} name="genre_ids" type="hidden" value={id} />
+    ))}
+    {series.tagNames.map((tagName) => (
+      <input key={tagName} name="tag_names" type="hidden" value={tagName} />
+    ))}
+    {/* An update replaces every credit the series holds, so this tab carries
+        them back exactly as it read them. A credit written before roles
+        existed states none and makes the save report that instead — the
+        basics tab is where a role is chosen for it, and dropping the row here
+        would un-credit the person. */}
+    <input
+      name="creator_credits"
+      type="hidden"
+      value={JSON.stringify(series.creatorCredits)}
+    />
+    {series.isPublished ? (
+      <input name="is_published" type="hidden" value="on" />
+    ) : null}
 
-  const effectiveSeries = state?.ok ? state.series : initialSeries;
-  const variants = effectiveSeries.eyeCatchImageVariants ?? [];
-  const hasVariants = variants.length > 0;
+    {/* A save refreshes the page with the eye-catch it stored, and the new
+        timestamp remounts the field so the picked file and the delete toggle
+        do not outlive the save they were sent with. */}
+    <EyeCatchFormField
+      eyeCatchImageUpdatedAt={series.eyeCatchImageUpdatedAt}
+      fileInputId="series_eye_catch_image"
+      key={series.eyeCatchImageUpdatedAt}
+      variants={series.eyeCatchImageVariants}
+    />
 
-  useEffect(
-    () => () => {
-      if (localPreviewUrl) {
-        URL.revokeObjectURL(localPreviewUrl);
-      }
-    },
-    [localPreviewUrl]
-  );
-
-  const handleVariantImageClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const handleImageFileChange = useCallback<
-    ChangeEventHandler<HTMLInputElement>
-  >((event) => {
-    const file = event.currentTarget.files?.[0];
-    if (file) {
-      setLocalPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-        return URL.createObjectURL(file);
-      });
-      setClearEyeCatchImage(false);
-    }
-  }, []);
-
-  const handleDeleteToggle = useCallback(() => {
-    setClearEyeCatchImage((current) => !current);
-  }, []);
-
-  return (
-    <form action={formAction} className="grid gap-4">
-      <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="series_id" type="hidden" value={initialSeries.id} />
-      <input name="title" type="hidden" value={initialSeries.title} />
-      <input name="label_id" type="hidden" value={initialSeries.labelId} />
-      <input
-        name="published_at"
-        type="hidden"
-        value={initialSeries.publishedAt}
-      />
-      <input
-        name="current_eye_catch_image_updated_at"
-        type="hidden"
-        value={effectiveSeries.eyeCatchImageUpdatedAt}
-      />
-      {initialSeries.genreIds.map((id) => (
-        <input key={id} name="genre_ids" type="hidden" value={id} />
-      ))}
-      {initialSeries.tagNames.map((tagName) => (
-        <input key={tagName} name="tag_names" type="hidden" value={tagName} />
-      ))}
-      {/* An update replaces every credit the series holds, so this tab carries
-          them back exactly as it read them. A credit written before roles
-          existed states none and makes the save report that instead — the
-          basics tab is where a role is chosen for it, and dropping the row
-          here would un-credit the person. */}
-      <input
-        name="creator_credits"
-        type="hidden"
-        value={JSON.stringify(initialSeries.creatorCredits)}
-      />
-      {initialSeries.isPublished ? (
-        <input name="is_published" type="hidden" value="on" />
-      ) : null}
-
-      <EyeCatchImageField
-        clearEyeCatchImage={clearEyeCatchImage}
-        disabled={isPending}
-        fileInputId="series_eye_catch_image"
-        fileInputRef={fileInputRef}
-        hasVariants={hasVariants}
-        localPreviewUrl={localPreviewUrl}
-        onDeleteToggle={handleDeleteToggle}
-        onImageFileChange={handleImageFileChange}
-        onVariantImageClick={handleVariantImageClick}
-        onVariantTypeChange={setSelectedVariantType}
-        selectedVariantType={selectedVariantType}
-        variants={variants}
-      />
-
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
-
-      <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
-          <ActionFormIdle>
-            <ClientMessage message="admin.series.form.eye_catch_update" />
-          </ActionFormIdle>
-          <ActionFormPending>
-            <ClientMessage message="admin.series.form.submitting" />
-          </ActionFormPending>
-        </Button>
-      </div>
-    </form>
-  );
-};
+    <div className="flex justify-end">
+      <ActionFormSubmit>
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.series.form.eye_catch_update" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.series.form.submitting" />
+          </Suspense>
+        </ActionFormPending>
+      </ActionFormSubmit>
+    </div>
+  </ActionForm>
+);

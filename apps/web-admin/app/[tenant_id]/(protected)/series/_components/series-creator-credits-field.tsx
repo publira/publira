@@ -15,6 +15,7 @@ import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useId, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -33,6 +34,7 @@ import {
 } from "#lib/credit-share";
 
 import type { SeriesCreatorCredit } from "../series-types";
+import { useSetSeriesFormSavable } from "./series-form-save";
 
 export interface CreatorOption {
   id: string;
@@ -273,6 +275,8 @@ interface SeriesCreatorCreditsFieldProps {
   creatorRolesErrorMessage?: string;
   creators: CreatorOption[];
   creatorsErrorMessage?: string;
+  /** What the list of credits says about itself, under the list. */
+  description: ReactNode;
   /**
    * The credits the series holds, read once. The rows are this field's own
    * state from then on, and what the form posts is the hidden field below —
@@ -280,11 +284,7 @@ interface SeriesCreatorCreditsFieldProps {
    * to know about it.
    */
   initialCredits: SeriesCreatorCredit[];
-  /**
-   * Told whether the shares as typed can be saved, whenever that changes. The
-   * save button belongs to the form around this field.
-   */
-  onSavableChange: (savable: boolean) => void;
+  legend: ReactNode;
 }
 
 /**
@@ -303,10 +303,14 @@ export const SeriesCreatorCreditsField = ({
   creatorRolesErrorMessage,
   creators,
   creatorsErrorMessage,
+  description,
   initialCredits,
-  onSavableChange,
+  legend,
 }: SeriesCreatorCreditsFieldProps) => {
   const locale = useAdminLocale();
+  // The save button belongs to the form around this field, which is told
+  // whether the shares as typed can be saved whenever that changes.
+  const setSavable = useSetSeriesFormSavable();
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' credits.
   const [rows, setRows] = useState(() =>
@@ -371,7 +375,7 @@ export const SeriesCreatorCreditsField = ({
    */
   const commitShareRows = (nextRows: CreditRow[]) => {
     setRows(nextRows);
-    onSavableChange(
+    setSavable(
       isCreditShareTotalSavable(
         totalCreditShares(nextRows.map((row) => row.shareText))
       )
@@ -436,9 +440,7 @@ export const SeriesCreatorCreditsField = ({
 
   return (
     <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium text-foreground">
-        <ClientMessage message="admin.series.form.creators" />
-      </legend>
+      <legend className="text-sm font-medium text-foreground">{legend}</legend>
 
       {creatorsErrorMessage ? (
         <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>
@@ -519,15 +521,7 @@ export const SeriesCreatorCreditsField = ({
         value={JSON.stringify(credits)}
       />
 
-      <p className="text-xs text-muted-foreground">
-        <ClientMessage message="admin.series.form.creators_description" />
-      </p>
-      <p className="text-xs text-muted-foreground">
-        <ClientMessage message="admin.series.form.creators_share_description" />
-      </p>
-      <p className="text-xs text-muted-foreground">
-        <ClientMessage message="admin.series.form.creators_template_note" />
-      </p>
+      {description}
     </fieldset>
   );
 };

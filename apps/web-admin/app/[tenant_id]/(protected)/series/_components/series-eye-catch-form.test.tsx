@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -16,10 +20,18 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 import { SeriesEyeCatchForm } from "./series-eye-catch-form";
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
+// The image field is a client control, which reads its own copy from the
+// catalog the console layout provides.
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
@@ -78,7 +90,8 @@ describe("SeriesEyeCatchForm", () => {
       render(
         <SeriesEyeCatchForm
           action={() => save.promise}
-          initialSeries={series}
+          series={series}
+          tenantId="TENANT001"
         />,
         { wrapper: EnglishConsole }
       );
@@ -109,7 +122,8 @@ describe("SeriesEyeCatchForm", () => {
             submitted.resolve(formData);
             return Promise.resolve(null);
           }}
-          initialSeries={series}
+          series={series}
+          tenantId="TENANT001"
         />,
         { wrapper: EnglishConsole }
       );

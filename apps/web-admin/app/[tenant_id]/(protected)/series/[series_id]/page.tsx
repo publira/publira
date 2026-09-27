@@ -181,7 +181,8 @@ const EditSeriesFormData = async ({
       <div className="grid gap-6" key={result.series.publicId}>
         <SeriesEyeCatchForm
           action={updateSeriesEyeCatchAction}
-          initialSeries={result.series}
+          series={result.series}
+          tenantId={tenantId}
         />
         <EyeCatchAspectImages
           id={result.series.id}
@@ -203,6 +204,7 @@ const EditSeriesFormData = async ({
     commentSettingsResult,
     purchaseSettingsResult,
     timeZone,
+    t,
   ] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }, locale),
     // Walk every cursor page so the Combobox can search past the first 100.
@@ -220,6 +222,8 @@ const EditSeriesFormData = async ({
     // Likewise for the tenant's default place of sale.
     getTenantPurchaseSettings(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
+    // The placeholders are attributes, which cannot stream in as nodes.
+    getMessagesFor(locale),
   ]);
 
   if (!result.ok) {
@@ -259,6 +263,7 @@ const EditSeriesFormData = async ({
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="update"
+      synopsisPlaceholder={t("admin.series.form.synopsis_placeholder")}
       tagSuggestions={tagsResult.tagNames}
       tagSuggestionsErrorMessage={
         tagsResult.ok ? undefined : tagsResult.message
@@ -271,7 +276,9 @@ const EditSeriesFormData = async ({
           ? purchaseSettingsResult.settings.purchaseAvailability
           : undefined
       }
+      tenantId={tenantId}
       timeZone={timeZone}
+      titlePlaceholder={t("admin.series.form.title_placeholder")}
     />
   );
 };

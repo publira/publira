@@ -502,7 +502,6 @@ export const updateSeriesEyeCatchAction = async (
     message: t("admin.series.eye_catch_updated"),
     mode: "update",
     ok: true,
-    series: result.series,
   };
 };
 
