@@ -315,6 +315,15 @@ pass "loading a profile sets every key its file holds"
 ) || exit 1
 pass "loading a profile hands the cache handlers the profile's Redis and revalidation token"
 
+(
+  dev_env_load_profile alpha > /dev/null
+  [[ "${PUBLIRA_TENANT_URL_SCHEME}" == http ]] ||
+    fail "PUBLIRA_TENANT_URL_SCHEME is ${PUBLIRA_TENANT_URL_SCHEME}, not http"
+  [[ "${PUBLIRA_TENANT_URL_PORT}" == "${PUBLIRA_EDGE_PORT}" ]] ||
+    fail "PUBLIRA_TENANT_URL_PORT is ${PUBLIRA_TENANT_URL_PORT}, not the profile's edge port ${PUBLIRA_EDGE_PORT}"
+) || exit 1
+pass "loading a profile points the tenant links at the profile's edge"
+
 # A profile written before the worker had a login of its own names the
 # superuser connection as the worker URL and carries no format version. Loading
 # it has to refuse it rather than start the worker on that connection.

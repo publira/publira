@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -23,6 +24,10 @@ type setupEnv struct {
 
 func startSetupEnv(t *testing.T) *setupEnv {
 	t.Helper()
+	// The links asserted below are on the default origin, whatever the shell
+	// running the tests exports.
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	t.Setenv(tenantorigin.PortEnv, "")
 	pg := startPlatformDB(t)
 	setEncryptionKeys(t)
 	s3 := testutil.StartRustFS(t)

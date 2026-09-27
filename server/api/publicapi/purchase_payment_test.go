@@ -26,6 +26,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -136,6 +137,10 @@ type publicPaymentServer struct {
 
 func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publicPaymentServer {
 	t.Helper()
+	// The links asserted below are on the default origin, whatever the shell
+	// running the tests exports.
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	t.Setenv(tenantorigin.PortEnv, "")
 	if encryptor == nil {
 		encryptor = newPublicTestEncryptor(t)
 	}

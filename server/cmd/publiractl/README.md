@@ -81,6 +81,7 @@ Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password and the secret access key. Required: set the values the servers run with.
+- `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT`: the scheme and the port of the tenant site and console URLs the summary prints. Set the values the servers run with.
 
 ## platform
 

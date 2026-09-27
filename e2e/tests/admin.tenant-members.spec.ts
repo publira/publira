@@ -6,7 +6,7 @@ import { applyScenarioSql } from "../src/db";
 import {
   clearMessagesTo,
   countMessagesTo,
-  tokenFromLink,
+  linkFrom,
   waitForMessageTo,
 } from "../src/mail";
 import {
@@ -167,15 +167,15 @@ test.describe("tenant members", () => {
     ).toBeVisible();
 
     const message = await waitForMessageTo(TENANT_MEMBERS_INVITEE.email);
-    const token = tokenFromLink(message, ACCEPT_INVITE_PATH);
+    const invitation = linkFrom(message, ACCEPT_INVITE_PATH);
 
     // The invitee is somebody else, in a browser with no admin session.
     const inviteeContext = await browser.newContext();
     try {
       const invitee = await inviteeContext.newPage();
-      await invitee.goto(
-        adminUrl(`${ACCEPT_INVITE_PATH}?token=${encodeURIComponent(token)}`)
-      );
+      // The mailed link itself, which names the tenant's console on this
+      // stack's edge rather than an https origin nothing here serves.
+      await invitee.goto(invitation);
       await fillField(
         invitee.getByLabel("Full name"),
         TENANT_MEMBERS_INVITEE.name

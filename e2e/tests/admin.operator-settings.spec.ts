@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 import { fillField, openAdminUserMenu, signInAsAdmin } from "../src/admin";
 import { applyScenarioSql, querySql, runSql } from "../src/db";
-import { clearMessagesTo, tokenFromLink, waitForMessageTo } from "../src/mail";
+import { clearMessagesTo, linkFrom, waitForMessageTo } from "../src/mail";
 import {
   ADMIN_OPERATOR_SETTINGS_ADMIN,
   ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL,
@@ -121,23 +121,14 @@ const requestEmailChange = async (
     .click();
 };
 
-const confirmationTokenFor = async (recipient: string): Promise<string> => {
-  const message = await waitForMessageTo(recipient);
-  return tokenFromLink(message, CONFIRM_EMAIL_PATH);
-};
-
 /**
- * Open a confirmation link on the origin the browser reaches this tenant's
- * console on.
- *
- * The mailed URL names the seeded admin domain (`https://admin.aset.localhost/…`),
- * which is neither the port web-admin listens on nor a scheme this stack
- * serves, so the token is carried over rather than the whole link followed.
+ * The confirmation link mailed to `recipient`, as mailed: it names this
+ * tenant's console on the stack's edge, the origin this suite reaches it on.
  */
-const openConfirmation = (page: Page, token: string): Promise<unknown> =>
-  page.goto(
-    adminUrl(`${CONFIRM_EMAIL_PATH}?token=${encodeURIComponent(token)}`)
-  );
+const confirmationLinkFor = async (recipient: string): Promise<string> => {
+  const message = await waitForMessageTo(recipient);
+  return linkFrom(message, CONFIRM_EMAIL_PATH);
+};
 
 /**
  * The administrator's own account and this tenant's SMTP settings.
@@ -145,7 +136,7 @@ const openConfirmation = (page: Page, token: string): Promise<unknown> =>
  * `/settings/account` is the email-address change, not a display-name or
  * password form — those controls are not on the console. `/integrations/email`
  * is the tenant SMTP override. Tokens are stored as hashes, so every confirmation
- * below opens a token this suite read out of Mailpit.
+ * below opens a link this suite read out of Mailpit.
  *
  * The suite owns the account and the tenant it rewrites —
  * `130_admin_operator_settings.sql` — and re-applies that scenario afterwards
@@ -229,7 +220,7 @@ test.describe("web-admin operator settings", () => {
       ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
     await expect(page.getByRole("status")).toContainText(REQUESTED_MESSAGE);
-    const token = await confirmationTokenFor(
+    const link = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
 
@@ -241,7 +232,7 @@ test.describe("web-admin operator settings", () => {
       WHERE new_email = '${ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL}';
     `);
 
-    await openConfirmation(page, token);
+    await page.goto(link);
 
     await expect(page.getByText(FAILED_MESSAGE)).toBeVisible();
     expect(adminEmail()).toBe(ADMIN_OPERATOR_SETTINGS_ADMIN.email);
@@ -261,20 +252,20 @@ test.describe("web-admin operator settings", () => {
       ADMIN_OPERATOR_SETTINGS_NEW_EMAIL
     );
     await expect(page.getByRole("status")).toContainText(REQUESTED_MESSAGE);
-    const currentEmailToken = await confirmationTokenFor(
+    const currentEmailLink = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_ADMIN.email
     );
-    const newEmailToken = await confirmationTokenFor(
+    const newEmailLink = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_NEW_EMAIL
     );
 
-    await openConfirmation(page, currentEmailToken);
+    await page.goto(currentEmailLink);
     await expect(
       page.getByText(PENDING_MESSAGE, { exact: true })
     ).toBeVisible();
     expect(adminEmail()).toBe(ADMIN_OPERATOR_SETTINGS_ADMIN.email);
 
-    await openConfirmation(page, newEmailToken);
+    await page.goto(newEmailLink);
     await expect(
       page.getByText(CHANGED_MESSAGE, { exact: true })
     ).toBeVisible();
@@ -282,7 +273,7 @@ test.describe("web-admin operator settings", () => {
 
     // A link an operator opens twice reports the change it completed, rather
     // than reading as a failure the second time.
-    await openConfirmation(page, newEmailToken);
+    await page.goto(newEmailLink);
     await expect(
       page.getByText(CHANGED_MESSAGE, { exact: true })
     ).toBeVisible();

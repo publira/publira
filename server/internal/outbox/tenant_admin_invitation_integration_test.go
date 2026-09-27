@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -256,6 +257,34 @@ func TestTenantAdminInvitationEmailUsesTheTenantDefaultLocale(t *testing.T) {
 	}
 	if renderer.requests[0].Locale != "en" {
 		t.Fatalf("render locale = %q, want the stored en", renderer.requests[0].Locale)
+	}
+}
+
+// The invitation links the admin console on the deployment's scheme and port,
+// so an invitee on a plain-HTTP stack can open it.
+func TestTenantAdminInvitationEmailLinksTheDeploymentOrigin(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "http")
+	t.Setenv(tenantorigin.PortEnv, "3180")
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "OUTBOXINV006", "outbox-origin.example.com", "Outbox Origin Tenant")
+	encryptor := newInvitationEncryptor(t)
+	seedPlatformSMTPConfig(t, pg, encryptor)
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-origin")
+
+	renderer := &recordingInvitationRenderer{}
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: &recordingInvitationMailer{}, Renderer: renderer,
+	})
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	want := "http://" + tenant.AdminDomain + ":3180/accept-invite?token=invite-token"
+	if url, _ := renderer.requests[0].Data["invite_url"].(string); url != want {
+		t.Fatalf("invite_url = %v, want %s", renderer.requests[0].Data["invite_url"], want)
 	}
 }
 
