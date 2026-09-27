@@ -48,17 +48,15 @@ func (s *apiServer) resolvePublicEpisode(
 	tenantID uuid.UUID,
 	surface string,
 	rawEpisodeID string,
-	rawEpisodePublicID string,
 ) (dbmodels.GetPublishedEpisodeForTenantRow, error) {
-	key, err := requestRecordKey("episode_id", rawEpisodeID, rawEpisodePublicID)
+	episodeID, err := requestRecordID("episode_id", rawEpisodeID)
 	if err != nil {
 		return dbmodels.GetPublishedEpisodeForTenantRow{}, err
 	}
 	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 		TenantID: tenantID,
 		Surface:  surface,
-		ID:       key.id,
-		PublicID: key.publicID,
+		ID:       recordIDKey(episodeID),
 	})
 	if err == nil {
 		return row, nil
@@ -66,7 +64,7 @@ func (s *apiServer) resolvePublicEpisode(
 	if errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.GetPublishedEpisodeForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
-	return dbmodels.GetPublishedEpisodeForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode", key.String())
+	return dbmodels.GetPublishedEpisodeForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
 }
 
 // validateCommentBody normalises what is stored and rejects what the column
@@ -213,7 +211,7 @@ func (s *apiServer) ListEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +334,7 @@ func (s *apiServer) ListMyEpisodeComments(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +492,7 @@ func (s *apiServer) PostEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +583,7 @@ func (s *apiServer) WithdrawEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	key, err := requestRecordKey("comment_id", req.Msg.CommentId, req.Msg.CommentPublicId)
+	commentID, err := requestRecordID("comment_id", req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -593,8 +591,7 @@ func (s *apiServer) WithdrawEpisodeComment(
 	_, err = s.queriesFor(ctx).WithdrawEpisodeCommentForUser(ctx, dbmodels.WithdrawEpisodeCommentForUserParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
-		ID:       key.id,
-		PublicID: key.publicID,
+		ID:       commentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Another reader's comment, a comment of another tenant, one already
@@ -744,7 +741,7 @@ func (s *apiServer) ReportEpisodeComment(
 	if err != nil {
 		return nil, err
 	}
-	key, err := requestRecordKey("comment_id", req.Msg.CommentId, req.Msg.CommentPublicId)
+	commentID, err := requestRecordID("comment_id", req.Msg.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -768,8 +765,7 @@ func (s *apiServer) ReportEpisodeComment(
 
 	comment, err := s.queriesFor(ctx).GetReportableEpisodeCommentForTenant(ctx, dbmodels.GetReportableEpisodeCommentForTenantParams{
 		TenantID: tenant.ID,
-		ID:       key.id,
-		PublicID: key.publicID,
+		ID:       commentID,
 		Surface:  surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -781,7 +777,7 @@ func (s *apiServer) ReportEpisodeComment(
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment", key.String())
+		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment_id", commentID.String())
 	}
 	if comment.UserID == user.ID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot report your own comment"))

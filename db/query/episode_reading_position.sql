@@ -27,10 +27,7 @@ WITH readable AS (
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
     WHERE s.tenant_id = sqlc.arg('tenant_id')
-        AND (
-            e.id = sqlc.narg('episode_id')::uuid
-            OR e.public_id = sqlc.narg('episode_public_id')::text
-        )
+        AND e.id = sqlc.arg('episode_id')
         AND s.is_published = true
         AND s.published_at IS NOT NULL
         AND s.published_at <= NOW()
@@ -85,10 +82,7 @@ FROM episode_reading_positions rp
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND rp.user_id = sqlc.arg('user_id')
-    AND (
-        e.id = sqlc.narg('episode_id')::uuid
-        OR e.public_id = sqlc.narg('episode_public_id')::text
-    )
+    AND e.id = sqlc.arg('episode_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -138,10 +132,7 @@ FROM episode_reading_positions rp
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND rp.user_id = sqlc.arg('user_id')
-    AND (
-        s.id = sqlc.narg('series_id')::uuid
-        OR s.public_id = sqlc.narg('series_public_id')::text
-    )
+    AND s.id = sqlc.arg('series_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()

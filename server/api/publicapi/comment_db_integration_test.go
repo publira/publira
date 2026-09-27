@@ -158,14 +158,14 @@ func (e *publicDBEnv) postComment(
 	t *testing.T,
 	tenant testutil.Tenant,
 	member testutil.TenantUser,
-	episodePublicID, body string,
+	episodeID, body string,
 ) (*publirav1.MyEpisodeComment, error) {
 	t.Helper()
 
 	res, err := e.commentClient().PostEpisodeComment(context.Background(), newBearerRequest(&publirav1.PostEpisodeCommentRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episodePublicID,
-		Body:            body,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episodeID,
+		Body:      body,
 	}, tokenFor(t, tenant, member)))
 	if err != nil {
 		return nil, err
@@ -177,11 +177,11 @@ func (e *publicDBEnv) mustPostComment(
 	t *testing.T,
 	tenant testutil.Tenant,
 	member testutil.TenantUser,
-	episodePublicID, body string,
+	episodeID, body string,
 ) *publirav1.MyEpisodeComment {
 	t.Helper()
 
-	comment, err := e.postComment(t, tenant, member, episodePublicID, body)
+	comment, err := e.postComment(t, tenant, member, episodeID, body)
 	if err != nil {
 		t.Fatalf("PostEpisodeComment %q: %v", body, err)
 	}
@@ -193,17 +193,17 @@ func (e *publicDBEnv) mustPostComment(
 func (e *publicDBEnv) listComments(
 	t *testing.T,
 	tenant testutil.Tenant,
-	episodePublicID string,
+	episodeID string,
 	limit int32,
 	token string,
 ) *publirav1.ListEpisodeCommentsResponse {
 	t.Helper()
 
 	res, err := e.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episodePublicID,
-		Limit:           limit,
-		Token:           token,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episodeID,
+		Limit:     limit,
+		Token:     token,
 	}))
 	if err != nil {
 		t.Fatalf("ListEpisodeComments: %v", err)
@@ -215,13 +215,13 @@ func (e *publicDBEnv) listMyComments(
 	t *testing.T,
 	tenant testutil.Tenant,
 	member testutil.TenantUser,
-	episodePublicID string,
+	episodeID string,
 ) []*publirav1.MyEpisodeComment {
 	t.Helper()
 
 	res, err := e.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episodePublicID,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episodeID,
 	}, tokenFor(t, tenant, member)))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments: %v", err)
@@ -291,12 +291,12 @@ func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
 
 	// A tenant that never opted in has no config row at all, which is the same
 	// answer as the column's disabled default.
-	_, err := env.postComment(t, tenant, member, episode.PublicID, "Comments are off here.")
+	_, err := env.postComment(t, tenant, member, episode.ID.String(), "Comments are off here.")
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("PostEpisodeComment with commenting off error = %v, want failed_precondition", err)
 	}
 	env.setCommentMode(t, tenant.ID, "disabled")
-	if _, err := env.postComment(t, tenant, member, episode.PublicID, "Still off."); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if _, err := env.postComment(t, tenant, member, episode.ID.String(), "Still off."); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("PostEpisodeComment under disabled error = %v, want failed_precondition", err)
 	}
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comments WHERE tenant_id = $1", tenant.ID); got != 0 {
@@ -304,27 +304,27 @@ func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
 	}
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	immediate := env.mustPostComment(t, tenant, member, episode.PublicID, "Read this right away.")
+	immediate := env.mustPostComment(t, tenant, member, episode.ID.String(), "Read this right away.")
 	if immediate.AwaitingApproval {
 		t.Fatalf("comment posted under immediate = awaiting approval, want published")
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, immediate.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); !containsPublicID(got, immediate.PublicId) {
 		t.Fatalf("public comments = %v, want the immediately published %s", got, immediate.PublicId)
 	}
 	// The public list already carries it, so the author's own list does not.
-	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.PublicID)); len(got) != 0 {
+	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.ID.String())); len(got) != 0 {
 		t.Fatalf("own comments = %v, want none while every comment is public", got)
 	}
 
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	awaiting := env.mustPostComment(t, tenant, member, episode.PublicID, "Wait for a moderator.")
+	awaiting := env.mustPostComment(t, tenant, member, episode.ID.String(), "Wait for a moderator.")
 	if !awaiting.AwaitingApproval {
 		t.Fatalf("comment posted under approval_required = published, want awaiting approval")
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); containsPublicID(got, awaiting.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); containsPublicID(got, awaiting.PublicId) {
 		t.Fatalf("public comments = %v, want the unapproved %s withheld", got, awaiting.PublicId)
 	}
-	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.PublicID)); len(got) != 1 || got[0] != awaiting.PublicId {
+	if got := myCommentPublicIDs(env.listMyComments(t, tenant, member, episode.ID.String())); len(got) != 1 || got[0] != awaiting.PublicId {
 		t.Fatalf("own comments = %v, want the unapproved %s rendered back to its author", got, awaiting.PublicId)
 	}
 }
@@ -341,14 +341,14 @@ func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) 
 	// all, and a series that overrides it needs none: the override is what
 	// decides.
 	env.setSeriesCommentMode(t, series.ID, "immediate")
-	published := env.mustPostComment(t, tenant, member, episode.PublicID, "The series opened commenting on its own.")
+	published := env.mustPostComment(t, tenant, member, episode.ID.String(), "The series opened commenting on its own.")
 	if published.AwaitingApproval {
 		t.Fatalf("comment under a series override of immediate = awaiting approval, want published")
 	}
 
 	env.setCommentMode(t, tenant.ID, "disabled")
 	env.setSeriesCommentMode(t, series.ID, "approval_required")
-	awaiting := env.mustPostComment(t, tenant, member, episode.PublicID, "This one waits for a moderator.")
+	awaiting := env.mustPostComment(t, tenant, member, episode.ID.String(), "This one waits for a moderator.")
 	if !awaiting.AwaitingApproval {
 		t.Fatalf("comment under a series override of approval_required = published, want awaiting approval")
 	}
@@ -357,7 +357,7 @@ func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) 
 	// on across the tenant and off on this one series.
 	env.setCommentMode(t, tenant.ID, "immediate")
 	env.setSeriesCommentMode(t, series.ID, "disabled")
-	if _, err := env.postComment(t, tenant, member, episode.PublicID, "Not on this series."); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if _, err := env.postComment(t, tenant, member, episode.ID.String(), "Not on this series."); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("PostEpisodeComment on a series that turned commenting off error = %v, want failed_precondition", err)
 	}
 
@@ -369,17 +369,17 @@ func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) 
 		Title:    "Open episode",
 		Status:   testutil.EpisodeStatusPublished,
 	})
-	env.mustPostComment(t, tenant, member, openEpisode.PublicID, "This series follows the tenant.")
+	env.mustPostComment(t, tenant, member, openEpisode.ID.String(), "This series follows the tenant.")
 
 	// Clearing the override puts the series back under the tenant, including
 	// the changes the tenant makes afterwards.
 	env.setSeriesCommentMode(t, series.ID, "")
-	inherited := env.mustPostComment(t, tenant, member, episode.PublicID, "Back under the tenant.")
+	inherited := env.mustPostComment(t, tenant, member, episode.ID.String(), "Back under the tenant.")
 	if inherited.AwaitingApproval {
 		t.Fatalf("comment under an inherited immediate = awaiting approval, want published")
 	}
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	inheritedPending := env.mustPostComment(t, tenant, member, episode.PublicID, "And under what it chose next.")
+	inheritedPending := env.mustPostComment(t, tenant, member, episode.ID.String(), "And under what it chose next.")
 	if !inheritedPending.AwaitingApproval {
 		t.Fatalf("comment under an inherited approval_required = published, want awaiting approval")
 	}
@@ -400,29 +400,29 @@ func TestDBPostEpisodeCommentRequiresAReadableEpisodeBody(t *testing.T) {
 	draft := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "ACCDRAFTEP", Title: "Draft episode"})
 
 	// EPISODE_ACCESS_FREE.
-	env.mustPostComment(t, tenant, member, fixture.episode.PublicID, "The free body is readable.")
+	env.mustPostComment(t, tenant, member, fixture.episode.ID.String(), "The free body is readable.")
 
 	// EPISODE_ACCESS_LOCKED: the reader has not bought the body they would be
 	// commenting on.
-	_, err := env.postComment(t, tenant, member, paid.PublicID, "I have not read this.")
+	_, err := env.postComment(t, tenant, member, paid.ID.String(), "I have not read this.")
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("PostEpisodeComment on a locked episode error = %v, want permission_denied", err)
 	}
 
 	// EPISODE_ACCESS_ENTITLED.
 	env.PG.SeedPurchase(t, tenant.ID, member.ID, paid.ID, 500)
-	env.mustPostComment(t, tenant, member, paid.PublicID, "Now I have read it.")
+	env.mustPostComment(t, tenant, member, paid.ID.String(), "Now I have read it.")
 
 	// An unpublished episode is not a target at all, and answers the same way a
 	// missing one does.
-	if _, err := env.postComment(t, tenant, member, draft.PublicID, "Not published yet."); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := env.postComment(t, tenant, member, draft.ID.String(), "Not published yet."); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("PostEpisodeComment on a draft episode error = %v, want not_found", err)
 	}
-	if _, err := env.postComment(t, tenant, member, "NOSUCHEPISOD", "No such episode."); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := env.postComment(t, tenant, member, uuid.NewString(), "No such episode."); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("PostEpisodeComment on a missing episode error = %v, want not_found", err)
 	}
 
-	if _, err := env.postComment(t, tenant, member, fixture.episode.PublicID, "   "); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := env.postComment(t, tenant, member, fixture.episode.ID.String(), "   "); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("PostEpisodeComment with a blank body error = %v, want invalid_argument", err)
 	}
 }
@@ -433,9 +433,9 @@ func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 
 	_, err := env.commentClient().PostEpisodeComment(context.Background(), connect.NewRequest(&publirav1.PostEpisodeCommentRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episode.PublicID,
-		Body:            "Anonymous.",
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episode.ID.String(),
+		Body:      "Anonymous.",
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("PostEpisodeComment without a session error = %v, want unauthenticated", err)
@@ -443,7 +443,7 @@ func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
 
 	// A suspended account keeps its token; the session check is what stops it.
 	env.suspendUser(t, member.ID)
-	if _, err := env.postComment(t, tenant, member, episode.PublicID, "Suspended."); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := env.postComment(t, tenant, member, episode.ID.String(), "Suspended."); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("PostEpisodeComment as a suspended member error = %v, want unauthenticated", err)
 	}
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_comments WHERE tenant_id = $1", tenant.ID); got != 0 {
@@ -451,7 +451,7 @@ func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
 	}
 
 	// Reading stays public: no session, and the list still answers.
-	env.listComments(t, tenant, episode.PublicID, 0, "")
+	env.listComments(t, tenant, episode.ID.String(), 0, "")
 }
 
 func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
@@ -462,13 +462,13 @@ func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "HIDSTAFF", "hid-staff@example.com", "Moderator")
 	other := env.PG.SeedEndUser(t, tenant.ID, "HIDOTHER", "hid-other@example.com", "Other Reader")
 
-	kept := env.mustPostComment(t, tenant, author, episode.PublicID, "This one stays.")
-	removed := env.mustPostComment(t, tenant, author, episode.PublicID, "This one is taken down.")
+	kept := env.mustPostComment(t, tenant, author, episode.ID.String(), "This one stays.")
+	removed := env.mustPostComment(t, tenant, author, episode.ID.String(), "This one is taken down.")
 	env.hideComment(t, tenant, staff, removed.PublicId)
 
 	// The author reads the removed comment exactly as it was: it comes back
 	// through their own list, and nothing in it says it was removed.
-	own := env.listMyComments(t, tenant, author, episode.PublicID)
+	own := env.listMyComments(t, tenant, author, episode.ID.String())
 	if got := myCommentPublicIDs(own); len(got) != 1 || got[0] != removed.PublicId {
 		t.Fatalf("author's own comments = %v, want the removed %s", got, removed.PublicId)
 	}
@@ -481,11 +481,11 @@ func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
 
 	// It is gone from the public list, including for the author, who reads that
 	// list like every other visitor.
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); len(got) != 1 || got[0] != kept.PublicId {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); len(got) != 1 || got[0] != kept.PublicId {
 		t.Fatalf("public comments = %v, want only %s", got, kept.PublicId)
 	}
 	// Another reader sees neither the comment nor any trace of it.
-	if got := myCommentPublicIDs(env.listMyComments(t, tenant, other, episode.PublicID)); len(got) != 0 {
+	if got := myCommentPublicIDs(env.listMyComments(t, tenant, other, episode.ID.String())); len(got) != 0 {
 		t.Fatalf("another reader's own comments = %v, want none", got)
 	}
 }
@@ -496,30 +496,30 @@ func TestDBWithdrawEpisodeCommentIsTheAuthorsOwn(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 
 	other := env.PG.SeedEndUser(t, tenant.ID, "WDROTHER", "wdr-other@example.com", "Other Reader")
-	comment := env.mustPostComment(t, tenant, author, episode.PublicID, "I will take this down.")
+	comment := env.mustPostComment(t, tenant, author, episode.ID.String(), "I will take this down.")
 
 	withdraw := func(member testutil.TenantUser, publicID string) error {
 		_, err := env.commentClient().WithdrawEpisodeComment(context.Background(), newBearerRequest(&publirav1.WithdrawEpisodeCommentRequest{
-			Tenant:          tenantContext(tenant),
-			CommentPublicId: publicID,
+			Tenant:    tenantContext(tenant),
+			CommentId: publicID,
 		}, tokenFor(t, tenant, member)))
 		return err
 	}
 
-	if err := withdraw(other, comment.PublicId); connect.CodeOf(err) != connect.CodeNotFound {
+	if err := withdraw(other, comment.Id); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("withdrawing another reader's comment error = %v, want not_found", err)
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); len(got) != 1 {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); len(got) != 1 {
 		t.Fatalf("public comments = %v, want the comment untouched by the other reader", got)
 	}
 
-	if err := withdraw(author, comment.PublicId); err != nil {
+	if err := withdraw(author, comment.Id); err != nil {
 		t.Fatalf("withdraw own comment: %v", err)
 	}
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); len(got) != 0 {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); len(got) != 0 {
 		t.Fatalf("public comments after withdrawal = %v, want none", got)
 	}
-	if got := myCommentPublicIDs(env.listMyComments(t, tenant, author, episode.PublicID)); len(got) != 0 {
+	if got := myCommentPublicIDs(env.listMyComments(t, tenant, author, episode.ID.String())); len(got) != 0 {
 		t.Fatalf("author's own comments after withdrawal = %v, want none", got)
 	}
 
@@ -529,7 +529,7 @@ func TestDBWithdrawEpisodeCommentIsTheAuthorsOwn(t *testing.T) {
 		tenant.ID); got != 1 {
 		t.Fatalf("withdrawn rows = %d, want the comment kept for staff", got)
 	}
-	if err := withdraw(author, comment.PublicId); connect.CodeOf(err) != connect.CodeNotFound {
+	if err := withdraw(author, comment.Id); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("withdrawing twice error = %v, want not_found", err)
 	}
 }
@@ -547,35 +547,35 @@ func TestDBEpisodeCommentsAreTenantIsolated(t *testing.T) {
 	firstEpisode := env.PG.SeedEpisode(t, first.ID, firstSeries.ID, testutil.EpisodeSeed{PublicID: "ISOEPA", Title: "Episode A", Status: testutil.EpisodeStatusPublished})
 	secondEpisode := env.PG.SeedEpisode(t, second.ID, secondSeries.ID, testutil.EpisodeSeed{PublicID: "ISOEPB", Title: "Episode B", Status: testutil.EpisodeStatusPublished})
 
-	comment := env.mustPostComment(t, first, firstMember, firstEpisode.PublicID, "Posted on tenant A.")
+	comment := env.mustPostComment(t, first, firstMember, firstEpisode.ID.String(), "Posted on tenant A.")
 
-	if got := commentPublicIDs(env.listComments(t, second, secondEpisode.PublicID, 0, "").Comments); len(got) != 0 {
+	if got := commentPublicIDs(env.listComments(t, second, secondEpisode.ID.String(), 0, "").Comments); len(got) != 0 {
 		t.Fatalf("tenant B public comments = %v, want none of tenant A's", got)
 	}
-	if got := myCommentPublicIDs(env.listMyComments(t, second, secondMember, secondEpisode.PublicID)); len(got) != 0 {
+	if got := myCommentPublicIDs(env.listMyComments(t, second, secondMember, secondEpisode.ID.String())); len(got) != 0 {
 		t.Fatalf("tenant B member's own comments = %v, want none", got)
 	}
 
 	// The other tenant cannot reach the episode the comment is on either.
 	_, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
-		Tenant:          tenantContext(second),
-		EpisodePublicId: firstEpisode.PublicID,
+		Tenant:    tenantContext(second),
+		EpisodeId: firstEpisode.ID.String(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListEpisodeComments across tenants error = %v, want not_found", err)
 	}
-	if _, err := env.postComment(t, second, secondMember, firstEpisode.PublicID, "Posting across tenants."); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := env.postComment(t, second, secondMember, firstEpisode.ID.String(), "Posting across tenants."); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("PostEpisodeComment across tenants error = %v, want not_found", err)
 	}
 
 	_, err = env.commentClient().WithdrawEpisodeComment(context.Background(), newBearerRequest(&publirav1.WithdrawEpisodeCommentRequest{
-		Tenant:          tenantContext(second),
-		CommentPublicId: comment.PublicId,
+		Tenant:    tenantContext(second),
+		CommentId: comment.Id,
 	}, tokenFor(t, second, secondMember)))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("WithdrawEpisodeComment across tenants error = %v, want not_found", err)
 	}
-	if got := commentPublicIDs(env.listComments(t, first, firstEpisode.PublicID, 0, "").Comments); len(got) != 1 || got[0] != comment.PublicId {
+	if got := commentPublicIDs(env.listComments(t, first, firstEpisode.ID.String(), 0, "").Comments); len(got) != 1 || got[0] != comment.PublicId {
 		t.Fatalf("tenant A public comments = %v, want %s untouched", got, comment.PublicId)
 	}
 }
@@ -587,7 +587,7 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 
 	posted := make([]string, 0, 5)
 	for index := range 5 {
-		comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Comment "+string(rune('A'+index)))
+		comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Comment "+string(rune('A'+index)))
 		posted = append(posted, comment.PublicId)
 	}
 	// Newest first, so the pages walk the postings backwards.
@@ -596,13 +596,13 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 		newestFirst = append(newestFirst, posted[index])
 	}
 
-	page := env.listComments(t, tenant, episode.PublicID, 2, "")
+	page := env.listComments(t, tenant, episode.ID.String(), 2, "")
 	walked := commentPublicIDs(page.Comments)
 	if page.PreviousToken != "" {
 		t.Fatalf("first page previous_token = %q, want empty", page.PreviousToken)
 	}
 	for page.NextToken != "" {
-		page = env.listComments(t, tenant, episode.PublicID, 2, page.NextToken)
+		page = env.listComments(t, tenant, episode.ID.String(), 2, page.NextToken)
 		if page.PreviousToken == "" {
 			t.Fatal("a later page has no previous_token to go back with")
 		}
@@ -618,7 +618,7 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 	}
 
 	// The last page walks back to the first through previous_token alone.
-	back := env.listComments(t, tenant, episode.PublicID, 2, page.PreviousToken)
+	back := env.listComments(t, tenant, episode.ID.String(), 2, page.PreviousToken)
 	if got := commentPublicIDs(back.Comments); len(got) != 2 || got[0] != newestFirst[2] {
 		t.Fatalf("previous page = %v, want the page before the last", got)
 	}
@@ -634,20 +634,20 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 		Status:   testutil.EpisodeStatusPublished,
 	})
 	env.setCommentMode(t, tenant.ID, "immediate")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The first published comment.")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The second published comment.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The first published comment.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The second published comment.")
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The first pending comment.")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The second pending comment.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The first pending comment.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The second pending comment.")
 
-	public := env.listComments(t, tenant, episode.PublicID, 1, "")
+	public := env.listComments(t, tenant, episode.ID.String(), 1, "")
 	if public.NextToken == "" {
 		t.Fatal("public list has no next_token, want a second page")
 	}
 	mine, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episode.PublicID,
-		Limit:           1,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episode.ID.String(),
+		Limit:     1,
 	}, tokenFor(t, tenant, member)))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments: %v", err)
@@ -656,10 +656,10 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 		t.Fatal("own list has no next_token, want a second page")
 	}
 	mineNext, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episode.PublicID,
-		Limit:           1,
-		Token:           mine.Msg.NextToken,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episode.ID.String(),
+		Limit:     1,
+		Token:     mine.Msg.NextToken,
 	}, tokenFor(t, tenant, member)))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments next page: %v", err)
@@ -674,16 +674,16 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 	// The two lists of one episode hold different rows, so neither takes the
 	// other's token.
 	if _, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episode.PublicID,
-		Token:           mine.Msg.NextToken,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episode.ID.String(),
+		Token:     mine.Msg.NextToken,
 	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListEpisodeComments with the own list's token error = %v, want invalid_argument", err)
 	}
 	if _, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
-		Tenant:          tenantContext(tenant),
-		EpisodePublicId: episode.PublicID,
-		Token:           public.NextToken,
+		Tenant:    tenantContext(tenant),
+		EpisodeId: episode.ID.String(),
+		Token:     public.NextToken,
 	}, tokenFor(t, tenant, member))); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListMyEpisodeComments with the public list's token error = %v, want invalid_argument", err)
 	}
@@ -695,17 +695,17 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
-				Tenant:          tenantContext(tenant),
-				EpisodePublicId: other.PublicID,
-				Token:           token,
+				Tenant:    tenantContext(tenant),
+				EpisodeId: other.ID.String(),
+				Token:     token,
 			}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListEpisodeComments on another episode error = %v, want invalid_argument", err)
 			}
 			_, err = env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
-				Tenant:          tenantContext(tenant),
-				EpisodePublicId: other.PublicID,
-				Token:           token,
+				Tenant:    tenantContext(tenant),
+				EpisodeId: other.ID.String(),
+				Token:     token,
 			}, tokenFor(t, tenant, member)))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListMyEpisodeComments on another episode error = %v, want invalid_argument", err)
@@ -718,16 +718,16 @@ func (e *publicDBEnv) reportComment(
 	t *testing.T,
 	tenant testutil.Tenant,
 	reporter testutil.TenantUser,
-	commentPublicID string,
+	commentID string,
 	reason publirav1.CommentReportReason,
 ) error {
 	t.Helper()
 
 	_, err := e.commentClient().ReportEpisodeComment(context.Background(), newBearerRequest(&publirav1.ReportEpisodeCommentRequest{
-		Tenant:          tenantContext(tenant),
-		CommentPublicId: commentPublicID,
-		Reason:          reason,
-		Note:            "It has nothing to do with the episode.",
+		Tenant:    tenantContext(tenant),
+		CommentId: commentID,
+		Reason:    reason,
+		Note:      "It has nothing to do with the episode.",
 	}, tokenFor(t, tenant, reporter)))
 	return err
 }
@@ -751,19 +751,19 @@ func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
 	env.setCommentMode(t, tenant.ID, "immediate")
 	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPTREADER", "rpt-reader@example.com", "Reporting Reader")
 
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "Buy cheap watches at example.com")
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "Buy cheap watches at example.com")
 	if got := env.openReportCount(t, tenant, comment.PublicId); got != 0 {
 		t.Fatalf("open_report_count before any report = %d, want 0", got)
 	}
 
-	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+	if err := env.reportComment(t, tenant, reporter, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
 		t.Fatalf("ReportEpisodeComment: %v", err)
 	}
 	if got := env.openReportCount(t, tenant, comment.PublicId); got != 1 {
 		t.Fatalf("open_report_count after one report = %d, want 1", got)
 	}
 
-	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
+	if err := env.reportComment(t, tenant, reporter, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_ABUSE); err != nil {
 		t.Fatalf("repeated ReportEpisodeComment: %v", err)
 	}
 	if got := env.openReportCount(t, tenant, comment.PublicId); got != 1 {
@@ -776,7 +776,7 @@ func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
 	// A second reader is a second report, which is what the removal threshold
 	// counts: one account cannot drive it on its own.
 	second := env.PG.SeedEndUser(t, tenant.ID, "RPTREADER2", "rpt-reader-2@example.com", "Another Reader")
-	if err := env.reportComment(t, tenant, second, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
+	if err := env.reportComment(t, tenant, second, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); err != nil {
 		t.Fatalf("second reader's ReportEpisodeComment: %v", err)
 	}
 	if got := env.openReportCount(t, tenant, comment.PublicId); got != 2 {
@@ -784,7 +784,7 @@ func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
 	}
 
 	// Nothing about the comment changed for anyone reading it.
-	if got := commentPublicIDs(env.listComments(t, tenant, episode.PublicID, 0, "").Comments); !containsPublicID(got, comment.PublicId) {
+	if got := commentPublicIDs(env.listComments(t, tenant, episode.ID.String(), 0, "").Comments); !containsPublicID(got, comment.PublicId) {
 		t.Fatalf("public comments = %v, want the reported %s still listed", got, comment.PublicId)
 	}
 }
@@ -801,32 +801,32 @@ func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
 	outsider := env.PG.SeedEndUser(t, other.ID, "RPROUTSID", "rpr-outsider@example.com", "Outside Reader")
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	own := env.mustPostComment(t, tenant, member, episode.PublicID, "My own comment.")
-	if err := env.reportComment(t, tenant, member, own.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	own := env.mustPostComment(t, tenant, member, episode.ID.String(), "My own comment.")
+	if err := env.reportComment(t, tenant, member, own.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("reporting your own comment error = %v, want failed_precondition", err)
 	}
 
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	awaiting := env.mustPostComment(t, tenant, member, episode.PublicID, "Not approved yet.")
-	if err := env.reportComment(t, tenant, reporter, awaiting.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+	awaiting := env.mustPostComment(t, tenant, member, episode.ID.String(), "Not approved yet.")
+	if err := env.reportComment(t, tenant, reporter, awaiting.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("reporting a comment awaiting approval error = %v, want not_found", err)
 	}
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	removed := env.mustPostComment(t, tenant, member, episode.PublicID, "Removed by staff.")
+	removed := env.mustPostComment(t, tenant, member, episode.ID.String(), "Removed by staff.")
 	env.hideComment(t, tenant, staff, removed.PublicId)
-	if err := env.reportComment(t, tenant, reporter, removed.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+	if err := env.reportComment(t, tenant, reporter, removed.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("reporting a removed comment error = %v, want not_found", err)
 	}
 
-	if err := env.reportComment(t, tenant, reporter, "NOSUCHCMNT01", publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+	if err := env.reportComment(t, tenant, reporter, uuid.NewString(), publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("reporting a comment that never existed error = %v, want not_found", err)
 	}
 
 	// A public id is only unique within its tenant, so the lookup is scoped to
 	// the one the request names. A reader of another tenant is told what a
 	// reader of this one is told about a comment that is not there.
-	if err := env.reportComment(t, other, outsider, own.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
+	if err := env.reportComment(t, other, outsider, own.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("reporting another tenant's comment error = %v, want not_found", err)
 	}
 
@@ -845,16 +845,16 @@ func TestDBReportEpisodeCommentRequiresAReasonAndASession(t *testing.T) {
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
 	reporter := env.PG.SeedEndUser(t, tenant.ID, "RPNREADER", "rpn-reader@example.com", "Reporting Reader")
-	comment := env.mustPostComment(t, tenant, member, episode.PublicID, "A comment to report.")
+	comment := env.mustPostComment(t, tenant, member, episode.ID.String(), "A comment to report.")
 
-	if err := env.reportComment(t, tenant, reporter, comment.PublicId, publirav1.CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if err := env.reportComment(t, tenant, reporter, comment.Id, publirav1.CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("report with no reason error = %v, want invalid_argument", err)
 	}
 
 	_, err := env.commentClient().ReportEpisodeComment(context.Background(), connect.NewRequest(&publirav1.ReportEpisodeCommentRequest{
-		Tenant:          tenantContext(tenant),
-		CommentPublicId: comment.PublicId,
-		Reason:          publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
+		Tenant:    tenantContext(tenant),
+		CommentId: comment.Id,
+		Reason:    publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("report without a session error = %v, want unauthenticated", err)
@@ -896,13 +896,13 @@ func TestDBPostEpisodeCommentFilesAnEngagementEventOnlyOnceItIsPublic(t *testing
 	// A comment that lands in the approval queue was never public, so nothing
 	// about it belongs in the engagement log yet.
 	env.setCommentMode(t, tenant.ID, "approval_required")
-	env.mustPostComment(t, tenant, member, episode.PublicID, "Wait for a moderator.")
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "Wait for a moderator.")
 	if got := env.countCommentEvents(t, tenant.ID); got != 0 {
 		t.Fatalf("comment events after a post awaiting approval = %d, want 0", got)
 	}
 
 	env.setCommentMode(t, tenant.ID, "immediate")
-	published := env.mustPostComment(t, tenant, member, episode.PublicID, "Read this right away.")
+	published := env.mustPostComment(t, tenant, member, episode.ID.String(), "Read this right away.")
 	if got := env.countCommentEvents(t, tenant.ID); got != 1 {
 		t.Fatalf("comment events after an immediately published post = %d, want 1", got)
 	}

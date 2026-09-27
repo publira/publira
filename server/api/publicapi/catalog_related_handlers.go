@@ -214,7 +214,7 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
-	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	subjectID, err := requestRecordID("series_id", req.Msg.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -230,14 +230,13 @@ func (s *apiServer) ListRelatedSeries(
 	seriesID, err := s.queriesFor(ctx).GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		ID:       seriesKey.id,
-		PublicID: seriesKey.publicID,
+		ID:       subjectID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "series", seriesKey.String())
+		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "series_id", subjectID.String())
 	}
 	subject := seriesID.String()
 	var keys relatedSeriesCursorKeys

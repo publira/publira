@@ -48,8 +48,8 @@ func TestDBSavedPlatformPolicyLimitsCommentPosting(t *testing.T) {
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "POLEPISODE", Title: "Policy episode", Status: testutil.EpisodeStatusPublished})
 	env.setCommentMode(t, tenant.ID, "immediate")
 
-	env.mustPostComment(t, tenant, member, episode.PublicID, "The one comment the policy allows.")
-	if _, err := env.postComment(t, tenant, member, episode.PublicID, "And one more."); connect.CodeOf(err) != connect.CodeResourceExhausted {
+	env.mustPostComment(t, tenant, member, episode.ID.String(), "The one comment the policy allows.")
+	if _, err := env.postComment(t, tenant, member, episode.ID.String(), "And one more."); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("the post past the saved limit error = %v, want resource_exhausted", err)
 	}
 }

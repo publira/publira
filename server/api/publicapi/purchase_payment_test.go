@@ -155,8 +155,8 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: uuid.NewString(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}, tenantID.String()))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
@@ -181,8 +181,8 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: uuid.NewString(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}, tenantID.String()))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
@@ -205,7 +205,7 @@ func expectAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, route stri
 
 func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
-		WithArgs(episodeID, nil, tenantID, surface).
+		WithArgs(episodeID, tenantID, surface).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }
@@ -300,9 +300,9 @@ func TestStartEpisodeCheckoutRefusesTheAppOfATenantSellingThroughTheStore(t *tes
 
 	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
 	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
-		EpisodePublicId: "EPISODE001",
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Client:          publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+		EpisodeId: uuid.NewString(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
 	}, tenantID.String()))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))

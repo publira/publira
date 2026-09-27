@@ -1061,19 +1061,15 @@ FROM episode_reads r
     JOIN series s ON s.id = e.series_id
 WHERE r.tenant_id = $1
     AND r.user_id = $2
-    AND (
-        s.id = $3::uuid
-        OR s.public_id = $4::text
-    )
+    AND s.id = $3
 ORDER BY e.order_index ASC,
     e.id ASC
 `
 
 type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	UserID         uuid.UUID      `json:"user_id"`
-	SeriesID       uuid.NullUUID  `json:"series_id"`
-	SeriesPublicID sql.NullString `json:"series_public_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	SeriesID uuid.UUID `json:"series_id"`
 }
 
 // Which episodes of one series this reader has already finished, so the series
@@ -1084,12 +1080,7 @@ type ListMyFinishedEpisodePublicIDsInSeriesParams struct {
 // that matches nothing in it marks nothing. What the query is scoped to is the reader, through the
 // member RLS policy episode_reads carries and the columns repeated here.
 func (q *Queries) ListMyFinishedEpisodePublicIDsInSeries(ctx context.Context, arg ListMyFinishedEpisodePublicIDsInSeriesParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries,
-		arg.TenantID,
-		arg.UserID,
-		arg.SeriesID,
-		arg.SeriesPublicID,
-	)
+	rows, err := q.db.QueryContext(ctx, ListMyFinishedEpisodePublicIDsInSeries, arg.TenantID, arg.UserID, arg.SeriesID)
 	if err != nil {
 		return nil, err
 	}
@@ -1512,10 +1503,7 @@ FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $2
-    AND (
-        e.id = $4::uuid
-        OR e.public_id = $5::text
-    )
+    AND e.id = $4
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1526,7 +1514,7 @@ WHERE s.tenant_id = $2
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $6::text
+            AND es.surface = $5::text
     )
     AND reader_may_open_episode($2, $3, e.id)
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
@@ -1535,12 +1523,11 @@ RETURNING id, tenant_id, user_id, episode_id, read_at
 `
 
 type MarkPublishedEpisodeAsReadParams struct {
-	ID              uuid.UUID      `json:"id"`
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	UserID          uuid.UUID      `json:"user_id"`
-	EpisodeID       uuid.NullUUID  `json:"episode_id"`
-	EpisodePublicID sql.NullString `json:"episode_public_id"`
-	Surface         string         `json:"surface"`
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	Surface   string    `json:"surface"`
 }
 
 // Inserts the first completed read only after checking publication and body
@@ -1555,7 +1542,6 @@ func (q *Queries) MarkPublishedEpisodeAsRead(ctx context.Context, arg MarkPublis
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
-		arg.EpisodePublicID,
 		arg.Surface,
 	)
 	var i EpisodeRead

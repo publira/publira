@@ -41,19 +41,19 @@ func newEpisodeReadFixture(t *testing.T) *episodeReadFixture {
 	return fixture
 }
 
-func (f *episodeReadFixture) mark(publicID string) (*connect.Response[publirav1.MarkEpisodeAsReadResponse], error) {
+func (f *episodeReadFixture) mark(episodeID string) (*connect.Response[publirav1.MarkEpisodeAsReadResponse], error) {
 	return f.client.MarkEpisodeAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkEpisodeAsReadRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
-		EpisodePublicId: publicID,
+		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
+		EpisodeId: episodeID,
 	}, f.tenantID.String()))
 }
 
 // expectMark stands in for a stored read and the analytics event that follows
 // it. The read id is generated in the handler, so it is matched by shape.
-func (f *episodeReadFixture) expectMark(publicID string, episodeID uuid.UUID, readAt time.Time) {
+func (f *episodeReadFixture) expectMark(episodeID uuid.UUID, readAt time.Time) {
 	readID := uuid.Must(uuid.NewV7())
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
-		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, nil, publicID, "web").
+		WithArgs(sqlmock.AnyArg(), f.tenantID, f.userID, episodeID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "episode_id", "read_at"}).
 			AddRow(readID, f.tenantID, f.userID, episodeID, readAt))
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ProjectEpisodeCompleteEvent)).
@@ -64,9 +64,9 @@ func (f *episodeReadFixture) expectMark(publicID string, episodeID uuid.UUID, re
 func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
 	episodeID := uuid.Must(uuid.NewV7())
-	fixture.expectMark("EPISODE001", episodeID, fixture.now)
+	fixture.expectMark(episodeID, fixture.now)
 
-	response, err := fixture.mark("EPISODE001")
+	response, err := fixture.mark(episodeID.String())
 	if err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
@@ -81,18 +81,19 @@ func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing
 
 func TestMarkEpisodeAsReadHidesUnavailableEpisodes(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
+	unavailable := uuid.Must(uuid.NewV7())
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkPublishedEpisodeAsRead)).
-		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, nil, "UNAVAILABLE", "web").
+		WithArgs(sqlmock.AnyArg(), fixture.tenantID, fixture.userID, unavailable, "web").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := fixture.mark("UNAVAILABLE")
+	_, err := fixture.mark(unavailable.String())
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("MarkEpisodeAsRead error = %v, want not_found", err)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
 
-func TestMarkEpisodeAsReadRejectsBlankPublicID(t *testing.T) {
+func TestMarkEpisodeAsReadRejectsABlankEpisodeID(t *testing.T) {
 	fixture := newEpisodeReadFixture(t)
 
 	_, err := fixture.mark("   ")
@@ -109,8 +110,8 @@ func TestMarkEpisodeAsReadRequiresASession(t *testing.T) {
 	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
 
 	_, err := client.MarkEpisodeAsRead(context.Background(), connect.NewRequest(&publirav1.MarkEpisodeAsReadRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: uuid.NewString(),
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("MarkEpisodeAsRead without a bearer error = %v, want unauthenticated", err)

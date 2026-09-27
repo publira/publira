@@ -60,7 +60,7 @@ func (s *apiServer) StartStorePurchase(
 	ctx context.Context,
 	req *connect.Request[publirav1.StartStorePurchaseRequest],
 ) (*connect.Response[publirav1.StartStorePurchaseResponse], error) {
-	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -83,15 +83,14 @@ func (s *apiServer) StartStorePurchase(
 	queries := s.queriesFor(ctx)
 	episode, err := queries.GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
 		TenantID: tenant.ID,
-		ID:       episodeKey.id,
-		PublicID: episodeKey.publicID,
+		ID:       episodeID,
 		Surface:  surface,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode", episodeKey.String())
+		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes are not sold"))

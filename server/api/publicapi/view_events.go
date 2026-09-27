@@ -195,10 +195,10 @@ func (s *apiServer) resolveContentViewTarget(
 	surface string,
 	target *publirav1.ContentViewTarget,
 ) (resolvedContentViewTarget, error) {
-	if target == nil || strings.TrimSpace(target.Id) == "" && strings.TrimSpace(target.PublicId) == "" {
+	if target == nil || strings.TrimSpace(target.Id) == "" {
 		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
 	}
-	key, err := requestRecordKey("target.id", target.Id, target.PublicId)
+	targetID, err := requestRecordID("target.id", target.Id)
 	if err != nil {
 		return resolvedContentViewTarget{}, err
 	}
@@ -209,8 +209,7 @@ func (s *apiServer) resolveContentViewTarget(
 		seriesID, err := queries.GetPublishedSeriesID(ctx, dbmodels.GetPublishedSeriesIDParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			ID:       key.id,
-			PublicID: key.publicID,
+			ID:       targetID,
 		})
 		if err == nil {
 			return resolvedContentViewTarget{seriesID: seriesID}, nil
@@ -223,8 +222,7 @@ func (s *apiServer) resolveContentViewTarget(
 		row, err := queries.GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{
 			TenantID: tenantID,
 			Surface:  surface,
-			ID:       key.id,
-			PublicID: key.publicID,
+			ID:       recordIDKey(targetID),
 		})
 		if err == nil {
 			return resolvedContentViewTarget{

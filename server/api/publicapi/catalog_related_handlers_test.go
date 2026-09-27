@@ -38,7 +38,7 @@ func relatedSeriesIDRows(rows ...scoredID) *sqlmock.Rows {
 
 func expectSubjectSeriesLookup(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
-		WithArgs(tenantID, seriesID, nil, "web").
+		WithArgs(tenantID, seriesID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
 }
 
@@ -240,7 +240,7 @@ func TestCatalogListRelatedSeriesIsNotFoundWithoutAPublishedSubject(t *testing.T
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedSeriesID)).
-		WithArgs(tenantID, subjectID, nil, "web").
+		WithArgs(tenantID, subjectID, "web").
 		WillReturnError(sql.ErrNoRows)
 
 	_, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{

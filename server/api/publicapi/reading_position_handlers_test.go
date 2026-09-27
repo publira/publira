@@ -43,60 +43,67 @@ func newReadingPositionFixture(t *testing.T) *readingPositionFixture {
 	return fixture
 }
 
-func (f *readingPositionFixture) save(publicID string, pageIndex int32) (*connect.Response[publirav1.SaveReadingPositionResponse], error) {
+// The records the requests below name, by the IDs a response gives a client.
+var (
+	episode001ID         = uuid.MustParse("01920000-0000-7000-8000-000000000001")
+	unavailableEpisodeID = uuid.MustParse("01920000-0000-7000-8000-0000000000ff")
+	series001ID          = uuid.MustParse("01920000-0000-7000-8000-000000000101")
+)
+
+func (f *readingPositionFixture) save(episodeID string, pageIndex int32) (*connect.Response[publirav1.SaveReadingPositionResponse], error) {
 	return f.client.SaveReadingPosition(context.Background(), newAuthedPublicRequest(&publirav1.SaveReadingPositionRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
-		EpisodePublicId: publicID,
-		PageIndex:       pageIndex,
+		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
+		EpisodeId: episodeID,
+		PageIndex: pageIndex,
 	}, f.tenantID.String()))
 }
 
-func (f *readingPositionFixture) get(publicID string) (*connect.Response[publirav1.GetMyReadingPositionResponse], error) {
+func (f *readingPositionFixture) get(episodeID string) (*connect.Response[publirav1.GetMyReadingPositionResponse], error) {
 	return f.client.GetMyReadingPosition(context.Background(), newAuthedPublicRequest(&publirav1.GetMyReadingPositionRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
-		EpisodePublicId: publicID,
+		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
+		EpisodeId: episodeID,
 	}, f.tenantID.String()))
 }
 
-func (f *readingPositionFixture) progress(seriesPublicID string) (*connect.Response[publirav1.GetMySeriesProgressResponse], error) {
+func (f *readingPositionFixture) progress(seriesID string) (*connect.Response[publirav1.GetMySeriesProgressResponse], error) {
 	return f.client.GetMySeriesProgress(context.Background(), newAuthedPublicRequest(&publirav1.GetMySeriesProgressRequest{
-		Tenant:         &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
-		SeriesPublicId: seriesPublicID,
+		Tenant:   &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
+		SeriesId: seriesID,
 	}, f.tenantID.String()))
 }
 
 // expectFinishedEpisodes stands in for the finished-episode read every
 // GetMySeriesProgress call makes before it looks for a progress row.
-func (f *readingPositionFixture) expectFinishedEpisodes(seriesPublicID string, publicIDs ...string) {
+func (f *readingPositionFixture) expectFinishedEpisodes(seriesID uuid.UUID, publicIDs ...string) {
 	rows := sqlmock.NewRows([]string{"public_id"})
 	for _, publicID := range publicIDs {
 		rows.AddRow(publicID)
 	}
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyFinishedEpisodePublicIDsInSeries)).
-		WithArgs(f.tenantID, f.userID, nil, seriesPublicID).
+		WithArgs(f.tenantID, f.userID, seriesID).
 		WillReturnRows(rows)
 }
 
 // expectSave stands in for the single statement that gates the episode and
 // writes the position. A rejected page is the same row with the saved columns
 // empty, which is what savedPageIndex nil produces.
-func (f *readingPositionFixture) expectSave(publicID string, pageIndex, episodePageCount int32, savedPageIndex any) {
+func (f *readingPositionFixture) expectSave(episodeID uuid.UUID, pageIndex, episodePageCount int32, savedPageIndex any) {
 	rows := sqlmock.NewRows([]string{"episode_public_id", "episode_page_count", "page_index", "page_count", "updated_at"})
 	if savedPageIndex == nil {
-		rows.AddRow(publicID, episodePageCount, nil, nil, nil)
+		rows.AddRow("EPISODE001", episodePageCount, nil, nil, nil)
 	} else {
-		rows.AddRow(publicID, episodePageCount, savedPageIndex, episodePageCount, f.now)
+		rows.AddRow("EPISODE001", episodePageCount, savedPageIndex, episodePageCount, f.now)
 	}
 	f.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SaveEpisodeReadingPosition)).
-		WithArgs(f.tenantID, nil, publicID, "web", f.userID, pageIndex).
+		WithArgs(f.tenantID, episodeID, "web", f.userID, pageIndex).
 		WillReturnRows(rows)
 }
 
 func TestSaveReadingPositionStoresThePageAndReturnsPrivateResponse(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectSave("EPISODE001", 11, 40, int32(11))
+	fixture.expectSave(episode001ID, 11, 40, int32(11))
 
-	response, err := fixture.save("EPISODE001", 11)
+	response, err := fixture.save(episode001ID.String(), 11)
 	if err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
@@ -118,9 +125,9 @@ func TestSaveReadingPositionStoresThePageAndReturnsPrivateResponse(t *testing.T)
 
 func TestSaveReadingPositionRejectsAPageOutsideTheEpisode(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectSave("EPISODE001", 40, 40, nil)
+	fixture.expectSave(episode001ID, 40, 40, nil)
 
-	_, err := fixture.save("EPISODE001", 40)
+	_, err := fixture.save(episode001ID.String(), 40)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SaveReadingPosition past the last page error = %v, want invalid_argument", err)
 	}
@@ -129,9 +136,9 @@ func TestSaveReadingPositionRejectsAPageOutsideTheEpisode(t *testing.T) {
 
 func TestSaveReadingPositionRejectsAnEpisodeWithNoPages(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectSave("EPISODE001", 0, 0, nil)
+	fixture.expectSave(episode001ID, 0, 0, nil)
 
-	_, err := fixture.save("EPISODE001", 0)
+	_, err := fixture.save(episode001ID.String(), 0)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("SaveReadingPosition on a pageless episode error = %v, want failed_precondition", err)
 	}
@@ -141,17 +148,17 @@ func TestSaveReadingPositionRejectsAnEpisodeWithNoPages(t *testing.T) {
 func TestSaveReadingPositionHidesUnavailableEpisodes(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SaveEpisodeReadingPosition)).
-		WithArgs(fixture.tenantID, nil, "UNAVAILABLE", "web", fixture.userID, int32(3)).
+		WithArgs(fixture.tenantID, unavailableEpisodeID, "web", fixture.userID, int32(3)).
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := fixture.save("UNAVAILABLE", 3)
+	_, err := fixture.save(unavailableEpisodeID.String(), 3)
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SaveReadingPosition error = %v, want not_found", err)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
 
-func TestSaveReadingPositionRejectsBlankPublicID(t *testing.T) {
+func TestSaveReadingPositionRejectsABlankEpisodeID(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 
 	_, err := fixture.save("   ", 1)
@@ -168,9 +175,9 @@ func TestSaveReadingPositionRequiresASession(t *testing.T) {
 	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
 
 	_, err := client.SaveReadingPosition(context.Background(), connect.NewRequest(&publirav1.SaveReadingPositionRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "EPISODE001",
-		PageIndex:       1,
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: episode001ID.String(),
+		PageIndex: 1,
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("SaveReadingPosition without a bearer error = %v, want unauthenticated", err)
@@ -181,11 +188,11 @@ func TestSaveReadingPositionRequiresASession(t *testing.T) {
 func TestGetMyReadingPositionReturnsTheStoredPage(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMyEpisodeReadingPosition)).
-		WithArgs(fixture.tenantID, fixture.userID, nil, "EPISODE001", "web").
+		WithArgs(fixture.tenantID, fixture.userID, episode001ID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"episode_public_id", "page_index", "page_count", "updated_at"}).
 			AddRow("EPISODE001", int32(11), int32(40), fixture.now))
 
-	response, err := fixture.get("EPISODE001")
+	response, err := fixture.get(episode001ID.String())
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
@@ -205,10 +212,10 @@ func TestGetMyReadingPositionReturnsTheStoredPage(t *testing.T) {
 func TestGetMyReadingPositionIsEmptyWithoutOne(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMyEpisodeReadingPosition)).
-		WithArgs(fixture.tenantID, fixture.userID, nil, "EPISODE001", "web").
+		WithArgs(fixture.tenantID, fixture.userID, episode001ID, "web").
 		WillReturnError(sql.ErrNoRows)
 
-	response, err := fixture.get("EPISODE001")
+	response, err := fixture.get(episode001ID.String())
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
@@ -220,15 +227,15 @@ func TestGetMyReadingPositionIsEmptyWithoutOne(t *testing.T) {
 
 func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectFinishedEpisodes("SERIES001", "EPISODE001", "EPISODE002")
+	fixture.expectFinishedEpisodes(series001ID, "EPISODE001", "EPISODE002")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, nil, "SERIES001", "web").
+		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"episode_id", "episode_public_id", "episode_title", "order_index", "price", "reading_period_hours",
 			"status", "scheduled_at", "published_at", "page_index", "page_count", "updated_at", "is_finished",
 		}).AddRow(uuid.Must(uuid.NewV7()), "EPISODE003", "Episode 3", int32(3), int32(0), nil, "published", nil, fixture.now, int32(11), int32(40), fixture.now, false))
 
-	response, err := fixture.progress("SERIES001")
+	response, err := fixture.progress(series001ID.String())
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
@@ -256,12 +263,12 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 
 func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectFinishedEpisodes("SERIES001")
+	fixture.expectFinishedEpisodes(series001ID)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, nil, "SERIES001", "web").
+		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnError(sql.ErrNoRows)
 
-	response, err := fixture.progress("SERIES001")
+	response, err := fixture.progress(series001ID.String())
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
@@ -278,12 +285,12 @@ func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 // finished list is reported even when there is no progress row behind it.
 func TestGetMySeriesProgressReportsFinishedEpisodesWithoutAPosition(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
-	fixture.expectFinishedEpisodes("SERIES001", "EPISODE001")
+	fixture.expectFinishedEpisodes(series001ID, "EPISODE001")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, nil, "SERIES001", "web").
+		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnError(sql.ErrNoRows)
 
-	response, err := fixture.progress("SERIES001")
+	response, err := fixture.progress(series001ID.String())
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
@@ -296,7 +303,7 @@ func TestGetMySeriesProgressReportsFinishedEpisodesWithoutAPosition(t *testing.T
 	assertPublicExpectations(t, fixture.mock)
 }
 
-func TestGetMySeriesProgressRejectsBlankSeriesPublicID(t *testing.T) {
+func TestGetMySeriesProgressRejectsABlankSeriesID(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 
 	_, err := fixture.progress("  ")

@@ -34,7 +34,7 @@ func (s *apiServer) SaveReadingPosition(
 	if err != nil {
 		return nil, err
 	}
-	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -47,12 +47,11 @@ func (s *apiServer) SaveReadingPosition(
 	}
 
 	row, err := s.queriesFor(ctx).SaveEpisodeReadingPosition(ctx, dbmodels.SaveEpisodeReadingPositionParams{
-		TenantID:        tenant.ID,
-		UserID:          user.ID,
-		EpisodeID:       episodeKey.id,
-		EpisodePublicID: episodeKey.publicID,
-		PageIndex:       req.Msg.PageIndex,
-		Surface:         surface,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		EpisodeID: episodeID,
+		PageIndex: req.Msg.PageIndex,
+		Surface:   surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Publication, tenant, and entitlement failures share one response for
@@ -94,7 +93,7 @@ func (s *apiServer) GetMyReadingPosition(
 	if err != nil {
 		return nil, err
 	}
-	episodeKey, err := requestRecordKey("episode_id", req.Msg.EpisodeId, req.Msg.EpisodePublicId)
+	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +106,10 @@ func (s *apiServer) GetMyReadingPosition(
 	}
 
 	row, err := s.queriesFor(ctx).GetMyEpisodeReadingPosition(ctx, dbmodels.GetMyEpisodeReadingPositionParams{
-		TenantID:        tenant.ID,
-		UserID:          user.ID,
-		EpisodeID:       episodeKey.id,
-		EpisodePublicID: episodeKey.publicID,
-		Surface:         surface,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		EpisodeID: episodeID,
+		Surface:   surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return noStorePrivateResponse(&publirav1.GetMyReadingPositionResponse{}), nil
@@ -148,7 +146,7 @@ func (s *apiServer) GetMySeriesProgress(
 	if err != nil {
 		return nil, err
 	}
-	seriesKey, err := requestRecordKey("series_id", req.Msg.SeriesId, req.Msg.SeriesPublicId)
+	seriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -161,10 +159,9 @@ func (s *apiServer) GetMySeriesProgress(
 	}
 
 	finished, err := s.queriesFor(ctx).ListMyFinishedEpisodePublicIDsInSeries(ctx, dbmodels.ListMyFinishedEpisodePublicIDsInSeriesParams{
-		TenantID:       tenant.ID,
-		UserID:         user.ID,
-		SeriesID:       seriesKey.id,
-		SeriesPublicID: seriesKey.publicID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		SeriesID: seriesID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list finished episodes of the series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -172,11 +169,10 @@ func (s *apiServer) GetMySeriesProgress(
 	res := &publirav1.GetMySeriesProgressResponse{FinishedEpisodePublicIds: finished}
 
 	row, err := s.queriesFor(ctx).GetMySeriesReadingProgress(ctx, dbmodels.GetMySeriesReadingProgressParams{
-		TenantID:       tenant.ID,
-		UserID:         user.ID,
-		SeriesID:       seriesKey.id,
-		SeriesPublicID: seriesKey.publicID,
-		Surface:        surface,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		SeriesID: seriesID,
+		Surface:  surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return noStorePrivateResponse(res), nil

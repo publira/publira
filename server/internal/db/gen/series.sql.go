@@ -161,10 +161,7 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
-    AND (
-        s.id = $2::uuid
-        OR s.public_id = $3::text
-    )
+    AND s.id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -172,16 +169,15 @@ WHERE s.tenant_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $4::text
+            AND ss.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetPublishedSeriesAgeRatingParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	ID       uuid.NullUUID  `json:"id"`
-	PublicID sql.NullString `json:"public_id"`
-	Surface  string         `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+	Surface  string    `json:"surface"`
 }
 
 type GetPublishedSeriesAgeRatingRow struct {
@@ -192,12 +188,7 @@ type GetPublishedSeriesAgeRatingRow struct {
 // A currently public series and the rating the tenant's age rule is applied
 // to, for a read that decides access to its episodes.
 func (q *Queries) GetPublishedSeriesAgeRating(ctx context.Context, arg GetPublishedSeriesAgeRatingParams) (GetPublishedSeriesAgeRatingRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedSeriesAgeRating,
-		arg.TenantID,
-		arg.ID,
-		arg.PublicID,
-		arg.Surface,
-	)
+	row := q.db.QueryRowContext(ctx, GetPublishedSeriesAgeRating, arg.TenantID, arg.ID, arg.Surface)
 	var i GetPublishedSeriesAgeRatingRow
 	err := row.Scan(&i.ID, &i.AgeRating)
 	return i, err
@@ -207,10 +198,7 @@ const GetPublishedSeriesID = `-- name: GetPublishedSeriesID :one
 SELECT s.id
 FROM series s
 WHERE s.tenant_id = $1
-    AND (
-        s.id = $2::uuid
-        OR s.public_id = $3::text
-    )
+    AND s.id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -218,28 +206,22 @@ WHERE s.tenant_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $4::text
+            AND ss.surface = $3::text
     )
 LIMIT 1
 `
 
 type GetPublishedSeriesIDParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	ID       uuid.NullUUID  `json:"id"`
-	PublicID sql.NullString `json:"public_id"`
-	Surface  string         `json:"surface"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+	Surface  string    `json:"surface"`
 }
 
 // Resolves a currently public series to its internal ID and nothing else.
 // Shared by every member-facing RPC that acts on a series (follow, rating), so
 // they all treat a foreign, unpublished, or missing series the same way.
 func (q *Queries) GetPublishedSeriesID(ctx context.Context, arg GetPublishedSeriesIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedSeriesID,
-		arg.TenantID,
-		arg.ID,
-		arg.PublicID,
-		arg.Surface,
-	)
+	row := q.db.QueryRowContext(ctx, GetPublishedSeriesID, arg.TenantID, arg.ID, arg.Surface)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
