@@ -4485,11 +4485,13 @@
       "account_settings": "アカウント設定",
       "context": "テナント横断オペレーション",
       "logout": "ログアウト",
+      "name": "プラットフォーム管理画面",
       "navigation_close": "ナビゲーションを閉じる",
       "navigation_open": "ナビゲーションを開く",
       "notifications_none": "通知、未読はありません",
       "notifications_unread": "通知、未読{$count}件",
-      "offline": "オフラインです。接続が戻るのを待っています。"
+      "offline": "オフラインです。接続が戻るのを待っています。",
+      "title": "Publira プラットフォーム管理画面"
     },
     "tenants": {
       "add_member": "メンバーを追加",

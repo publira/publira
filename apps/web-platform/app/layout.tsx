@@ -7,12 +7,15 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PlatformMessagesProvider } from "#components/platform-messages-provider";
+import { getMessages } from "#lib/get-messages";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Publira Platform Console",
-    template: "%s | Publira Platform Console",
-  },
+// Reading the locale cookie here costs no route its static shell: metadata
+// streams in with the `<Message>` below, which every route already defers.
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getMessages();
+  const title = t("platform.shell.title");
+
+  return { title: { default: title, template: `%s | ${title}` } };
 };
 
 /**

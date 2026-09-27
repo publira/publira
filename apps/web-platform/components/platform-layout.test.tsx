@@ -71,7 +71,7 @@ describe("PlatformLayout", () => {
     );
 
     expect(screen.getByText("Publira")).toBeTruthy();
-    expect(screen.getByText("Platform Console")).toBeTruthy();
+    expect(screen.getByText("platform.shell.name")).toBeTruthy();
   });
 
   it("leaves the tenants list inactive while the console is on the form below it", () => {

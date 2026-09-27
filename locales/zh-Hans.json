@@ -4485,11 +4485,13 @@
       "account_settings": "账户设置",
       "context": "跨租户运营",
       "logout": "退出登录",
+      "name": "平台控制台",
       "navigation_close": "关闭导航",
       "navigation_open": "打开导航",
       "notifications_none": "通知，没有未读",
       "notifications_unread": "通知，{$count} 条未读",
-      "offline": "当前处于离线状态，正在等待网络恢复。"
+      "offline": "当前处于离线状态，正在等待网络恢复。",
+      "title": "Publira 平台控制台"
     },
     "tenants": {
       "add_member": "添加成员",

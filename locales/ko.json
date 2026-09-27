@@ -4485,11 +4485,13 @@
       "account_settings": "계정 설정",
       "context": "테넌트 전체 운영",
       "logout": "로그아웃",
+      "name": "플랫폼 콘솔",
       "navigation_close": "내비게이션 닫기",
       "navigation_open": "내비게이션 열기",
       "notifications_none": "알림, 읽지 않음 없음",
       "notifications_unread": "알림, 읽지 않음 {$count}건",
-      "offline": "오프라인 상태입니다. 연결이 복구되기를 기다리고 있습니다."
+      "offline": "오프라인 상태입니다. 연결이 복구되기를 기다리고 있습니다.",
+      "title": "Publira 플랫폼 콘솔"
     },
     "tenants": {
       "add_member": "멤버 추가",
