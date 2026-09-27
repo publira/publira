@@ -148,6 +148,7 @@ describe("catalog-top section loaders", () => {
     });
 
     expect(mockListRankedSeries).toHaveBeenCalledWith("TENANT_001", {
+      ageRating: "all",
       limit: 10,
       locale: "en",
       period: "weekly",

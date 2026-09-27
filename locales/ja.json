@@ -3200,6 +3200,19 @@
       "untitled": "ページ"
     },
     "ranking": {
+      "age_gate": {
+        "add_birth_date": "生年月日を登録する",
+        "guest_description": "このランキングを表示するには年齢の確認が必要です。生年月日を登録したアカウントでログインしてください。",
+        "login": "ログイン",
+        "no_birth_date_description": "このランキングを表示するには年齢の確認が必要です。設定画面で生年月日を登録してください。",
+        "r15_description": "15歳以上であることを確認すると、このランキングを閲覧できます。",
+        "r15_title": "R15 指定作品のランキングです",
+        "r18_description": "18歳以上であることを確認すると、このランキングを閲覧できます。",
+        "r18_title": "R18 指定作品のランキングです",
+        "title": "このランキングには年齢制限があります",
+        "too_young_description": "このランキングはお客様の年齢では閲覧できません。"
+      },
+      "back_to_all_ages": "全年齢のランキングを表示",
       "computed_at": "{$datetime} 更新",
       "description": "いま最も読まれている作品です。",
       "first_page": "ランキングの先頭を表示",
@@ -3207,6 +3220,8 @@
       "list_error": "ランキングを表示できませんでした",
       "list_failed": "ランキングを取得できませんでした。時間をおいて再試行してください。",
       "list_title": "ランキング",
+      "list_title_r15": "R15 ランキング",
+      "list_title_r18": "R18 ランキング",
       "movement_down": "{$count}ランクダウン",
       "movement_new": "初登場",
       "movement_none": "変動なし",
@@ -3216,7 +3231,9 @@
       "period_daily": "デイリー",
       "period_nav": "ランキングの期間",
       "period_weekly": "ウィークリー",
-      "rank_position": "{$rank}位"
+      "rank_position": "{$rank}位",
+      "rating_all": "全年齢",
+      "rating_nav": "ランキングの年齢制限"
     },
     "related": {
       "heading": "こちらもおすすめ",

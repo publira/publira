@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import {
@@ -12,12 +13,24 @@ import {
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { AgeRatingBadge } from "#components/age-rating-badge";
+import {
+  AgeRatingGate,
+  AgeRatingGateActions,
+  AgeRatingGateBack,
+  AgeRatingGateConfirm,
+  AgeRatingGateConfirmation,
+  AgeRatingGateContent,
+  AgeRatingGateDescription,
+  AgeRatingGateHeading,
+  AgeRatingGateTitle,
+} from "#components/age-rating-gate";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import type { EyeCatchVariant } from "#components/eye-catch-picture";
@@ -29,17 +42,33 @@ import {
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { listRankedSeries } from "#lib/catalog";
-import type { RankingPeriodName } from "#lib/catalog";
+import { ageVerificationCovers } from "#lib/age-rating";
+import { resolveAccessToken } from "#lib/api-client";
+import { listRankedSeries, listReaderRankedSeries } from "#lib/catalog";
+import type {
+  RankedSeriesPage,
+  RankingAgeRatingName,
+  RankingPeriodName,
+} from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPageAlternates } from "#lib/page-alternates";
-import { getTenantDisplayTimeZone } from "#lib/tenant";
+import { getReaderProvenAgeRating, readerHasBirthDate } from "#lib/reader-age";
+import {
+  getTenantAgeVerification,
+  getTenantDisplayTimeZone,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { RankingAgeGate } from "./_components/ranking-age-gate";
 import { rankMovement } from "./_lib/rank-movement";
-import { parseRankingSearchParams, rankingHref } from "./_lib/search-params";
+import { rankingAgeRatingsFor } from "./_lib/ranking-age-ratings";
+import {
+  DEFAULT_RANKING_PERIOD,
+  parseRankingSearchParams,
+  rankingHref,
+} from "./_lib/search-params";
 
 const RANKING_PAGE_SIZE = 20;
 
@@ -48,13 +77,31 @@ type RankingPageProps = PageProps<"/[tenant_id]/[locale]/ranking">;
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async (): Promise<Metadata> => {
+/**
+ * A rated chart is its own page rather than a duplicate of the all-ages one,
+ * and what a crawler reads there is the age gate, so it stays out of the index.
+ */
+export const generateMetadata = async ({
+  searchParams,
+}: RankingPageProps): Promise<Metadata> => {
+  const { rating } = parseRankingSearchParams(await searchParams);
   const [t, alternates] = await Promise.all([
     getMessages(),
-    getPageAlternates("/ranking"),
+    getPageAlternates(rankingHref({ period: DEFAULT_RANKING_PERIOD, rating })),
   ]);
 
-  return { alternates, title: t("host.ranking.list_title") };
+  if (rating === "all") {
+    return { alternates, title: t("host.ranking.list_title") };
+  }
+
+  return {
+    alternates,
+    robots: { index: false },
+    title:
+      rating === "r18"
+        ? t("host.ranking.list_title_r18")
+        : t("host.ranking.list_title_r15"),
+  };
 };
 
 /**
@@ -175,39 +222,91 @@ const rankingTabClassName = (isCurrent: boolean): string =>
   );
 
 /**
- * The two charts, as links rather than as a control: which one is shown is
- * part of the address, so a reader can bookmark the weekly chart and a crawler
- * can index both.
+ * The ratings this reader may open. The session is read only where the
+ * tenant's rule covers a rating, since that is the only case it decides.
+ */
+const getReaderRankingAgeRatings = async (
+  tenantId: string
+): Promise<RankingAgeRatingName[]> => {
+  const rule = await getTenantAgeVerification(tenantId);
+  const provenAgeRating =
+    rule === "none" ? undefined : await getReaderProvenAgeRating(tenantId);
+
+  return rankingAgeRatingsFor(rule, provenAgeRating);
+};
+
+/**
+ * The charts, as links rather than as a control: which one is shown is part
+ * of the address, so a reader can bookmark the chart they follow.
+ *
+ * The ratings come first, because each is a chart of its own with both
+ * periods, and they are drawn only where the reader has more than all-ages to
+ * choose from.
  */
 const RankingTabs = async ({
   searchParams,
 }: {
   searchParams: RankingPageProps["searchParams"];
 }) => {
-  const [resolvedSearchParams, locale] = await Promise.all([
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
     searchParams,
+    getTenantId(),
     getLocale(),
   ]);
-  const { period } = parseRankingSearchParams(resolvedSearchParams);
-  const t = await getMessagesFor(locale);
+  const { period, rating } = parseRankingSearchParams(resolvedSearchParams);
+  const [t, ratings] = await Promise.all([
+    getMessagesFor(locale),
+    getReaderRankingAgeRatings(tenantId),
+  ]);
 
   return (
-    <nav aria-label={t("host.ranking.period_nav")} className="flex gap-2">
-      <LocaleLink
-        aria-current={period === "daily" ? "page" : undefined}
-        className={rankingTabClassName(period === "daily")}
-        href={rankingHref("daily")}
-      >
-        {t("host.ranking.period_daily")}
-      </LocaleLink>
-      <LocaleLink
-        aria-current={period === "weekly" ? "page" : undefined}
-        className={rankingTabClassName(period === "weekly")}
-        href={rankingHref("weekly")}
-      >
-        {t("host.ranking.period_weekly")}
-      </LocaleLink>
-    </nav>
+    <div className="flex flex-wrap gap-x-6 gap-y-3">
+      {ratings.length > 1 ? (
+        <nav aria-label={t("host.ranking.rating_nav")} className="flex gap-2">
+          <LocaleLink
+            aria-current={rating === "all" ? "page" : undefined}
+            className={rankingTabClassName(rating === "all")}
+            href={rankingHref({ period, rating: "all" })}
+          >
+            {t("host.ranking.rating_all")}
+          </LocaleLink>
+          {ratings.includes("r15") ? (
+            <LocaleLink
+              aria-current={rating === "r15" ? "page" : undefined}
+              className={rankingTabClassName(rating === "r15")}
+              href={rankingHref({ period, rating: "r15" })}
+            >
+              {t("host.common.age_rating_r15")}
+            </LocaleLink>
+          ) : null}
+          {ratings.includes("r18") ? (
+            <LocaleLink
+              aria-current={rating === "r18" ? "page" : undefined}
+              className={rankingTabClassName(rating === "r18")}
+              href={rankingHref({ period, rating: "r18" })}
+            >
+              {t("host.common.age_rating_r18")}
+            </LocaleLink>
+          ) : null}
+        </nav>
+      ) : null}
+      <nav aria-label={t("host.ranking.period_nav")} className="flex gap-2">
+        <LocaleLink
+          aria-current={period === "daily" ? "page" : undefined}
+          className={rankingTabClassName(period === "daily")}
+          href={rankingHref({ period: "daily", rating })}
+        >
+          {t("host.ranking.period_daily")}
+        </LocaleLink>
+        <LocaleLink
+          aria-current={period === "weekly" ? "page" : undefined}
+          className={rankingTabClassName(period === "weekly")}
+          href={rankingHref({ period: "weekly", rating })}
+        >
+          {t("host.ranking.period_weekly")}
+        </LocaleLink>
+      </nav>
+    </div>
   );
 };
 
@@ -231,22 +330,30 @@ const RankingPagination = ({
   nextToken,
   period,
   previousToken,
+  rating,
 }: {
   nextToken: string;
   period: RankingPeriodName;
   previousToken: string;
+  rating: RankingAgeRatingName;
 }) => (
   <Suspense fallback={<ListPaginationSkeleton />}>
     <RankingPaginationNav>
       <ListPaginationStep
-        href={previousToken ? rankingHref(period, previousToken) : ""}
+        href={
+          previousToken
+            ? rankingHref({ period, rating, token: previousToken })
+            : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="host.common.previous_page" />
         </Suspense>
       </ListPaginationStep>
       <ListPaginationStep
-        href={nextToken ? rankingHref(period, nextToken) : ""}
+        href={
+          nextToken ? rankingHref({ period, rating, token: nextToken }) : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="host.common.next_page" />
@@ -256,28 +363,20 @@ const RankingPagination = ({
   </Suspense>
 );
 
-const RankingList = async ({
-  searchParams,
+/** One page of a chart, or what stands in its place. */
+const RankingChart = async ({
+  locale,
+  period,
+  rating,
+  result,
+  tenantId,
 }: {
-  searchParams: RankingPageProps["searchParams"];
+  locale: Locale;
+  period: RankingPeriodName;
+  rating: RankingAgeRatingName;
+  result: CachedReadResult<RankedSeriesPage>;
+  tenantId: string;
 }) => {
-  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
-    searchParams,
-    getTenantId(),
-    getLocale(),
-  ]);
-  const { period, token } = parseRankingSearchParams(resolvedSearchParams);
-
-  const [result, timeZone] = await Promise.all([
-    listRankedSeries(tenantId, {
-      limit: RANKING_PAGE_SIZE,
-      locale,
-      period,
-      token,
-    }),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
-
   if (!result.ok) {
     return (
       <SectionError>
@@ -323,7 +422,7 @@ const RankingList = async ({
             <p>
               <LocaleLink
                 className="text-sm text-primary underline-offset-4 hover:underline"
-                href={rankingHref(period)}
+                href={rankingHref({ period, rating })}
               >
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                   <Message message="host.ranking.first_page" />
@@ -337,11 +436,14 @@ const RankingList = async ({
             nextToken={nextToken}
             period={period}
             previousToken={previousToken}
+            rating={rating}
           />
         ) : null}
       </div>
     );
   }
+
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
 
   return (
     <div className="grid gap-8">
@@ -412,8 +514,136 @@ const RankingList = async ({
         nextToken={nextToken}
         period={period}
         previousToken={previousToken}
+        rating={rating}
       />
     </div>
+  );
+};
+
+/**
+ * The browser's own confirmation in front of a rated chart, the one a rated
+ * series page asks for. Its way out is the all-ages chart of the same period.
+ */
+const RankingAgeRatingConfirmation = ({
+  period,
+  rating,
+}: {
+  period: RankingPeriodName;
+  rating: RankingAgeRatingName;
+}) => (
+  <AgeRatingGateConfirmation>
+    <AgeRatingGateHeading>
+      <AgeRatingGateTitle>
+        <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-56" />}>
+          {rating === "r18" ? (
+            <Message message="host.ranking.age_gate.r18_title" />
+          ) : (
+            <Message message="host.ranking.age_gate.r15_title" />
+          )}
+        </Suspense>
+      </AgeRatingGateTitle>
+      <AgeRatingGateDescription>
+        <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-72" />}>
+          {rating === "r18" ? (
+            <Message message="host.ranking.age_gate.r18_description" />
+          ) : (
+            <Message message="host.ranking.age_gate.r15_description" />
+          )}
+        </Suspense>
+      </AgeRatingGateDescription>
+    </AgeRatingGateHeading>
+    <AgeRatingGateActions>
+      <AgeRatingGateConfirm />
+      <AgeRatingGateBack href={rankingHref({ period, rating: "all" })}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <Message message="host.ranking.back_to_all_ages" />
+        </Suspense>
+      </AgeRatingGateBack>
+    </AgeRatingGateActions>
+  </AgeRatingGateConfirmation>
+);
+
+/**
+ * The chart the URL names. A rated chart the tenant's rule covers is read with
+ * the reader's session, and a reader the server refuses it to is offered the
+ * way to prove an age instead of an empty list.
+ */
+const RankingList = async ({
+  searchParams,
+}: {
+  searchParams: RankingPageProps["searchParams"];
+}) => {
+  const [resolvedSearchParams, tenantId, locale] = await Promise.all([
+    searchParams,
+    getTenantId(),
+    getLocale(),
+  ]);
+  const { period, rating, token } =
+    parseRankingSearchParams(resolvedSearchParams);
+  const query = {
+    ageRating: rating,
+    limit: RANKING_PAGE_SIZE,
+    locale,
+    period,
+    token,
+  };
+
+  if (rating === "all") {
+    return (
+      <RankingChart
+        locale={locale}
+        period={period}
+        rating={rating}
+        result={await listRankedSeries(tenantId, query)}
+        tenantId={tenantId}
+      />
+    );
+  }
+
+  let result: CachedReadResult<RankedSeriesPage>;
+  const rule = await getTenantAgeVerification(tenantId);
+  if (ageVerificationCovers(rule, rating)) {
+    const accessToken = await resolveAccessToken();
+    const readerResult = await listReaderRankedSeries(
+      tenantId,
+      accessToken,
+      query
+    );
+    if (!readerResult.ok) {
+      result = readerResult;
+    } else if (readerResult.value.access === "age_restricted") {
+      const signedIn = accessToken !== "";
+      return (
+        <RankingAgeGate
+          hasBirthDate={signedIn && (await readerHasBirthDate(tenantId))}
+          period={period}
+          rating={rating}
+          signedIn={signedIn}
+        />
+      );
+    } else {
+      result = { ok: true, value: readerResult.value.page };
+    }
+  } else {
+    result = await listRankedSeries(tenantId, query);
+  }
+
+  return (
+    <AgeRatingGate
+      provenAgeRating={await getReaderProvenAgeRating(tenantId)}
+      rating={rating}
+    >
+      <RankingAgeRatingConfirmation period={period} rating={rating} />
+      <AgeRatingGateContent>
+        <RankingChart
+          locale={locale}
+          period={period}
+          rating={rating}
+          result={result}
+          tenantId={tenantId}
+        />
+      </AgeRatingGateContent>
+    </AgeRatingGate>
   );
 };
 

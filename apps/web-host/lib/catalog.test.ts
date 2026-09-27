@@ -23,6 +23,7 @@ import {
   listPublishedGenres,
   listPublishedSeries,
   listRankedSeries,
+  listReaderRankedSeries,
   listRelatedSeries,
   toEpisodeAccessState,
   toEpisodePurchaseSurface,
@@ -1466,7 +1467,7 @@ describe("catalog.listRankedSeries", () => {
     mockListRankedSeries.mockReset();
   });
 
-  it("Ask for the period the caller named and keep the positions the snapshot recorded", async () => {
+  it("Ask for the period and rating the caller named and keep the positions the snapshot recorded", async () => {
     mockListRankedSeries.mockResolvedValueOnce({
       computedAt: "2026-03-26T21:00:00Z",
       nextToken: "next-token",
@@ -1497,12 +1498,14 @@ describe("catalog.listRankedSeries", () => {
     });
 
     const result = await listRankedSeries("TENANT_001", {
+      ageRating: "all",
       limit: 10,
       locale: "en",
       period: "weekly",
     });
 
     expect(mockListRankedSeries).toHaveBeenCalledWith({
+      ageRating: SeriesAgeRating.ALL,
       limit: 10,
       period: RankingPeriod.WEEKLY,
       surface: ClientSurface.WEB,
@@ -1559,7 +1562,11 @@ describe("catalog.listRankedSeries", () => {
     mockListRankedSeries.mockResolvedValueOnce({});
 
     await expect(
-      listRankedSeries("TENANT_001", { locale: "en", period: "daily" })
+      listRankedSeries("TENANT_001", {
+        ageRating: "all",
+        locale: "en",
+        period: "daily",
+      })
     ).resolves.toEqual({
       ok: true,
       value: {
@@ -1579,7 +1586,105 @@ describe("catalog.listRankedSeries", () => {
     );
 
     await expect(
-      listRankedSeries("TENANT_001", { locale: "en", period: "daily" })
+      listRankedSeries("TENANT_001", {
+        ageRating: "all",
+        locale: "en",
+        period: "daily",
+      })
+    ).resolves.toEqual({
+      message: "Could not connect to the server. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("catalog.listReaderRankedSeries", () => {
+  beforeEach(() => {
+    mockListRankedSeries.mockReset();
+  });
+
+  it("Asks for a rated ranking with the reader's session", async () => {
+    mockListRankedSeries.mockResolvedValueOnce({
+      computedAt: "2026-03-26T21:00:00Z",
+      rankedSeries: [
+        {
+          rank: 1,
+          series: {
+            ageRating: SeriesAgeRating.R18,
+            creators: [],
+            publicId: "SERIES_1",
+            synopsis: "S1",
+            title: "Series 1",
+          },
+        },
+      ],
+    });
+
+    const result = await listReaderRankedSeries("TENANT_001", "SESSION_1", {
+      ageRating: "r18",
+      locale: "en",
+      period: "daily",
+      token: "djF8Zg",
+    });
+
+    expect(mockListRankedSeries).toHaveBeenCalledWith(
+      {
+        ageRating: SeriesAgeRating.R18,
+        limit: 20,
+        period: RankingPeriod.DAILY,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "TENANT_001" },
+        token: "djF8Zg",
+      },
+      { headers: { Authorization: "Bearer SESSION_1" } }
+    );
+    expect(
+      result.ok &&
+        result.value.access === "open" &&
+        result.value.page.rankedSeries.map(({ rank, series }) => [
+          rank,
+          series.publicId,
+          series.ageRating,
+        ])
+    ).toEqual([[1, "SERIES_1", "r18"]]);
+  });
+
+  it("Answers a guest as restricted without asking the server", async () => {
+    await expect(
+      listReaderRankedSeries("TENANT_001", " ", {
+        ageRating: "r15",
+        locale: "en",
+        period: "daily",
+      })
+    ).resolves.toEqual({ ok: true, value: { access: "age_restricted" } });
+    expect(mockListRankedSeries).not.toHaveBeenCalled();
+  });
+
+  it("Reads the server's refusal as the age rule stopping the reader", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("age verification required", Code.PermissionDenied)
+    );
+
+    await expect(
+      listReaderRankedSeries("TENANT_001", "SESSION_1", {
+        ageRating: "r18",
+        locale: "en",
+        period: "weekly",
+      })
+    ).resolves.toEqual({ ok: true, value: { access: "age_restricted" } });
+  });
+
+  it("Returns any other error as a failure value", async () => {
+    mockListRankedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      listReaderRankedSeries("TENANT_001", "SESSION_1", {
+        ageRating: "r18",
+        locale: "en",
+        period: "weekly",
+      })
     ).resolves.toEqual({
       message: "Could not connect to the server. Please try again later.",
       ok: false,

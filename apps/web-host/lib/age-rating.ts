@@ -1,6 +1,8 @@
 import { SeriesAgeRating } from "@publira/api-client/public/types";
 import { plainDateOrNull } from "@publira/utils";
 
+import type { TenantAgeVerification } from "./tenant";
+
 /**
  * Ratings a reader has to confirm before the pages open. `all` and an
  * unspecified rating are not this: they carry no badge and no interstitial.
@@ -45,6 +47,24 @@ export const ageRatingSatisfiedBy = (
     return true;
   }
   return held === "r18";
+};
+
+/**
+ * Whether the tenant's rule makes a reader prove an age for `rating`, as the
+ * server's age gate decides it. A rating the rule does not cover is left to
+ * the browser's own confirmation.
+ */
+export const ageVerificationCovers = (
+  rule: TenantAgeVerification,
+  rating?: RestrictedAgeRating
+): boolean => {
+  if (rating === "r18") {
+    return rule !== "none";
+  }
+  if (rating === "r15") {
+    return rule === "r15_and_r18";
+  }
+  return false;
 };
 
 /** Each rating's own number, so it and the age it demands cannot drift apart. */

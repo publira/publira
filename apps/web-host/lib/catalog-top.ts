@@ -336,6 +336,7 @@ export const getCatalogTopPopularSeries = async (
   "use cache";
 
   const ranking = await listRankedSeries(tenantId, {
+    ageRating: "all",
     limit: maxRanked,
     locale,
     period: "weekly",

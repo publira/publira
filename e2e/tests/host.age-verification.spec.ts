@@ -100,6 +100,77 @@ test.describe("web-host age verification", () => {
     );
   });
 
+  test("a guest is not offered the r18 ranking, and asking for it by URL offers sign-in", async ({
+    page,
+  }) => {
+    await page.goto(
+      `${WEB_HOST_AGE_VERIFICATION_BASE_URL}${hostPath("/ranking")}`
+    );
+
+    const ratings = page.getByRole("navigation", {
+      name: "Ranking age rating",
+    });
+    await expect(ratings.getByRole("link", { name: "R15" })).toBeVisible();
+    await expect(ratings.getByRole("link", { name: "R18" })).toHaveCount(0);
+
+    await page.goto(
+      `${WEB_HOST_AGE_VERIFICATION_BASE_URL}${hostPath("/ranking?rating=r18")}`
+    );
+
+    await expect(
+      page.getByText("This ranking is age-restricted")
+    ).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { exact: true, name: "Sign in" })
+    ).toHaveAttribute("href", /returnTo=%2Franking%3Frating%3Dr18/u);
+  });
+
+  test("a reader who is not old enough is kept out of the r18 ranking", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      AGE_VERIFICATION_MINOR,
+      "/ranking?rating=r18",
+      WEB_HOST_AGE_VERIFICATION_BASE_URL
+    );
+
+    await expect(
+      page.getByText("This ranking is not available for your age.")
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Ranking age rating" })
+        .getByRole("link", { name: "R18" })
+    ).toHaveCount(0);
+  });
+
+  test("a reader old enough for r18 can switch the ranking to it", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      AGE_VERIFICATION_ADULT,
+      "/ranking",
+      WEB_HOST_AGE_VERIFICATION_BASE_URL
+    );
+
+    await page
+      .getByRole("navigation", { name: "Ranking age rating" })
+      .getByRole("link", { name: "R18" })
+      .click();
+
+    await expect(page).toHaveURL(/rating=r18/u);
+    // The tenant has no ranking computed; what matters is that the chart
+    // answered rather than the gate.
+    await expect(
+      page.getByText("No ranking has been computed yet.")
+    ).toBeVisible();
+    await expect(page.getByText("This ranking is age-restricted")).toHaveCount(
+      0
+    );
+  });
+
   test("a reader with no date on file is sent to their settings without confirming the rating, and the body opens once they give one", async ({
     page,
   }) => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ageRatingSatisfiedBy,
+  ageVerificationCovers,
   provenAgeRating,
   toRestrictedAgeRating,
   withRestrictedAgeRating,
@@ -37,6 +38,27 @@ describe("ageRatingSatisfiedBy", () => {
   it("Lets an r18 confirmation cover r15 as well", () => {
     expect(ageRatingSatisfiedBy("r15", "r18")).toBe(true);
     expect(ageRatingSatisfiedBy("r18", "r18")).toBe(true);
+  });
+});
+
+describe("ageVerificationCovers", () => {
+  it("Leaves every rating to the browser when the tenant checks no ages", () => {
+    expect(ageVerificationCovers("none", "r15")).toBe(false);
+    expect(ageVerificationCovers("none", "r18")).toBe(false);
+  });
+
+  it("Covers only r18 under the r18 rule", () => {
+    expect(ageVerificationCovers("r18", "r15")).toBe(false);
+    expect(ageVerificationCovers("r18", "r18")).toBe(true);
+  });
+
+  it("Covers both ratings under the r15-and-r18 rule", () => {
+    expect(ageVerificationCovers("r15_and_r18", "r15")).toBe(true);
+    expect(ageVerificationCovers("r15_and_r18", "r18")).toBe(true);
+  });
+
+  it("Never covers an unrated series", () => {
+    expect(ageVerificationCovers("r15_and_r18")).toBe(false);
   });
 });
 

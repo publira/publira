@@ -3200,6 +3200,19 @@
       "untitled": "页面"
     },
     "ranking": {
+      "age_gate": {
+        "add_birth_date": "登记出生日期",
+        "guest_description": "显示本排行榜前需要核对年龄。请使用已登记出生日期的账户登录。",
+        "login": "登录",
+        "no_birth_date_description": "显示本排行榜前需要核对年龄。请在设置中登记您的出生日期。",
+        "r15_description": "确认已满 15 岁后即可查看本排行榜。",
+        "r15_title": "这是 R15 作品的排行榜",
+        "r18_description": "确认已满 18 岁后即可查看本排行榜。",
+        "r18_title": "这是 R18 作品的排行榜",
+        "title": "本排行榜设有年龄限制",
+        "too_young_description": "本排行榜不适用于您的年龄。"
+      },
+      "back_to_all_ages": "查看全年龄排行榜",
       "computed_at": "更新于 {$datetime}",
       "description": "当前阅读量最高的作品。",
       "first_page": "回到排行榜顶部",
@@ -3207,6 +3220,8 @@
       "list_error": "无法显示排行榜",
       "list_failed": "无法加载排行榜。请稍后再试。",
       "list_title": "排行榜",
+      "list_title_r15": "R15 排行榜",
+      "list_title_r18": "R18 排行榜",
       "movement_down": "下降 {$count} 位",
       "movement_new": "新上榜",
       "movement_none": "排名不变",
@@ -3216,7 +3231,9 @@
       "period_daily": "日榜",
       "period_nav": "排行榜周期",
       "period_weekly": "周榜",
-      "rank_position": "第 {$rank} 名"
+      "rank_position": "第 {$rank} 名",
+      "rating_all": "全年龄",
+      "rating_nav": "排行榜年龄分级"
     },
     "related": {
       "heading": "你可能也喜欢",

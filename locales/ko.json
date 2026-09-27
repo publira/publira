@@ -3200,6 +3200,19 @@
       "untitled": "페이지"
     },
     "ranking": {
+      "age_gate": {
+        "add_birth_date": "생년월일 등록하기",
+        "guest_description": "이 랭킹을 보려면 나이 확인이 필요합니다. 생년월일을 등록한 계정으로 로그인해 주세요.",
+        "login": "로그인",
+        "no_birth_date_description": "이 랭킹을 보려면 나이 확인이 필요합니다. 설정에서 생년월일을 등록해 주세요.",
+        "r15_description": "15세 이상임을 확인하면 이 랭킹을 볼 수 있습니다.",
+        "r15_title": "R15 등급 작품의 랭킹입니다",
+        "r18_description": "18세 이상임을 확인하면 이 랭킹을 볼 수 있습니다.",
+        "r18_title": "R18 등급 작품의 랭킹입니다",
+        "title": "이 랭킹에는 연령 제한이 있습니다",
+        "too_young_description": "이 랭킹은 현재 나이로는 열람할 수 없습니다."
+      },
+      "back_to_all_ages": "전체 이용가 랭킹 보기",
       "computed_at": "{$datetime} 업데이트",
       "description": "지금 가장 많이 읽히는 작품입니다.",
       "first_page": "랭킹의 첫 페이지로 이동",
@@ -3207,6 +3220,8 @@
       "list_error": "랭킹을 표시할 수 없습니다",
       "list_failed": "랭킹을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "list_title": "랭킹",
+      "list_title_r15": "R15 랭킹",
+      "list_title_r18": "R18 랭킹",
       "movement_down": "{$count}단계 하락",
       "movement_new": "신규",
       "movement_none": "변동 없음",
@@ -3216,7 +3231,9 @@
       "period_daily": "일간",
       "period_nav": "랭킹 기간",
       "period_weekly": "주간",
-      "rank_position": "{$rank}위"
+      "rank_position": "{$rank}위",
+      "rating_all": "전체 이용가",
+      "rating_nav": "랭킹 연령 등급"
     },
     "related": {
       "heading": "이런 작품은 어떠세요",
