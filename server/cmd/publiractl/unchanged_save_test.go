@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"testing"
 
 	"github.com/publira/publira/server/internal/testutil"
@@ -71,5 +73,29 @@ func TestRepeatingASetCommandChangesNoRow(t *testing.T) {
 		if got := entries(action); got != want {
 			t.Fatalf("%s entries = %d, want %d", action, got, want)
 		}
+	}
+}
+
+// After a key rotation, saving the same password again is how it gets
+// re-encrypted under the new primary key, so that save still writes.
+func TestRepeatingASecretAfterAKeyRotationReEncryptsIt(t *testing.T) {
+	pg := startPlatformDB(t)
+	setEncryptionKeys(t)
+	smtp := smtpSetArgs(&testutil.SMTPServer{Host: "smtp.example.com", Port: 587}, "--password-stdin")
+	mustSMTPCommand(t, testSecretValue, smtp...)
+
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_KEYS", "k1:"+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))+
+		",k2:"+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{9}, 32)))
+	t.Setenv("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k2")
+	mustSMTPCommand(t, testSecretValue, smtp...)
+
+	if got := countPlatformRows(t, pg, `SELECT revision FROM platform_smtp_config`); got != 2 {
+		t.Fatalf("revision after re-storing under the new key = %d, want 2", got)
+	}
+	if got := countPlatformRows(t, pg, `SELECT count(*) FROM platform_smtp_config WHERE password_encrypted LIKE 'enc:v1:k2:%'`); got != 1 {
+		t.Fatal("the password is not sealed with the new primary key")
+	}
+	if got := storedSMTPPassword(t, pg); got != testSecretValue {
+		t.Fatalf("stored password = %q", got)
 	}
 }

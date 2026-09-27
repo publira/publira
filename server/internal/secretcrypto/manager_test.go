@@ -176,3 +176,43 @@ func TestNewManagerValidation(t *testing.T) {
 		t.Fatalf("err = %v, want ErrUnknownPrimaryKey", err)
 	}
 }
+
+// Only an envelope sealed with the primary key is left alone by a rotation;
+// one sealed with an older key and a value stored in the clear still need
+// re-encrypting.
+func TestManagerEncryptedWithPrimary(t *testing.T) {
+	old, err := NewManager(map[string][]byte{"k1": fixedKey(1)}, "k1")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	sealedWithOld, err := old.EncryptString("secret")
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	rotated, err := NewManager(map[string][]byte{"k1": fixedKey(1), "k2": fixedKey(2)}, "k2")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	sealedWithPrimary, err := rotated.EncryptString("secret")
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{name: "primary key", value: sealedWithPrimary, want: true},
+		{name: "retired key", value: sealedWithOld, want: false},
+		{name: "plaintext", value: "secret", want: false},
+	} {
+		if got := rotated.EncryptedWithPrimary(tc.value); got != tc.want {
+			t.Fatalf("%s: EncryptedWithPrimary = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	var unconfigured *Manager
+	if unconfigured.EncryptedWithPrimary(sealedWithPrimary) {
+		t.Fatal("a nil manager reports an envelope as sealed with its primary key")
+	}
+}

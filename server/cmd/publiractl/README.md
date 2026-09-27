@@ -144,7 +144,7 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one. Saving what is already saved, the password included, changes nothing and files nothing |
+| `smtp set` | `UpdatePlatformEmailSettings` | Replaces every saved setting with the flags given, so a `--reply-to` left out clears the saved one. Saving what is already saved, the password included, changes nothing and files nothing, unless the password is sealed with a key other than the primary one: that save re-encrypts it, which is how a key rotation reaches it |
 | `smtp show` | `GetPlatformEmailSettings` | Prints the saved settings and whether a password is saved, never the password |
 | `smtp test` | `SendPlatformSmtpTestEmail` | Sends the console's test message through the saved settings to `--to`, and exits `1` when the server does not take it |
 
@@ -183,7 +183,7 @@ go run ./server/cmd/publiractl storage test
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `storage set` | `UpdatePlatformStorageSettings` | Replaces every saved setting with the flags given, so a `--public-base-url` left out clears the saved one. Saving what is already saved, the secret access key included, changes nothing and files nothing |
+| `storage set` | `UpdatePlatformStorageSettings` | Replaces every saved setting with the flags given, so a `--public-base-url` left out clears the saved one. Saving what is already saved, the secret access key included, changes nothing and files nothing, unless the key is sealed with a key other than the primary one: that save re-encrypts it, which is how a key rotation reaches it |
 | `storage show` | `GetPlatformStorageSettings` | Prints the saved settings and whether a secret access key is saved, never the key |
 | `storage test` | `TestPlatformStorageConnection` | Puts, gets, lists, and deletes a probe object in the saved store, printing one line per check, and exits `1` when any fails |
 

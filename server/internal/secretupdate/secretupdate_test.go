@@ -2,6 +2,7 @@ package secretupdate
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -60,10 +61,17 @@ func TestKeepsHoldsForTheModesThatLeaveTheStoredSecret(t *testing.T) {
 
 type reversingDecrypter struct{}
 
+// EncryptedWithPrimary treats a value starting with "old:" as sealed with a
+// retired key and one starting with "plain:" as stored in the clear.
+func (reversingDecrypter) EncryptedWithPrimary(value string) bool {
+	return !strings.HasPrefix(value, "old:") && !strings.HasPrefix(value, "plain:")
+}
+
 func (reversingDecrypter) DecryptString(value string) (string, error) {
 	if value == "unreadable" {
 		return "", errors.New("unknown key")
 	}
+	value = strings.TrimPrefix(strings.TrimPrefix(value, "old:"), "plain:")
 	runes := []rune(value)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
@@ -85,6 +93,8 @@ func TestKeepIfSameKeepsOnlyARepeatedSecret(t *testing.T) {
 		{name: "nothing stored", mode: Replace, replacement: "secret", d: reversingDecrypter{}, want: Replace},
 		{name: "no decrypter", mode: Replace, replacement: "secret", stored: "terces", want: Replace},
 		{name: "unreadable stored secret", mode: Replace, replacement: "secret", stored: "unreadable", d: reversingDecrypter{}, want: Replace},
+		{name: "the same secret under a retired key", mode: Replace, replacement: "secret", stored: "old:terces", d: reversingDecrypter{}, want: Replace},
+		{name: "the same secret stored in the clear", mode: Replace, replacement: "secret", stored: "plain:terces", d: reversingDecrypter{}, want: Replace},
 		{name: "clear", mode: Clear, stored: "terces", d: reversingDecrypter{}, want: Clear},
 	}
 	for _, tt := range tests {

@@ -135,6 +135,17 @@ func IsEncryptedEnvelope(value string) bool {
 	return strings.HasPrefix(value, envelopePrefix+separator+envelopeV1+separator)
 }
 
+// EncryptedWithPrimary reports whether value is an envelope sealed with the
+// primary key, so that re-storing its plaintext would write nothing a key
+// rotation still needs rewritten.
+func (m *Manager) EncryptedWithPrimary(value string) bool {
+	if m == nil || !IsEncryptedEnvelope(value) {
+		return false
+	}
+	parts := strings.Split(value, separator)
+	return len(parts) == 5 && parts[2] == m.primaryKeyID
+}
+
 func (m *Manager) KeyIDs() []string {
 	ids := make([]string, 0, len(m.aeadByKeyID))
 	for keyID := range m.aeadByKeyID {

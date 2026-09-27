@@ -169,7 +169,8 @@ func configParams(p SaveParams, current dbmodels.PlatformStorageConfig, encrypto
 	}
 	// The mode is narrowed only after ValidateKeptSecret, which must still see
 	// a replacement stated alongside a new access key id.
-	mode := secretupdate.KeepIfSame(p.SecretMode, strings.TrimSpace(p.SecretAccessKey), existingEncrypted, encryptor)
+	decrypter, _ := encryptor.(secretupdate.Decrypter)
+	mode := secretupdate.KeepIfSame(p.SecretMode, strings.TrimSpace(p.SecretAccessKey), existingEncrypted, decrypter)
 	encrypted, err := storagesettings.EncryptUpdatedSecret(existingEncrypted, mode, p.SecretAccessKey, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformStorageConfigParams{}, secretError(err)

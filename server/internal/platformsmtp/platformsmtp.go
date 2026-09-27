@@ -202,7 +202,8 @@ func storedParams(config dbmodels.PlatformSmtpConfig) dbmodels.UpdatePlatformSMT
 // configParams resolves the password the row ends up holding from the stored
 // ciphertext, which is empty when nothing is saved yet.
 func configParams(p SaveParams, existingPassword string, encryptor emailsettings.SecretManager) (dbmodels.UpdatePlatformSMTPConfigParams, error) {
-	mode := secretupdate.KeepIfSame(p.PasswordMode, p.Password, existingPassword, encryptor)
+	decrypter, _ := encryptor.(secretupdate.Decrypter)
+	mode := secretupdate.KeepIfSame(p.PasswordMode, p.Password, existingPassword, decrypter)
 	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, mode, p.Password, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSMTPConfigParams{}, passwordError(err)
