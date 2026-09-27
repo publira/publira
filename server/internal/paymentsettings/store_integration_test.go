@@ -229,8 +229,8 @@ func TestStoreRejectsPlaintextAtDatabase(t *testing.T) {
 // The migration versions the credential map test steps between: the last one
 // before the fields moved into a map, and the one that moved them.
 const (
-	beforeCredentialFieldsVersion = 20260927014651
-	credentialFieldsVersion       = 20260927143544
+	beforeCredentialFieldsVersion = 20260927150050
+	credentialFieldsVersion       = 20260927220815
 )
 
 // A tenant that saved its Stripe secret key and webhook secret before the
