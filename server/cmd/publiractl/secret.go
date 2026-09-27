@@ -45,6 +45,8 @@ type secret struct {
 	keepable bool
 }
 
+var errNoSecretFile = errors.New("names no file")
+
 // Secret declares --<name>-stdin and --<name>-file, the only flags through
 // which the secret can be given; without either the secret is asked for at a
 // masked prompt. No flag named after the secret itself exists, so
@@ -52,7 +54,15 @@ type secret struct {
 func (f *commandFlags) Secret(name, label string) *secret {
 	s := &secret{name: name, label: label}
 	f.BoolVar(&s.fromStdin, name+"-stdin", false, "read the "+label+" from the whole of stdin")
-	f.StringVar(&s.file, name+"-file", "", "read the "+label+" from the whole of the named `file`")
+	// An empty path is refused rather than read as the flag left out, which
+	// would fall back to the prompt or to the saved secret.
+	f.Func(name+"-file", "read the "+label+" from the whole of the named `file`", func(path string) error {
+		if path == "" {
+			return errNoSecretFile
+		}
+		s.file = path
+		return nil
+	})
 	f.secrets = append(f.secrets, s)
 	return s
 }

@@ -220,3 +220,18 @@ func TestSecretSourcesAllowSeveralFilesButNotBothFlagsOfOneSecret(t *testing.T) 
 		t.Fatalf("error = %v, want both flags of one secret refused", err)
 	}
 }
+
+// An empty path is not the flag left out: an unset variable in
+// --password-file "$PASSWORD_FILE" must not fall back to a prompt or a saved
+// secret.
+func TestSecretFileFlagRefusesAnEmptyPath(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	tg := &testGroup{}
+	code := runGroup(tg.group(), []string{"save", "--host", "example.com", "--password-file="}, pipedConsole("", &stderr), &stdout)
+	if code != 2 || !strings.HasPrefix(stderr.String(), `publiractl: invalid value "" for flag --password-file: names no file`) {
+		t.Fatalf("exit code = %d, stderr = %q; want a usage error naming --password-file", code, stderr.String())
+	}
+	if tg.wrote {
+		t.Fatal("the command ran")
+	}
+}
