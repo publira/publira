@@ -80,7 +80,8 @@ func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
 }
 
 // expectPlatformSettingsWrite expects the whole save: the settings row locked
-// for update, the write over it, and the commit that ends the transaction.
+// for update, the write over it, its audit entry, and the commit that ends the
+// transaction.
 func expectPlatformSettingsWrite(
 	mock sqlmock.Sqlmock,
 	storedRevision int64,
@@ -93,6 +94,7 @@ func expectPlatformSettingsWrite(
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs(timezone, defaultLocale).
 		WillReturnRows(platformConfigRow(timezone, defaultLocale, storedRevision+1, now))
+	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
 }
 
@@ -100,7 +102,6 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	expectPlatformSettingsWrite(mock, 3, "America/Los_Angeles", "ja", now)
-	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		// Surrounding whitespace is normalized away before the value is stored.
@@ -129,7 +130,6 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	expectPlatformSettingsWrite(mock, 1, "America/Los_Angeles", "en", now)
-	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
@@ -323,8 +323,8 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
 		WithArgs("America/Los_Angeles", "en").
 		WillReturnRows(platformConfigRow("America/Los_Angeles", "en", 1, now))
-	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
+	mock.ExpectCommit()
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
@@ -395,5 +395,28 @@ func TestUpdatePlatformSettingsRejectsANegativeRevision(t *testing.T) {
 		t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	// Rejected before the transaction is opened at all.
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// Saving the stored values again writes nothing and files nothing, and answers
+// with the revision the row already has.
+func TestUpdatePlatformSettingsLeavesAnUnchangedRowAlone(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 5, time.Now()))
+	mock.ExpectRollback()
+
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  " Europe/Berlin ",
+		DefaultLocale:    "ja",
+		ExpectedRevision: 5,
+	}))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSettings: %v", err)
+	}
+	if resp.Msg.Settings.Revision != 5 {
+		t.Fatalf("revision = %d, want the stored 5", resp.Msg.Settings.Revision)
+	}
 	assertOperatorHandlerExpectations(t, mock)
 }
