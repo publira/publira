@@ -7,10 +7,7 @@ import {
   toSeedTenantDateTimeLocal,
 } from "./scenarios/admin-publish";
 import { ANNOUNCEMENT_BANNER_ADMIN } from "./scenarios/announcement-banner";
-import {
-  ANNOUNCEMENT_DELIVERY_ADMIN,
-  ANNOUNCEMENT_DELIVERY_TARGET,
-} from "./scenarios/announcement-delivery";
+import { ANNOUNCEMENT_DELIVERY_ADMIN } from "./scenarios/announcement-delivery";
 import { NOTIFICATION_INBOX_ADMIN } from "./scenarios/notification-inbox";
 import { fillLoginForm } from "./session";
 import {
@@ -77,19 +74,6 @@ export const signInAsAnnouncementDeliveryAdmin = async (
   await signInAsAdmin(
     page,
     ANNOUNCEMENT_DELIVERY_ADMIN,
-    nextPath,
-    WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL
-  );
-};
-
-/** Sign in as the tenant admin a targeted announcement names. */
-export const signInAsAnnouncementDeliveryTarget = async (
-  page: Page,
-  nextPath = "/announcements"
-): Promise<void> => {
-  await signInAsAdmin(
-    page,
-    ANNOUNCEMENT_DELIVERY_TARGET,
     nextPath,
     WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL
   );

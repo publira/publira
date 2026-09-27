@@ -49,27 +49,6 @@ type AnnouncementManagerProps = CursorPageHrefs & {
   timeZone: string;
 };
 
-/**
- * Who the announcement went to, worded one branch at a time. Each branch names
- * its key inside the `<Message>` it returns, so the key stays where anything
- * reading this file for the strings the screen uses can see it.
- */
-const AudienceLabel = ({ item }: { item: AnnouncementItem }) => {
-  if (item.audienceType === "all") {
-    return <Message message="admin.announcements.audience_all" />;
-  }
-  if (item.targetUserName) {
-    return (
-      <Message
-        message="admin.announcements.audience_selected_user"
-        values={{ name: item.targetUserName }}
-      />
-    );
-  }
-
-  return <Message message="admin.announcements.audience_selected" />;
-};
-
 const excerpt = (text: string, maxLength: number): string => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
   if (normalized.length <= maxLength) {
@@ -88,8 +67,7 @@ const formatAnnouncementDateTime = (
 
 /**
  * Whether the site is showing this announcement as a banner, and until when.
- * Each branch names its key inside the `<Message>` it returns, the same way the
- * audience does.
+ * Each branch names its key inside the `<Message>` it returns.
  */
 const BannerStateLabel = ({
   announcement,
@@ -231,11 +209,6 @@ const AnnouncementListBody = ({
               <Message message="admin.announcements.columns.body" />
             </Suspense>
           </TableHead>
-          <TableHead className="w-52">
-            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <Message message="admin.announcements.columns.audience" />
-            </Suspense>
-          </TableHead>
           <TableHead className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.columns.banner" />
@@ -261,11 +234,6 @@ const AnnouncementListBody = ({
             <TableCell className="font-medium">{announcement.title}</TableCell>
             <TableCell>{excerpt(announcement.body, 72)}</TableCell>
             <TableCell>
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <AudienceLabel item={announcement} />
-              </Suspense>
-            </TableCell>
-            <TableCell>
               <BannerCell
                 announcement={announcement}
                 locale={locale}
@@ -281,10 +249,6 @@ const AnnouncementListBody = ({
   );
 };
 
-/**
- * One announcement's audience, as its own async component: the label is a
- * string the catalog resolves, and a row rendered inside `.map()` cannot await.
- */
 export const AnnouncementManager = async ({
   listErrorMessage,
   nextHref,

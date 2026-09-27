@@ -5,7 +5,6 @@ import {
   fillField,
   formMessage,
   signInAsAnnouncementDeliveryAdmin,
-  signInAsAnnouncementDeliveryTarget,
 } from "../src/admin";
 import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
 import {
@@ -18,20 +17,13 @@ import {
   ANNOUNCEMENT_DELIVERY_ADMIN,
   ANNOUNCEMENT_DELIVERY_MEMBER,
   ANNOUNCEMENT_DELIVERY_SCENARIO,
-  ANNOUNCEMENT_DELIVERY_TARGET,
+  ANNOUNCEMENT_DELIVERY_STAFF,
   ANNOUNCEMENT_DELIVERY_TENANT,
 } from "../src/scenarios/announcement-delivery";
-import {
-  hostPath,
-  WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL,
-  WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL,
-} from "../src/urls";
+import { hostPath, WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL } from "../src/urls";
 
 const deliveryHostUrl = (pathname: string): string =>
   `${WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL}${hostPath(pathname)}`;
-
-const deliveryAdminUrl = (pathname: string): string =>
-  `${WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL}${pathname}`;
 
 /** This tenant's announcement events the worker has still to drain. */
 const queuedAnnouncementEvents = (): number =>
@@ -85,10 +77,10 @@ const announcementArticle = (page: Page, title: string): Locator =>
 const notificationMention = (page: Page, title: string): Locator =>
   page.getByText(`“${title}”`);
 
-/** Fill in the console form and deliver it to the audience it names. */
+/** Fill in the console form and deliver it to the whole tenant. */
 const deliverAnnouncement = async (
   page: Page,
-  fields: { body: string; targetUserName?: string; title: string }
+  fields: { body: string; title: string }
 ): Promise<void> => {
   await expect(
     page.getByRole("heading", { name: "Create an announcement" })
@@ -97,12 +89,6 @@ const deliverAnnouncement = async (
   const form = announcementFormFields(page);
   await fillField(form.title, fields.title);
   await fillField(form.body, fields.body);
-  if (fields.targetUserName) {
-    await page.getByRole("radio", { name: "Selected users" }).check();
-    await page
-      .getByRole("checkbox", { name: new RegExp(fields.targetUserName, "u") })
-      .check();
-  }
   await page.getByRole("button", { name: "Deliver the announcement" }).click();
   await expect(page).toHaveURL(/\/announcements\/?$/u);
   await expect(
@@ -285,7 +271,7 @@ test.describe("admin announcement delivery", () => {
     expect(notifiedUserPublicIds(title)).toEqual([
       ANNOUNCEMENT_DELIVERY_ADMIN.publicId,
       ANNOUNCEMENT_DELIVERY_MEMBER.publicId,
-      ANNOUNCEMENT_DELIVERY_TARGET.publicId,
+      ANNOUNCEMENT_DELIVERY_STAFF.publicId,
     ]);
 
     // The tenant boundary: another tenant's reader is addressed by none of it.
@@ -296,46 +282,6 @@ test.describe("admin announcement delivery", () => {
         level: 1,
         name: "Notifications",
       })
-    ).toBeVisible();
-    await expect(notificationMention(page, title)).toHaveCount(0);
-  });
-
-  test("a targeted announcement notifies its recipient and nobody else", async ({
-    page,
-  }) => {
-    const title = `E2E targeted ${uniqueSuffix()}`;
-
-    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
-    await deliverAnnouncement(page, {
-      body: `Targeted delivery body ${uniqueSuffix()}`,
-      targetUserName: ANNOUNCEMENT_DELIVERY_TARGET.name,
-      title,
-    });
-
-    await signInAsAnnouncementDeliveryTarget(page, "/");
-    await expectUnreadNotification(
-      page,
-      deliveryAdminUrl("/notifications"),
-      title,
-      1
-    );
-
-    // Every row this announcement wrote, read straight from the database: the
-    // screens below can each speak for one account, and "nobody else" is a
-    // statement about all of them.
-    expect(notifiedUserPublicIds(title)).toEqual([
-      ANNOUNCEMENT_DELIVERY_TARGET.publicId,
-    ]);
-
-    // The reader of the same tenant was not addressed, so the announcement
-    // reaches neither their inbox nor their bell. This is read once rather than
-    // retried: the recipient set above was taken after the event had been
-    // drained, so a row for this reader would already exist, and the inbox
-    // carries nothing from the preceding test — its reads are
-    // `"use cache: private"`, which is never stored across requests.
-    await signInAsAnnouncementDeliveryMember(page, "/notifications");
-    await expect(
-      page.getByRole("button", { name: "Notifications, none unread" })
     ).toBeVisible();
     await expect(notificationMention(page, title)).toHaveCount(0);
   });

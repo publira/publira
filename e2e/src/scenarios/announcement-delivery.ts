@@ -22,11 +22,10 @@ export const ANNOUNCEMENT_DELIVERY_ADMIN = {
 } as const;
 
 /**
- * The recipient a targeted announcement names. A second tenant admin rather
- * than a second reader, because the console's audience picker offers the
- * tenant's staff.
+ * A second tenant admin, so the recipient set of a broadcast covers the
+ * tenant's staff as well as its readers.
  */
-export const ANNOUNCEMENT_DELIVERY_TARGET = {
+export const ANNOUNCEMENT_DELIVERY_STAFF = {
   email: "announce-target@example.com",
   name: "Announce E2E Target",
   password: "adminpass",

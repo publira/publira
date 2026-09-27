@@ -11,12 +11,8 @@
 -- values are hard-coded in e2e/src/scenarios/announcement-delivery.ts.
 --   tenant AncmTNNTAAA1 (announce.localhost / admin.announce.localhost)
 --   admin  AncmADMNAAA1 — posts the announcements
---   admin  AncmTRGTAAA1 — the recipient a targeted announcement names
---   member AncmMMBRAAA1 — a reader, addressed by a broadcast and by nothing else
---
--- The targeted recipient is a second tenant admin rather than a second reader
--- because the console's audience picker offers the tenant's staff: it is fed by
--- ListTenantUsers, which lists the users holding a tenant_user_roles row.
+--   admin  AncmTRGTAAA1 — a second admin, so a broadcast's recipients include staff
+--   member AncmMMBRAAA1 — a reader, addressed by a broadcast
 --
 -- ID band: 018f0f90-0001-7000-8000-0000000000NN.
 

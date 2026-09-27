@@ -1,19 +1,12 @@
-import type {
-  AdminAnnouncement,
-  AdminTenantUser,
-} from "@publira/api-client/admin/types";
+import type { AdminAnnouncement } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
 
 import type {
   ListAnnouncementsResult,
-  ListAnnouncementTargetUsersResult,
   AnnouncementItem,
-  AnnouncementTargetUser,
 } from "../app/[tenant_id]/(protected)/announcements/announcement-types";
 import {
   isUnauthenticatedError,
@@ -30,7 +23,6 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 const audienceTypeAllUsers = 1;
-const audienceTypeSelectedUsers = 2;
 
 const mapErrorMessage = (
   error: unknown,
@@ -41,126 +33,18 @@ const mapErrorMessage = (
 /** The generated `AdminAnnouncement` fields {@link mapAnnouncement} reads (see `series.ts`). */
 type RawAnnouncement = Pick<
   AdminAnnouncement,
-  | "audienceType"
-  | "body"
-  | "createdAt"
-  | "id"
-  | "linkUrl"
-  | "pinned"
-  | "pinnedUntil"
-  | "targetUserName"
-  | "targetUserPublicId"
-  | "title"
+  "body" | "createdAt" | "id" | "linkUrl" | "pinned" | "pinnedUntil" | "title"
 >;
 
 const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
-  audienceType:
-    item.audienceType === audienceTypeSelectedUsers ? "selected" : "all",
   body: item.body,
   createdAt: item.createdAt,
   id: item.id,
   linkUrl: item.linkUrl,
   pinned: item.pinned,
   pinnedUntil: item.pinnedUntil,
-  targetUserName: item.targetUserName,
-  targetUserPublicId: item.targetUserPublicId,
   title: item.title,
 });
-
-/** The generated `AdminTenantUser` fields {@link mapUser} reads (see `series.ts`). */
-type RawAnnouncementTargetUser = Pick<AdminTenantUser, "name" | "publicId">;
-
-const mapUser = (user: RawAnnouncementTargetUser): AnnouncementTargetUser => ({
-  name: user.name,
-  publicId: user.publicId,
-});
-
-/**
- * Every user an announcement can be addressed to.
- *
- * Walks `ListTenantUsers` cursor pages so the create form offers members past
- * the first page too. Sorted by name once the whole set is in hand; sorting a
- * single page would only order the rows that page happened to hold.
- *
- * Deliberately uncached: nothing in this app invalidates a tenant's member
- * list, so a cache tag here would keep a newly added member out of the picker
- * until the entry expired.
- */
-export const listAllAnnouncementTargetUsers = async (
-  tenantId: string,
-  locale: Locale
-): Promise<ListAnnouncementTargetUsersResult> => {
-  const [t, sessionId] = await Promise.all([
-    getMessagesFor(locale),
-    getAccessToken(),
-  ]);
-  if (!sessionId) {
-    return {
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-      requiresSignIn: true,
-      users: [],
-    };
-  }
-
-  try {
-    const users: AnnouncementTargetUser[] = [];
-    const walkStop = await forEachPageWithToken(
-      async (token, limit) => {
-        const response = await apiClient.users.listTenantUsers(
-          {
-            limit,
-            query: "",
-            tenant: { tenantId },
-            token,
-          },
-          withSessionHeaders(sessionId)
-        );
-        return {
-          items: response.users ?? [],
-          nextToken: response.nextToken ?? "",
-        };
-      },
-      (items) => {
-        for (const item of items) {
-          if (item.publicId.trim() !== "") {
-            users.push(mapUser(item));
-          }
-        }
-      }
-    );
-
-    // Match the series pickers: a partial walk must not surface a half-built
-    // option list that operators read as the whole tenant.
-    if (walkStop !== "completed") {
-      return {
-        message: t("admin.announcements.target_users_failed"),
-        ok: false,
-        requiresSignIn: false,
-        users: [],
-      };
-    }
-
-    return {
-      ok: true,
-      users: users.toSorted((a, b) =>
-        a.name.localeCompare(b.name, toIntlLocale(locale))
-      ),
-    };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return {
-      message: mapErrorMessage(
-        error,
-        t("admin.announcements.target_users_failed"),
-        locale
-      ),
-      ok: false,
-      requiresSignIn: isUnauthenticatedError(error),
-      users: [],
-    };
-  }
-};
 
 /**
  * One page of the tenant's announcements, newest first.
@@ -229,8 +113,6 @@ export const createAnnouncement = async (
     title: string;
     body: string;
     linkUrl: string;
-    audienceType: "all" | "selected";
-    targetUserPublicIds: string[];
     pinned: boolean;
     /** RFC 3339 instant, or empty for a banner with no end. */
     pinnedUntil: string;
@@ -250,20 +132,14 @@ export const createAnnouncement = async (
     };
   }
 
-  const audienceTypeEnum =
-    input.audienceType === "selected"
-      ? audienceTypeSelectedUsers
-      : audienceTypeAllUsers;
-
   try {
     const response = await apiClient.announcement.createAnnouncement(
       {
-        audienceType: audienceTypeEnum,
+        audienceType: audienceTypeAllUsers,
         body: input.body,
         linkUrl: input.linkUrl,
         pinned: input.pinned,
         pinnedUntil: input.pinnedUntil,
-        targetUserPublicIds: input.targetUserPublicIds,
         tenant: { tenantId: input.tenantId },
         title: input.title,
       },
