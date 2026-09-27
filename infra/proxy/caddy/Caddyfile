@@ -74,6 +74,8 @@
 			}
 		}
 
+		# An install that runs no web-platform omits this block and the @platform
+		# matcher, and a platform. host then reaches web-host below.
 		handle @platform {
 			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_PLATFORM:app:4100} {
 				import publira_forwarded

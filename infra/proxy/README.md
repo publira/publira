@@ -35,6 +35,8 @@ The hostname decides which Next.js app answers. Matching ignores the port the `H
 
 `\d*` is zero or more digits, so a numbered console host (`admin2.example.com`) is an admin host while `administrator.example.com` is a tenant site.
 
+An install that runs no `web-platform` leaves out the platform row and the `web-platform` upstream, and a `platform.` host then falls to the last row like any other host no tenant holds. The contract allows that; every other row stays as it is.
+
 ### Path rules
 
 | Path                       | Backend                       |

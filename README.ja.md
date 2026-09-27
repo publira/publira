@@ -12,6 +12,10 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 
 リポジトリの構成、ツールチェーン、検証コマンド、Pull Request の規約は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
+## デプロイ
+
+インストールが動かすプロセス、各プロセスが読む環境変数、空のインストールを稼働させる手順は [infra/deploy/README.md](infra/deploy/README.md) にあります。
+
 ## セットアップ
 
 ```bash

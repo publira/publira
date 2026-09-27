@@ -12,6 +12,10 @@ As an OSS project, it values portability, ease of operation, and freedom from ve
 
 The repository layout, the toolchain, the verification commands, and the pull request conventions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Deployment
+
+What an install runs, the environment variables each process reads, and the order an empty install is brought into service in are in [infra/deploy/README.md](infra/deploy/README.md).
+
 ## Setup
 
 ```bash

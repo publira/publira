@@ -1,0 +1,119 @@
+# Deployment
+
+What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice, and nothing here prescribes one.
+
+The images are built from [`infra/docker/`](../docker/README.md), and the reverse proxy is configured from [`infra/proxy/`](../proxy/README.md).
+
+## What an install runs
+
+### Long-lived processes
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `web-host` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-host` | The public tenant site | The reverse proxy, on every host that is not a console host |
+| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on the tenant's console host, `admin.<domain>` unless the tenant names another |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
+| `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
+
+Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
+
+### Services the processes depend on
+
+| Service | Used by | What it holds |
+| --- | --- | --- |
+| A reverse proxy | Browsers and the mobile app | The routing contract in [`infra/proxy/README.md`](../proxy/README.md); the nginx and Caddy examples there are written to be dropped in |
+| PostgreSQL | Every process | Everything the install stores |
+| Valkey, or any Redis-protocol server | `publira server`, `web-host`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
+| An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
+| An SMTP server | `publira worker` | The mail the install sends: reader sign-up, password reset, administrator invitations |
+
+### Commands run by hand
+
+The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `publiractl` and the migrations. An install runs it once per release to apply the migrations (`db migrate`), once to set the install up (`setup`), and whenever an operator changes a platform setting or runs a maintenance job by hand. Nothing has to run it on a timer: the worker schedules every recurring job.
+
+### Optional processes
+
+| Process | Image | What it adds | What else it needs |
+| --- | --- | --- | --- |
+| `email-renderer` | [`infra/docker/node`](../docker/node/Dockerfile) with `APP_NAME=email-renderer` | An HTML part in every mail. Without it the worker sends the same mail as `text/plain` | `PUBLIRA_EMAIL_RENDERER_URL` on the worker |
+| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | The `platform.` host rule and its upstream on the reverse proxy, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
+
+## Environment variables
+
+What the minimal install sets on each process. Every variable not listed here is optional, and the README of the process that reads it says what it tunes: [`publira server` and `publira worker`](../../server/cmd/publira/README.md), [`publiractl`](../../server/cmd/publiractl/README.md), [`web-host`](../../apps/web-host/README.md), and [`web-admin`](../../apps/web-admin/README.md).
+
+### Shared values
+
+Each row is one value, set under the name each process reads it by.
+
+| Value | `web-host` | `web-admin` | `publira server` | `publira worker` | `publiractl` |
+| --- | --- | --- | --- | --- | --- |
+| The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
+| The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
+| The Redis URL | `PNCH_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
+| The `publira_platform` connection | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
+| The AWS credential, when the object store is saved without an access key | — | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | the same | the same |
+
+The secret encryption keys seal the SMTP password, the object store's access key, the Web Push private key, and each tenant's payment and push credentials; a process given other keys cannot read what `publiractl` stored. Their format is in [`server/README.md`](../../server/README.md#secret-encryption-configuration-aes-gcm).
+
+### Per process
+
+| Process | Variable | Value |
+| --- | --- | --- |
+| `web-host`, `web-admin` | `PUBLIRA_GRPC_URL` | The internal listener of `publira server`, such as `http://publira-server:8100` |
+| `web-host`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
+| `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
+| `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
+| `publira server`, `publira worker` | `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-host` and `web-admin`, such as `http://web-host:3000`, where the cache revalidation is sent |
+| `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
+| `publiractl` | `PUBLIRA_DB_URL` | The connection that owns the schema, read by `db migrate` alone |
+
+`PUBLIRA_WEB_PLATFORM_INTERNAL_URL`, `PUBLIRA_PLATFORM_APP_URL`, and `PUBLIRA_EMAIL_RENDERER_URL` are left unset: they name the optional processes. The web images set `PORT`, `HOSTNAME`, and `PNCH_CACHE_APP` themselves.
+
+Every `*_DB_URL` of `publira server` and the worker falls back to a development URL rather than to another variable, so each one is set, with the password its role was given.
+
+## Bringing an install into service
+
+Before the first step, provision the dependency services: a PostgreSQL database with a superuser login, which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the reverse proxy.
+
+1. **Apply the migrations** with the publiractl image of the release being installed:
+
+   ```bash
+   docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
+   ```
+
+2. **Create the roles** the processes connect as, from a checkout of the same release:
+
+   ```bash
+   psql "$PUBLIRA_DB_URL" -f db/seeds/prod.sql
+   ```
+
+   The roles are created with the development passwords, so give each one its own before anything connects:
+
+   ```sql
+   ALTER ROLE publira_public PASSWORD '<password>';
+   ALTER ROLE publira_admin PASSWORD '<password>';
+   ALTER ROLE publira_platform PASSWORD '<password>';
+   ALTER ROLE publira_outbox PASSWORD '<password>';
+   ALTER ROLE publira_ticker PASSWORD '<password>';
+   ALTER ROLE publira_content_stats PASSWORD '<password>';
+   ```
+
+   Moving this step into `publiractl` is [#3127](https://github.com/publira/publira/issues/3127).
+
+3. **Set the install up** with `publiractl setup`, which saves the platform defaults, the object store after a connection test, the SMTP settings, and the tenant, and creates its first administrator. It asks for every value on a terminal; the unattended form, and what each step saves, are in [`publiractl`](../../server/cmd/publiractl/README.md#setup):
+
+   ```bash
+   docker run --rm -it \
+     -e PUBLIRA_PLATFORM_DB_URL \
+     -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
+     publira/publiractl:local setup
+   ```
+
+   Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
+
+4. **Start the four processes** with the variables above. The worker applies River's own tables when it starts.
+
+5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
+
+On every later release, apply that release's migrations with its publiractl image before its processes start.
