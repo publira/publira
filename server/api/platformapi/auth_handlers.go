@@ -28,10 +28,9 @@ import (
 )
 
 const (
-	rolePlatformOperator          = auth.RolePlatformOperator
-	rolePlatformSuperAdmin        = auth.RolePlatformSuperAdmin
-	platformPasswordResetTokenTTL = 24 * time.Hour
-	platformEmailChangeTokenTTL   = 24 * time.Hour
+	rolePlatformOperator        = auth.RolePlatformOperator
+	rolePlatformSuperAdmin      = auth.RolePlatformSuperAdmin
+	platformEmailChangeTokenTTL = 24 * time.Hour
 )
 
 func invalidSessionError() error {
@@ -86,22 +85,32 @@ func (s *platformServer) authenticatePlatformSession(
 	return platformUser, platformUser, resolvedRole, nil
 }
 
-// The three platform console auth mails are enqueued as outbox_events rows in
-// the transaction that writes what they announce, and rendered and delivered by
-// the resident worker. The rows carry no tenant_id: a platform operator belongs
+// The platform console's auth mail travels as outbox_events rows, rendered and
+// delivered by the resident worker: the password reset as a request the worker
+// turns into its mail, the email change mails in the transaction that writes
+// what they announce. The rows carry no tenant_id: a platform operator belongs
 // to no tenant, and publira_platform is BYPASSRLS, so the insert is not subject
 // to the tenant-isolation policy.
 
-func enqueuePlatformPasswordResetEmail(ctx context.Context, queries *dbmodels.Queries, tokenID uuid.UUID, token string) error {
-	payload, err := json.Marshal(outbox.PlatformPasswordResetEmailPayload{
-		TokenID: tokenID.String(),
-		Token:   token,
-	})
+// queuePlatformPasswordResetRequest records a reset asked for in the platform
+// console. It is the handler's only write; the worker looks the address up.
+func queuePlatformPasswordResetRequest(ctx context.Context, queries dbmodels.Querier, email string) error {
+	payload, err := json.Marshal(outbox.PlatformPasswordResetRequestPayload{Email: email})
 	if err != nil {
-		return fmt.Errorf("marshal platform password reset email event: %w", err)
+		return fmt.Errorf("marshal platform password reset request event: %w", err)
 	}
-	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformPasswordResetEmail, payload,
-		"platform_password_reset_email:"+tokenID.String())
+	requestID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             requestID,
+		EventType:      outbox.EventTypePlatformPasswordResetRequest,
+		Payload:        payload,
+		IdempotencyKey: outbox.EventTypePlatformPasswordResetRequest + ":" + requestID.String(),
+		AvailableAt:    time.Now().UTC(),
+	})
+	return err
 }
 
 func enqueuePlatformEmailChangeConfirmationEmail(
@@ -228,66 +237,19 @@ func (s *platformServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
-	// Charged before the address is looked up, so a caller out of allowance is
-	// refused the same way whether or not the address has an account.
 	if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, email); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "rate_limited")
 		return nil, err
 	}
 
-	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", "", "requested")
-			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to get platform user for password reset", err)
+	// Recorded for the worker whether or not the address has an account, so an
+	// unknown address takes as long to answer as a registered one.
+	if err := queuePlatformPasswordResetRequest(ctx, s.queriesFor(ctx), email); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue platform password reset request", err)
 	}
 
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	resetToken := hex.EncodeToString(rawToken)
-	tokenID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin password reset transaction", err, "platform_user_id", platformUser.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
-
-	if err := txq.DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "platform_user_id", platformUser.ID.String())
-	}
-	if _, err := txq.CreatePlatformUserPasswordResetToken(ctx, dbmodels.CreatePlatformUserPasswordResetTokenParams{
-		ID:             tokenID,
-		PlatformUserID: platformUser.ID,
-		TokenHash:      auth.HashToken(resetToken),
-		ExpiresAt:      time.Now().Add(platformPasswordResetTokenTTL),
-	}); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "platform_user_id", platformUser.ID.String())
-	}
-	if err := enqueuePlatformPasswordResetEmail(ctx, txq, tokenID, resetToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "reset_email_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue platform password reset email", err, "platform_user_id", platformUser.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit password reset transaction", err, "platform_user_id", platformUser.ID.String())
-	}
-
-	auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", platformUser.PublicID, "requested")
+	auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", "", "requested")
 	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
 }
 

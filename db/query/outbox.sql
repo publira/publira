@@ -3,8 +3,8 @@
 -- runs the handler, and records done / retry / dead.
 --
 -- Auth-mail payloads carry the raw token the token tables store only
--- as a hash, and the reader requests carry what a stranger typed into a
--- form: the address, and for a sign-up the name, the birth date, and
+-- as a hash, and the *_request events carry what a stranger typed into
+-- a form: the address, and for a sign-up the name, the birth date, and
 -- the password hash of the account it may open. Terminal updates drop
 -- those keys on the event types below so a processed row keeps neither
 -- a usable secret nor the form's contents. Other event types keep
@@ -16,8 +16,10 @@
 -- ran:
 --   admin_email_change_confirmation_email
 --   admin_password_reset_email
+--   admin_password_reset_request
 --   platform_email_change_confirmation_email
 --   platform_password_reset_email
+--   platform_password_reset_request
 --   reader_email_change_confirmation_email
 --   reader_email_verification_email
 --   reader_email_verification_request
@@ -114,8 +116,10 @@ SET
         WHEN event_type IN (
             'admin_email_change_confirmation_email',
             'admin_password_reset_email',
+            'admin_password_reset_request',
             'platform_email_change_confirmation_email',
             'platform_password_reset_email',
+            'platform_password_reset_request',
             'reader_email_change_confirmation_email',
             'reader_email_verification_email',
             'reader_email_verification_request',
@@ -200,8 +204,10 @@ SET
         WHEN event_type IN (
             'admin_email_change_confirmation_email',
             'admin_password_reset_email',
+            'admin_password_reset_request',
             'platform_email_change_confirmation_email',
             'platform_password_reset_email',
+            'platform_password_reset_request',
             'reader_email_change_confirmation_email',
             'reader_email_verification_email',
             'reader_email_verification_request',
@@ -245,8 +251,10 @@ WHERE status = 'processing'
     AND event_type NOT IN (
         'admin_email_change_confirmation_email',
         'admin_password_reset_email',
+        'admin_password_reset_request',
         'platform_email_change_confirmation_email',
         'platform_password_reset_email',
+        'platform_password_reset_request',
         'reader_email_change_confirmation_email',
         'reader_email_verification_email',
         'reader_email_verification_request',
@@ -284,8 +292,10 @@ WHERE status = 'processing'
     AND event_type IN (
         'admin_email_change_confirmation_email',
         'admin_password_reset_email',
+        'admin_password_reset_request',
         'platform_email_change_confirmation_email',
         'platform_password_reset_email',
+        'platform_password_reset_request',
         'reader_email_change_confirmation_email',
         'reader_email_verification_email',
         'reader_email_verification_request',

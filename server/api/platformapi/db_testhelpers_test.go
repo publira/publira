@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -138,6 +139,19 @@ func countOutboxEvents(t *testing.T, pg *testutil.PostgresEnv, eventType string)
 		t.Fatalf("count %s outbox events: %v", eventType, err)
 	}
 	return count
+}
+
+// processPasswordResetRequests does what the worker does with the requests the
+// password reset form records, connected as the worker's own role. The form
+// writes nothing else, so a case that asserts what a reset leads to calls this
+// first.
+func processPasswordResetRequests(t *testing.T, pg *testutil.PostgresEnv) {
+	t.Helper()
+
+	cfg := outbox.EmailHandlerConfig{DB: pg.OpenOutboxDB(t)}
+	pg.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
+		outbox.EventTypePlatformPasswordResetRequest: outbox.NewPlatformPasswordResetRequestHandler(cfg),
+	})
 }
 
 // seedPlatformUserWithoutRole inserts a platform_users row that holds no platform

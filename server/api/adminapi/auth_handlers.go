@@ -26,25 +26,31 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
-const passwordResetTokenTTL = 24 * time.Hour
 const emailChangeTokenTTL = 24 * time.Hour
 
-func enqueueAdminPasswordResetEmail(
-	ctx context.Context,
-	queries *dbmodels.Queries,
-	tenantID, tokenID uuid.UUID,
-	token string,
-) error {
-	payload, err := json.Marshal(outbox.AdminPasswordResetEmailPayload{
+// queueAdminPasswordResetRequest records a reset asked for in the admin console.
+// It is the handler's only write; the worker looks the address up.
+func queueAdminPasswordResetRequest(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUID, email string) error {
+	payload, err := json.Marshal(outbox.AdminPasswordResetRequestPayload{
 		TenantID: tenantID.String(),
-		TokenID:  tokenID.String(),
-		Token:    token,
+		Email:    email,
 	})
 	if err != nil {
-		return fmt.Errorf("marshal admin password reset email event: %w", err)
+		return fmt.Errorf("marshal admin password reset request event: %w", err)
 	}
-	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAdminPasswordResetEmail, payload,
-		"admin_password_reset_email:"+tokenID.String())
+	requestID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate outbox event id: %w", err)
+	}
+	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             requestID,
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      outbox.EventTypeAdminPasswordResetRequest,
+		Payload:        payload,
+		IdempotencyKey: outbox.EventTypeAdminPasswordResetRequest + ":" + requestID.String(),
+		AvailableAt:    time.Now().UTC(),
+	})
+	return err
 }
 
 // enqueueAdminEmailChangeConfirmationEmail queues the mail for one side of an
@@ -233,85 +239,19 @@ func (s *adminServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
-	// Charged before the address is looked up, so a caller out of allowance is
-	// refused the same way whether or not the address has an account.
 	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 
-	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Email:    email,
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "admin_password_reset_request", "success", tenant.PublicID, "", "requested")
-			return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestPasswordResetResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, s.internalDBError(ctx, "failed to get user for password reset", err, "tenant_id", tenant.ID.String())
+	// Recorded for the worker whether or not the address has an account, so an
+	// unknown address takes as long to answer as a registered one.
+	if err := queueAdminPasswordResetRequest(ctx, s.queriesFor(ctx), tenant.ID, email); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		return nil, s.internalDBError(ctx, "failed to enqueue admin password reset request", err, "tenant_id", tenant.ID.String())
 	}
 
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	resetToken := hex.EncodeToString(rawToken)
-	tokenID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
-		return nil, s.internalDBError(ctx, "failed to begin password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-	txq := dbmodels.New(tx)
-
-	// The delete below locks only the rows it finds, so two requests arriving at
-	// once each insert a token and leave two live links behind. Locking the
-	// account row orders them: the second one's statements then run on a
-	// snapshot that already holds the first one's token.
-	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// The account was deleted while this request waited, and the answer
-			// says nothing about that either.
-			auth.AuditEvent(req.Header(), "admin_password_reset_request", "success", tenant.PublicID, user.PublicID, "account_gone")
-			return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestPasswordResetResponse{Requested: true}), nil
-		}
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
-		return nil, s.internalDBError(ctx, "failed to lock the account for a password reset request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	if err := txq.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if _, err := txq.CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
-		ID:        tokenID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(resetToken),
-		ExpiresAt: time.Now().Add(passwordResetTokenTTL),
-	}); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := enqueueAdminPasswordResetEmail(ctx, txq, tenant.ID, tokenID, resetToken); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_enqueue_failed")
-		return nil, s.internalDBError(ctx, "failed to enqueue admin password reset email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
-		return nil, s.internalDBError(ctx, "failed to commit password reset transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
-	}
-
-	auth.AuditEvent(req.Header(), "admin_password_reset_request", "success", tenant.PublicID, user.PublicID, "requested")
+	auth.AuditEvent(req.Header(), "admin_password_reset_request", "success", tenant.PublicID, "", "requested")
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestPasswordResetResponse{Requested: true}), nil
 }
 

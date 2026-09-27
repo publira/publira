@@ -161,11 +161,18 @@ var outboxReadableTables = []string{
 	"platform_webpush_config",
 }
 
+// outboxWritableTables are the platform tables the outbox worker writes: the
+// password reset request handler replaces an operator's reset tokens with the
+// one its mail carries. The insert is exercised by that handler's own tests.
+var outboxWritableTables = []string{
+	"platform_user_password_reset_tokens",
+}
+
 // The outbox worker composes the platform console's own mail, so it keeps the
-// reads those paths need and nothing else. The second half is what makes the
-// list a boundary: it writes none of them, and a platform table added later
-// reaches this role only when someone puts it in the seed.
-func TestOutboxRoleReadsOnlyThePlatformTablesItsMailNeeds(t *testing.T) {
+// reads and writes those paths need and nothing else. The refusals are what make
+// the lists a boundary: a platform table added later reaches this role only when
+// someone puts it in the seed.
+func TestOutboxRoleReachesOnlyThePlatformTablesItsMailNeeds(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -185,8 +192,14 @@ func TestOutboxRoleReadsOnlyThePlatformTablesItsMailNeeds(t *testing.T) {
 		} else {
 			assertRefused(t, ctx, outbox, outboxDBRole, query)
 		}
-		assertRefused(t, ctx, outbox, outboxDBRole, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
-		assertRefused(t, ctx, outbox, outboxDBRole, fmt.Sprintf("DELETE FROM %s", table))
+		if slices.Contains(outboxWritableTables, table) {
+			if _, err := outbox.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s", table)); err != nil {
+				t.Fatalf("delete from %s as the outbox role: %v", table, err)
+			}
+		} else {
+			assertRefused(t, ctx, outbox, outboxDBRole, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
+			assertRefused(t, ctx, outbox, outboxDBRole, fmt.Sprintf("DELETE FROM %s", table))
+		}
 	}
 }
 

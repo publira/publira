@@ -738,8 +738,8 @@ type Querier interface {
 	// runs the handler, and records done / retry / dead.
 	//
 	// Auth-mail payloads carry the raw token the token tables store only
-	// as a hash, and the reader requests carry what a stranger typed into a
-	// form: the address, and for a sign-up the name, the birth date, and
+	// as a hash, and the *_request events carry what a stranger typed into
+	// a form: the address, and for a sign-up the name, the birth date, and
 	// the password hash of the account it may open. Terminal updates drop
 	// those keys on the event types below so a processed row keeps neither
 	// a usable secret nor the form's contents. Other event types keep
@@ -751,8 +751,10 @@ type Querier interface {
 	// ran:
 	//   admin_email_change_confirmation_email
 	//   admin_password_reset_email
+	//   admin_password_reset_request
 	//   platform_email_change_confirmation_email
 	//   platform_password_reset_email
+	//   platform_password_reset_request
 	//   reader_email_change_confirmation_email
 	//   reader_email_verification_email
 	//   reader_email_verification_request
@@ -1776,6 +1778,9 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
+	// Serializes the password reset requests for one operator for the rest of the
+	// transaction, so two of them cannot each leave a live link behind.
+	LockPlatformUserPasswordReset(ctx context.Context, platformUserID uuid.UUID) error
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)

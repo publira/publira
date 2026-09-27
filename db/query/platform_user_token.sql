@@ -73,3 +73,8 @@ WHERE id = $1;
 UPDATE platform_user_email_change_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1;
+
+-- name: LockPlatformUserPasswordReset :exec
+-- Serializes the password reset requests for one operator for the rest of the
+-- transaction, so two of them cannot each leave a live link behind.
+SELECT pg_advisory_xact_lock(hashtextextended('platform_password_reset:' || sqlc.arg('platform_user_id')::uuid::text, 0));

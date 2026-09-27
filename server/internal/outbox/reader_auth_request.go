@@ -29,9 +29,9 @@ const (
 	EventTypeReaderEmailVerificationRequest = "reader_email_verification_request"
 )
 
-// readerAuthLinkTTL is how long a link issued for one of these requests stays
-// valid.
-const readerAuthLinkTTL = 24 * time.Hour
+// authLinkTTL is how long a link issued for one of these requests, or for one of
+// the console password resets, stays valid.
+const authLinkTTL = 24 * time.Hour
 
 // ReaderSignupRequestPayload is a sign-up the form accepted, with everything the
 // account needs if the address turns out to be free. The password arrives as its
@@ -96,7 +96,7 @@ func NewReaderSignupRequestHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return err
 		}
-		cfg.logReaderAuthRequest(ctx, event, outcome)
+		cfg.logAuthRequest(ctx, event, outcome)
 		return nil
 	}
 }
@@ -227,30 +227,39 @@ func NewReaderPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(err)
 		}
 
-		outcome, err := processReaderPasswordReset(ctx, cfg.DB, event, tenantID, payload.Email)
+		outcome, err := processUserPasswordReset(ctx, cfg.DB, event, tenantID, payload.Email,
+			EventTypeReaderPasswordResetEmail, func(token string) any {
+				return ReaderPasswordResetEmailPayload{TenantID: tenantID.String(), TokenID: event.ID.String(), Token: token}
+			},
+		)
 		if err != nil {
 			return err
 		}
-		cfg.logReaderAuthRequest(ctx, event, outcome)
+		cfg.logAuthRequest(ctx, event, outcome)
 		return nil
 	}
 }
 
-func processReaderPasswordReset(
+// processUserPasswordReset issues a reset link to the account in users that an
+// address belongs to. A reader and a tenant administrator share that table and
+// its reset tokens, and differ only in the mail that carries the link.
+func processUserPasswordReset(
 	ctx context.Context,
 	db *sql.DB,
 	event dbmodels.OutboxEvent,
 	tenantID uuid.UUID,
 	email string,
+	mailEventType string,
+	mailPayload func(token string) any,
 ) (string, error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", fmt.Errorf("begin reader password reset transaction: %w", err)
+		return "", fmt.Errorf("begin password reset transaction: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
 
-	user, err := lockReaderByEmail(ctx, queries, tenantID, email)
+	user, err := lockUserByEmail(ctx, queries, tenantID, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "no_account", nil
 	}
@@ -261,7 +270,7 @@ func processReaderPasswordReset(
 	if err := queries.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
 		return "", fmt.Errorf("delete password reset tokens: %w", err)
 	}
-	token, err := newReaderAuthToken()
+	token, err := newAuthToken()
 	if err != nil {
 		return "", err
 	}
@@ -272,14 +281,11 @@ func processReaderPasswordReset(
 		TenantID:  tenantID,
 		UserID:    user.ID,
 		TokenHash: auth.HashToken(token),
-		ExpiresAt: time.Now().Add(readerAuthLinkTTL),
+		ExpiresAt: time.Now().Add(authLinkTTL),
 	}); err != nil {
 		return "", fmt.Errorf("create password reset token: %w", err)
 	}
-	queued, err := queueTenantEvent(ctx, queries, tenantID, EventTypeReaderPasswordResetEmail,
-		ReaderPasswordResetEmailPayload{TenantID: tenantID.String(), TokenID: event.ID.String(), Token: token},
-		EventTypeReaderPasswordResetEmail+":"+event.ID.String(),
-	)
+	queued, err := queueTenantEvent(ctx, queries, tenantID, mailEventType, mailPayload(token), mailEventType+":"+event.ID.String())
 	if err != nil {
 		return "", err
 	}
@@ -287,7 +293,7 @@ func processReaderPasswordReset(
 		return "already_processed", nil
 	}
 	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit reader password reset: %w", err)
+		return "", fmt.Errorf("commit password reset: %w", err)
 	}
 	return "reset_link_issued", nil
 }
@@ -313,7 +319,7 @@ func NewReaderEmailVerificationRequestHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return err
 		}
-		cfg.logReaderAuthRequest(ctx, event, outcome)
+		cfg.logAuthRequest(ctx, event, outcome)
 		return nil
 	}
 }
@@ -332,7 +338,7 @@ func processReaderEmailVerification(
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
 
-	user, err := lockReaderByEmail(ctx, queries, tenantID, email)
+	user, err := lockUserByEmail(ctx, queries, tenantID, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "no_account", nil
 	}
@@ -360,11 +366,11 @@ func processReaderEmailVerification(
 	return "verification_link_issued", nil
 }
 
-// lockReaderByEmail finds the account an address belongs to and locks its row.
+// lockUserByEmail finds the account an address belongs to and locks its row.
 // The token deletes that follow lock only the rows they find, so two requests
 // for one address would each leave a live link behind; the account row is what
 // they have in common, and locking it puts them in order.
-func lockReaderByEmail(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, email string) (dbmodels.User, error) {
+func lockUserByEmail(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, email string) (dbmodels.User, error) {
 	found, err := queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
 		Email:    email,
@@ -393,7 +399,7 @@ func issueReaderEmailVerification(
 	queries *dbmodels.Queries,
 	tenantID, userID, tokenID uuid.UUID,
 ) (bool, error) {
-	token, err := newReaderAuthToken()
+	token, err := newAuthToken()
 	if err != nil {
 		return false, err
 	}
@@ -402,7 +408,7 @@ func issueReaderEmailVerification(
 		TenantID:  tenantID,
 		UserID:    userID,
 		TokenHash: auth.HashToken(token),
-		ExpiresAt: time.Now().Add(readerAuthLinkTTL),
+		ExpiresAt: time.Now().Add(authLinkTTL),
 	}); err != nil {
 		return false, fmt.Errorf("create email verification token: %w", err)
 	}
@@ -412,7 +418,7 @@ func issueReaderEmailVerification(
 	)
 }
 
-func newReaderAuthToken() (string, error) {
+func newAuthToken() (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("generate reader auth token: %w", err)
@@ -430,6 +436,19 @@ func queueTenantEvent(
 	payload any,
 	idempotencyKey string,
 ) (bool, error) {
+	return queueEvent(ctx, queries, uuid.NullUUID{UUID: tenantID, Valid: true}, eventType, payload, idempotencyKey)
+}
+
+// queueEvent is queueTenantEvent for an event that may belong to no tenant, as
+// the platform console's own mail does.
+func queueEvent(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.NullUUID,
+	eventType string,
+	payload any,
+	idempotencyKey string,
+) (bool, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return false, fmt.Errorf("marshal %s event: %w", eventType, err)
@@ -440,7 +459,7 @@ func queueTenantEvent(
 	}
 	_, err = queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
 		ID:             eventID,
-		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		TenantID:       tenantID,
 		EventType:      eventType,
 		Payload:        body,
 		IdempotencyKey: idempotencyKey,
@@ -455,16 +474,15 @@ func queueTenantEvent(
 	return true, nil
 }
 
-// logReaderAuthRequest records which case a request turned out to be. The form
+// logAuthRequest records which case a request turned out to be. The form
 // answered every case alike, so this log is the one place they are told apart.
-func (cfg EmailHandlerConfig) logReaderAuthRequest(ctx context.Context, event dbmodels.OutboxEvent, outcome string) {
+func (cfg EmailHandlerConfig) logAuthRequest(ctx context.Context, event dbmodels.OutboxEvent, outcome string) {
 	if cfg.Logger == nil {
 		return
 	}
-	cfg.Logger.InfoContext(ctx, "processed reader auth request",
-		"event_id", event.ID,
-		"event_type", event.EventType,
-		"tenant_id", event.TenantID.UUID,
-		"outcome", outcome,
-	)
+	attrs := []any{"event_id", event.ID, "event_type", event.EventType, "outcome", outcome}
+	if event.TenantID.Valid {
+		attrs = append(attrs, "tenant_id", event.TenantID.UUID)
+	}
+	cfg.Logger.InfoContext(ctx, "processed auth request", attrs...)
 }

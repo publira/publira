@@ -261,8 +261,8 @@ REVOKE ALL ON daily_rebuild_progress FROM publira_platform, publira_admin, publi
 -- sends goes through the platform relay unless the tenant overrides it. It also
 -- signs every Web Push delivery with the platform's VAPID key pair. So the
 -- tables those paths read are granted back one by one, the way the ticker
--- role's are: reads only, and a platform_ table added later reaches this role
--- only when someone puts it in this list.
+-- role's are, and a platform_ table added later reaches this role only when
+-- someone puts it in this list.
 GRANT SELECT ON
     platform_config,
     platform_smtp_config,
@@ -271,6 +271,11 @@ GRANT SELECT ON
     platform_user_email_change_tokens,
     platform_user_password_reset_tokens
 TO publira_outbox;
+
+-- The platform console's password reset form records the request and answers,
+-- so the worker is what finds the operator and issues the link: it replaces the
+-- operator's unfinished reset tokens with the one its mail carries.
+GRANT INSERT, DELETE ON platform_user_password_reset_tokens TO publira_outbox;
 
 -- River versions its own schema (river_job and the rest) and the worker
 -- applies it with rivermigrate at startup, so that role needs to create tables,

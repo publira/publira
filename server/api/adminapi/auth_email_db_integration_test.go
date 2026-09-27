@@ -41,9 +41,22 @@ func (e *adminDBEnv) pendingOutboxEvents(t *testing.T, eventType string) []dbmod
 	return events
 }
 
-// The RPC no longer sends anything itself: it leaves a token row and the event
-// that will mail its link, in one transaction, and needs no SMTP settings to
-// answer.
+// processPasswordResetRequests does what the worker does with the requests the
+// password reset form records, connected as the worker's own role. The form
+// writes nothing else, so a case that asserts what a reset leads to calls this
+// first.
+func (e *adminDBEnv) processPasswordResetRequests(t *testing.T) {
+	t.Helper()
+
+	cfg := outbox.EmailHandlerConfig{DB: e.PG.OpenOutboxDB(t)}
+	e.PG.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
+		outbox.EventTypeAdminPasswordResetRequest: outbox.NewAdminPasswordResetRequestHandler(cfg),
+	})
+}
+
+// The RPC sends nothing itself and needs no SMTP settings to answer: it records
+// the request, and the worker leaves a token row and the event that will mail
+// its link, in one transaction.
 func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -58,6 +71,11 @@ func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 	if !resp.Msg.Requested {
 		t.Fatal("RequestPasswordReset returned requested = false")
 	}
+	requests := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetRequest)
+	if len(requests) != 1 || requests[0].TenantID.UUID != tenant.Tenant.ID {
+		t.Fatalf("pending admin_password_reset_request events = %+v, want one for tenant %s", requests, tenant.Tenant.ID)
+	}
+	env.processPasswordResetRequests(t)
 
 	events := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetEmail)
 	if len(events) != 1 {
@@ -86,47 +104,6 @@ func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 	}
 	if resetToken.ID.String() != payload.TokenID || resetToken.UserID != tenant.User.ID {
 		t.Fatalf("stored token = %+v, want the row event %s names for user %s", resetToken, payload.TokenID, tenant.User.ID)
-	}
-}
-
-// Reset requests for one console account, arriving at once, still leave one live
-// link. The delete the handler opens with locks only the rows it finds, so
-// without the lock on the account row each request would insert a token and
-// every mailed link would open the same account.
-func TestDBAdminRequestPasswordResetKeepsOneLinkUnderConcurrentRequests(t *testing.T) {
-	env := newAdminDBEnv(t)
-	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	client := env.authClient()
-
-	for range testutil.ConcurrentBursts {
-		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
-			_, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
-				Tenant: tenant.tenantContext(),
-				Email:  tenant.User.Email,
-			}))
-			return err
-		})
-		// Every burst is checked on its own: the next burst would replace the
-		// tokens a race left behind, and the account would look untouched at the
-		// end.
-		live := env.countRows(t, `
-			SELECT count(*) FROM user_password_reset_tokens
-			WHERE user_id = $1 AND completed_at IS NULL
-		`, tenant.User.ID)
-		if live != 1 {
-			t.Fatalf("live password reset tokens = %d, want 1", live)
-		}
-	}
-
-	// The event a superseded request left behind names a token that is gone, and
-	// the worker drops it rather than mailing a dead link, so what the count is
-	// about is the mails that still have a request to announce.
-	if mails := env.countRows(t, `
-		SELECT count(*) FROM outbox_events event
-		JOIN user_password_reset_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
-		WHERE event.event_type = $1
-	`, outbox.EventTypeAdminPasswordResetEmail); mails != 1 {
-		t.Fatalf("password reset mails with a request to announce = %d, want 1", mails)
 	}
 }
 
