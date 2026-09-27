@@ -14,12 +14,12 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -34,23 +34,11 @@ func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
-	if _, err := store.Upsert(ctx, tenantA.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenantA.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert tenant A: %v", err)
 	}
-	if _, err := store.Upsert(ctx, tenantB.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               "sk_test_51TenantBLeakXXXX",
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testOtherWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	if _, err := store.Upsert(ctx, tenantB.ID, stripeSettings("sk_test_51TenantBLeakXXXX", testOtherWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert tenant B: %v", err)
 	}
 
@@ -96,14 +84,10 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
-	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 false,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	disabled := stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret)
+	disabled.Enabled = false
+	if _, err := store.Upsert(ctx, tenant.ID, disabled, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert disabled settings: %v", err)
 	}
 
@@ -149,14 +133,8 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
-	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
 
@@ -244,14 +222,8 @@ func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
-	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
 

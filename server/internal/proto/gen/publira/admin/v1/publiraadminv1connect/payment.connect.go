@@ -34,6 +34,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AdminPaymentSettingsServiceListPaymentProvidersProcedure is the fully-qualified name of the
+	// AdminPaymentSettingsService's ListPaymentProviders RPC.
+	AdminPaymentSettingsServiceListPaymentProvidersProcedure = "/publira.admin.v1.AdminPaymentSettingsService/ListPaymentProviders"
 	// AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure is the fully-qualified name of the
 	// AdminPaymentSettingsService's GetTenantPaymentSettings RPC.
 	AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure = "/publira.admin.v1.AdminPaymentSettingsService/GetTenantPaymentSettings"
@@ -54,6 +57,7 @@ const (
 // AdminPaymentSettingsServiceClient is a client for the
 // publira.admin.v1.AdminPaymentSettingsService service.
 type AdminPaymentSettingsServiceClient interface {
+	ListPaymentProviders(context.Context, *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error)
 	GetTenantPaymentSettings(context.Context, *connect.Request[v1.GetTenantPaymentSettingsRequest]) (*connect.Response[v1.GetTenantPaymentSettingsResponse], error)
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
@@ -73,6 +77,12 @@ func NewAdminPaymentSettingsServiceClient(httpClient connect.HTTPClient, baseURL
 	baseURL = strings.TrimRight(baseURL, "/")
 	adminPaymentSettingsServiceMethods := v1.File_publira_admin_v1_payment_proto.Services().ByName("AdminPaymentSettingsService").Methods()
 	return &adminPaymentSettingsServiceClient{
+		listPaymentProviders: connect.NewClient[v1.ListPaymentProvidersRequest, v1.ListPaymentProvidersResponse](
+			httpClient,
+			baseURL+AdminPaymentSettingsServiceListPaymentProvidersProcedure,
+			connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("ListPaymentProviders")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenantPaymentSettings: connect.NewClient[v1.GetTenantPaymentSettingsRequest, v1.GetTenantPaymentSettingsResponse](
 			httpClient,
 			baseURL+AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure,
@@ -108,11 +118,17 @@ func NewAdminPaymentSettingsServiceClient(httpClient connect.HTTPClient, baseURL
 
 // adminPaymentSettingsServiceClient implements AdminPaymentSettingsServiceClient.
 type adminPaymentSettingsServiceClient struct {
+	listPaymentProviders             *connect.Client[v1.ListPaymentProvidersRequest, v1.ListPaymentProvidersResponse]
 	getTenantPaymentSettings         *connect.Client[v1.GetTenantPaymentSettingsRequest, v1.GetTenantPaymentSettingsResponse]
 	updateTenantPaymentSettings      *connect.Client[v1.UpdateTenantPaymentSettingsRequest, v1.UpdateTenantPaymentSettingsResponse]
 	getTenantStorePaymentSettings    *connect.Client[v1.GetTenantStorePaymentSettingsRequest, v1.GetTenantStorePaymentSettingsResponse]
 	updateTenantStorePaymentSettings *connect.Client[v1.UpdateTenantStorePaymentSettingsRequest, v1.UpdateTenantStorePaymentSettingsResponse]
 	listTenantStoreProducts          *connect.Client[v1.ListTenantStoreProductsRequest, v1.ListTenantStoreProductsResponse]
+}
+
+// ListPaymentProviders calls publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders.
+func (c *adminPaymentSettingsServiceClient) ListPaymentProviders(ctx context.Context, req *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error) {
+	return c.listPaymentProviders.CallUnary(ctx, req)
 }
 
 // GetTenantPaymentSettings calls
@@ -148,6 +164,7 @@ func (c *adminPaymentSettingsServiceClient) ListTenantStoreProducts(ctx context.
 // AdminPaymentSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminPaymentSettingsService service.
 type AdminPaymentSettingsServiceHandler interface {
+	ListPaymentProviders(context.Context, *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error)
 	GetTenantPaymentSettings(context.Context, *connect.Request[v1.GetTenantPaymentSettingsRequest]) (*connect.Response[v1.GetTenantPaymentSettingsResponse], error)
 	UpdateTenantPaymentSettings(context.Context, *connect.Request[v1.UpdateTenantPaymentSettingsRequest]) (*connect.Response[v1.UpdateTenantPaymentSettingsResponse], error)
 	GetTenantStorePaymentSettings(context.Context, *connect.Request[v1.GetTenantStorePaymentSettingsRequest]) (*connect.Response[v1.GetTenantStorePaymentSettingsResponse], error)
@@ -162,6 +179,12 @@ type AdminPaymentSettingsServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAdminPaymentSettingsServiceHandler(svc AdminPaymentSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	adminPaymentSettingsServiceMethods := v1.File_publira_admin_v1_payment_proto.Services().ByName("AdminPaymentSettingsService").Methods()
+	adminPaymentSettingsServiceListPaymentProvidersHandler := connect.NewUnaryHandler(
+		AdminPaymentSettingsServiceListPaymentProvidersProcedure,
+		svc.ListPaymentProviders,
+		connect.WithSchema(adminPaymentSettingsServiceMethods.ByName("ListPaymentProviders")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminPaymentSettingsServiceGetTenantPaymentSettingsHandler := connect.NewUnaryHandler(
 		AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure,
 		svc.GetTenantPaymentSettings,
@@ -194,6 +217,8 @@ func NewAdminPaymentSettingsServiceHandler(svc AdminPaymentSettingsServiceHandle
 	)
 	return "/publira.admin.v1.AdminPaymentSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AdminPaymentSettingsServiceListPaymentProvidersProcedure:
+			adminPaymentSettingsServiceListPaymentProvidersHandler.ServeHTTP(w, r)
 		case AdminPaymentSettingsServiceGetTenantPaymentSettingsProcedure:
 			adminPaymentSettingsServiceGetTenantPaymentSettingsHandler.ServeHTTP(w, r)
 		case AdminPaymentSettingsServiceUpdateTenantPaymentSettingsProcedure:
@@ -212,6 +237,10 @@ func NewAdminPaymentSettingsServiceHandler(svc AdminPaymentSettingsServiceHandle
 
 // UnimplementedAdminPaymentSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminPaymentSettingsServiceHandler struct{}
+
+func (UnimplementedAdminPaymentSettingsServiceHandler) ListPaymentProviders(context.Context, *connect.Request[v1.ListPaymentProvidersRequest]) (*connect.Response[v1.ListPaymentProvidersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders is not implemented"))
+}
 
 func (UnimplementedAdminPaymentSettingsServiceHandler) GetTenantPaymentSettings(context.Context, *connect.Request[v1.GetTenantPaymentSettingsRequest]) (*connect.Response[v1.GetTenantPaymentSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings is not implemented"))

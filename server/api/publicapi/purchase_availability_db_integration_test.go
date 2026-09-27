@@ -13,11 +13,11 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -42,13 +42,7 @@ func newPurchaseSurfaceEnv(t *testing.T) purchaseSurfaceEnv {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default()).Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
 

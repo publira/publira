@@ -934,15 +934,13 @@ type TenantImageVariant struct {
 }
 
 type TenantPaymentConfig struct {
-	TenantID               uuid.UUID      `json:"tenant_id"`
-	Provider               string         `json:"provider"`
-	Enabled                bool           `json:"enabled"`
-	SecretKeyEncrypted     sql.NullString `json:"secret_key_encrypted"`
-	WebhookSecretEncrypted sql.NullString `json:"webhook_secret_encrypted"`
-	SecretKeyHint          sql.NullString `json:"secret_key_hint"`
-	WebhookSecretHint      sql.NullString `json:"webhook_secret_hint"`
-	CreatedAt              time.Time      `json:"created_at"`
-	UpdatedAt              time.Time      `json:"updated_at"`
+	TenantID             uuid.UUID       `json:"tenant_id"`
+	Provider             string          `json:"provider"`
+	Enabled              bool            `json:"enabled"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
+	CredentialHints      json.RawMessage `json:"credential_hints"`
 }
 
 type TenantRatingTotal struct {

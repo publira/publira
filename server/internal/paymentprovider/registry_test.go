@@ -62,6 +62,24 @@ func TestRegistryRefusesAnIDRegisteredTwice(t *testing.T) {
 	NewRegistry(declaredProvider{Declaration{ID: "stripe"}}, declaredProvider{Declaration{ID: "stripe"}})
 }
 
+func TestRegistryRefusesAFieldDeclaredSecretAndPublic(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("NewRegistry accepted a field that is both secret and public")
+		}
+	}()
+	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Secret: true, Public: true}}}})
+}
+
+func TestRegistryRefusesAFieldDeclaredTwice(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("NewRegistry accepted a field declared twice")
+		}
+	}()
+	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Public: true}, {Name: "key", Secret: true}}}})
+}
+
 func TestDeclarationMissingNamesEmptyRequiredFields(t *testing.T) {
 	declaration := Declaration{Fields: []Field{
 		{Name: "secret", Secret: true, Required: true},

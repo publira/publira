@@ -11,6 +11,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -25,26 +26,53 @@ func tenantPaymentRevalidateTags(tenantID string) []string {
 }
 
 func (s *adminServer) paymentStore(ctx context.Context) *paymentsettings.Store {
-	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, s.recorderFor(ctx), s.logger)
+	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, s.paymentProviders, s.recorderFor(ctx), s.logger)
 }
 
 func tenantPaymentSettingsToProto(cfg paymentsettings.PublicConfig) *publiraadminv1.TenantPaymentSettings {
+	fields := make([]*publiraadminv1.PaymentCredentialFieldState, 0, len(cfg.Fields))
+	for _, field := range cfg.Fields {
+		fields = append(fields, &publiraadminv1.PaymentCredentialFieldState{
+			Name:        field.Name,
+			Configured:  field.Configured,
+			Hint:        field.Hint,
+			PublicValue: field.PublicValue,
+		})
+	}
 	return &publiraadminv1.TenantPaymentSettings{
-		Provider:                cfg.Provider,
-		Enabled:                 cfg.Enabled,
-		SecretKeyConfigured:     cfg.SecretKeyConfigured,
-		WebhookSecretConfigured: cfg.WebhookSecretConfigured,
-		SecretKeyHint:           cfg.SecretKeyHint,
-		WebhookSecretHint:       cfg.WebhookSecretHint,
-		Ready:                   cfg.Ready,
+		Provider: cfg.Provider,
+		Enabled:  cfg.Enabled,
+		Fields:   fields,
+		Ready:    cfg.Ready,
+	}
+}
+
+func paymentProviderToProto(provider paymentprovider.Provider) *publiraadminv1.PaymentProvider {
+	declaration := provider.Declaration()
+	fields := make([]*publiraadminv1.PaymentCredentialField, 0, len(declaration.Fields))
+	for _, field := range declaration.Fields {
+		fields = append(fields, &publiraadminv1.PaymentCredentialField{
+			Name:     field.Name,
+			Secret:   field.Secret,
+			Public:   field.Public,
+			Required: field.Required,
+		})
+	}
+	return &publiraadminv1.PaymentProvider{
+		Id:          declaration.ID,
+		DisplayName: declaration.DisplayName,
+		Fields:      fields,
+		WebhookPath: paymentprovider.WebhookPath(declaration.ID),
 	}
 }
 
 func mapPaymentSettingsUpdateError(err error) error {
 	switch {
 	case errors.Is(err, paymentsettings.ErrInvalidProvider),
+		errors.Is(err, paymentsettings.ErrUnknownField),
+		errors.Is(err, paymentsettings.ErrDuplicateField),
 		errors.Is(err, paymentsettings.ErrSecretRequired),
-		errors.Is(err, paymentsettings.ErrSecretsRequired),
+		errors.Is(err, paymentsettings.ErrFieldsRequired),
 		errors.Is(err, secretupdate.ErrInvalidMode):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, paymentsettings.ErrSecretManagerUnavailable):
@@ -52,6 +80,27 @@ func mapPaymentSettingsUpdateError(err error) error {
 	default:
 		return nil
 	}
+}
+
+func (s *adminServer) ListPaymentProviders(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListPaymentProvidersRequest],
+) (*connect.Response[publiraadminv1.ListPaymentProvidersResponse], error) {
+	if _, err := s.tenantByContext(ctx, req.Msg.Tenant); err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	registered := s.paymentProviders.Providers()
+	providers := make([]*publiraadminv1.PaymentProvider, 0, len(registered))
+	for _, provider := range registered {
+		providers = append(providers, paymentProviderToProto(provider))
+	}
+	return connect.NewResponse(&publiraadminv1.ListPaymentProvidersResponse{
+		Providers: providers,
+	}), nil
 }
 
 func (s *adminServer) GetTenantPaymentSettings(
@@ -88,13 +137,18 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		return nil, err
 	}
 
+	fields := make([]paymentsettings.FieldUpdate, 0, len(req.Msg.Fields))
+	for _, field := range req.Msg.Fields {
+		fields = append(fields, paymentsettings.FieldUpdate{
+			Name:  field.Name,
+			Mode:  secretupdate.Mode(field.Mode),
+			Value: field.Value,
+		})
+	}
 	cfg, err := s.paymentStore(ctx).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Provider:                req.Msg.Provider,
-		Enabled:                 req.Msg.Enabled,
-		SecretKey:               req.Msg.SecretKey,
-		SecretKeyUpdateMode:     secretupdate.Mode(req.Msg.SecretKeyUpdateMode),
-		WebhookSecret:           req.Msg.WebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Mode(req.Msg.WebhookSecretUpdateMode),
+		Provider: req.Msg.Provider,
+		Enabled:  req.Msg.Enabled,
+		Fields:   fields,
 	}, paymentsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,

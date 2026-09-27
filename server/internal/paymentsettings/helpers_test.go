@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretcrypto"
 )
 
@@ -61,15 +64,13 @@ func (m *memoryPaymentQueries) UpsertTenantPaymentConfig(_ context.Context, arg 
 	defer m.mu.Unlock()
 	existing := m.byTenant[arg.TenantID]
 	row := dbmodels.TenantPaymentConfig{
-		TenantID:               arg.TenantID,
-		Provider:               arg.Provider,
-		Enabled:                arg.Enabled,
-		SecretKeyEncrypted:     arg.SecretKeyEncrypted,
-		WebhookSecretEncrypted: arg.WebhookSecretEncrypted,
-		SecretKeyHint:          arg.SecretKeyHint,
-		WebhookSecretHint:      arg.WebhookSecretHint,
-		CreatedAt:              existing.CreatedAt,
-		UpdatedAt:              existing.UpdatedAt,
+		TenantID:             arg.TenantID,
+		Provider:             arg.Provider,
+		Enabled:              arg.Enabled,
+		CredentialsEncrypted: arg.CredentialsEncrypted,
+		CredentialHints:      arg.CredentialHints,
+		CreatedAt:            existing.CreatedAt,
+		UpdatedAt:            existing.UpdatedAt,
 	}
 	m.byTenant[arg.TenantID] = row
 	return row, nil
@@ -103,7 +104,45 @@ func newTestStore(t *testing.T, queries PaymentQuerier, audit *memoryAuditQuerie
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(logs, nil))
 	recorder := auditlog.New(audit, logger)
-	return New(queries, testEncryptor(t), recorder, logger)
+	return New(queries, testEncryptor(t), testRegistry(), recorder, logger)
+}
+
+// cardProviderID names a provider that takes the card on the storefront, with
+// a publishable key the browser is given beside its secret key.
+const (
+	cardProviderID     = "card"
+	cardSecretKey      = "secret_key"
+	cardPublishableKey = "publishable_key"
+	cardShopID         = "shop_id"
+)
+
+type declaredProvider struct {
+	declaration paymentprovider.Declaration
+}
+
+func (p declaredProvider) Declaration() paymentprovider.Declaration { return p.declaration }
+
+func (declaredProvider) StartCheckout(context.Context, paymentprovider.Credentials, paymentprovider.CheckoutRequest) (string, error) {
+	return "", nil
+}
+
+func (declaredProvider) ParseNotification([]byte, http.Header, paymentprovider.Credentials) (paymentprovider.Event, error) {
+	return paymentprovider.Ignored{}, nil
+}
+
+func testRegistry() *paymentprovider.Registry {
+	return paymentprovider.NewRegistry(
+		stripe.New(),
+		declaredProvider{paymentprovider.Declaration{
+			ID:          cardProviderID,
+			DisplayName: "Card",
+			Fields: []paymentprovider.Field{
+				{Name: cardSecretKey, Secret: true, Required: true},
+				{Name: cardPublishableKey, Public: true, Required: true},
+				{Name: cardShopID},
+			},
+		}},
+	)
 }
 
 func containsAny(haystack string, needles ...string) bool {

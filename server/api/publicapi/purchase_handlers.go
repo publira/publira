@@ -610,13 +610,13 @@ func paymentsNotConfiguredError() error {
 }
 
 func (s *apiServer) paymentStore(ctx context.Context) *paymentsettings.Store {
-	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, nil, s.logger)
+	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, s.paymentProviders, nil, s.logger)
 }
 
 // loadPaymentProvider answers the tenant's enabled payment provider with its
 // credentials, or failed_precondition when the tenant cannot take payments.
 func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Provider, paymentprovider.Credentials, error) {
-	config, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+	config, credentials, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
 	if err != nil {
 		if paymentsettings.IsUnavailable(err) {
 			s.logger.WarnContext(ctx, "tenant payment settings are unavailable",
@@ -628,19 +628,6 @@ func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID)
 	}
 	provider, ok := s.paymentProviders.Lookup(config.Provider)
 	if !ok {
-		s.logger.WarnContext(ctx, "tenant payment provider is not registered",
-			"tenant_id", tenantID,
-			"provider", config.Provider,
-		)
-		return nil, nil, paymentsNotConfiguredError()
-	}
-	credentials := secrets.Credentials()
-	if missing := provider.Declaration().Missing(credentials); len(missing) > 0 {
-		s.logger.WarnContext(ctx, "tenant payment credentials are incomplete",
-			"tenant_id", tenantID,
-			"provider", config.Provider,
-			"missing_fields", missing,
-		)
 		return nil, nil, paymentsNotConfiguredError()
 	}
 	return provider, credentials, nil

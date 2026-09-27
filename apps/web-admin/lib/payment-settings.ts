@@ -13,7 +13,11 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
-import { PAYMENT_PROVIDER_STRIPE } from "./payment-settings-shared";
+import {
+  PAYMENT_PROVIDER_STRIPE,
+  STRIPE_FIELD_SECRET_KEY,
+  STRIPE_FIELD_WEBHOOK_SECRET,
+} from "./payment-settings-shared";
 import type { TenantPaymentSettings } from "./payment-settings-shared";
 import { getAccessToken } from "./session";
 
@@ -80,30 +84,41 @@ const parseErrorMessage = (
  * The generated `TenantPaymentSettings` fields {@link toTenantPaymentSettings}
  * reads. Naming them against the message type is what makes a proto rename fail
  * here — a restated structural type keeps compiling, and a mapper that copied
- * `secretKey` by accident would keep compiling too.
+ * a value by accident would keep compiling too.
  */
 type RawTenantPaymentSettings = Pick<
   RpcTenantPaymentSettings,
-  | "enabled"
-  | "provider"
-  | "ready"
-  | "secretKeyConfigured"
-  | "secretKeyHint"
-  | "webhookSecretConfigured"
-  | "webhookSecretHint"
+  "enabled" | "fields" | "provider" | "ready"
 >;
+
+type RawFieldState = Pick<
+  RpcTenantPaymentSettings["fields"][number],
+  "configured" | "hint" | "name"
+>;
+
+const findField = (
+  fields: readonly RawFieldState[] | undefined,
+  name: string
+): RawFieldState | undefined => fields?.find((field) => field.name === name);
 
 const toTenantPaymentSettings = (
   settings?: RawTenantPaymentSettings
-): TenantPaymentSettings => ({
-  enabled: Boolean(settings?.enabled),
-  provider: settings?.provider?.trim() || PAYMENT_PROVIDER_STRIPE,
-  ready: Boolean(settings?.ready),
-  secretKeyConfigured: Boolean(settings?.secretKeyConfigured),
-  secretKeyHint: settings?.secretKeyHint ?? "",
-  webhookSecretConfigured: Boolean(settings?.webhookSecretConfigured),
-  webhookSecretHint: settings?.webhookSecretHint ?? "",
-});
+): TenantPaymentSettings => {
+  const secretKey = findField(settings?.fields, STRIPE_FIELD_SECRET_KEY);
+  const webhookSecret = findField(
+    settings?.fields,
+    STRIPE_FIELD_WEBHOOK_SECRET
+  );
+  return {
+    enabled: Boolean(settings?.enabled),
+    provider: settings?.provider?.trim() || PAYMENT_PROVIDER_STRIPE,
+    ready: Boolean(settings?.ready),
+    secretKeyConfigured: Boolean(secretKey?.configured),
+    secretKeyHint: secretKey?.hint ?? "",
+    webhookSecretConfigured: Boolean(webhookSecret?.configured),
+    webhookSecretHint: webhookSecret?.hint ?? "",
+  };
+};
 
 const getTenantPaymentSettingsForSession = async (
   tenantId: string,
@@ -174,12 +189,20 @@ export const updateTenantPaymentSettings = async (
       await apiClient.paymentSettings.updateTenantPaymentSettings(
         {
           enabled: input.enabled,
+          fields: [
+            {
+              mode: input.secretKeyUpdateMode,
+              name: STRIPE_FIELD_SECRET_KEY,
+              value: input.secretKey,
+            },
+            {
+              mode: input.webhookSecretUpdateMode,
+              name: STRIPE_FIELD_WEBHOOK_SECRET,
+              value: input.webhookSecret,
+            },
+          ],
           provider: PAYMENT_PROVIDER_STRIPE,
-          secretKey: input.secretKey,
-          secretKeyUpdateMode: input.secretKeyUpdateMode,
           tenant: { tenantId: normalizedTenantId },
-          webhookSecret: input.webhookSecret,
-          webhookSecretUpdateMode: input.webhookSecretUpdateMode,
         },
         withSessionHeaders(sessionId)
       );

@@ -9,11 +9,11 @@ import (
 	"time"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -55,14 +55,8 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, nil, slog.Default())
-	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
-		Enabled:                 true,
-		SecretKey:               testCheckoutSecretKey,
-		SecretKeyUpdateMode:     secretupdate.Replace,
-		WebhookSecret:           testCheckoutWebhookSecret,
-		WebhookSecretUpdateMode: secretupdate.Replace,
-	}, paymentsettings.AuditMeta{}); err != nil {
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
 

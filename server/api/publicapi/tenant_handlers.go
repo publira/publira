@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -165,15 +164,13 @@ func (s *apiServer) publishedLegalPages(ctx context.Context, queries Querier, te
 // exposes whether Checkout can be offered; plaintext credentials remain inside
 // paymentsettings while it verifies that the enabled settings can be decrypted.
 func (s *apiServer) tenantAcceptsPayments(ctx context.Context, tenantID uuid.UUID) bool {
-	_, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
-	if err != nil {
-		if paymentsettings.IsUnavailable(err) {
-			return false
+	if _, _, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID); err != nil {
+		if !paymentsettings.IsUnavailable(err) {
+			s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
 		}
-		s.logger.WarnContext(ctx, "could not determine tenant payment availability", "tenant_id", tenantID, "error", err)
 		return false
 	}
-	return strings.TrimSpace(secrets.SecretKey) != "" && strings.TrimSpace(secrets.WebhookSecret) != ""
+	return true
 }
 
 // tenantAcceptsStorePayments answers which stores the tenant's app can charge

@@ -83,7 +83,7 @@ Paid episodes are sold as a one-time payment through Stripe Checkout. The URL th
 
 Starting Checkout and verifying the webhook both use the enabled configuration in `tenant_payment_config`; without a usable one neither runs, and web-host turns the resulting `FailedPrecondition` into a 503. After a completed or cancelled purchase the reader returns to the episode URL on the tenant's `domain`.
 
-Tenant administrators register the Stripe secret key and the webhook signing secret through `AdminPaymentSettingsService`. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
+Tenant administrators choose a provider from `ListPaymentProviders` and store the credential fields it declares through `AdminPaymentSettingsService` — for Stripe, the secret key and the webhook signing secret. Choosing another provider clears the fields stored for the previous one. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
 
 The same service stores the App Store Connect API key (issuer ID, key ID, and the `.p8` private key) and the Google Play service account's JSON key, in `tenant_app_store_config` and `tenant_google_play_config`, and the tenant's app purchase route (`tenant_config.app_purchase_route`): `external_checkout`, the Stripe Checkout above, or `store`, the store's in-app purchase. The app each store sells in is the one the tenant's mobile app association names. `TenantService.GetTenant` answers the route, and while it is `store`, `StartEpisodeCheckout` refuses `CLIENT_MOBILE` with `FailedPrecondition`.
 

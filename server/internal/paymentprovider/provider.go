@@ -28,7 +28,7 @@ type Field struct {
 	// Secret fields are stored encrypted and never shown back in full.
 	Secret bool
 	// Public fields are handed to the reader's browser, as a publishable key
-	// is.
+	// is, so no field is both secret and public.
 	Public bool
 	// Required fields must be stored before the provider can take payments.
 	Required bool
@@ -58,6 +58,22 @@ func (c Credentials) GoString() string {
 
 func (Credentials) LogValue() slog.Value {
 	return slog.StringValue("redacted")
+}
+
+// Field answers the field of d named name.
+func (d Declaration) Field(name string) (Field, bool) {
+	for _, field := range d.Fields {
+		if field.Name == name {
+			return field, true
+		}
+	}
+	return Field{}, false
+}
+
+// WebhookPath answers the path on a tenant's storefront that receives the
+// notifications of the provider id names. apps/web-host serves it.
+func WebhookPath(id string) string {
+	return "/api/v1/webhook/payment/" + id
 }
 
 // Missing names the required fields of d that have no value in c.
