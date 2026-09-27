@@ -8,10 +8,6 @@ export type TenantHeaderValueResolver = string | (() => string | undefined);
 export interface TenantHeaderOptions {
   /** Tenant primary key (UUID). Prefer this over embedding in every message. */
   tenantId?: TenantHeaderValueResolver;
-  /**
-   * @deprecated Use tenantId. Accepted for temporary compatibility.
-   */
-  tenantPublicId?: TenantHeaderValueResolver;
 }
 
 const resolveTenantId = (
@@ -45,10 +41,7 @@ const inferTenantIdFromMessage = (message: unknown): string | undefined => {
   }
 
   const topLevel =
-    readStringProp(root, "tenantId") ||
-    readStringProp(root, "tenant_id") ||
-    readStringProp(root, "tenantPublicId") ||
-    readStringProp(root, "tenant_public_id");
+    readStringProp(root, "tenantId") || readStringProp(root, "tenant_id");
   if (topLevel) {
     return topLevel;
   }
@@ -58,10 +51,7 @@ const inferTenantIdFromMessage = (message: unknown): string | undefined => {
     return undefined;
   }
   const tenantId =
-    readStringProp(tenant, "tenantId") ||
-    readStringProp(tenant, "tenant_id") ||
-    readStringProp(tenant, "tenantPublicId") ||
-    readStringProp(tenant, "tenant_public_id");
+    readStringProp(tenant, "tenantId") || readStringProp(tenant, "tenant_id");
   return tenantId || undefined;
 };
 
@@ -74,9 +64,7 @@ export const createTenantHeaderInterceptor =
     }
 
     const tenantId = (
-      resolveTenantId(options.tenantId) ??
-      resolveTenantId(options.tenantPublicId) ??
-      inferTenantIdFromMessage(req.message)
+      resolveTenantId(options.tenantId) ?? inferTenantIdFromMessage(req.message)
     )?.trim();
 
     if (tenantId) {

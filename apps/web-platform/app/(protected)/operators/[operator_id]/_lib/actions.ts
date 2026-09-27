@@ -17,7 +17,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { platformDashboardCacheTag } from "#lib/dashboard";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -27,12 +27,23 @@ import {
   unsuspendPlatformOperator,
   updatePlatformOperatorRole,
 } from "#lib/operators";
+import type { PlatformOperatorSummary } from "#lib/operators";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-const operatorPublicIdSchema = async (locale: Locale) => {
-  const t = await getMessagesFor(locale);
+/**
+ * The operator an Action acts on: the RPC addresses it by `id`, and `publicId`
+ * is what `GetMe` names the signed-in operator by, for the self check.
+ */
+type OperatorTarget = Pick<PlatformOperatorSummary, "id" | "publicId">;
 
-  return requiredTrimmedString(t("platform.common.required"));
+const operatorTargetSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const message = t("platform.common.required");
+
+  return z.object({
+    id: requiredRecordId(message),
+    publicId: requiredTrimmedString(message),
+  });
 };
 
 /**
@@ -53,14 +64,13 @@ const resolveCurrentOperator =
   };
 
 const updateOperatorRoleFormSchema = async (locale: Locale) => {
-  const [t, publicId] = await Promise.all([
+  const [t, target] = await Promise.all([
     getMessagesFor(locale),
-    operatorPublicIdSchema(locale),
+    operatorTargetSchema(locale),
   ]);
   const required = t("platform.common.required");
 
-  return z.object({
-    publicId,
+  return target.extend({
     role: z.enum(
       ["platform_auditor", "platform_operator", "platform_super_admin"],
       { error: required }
@@ -81,6 +91,7 @@ export const updateOperatorRoleAction = async (
 
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      id: { kind: "value", name: "operator_id" },
       publicId: { kind: "value", name: "operator_public_id" },
       role: { kind: "value", name: "operator_role" },
     })
@@ -92,7 +103,7 @@ export const updateOperatorRoleAction = async (
     };
   }
 
-  const { publicId, role } = parsed.data;
+  const { id, publicId, role } = parsed.data;
 
   const me = await resolveCurrentOperator();
   if (!(me && isPlatformSuperAdmin(me.role))) {
@@ -111,7 +122,7 @@ export const updateOperatorRoleAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformOperatorRole({
       locale,
-      publicId,
+      operatorId: id,
       role,
     })
   );
@@ -129,32 +140,37 @@ export const updateOperatorRoleAction = async (
 };
 
 export const suspendOperatorAction = async (
-  publicId: string
+  operator: OperatorTarget
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const schema = await operatorPublicIdSchema(locale);
-  const parsed = schema.safeParse(publicId);
+  const schema = await operatorTargetSchema(locale);
+  const parsed = schema.safeParse(operator);
   if (!parsed.success) {
     return;
   }
 
   const me = await resolveCurrentOperator();
-  if (!(me && isPlatformSuperAdmin(me.role)) || me.publicId === parsed.data) {
+  if (
+    !(me && isPlatformSuperAdmin(me.role)) ||
+    me.publicId === parsed.data.publicId
+  ) {
     return;
   }
-  await withPlatformSessionReauth(() => suspendPlatformOperator(parsed.data));
+  await withPlatformSessionReauth(() =>
+    suspendPlatformOperator(parsed.data.id)
+  );
   updateTag(platformOperatorsCacheTag);
   updateTag(platformAuditLogsCacheTag);
 };
 
 export const unsuspendOperatorAction = async (
-  publicId: string
+  operator: OperatorTarget
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const schema = await operatorPublicIdSchema(locale);
-  const parsed = schema.safeParse(publicId);
+  const schema = await operatorTargetSchema(locale);
+  const parsed = schema.safeParse(operator);
   if (!parsed.success) {
     return;
   }
@@ -163,28 +179,33 @@ export const unsuspendOperatorAction = async (
   if (!(me && isPlatformSuperAdmin(me.role))) {
     return;
   }
-  await withPlatformSessionReauth(() => unsuspendPlatformOperator(parsed.data));
+  await withPlatformSessionReauth(() =>
+    unsuspendPlatformOperator(parsed.data.id)
+  );
   updateTag(platformOperatorsCacheTag);
   updateTag(platformAuditLogsCacheTag);
 };
 
 export const deactivateOperatorAction = async (
-  publicId: string
+  operator: OperatorTarget
 ): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const schema = await operatorPublicIdSchema(locale);
-  const parsed = schema.safeParse(publicId);
+  const schema = await operatorTargetSchema(locale);
+  const parsed = schema.safeParse(operator);
   if (!parsed.success) {
     return;
   }
 
   const me = await resolveCurrentOperator();
-  if (!(me && isPlatformSuperAdmin(me.role)) || me.publicId === parsed.data) {
+  if (
+    !(me && isPlatformSuperAdmin(me.role)) ||
+    me.publicId === parsed.data.publicId
+  ) {
     return;
   }
   await withPlatformSessionReauth(() =>
-    deactivatePlatformOperator(parsed.data)
+    deactivatePlatformOperator(parsed.data.id)
   );
   updateTag(platformOperatorsCacheTag);
   updateTag(platformDashboardCacheTag);

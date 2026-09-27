@@ -13,7 +13,7 @@ import { createPublicApiClient } from "@publira/api-client/public/client";
 
 const client = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_API_BASE_URL ?? "http://localhost:8080",
-  tenantPublicId: "TENANT001",
+  tenantId,
 });
 
 await client.catalog.getSeriesDetail({
@@ -22,7 +22,7 @@ await client.catalog.getSeriesDetail({
 });
 ```
 
-`tenant.tenantId` is the tenant's primary key (a UUID), not the public ID the header carries; `publicId` is the series' 12-character public ID.
+`tenantId` and `tenant.tenantId` are both the tenant's primary key (a UUID); `publicId` is the series' 12-character public ID, which resolves the series a URL names.
 
 The admin API client:
 
@@ -32,11 +32,11 @@ import { buildBearerHeaders } from "@publira/web-session";
 
 const client = createAdminApiClient({
   baseUrl: process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8081",
-  tenantPublicId: () => currentTenantPublicId,
+  tenantId: () => currentTenantId,
 });
 
 await client.auth.getMe(
-  { tenant: { tenantId } },
+  { tenant: { tenantId: currentTenantId } },
   buildBearerHeaders(accessToken)
 );
 ```
@@ -99,10 +99,10 @@ const stop = await forEachPageWithToken(
 
 ## The tenant header
 
-With `tenantPublicId` set, every API request automatically carries the `X-Publira-Tenant-Public-Id` header.
+With `tenantId` set, every API request automatically carries the `X-Publira-Tenant-Id` header, which holds the tenant's primary key (UUID). Without it, a request message's top-level or nested `tenant.tenantId` fills the header instead.
 
-- A fixed value: `tenantPublicId: "TENANT001"`
-- A dynamic value: `tenantPublicId: () => selectedTenantPublicId`
+- A fixed value: `tenantId: "018f0e6a-1000-7000-8000-000000000001"`
+- A dynamic value: `tenantId: () => selectedTenantId`
 
 ## The client's address
 

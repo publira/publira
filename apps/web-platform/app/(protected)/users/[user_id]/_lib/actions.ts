@@ -11,7 +11,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { platformDashboardCacheTag } from "#lib/dashboard";
-import { requiredTrimmedString } from "#lib/form-schemas";
+import { requiredRecordId } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { canManageEndUsers } from "#lib/roles";
@@ -27,13 +27,13 @@ import {
  * over: the endpoint can be invoked directly with anything at all. Same schema
  * the operator Actions use (`operators/[operator_id]/_lib/actions.ts`).
  */
-const userPublicIdSchema = async () => {
+const userIdSchema = async () => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
 
   return {
     locale,
-    schema: requiredTrimmedString(t("platform.common.required")),
+    schema: requiredRecordId(t("platform.common.required")),
   };
 };
 
@@ -51,65 +51,63 @@ const canCurrentOperatorManageEndUsers = async (): Promise<boolean> => {
   return result.ok && canManageEndUsers(result.operator.role);
 };
 
-export const suspendEndUserAction = async (publicId: string): Promise<void> => {
+export const suspendEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
-  const { schema } = await userPublicIdSchema();
-  const parsed = schema.safeParse(publicId);
+  const { schema } = await userIdSchema();
+  const parsed = schema.safeParse(userId);
   if (!parsed.success) {
     return;
   }
-  const normalizedPublicId = parsed.data;
+  const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;
   }
 
   await withPlatformSessionReauth(() =>
-    suspendPlatformEndUser(normalizedPublicId)
+    suspendPlatformEndUser(normalizedUserId)
   );
   updateTag(platformEndUsersCacheTag);
   updateTag(platformDashboardCacheTag);
   updateTag(platformAuditLogsCacheTag);
 };
 
-export const unsuspendEndUserAction = async (
-  publicId: string
-): Promise<void> => {
+export const unsuspendEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
-  const { schema } = await userPublicIdSchema();
-  const parsed = schema.safeParse(publicId);
+  const { schema } = await userIdSchema();
+  const parsed = schema.safeParse(userId);
   if (!parsed.success) {
     return;
   }
-  const normalizedPublicId = parsed.data;
+  const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;
   }
 
   await withPlatformSessionReauth(() =>
-    unsuspendPlatformEndUser(normalizedPublicId)
+    unsuspendPlatformEndUser(normalizedUserId)
   );
   updateTag(platformEndUsersCacheTag);
   updateTag(platformDashboardCacheTag);
   updateTag(platformAuditLogsCacheTag);
 };
 
-export const deleteEndUserAction = async (publicId: string): Promise<void> => {
+export const deleteEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
-  const { locale, schema } = await userPublicIdSchema();
-  const parsed = schema.safeParse(publicId);
+  const { locale, schema } = await userIdSchema();
+  const parsed = schema.safeParse(userId);
   if (!parsed.success) {
     return;
   }
-  const normalizedPublicId = parsed.data;
+  const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;
   }
 
   const result = await withPlatformSessionReauth(() =>
-    deletePlatformEndUser(normalizedPublicId, locale)
+    deletePlatformEndUser(normalizedUserId, locale)
   );
   if (!result.ok) {
     return;

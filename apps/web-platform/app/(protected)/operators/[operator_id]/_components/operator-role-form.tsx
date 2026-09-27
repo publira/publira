@@ -17,10 +17,12 @@ import { updateOperatorRoleAction } from "../_lib/actions";
 export const OperatorRoleForm = async ({
   currentRole,
   disabled,
+  operatorId,
   operatorPublicId,
 }: {
   currentRole: string;
   disabled?: boolean;
+  operatorId: string;
   operatorPublicId: string;
 }) => {
   const locale = await getPlatformLocale();
@@ -31,6 +33,7 @@ export const OperatorRoleForm = async ({
 
   return (
     <ActionForm action={updateOperatorRoleAction}>
+      <input name="operator_id" type="hidden" value={operatorId} />
       <input name="operator_public_id" type="hidden" value={operatorPublicId} />
       <div className="grid gap-4">
         <Field>

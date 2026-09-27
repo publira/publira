@@ -163,7 +163,7 @@ const OperatorDetailContent = async ({
           </LinkButton>
           {canUnsuspend ? (
             <DangerConfirmButton
-              actionArg={operator.publicId}
+              actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={unsuspendOperatorAction}
             >
               <DangerConfirmButtonTrigger variant="outline">
@@ -189,7 +189,7 @@ const OperatorDetailContent = async ({
           ) : null}
           {canSuspend ? (
             <DangerConfirmButton
-              actionArg={operator.publicId}
+              actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={suspendOperatorAction}
             >
               <DangerConfirmButtonTrigger variant="outline">
@@ -215,7 +215,7 @@ const OperatorDetailContent = async ({
           ) : null}
           {canModify ? (
             <DangerConfirmButton
-              actionArg={operator.publicId}
+              actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={deactivateOperatorAction}
             >
               <DangerConfirmButtonTrigger>
@@ -352,6 +352,7 @@ const OperatorDetailContent = async ({
               <OperatorRoleForm
                 currentRole={operator.role}
                 disabled={!canModify}
+                operatorId={operator.id}
                 operatorPublicId={operator.publicId}
               />
             </PlatformSection>

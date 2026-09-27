@@ -60,11 +60,11 @@ interface DangerConfirmButtonProps<T> {
  * </DangerConfirmButton>
  * ```
  */
-export const DangerConfirmButton = ({
+export const DangerConfirmButton = <T,>({
   actionArg,
   actionCreator,
   children,
-}: DangerConfirmButtonProps<string>) => {
+}: DangerConfirmButtonProps<T>) => {
   const [isPending, startTransition] = useTransition();
 
   const run = useCallback(() => {

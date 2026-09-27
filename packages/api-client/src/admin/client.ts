@@ -71,13 +71,13 @@ export const createAdminApiClient = (
 ): AdminApiClient => {
   const {
     baseUrl,
+    tenantId,
     transport = "connect",
-    tenantPublicId,
     ...transportOptions
   } = options;
 
   const tenantHeaderInterceptor = createTenantHeaderInterceptor({
-    tenantPublicId,
+    tenantId,
   });
   const interceptors = [
     createTracingInterceptor(transport),

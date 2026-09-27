@@ -23,6 +23,7 @@ import { platformTenantsCacheTag } from "./tenants";
 export interface PlatformEndUserSummary {
   createdAt: string;
   email: string;
+  id: string;
   name: string;
   primaryTenantName?: string;
   primaryTenantPublicId?: string;
@@ -41,10 +42,10 @@ export interface ListPlatformEndUsersInput {
   createdBefore?: string;
   limit?: number;
   locale: Locale;
-  publicIds?: string[];
   status?: string;
   tenantId?: string;
   token?: string;
+  userIds?: string[];
 }
 
 export type ListPlatformEndUsersResult =
@@ -76,6 +77,7 @@ type RawEndUser = Pick<
   EndUser,
   | "createdAt"
   | "email"
+  | "id"
   | "name"
   | "publicId"
   | "status"
@@ -90,6 +92,7 @@ const mapEndUser = (user: RawEndUser): PlatformEndUserSummary => {
   return {
     createdAt: user.createdAt,
     email: user.email,
+    id: user.id,
     name: user.name,
     primaryTenantName: tenantName || undefined,
     primaryTenantPublicId: tenantIds[0],
@@ -102,9 +105,9 @@ const mapEndUser = (user: RawEndUser): PlatformEndUserSummary => {
 const normalizeTenantId = (input: ListPlatformEndUsersInput): string =>
   input.tenantId?.trim() ?? "";
 
-const normalizePublicIds = (input: ListPlatformEndUsersInput): string[] => [
+const normalizeUserIds = (input: ListPlatformEndUsersInput): string[] => [
   ...new Set(
-    (input.publicIds ?? []).flatMap((value) => {
+    (input.userIds ?? []).flatMap((value) => {
       const trimmed = value.trim();
       return trimmed ? [trimmed] : [];
     })
@@ -177,10 +180,10 @@ export const listPlatformEndUsers = async (
         createdAfter: input.createdAfter ?? "",
         createdBefore: input.createdBefore ?? "",
         limit: Math.max(1, input.limit ?? 20),
-        publicIds: normalizePublicIds(input),
         status: input.status ?? "",
         tenantPublicId: normalizeTenantId(input),
         token: input.token ?? "",
+        userIds: normalizeUserIds(input),
       },
       buildSessionHeaders(sid)
     );
@@ -348,7 +351,7 @@ export const getPlatformEndUser = async (
 
   try {
     const response = await apiClient.users.getEndUser(
-      { publicId: normalizedPublicId } as never,
+      { publicId: normalizedPublicId },
       buildSessionHeaders(sid)
     );
     return {
@@ -373,10 +376,10 @@ export const getPlatformEndUser = async (
 };
 
 export const suspendPlatformEndUser = async (
-  publicId: string
+  userId: string
 ): Promise<boolean> => {
-  const normalizedPublicId = normalizePublicId(publicId);
-  if (!normalizedPublicId) {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
     return false;
   }
 
@@ -387,7 +390,7 @@ export const suspendPlatformEndUser = async (
 
   try {
     await apiClient.users.suspendEndUser(
-      { publicId: normalizedPublicId } as never,
+      { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
     return true;
@@ -399,10 +402,10 @@ export const suspendPlatformEndUser = async (
 };
 
 export const unsuspendPlatformEndUser = async (
-  publicId: string
+  userId: string
 ): Promise<boolean> => {
-  const normalizedPublicId = normalizePublicId(publicId);
-  if (!normalizedPublicId) {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
     return false;
   }
 
@@ -413,7 +416,7 @@ export const unsuspendPlatformEndUser = async (
 
   try {
     await apiClient.users.unsuspendEndUser(
-      { publicId: normalizedPublicId } as never,
+      { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
     return true;
@@ -425,12 +428,12 @@ export const unsuspendPlatformEndUser = async (
 };
 
 export const deletePlatformEndUser = async (
-  publicId: string,
+  userId: string,
   locale: Locale
 ): Promise<{ ok: true } | { ok: false; message: string }> => {
   const t = await getMessagesFor(locale);
-  const normalizedPublicId = normalizePublicId(publicId);
-  if (!normalizedPublicId) {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
     return {
       message: t("platform.users.invalid_id"),
       ok: false,
@@ -447,7 +450,7 @@ export const deletePlatformEndUser = async (
 
   try {
     await apiClient.users.deleteEndUser(
-      { publicId: normalizedPublicId } as never,
+      { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
     return { ok: true };

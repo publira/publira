@@ -199,7 +199,7 @@ const UserDetailContent = async ({
           </LinkButton>
           {canUnsuspend ? (
             <DangerConfirmButton
-              actionArg={user.publicId}
+              actionArg={user.id}
               actionCreator={unsuspendEndUserAction}
             >
               <DangerConfirmButtonTrigger variant="outline">
@@ -225,7 +225,7 @@ const UserDetailContent = async ({
           ) : null}
           {canSuspend ? (
             <DangerConfirmButton
-              actionArg={user.publicId}
+              actionArg={user.id}
               actionCreator={suspendEndUserAction}
             >
               <DangerConfirmButtonTrigger variant="outline">
@@ -251,7 +251,7 @@ const UserDetailContent = async ({
           ) : null}
           {canDelete ? (
             <DangerConfirmButton
-              actionArg={user.publicId}
+              actionArg={user.id}
               actionCreator={deleteEndUserAction}
             >
               <DangerConfirmButtonTrigger>

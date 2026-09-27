@@ -90,7 +90,7 @@ export const listPlatformAuditLogs = async (
         limit,
         tenantId: input.tenantId?.trim() ?? "",
         token: input.token ?? "",
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
 

@@ -21,6 +21,20 @@ describe("createTenantHeaderInterceptor", () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
+  it("does not fill the header from a message's tenant public ID", async () => {
+    const interceptor = createTenantHeaderInterceptor({});
+    const next = vi.fn(() => Promise.resolve({ ok: true }));
+    const header = new Headers();
+
+    await interceptor?.(next as never)({
+      header,
+      message: { tenantPublicId: "TENANT000001" },
+    } as never);
+
+    expect(header.get("X-Publira-Tenant-Id")).toBeNull();
+    expect(next).toHaveBeenCalledOnce();
+  });
+
   it("an existing header is not overwritten", async () => {
     const interceptor = createTenantHeaderInterceptor({
       tenantId: "018f0e6a-1000-7000-8000-000000000002",
