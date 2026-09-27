@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -39,6 +39,48 @@ Environment variables:
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
+
+## setup
+
+Brings an install from a migrated, empty database to a tenant site and a tenant console an administrator can sign in to, in one run. It holds no logic of its own: each step saves through the package the step's own command uses, and files the same audit entries under the `system` actor.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go run ./server/cmd/publiractl setup
+```
+
+| Step | Required | What it saves | The command that saves it alone |
+| --- | --- | --- | --- |
+| Platform defaults | yes | The default locale, and the time zone new tenants start on (`UTC` unless given) | `platform set` |
+| Object store | yes | The bucket and how to reach it, after a connection test it has to pass; a store that fails the test is not saved | `storage set`, `storage test` |
+| SMTP | yes | The SMTP settings, then a test message when an address is given for one | `smtp set`, `smtp test` |
+| Web Push | no | The subject, generating the VAPID key pair | `webpush init` |
+| Tenant | yes | A tenant on the platform's time zone and locale unless given | `tenant create` |
+| First administrator | yes | A console account with the `tenant_admin` role and no mail sent, its password typed twice or generated | `tenant admin create` |
+
+On a terminal it asks for every value no flag gives, offering what is saved as the default. `--non-interactive`, or a stdin that is not a terminal, asks nothing and exits `2` naming the first required value that no flag gives and nothing saved holds, so the same command runs from a CI job or an init container:
+
+```bash
+publiractl setup --non-interactive \
+  --default-locale en \
+  --bucket publira-images --region ap-northeast-1 \
+  --access-key-id "$AWS_ACCESS_KEY_ID" --secret-access-key-file /run/secrets/aws-secret-access-key \
+  --host smtp.example.com --port 587 --encryption starttls --username mailer \
+  --from-address no-reply@example.com --smtp-password-file /run/secrets/smtp-password \
+  --tenant-name "Example Comics" --domain comics.example.com \
+  --admin-email owner@comics.example.com --admin-name Owner --generate-admin-password
+```
+
+Every flag is spelled as the command that saves the value spells it, except where two steps' commands spell one alike: `--tenant-name`, `--tenant-default-locale`, `--tenant-timezone`, `--smtp-password-stdin` and `--smtp-password-file`, `--smtp-test-to`, and every flag of the first administrator (`--admin-email`, `--admin-name`, `--admin-password-stdin`, `--admin-password-file`, `--generate-admin-password`). `publiractl setup -h` lists them all.
+
+Each step whose row is already saved, and whose flags are not given, is kept without a question: a tenant whose domain exists, and an administrator whose email exists or a tenant that already has one, are reported and not created again. A run that stopped halfway is therefore finished by running it again, which asks only for the steps still missing, and a run on a finished install changes no row, sends no test message, and runs no connection test.
+
+What each step did goes to stderr as it happens, and the summary to stdout: every step's outcome, the tenant site URL, the tenant console URL, and a generated password, which is shown there and nowhere else. An administrator is committed only once that summary has been written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password and the secret access key. Required: set the values the servers run with.
 
 ## platform
 

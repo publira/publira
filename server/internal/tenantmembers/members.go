@@ -502,3 +502,54 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, p AccountParams) (Member, er
 	}
 	return Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Role: role, Status: user.Status, CreatedAt: user.CreatedAt}, nil
 }
+
+// FindByEmail reads the user of the tenant rawEmail names, with the console
+// role it holds or "" when it holds none, reporting whether there is one.
+func FindByEmail(ctx context.Context, q dbmodels.Querier, tenantID uuid.UUID, rawEmail string) (Member, bool, error) {
+	email, err := normalizeEmail(rawEmail)
+	if err != nil {
+		return Member{}, false, err
+	}
+	user, err := q.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		Email:    email,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Member{}, false, nil
+	}
+	if err != nil {
+		return Member{}, false, fmt.Errorf("get user by email: %w", err)
+	}
+	roles, err := q.ListTenantUserRoles(ctx, user.ID)
+	if err != nil {
+		return Member{}, false, fmt.Errorf("list tenant user roles: %w", err)
+	}
+	member := Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}
+	if len(roles) > 0 {
+		member.Role = roles[0]
+	}
+	return member, true, nil
+}
+
+// FirstAdmin reads the tenant's oldest member holding the admin role,
+// reporting whether it has one.
+func FirstAdmin(ctx context.Context, q dbmodels.Querier, tenantID uuid.UUID) (Member, bool, error) {
+	var keys pagination.TimeUUIDKeys
+	const pageSize = 100
+	for {
+		page, err := ListMembers(ctx, q, ListParams{TenantID: tenantID, Keys: keys, Direction: pagination.Backward, Limit: pageSize})
+		if err != nil {
+			return Member{}, false, err
+		}
+		for _, member := range page {
+			if member.Role == auth.RoleTenantAdmin {
+				return member, true, nil
+			}
+		}
+		if len(page) < pageSize {
+			return Member{}, false, nil
+		}
+		last := page[len(page)-1]
+		keys = pagination.TimeUUIDKeys{Time: last.CreatedAt, ID: last.UserID, Valid: true}
+	}
+}

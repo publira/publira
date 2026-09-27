@@ -12,7 +12,8 @@
 // The settings and provisioning groups change what the Platform Console
 // changes. They connect as PUBLIRA_PLATFORM_DB_URL, take a secret only from a
 // masked prompt, stdin, or a file, and file their audit entries under
-// auditlog.SystemPlatformActor.
+// auditlog.SystemPlatformActor. setup runs them in order, asking for what an
+// install needs to serve its first tenant.
 //
 // Each job is a thin invocation of internal/maintenance, which the worker's
 // River jobs invoke as well, so an operator's explicit run and a scheduled one
@@ -119,6 +120,10 @@ func run(args []string, stderr io.Writer) int {
 		return runDB(args[1:], stderr)
 	case "job":
 		return runJob(args[1:], stderr)
+	case "setup":
+		con := osConsole()
+		con.stderr = stderr
+		return runCommand("setup", &setupCommand, args[1:], con, os.Stdout)
 	}
 	if g := lookupGroup(args[0]); g != nil {
 		con := osConsole()
@@ -186,7 +191,8 @@ func usage() string {
 	var b strings.Builder
 	b.WriteString("\nUsage: publiractl <command>\n\nCommands:\n" +
 		"  db                        Apply the database migrations and report the schema version\n" +
-		"  job                       Run one of the worker's maintenance jobs by hand\n")
+		"  job                       Run one of the worker's maintenance jobs by hand\n" +
+		"  setup                     Set up an install from an empty database to a tenant an administrator signs in to\n")
 	for _, g := range groups {
 		fmt.Fprintf(&b, "  %-25s %s\n", g.name, g.summary)
 	}

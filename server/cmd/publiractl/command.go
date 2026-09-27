@@ -116,12 +116,18 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 	if c == nil {
 		return usageError(stderr, fmt.Sprintf("unknown %s command %q", g.name, args[0]), g.usage())
 	}
+	return runCommand(g.name+" "+c.name, c, args[1:], con, stdout)
+}
 
-	f := &commandFlags{FlagSet: flag.NewFlagSet(g.name+" "+c.name, flag.ContinueOnError)}
+// runCommand runs c, which the words in name invoke, with its flags in args.
+// It exits as runGroup does.
+func runCommand(name string, c *command, args []string, con console, stdout io.Writer) int {
+	stderr := con.stderr
+	f := &commandFlags{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError)}
 	f.SetOutput(io.Discard)
-	runCommand := c.setup(f)
-	usage := commandUsage(g, c, f)
-	if err := f.Parse(args[1:]); err != nil {
+	run := c.setup(f)
+	usage := commandUsage(name, c, f)
+	if err := f.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			_, _ = io.WriteString(stderr, usage)
 			return 0
@@ -131,7 +137,7 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 	// A positional argument is refused without being repeated: it may be a
 	// secret typed where a flag was meant.
 	if f.NArg() > 0 {
-		return usageError(stderr, fmt.Sprintf("%s %s takes no positional arguments", g.name, c.name), usage)
+		return usageError(stderr, name+" takes no positional arguments", usage)
 	}
 	if err := f.checkSecretSources(); err != nil {
 		return usageError(stderr, err.Error(), usage)
@@ -147,10 +153,26 @@ func runGroup(g *commandGroup, args []string, con console, stdout io.Writer) int
 		stdout:  stdout,
 		logger:  logging.New(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
 	}
-	if err := runCommand(context.Background(), env); err != nil {
+	if err := run(context.Background(), env); err != nil {
+		var missing *missingValueError
+		if errors.As(err, &missing) {
+			_, _ = io.WriteString(stderr, "publiractl: "+err.Error()+"\n")
+			return 2
+		}
 		return commandError(stderr, err)
 	}
 	return 0
+}
+
+// missingValueError is a value a command needs and has no way to get: no flag
+// gave it, nothing is saved, and there is no terminal to ask on. It exits 2,
+// as a usage error does.
+type missingValueError struct {
+	flags string
+}
+
+func (e *missingValueError) Error() string {
+	return e.flags + " is required; give it as a flag, or run on a terminal without --non-interactive to be asked for it"
 }
 
 // commandError reports a failure the command ran into and returns its exit
@@ -172,9 +194,9 @@ func (g *commandGroup) usage() string {
 	return b.String()
 }
 
-func commandUsage(g *commandGroup, c *command, f *commandFlags) string {
+func commandUsage(name string, c *command, f *commandFlags) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\nUsage: publiractl %s %s [flags]\n\n%s\n", g.name, c.name, c.summary)
+	fmt.Fprintf(&b, "\nUsage: publiractl %s [flags]\n\n%s\n", name, c.summary)
 	var flags strings.Builder
 	f.VisitAll(func(fl *flag.Flag) {
 		typeName, usage := flag.UnquoteUsage(fl)

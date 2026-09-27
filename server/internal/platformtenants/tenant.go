@@ -220,3 +220,16 @@ func writeTenantEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Log
 	}
 	return nil
 }
+
+// Sole reads the install's only tenant, reporting false when there is none or
+// more than one.
+func Sole(ctx context.Context, q dbmodels.Querier) (dbmodels.Tenant, bool, error) {
+	tenants, err := q.ListTenantsAsc(ctx, dbmodels.ListTenantsAscParams{Limit: 2})
+	if err != nil {
+		return dbmodels.Tenant{}, false, fmt.Errorf("list tenants: %w", err)
+	}
+	if len(tenants) != 1 {
+		return dbmodels.Tenant{}, false, nil
+	}
+	return tenants[0], true, nil
+}

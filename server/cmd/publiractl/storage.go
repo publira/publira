@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -180,25 +181,31 @@ func setupStorageTest(_ *commandFlags) func(context.Context, *commandEnv) error 
 			return err
 		}
 
-		reasons := make(map[storagesettings.Operation]string, len(checks))
-		for _, check := range checks {
-			reasons[check.Operation] = "ok"
-			if !check.Succeeded() {
-				reasons[check.Operation] = "failed: " + check.Reason
-			}
-		}
-		var b strings.Builder
-		for _, op := range storageOperations {
-			fmt.Fprintf(&b, "%s\t%s\n", op.name, orSkipped(reasons[op.operation]))
-		}
-		if err := printTable(env.stdout, b.String()); err != nil {
-			return err
-		}
-		if failed, ok := storagesettings.Failed(checks); ok {
-			return fmt.Errorf("the object store refused the connection test (%s)", failed.Reason)
-		}
-		return nil
+		return printStorageChecks(env.stdout, checks)
 	}
+}
+
+// printStorageChecks prints one line per check of a connection test, and
+// refuses a test any check failed.
+func printStorageChecks(w io.Writer, checks []storagesettings.Check) error {
+	reasons := make(map[storagesettings.Operation]string, len(checks))
+	for _, check := range checks {
+		reasons[check.Operation] = "ok"
+		if !check.Succeeded() {
+			reasons[check.Operation] = "failed: " + check.Reason
+		}
+	}
+	var b strings.Builder
+	for _, op := range storageOperations {
+		fmt.Fprintf(&b, "%s\t%s\n", op.name, orSkipped(reasons[op.operation]))
+	}
+	if err := printTable(w, b.String()); err != nil {
+		return err
+	}
+	if failed, ok := storagesettings.Failed(checks); ok {
+		return fmt.Errorf("the object store refused the connection test (%s)", failed.Reason)
+	}
+	return nil
 }
 
 // orSkipped is a check the test never reached, because the probe object it
