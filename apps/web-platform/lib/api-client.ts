@@ -9,7 +9,7 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
-import { cacheTag, io } from "next/cache";
+import { cacheLife, cacheTag, io } from "next/cache";
 import { cookies, headers } from "next/headers";
 
 import {
@@ -48,8 +48,16 @@ export const buildSessionHeaders = (accessToken: string) =>
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
+/**
+ * The access token in the session cookie, deduplicated within a request.
+ *
+ * `stale: Infinity` keeps this read from lowering the client cache time of the
+ * routes that await it; how long a route stays fresh is for the reads that
+ * hold its data to decide.
+ */
 const getAccessTokenFromCookie = async (): Promise<string> => {
   "use cache: private";
+  cacheLife({ stale: Number.POSITIVE_INFINITY });
   cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
   const cookieStore = await cookies();
