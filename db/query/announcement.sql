@@ -2,7 +2,6 @@
 INSERT INTO announcements (
     id,
     tenant_id,
-    target_user_id,
     announcement_type,
     title,
     body,
@@ -11,7 +10,7 @@ INSERT INTO announcements (
     pinned,
     pinned_until
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -24,7 +23,6 @@ RETURNING *;
 SELECT
     n.id,
     n.tenant_id,
-    n.target_user_id,
     n.announcement_type,
     n.title,
     n.body,
@@ -32,11 +30,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until,
-    u.public_id AS target_user_public_id,
-    u.name AS target_user_name
+    n.pinned_until
 FROM announcements n
-    LEFT JOIN users u ON u.id = n.target_user_id
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -56,7 +51,6 @@ LIMIT sqlc.arg('limit');
 SELECT
     n.id,
     n.tenant_id,
-    n.target_user_id,
     n.announcement_type,
     n.title,
     n.body,
@@ -64,11 +58,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until,
-    u.public_id AS target_user_public_id,
-    u.name AS target_user_name
+    n.pinned_until
 FROM announcements n
-    LEFT JOIN users u ON u.id = n.target_user_id
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -99,7 +90,6 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'))
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -123,7 +113,6 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'))
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -139,9 +128,8 @@ ORDER BY n.created_at ASC, n.id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: GetAnnouncementForUser :one
--- Returns the announcement with the caller's read state, and only when the row
--- belongs to that caller's inbox. A row addressed to another user or owned by
--- another tenant comes back as no rows, so its existence is not disclosed.
+-- Returns the announcement with the caller's read state. A row owned by another
+-- tenant comes back as no rows, so its existence is not disclosed.
 SELECT
     n.*,
     (nr.announcement_id IS NOT NULL) AS is_read,
@@ -150,30 +138,27 @@ FROM announcements n
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.narg('user_id')
 WHERE n.id = sqlc.arg('id')
-    AND n.tenant_id = sqlc.arg('tenant_id')
-    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.narg('user_id'));
+    AND n.tenant_id = sqlc.arg('tenant_id');
 
 -- name: MarkAnnouncementAsRead :one
 -- Upserts, so marking an already-read announcement refreshes read_at instead
--- of failing. The SELECT confines the insert to the caller's own inbox.
+-- of failing. The SELECT confines the insert to the caller's own tenant.
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $3, NOW()
 FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
-    AND (n.target_user_id IS NULL OR n.target_user_id = $3)
 ON CONFLICT (announcement_id, user_id) DO UPDATE
 SET read_at = EXCLUDED.read_at
 RETURNING *;
 
 -- name: MarkAllAnnouncementsAsRead :execrows
--- Inserts a read row for every announcement in the caller's inbox that lacks
--- one: the tenant-wide announcements plus the ones addressed to that user.
+-- Inserts a read row for every announcement of the caller's tenant that lacks
+-- one.
 INSERT INTO announcement_reads (announcement_id, tenant_id, user_id, read_at)
 SELECT n.id, n.tenant_id, $2, NOW()
 FROM announcements n
 WHERE n.tenant_id = $1
-    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
     AND NOT EXISTS (
         SELECT 1
         FROM announcement_reads nr
@@ -183,13 +168,12 @@ WHERE n.tenant_id = $1
 ON CONFLICT (announcement_id, user_id) DO NOTHING;
 
 -- name: GetPinnedAnnouncementForTenant :one
--- What the site shows as a banner: the newest tenant-wide announcement still
--- inside its pinned window. It names no user, so a visitor with no session gets
+-- What the site shows as a banner: the newest announcement still inside its
+-- pinned window. It names no user, so a visitor with no session gets
 -- the same answer as a signed-in reader and the site caches it once per tenant.
 SELECT *
 FROM announcements
 WHERE tenant_id = $1
-    AND target_user_id IS NULL
     AND pinned
     AND (pinned_until IS NULL OR pinned_until > NOW())
 ORDER BY created_at DESC, id DESC

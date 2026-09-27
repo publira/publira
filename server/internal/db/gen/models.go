@@ -28,7 +28,6 @@ type AccessTicket struct {
 type Announcement struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
-	TargetUserID     uuid.NullUUID   `json:"target_user_id"`
 	AnnouncementType string          `json:"announcement_type"`
 	Title            string          `json:"title"`
 	Body             string          `json:"body"`

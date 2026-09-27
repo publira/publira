@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -28,7 +27,7 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUser(t *testing.T) {
 	queries := &stubAnnouncementQuerier{users: []uuid.UUID{first, second}}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	if err := handler(context.Background(), announcementEvent(t, tenantID, announcementID, "")); err != nil {
+	if err := handler(context.Background(), announcementEvent(t, tenantID, announcementID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
 
@@ -76,7 +75,7 @@ func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 	queries := &stubAnnouncementQuerier{users: users}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), "")); err != nil {
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
 
@@ -88,70 +87,11 @@ func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 	}
 }
 
-func TestAnnouncementNotificationAddressesOnlyTheNamedRecipient(t *testing.T) {
-	tenantID := uuid.New()
-	target := uuid.New()
-	queries := &stubAnnouncementQuerier{
-		users:       []uuid.UUID{uuid.New(), uuid.New()},
-		tenantUsers: map[uuid.UUID]struct{}{target: {}},
-	}
-
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	event := announcementEvent(t, tenantID, uuid.New(), target.String())
-	if err := handler(context.Background(), event); err != nil {
-		t.Fatalf("handler: %v", err)
-	}
-
-	if len(queries.created) != 1 {
-		t.Fatalf("notifications written = %d, want 1", len(queries.created))
-	}
-	if queries.created[0].UserID != target {
-		t.Fatalf("notification addressed %s, want %s", queries.created[0].UserID, target)
-	}
-	if queries.listCalls != 0 {
-		t.Fatalf("recipient queries = %d, want 0 for a targeted announcement", queries.listCalls)
-	}
-	if queries.resolvedTenant.UUID != tenantID || !queries.resolvedTenant.Valid {
-		t.Fatalf("target resolved inside %v, want tenant %s", queries.resolvedTenant, tenantID)
-	}
-}
-
-// `notifications` keeps the tenant and the user as two separate foreign keys,
-// so a recipient from another tenant is a row the database would accept. The
-// event names a recipient the handler did not resolve itself, so it is refused
-// here rather than retried: no redelivery moves that user into this tenant.
-func TestAnnouncementNotificationRejectsATargetOfAnotherTenant(t *testing.T) {
-	queries := &stubAnnouncementQuerier{tenantUsers: map[uuid.UUID]struct{}{}}
-
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	event := announcementEvent(t, uuid.New(), uuid.New(), uuid.New().String())
-
-	if err := handler(context.Background(), event); !IsPermanent(err) {
-		t.Fatalf("handler error = %v, want a permanent error", err)
-	}
-	if len(queries.created) != 0 {
-		t.Fatalf("notifications written = %d, want 0", len(queries.created))
-	}
-}
-
-func TestAnnouncementNotificationRetriesAFailedTargetLookup(t *testing.T) {
-	queries := &stubAnnouncementQuerier{resolveErr: errors.New("connection refused")}
-
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), uuid.New().String()))
-	if err == nil {
-		t.Fatal("handler error = nil, want a retriable error")
-	}
-	if IsPermanent(err) {
-		t.Fatalf("handler error = %v, want a retriable error", err)
-	}
-}
-
 func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) {
 	queries := &stubAnnouncementQuerier{}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), "")); err != nil {
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
 	if len(queries.created) != 0 {
@@ -163,7 +103,7 @@ func TestAnnouncementNotificationRetriesAFailedLookup(t *testing.T) {
 	queries := &stubAnnouncementQuerier{listErr: errors.New("connection refused")}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New(), ""))
+	err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New()))
 	if err == nil {
 		t.Fatal("handler error = nil, want a retriable error")
 	}
@@ -176,7 +116,7 @@ func TestAnnouncementNotificationRejectsAPayloadNamingAnotherTenant(t *testing.T
 	queries := &stubAnnouncementQuerier{users: []uuid.UUID{uuid.New()}}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	event := announcementEvent(t, uuid.New(), uuid.New(), "")
+	event := announcementEvent(t, uuid.New(), uuid.New())
 	event.TenantID = uuid.NullUUID{UUID: uuid.New(), Valid: true}
 
 	if err := handler(context.Background(), event); !IsPermanent(err) {
@@ -196,7 +136,7 @@ func TestAnnouncementNotificationRejectsAPayloadWithoutAnAnnouncement(t *testing
 	}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
-	event := announcementEvent(t, tenantID, uuid.New(), "")
+	event := announcementEvent(t, tenantID, uuid.New())
 	event.Payload = payload
 
 	if err := handler(context.Background(), event); !IsPermanent(err) {
@@ -207,14 +147,12 @@ func TestAnnouncementNotificationRejectsAPayloadWithoutAnAnnouncement(t *testing
 func announcementEvent(
 	t *testing.T,
 	tenantID, announcementID uuid.UUID,
-	targetUserID string,
 ) dbmodels.OutboxEvent {
 	t.Helper()
 
 	payload, err := json.Marshal(AnnouncementNotificationPayload{
 		TenantID:       tenantID.String(),
 		AnnouncementID: announcementID.String(),
-		TargetUserID:   targetUserID,
 		Title:          "Scheduled maintenance",
 	})
 	if err != nil {
@@ -231,31 +169,12 @@ func announcementEvent(
 }
 
 type stubAnnouncementQuerier struct {
-	users          []uuid.UUID
-	listedTenant   uuid.NullUUID
-	listCalls      int
-	listErr        error
-	tenantUsers    map[uuid.UUID]struct{}
-	resolvedTenant uuid.NullUUID
-	resolveErr     error
-	created        []dbmodels.CreateNotificationParams
-	createErr      error
-}
-
-// GetTenantUserID answers only for the users the stub was given, so a target
-// outside them reads the way the database reports one of another tenant.
-func (s *stubAnnouncementQuerier) GetTenantUserID(
-	_ context.Context,
-	arg dbmodels.GetTenantUserIDParams,
-) (uuid.UUID, error) {
-	if s.resolveErr != nil {
-		return uuid.Nil, s.resolveErr
-	}
-	s.resolvedTenant = arg.TenantID
-	if _, ok := s.tenantUsers[arg.UserID]; !ok {
-		return uuid.Nil, sql.ErrNoRows
-	}
-	return arg.UserID, nil
+	users        []uuid.UUID
+	listedTenant uuid.NullUUID
+	listCalls    int
+	listErr      error
+	created      []dbmodels.CreateNotificationParams
+	createErr    error
 }
 
 // ListTenantUserIDs answers the keyset the handler pages with, so a stub

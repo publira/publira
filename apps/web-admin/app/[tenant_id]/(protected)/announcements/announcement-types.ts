@@ -35,6 +35,5 @@ export type CreateAnnouncementActionState =
   | {
       ok: true;
       message: string;
-      createdCount: number;
     }
   | null;

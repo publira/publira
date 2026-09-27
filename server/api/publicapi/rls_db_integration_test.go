@@ -321,7 +321,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	privacy := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 	seed("page consent", "INSERT INTO user_page_consents (tenant_id, user_id, page_version_id) VALUES ($1, $2, $3)", first.ID, member.ID, privacy.VersionID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
-	announcementID := insertAnnouncement(t, env, first.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+	announcementID := insertAnnouncement(t, env, first.ID, "/series/SERIESA00001", "Tenant A Announcement")
 	seed("announcement read", "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID)
 	seed("notification settings", "INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled) VALUES ($1, $2, false)", first.ID, member.ID)
 	bellID := insertTenantNotification(t, env, first.ID, member.ID, "episode_published", "episode:EPISODEA0001", `{"episode_id":"EPISODEA0001"}`)
@@ -389,7 +389,7 @@ func TestDBReaderStateIsMemberScopedByRLS(t *testing.T) {
 	// row collides with a primary key: a policy that stopped refusing the write
 	// would be the only thing left that could refuse it.
 	unsaved := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0003", "unsaved@tenant-a.example.com", "Unsaved")
-	announcementID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+	announcementID := insertAnnouncement(t, env, tenant.ID, "/series/SERIESA00001", "Tenant A Announcement")
 
 	client := env.authClient()
 	ownerToken := tokenFor(t, tenant, owner)
@@ -489,7 +489,7 @@ func TestDBReaderStateIsTenantScopedByRLS(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
-	announcementID := insertAnnouncement(t, env, tenant.ID, uuid.NullUUID{}, "/series/SERIESA00001", "Tenant A Announcement")
+	announcementID := insertAnnouncement(t, env, tenant.ID, "/series/SERIESA00001", "Tenant A Announcement")
 
 	client := env.authClient()
 	token := tokenFor(t, tenant, member)

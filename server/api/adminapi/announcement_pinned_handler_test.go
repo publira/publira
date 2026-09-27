@@ -34,14 +34,14 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(
-			sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Maintenance", "Body",
+			sqlmock.AnyArg(), tenantID, "announcement", "Maintenance", "Body",
 			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true},
 		).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "target_user_id", "announcement_type", "title", "body",
+			"id", "tenant_id", "announcement_type", "title", "body",
 			"link_url", "metadata", "created_at", "pinned", "pinned_until",
 		}).AddRow(
-			announcementID, tenantID, uuid.NullUUID{}, "announcement", "Maintenance", "Body",
+			announcementID, tenantID, "announcement", "Maintenance", "Body",
 			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true},
 		))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
@@ -51,12 +51,11 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
-		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:        "Maintenance",
-		Body:         "Body",
-		AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
-		Pinned:       true,
-		PinnedUntil:  until.Format(time.RFC3339),
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:       "Maintenance",
+		Body:        "Body",
+		Pinned:      true,
+		PinnedUntil: until.Format(time.RFC3339),
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -64,10 +63,10 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAnnouncement: %v", err)
 	}
-	if !resp.Msg.Announcements[0].Pinned {
+	if !resp.Msg.Announcement.GetPinned() {
 		t.Fatal("pinned = false, want true")
 	}
-	if got, want := resp.Msg.Announcements[0].PinnedUntil, until.Format(time.RFC3339); got != want {
+	if got, want := resp.Msg.Announcement.GetPinnedUntil(), until.Format(time.RFC3339); got != want {
 		t.Fatalf("pinned_until = %q, want %q", got, want)
 	}
 
@@ -76,23 +75,16 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 
 func TestCreateAnnouncementRefusesAPinItCannotShow(t *testing.T) {
 	tests := []struct {
-		name         string
-		audienceType publiraadminv1.AnnouncementAudienceType
-		pinnedUntil  string
+		name        string
+		pinnedUntil string
 	}{
 		{
-			name:         "addressed to named readers",
-			audienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
+			name:        "window already closed",
+			pinnedUntil: time.Now().UTC().Add(-time.Hour).Format(time.RFC3339),
 		},
 		{
-			name:         "window already closed",
-			audienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
-			pinnedUntil:  time.Now().UTC().Add(-time.Hour).Format(time.RFC3339),
-		},
-		{
-			name:         "window is not an instant",
-			audienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
-			pinnedUntil:  "tomorrow",
+			name:        "window is not an instant",
+			pinnedUntil: "tomorrow",
 		},
 	}
 
@@ -104,13 +96,11 @@ func TestCreateAnnouncementRefusesAPinItCannotShow(t *testing.T) {
 			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
 			req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
-				Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				Title:               "Maintenance",
-				Body:                "Body",
-				AudienceType:        test.audienceType,
-				TargetUserPublicIds: []string{"USER001"},
-				Pinned:              true,
-				PinnedUntil:         test.pinnedUntil,
+				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Title:       "Maintenance",
+				Body:        "Body",
+				Pinned:      true,
+				PinnedUntil: test.pinnedUntil,
 			})
 			req.Header().Set("Authorization", "Bearer "+sessionToken)
 

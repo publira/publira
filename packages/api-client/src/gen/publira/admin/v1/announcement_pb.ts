@@ -2,8 +2,8 @@
 // @generated from file publira/admin/v1/announcement.proto (package publira.admin.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,9 +12,12 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/announcement.proto.
  */
 export const file_publira_admin_v1_announcement: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSKEAgoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRBdWRpZW5jZVR5cGUSHQoVdGFyZ2V0X3VzZXJfcHVibGljX2lkGAYgASgJEhgKEHRhcmdldF91c2VyX25hbWUYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZwaW5uZWQYCSABKAgSFAoMcGlubmVkX3VudGlsGAogASgJIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoQCChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0aXRsZRgCIAEoCRIMCgRib2R5GAMgASgJEhAKCGxpbmtfdXJsGAQgASgJEkEKDWF1ZGllbmNlX3R5cGUYBSABKA4yKi5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudEF1ZGllbmNlVHlwZRIeChZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzGAYgAygJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAkiWAoaQ3JlYXRlQW5ub3VuY2VtZW50UmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQiZAoYVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiGwoZVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSqfAQoYQW5ub3VuY2VtZW50QXVkaWVuY2VUeXBlEioKJkFOTk9VTkNFTUVOVF9BVURJRU5DRV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfQUxMX1VTRVJTEAESLQopQU5OT1VOQ0VNRU5UX0FVRElFTkNFX1RZUEVfU0VMRUNURURfVVNFUlMQAjLtAgoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLSAQoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRISCgpjcmVhdGVkX2F0GAggASgJEg4KBnBpbm5lZBgJIAEoCBIUCgxwaW5uZWRfdW50aWwYCiABKAlKBAgFEAZKBAgGEAdKBAgHEAhSDWF1ZGllbmNlX3R5cGVSFXRhcmdldF91c2VyX3B1YmxpY19pZFIQdGFyZ2V0X3VzZXJfbmFtZSJ3ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQigwEKGUxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLUAQoZQ3JlYXRlQW5ub3VuY2VtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRIOCgZwaW5uZWQYByABKAgSFAoMcGlubmVkX3VudGlsGAggASgJSgQIBRAGSgQIBhAHUg1hdWRpZW5jZV90eXBlUhZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzImwKGkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlEjkKDGFubm91bmNlbWVudBgCIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnRKBAgBEAJSDWFubm91bmNlbWVudHMiZAoYVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiGwoZVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZTLtAgoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
+ * An announcement is addressed to everyone who opens the tenant's site; a
+ * message to one person is a notification.
+ *
  * @generated from message publira.admin.v1.AdminAnnouncement
  */
 export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & {
@@ -37,21 +40,6 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
    * @generated from field: string link_url = 4;
    */
   linkUrl: string;
-
-  /**
-   * @generated from field: publira.admin.v1.AnnouncementAudienceType audience_type = 5;
-   */
-  audienceType: AnnouncementAudienceType;
-
-  /**
-   * @generated from field: string target_user_public_id = 6;
-   */
-  targetUserPublicId: string;
-
-  /**
-   * @generated from field: string target_user_name = 7;
-   */
-  targetUserName: string;
 
   /**
    * @generated from field: string created_at = 8;
@@ -170,16 +158,6 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
   linkUrl: string;
 
   /**
-   * @generated from field: publira.admin.v1.AnnouncementAudienceType audience_type = 5;
-   */
-  audienceType: AnnouncementAudienceType;
-
-  /**
-   * @generated from field: repeated string target_user_public_ids = 6;
-   */
-  targetUserPublicIds: string[];
-
-  /**
    * @generated from field: bool pinned = 7;
    */
   pinned: boolean;
@@ -205,9 +183,9 @@ export const CreateAnnouncementRequestSchema: GenMessage<CreateAnnouncementReque
  */
 export type CreateAnnouncementResponse = Message<"publira.admin.v1.CreateAnnouncementResponse"> & {
   /**
-   * @generated from field: repeated publira.admin.v1.AdminAnnouncement announcements = 1;
+   * @generated from field: publira.admin.v1.AdminAnnouncement announcement = 2;
    */
-  announcements: AdminAnnouncement[];
+  announcement?: AdminAnnouncement | undefined;
 };
 
 /**
@@ -254,32 +232,6 @@ export type UnpinAnnouncementResponse = Message<"publira.admin.v1.UnpinAnnouncem
  */
 export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementResponse> = /*@__PURE__*/
   messageDesc(file_publira_admin_v1_announcement, 6);
-
-/**
- * @generated from enum publira.admin.v1.AnnouncementAudienceType
- */
-export enum AnnouncementAudienceType {
-  /**
-   * @generated from enum value: ANNOUNCEMENT_AUDIENCE_TYPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS = 1;
-   */
-  ALL_USERS = 1,
-
-  /**
-   * @generated from enum value: ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS = 2;
-   */
-  SELECTED_USERS = 2,
-}
-
-/**
- * Describes the enum publira.admin.v1.AnnouncementAudienceType.
- */
-export const AnnouncementAudienceTypeSchema: GenEnum<AnnouncementAudienceType> = /*@__PURE__*/
-  enumDesc(file_publira_admin_v1_announcement, 0);
 
 /**
  * @generated from service publira.admin.v1.AdminAnnouncementService

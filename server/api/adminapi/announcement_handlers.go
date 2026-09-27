@@ -62,74 +62,15 @@ func (s *adminServer) revalidatePinnedAnnouncement(ctx context.Context, tenantID
 	s.revalidateTags(ctx, tenantID, pinnedannouncements.RevalidateTags(tenantID))
 }
 
-type announcementPageRow struct {
-	id                 uuid.UUID
-	targetUserID       uuid.NullUUID
-	title              string
-	body               string
-	linkURL            sql.NullString
-	targetUserPublicID sql.NullString
-	targetUserName     sql.NullString
-	createdAt          time.Time
-	pinned             bool
-	pinnedUntil        sql.NullTime
-}
-
-func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForTenantDescRow) []announcementPageRow {
-	mapped := make([]announcementPageRow, 0, len(rows))
-	for _, row := range rows {
-		mapped = append(mapped, announcementPageRow{
-			id:                 row.ID,
-			targetUserID:       row.TargetUserID,
-			title:              row.Title,
-			body:               row.Body,
-			linkURL:            row.LinkUrl,
-			targetUserPublicID: row.TargetUserPublicID,
-			targetUserName:     row.TargetUserName,
-			createdAt:          row.CreatedAt,
-			pinned:             row.Pinned,
-			pinnedUntil:        row.PinnedUntil,
-		})
-	}
-	return mapped
-}
-
-func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForTenantAscRow) []announcementPageRow {
-	mapped := make([]announcementPageRow, 0, len(rows))
-	for _, row := range rows {
-		mapped = append(mapped, announcementPageRow{
-			id:                 row.ID,
-			targetUserID:       row.TargetUserID,
-			title:              row.Title,
-			body:               row.Body,
-			linkURL:            row.LinkUrl,
-			targetUserPublicID: row.TargetUserPublicID,
-			targetUserName:     row.TargetUserName,
-			createdAt:          row.CreatedAt,
-			pinned:             row.Pinned,
-			pinnedUntil:        row.PinnedUntil,
-		})
-	}
-	return mapped
-}
-
-func mapAdminAnnouncementFromRow(row announcementPageRow) *publiraadminv1.AdminAnnouncement {
-	audienceType := publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS
-	if row.targetUserID.Valid {
-		audienceType = publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS
-	}
-
+func mapAdminAnnouncementFromRow(row dbmodels.Announcement) *publiraadminv1.AdminAnnouncement {
 	return &publiraadminv1.AdminAnnouncement{
-		Id:                 row.id.String(),
-		Title:              row.title,
-		Body:               row.body,
-		LinkUrl:            row.linkURL.String,
-		AudienceType:       audienceType,
-		TargetUserPublicId: row.targetUserPublicID.String,
-		TargetUserName:     row.targetUserName.String,
-		CreatedAt:          row.createdAt.UTC().Format(time.RFC3339),
-		Pinned:             row.pinned,
-		PinnedUntil:        formatPinnedUntil(row.pinnedUntil),
+		Id:          row.ID.String(),
+		Title:       row.Title,
+		Body:        row.Body,
+		LinkUrl:     row.LinkUrl.String,
+		CreatedAt:   row.CreatedAt.UTC().Format(time.RFC3339),
+		Pinned:      row.Pinned,
+		PinnedUntil: formatPinnedUntil(row.PinnedUntil),
 	}
 }
 
@@ -152,7 +93,7 @@ func (s *adminServer) announcementPage(
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]announcementPageRow, error) {
+) ([]dbmodels.Announcement, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
 		rows, err := queries.ListAnnouncementsForTenantAsc(ctx, dbmodels.ListAnnouncementsForTenantAscParams{
@@ -165,7 +106,7 @@ func (s *adminServer) announcementPage(
 		if err != nil {
 			return nil, err
 		}
-		return mapAnnouncementAscRows(rows), nil
+		return rows, nil
 	}
 
 	rows, err := queries.ListAnnouncementsForTenantDesc(ctx, dbmodels.ListAnnouncementsForTenantDescParams{
@@ -178,7 +119,7 @@ func (s *adminServer) announcementPage(
 	if err != nil {
 		return nil, err
 	}
-	return mapAnnouncementDescRows(rows), nil
+	return rows, nil
 }
 
 func (s *adminServer) ListAnnouncements(
@@ -222,11 +163,11 @@ func (s *adminServer) ListAnnouncements(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -268,19 +209,7 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("link_url must start with / or http(s)://"))
 	}
 
-	audienceType := req.Msg.AudienceType
-	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_UNSPECIFIED {
-		audienceType = publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS
-	}
-
 	pinned := req.Msg.Pinned
-	// The banner is the tenant's word to everyone who opens the site, and the
-	// read behind it answers no one in particular, so an announcement addressed
-	// to named readers has nowhere to show. Refusing it beats storing a flag
-	// that does nothing.
-	if pinned && audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pinned is only available for an announcement addressed to everyone"))
-	}
 	pinnedUntil := sql.NullTime{}
 	if pinned {
 		pinnedUntil, err = parsePinnedUntil(req.Msg.PinnedUntil, time.Now())
@@ -289,52 +218,13 @@ func (s *adminServer) CreateAnnouncement(
 		}
 	}
 
-	selectedUsers := make([]dbmodels.GetUserByPublicIDForTenantRow, 0)
-	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS {
-		targetPublicIDs := make([]string, 0, len(req.Msg.TargetUserPublicIds))
-		seen := make(map[string]struct{}, len(req.Msg.TargetUserPublicIds))
-		for _, raw := range req.Msg.TargetUserPublicIds {
-			normalized := strings.TrimSpace(raw)
-			if normalized == "" {
-				continue
-			}
-			if _, ok := seen[normalized]; ok {
-				continue
-			}
-			seen[normalized] = struct{}{}
-			targetPublicIDs = append(targetPublicIDs, normalized)
-		}
-		if len(targetPublicIDs) == 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_user_public_ids are required when audience_type is selected users"))
-		}
-
-		selectedUsers = make([]dbmodels.GetUserByPublicIDForTenantRow, 0, len(targetPublicIDs))
-		for _, publicID := range targetPublicIDs {
-			userRow, getUserErr := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-				TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-				PublicID: publicID,
-			})
-			if getUserErr != nil {
-				if errors.Is(getUserErr, sql.ErrNoRows) {
-					return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target user not found"))
-				}
-				return nil, s.internalDBError(ctx, "failed to get announcement target user", getUserErr, "tenant_id", tenant.ID.String(), "user_public_id", publicID)
-			}
-			selectedUsers = append(selectedUsers, userRow)
-		}
-	}
-	if audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS &&
-		audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid audience_type"))
-	}
-
-	created, err := s.storeAnnouncements(ctx, tenant.ID, announcementContent{
+	created, err := s.storeAnnouncement(ctx, tenant.ID, announcementContent{
 		title:       title,
 		body:        body,
 		linkURL:     linkURL,
 		pinned:      pinned,
 		pinnedUntil: pinnedUntil,
-	}, selectedUsers)
+	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
 	}
@@ -348,43 +238,33 @@ func (s *adminServer) CreateAnnouncement(
 		ActorRole:   sessionCtx.Role,
 		Action:      "announcement_created",
 		TargetType:  "announcement",
-		TargetID:    "bulk",
+		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publiraadminv1.CreateAnnouncementResponse{
-		Announcements: created,
+		Announcement: created,
 	}), nil
 }
 
-// announcementContent is what every row one CreateAnnouncement call writes
-// shares. A targeted delivery is the same announcement addressed to each
-// recipient separately, so only the recipient differs between its rows.
+// announcementContent is what one CreateAnnouncement call writes.
 type announcementContent struct {
-	title   string
-	body    string
-	linkURL string
-	// pinned and its window reach a broadcast only: CreateAnnouncement refuses
-	// the pair on a targeted announcement, which the banner read never sees.
+	title       string
+	body        string
+	linkURL     string
 	pinned      bool
 	pinnedUntil sql.NullTime
 }
 
-// storeAnnouncements writes the announcement rows and, in the same
-// transaction, the events that put each of them in its readers' notification
-// inboxes.
-//
-// An empty `targets` is the broadcast, which is one row addressed to nobody in
-// particular; a targeted delivery is one row per named reader. One transaction,
-// so a delivery nobody is ever told about cannot outlive the request that made
-// it, and a targeted post reaches either all of its recipients or none of them.
-func (s *adminServer) storeAnnouncements(
+// storeAnnouncement writes the announcement row and, in the same transaction,
+// the event that puts it in its readers' notification inboxes, so a delivery
+// nobody is ever told about cannot outlive the request that made it.
+func (s *adminServer) storeAnnouncement(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	content announcementContent,
-	targets []dbmodels.GetUserByPublicIDForTenantRow,
-) ([]*publiraadminv1.AdminAnnouncement, error) {
+) (*publiraadminv1.AdminAnnouncement, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, err
@@ -392,47 +272,14 @@ func (s *adminServer) storeAnnouncements(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
-	created := make([]*publiraadminv1.AdminAnnouncement, 0, max(len(targets), 1))
-	if len(targets) == 0 {
-		row, createErr := createAnnouncementRow(ctx, txq, tenantID, content, uuid.NullUUID{})
-		if createErr != nil {
-			return nil, createErr
-		}
-		created = append(created, &publiraadminv1.AdminAnnouncement{
-			Id:           row.ID.String(),
-			Title:        row.Title,
-			Body:         row.Body,
-			LinkUrl:      row.LinkUrl.String,
-			AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
-			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
-			Pinned:       row.Pinned,
-			PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
-		})
+	row, err := createAnnouncementRow(ctx, txq, tenantID, content)
+	if err != nil {
+		return nil, err
 	}
-	for _, userRow := range targets {
-		row, createErr := createAnnouncementRow(ctx, txq, tenantID, content,
-			uuid.NullUUID{UUID: userRow.ID, Valid: true})
-		if createErr != nil {
-			return nil, createErr
-		}
-		created = append(created, &publiraadminv1.AdminAnnouncement{
-			Id:                 row.ID.String(),
-			Title:              row.Title,
-			Body:               row.Body,
-			LinkUrl:            row.LinkUrl.String,
-			AudienceType:       publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
-			TargetUserPublicId: userRow.PublicID,
-			TargetUserName:     userRow.Name,
-			CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
-			Pinned:             row.Pinned,
-			PinnedUntil:        formatPinnedUntil(row.PinnedUntil),
-		})
-	}
-
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return created, nil
+	return mapAdminAnnouncementFromRow(row), nil
 }
 
 // createAnnouncementRow writes one announcement and queues the notification
@@ -442,7 +289,6 @@ func createAnnouncementRow(
 	queries *dbmodels.Queries,
 	tenantID uuid.UUID,
 	content announcementContent,
-	targetUserID uuid.NullUUID,
 ) (dbmodels.Announcement, error) {
 	announcementID, err := uuid.NewV7()
 	if err != nil {
@@ -451,7 +297,6 @@ func createAnnouncementRow(
 	row, err := queries.CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
 		ID:               announcementID,
 		TenantID:         tenantID,
-		TargetUserID:     targetUserID,
 		AnnouncementType: announcementTypeAdmin,
 		Title:            content.title,
 		Body:             content.body,
@@ -481,14 +326,9 @@ func enqueueAnnouncementNotification(
 	tenantID uuid.UUID,
 	row dbmodels.Announcement,
 ) error {
-	target := ""
-	if row.TargetUserID.Valid {
-		target = row.TargetUserID.UUID.String()
-	}
 	payload, err := json.Marshal(outbox.AnnouncementNotificationPayload{
 		TenantID:       tenantID.String(),
 		AnnouncementID: row.ID.String(),
-		TargetUserID:   target,
 		Title:          row.Title,
 	})
 	if err != nil {

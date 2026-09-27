@@ -26,7 +26,6 @@ func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id",
 		"tenant_id",
-		"target_user_id",
 		"announcement_type",
 		"title",
 		"body",
@@ -35,8 +34,6 @@ func announcementColumns() *sqlmock.Rows {
 		"created_at",
 		"pinned",
 		"pinned_until",
-		"target_user_public_id",
-		"target_user_name",
 	})
 }
 
@@ -49,7 +46,6 @@ func addAnnouncementRow(
 	return rows.AddRow(
 		id,
 		tenantID,
-		uuid.NullUUID{},
 		"announcement",
 		title,
 		body,
@@ -58,8 +54,6 @@ func addAnnouncementRow(
 		createdAt,
 		false,
 		sql.NullTime{},
-		nil,
-		nil,
 	)
 }
 
@@ -111,72 +105,6 @@ func TestCreateAnnouncementRequiresTenantAdmin(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
-	tenantID := uuid.Must(uuid.NewV7())
-	actorID := uuid.Must(uuid.NewV7())
-	user1ID := uuid.Must(uuid.NewV7())
-	user2ID := uuid.Must(uuid.NewV7())
-	announcement1ID := uuid.Must(uuid.NewV7())
-	announcement2ID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
-		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "USER001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
-			AddRow(user1ID, "USER001", "User One", "u1@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
-
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
-		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "USER002").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
-			AddRow(user2ID, "USER002", "User Two", "u2@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
-			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
-	expectAnnouncementNotificationEvent(mock, tenantID, announcement1ID)
-
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
-			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "Update", "Body", "/series/S001", json.RawMessage("{}"), now, false, sql.NullTime{}))
-	expectAnnouncementNotificationEvent(mock, tenantID, announcement2ID)
-	mock.ExpectCommit()
-
-	expectAdminAuditLogInsert(mock)
-
-	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
-		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:               "Update",
-		Body:                "Body",
-		LinkUrl:             "/series/S001",
-		AudienceType:        publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
-		TargetUserPublicIds: []string{"USER001", "USER002"},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
-	resp, err := client.CreateAnnouncement(context.Background(), req)
-	if err != nil {
-		t.Fatalf("CreateAnnouncement: %v", err)
-	}
-	if len(resp.Msg.Announcements) != 2 {
-		t.Fatalf("announcements count = %d, want 2", len(resp.Msg.Announcements))
-	}
-	if resp.Msg.Announcements[0].TargetUserPublicId != "USER001" {
-		t.Fatalf("target_user_public_id = %q, want USER001", resp.Msg.Announcements[0].TargetUserPublicId)
-	}
-
-	assertExpectations(t, mock)
-}
-
 func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
@@ -191,9 +119,9 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
-			AddRow(announcementID, tenantID, uuid.NullUUID{}, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
+		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
+			AddRow(announcementID, tenantID, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 	mock.ExpectCommit()
 
@@ -201,10 +129,9 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
-		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:        "Update",
-		Body:         "Body",
-		AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "Update",
+		Body:   "Body",
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -261,9 +188,6 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 	}
 	if len(resp.Msg.Announcements) != 1 {
 		t.Fatalf("announcements count = %d, want 1", len(resp.Msg.Announcements))
-	}
-	if resp.Msg.Announcements[0].AudienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
-		t.Fatalf("audience_type = %v, want all users", resp.Msg.Announcements[0].AudienceType)
 	}
 	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
 		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
