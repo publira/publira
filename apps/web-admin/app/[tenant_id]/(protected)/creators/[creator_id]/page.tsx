@@ -26,18 +26,27 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+  AdminSections,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
+import { CreatorAccounts } from "./_components/creator-accounts";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
@@ -124,6 +133,62 @@ const EditCreatorFormData = async ({
   );
 };
 
+/**
+ * The reader accounts linked to the creator. Only a tenant admin may read or
+ * change them, so every other role is shown nothing here; a creator that could
+ * not be read is already reported by the form above.
+ */
+const CreatorAccountsSection = async ({
+  params,
+}: Pick<EditCreatorPageProps, "params">) => {
+  const parsedParams = parseRouteParams(editCreatorParamsSchema, await params);
+  if (!parsedParams) {
+    return null;
+  }
+
+  const tenantId = await getTenantId();
+  const currentUser = await getAdminCurrentUser(tenantId);
+  if (!currentUser.ok || !isTenantAdminRole(currentUser.user.role)) {
+    return null;
+  }
+
+  const locale = await getLocale(tenantId);
+  const [result, timeZone] = await Promise.all([
+    getCreator({ publicId: parsedParams.creator_id, tenantId }, locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+  if (!result.ok) {
+    return null;
+  }
+
+  return (
+    <AdminSection>
+      <AdminSectionHeader>
+        <AdminSectionHeading>
+          <AdminSectionTitle>
+            <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+              <Message message="admin.creators.accounts.title" />
+            </Suspense>
+          </AdminSectionTitle>
+          <AdminSectionDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+              <Message message="admin.creators.accounts.description" />
+            </Suspense>
+          </AdminSectionDescription>
+        </AdminSectionHeading>
+      </AdminSectionHeader>
+      <CreatorAccounts
+        accounts={result.accounts}
+        creatorId={result.creator.id}
+        creatorPublicId={result.creator.publicId}
+        locale={locale}
+        tenantId={tenantId}
+        timeZone={timeZone}
+      />
+    </AdminSection>
+  );
+};
+
 const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
   <AdminPage>
     <AdminPageHeader>
@@ -149,17 +214,30 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast message="admin.creators.created" />
-      <SectionErrorBoundary
-        title={
-          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.creators.detail_error" />
+      <AdminSections>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.creators.detail_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<EditCreatorFormSkeleton />}>
+            <EditCreatorFormData params={params} />
           </Suspense>
-        }
-      >
-        <Suspense fallback={<EditCreatorFormSkeleton />}>
-          <EditCreatorFormData params={params} />
-        </Suspense>
-      </SectionErrorBoundary>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary
+          title={
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.creators.accounts.list_error" />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={null}>
+            <CreatorAccountsSection params={params} />
+          </Suspense>
+        </SectionErrorBoundary>
+      </AdminSections>
     </AdminPageContent>
   </AdminPage>
 );

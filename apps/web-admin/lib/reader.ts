@@ -49,7 +49,7 @@ type RawReader = Pick<
   "createdAt" | "email" | "id" | "name" | "publicId" | "status"
 >;
 
-const mapReader = (item: RawReader): ReaderItem => ({
+export const mapReader = (item: RawReader): ReaderItem => ({
   createdAt: item.createdAt ?? "",
   email: item.email ?? "",
   id: item.id ?? "",

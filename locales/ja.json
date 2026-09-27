@@ -746,7 +746,38 @@
       "updated": "著者を更新しました。",
       "created": "著者を作成しました。",
       "list_failed": "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
-      "save_failed": "著者の保存に失敗しました。時間をおいて再試行してください。"
+      "save_failed": "著者の保存に失敗しました。時間をおいて再試行してください。",
+      "accounts": {
+        "title": "読者アカウント",
+        "description": "この著者として名前が出ている本人の読者アカウントです。紐付けと解除はテナント管理者だけが行えます。",
+        "list_error": "読者アカウントを表示できませんでした",
+        "reader": "読者アカウント",
+        "reader_description": "テナントの有効な読者を名前またはメールアドレスで検索します。",
+        "link": "アカウントを紐付ける",
+        "linking": "紐付けています…",
+        "linked": "{$name} を紐付けました。",
+        "columns": {
+          "name": "氏名",
+          "email": "メール",
+          "linked_at": "紐付け日",
+          "actions": "操作"
+        },
+        "empty_title": "この著者に紐付いた読者アカウントはありません。",
+        "empty_description": "上の欄で読者を検索して、そのアカウントを紐付けてください。",
+        "unlink": "解除",
+        "unlinking": "解除しています…",
+        "unlink_confirm_title": "{$name} の紐付けを解除しますか？",
+        "unlink_confirm_description": "アカウントは読者アカウントのまま残りますが、この著者の本人としては扱われなくなります。",
+        "unlink_confirm_action": "解除する",
+        "unlinked": "紐付けを解除しました。",
+        "reader_not_active": "紐付けられるのは、メールアドレスを確認済みの有効な読者だけです。",
+        "link_failed": "アカウントを紐付けられませんでした。時間をおいて再試行してください。",
+        "unlink_failed": "紐付けを解除できませんでした。時間をおいて再試行してください。",
+        "validation": {
+          "reader_required": "読者アカウントを選択してください。",
+          "creator_missing": "著者 ID が見つかりません。"
+        }
+      }
     },
     "creator_roles": {
       "title": "著者の役割",
@@ -1260,6 +1291,16 @@
       "validation": {
         "target_missing": "対象の読者を特定できませんでした。ページを再読み込みしてもう一度お試しください。",
         "tenant_missing": "対象のテナントを特定できませんでした。ページを再読み込みしてもう一度お試しください。"
+      }
+    },
+    "reader_picker": {
+      "placeholder": "名前またはメールアドレスで検索",
+      "empty": "一致する読者が見つかりません。",
+      "searching": "検索中…",
+      "option": "{$name} ({$email})",
+      "validation": {
+        "query_too_long": "検索語は{$count}文字以内で入力してください。",
+        "tenant_missing": "テナント ID が見つかりません。"
       }
     },
     "series": {
@@ -2539,11 +2580,7 @@
       "form": {
         "option": "{$title} ({$id})",
         "user": "読者",
-        "user_placeholder": "名前またはメールアドレスで検索",
         "user_description": "閲覧権を付与する読者を選びます。",
-        "user_empty": "一致する読者が見つかりません。",
-        "user_searching": "検索中…",
-        "user_option": "{$name} ({$email})",
         "series": "シリーズ",
         "series_placeholder": "シリーズ名で検索",
         "series_empty": "一致するシリーズが見つかりません。",
@@ -2569,8 +2606,7 @@
         "expires_at_invalid": "有効期限の形式が正しくありません。",
         "expires_at_past": "有効期限は未来の日時を指定してください。",
         "revoke_target": "失効対象が不正です。",
-        "series_required": "シリーズを選択してください。",
-        "reader_query_too_long": "検索語は{$count}文字以内で入力してください。"
+        "series_required": "シリーズを選択してください。"
       }
     },
     "engagement": {

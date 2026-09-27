@@ -22,12 +22,10 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
-import { listReaders } from "#lib/reader";
 
 import type {
   IssueAccessTicketActionState,
   ListTicketEpisodeOptionsResult,
-  ListTicketReaderOptionsResult,
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
@@ -92,26 +90,6 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
     seriesId: requiredRecordId(
       t("admin.access_tickets.validation.series_required")
     ),
-    tenantId: requiredTrimmedString(
-      t("admin.access_tickets.validation.tenant_missing")
-    ),
-  });
-};
-/** An email address is the longest thing an operator types to find a reader. */
-const READER_QUERY_MAX_LENGTH = 254;
-const listReaderOptionsSchema = async (locale: Locale) => {
-  const t = await getMessagesFor(locale);
-
-  return z.object({
-    query: z
-      .string()
-      .trim()
-      .max(
-        READER_QUERY_MAX_LENGTH,
-        t("admin.access_tickets.validation.reader_query_too_long", {
-          count: String(READER_QUERY_MAX_LENGTH),
-        })
-      ),
     tenantId: requiredTrimmedString(
       t("admin.access_tickets.validation.tenant_missing")
     ),
@@ -279,44 +257,5 @@ export const revokeAccessTicketAction = async (
     message: t("admin.access_tickets.revoked"),
     ok: true,
     ticketId: parsed.data.ticketId,
-  };
-};
-
-/** How many readers one search offers; a narrower query finds the rest. */
-const READER_OPTION_LIMIT = 20;
-
-export const listReaderOptionsAction = async (
-  tenantId: string,
-  query: string,
-  locale: Locale
-): Promise<ListTicketReaderOptionsResult> => {
-  // This Server Action only reads reader options; the same-origin check
-  // applies to mutations.
-  const schema = await listReaderOptionsSchema(locale);
-  const parsed = schema.safeParse({ query, tenantId });
-  if (!parsed.success) {
-    return {
-      message: toFormErrorMessage(parsed.error, { locale }),
-      ok: false,
-      readers: [],
-    };
-  }
-
-  const result = await listReaders(parsed.data.tenantId, locale, {
-    limit: READER_OPTION_LIMIT,
-    query: parsed.data.query,
-    status: "active",
-  });
-  await redirectToLoginIfSessionRejected(result);
-  if (!result.ok) {
-    return { message: result.message, ok: false, readers: [] };
-  }
-  return {
-    ok: true,
-    readers: result.readers.map((reader) => ({
-      email: reader.email,
-      id: reader.id,
-      name: reader.name,
-    })),
   };
 };

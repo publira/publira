@@ -746,7 +746,38 @@
       "updated": "작가를 변경했습니다.",
       "created": "작가를 만들었습니다.",
       "list_failed": "작가 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      "save_failed": "작가를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      "save_failed": "작가를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "accounts": {
+        "title": "독자 계정",
+        "description": "이 작가로 크레디트된 본인의 독자 계정입니다. 연결과 해제는 테넌트 관리자만 할 수 있습니다.",
+        "list_error": "독자 계정을 표시할 수 없습니다",
+        "reader": "독자 계정",
+        "reader_description": "테넌트의 활성 독자를 이름 또는 이메일 주소로 검색합니다.",
+        "link": "계정 연결",
+        "linking": "연결 중…",
+        "linked": "{$name} 님을 연결했습니다.",
+        "columns": {
+          "name": "이름",
+          "email": "이메일",
+          "linked_at": "연결일",
+          "actions": "작업"
+        },
+        "empty_title": "이 작가에 연결된 독자 계정이 없습니다.",
+        "empty_description": "위에서 독자를 검색해 계정을 연결하세요.",
+        "unlink": "해제",
+        "unlinking": "해제 중…",
+        "unlink_confirm_title": "{$name} 님의 연결을 해제할까요?",
+        "unlink_confirm_description": "계정은 독자 계정으로 남지만 더 이상 이 작가 본인으로 기록되지 않습니다.",
+        "unlink_confirm_action": "해제",
+        "unlinked": "연결을 해제했습니다.",
+        "reader_not_active": "이메일 주소를 확인한 활성 독자만 연결할 수 있습니다.",
+        "link_failed": "계정을 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "unlink_failed": "연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "reader_required": "독자 계정을 선택해 주세요.",
+          "creator_missing": "작가 ID를 찾을 수 없습니다."
+        }
+      }
     },
     "creator_roles": {
       "title": "작가 역할",
@@ -1260,6 +1291,16 @@
       "validation": {
         "target_missing": "대상 독자를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
         "tenant_missing": "대상 테넌트를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요."
+      }
+    },
+    "reader_picker": {
+      "placeholder": "이름 또는 이메일 주소로 검색",
+      "empty": "일치하는 독자가 없습니다.",
+      "searching": "검색 중…",
+      "option": "{$name} ({$email})",
+      "validation": {
+        "query_too_long": "검색어는 {$count}자 이내로 입력하세요.",
+        "tenant_missing": "테넌트 ID를 찾을 수 없습니다."
       }
     },
     "series": {
@@ -2539,11 +2580,7 @@
       "form": {
         "option": "{$title} ({$id})",
         "user": "독자",
-        "user_placeholder": "이름 또는 이메일 주소로 검색",
         "user_description": "열람 권한을 받을 독자를 선택합니다.",
-        "user_empty": "일치하는 독자가 없습니다.",
-        "user_searching": "검색 중…",
-        "user_option": "{$name} ({$email})",
         "series": "시리즈",
         "series_placeholder": "시리즈 제목으로 검색",
         "series_empty": "일치하는 시리즈가 없습니다.",
@@ -2569,8 +2606,7 @@
         "expires_at_invalid": "만료일 형식이 올바르지 않습니다.",
         "expires_at_past": "만료일은 미래의 일시로 지정해 주세요.",
         "revoke_target": "취소할 대상이 올바르지 않습니다.",
-        "series_required": "시리즈를 선택해 주세요.",
-        "reader_query_too_long": "검색어는 {$count}자 이내로 입력하세요."
+        "series_required": "시리즈를 선택해 주세요."
       }
     },
     "engagement": {

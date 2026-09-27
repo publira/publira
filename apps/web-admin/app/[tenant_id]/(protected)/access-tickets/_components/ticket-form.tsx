@@ -26,7 +26,6 @@ import { Textarea } from "@publira/ui-components/textarea";
 import {
   useActionState,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -35,22 +34,17 @@ import {
 
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
+import { ReaderPicker } from "#components/reader-picker";
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import {
-  listEpisodeOptionsAction,
-  listReaderOptionsAction,
-} from "../_lib/actions";
+import { listEpisodeOptionsAction } from "../_lib/actions";
 import type {
   IssueAccessTicketActionState,
   TicketEpisodeOption,
-  TicketReaderOption,
   TicketSeriesOption,
 } from "../ticket-types";
 
-/** How long typing pauses before the readers are searched. */
-const READER_SEARCH_DELAY_MS = 300;
 interface TicketFormProps {
   action: (
     prevState: IssueAccessTicketActionState,
@@ -72,34 +66,13 @@ export const TicketForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const [isReaderPending, startReaderTransition] = useTransition();
   const [readerId, setReaderId] = useState("");
-  const [readers, setReaders] = useState<TicketReaderOption[]>([]);
-  const [selectedReader, setSelectedReader] = useState<TicketReaderOption>();
-  const [readersErrorMessage, setReadersErrorMessage] = useState<string>();
-  const readerRequestIdRef = useRef(0);
-  const readerSearchTimerRef = useRef(0);
   const [seriesId, setSeriesId] = useState("");
   const [episodeId, setEpisodeId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
   const episodeRequestIdRef = useRef(0);
 
-  // The chosen reader stays an option while a later search returns others, so
-  // the picker keeps showing who was chosen.
-  const readerItems = useMemo<ComboboxItem[]>(() => {
-    const options =
-      selectedReader && !readers.some((item) => item.id === selectedReader.id)
-        ? [selectedReader, ...readers]
-        : readers;
-    return options.map((item) => ({
-      label: t("admin.access_tickets.form.user_option", {
-        email: item.email,
-        name: item.name,
-      }),
-      value: item.id,
-    }));
-  }, [readers, selectedReader, t]);
   const seriesItems = useMemo<ComboboxItem[]>(
     () =>
       series.map((item) => ({
@@ -124,48 +97,6 @@ export const TicketForm = ({
   );
   const canSubmit =
     !isPending && !isEpisodePending && readerId !== "" && episodeId !== "";
-
-  // A pending search is abandoned when the form goes away, so it cannot set
-  // state on a form nobody sees.
-  useEffect(() => () => window.clearTimeout(readerSearchTimerRef.current), []);
-
-  const handleReaderSearch = useCallback(
-    (query: string) => {
-      const requestId = readerRequestIdRef.current + 1;
-      readerRequestIdRef.current = requestId;
-      window.clearTimeout(readerSearchTimerRef.current);
-      if (query.trim() === "") {
-        setReaders([]);
-        setReadersErrorMessage(undefined);
-        return;
-      }
-
-      // Typing an address would otherwise search every prefix of it.
-      readerSearchTimerRef.current = window.setTimeout(() => {
-        startReaderTransition(async () => {
-          const result = await listReaderOptionsAction(tenantId, query, locale);
-          if (requestId !== readerRequestIdRef.current) {
-            return;
-          }
-          setReaders(result.readers);
-          setReadersErrorMessage(result.ok ? undefined : result.message);
-        });
-      }, READER_SEARCH_DELAY_MS);
-    },
-    [locale, tenantId]
-  );
-
-  const handleReaderChange = useCallback(
-    (nextReaderId: string) => {
-      setReaderId(nextReaderId);
-      setSelectedReader(
-        [...readers, ...(selectedReader ? [selectedReader] : [])].find(
-          (item) => item.id === nextReaderId
-        )
-      );
-    },
-    [readers, selectedReader]
-  );
 
   const loadEpisodesForSeries = useCallback(
     (nextSeriesId: string) => {
@@ -237,30 +168,7 @@ export const TicketForm = ({
             <ClientMessage message="admin.access_tickets.form.user" />
           </FieldLabel>
           <FieldContent>
-            <Combobox
-              items={readerItems}
-              onSearch={handleReaderSearch}
-              onValueChange={handleReaderChange}
-              value={readerId}
-            >
-              <ComboboxInput
-                placeholder={t("admin.access_tickets.form.user_placeholder")}
-              />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  {isReaderPending
-                    ? t("admin.access_tickets.form.user_searching")
-                    : t("admin.access_tickets.form.user_empty")}
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
-            <input name="user_id" type="hidden" value={readerId} />
-            {readersErrorMessage ? (
-              <FormMessage variant="destructive">
-                {readersErrorMessage}
-              </FormMessage>
-            ) : null}
+            <ReaderPicker name="user_id" onValueChange={setReaderId} />
             <FieldDescription>
               <ClientMessage message="admin.access_tickets.form.user_description" />
             </FieldDescription>

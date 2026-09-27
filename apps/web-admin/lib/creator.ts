@@ -1,4 +1,4 @@
-import type { Creator } from "@publira/api-client/admin/types";
+import type { Creator, CreatorAccount } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -9,6 +9,7 @@ import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
 
+import type { ReaderItem } from "../app/[tenant_id]/(protected)/readers/reader-types";
 import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
@@ -23,6 +24,7 @@ import {
 } from "./cursor-page";
 import { mentionsStorageNotConfigured } from "./image-rejection";
 import { getMessagesFor } from "./messages";
+import { mapReader } from "./reader";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -36,6 +38,11 @@ export interface CreatorItem {
   iconImageFileSizeBytes: number;
   iconImageUpdatedAt: string;
 }
+
+/** A reader account linked to a creator, and when the link was made. */
+export type CreatorAccountItem = ReaderItem & {
+  linkedAt: string;
+};
 
 export type ListCreatorsResult = CursorPageTokens &
   (
@@ -68,7 +75,12 @@ export type UpdateCreatorResult =
  * The interrupt has to be raised by the caller, outside the cache scope.
  */
 export type GetCreatorResult =
-  | { ok: true; creator: CreatorItem }
+  | {
+      ok: true;
+      creator: CreatorItem;
+      /** Always empty unless the session is a tenant admin's. */
+      accounts: CreatorAccountItem[];
+    }
   | { notFound: true; ok: false }
   | {
       message: string;
@@ -116,6 +128,16 @@ const mapCreator = (creator: RawCreator): CreatorItem => ({
   profileText: creator.profileText,
   publicId: creator.publicId,
 });
+
+/** The generated `CreatorAccount` fields {@link mapCreatorAccounts} reads. */
+type RawCreatorAccount = Pick<CreatorAccount, "linkedAt" | "reader">;
+
+const mapCreatorAccounts = (
+  accounts: RawCreatorAccount[] | undefined
+): CreatorAccountItem[] =>
+  (accounts ?? []).flatMap(({ linkedAt, reader }) =>
+    reader ? [{ ...mapReader(reader), linkedAt: linkedAt ?? "" }] : []
+  );
 
 const listCreatorsForSession = async (
   tenantId: string,
@@ -434,6 +456,7 @@ const getCreatorForSession = async (
     }
 
     return {
+      accounts: mapCreatorAccounts(response.accounts),
       creator: mapCreator(response.creator),
       ok: true,
     };
@@ -462,3 +485,98 @@ export const getCreator = async (
   locale: Locale
 ): Promise<GetCreatorResult> =>
   getCreatorForSession(input, locale, await getAccessToken());
+
+export interface CreatorAccountInput {
+  tenantId: string;
+  /** The creator's primary key. */
+  creatorId: string;
+  /** The reader's primary key. */
+  readerId: string;
+}
+
+export type ChangeCreatorAccountResult =
+  | { ok: true; accounts: CreatorAccountItem[] }
+  | { ok: false; message: string };
+
+/** Links a reader account to a creator. Tenant admins only. */
+export const linkCreatorAccount = async (
+  input: CreatorAccountInput,
+  locale: Locale
+): Promise<ChangeCreatorAccountResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.creator.linkCreatorAccount(
+      {
+        creatorId: input.creatorId,
+        readerId: input.readerId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { accounts: mapCreatorAccounts(response.accounts), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.creators.accounts.link_failed"),
+        {
+          locale,
+          overrides: {
+            // The API's one precondition: the reader is suspended, or has not
+            // confirmed their address yet.
+            precondition: t("admin.creators.accounts.reader_not_active"),
+          },
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** Removes a link between a reader account and a creator. Tenant admins only. */
+export const unlinkCreatorAccount = async (
+  input: CreatorAccountInput,
+  locale: Locale
+): Promise<ChangeCreatorAccountResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.creator.unlinkCreatorAccount(
+      {
+        creatorId: input.creatorId,
+        readerId: input.readerId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { accounts: mapCreatorAccounts(response.accounts), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.creators.accounts.unlink_failed"),
+        { locale }
+      ),
+      ok: false,
+    };
+  }
+};

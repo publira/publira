@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetAccessToken, mockGetCreator, mockListCreators } =
-  vi.hoisted(() => ({
-    mockCacheTag: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockGetCreator: vi.fn(),
-    mockListCreators: vi.fn(),
-  }));
+const {
+  mockCacheTag,
+  mockGetAccessToken,
+  mockGetCreator,
+  mockLinkCreatorAccount,
+  mockListCreators,
+  mockUnlinkCreatorAccount,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetCreator: vi.fn(),
+  mockLinkCreatorAccount: vi.fn(),
+  mockListCreators: vi.fn(),
+  mockUnlinkCreatorAccount: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
@@ -20,7 +28,9 @@ vi.mock("./api", () => ({
   apiClient: {
     creator: {
       getCreator: mockGetCreator,
+      linkCreatorAccount: mockLinkCreatorAccount,
       listCreators: mockListCreators,
+      unlinkCreatorAccount: mockUnlinkCreatorAccount,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -164,6 +174,7 @@ describe("getCreator", () => {
     );
     expect(mockListCreators).not.toHaveBeenCalled();
     expect(result).toEqual({
+      accounts: [],
       creator: {
         iconImageFileSizeBytes: 0,
         iconImageUpdatedAt: "",
@@ -174,6 +185,49 @@ describe("getCreator", () => {
       },
       ok: true,
     });
+  });
+
+  it("carries the reader accounts linked to the creator", async () => {
+    mockGetCreator.mockResolvedValue({
+      accounts: [
+        {
+          linkedAt: "2026-09-01T00:00:00Z",
+          reader: {
+            createdAt: "2026-01-01T00:00:00Z",
+            email: "one@example.com",
+            id: "018f0e6a-5000-7000-8000-000000000001",
+            name: "Reader One",
+            publicId: "READER001",
+            status: "active",
+          },
+        },
+        // A link whose account the response left out has nothing to show.
+        { linkedAt: "2026-09-02T00:00:00Z" },
+      ],
+      creator: { name: "Target", profileText: "", publicId: "CREATOR101" },
+    });
+
+    const { getCreator } = await import("./creator");
+    const result = await getCreator(
+      { publicId: "CREATOR101", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toMatchObject({
+      accounts: [
+        {
+          createdAt: "2026-01-01T00:00:00Z",
+          email: "one@example.com",
+          id: "018f0e6a-5000-7000-8000-000000000001",
+          linkedAt: "2026-09-01T00:00:00Z",
+          name: "Reader One",
+          publicId: "READER001",
+          status: "active",
+        },
+      ],
+      ok: true,
+    });
+    expect(result.ok && result.accounts).toHaveLength(1);
   });
 
   it("returns an error without calling the RPC when there is no session", async () => {
@@ -350,6 +404,113 @@ describe("listAllCreators", () => {
       ok: false,
       previousToken: "",
       requiresSignIn: false,
+    });
+  });
+});
+
+describe("linkCreatorAccount", () => {
+  const input = {
+    creatorId: "018f0e6a-2000-7000-8000-000000000001",
+    readerId: "018f0e6a-5000-7000-8000-000000000001",
+    tenantId: "TENANT001",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("links the account by both primary keys and returns the links after it", async () => {
+    mockLinkCreatorAccount.mockResolvedValue({
+      accounts: [
+        {
+          linkedAt: "2026-09-01T00:00:00Z",
+          reader: {
+            email: "one@example.com",
+            id: input.readerId,
+            name: "Reader One",
+            publicId: "READER001",
+            status: "active",
+          },
+        },
+      ],
+    });
+
+    const { linkCreatorAccount } = await import("./creator");
+    const result = await linkCreatorAccount(input, "en");
+
+    expect(mockLinkCreatorAccount).toHaveBeenCalledWith(
+      {
+        creatorId: input.creatorId,
+        readerId: input.readerId,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      accounts: [{ id: input.readerId, linkedAt: "2026-09-01T00:00:00Z" }],
+      ok: true,
+    });
+  });
+
+  it("says which readers can be linked when the API refuses an inactive one", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockLinkCreatorAccount.mockRejectedValue(
+      new ConnectError("reader is not active", Code.FailedPrecondition)
+    );
+
+    const { linkCreatorAccount } = await import("./creator");
+    const result = await linkCreatorAccount(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "Only an active reader who has confirmed their email address can be linked.",
+      ok: false,
+    });
+  });
+});
+
+describe("unlinkCreatorAccount", () => {
+  const input = {
+    creatorId: "018f0e6a-2000-7000-8000-000000000001",
+    readerId: "018f0e6a-5000-7000-8000-000000000001",
+    tenantId: "TENANT001",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("unlinks the account by both primary keys and returns the links left", async () => {
+    mockUnlinkCreatorAccount.mockResolvedValue({ accounts: [] });
+
+    const { unlinkCreatorAccount } = await import("./creator");
+    const result = await unlinkCreatorAccount(input, "en");
+
+    expect(mockUnlinkCreatorAccount).toHaveBeenCalledWith(
+      {
+        creatorId: input.creatorId,
+        readerId: input.readerId,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ accounts: [], ok: true });
+  });
+
+  it("returns an error without calling the RPC when there is no session", async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+
+    const { unlinkCreatorAccount } = await import("./creator");
+    const result = await unlinkCreatorAccount(input, "en");
+
+    expect(mockUnlinkCreatorAccount).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
     });
   });
 });
