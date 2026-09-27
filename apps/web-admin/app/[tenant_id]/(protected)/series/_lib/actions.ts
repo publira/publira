@@ -177,7 +177,6 @@ const seriesUpdateSchema = async (locale: Locale) => {
 
   return base.extend({
     id: requiredRecordId(t("admin.series.validation.id_missing")),
-    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
   });
 };
 const seriesEyeCatchSchema = async (locale: Locale) => {
@@ -348,7 +347,6 @@ export const updateSeriesAction = async (
     toFormDataInput(formData, {
       ...seriesFormFields,
       id: { kind: "value", name: "series_id" },
-      publicId: { kind: "value", name: "public_id" },
     })
   );
   if (!parsed.success) {
@@ -402,11 +400,11 @@ export const updateSeriesAction = async (
     return toFailure(result.message, "update");
   }
 
-  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesCacheTag(parsed.data.tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
-  redirect(`/series/${parsed.data.publicId}?updated=1`);
+  redirect(`/series/${result.series.publicId}?updated=1`);
 };
 
 export const updateSeriesEyeCatchAction = async (
@@ -428,7 +426,6 @@ export const updateSeriesEyeCatchAction = async (
         name: "current_eye_catch_image_updated_at",
       },
       id: { kind: "value", name: "series_id" },
-      publicId: { kind: "value", name: "public_id" },
     })
   );
   if (!parsed.success) {
@@ -498,7 +495,7 @@ export const updateSeriesEyeCatchAction = async (
     );
   }
 
-  updateTag(seriesCacheTag(parsed.data.tenantId, parsed.data.publicId));
+  updateTag(seriesCacheTag(parsed.data.tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
 
   return {

@@ -162,31 +162,23 @@ interface LabelFieldProps {
   labelItems: ComboboxItem[];
   labelsErrorMessage?: string;
   selectedLabelId: string;
-  useLabelFallbackInput: boolean;
   onComboboxChange: (nextValue: string) => void;
-  onFallbackChange: ChangeEventHandler<HTMLInputElement>;
 }
 
 const LabelField = ({
   labelItems,
   labelsErrorMessage,
   selectedLabelId,
-  useLabelFallbackInput,
   onComboboxChange,
-  onFallbackChange,
 }: LabelFieldProps) => {
   const t = useClientMessages();
   // Combobox renders its own input instead of a Field control, so the label
-  // needs an id to point at. The fallback Input is a Field control and wires
-  // itself up.
+  // needs an id to point at.
   const comboboxId = useId();
 
   return (
     <Field>
-      <FieldLabel
-        htmlFor={useLabelFallbackInput ? undefined : comboboxId}
-        required
-      >
+      <FieldLabel htmlFor={comboboxId} required>
         <ClientMessage message="admin.series.form.label" />
       </FieldLabel>
       <FieldContent>
@@ -194,46 +186,28 @@ const LabelField = ({
           <FormMessage variant="destructive">{labelsErrorMessage}</FormMessage>
         ) : null}
 
-        {useLabelFallbackInput ? (
-          <>
-            <Input
-              name="label_id"
-              onChange={onFallbackChange}
-              placeholder={t("admin.series.form.label_fallback_placeholder")}
-              required
-              type="text"
-              value={selectedLabelId}
-            />
-            <FieldDescription>
-              <ClientMessage message="admin.series.form.label_fallback_description" />
-            </FieldDescription>
-          </>
-        ) : (
-          <>
-            <Combobox
-              id={comboboxId}
-              items={labelItems}
-              onValueChange={onComboboxChange}
-              value={selectedLabelId}
-            >
-              <ComboboxInput
-                placeholder={t("admin.series.form.label_placeholder")}
-              />
-              <ComboboxPopup>
-                <ComboboxEmpty>
-                  <ClientMessage message="admin.series.form.label_empty" />
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
-            </Combobox>
+        <Combobox
+          id={comboboxId}
+          items={labelItems}
+          onValueChange={onComboboxChange}
+          value={selectedLabelId}
+        >
+          <ComboboxInput
+            placeholder={t("admin.series.form.label_placeholder")}
+          />
+          <ComboboxPopup>
+            <ComboboxEmpty>
+              <ClientMessage message="admin.series.form.label_empty" />
+            </ComboboxEmpty>
+            <ComboboxItems />
+          </ComboboxPopup>
+        </Combobox>
 
-            <input name="label_id" type="hidden" value={selectedLabelId} />
+        <input name="label_id" type="hidden" value={selectedLabelId} />
 
-            <FieldDescription>
-              <ClientMessage message="admin.series.form.label_description" />
-            </FieldDescription>
-          </>
-        )}
+        <FieldDescription>
+          <ClientMessage message="admin.series.form.label_description" />
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
@@ -357,12 +331,6 @@ const useSeriesFormState = ({
     [uploadedEyeCatchPreviewUrl]
   );
 
-  const handleLabelFallbackInputChange = useCallback<
-    ChangeEventHandler<HTMLInputElement>
-  >((event) => {
-    setSelectedLabelId(event.currentTarget.value);
-  }, []);
-
   const handleEyeCatchImageFileChange = useCallback<
     ChangeEventHandler<HTMLInputElement>
   >((event) => {
@@ -387,7 +355,6 @@ const useSeriesFormState = ({
     commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
-    handleLabelFallbackInputChange,
     purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
@@ -455,7 +422,6 @@ export const SeriesForm = ({
     commentMode,
     eyeCatchPreviewUrl,
     handleEyeCatchImageFileChange,
-    handleLabelFallbackInputChange,
     purchaseAvailability,
     readingDirection,
     scheduleWeekdays,
@@ -480,9 +446,6 @@ export const SeriesForm = ({
     initialSeries,
   });
 
-  const useLabelFallbackInput =
-    Boolean(labelsErrorMessage) || labelItems.length === 0;
-
   const isUpdate = mode === "update";
 
   const handleSubmit = useCallback(
@@ -500,14 +463,7 @@ export const SeriesForm = ({
     <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
       <input name="tenant_id" type="hidden" value={tenantId} />
       {initialSeries ? (
-        <>
-          <input
-            name="public_id"
-            type="hidden"
-            value={initialSeries.publicId}
-          />
-          <input name="series_id" type="hidden" value={initialSeries.id} />
-        </>
+        <input name="series_id" type="hidden" value={initialSeries.id} />
       ) : null}
 
       <Fieldset className="grid gap-4" disabled={isPending}>
@@ -574,9 +530,7 @@ export const SeriesForm = ({
           labelItems={labelItems}
           labelsErrorMessage={labelsErrorMessage}
           onComboboxChange={setSelectedLabelId}
-          onFallbackChange={handleLabelFallbackInputChange}
           selectedLabelId={selectedLabelId}
-          useLabelFallbackInput={useLabelFallbackInput}
         />
 
         <Field>

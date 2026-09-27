@@ -81,7 +81,6 @@ export const SeriesEyeCatchForm = ({
   return (
     <form action={formAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="public_id" type="hidden" value={initialSeries.publicId} />
       <input name="series_id" type="hidden" value={initialSeries.id} />
       <input name="title" type="hidden" value={initialSeries.title} />
       <input name="label_id" type="hidden" value={initialSeries.labelId} />

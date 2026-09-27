@@ -15,6 +15,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   episodeCacheTag,
+  getEpisode,
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
@@ -148,6 +149,38 @@ const hiddenFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
+/**
+ * Refuses a save whose URL-named episode is not the one its internal ID
+ * addresses: the save acts on the ID and redirects to the URL, so a mismatched
+ * pair would change one episode and show another.
+ */
+const confirmEpisodeTarget = async (
+  target: {
+    episodeId: string;
+    episodePublicId: string;
+    seriesPublicId: string;
+    tenantId: string;
+  },
+  locale: Locale
+): Promise<string | undefined> => {
+  const result = await getEpisode(
+    {
+      publicId: target.episodePublicId,
+      seriesPublicId: target.seriesPublicId,
+      tenantId: target.tenantId,
+    },
+    locale
+  );
+  if (result.ok && result.episode.id === target.episodeId) {
+    return;
+  }
+  if (!result.ok && "message" in result && result.message) {
+    return result.message;
+  }
+  const t = await getMessagesFor(locale);
+  return t("admin.series.episodes.validation.episode_missing");
+};
+
 const toFailure = (
   message: string,
   mode: EpisodeEditMode
@@ -218,6 +251,11 @@ export const updateEpisodeScheduleAction = async (
     return schedule;
   }
 
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "schedule");
+  }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodePublishSchedule(
       {
@@ -274,6 +312,10 @@ export const updateEpisodeAvailabilityAction = async (
 
   const { availability, episodeId, episodePublicId, seriesPublicId, tenantId } =
     parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodeAvailability({ availability, episodeId, tenantId }, locale)
   );
@@ -328,6 +370,10 @@ export const updateEpisodePurchaseAvailabilityAction = async (
     seriesPublicId,
     tenantId,
   } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodePurchaseAvailability(
       { episodeId, purchaseAvailability, tenantId },
@@ -404,6 +450,10 @@ export const updateEpisodeLayoutAction = async (
     seriesPublicId,
     spreadStart,
   } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodeLayout(
       {
@@ -442,6 +492,10 @@ export const replaceEpisodeCreditsAction = async (
   );
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "credits");
+  }
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "credits");
   }
   const result = await withAdminSessionReauth(() =>
     replaceEpisodeCredits(
@@ -494,7 +548,19 @@ export const uploadEpisodePagesAction = async (
     uploadMode,
   } = parsed.data;
 
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch, "pages");
+  }
+
   if (uploadMode === "zip" || uploadMode === "epub") {
+    // An archive is unpacked against its series, which the API cannot infer.
+    if (seriesId === "") {
+      return toFailure(
+        t("admin.series.episodes.validation.series_missing"),
+        "pages"
+      );
+    }
     if (!archive) {
       return toFailure(
         uploadMode === "zip"

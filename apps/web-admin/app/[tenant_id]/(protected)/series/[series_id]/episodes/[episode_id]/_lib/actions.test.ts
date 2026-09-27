@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockGetAccessToken,
+  mockGetEpisode,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
@@ -15,6 +16,7 @@ const {
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetEpisode: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("#lib/session", () => ({
 vi.mock("#lib/episode", () => ({
   episodeCacheTag: (tenantId: string, episodeId: string) =>
     `episode-${tenantId}-${episodeId}`,
+  getEpisode: mockGetEpisode,
   reorderEpisodeImages: mockReorderEpisodeImages,
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
@@ -88,6 +91,60 @@ describe("episode actions", () => {
     // `withAdminSessionReauth` resolves the session before the mutation runs;
     // without a token every Action under test would redirect to /login.
     mockGetAccessToken.mockResolvedValue("session-token");
+    // The episode the form's URL names is the one its internal ID addresses.
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        id: "018f0e6a-4000-7000-8000-000000000001",
+        publicId: "EP001",
+      },
+      ok: true,
+    });
+  });
+
+  it("refuses a save whose URL names a different episode than its ID", async () => {
+    mockGetEpisode.mockResolvedValueOnce({
+      episode: {
+        id: "018f0e6a-4000-7000-8000-000000000002",
+        publicId: "EP001",
+      },
+      ok: true,
+    });
+
+    const { updateEpisodeLayoutAction } = await import("./actions");
+    const result = await updateEpisodeLayoutAction(
+      { message: "", ok: false },
+      layoutFormData({ reading_direction: "", spread_start_source: "series" })
+    );
+
+    expect(result).toEqual({
+      message: "Episode ID is missing.",
+      ok: false,
+    });
+    expect(mockUpdateEpisodeLayout).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("submitting an archive without its series is refused before the API", async () => {
+    const { uploadEpisodePagesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_public_id", "SERIES001");
+    formData.set("episode_public_id", "EP001");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
+    formData.set("upload_mode", "zip");
+    formData.set(
+      "archive",
+      new File(["dummy"], "pages.zip", { type: "application/zip" })
+    );
+
+    const result = await uploadEpisodePagesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Series ID is missing.",
+      mode: "pages",
+      ok: false,
+    });
+    expect(mockUploadEpisodePages).not.toHaveBeenCalled();
   });
 
   it("updating the layout sends the page the episode states as an index", async () => {
@@ -522,6 +579,7 @@ describe("episode actions", () => {
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
     formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
+    formData.set("series_id", "018f0e6a-3000-7000-8000-000000000001");
     formData.set("upload_mode", "zip");
     formData.set(
       "archive",

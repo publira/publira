@@ -593,3 +593,31 @@ it("renders in the tenant locale handed down by the protected layout, so locale=
   // provider's locale has to reach them too.
   expect(screen.getByRole("checkbox", { name: "月" })).toBeDefined();
 });
+
+// The label is sent as its internal ID, which nobody types, so a failed label
+// read leaves the picker with its error instead of a text box.
+it("shows the label read error beside the picker and keeps the series' label", () => {
+  const { container } = render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      defaultReadingPeriodHours={72}
+      genres={genres}
+      initialSeries={series}
+      labels={[]}
+      labelsErrorMessage="Could not load the labels."
+      mode="update"
+      tagSuggestions={tagSuggestions}
+      timeZone="UTC"
+    />
+  );
+
+  expect(screen.getByText("Could not load the labels.")).toBeDefined();
+  expect(
+    container.querySelector<HTMLInputElement>('input[name="label_id"]')?.type
+  ).toBe("hidden");
+  expect(
+    container.querySelector<HTMLInputElement>('input[name="label_id"]')?.value
+  ).toBe(series.labelId);
+});

@@ -87,7 +87,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -156,7 +155,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -200,7 +198,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -238,7 +235,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -267,7 +263,6 @@ describe("series actions", () => {
     const { updateSeriesEyeCatchAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -505,7 +500,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -564,7 +558,6 @@ describe("series actions", () => {
     const { updateSeriesEyeCatchAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
@@ -599,7 +592,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -658,7 +650,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
@@ -689,7 +680,6 @@ describe("series actions", () => {
     const { updateSeriesAction } = await import("./actions");
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
-    formData.set("public_id", "SERIES001");
     formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
     formData.set("title", "Series title");
     formData.set("synopsis", "A synopsis");
