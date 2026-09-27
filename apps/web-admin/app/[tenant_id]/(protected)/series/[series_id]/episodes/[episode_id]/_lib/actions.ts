@@ -28,7 +28,9 @@ import {
   fileListFormSchema,
   jsonStringArrayFormSchema,
   optionalFileFormSchema,
+  optionalRecordId,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
   spreadStartPageFormSchema,
 } from "#lib/form-schemas";
@@ -47,14 +49,14 @@ const hiddenParamsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    episodeId: requiredTrimmedString(
+    episodeId: requiredRecordId(
       t("admin.series.episodes.validation.episode_missing")
     ),
     episodePublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.episode_missing")
     ),
     // Only the page upload names the series, which an archive needs.
-    seriesId: optionalTrimmedString(),
+    seriesId: optionalRecordId(),
     seriesPublicId: requiredTrimmedString(
       t("admin.series.episodes.validation.series_missing")
     ),
@@ -90,8 +92,8 @@ const creditsFormSchema = async (locale: Locale) => {
       },
       z.array(
         z.object({
-          creatorId: requiredTrimmedString(message),
-          roleId: requiredTrimmedString(message),
+          creatorId: requiredRecordId(message),
+          roleId: requiredRecordId(message),
           shareBps: creditShareBpsSchema(message),
         }),
         { error: message }
@@ -123,7 +125,7 @@ const reorderImagesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    episodeId: requiredTrimmedString(
+    episodeId: requiredRecordId(
       t("admin.series.episodes.validation.sort_data_missing")
     ),
     episodePublicId: requiredTrimmedString(

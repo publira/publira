@@ -73,7 +73,7 @@ const layoutFormData = (fields: Record<string, string>) => {
   formData.set("tenant_id", "TENANT001");
   formData.set("series_public_id", "SERIES001");
   formData.set("episode_public_id", "EP001");
-  formData.set("episode_id", "EP001-ID");
+  formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
   }
@@ -105,14 +105,16 @@ describe("episode actions", () => {
 
     expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         readingDirection: "ltr",
         spreadStartIndex: 0,
         tenantId: "TENANT001",
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?layout_updated=1"
     );
@@ -135,7 +137,7 @@ describe("episode actions", () => {
 
     expect(mockUpdateEpisodeLayout).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         readingDirection: "",
         spreadStartIndex: undefined,
         tenantId: "TENANT001",
@@ -223,12 +225,14 @@ describe("episode actions", () => {
     expect(mockUpdateEpisodeAvailability).toHaveBeenCalledWith(
       {
         availability: "app",
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         tenantId: "TENANT001",
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?availability_updated=1"
     );
@@ -304,13 +308,15 @@ describe("episode actions", () => {
 
     expect(mockUpdateEpisodePurchaseAvailability).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         purchaseAvailability: "app",
         tenantId: "TENANT001",
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?purchase_availability_updated=1"
     );
@@ -379,7 +385,7 @@ describe("episode actions", () => {
     const formData = new FormData();
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("publish_at", "2026-06-01T10:00:00Z");
 
     const result = await updateEpisodeScheduleAction(null, formData);
@@ -399,7 +405,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("publish_at", "not-a-date");
 
     const result = await updateEpisodeScheduleAction(null, formData);
@@ -420,14 +426,14 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("publish_at", "2099-06-01T10:00:00Z");
 
     await updateEpisodeScheduleAction(null, formData);
 
     expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         publishAt: "2099-06-01T10:00:00Z",
         tenantId: "TENANT001",
       },
@@ -436,7 +442,9 @@ describe("episode actions", () => {
     // The dashboard counts drafts and scheduled episodes and lists them in its
     // publishing queue, so a new schedule changes what it shows.
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );
@@ -451,7 +459,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     // Zone-less wall clock, as posted by <input type="datetime-local">.
     formData.set("publish_at", "2099-06-01T10:00");
 
@@ -460,7 +468,7 @@ describe("episode actions", () => {
     // PDT (UTC-7) in June — 10:00 in Los Angeles is 17:00Z.
     expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         publishAt: "2099-06-01T17:00:00Z",
         tenantId: "TENANT001",
       },
@@ -475,7 +483,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("publish_at", "2099-06-01");
 
     const result = await updateEpisodeScheduleAction(null, formData);
@@ -494,7 +502,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("upload_mode", "pages");
 
     const result = await uploadEpisodePagesAction(null, formData);
@@ -513,7 +521,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("upload_mode", "zip");
     formData.set(
       "archive",
@@ -538,7 +546,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("upload_mode", "pages");
     formData.append("pages", new File(["a"], "1.png", { type: "image/png" }));
     formData.append("pages", new File(["b"], "2.png", { type: "image/png" }));
@@ -547,7 +555,7 @@ describe("episode actions", () => {
 
     expect(mockUploadEpisodePages).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         pages: expect.arrayContaining([
           expect.objectContaining({ name: "1.png" }),
           expect.objectContaining({ name: "2.png" }),
@@ -556,7 +564,9 @@ describe("episode actions", () => {
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?pages_uploaded=1"
     );
@@ -568,7 +578,7 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("ordered_image_ids", "not-json");
 
     const result = await reorderEpisodeImagesAction(formData);
@@ -588,20 +598,22 @@ describe("episode actions", () => {
     formData.set("tenant_id", "TENANT001");
     formData.set("series_public_id", "SERIES001");
     formData.set("episode_public_id", "EP001");
-    formData.set("episode_id", "EP001-ID");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
     formData.set("ordered_image_ids", JSON.stringify(["IMG1", "IMG2"]));
 
     const result = await reorderEpisodeImagesAction(formData);
 
     expect(mockReorderEpisodeImages).toHaveBeenCalledWith(
       {
-        episodeId: "EP001-ID",
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
         imageIds: ["IMG1", "IMG2"],
         tenantId: "TENANT001",
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("episode-TENANT001-EP001-ID");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+    );
     expect(result).toEqual({ ok: true });
   });
 });

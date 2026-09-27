@@ -26,9 +26,11 @@ import {
 } from "#lib/episode";
 import type { BulkEpisodeCreditOperation } from "#lib/episode";
 import {
-  jsonStringArrayFormSchema,
+  jsonRecordIdArrayFormSchema,
   nonNegativeIntFormSchema,
+  optionalRecordId,
   optionalTrimmedString,
+  requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
@@ -67,7 +69,7 @@ const createEpisodeSchema = async (locale: Locale) => {
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
-    seriesId: requiredTrimmedString(
+    seriesId: requiredRecordId(
       t("admin.series.episodes.validation.series_missing")
     ),
     seriesPublicId: requiredTrimmedString(
@@ -85,9 +87,9 @@ const reorderEpisodesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    currentEpisodeIds: jsonStringArrayFormSchema,
-    orderedEpisodeIds: jsonStringArrayFormSchema,
-    seriesId: requiredTrimmedString(
+    currentEpisodeIds: jsonRecordIdArrayFormSchema,
+    orderedEpisodeIds: jsonRecordIdArrayFormSchema,
+    seriesId: requiredRecordId(
       t("admin.series.episodes.validation.sort_data_missing")
     ),
     tenantId: requiredTrimmedString(
@@ -286,23 +288,23 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
 
   return z
     .object({
-      creatorId: optionalTrimmedString(),
-      episodeIds: jsonStringArrayFormSchema,
-      fromCreatorId: optionalTrimmedString(),
-      fromRoleId: optionalTrimmedString(),
+      creatorId: optionalRecordId(),
+      episodeIds: jsonRecordIdArrayFormSchema,
+      fromCreatorId: optionalRecordId(),
+      fromRoleId: optionalRecordId(),
       operation: requiredTrimmedString(
         t("admin.series.episodes.credits.validation.operation_required")
       ),
-      roleId: optionalTrimmedString(),
-      seriesId: requiredTrimmedString(
+      roleId: optionalRecordId(),
+      seriesId: requiredRecordId(
         t("admin.series.episodes.validation.series_missing")
       ),
       share: optionalTrimmedString(),
       tenantId: requiredTrimmedString(
         t("admin.series.episodes.validation.tenant_missing")
       ),
-      toCreatorId: optionalTrimmedString(),
-      toRoleId: optionalTrimmedString(),
+      toCreatorId: optionalRecordId(),
+      toRoleId: optionalRecordId(),
     })
     .superRefine((value, ctx) => {
       if (!isBulkCreditOperationType(value.operation)) {
@@ -408,7 +410,7 @@ const listEpisodeCreditRangeOptionsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    seriesId: requiredTrimmedString(
+    seriesId: requiredRecordId(
       t("admin.series.episodes.validation.series_missing")
     ),
     tenantId: requiredTrimmedString(

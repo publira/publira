@@ -22,6 +22,8 @@ import {
   optionalCropRectFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
+  recordIdListFormSchema,
+  requiredRecordId,
   requiredTrimmedString,
   spreadStartPageFormSchema,
   trimmedStringListFormSchema,
@@ -84,8 +86,8 @@ const creatorCreditListFormSchema = (
     },
     z.array(
       z.object({
-        creatorId: requiredTrimmedString(message),
-        roleId: requiredTrimmedString(message),
+        creatorId: requiredRecordId(message),
+        roleId: requiredRecordId(message),
         shareBps: creditShareBpsSchema(message),
       }),
       { error: message }
@@ -130,9 +132,9 @@ const seriesCommonSchema = async (locale: Locale) => {
       t("admin.series.validation.creator_credits_invalid")
     ),
     eyeCatchImage: optionalFileFormSchema,
-    genreIds: trimmedStringListFormSchema,
+    genreIds: recordIdListFormSchema,
     isPublished: checkboxOnFormSchema,
-    labelId: requiredTrimmedString(t("admin.series.validation.label_required")),
+    labelId: requiredRecordId(t("admin.series.validation.label_required")),
     publishedAt: optionalTrimmedString(),
     // The empty value follows the tenant's default.
     purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
@@ -174,7 +176,7 @@ const seriesUpdateSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
-    id: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
     publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
   });
 };
@@ -512,7 +514,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
 
   return z.object({
     crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
-    id: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
     tenantId: requiredTrimmedString(
       t("admin.series.validation.tenant_missing")
     ),

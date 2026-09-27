@@ -87,7 +87,7 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    seriesId: requiredTrimmedString(
+    seriesId: requiredRecordId(
       t("admin.access_tickets.validation.series_required")
     ),
     tenantId: requiredTrimmedString(
