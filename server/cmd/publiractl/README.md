@@ -135,7 +135,7 @@ go run ./server/cmd/publiractl smtp test --to operator@example.com
 | `--from-address` | The address the mail is sent from. Required |
 | `--reply-to` | The address replies go to, when it is not the sender's |
 
-The password comes from a masked prompt or from stdin with `--password-stdin`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save needs one. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
+The password comes from a masked prompt, from stdin with `--password-stdin`, or from a file with `--password-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one; the first save needs one. The worker reads the settings for every mail it sends, so a save reaches it without a restart.
 
 `smtp set` files `platform_email_settings_updated` and every `smtp test` files `platform_smtp_test_email_sent` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 
@@ -174,7 +174,7 @@ go run ./server/cmd/publiractl storage test
 | `--public-base-url` | The URL stored objects are readable from, when something serves them directly |
 | `--access-key-id` | The access key requests are signed with. Left out, every process signs with the credential the AWS SDK finds for itself, and a saved key is removed |
 
-With `--access-key-id`, the secret access key comes from a masked prompt or from stdin with `--secret-access-key-stdin`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one, which only goes with the access key id it was saved with. Every process rereads the settings within `platformstorage.RefreshInterval`, so a save reaches them without a restart.
+With `--access-key-id`, the secret access key comes from a masked prompt, from stdin with `--secret-access-key-stdin`, or from a file with `--secret-access-key-file`, and is stored encrypted with the keys the servers decrypt it with. Left blank at the prompt, or not given where stdin is not a terminal, it keeps the saved one, which only goes with the access key id it was saved with. Every process rereads the settings within `platformstorage.RefreshInterval`, so a save reaches them without a restart.
 
 `storage set` files `platform_storage_settings_updated` and every `storage test` files `platform_storage_connection_tested` with its outcome, in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 
@@ -226,7 +226,7 @@ go run ./server/cmd/publiractl tenant admin create \
 | `--default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
 | `--initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
 
-`tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a masked prompt, from stdin with `--password-stdin`, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
+`tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a masked prompt, from stdin with `--password-stdin`, from a file with `--password-file`, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
 
 Each command prints what it did to stdout, and files its audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
 

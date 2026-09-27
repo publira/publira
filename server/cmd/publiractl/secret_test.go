@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -151,5 +153,70 @@ func TestKeepableSecretReadsBlankAsKeep(t *testing.T) {
 	s.fromStdin = true
 	if _, err := s.read(pipedConsole("\n", &bytes.Buffer{})); err == nil || !strings.Contains(err.Error(), "empty") {
 		t.Fatalf("an empty stdin = %v, want it refused", err)
+	}
+}
+
+func writeSecretFile(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+	return path
+}
+
+// A file is read as stdin is, so a secret mounted by an orchestrator stores
+// what it holds without the line break an editor ends it with.
+func TestSecretFromAFileDropsOneTrailingLineBreak(t *testing.T) {
+	s := &secret{name: "password", label: "password", file: writeSecretFile(t, testSecretValue+"\n")}
+	got, err := s.read(pipedConsole("from stdin", &bytes.Buffer{}))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got != testSecretValue {
+		t.Fatalf("read = %q, want %q", got, testSecretValue)
+	}
+}
+
+func TestSecretFromAFileRefusesAMissingOrEmptyOne(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		s    *secret
+		want string
+	}{
+		{name: "missing", s: &secret{name: "password", label: "password", file: filepath.Join(t.TempDir(), "absent")}, want: "--password-file"},
+		{name: "empty", s: &secret{name: "password", label: "password", file: writeSecretFile(t, "\n")}, want: "empty"},
+		{name: "empty and keepable", s: &secret{name: "password", label: "password", keepable: true, file: writeSecretFile(t, "")}, want: "empty"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tc.s.read(pipedConsole("", &bytes.Buffer{})); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want one mentioning %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// Stdin carries one secret at most, but any number can each come from a file;
+// one secret given through both of its flags is ambiguous.
+func TestSecretSourcesAllowSeveralFilesButNotBothFlagsOfOneSecret(t *testing.T) {
+	f := &commandFlags{FlagSet: flag.NewFlagSet("setup", flag.ContinueOnError)}
+	f.Secret("secret-access-key", "secret access key")
+	f.Secret("smtp-password", "SMTP password")
+
+	if err := f.Parse([]string{"--secret-access-key-file", "a", "--smtp-password-file", "b"}); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if err := f.checkSecretSources(); err != nil {
+		t.Fatalf("two secrets from files: %v", err)
+	}
+
+	f = &commandFlags{FlagSet: flag.NewFlagSet("setup", flag.ContinueOnError)}
+	f.Secret("smtp-password", "SMTP password")
+	if err := f.Parse([]string{"--smtp-password-file", "a", "--smtp-password-stdin"}); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	err := f.checkSecretSources()
+	if err == nil || err.Error() != "--smtp-password-stdin and --smtp-password-file cannot both be given" {
+		t.Fatalf("error = %v, want both flags of one secret refused", err)
 	}
 }
