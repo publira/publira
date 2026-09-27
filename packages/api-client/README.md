@@ -13,7 +13,7 @@ import { createPublicApiClient } from "@publira/api-client/public/client";
 
 const client = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_API_BASE_URL ?? "http://localhost:8080",
-  tenantPublicId: "TENANT001",
+  tenantId,
 });
 
 await client.catalog.getSeriesDetail({
@@ -22,7 +22,7 @@ await client.catalog.getSeriesDetail({
 });
 ```
 
-`tenant.tenantId` is the tenant's primary key (a UUID), not the public ID the header carries; `publicId` is the series' 12-character public ID.
+`tenantId` and `tenant.tenantId` are both the tenant's primary key (a UUID); `publicId` is the series' 12-character public ID, which resolves the series a URL names.
 
 The admin API client:
 
@@ -32,11 +32,11 @@ import { buildBearerHeaders } from "@publira/web-session";
 
 const client = createAdminApiClient({
   baseUrl: process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8081",
-  tenantPublicId: () => currentTenantPublicId,
+  tenantId: () => currentTenantId,
 });
 
 await client.auth.getMe(
-  { tenant: { tenantId } },
+  { tenant: { tenantId: currentTenantId } },
   buildBearerHeaders(accessToken)
 );
 ```
