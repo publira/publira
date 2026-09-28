@@ -803,6 +803,17 @@ type SeriesTag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SitemapEntry struct {
+	TenantID       uuid.UUID    `json:"tenant_id"`
+	Surface        string       `json:"surface"`
+	Kind           int32        `json:"kind"`
+	ID             uuid.UUID    `json:"id"`
+	PublicID       string       `json:"public_id"`
+	SeriesPublicID string       `json:"series_public_id"`
+	Slug           string       `json:"slug"`
+	LastModifiedAt sql.NullTime `json:"last_modified_at"`
+}
+
 type StorePurchaseIntent struct {
 	ID                 uuid.UUID     `json:"id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`

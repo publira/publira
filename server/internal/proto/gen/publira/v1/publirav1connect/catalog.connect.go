@@ -91,6 +91,9 @@ const (
 	// CatalogServiceListRelatedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListRelatedSeries RPC.
 	CatalogServiceListRelatedSeriesProcedure = "/publira.v1.CatalogService/ListRelatedSeries"
+	// CatalogServiceListSitemapEntriesProcedure is the fully-qualified name of the CatalogService's
+	// ListSitemapEntries RPC.
+	CatalogServiceListSitemapEntriesProcedure = "/publira.v1.CatalogService/ListSitemapEntries"
 	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
 	// EpisodeReadService's MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
@@ -232,6 +235,10 @@ type CatalogServiceClient interface {
 	// Nothing here depends on who is reading, so a response can be cached and
 	// shared between readers.
 	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
+	// Every page the web storefront publishes for the tenant, with the time each
+	// last changed, for the storefront's sitemap. It reads nothing about the
+	// caller, so a response can be cached and shared.
+	ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
@@ -341,6 +348,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		listSitemapEntries: connect.NewClient[v1.ListSitemapEntriesRequest, v1.ListSitemapEntriesResponse](
+			httpClient,
+			baseURL+CatalogServiceListSitemapEntriesProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListSitemapEntries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -362,6 +375,7 @@ type catalogServiceClient struct {
 	listRecommendedSeries     *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
 	listRankedSeries          *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
 	listRelatedSeries         *connect.Client[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse]
+	listSitemapEntries        *connect.Client[v1.ListSitemapEntriesRequest, v1.ListSitemapEntriesResponse]
 }
 
 // ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
@@ -444,6 +458,11 @@ func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *conne
 	return c.listRelatedSeries.CallUnary(ctx, req)
 }
 
+// ListSitemapEntries calls publira.v1.CatalogService.ListSitemapEntries.
+func (c *catalogServiceClient) ListSitemapEntries(ctx context.Context, req *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error) {
+	return c.listSitemapEntries.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	// Every label of the tenant, including one with no published series, so a
@@ -522,6 +541,10 @@ type CatalogServiceHandler interface {
 	// Nothing here depends on who is reading, so a response can be cached and
 	// shared between readers.
 	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
+	// Every page the web storefront publishes for the tenant, with the time each
+	// last changed, for the storefront's sitemap. It reads nothing about the
+	// caller, so a response can be cached and shared.
+	ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -627,6 +650,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListSitemapEntriesHandler := connect.NewUnaryHandler(
+		CatalogServiceListSitemapEntriesProcedure,
+		svc.ListSitemapEntries,
+		connect.WithSchema(catalogServiceMethods.ByName("ListSitemapEntries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceListPublishedLabelsProcedure:
@@ -661,6 +690,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListRankedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceListRelatedSeriesProcedure:
 			catalogServiceListRelatedSeriesHandler.ServeHTTP(w, r)
+		case CatalogServiceListSitemapEntriesProcedure:
+			catalogServiceListSitemapEntriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -732,6 +763,10 @@ func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *con
 
 func (UnimplementedCatalogServiceHandler) ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRelatedSeries is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListSitemapEntries is not implemented"))
 }
 
 // EpisodeReadServiceClient is a client for the publira.v1.EpisodeReadService service.

@@ -1627,6 +1627,14 @@ type Querier interface {
 	// shows the same list every time, and two series sharing tags show them in the
 	// same places.
 	ListSeriesTagsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesTagsBySeriesIDsRow, error)
+	// The sitemap reads sitemap_entries, which states what a sitemap holds. The
+	// list is sorted by (kind, id): kind is the SitemapEntryKind number, and id the
+	// UUIDv7 of the row, which is unique within a kind. Backward calls the
+	// descending query, and the caller sorts the rows back.
+	// cursor rules: proto/README.md.
+	ListSitemapEntriesAsc(ctx context.Context, arg ListSitemapEntriesAscParams) ([]ListSitemapEntriesAscRow, error)
+	// The backward direction of ListSitemapEntriesAsc.
+	ListSitemapEntriesDesc(ctx context.Context, arg ListSitemapEntriesDescParams) ([]ListSitemapEntriesDescRow, error)
 	// Worker fan-out: every user that holds a tenant_user_roles row is a
 	// tenant admin for that tenant. DISTINCT so one person with two roles
 	// is still one notification.
