@@ -7,7 +7,7 @@ The console where publishers and editors enter and operate their content.
 - Registering and editing Series / Episode
 - Publication settings (including scheduled publication)
 - Per-tenant brand settings (theme, logo, and so on)
-- Per-tenant Stripe payment settings (registering, updating, and disabling the secret)
+- Per-tenant payment settings: choosing the payment provider, and registering, replacing, and removing the credential fields it declares
 - Read-through reporting: how many members finished each episode, over the member views of the same period
 - Comment moderation: approving, removing, restoring, and purging the comments readers leave on episodes
 - The contact inbox: the messages readers sent the tenant, with the address to answer each at and a record of which ones have been dealt with

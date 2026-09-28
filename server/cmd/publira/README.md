@@ -59,7 +59,7 @@ Manael uses libvips, so building and running require `libvips-dev` (`libvips42` 
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
-- `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT` (optional, the scheme and the port of every tenant host, set to the values `publira worker` runs with. Here they build the storefront URL Stripe Checkout returns the browser to)
+- `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT` (optional, the scheme and the port of every tenant host, set to the values `publira worker` runs with. Here they build the storefront URL a payment provider returns the browser to)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
@@ -71,7 +71,7 @@ The trace attributes, span naming, sampling, and the list of `OTEL_*` variables 
 
 A write that leaves a cache entry stale records a `next_cache_revalidation` outbox event, in its own transaction where it holds one, and then attempts the drop itself without making the response wait for it. Whatever that attempt does not finish, `publira worker` retries. Both halves need `PUBLIRA_REVALIDATE_TOKEN`; without it nothing is recorded and nothing is sent. The destinations are the apps whose `PUBLIRA_WEB_*_INTERNAL_URL` is set, logged at startup as `next revalidate is enabled`, and the fixed path at each one is `/api/v1/revalidate`.
 
-These internal URLs are private network addresses, not the ones browsers use: the URL Stripe Checkout returns the browser to is built from the tenant's `domain`.
+These internal URLs are private network addresses, not the ones browsers use: the URL a payment provider returns the browser to is built from the tenant's `domain`.
 
 ### Image delivery
 

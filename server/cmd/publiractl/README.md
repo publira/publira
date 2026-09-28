@@ -687,7 +687,7 @@ The structured log records, per tenant, each month closed with its totals, a mon
 
 ## sync-google-play-voided-purchases
 
-Reads, for every tenant whose Google Play store is enabled and names its app, the purchases Google Play voided in the last 30 days — the whole window its Voided Purchases API keeps — and takes each one back the way a Stripe refund is taken back. A voided purchase the app never confirmed is held in `unapplied_store_refunds` until it is. Running it again changes nothing.
+Reads, for every tenant whose Google Play store is enabled and names its app, the purchases Google Play voided in the last 30 days — the whole window its Voided Purchases API keeps — and takes each one back the way a payment provider's refund is taken back. A voided purchase the app never confirmed is held in `unapplied_store_refunds` until it is. Running it again changes nothing.
 
 ```bash
 eval "$(task --silent dev-env:env)"
