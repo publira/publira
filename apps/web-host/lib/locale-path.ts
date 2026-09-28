@@ -21,14 +21,17 @@ import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
  * Top-level segments served outside the locale tree: the tenant stylesheet,
- * the association documents under `.well-known`, and the Route Handlers. They
- * answer machines rather than readers, and Route Handlers cannot read
- * `next/root-params` anyway, so a locale in their URL would be a segment
- * nothing could use.
+ * the association documents under `.well-known`, the crawler documents, and
+ * the Route Handlers. They answer machines rather than readers, and Route
+ * Handlers cannot read `next/root-params` anyway, so a locale in their URL
+ * would be a segment nothing could use.
  */
 const LOCALE_EXEMPT_TOP_LEVEL_SEGMENTS = new Set([
   ".well-known",
   "api",
+  "robots.txt",
+  "sitemap",
+  "sitemap.xml",
   "theme.css",
 ]);
 

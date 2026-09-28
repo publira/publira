@@ -74,6 +74,10 @@ The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over t
 
 The documents that let the tenant's Android and iOS apps open its links, built in `lib/mobile-app-association.ts` from the identities saved in the tenant console and served as `application/json` by the Route Handlers under `app/[tenant_id]/.well-known/`. A platform the tenant has no app on answers 404, and an unavailable API answers 503.
 
+### `/robots.txt`, `/sitemap.xml`, and `/sitemap/{n}.xml`
+
+The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns, at its default-locale URL with the other locales as alternates. It is one file while it fits and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
+
 ### Image delivery (`next/image`)
 
 `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of the server's image routes. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through `/images` — a temporary `blob:` preview, for instance — is `unoptimized`.

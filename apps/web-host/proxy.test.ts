@@ -370,6 +370,21 @@ describe("web-host proxy locale routing", () => {
     );
   });
 
+  it.each(["/robots.txt", "/sitemap.xml", "/sitemap/1.xml"])(
+    "rewrites the crawler document %s to the tenant without a locale",
+    async (pathname) => {
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        request(`https://shop.example.com${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        `/${TENANT_ID}${pathname}`
+      );
+    }
+  );
+
   it.each([
     "/api/v1/webhook/payment/stripe",
     "/api/v1/webhook/payment/pay_jp",

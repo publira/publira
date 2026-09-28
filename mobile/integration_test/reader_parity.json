@@ -508,6 +508,11 @@
       "name": "The files that hand the tenant's links to its app",
       "web": { "rpcs": ["GetTenantMobileAppAssociation"] },
       "exception": "The operating system reads them to open the app; the app is the other end of them rather than a reader of them."
+    },
+    {
+      "name": "The sitemap that lists the storefront's pages for search engines",
+      "web": { "rpcs": ["ListSitemapEntries"] },
+      "exception": "Search engines read it to index the storefront's URLs; no reader reaches it, and the app has no URLs of its own for a crawler to list."
     }
   ]
 }
