@@ -1204,6 +1204,10 @@ type RatingServiceClient interface {
 	// permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
 	// entitlement failures share one answer so this RPC cannot be used to probe
 	// for content the reader may not have.
+	//
+	// An episode that credits a creator the reader's account is linked to is
+	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
+	// free or not: the credit opens the body but not the rating.
 	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.
@@ -1290,6 +1294,10 @@ type RatingServiceHandler interface {
 	// permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
 	// entitlement failures share one answer so this RPC cannot be used to probe
 	// for content the reader may not have.
+	//
+	// An episode that credits a creator the reader's account is linked to is
+	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
+	// free or not: the credit opens the body but not the rating.
 	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.

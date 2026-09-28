@@ -1333,7 +1333,7 @@ func episodeEntitlementSourceFromGrantKind(kind string) (publirav1.EpisodeEntitl
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE, nil
 	case "access_ticket":
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET, nil
-	case "creator":
+	case episodeGrantKindCreator:
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR, nil
 	default:
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED, fmt.Errorf("unknown episode grant kind %q", kind)

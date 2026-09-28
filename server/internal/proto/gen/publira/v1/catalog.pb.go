@@ -5989,7 +5989,9 @@ func (*RecordContentViewResponse) Descriptor() ([]byte, []int) {
 // `client` also names the surface the checkout is started from: CLIENT_MOBILE
 // is the app, and every other value the storefront. An episode that surface
 // may not show is not_found, as it is in the catalog, and one it shows but may
-// not sell (Episode.purchase_availability) is failed_precondition.
+// not sell (Episode.purchase_availability) is failed_precondition. An episode
+// that credits a creator the reader's account is linked to is
+// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE.
 type StartEpisodeCheckoutRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -6445,8 +6447,10 @@ func (*ProcessPaymentWebhookResponse) Descriptor() ([]byte, []int) {
 // Signed-in readers only. An episode the app may not show is not_found; one it
 // may not sell, a free one, a tenant whose app does not sell through the
 // store, and a `store` that is not ready are failed_precondition, and an
-// episode the reader already holds is already_exists. Asking again for the
-// same episode at the same price answers the same intent.
+// episode the reader already holds is already_exists. An episode that credits
+// a creator the reader's account is linked to is permission_denied with the
+// ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
+// episode at the same price answers the same intent.
 type StartStorePurchaseRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

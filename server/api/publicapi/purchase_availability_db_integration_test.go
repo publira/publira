@@ -28,6 +28,7 @@ type purchaseSurfaceEnv struct {
 	ts       *httptest.Server
 	checkout *capturingCheckoutProvider
 	tenant   testutil.Tenant
+	user     testutil.TenantUser
 	token    string
 }
 
@@ -57,7 +58,7 @@ func newPurchaseSurfaceEnv(t *testing.T) purchaseSurfaceEnv {
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
-	return purchaseSurfaceEnv{pg: pg, ts: ts, checkout: checkout, tenant: tenant, token: token}
+	return purchaseSurfaceEnv{pg: pg, ts: ts, checkout: checkout, tenant: tenant, user: user, token: token}
 }
 
 func (e purchaseSurfaceEnv) exec(t *testing.T, statement string, args ...any) {

@@ -76,28 +76,28 @@ func (s *apiServer) resolveRatingEpisode(
 		s.internalDBError(ctx, "failed to get rating episode target", err, "tenant_id", tenantID.String())
 }
 
-// readerMayReadEpisode answers whether this reader may open the episode's body:
-// free to everyone, or granted to them by a purchase, an access ticket, or a
-// credit on the episode. It is the same rule the episode detail applies before
-// it attaches that body.
-func (s *apiServer) readerMayReadEpisode(
+// requireReaderMayRateEpisode refuses a rating unless the reader may open the
+// episode's body, by the rule the episode detail applies, and is not credited
+// on it: a creator's own stars are not a reader's opinion, free episode or not.
+func (s *apiServer) requireReaderMayRateEpisode(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	row dbmodels.GetPublishedEpisodeForTenantRow,
-) (bool, error) {
-	if row.IsFree {
-		return true, nil
-	}
-	granted, err := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
-		TenantID:  tenantID,
-		UserID:    userID,
-		EpisodeID: row.ID,
-	})
+) error {
+	kind, err := s.episodeGrantKind(ctx, tenantID, userID, row.ID)
 	if err != nil {
-		return false, s.internalDBError(ctx, "failed to check episode content access for a rating", err,
-			"tenant_id", tenantID.String(), "user_id", userID.String())
+		return err
 	}
-	return granted, nil
+	if kind == episodeGrantKindCreator {
+		return readerCreditedOnEpisodeError()
+	}
+	if !row.IsFree && kind == "" {
+		// The answer an unpublished or foreign episode gets, so this RPC cannot
+		// be used to tell the episodes a reader has no access to apart from the
+		// ones that are not there. MarkEpisodeAsRead answers the same way.
+		return connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+	}
+	return nil
 }
 
 // episodeRatingMode reads the press mode governing one episode: its series' own
@@ -269,15 +269,8 @@ func (s *apiServer) RateEpisode(
 	if err != nil {
 		return nil, err
 	}
-	mayRead, err := s.readerMayReadEpisode(ctx, tenant.ID, user.ID, row)
-	if err != nil {
+	if err := s.requireReaderMayRateEpisode(ctx, tenant.ID, user.ID, row); err != nil {
 		return nil, err
-	}
-	if !mayRead {
-		// The answer an unpublished or foreign episode gets, so this RPC cannot
-		// be used to tell the episodes a reader has no access to apart from the
-		// ones that are not there. MarkEpisodeAsRead answers the same way.
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 	}
 	mode, err := s.episodeRatingMode(ctx, tenant.ID, row.ID)
 	if err != nil {

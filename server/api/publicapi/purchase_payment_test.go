@@ -244,6 +244,14 @@ func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUI
 			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }
 
+// expectNoEpisodeGrant answers that the reader holds no grant on the episode,
+// so they are not credited on it.
+func expectNoEpisodeGrant(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeEntitlementSource)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.T) {
 	cases := []struct {
 		name                 string
@@ -302,6 +310,7 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
@@ -360,6 +369,7 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 	// No route read: the route decides only what the app offers.
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
@@ -387,6 +397,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
@@ -429,6 +440,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
