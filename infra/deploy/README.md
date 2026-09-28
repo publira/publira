@@ -11,7 +11,7 @@ The images are built from [`infra/docker/`](../docker/README.md), and the revers
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
 | `web-host` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-host` | The public tenant site | The reverse proxy, on every host that is not a console host |
-| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on a host its admin rule matches, such as `admin.<domain>`. A console host a tenant is given outside `admin\d*.` (`--admin-domain`) reaches `web-admin` only once that host is added to the proxy's admin rule |
+| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one. The proxy examples route `admin\d*.` hosts, so a deployment whose tenants use another console host routes that host to `web-admin` as well |
 | `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
