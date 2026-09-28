@@ -29,7 +29,7 @@ Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's p
 
 ### Commands run by hand
 
-The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `publiractl` and the migrations. An install runs it once per release to apply the migrations (`db migrate`), once to set the install up (`setup`), and whenever an operator changes a platform setting or runs a maintenance job by hand. Nothing has to run it on a timer: the worker schedules every recurring job.
+The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `publiractl` and the migrations. An install runs it once per release to apply the migrations and the database roles (`db migrate`, `db roles`), once to set the install up (`setup`), and whenever an operator changes a platform setting or runs a maintenance job by hand. Nothing has to run it on a timer: the worker schedules every recurring job.
 
 ### Optional processes
 
@@ -66,7 +66,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
 | `publira server`, `publira worker` | `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-host` and `web-admin`, such as `http://web-host:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
-| `publiractl` | `PUBLIRA_DB_URL` | The connection that owns the schema, read by `db migrate` alone |
+| `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by `db migrate` and `db roles` alone |
 
 `PUBLIRA_WEB_PLATFORM_INTERNAL_URL`, `PUBLIRA_PLATFORM_APP_URL`, and `PUBLIRA_EMAIL_RENDERER_URL` are left unset: they name the optional processes. The web images set `PORT`, `HOSTNAME`, and `PNCH_CACHE_APP` themselves.
 
@@ -82,26 +82,21 @@ Before the first step, provision the dependency services: a PostgreSQL database 
    docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
    ```
 
-2. **Create the roles** the processes connect as, from a checkout of the same release:
+2. **Create the roles** the processes connect as, on the same connection, giving each its password. The flags and what the command applies are in [`publiractl`](../../server/cmd/publiractl/README.md#db):
 
    ```bash
-   psql "$PUBLIRA_DB_URL" -f db/seeds/prod.sql
+   docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publiractl:local db roles \
+     --public-password-file /run/secrets/publira-public-db-password \
+     --admin-password-file /run/secrets/publira-admin-db-password \
+     --platform-password-file /run/secrets/publira-platform-db-password \
+     --outbox-password-file /run/secrets/publira-outbox-db-password \
+     --ticker-password-file /run/secrets/publira-ticker-db-password \
+     --content-stats-password-file /run/secrets/publira-content-stats-db-password
    ```
 
-   The roles are created with the development passwords, so give each one its own before anything connects:
+3. **Start the four processes** with the variables above, each `*_DB_URL` carrying the password its role was given. The worker applies River's own tables when it starts.
 
-   ```sql
-   ALTER ROLE publira_public PASSWORD '<password>';
-   ALTER ROLE publira_admin PASSWORD '<password>';
-   ALTER ROLE publira_platform PASSWORD '<password>';
-   ALTER ROLE publira_outbox PASSWORD '<password>';
-   ALTER ROLE publira_ticker PASSWORD '<password>';
-   ALTER ROLE publira_content_stats PASSWORD '<password>';
-   ```
-
-   Moving this step into `publiractl` is [#3127](https://github.com/publira/publira/issues/3127).
-
-3. **Set the install up** with `publiractl setup`, which saves the platform defaults, the object store after a connection test, the SMTP settings, and the tenant, and creates its first administrator. It asks for every value on a terminal; the unattended form, and what each step saves, are in [`publiractl`](../../server/cmd/publiractl/README.md#setup):
+4. **Set the install up** with `publiractl setup`, which saves the platform defaults, the object store after a connection test, the SMTP settings, and the tenant, and creates its first administrator. It asks for every value on a terminal; the unattended form, and what each step saves, are in [`publiractl`](../../server/cmd/publiractl/README.md#setup):
 
    ```bash
    docker run --rm -it \
@@ -112,8 +107,6 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-4. **Start the four processes** with the variables above. The worker applies River's own tables when it starts.
-
 5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
-On every later release, apply that release's migrations with its publiractl image before its processes start.
+On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start.
