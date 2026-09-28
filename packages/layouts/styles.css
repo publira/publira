@@ -25,11 +25,10 @@
   /**
    * Browsers ship `no-autospace` as the initial value, so the spacing between
    * CJK text and a Latin or digit run is only drawn when a stylesheet asks.
+   * Only the element that declares the language sets it, so a container's
+   * `text-autospace-*` reaches its whole subtree by inheritance.
    */
-  :lang(ja),
-  :lang(ko),
-  :lang(zh-Hans),
-  :lang(zh-Hant) {
+  [lang]:is(:lang(ja), :lang(ko), :lang(zh-Hans), :lang(zh-Hant)) {
     @apply text-autospace;
   }
 
