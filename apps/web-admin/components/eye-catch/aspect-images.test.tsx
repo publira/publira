@@ -11,6 +11,7 @@ import {
   render as renderBase,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -178,7 +179,7 @@ it("asks for a cover image before opening the ratio slots", () => {
   expect(screen.getByText(/Register a cover image first/u)).toBeTruthy();
 });
 
-it("stops showing the picked file once the upload is stored", async () => {
+it("shows what is stored once the upload is on its way", async () => {
   stubObjectUrls();
   const upload = Promise.withResolvers<EyeCatchAspectActionState>();
   const { container } = renderImages({
@@ -188,49 +189,36 @@ it("stops showing the picked file once the upload is stored", async () => {
 
   const stored = "/images/series/img/landscape/1600";
   const image = () =>
-    container.querySelector<HTMLImageElement>(
-      'img[alt="Generated image landscape"]'
-    );
+    container
+      .querySelector<HTMLImageElement>('img[alt="Generated image landscape"]')
+      ?.getAttribute("src");
 
-  expect(image()?.getAttribute("src")).toBe(stored);
+  expect(image()).toBe(stored);
 
   const form = pickImage(container, "landscape");
-  expect(image()?.getAttribute("src")).toBe("blob:picked-file");
+  expect(image()).toBe("blob:picked-file");
 
+  // The stored crop is the truth once the upload is on its way; a preview left
+  // set would keep the uncropped file on screen, because the page redraws the
+  // screen without remounting this slot.
   fireEvent.submit(form);
+  await waitFor(() => {
+    expect(image()).toBe(stored);
+  });
+
   await act(async () => {
-    upload.resolve({
-      message: "The image for this ratio was replaced.",
-      ok: true,
-    });
+    upload.resolve({ message: "Could not upload.", ok: false });
     await upload.promise;
   });
 
-  // The stored crop is the truth once the upload is stored; a preview left set
-  // would keep the uncropped file on screen, because the page redraws the
-  // screen without remounting this slot.
-  expect(
-    await screen.findByText("The image for this ratio was replaced.")
-  ).toBeTruthy();
-  expect(image()?.getAttribute("src")).toBe(stored);
-});
-
-it("keeps the picked file when the upload is refused", async () => {
-  stubObjectUrls();
-  const { container } = renderImages({
-    uploadAction: () =>
-      Promise.resolve({ message: "Could not upload.", ok: false }),
-    variants: [variant("landscape", 1600, 900)],
-  });
-
-  fireEvent.submit(pickImage(container, "landscape"));
-
+  // A refused upload leaves the stored image showing too, since nothing
+  // replaced it.
   expect(await screen.findByText("Could not upload.")).toBeTruthy();
+  expect(image()).toBe(stored);
   expect(
-    container
-      .querySelector('img[alt="Generated image landscape"]')
-      ?.getAttribute("src")
-  ).toBe("blob:picked-file");
+    within(form).getByRole<HTMLButtonElement>("button", { name: "Replace" })
+      .disabled
+  ).toBe(true);
 });
 
 it("posts the record's ID under the field its upload action reads", () => {

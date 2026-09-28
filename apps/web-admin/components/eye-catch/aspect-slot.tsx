@@ -93,16 +93,14 @@ export const EyeCatchAspectSlot = ({
     [localPreviewUrl]
   );
 
-  // Once the upload is stored the ratio's own image is the truth, and a
-  // preview left set would outrank it: the page redraws the slot with that
-  // image without remounting it. A refused upload keeps the file to retry.
-  useActionFormSettled((state) => {
-    if (state?.ok) {
-      setLocalPreviewUrl("");
-      setSource(null);
-      setCrop(null);
-      setIsFraming(false);
-    }
+  // The preview stands in for the file only while it is being chosen. Once
+  // the upload returns the ratio's own image is the truth, and a preview left
+  // set would outrank it: the page redraws the slot without remounting it.
+  useActionFormSettled(() => {
+    setLocalPreviewUrl("");
+    setSource(null);
+    setCrop(null);
+    setIsFraming(false);
   });
 
   const context = useMemo<EyeCatchAspectSlotContextValue>(
@@ -175,15 +173,15 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
     useEyeCatchAspectSlot();
   const { pending } = useFormStatus();
   const { variantType } = aspect;
-  const previewUrl = localPreviewUrl || currentUrl;
+  // An upload in flight has taken the file, so the slot shows what is stored.
+  const pickedUrl = pending ? "" : localPreviewUrl;
+  const previewUrl = pickedUrl || currentUrl;
   /**
    * While a file is picked the slot shows the region the frame keeps, so what
    * it stands in for is what the upload will deliver rather than the file.
    */
   const framedStyle =
-    localPreviewUrl && crop && source
-      ? framedPreviewStyle(crop, source)
-      : undefined;
+    pickedUrl && crop && source ? framedPreviewStyle(crop, source) : undefined;
 
   return (
     <button
