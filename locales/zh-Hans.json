@@ -2960,6 +2960,7 @@
         "title": "本章设有年龄限制",
         "too_young_description": "本作品不适用于您的年龄。"
       },
+      "author_access": "您作为作者可以阅读本章",
       "body_error": "无法显示该章节",
       "body_label": "章节正文",
       "checkout_cancelled": "购买已取消，未产生任何扣款。",
@@ -3048,6 +3049,7 @@
         "max_aria": "你已回应此章节",
         "press_aria": "回应此章节",
         "press_progress_aria": "回应此章节，{$score} / {$max}",
+        "reader_credited": "您无法回应自己作为作者的章节。",
         "status_error": "无法显示你的回应",
         "status_failed": "无法加载你的回应。请稍后再试。"
       },

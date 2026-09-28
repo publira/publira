@@ -2960,6 +2960,7 @@
         "title": "This episode is age-restricted",
         "too_young_description": "This work is not available for your age."
       },
+      "author_access": "Open to you as its author",
       "body_error": "Could not show the episode",
       "body_label": "Episode body",
       "checkout_cancelled": "The purchase was cancelled. You have not been charged.",
@@ -3048,6 +3049,7 @@
         "max_aria": "You have reacted to this episode",
         "press_aria": "React to this episode",
         "press_progress_aria": "React to this episode, {$score} of {$max}",
+        "reader_credited": "You cannot react to an episode you are credited on as its author.",
         "status_error": "Could not show your reaction",
         "status_failed": "Could not load your reaction. Please try again later."
       },

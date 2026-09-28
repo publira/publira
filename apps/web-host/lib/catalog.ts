@@ -7,6 +7,7 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
 import {
   EpisodeAccess,
+  EpisodeEntitlementSource,
   RankingPeriod,
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
@@ -378,6 +379,31 @@ export const toEpisodeAccessState = (
 
 export const isPublicEpisodeBody = (access: EpisodeAccessState): boolean =>
   access === "free";
+
+/**
+ * Which grant opens an entitled body, from `EpisodeEntitlementSource`. A
+ * purchase and a creator's own episode are both `entitled`, so this is what
+ * tells the author apart from a reader who bought the episode.
+ */
+export type EpisodeEntitlementSourceState =
+  | "access_ticket"
+  | "creator"
+  | "purchase";
+
+export const toEpisodeEntitlementSource = (
+  source: EpisodeEntitlementSource | number | undefined
+): EpisodeEntitlementSourceState | undefined => {
+  if (source === EpisodeEntitlementSource.PURCHASE) {
+    return "purchase";
+  }
+  if (source === EpisodeEntitlementSource.ACCESS_TICKET) {
+    return "access_ticket";
+  }
+  if (source === EpisodeEntitlementSource.CREATOR) {
+    return "creator";
+  }
+  return undefined;
+};
 
 /** The generated `EpisodeImage` fields {@link mapEpisodeImages} reads. */
 type RawEpisodeImage = Pick<
@@ -1649,6 +1675,8 @@ export const getEpisodeViewer = async (
 ): Promise<
   CachedReadResult<{
     access: EpisodeAccessState;
+    /** Set only beside `entitled`. */
+    entitlementSource?: EpisodeEntitlementSourceState;
     images: EpisodeImageItem[];
   } | null>
 > => {
@@ -1710,6 +1738,7 @@ export const getEpisodeViewer = async (
     ok: true,
     value: {
       access: toEpisodeAccessState(response.access, response.episode.price),
+      entitlementSource: toEpisodeEntitlementSource(response.entitlementSource),
       images: mapEpisodeImages(response.images),
     },
   };

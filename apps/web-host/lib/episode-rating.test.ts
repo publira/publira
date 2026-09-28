@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { EpisodeRatingMode } from "@publira/api-client/public/catalog";
 import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,6 +34,14 @@ vi.mock("./api-client", () => ({
   }),
   resolveAccessToken: mockResolveAccessToken,
 }));
+
+const creditedRefusal = (message: string) =>
+  new ConnectError(message, Code.PermissionDenied, undefined, [
+    {
+      desc: ErrorInfoSchema,
+      value: { domain: "publira", reason: "READER_CREDITED_ON_EPISODE" },
+    },
+  ]);
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const episodeId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
@@ -109,6 +121,7 @@ describe("getMyEpisodeRating", () => {
       mode: "single",
       ok: true,
       ratingCount: 0,
+      readerCredited: false,
       score: 0,
       signedIn: false,
     });
@@ -119,6 +132,7 @@ describe("getMyEpisodeRating", () => {
     mockGetMyEpisodeRating.mockResolvedValueOnce({
       mode: EpisodeRatingMode.MULTIPLE,
       ratingCount: 12,
+      readerCredited: false,
       score: 3,
     });
 
@@ -136,7 +150,28 @@ describe("getMyEpisodeRating", () => {
       mode: "multiple",
       ok: true,
       ratingCount: 12,
+      readerCredited: false,
       score: 3,
+      signedIn: true,
+    });
+  });
+
+  it("reports a reader credited on the episode so the control is withheld", async () => {
+    mockGetMyEpisodeRating.mockResolvedValueOnce({
+      mode: EpisodeRatingMode.SINGLE,
+      ratingCount: 3,
+      readerCredited: true,
+      score: 0,
+    });
+
+    const result = await getMyEpisodeRating(tenantId, episodeId, "en");
+
+    expect(result).toEqual({
+      mode: "single",
+      ok: true,
+      ratingCount: 3,
+      readerCredited: true,
+      score: 0,
       signedIn: true,
     });
   });
@@ -152,6 +187,7 @@ describe("getMyEpisodeRating", () => {
       mode: "single",
       ok: true,
       ratingCount: 0,
+      readerCredited: false,
       score: 0,
       signedIn: false,
     });
@@ -207,6 +243,44 @@ describe("rateEpisode", () => {
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+
+  it("says why a press on the reader's own episode was refused", async () => {
+    mockRateEpisode.mockRejectedValueOnce(
+      creditedRefusal("the reader is credited on this episode")
+    );
+
+    await expect(
+      rateEpisode({
+        episodeId,
+        locale: "en",
+        presses: 1,
+        tenantId,
+      })
+    ).resolves.toEqual({
+      message:
+        "You cannot react to an episode you are credited on as its author.",
+      ok: false,
+    });
+  });
+
+  it("keeps the shared wording for any other refusal", async () => {
+    mockRateEpisode.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
+
+    await expect(
+      rateEpisode({
+        episodeId,
+        locale: "en",
+        presses: 1,
+        tenantId,
+      })
+    ).resolves.toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
   });
 
   it("rethrows unauthenticated so the Action can send the reader to login", async () => {
