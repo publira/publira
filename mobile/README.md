@@ -505,7 +505,7 @@ Nothing here fails a screen. A platform with no app-private directory, or with n
 
 ## Purchases
 
-A paid episode is bought the way the tenant's `app_purchase_route`, which `GetTenant` answers, says: through the public site's Stripe Checkout in the system browser, never in an in-app web view, or through the App Store's or Google Play's in-app purchase.
+A paid episode is bought the way the tenant's `app_purchase_route`, which `GetTenant` answers, says: through the tenant's payment provider's checkout in the system browser, never in an in-app web view, or through the App Store's or Google Play's in-app purchase.
 
 - A locked episode, in the viewer and on its row of the series screen, offers "Buy for ¥N" when the tenant can take the payment: `accepts_payments` on the external-checkout route, and `accepts_app_store_payments` on iOS or `accepts_google_play_payments` on Android on the store route. A row offers it only where `GetSeriesEpisodeAccess` answers the episode locked for the reader, so an episode they bought, hold a ticket for, or can read inside a free window is offered nothing
 - A guest who takes the offer signs in first and lands on the episode

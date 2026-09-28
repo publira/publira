@@ -36,6 +36,7 @@ Each area carries its own documentation: the `README.md` of a directory is the r
 
 - **Issues.** Open one on GitHub for a bug, a feature, or a task. Write the title and body in English, say what happened and what you expected, and name the app or service it concerns.
 - **Pull requests.** Every change to `main` arrives as a pull request from a branch, as described under [Commits and pull requests](#commits-and-pull-requests). For anything larger than a fix, open an Issue first so the approach can be agreed before the work is done.
+- **Payment providers.** A payment provider whose specification and sandbox need a merchant contract is added by a contributor who holds one. [Adding a payment provider](server/README.md#adding-a-payment-provider) in the server README says what to implement and how to record the notifications that keep it tested once you have moved on.
 - **Discussion** happens on the Issue or the pull request itself. There is no separate forum or chat.
 
 ## Development environment

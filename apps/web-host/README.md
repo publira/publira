@@ -121,7 +121,7 @@ A signed-in reader can be told in the browser when a new episode is published. T
 
 ### Episode purchase
 
-The checkout button on a paid episode leads to Stripe Checkout. After the reader comes back from Stripe, the purchase recorded by the `checkout.session.completed` webhook grants access to the body images. web-host itself holds no Stripe secret key. The return URL and the webhook are received on the tenant's public domain; for the procedure, see the [server README](../../server/README.md#stripe-checkout-episode-purchases).
+The checkout button on a paid episode sends the reader to the URL `StartEpisodeCheckout` answers, which is the checkout of the payment provider the tenant chose. The reader comes back to the episode with `checkout=success` or `checkout=cancelled`, but the return opens nothing: the purchase the provider's notification records grants access to the body images. web-host holds no provider credentials. The return URL and the webhook are received on the tenant's public domain; the flow and each provider's setup are in the [server README](../../server/README.md#episode-purchases).
 
 `POST /api/v1/webhook/payment/<provider>` receives every payment provider's notifications and forwards the raw body and the request headers to `ProcessPaymentWebhook` with the provider id; signatures are verified only on the API server. `POST /api/v1/webhook/stripe` is a deprecated alias of `/api/v1/webhook/payment/stripe`, kept for the endpoints tenants registered before, and will be removed in a later release. `POST /api/v1/webhook/payment/app-store` receives App Store Server Notifications V2 and forwards the raw body to `ProcessAppStoreNotification`.
 
