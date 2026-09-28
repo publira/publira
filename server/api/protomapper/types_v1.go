@@ -412,6 +412,17 @@ func TenantImageVariantsByImageID(
 	return byImageID
 }
 
+// EyeCatchVariantURL is the image server route for one delivered size of an
+// eye-catch ratio. version is that size's own row. Replacing a ratio stores
+// new rows, so the URLs of the ratio that was replaced change, and a ratio
+// that was left alone keeps the row — and the URL — it had. The image server
+// does not read version. It is there so a cache holding the previous response
+// cannot serve that response for the new image. A request for the previous
+// URL still resolves to whatever that ratio holds now.
+func EyeCatchVariantURL(collection string, imageID uuid.UUID, variantType string, width int32, version uuid.UUID) string {
+	return fmt.Sprintf("/images/%s/%s/%s/%d?v=%s", collection, imageID.String(), variantType, width, version.String())
+}
+
 // TenantImageURL is the image server route a stored tenant image is served
 // from, keyed by what the image is for the same way the series route is keyed
 // by aspect ratio. A replace stores a new image, so this URL changes on its own

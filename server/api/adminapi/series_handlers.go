@@ -157,7 +157,7 @@ func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeri
 		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           fmt.Sprintf("/images/series/%s/%s/%d", seriesImageID.String(), row.VariantType, row.Width),
+			Url:           protomapper.EyeCatchVariantURL("series", seriesImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

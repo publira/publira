@@ -403,10 +403,11 @@ func TestCatalogListPublishedGenresCarriesEachGenresFeaturedSeries(t *testing.T)
 		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000001", "Dragon Road", imageID},
 		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000002", "Untitled Sky", nil},
 	))
+	variantID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(imageID, "portrait", "portrait_600w", "image/webp", int64(2048), int32(600), int32(800)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(variantID, imageID, "portrait", "portrait_600w", "image/webp", int64(2048), int32(600), int32(800)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
@@ -423,7 +424,7 @@ func TestCatalogListPublishedGenresCarriesEachGenresFeaturedSeries(t *testing.T)
 	if len(fantasy) != 2 || fantasy[0].PublicId != "SERIES000001" || fantasy[1].PublicId != "SERIES000002" {
 		t.Fatalf("fantasy featured_series = %v, want the two series in query order", fantasy)
 	}
-	if len(fantasy[0].EyeCatchImageVariants) != 1 || fantasy[0].EyeCatchImageVariants[0].Url != "/images/series/"+imageID.String()+"/portrait/600" {
+	if len(fantasy[0].EyeCatchImageVariants) != 1 || fantasy[0].EyeCatchImageVariants[0].Url != "/images/series/"+imageID.String()+"/portrait/600?v="+variantID.String() {
 		t.Fatalf("first cover variants = %v, want the portrait variant", fantasy[0].EyeCatchImageVariants)
 	}
 	if fantasy[1].Title != "Untitled Sky" || len(fantasy[1].EyeCatchImageVariants) != 0 {
@@ -453,10 +454,11 @@ func TestCatalogListPublishedGenresCarriesTheGenresOwnEyeCatch(t *testing.T) {
 			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "mystery", int32(2), nil, int32(0)},
 		))
 	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
+	variantID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"genre_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(imageID, "square", "square_600w", "image/webp", int64(2048), int32(600), int32(600)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "genre_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(variantID, imageID, "square", "square_600w", "image/webp", int64(2048), int32(600), int32(600)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
@@ -466,7 +468,7 @@ func TestCatalogListPublishedGenresCarriesTheGenresOwnEyeCatch(t *testing.T) {
 		t.Fatalf("ListPublishedGenres: %v", err)
 	}
 	fantasy := resp.Msg.Genres[0].EyeCatchImageVariants
-	if len(fantasy) != 1 || fantasy[0].Url != "/images/genres/"+imageID.String()+"/square/600" {
+	if len(fantasy) != 1 || fantasy[0].Url != "/images/genres/"+imageID.String()+"/square/600?v="+variantID.String() {
 		t.Fatalf("fantasy eye_catch_image_variants = %v, want the square variant", fantasy)
 	}
 	if mystery := resp.Msg.Genres[1].EyeCatchImageVariants; len(mystery) != 0 {

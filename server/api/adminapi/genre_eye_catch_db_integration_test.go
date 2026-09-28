@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -49,6 +50,21 @@ func genreVariantURLs(genre *publirattypesv1.Genre, variantType string) []string
 		}
 	}
 	return urls
+}
+
+// eyeCatchPaths drops the version query, which is the part of a delivery URL
+// that changes when that size's row is replaced.
+func eyeCatchPaths(t *testing.T, urls []string) []string {
+	t.Helper()
+	paths := make([]string, 0, len(urls))
+	for _, rawURL := range urls {
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			t.Fatalf("parse %q: %v", rawURL, err)
+		}
+		paths = append(paths, parsed.Path)
+	}
+	return paths
 }
 
 func TestDBCreateGenreStoresOneVariantPerRatioAndWidth(t *testing.T) {
@@ -146,9 +162,44 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	if got := len(uploaded.Msg.Genre.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
 		t.Fatalf("variants after replacing square = %d, want %d", got, eyeCatchVariantCount)
 	}
-	// The ratio is replaced under the same image, so its delivery URLs hold.
-	if got, want := genreVariantURLs(uploaded.Msg.Genre, "square"), genreVariantURLs(created, "square"); !slices.Equal(got, want) {
-		t.Fatalf("square urls = %v, want %v", got, want)
+	// The ratio is replaced under the same image, so the route stays and only
+	// the version changes. The other ratios keep the URLs a cache already holds.
+	replaced := genreVariantURLs(uploaded.Msg.Genre, "square")
+	original := genreVariantURLs(created, "square")
+	if slices.Equal(replaced, original) {
+		t.Fatalf("square urls = %v, want them to differ from the ones they replaced", replaced)
+	}
+	if got, want := eyeCatchPaths(t, replaced), eyeCatchPaths(t, original); !slices.Equal(got, want) {
+		t.Fatalf("square paths = %v, want the same image route %v", got, want)
+	}
+	for _, ratio := range []string{"portrait", "landscape", "og"} {
+		if got, want := genreVariantURLs(uploaded.Msg.Genre, ratio), genreVariantURLs(created, ratio); !slices.Equal(got, want) {
+			t.Fatalf("%s urls = %v, want the urls from before the replacement %v", ratio, got, want)
+		}
+	}
+	for _, rawURL := range replaced {
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			t.Fatalf("parse %q: %v", rawURL, err)
+		}
+		version := parsed.Query().Get("v")
+		var stored int
+		if err := env.PG.DB.QueryRowContext(context.Background(),
+			"SELECT count(*) FROM genre_image_variants WHERE id = $1::uuid AND variant_type = 'square'",
+			version,
+		).Scan(&stored); err != nil {
+			t.Fatalf("look up variant %q: %v", version, err)
+		}
+		if stored != 1 {
+			t.Fatalf("variant %q is stored %d times, want the square row the url names", version, stored)
+		}
+	}
+	listed := listGenres(t, client, tenant)
+	if len(listed) != 1 {
+		t.Fatalf("listed genres = %v, want the one genre", genreNames(listed))
+	}
+	if got, want := genreVariantURLs(listed[0], "square"), replaced; !slices.Equal(got, want) {
+		t.Fatalf("listed square urls = %v, want the upload response %v", got, want)
 	}
 	if count := env.countRows(t,
 		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'genre_eye_catch_aspect_image_uploaded' AND target_id = $2",

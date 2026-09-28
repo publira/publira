@@ -473,10 +473,11 @@ func TestDBListPublishedGenresCarriesTheGenresEyeCatch(t *testing.T) {
 		imageID, catalog.tenant.ID, catalog.fantasy.ID); err != nil {
 		t.Fatalf("seed genre image: %v", err)
 	}
+	variantID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(ctx, `INSERT INTO genre_image_variants
 		(id, tenant_id, genre_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
 		VALUES ($1, $2, $3, 'square_600w', 'square', 's3', 'tenants/TENANTA/genres/fantasy.webp', 'image/webp', 1, 600, 600)`,
-		uuid.Must(uuid.NewV7()), catalog.tenant.ID, imageID); err != nil {
+		variantID, catalog.tenant.ID, imageID); err != nil {
 		t.Fatalf("seed genre image variant: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE genres SET eye_catch_image_id = $1 WHERE id = $2`, imageID, catalog.fantasy.ID); err != nil {
@@ -490,7 +491,7 @@ func TestDBListPublishedGenresCarriesTheGenresEyeCatch(t *testing.T) {
 		t.Fatalf("ListPublishedGenres: %v", err)
 	}
 	fantasy := resp.Msg.Genres[0].EyeCatchImageVariants
-	if len(fantasy) != 1 || fantasy[0].Url != "/images/genres/"+imageID.String()+"/square/600" {
+	if len(fantasy) != 1 || fantasy[0].Url != "/images/genres/"+imageID.String()+"/square/600?v="+variantID.String() {
 		t.Fatalf("Fantasy eye_catch_image_variants = %v, want the seeded square variant", fantasy)
 	}
 	if mystery := resp.Msg.Genres[1].EyeCatchImageVariants; len(mystery) != 0 {

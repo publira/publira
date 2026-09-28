@@ -2161,7 +2161,9 @@ type Querier interface {
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchLabelImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
-	// `updated_at` is what the console reads back and what busts the cached URL.
+	// The console compares this instant with the one it rendered. The delivered
+	// URL is cache-busted from the variant row, so the ratios that were not
+	// replaced keep the URLs they had.
 	TouchSeriesImage(ctx context.Context, id uuid.UUID) error
 	// Release a claim when River already has an in-flight process job for
 	// this event (unique skip). attempts and available_at stay as they were.

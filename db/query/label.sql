@@ -103,7 +103,8 @@ WHERE liv.label_image_id = $1
 LIMIT 1;
 
 -- name: ListLabelImageVariantsByImageIDs :many
-SELECT label_image_id,
+SELECT id,
+    label_image_id,
     variant_type,
     label,
     content_type,

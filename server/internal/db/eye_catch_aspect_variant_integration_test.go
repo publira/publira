@@ -72,8 +72,9 @@ func TestDeleteSeriesImageVariantsByTypeLeavesTheOtherRatios(t *testing.T) {
 	}
 }
 
-// A ratio upload bumps the eye-catch's updated_at, which is what the console
-// reads back and what the delivered URL is cache-busted on.
+// A ratio upload bumps the eye-catch's updated_at, which the console compares
+// with the instant it rendered. The delivered URL is cache-busted from the
+// variant row, not from this instant, so the other ratios keep their URLs.
 func TestTouchSeriesImageMovesUpdatedAt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

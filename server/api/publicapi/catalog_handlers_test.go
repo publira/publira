@@ -60,8 +60,8 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Creator A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(seriesImageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -741,8 +741,8 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	expectSeriesRating(mock, tenantID, seriesID, 4.2, 128)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
-			AddRow(seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
