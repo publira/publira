@@ -323,7 +323,7 @@ test.describe("admin publish flow", () => {
     await expect(
       page.getByRole("button", { exact: true, name: `Reorder ${episodeTitle}` })
     ).toBeVisible();
-    await expect(page.getByText(/status: scheduled/u)).toBeVisible();
+    await expect(page.getByText(/Status: Scheduled/u)).toBeVisible();
 
     // Do not fetch the host URL while the episode is still scheduled: web-host
     // would cache the 404 under `"use cache"` and keep missing after publish.
@@ -372,7 +372,7 @@ test.describe("admin publish flow", () => {
     });
 
     await page.goto(adminUrl(`/series/${seriesId}/episodes`));
-    await expect(page.getByText(/status: published/u)).toBeVisible();
+    await expect(page.getByText(/Status: Published/u)).toBeVisible();
 
     const episodeResponse = await page.goto(
       hostUrl(`/series/${seriesId}/episodes/${episodeId}`)

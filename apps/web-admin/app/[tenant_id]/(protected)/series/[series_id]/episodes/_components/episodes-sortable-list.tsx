@@ -27,6 +27,7 @@ import {
   selectionCheckboxProps,
   useEpisodeCreditsSelection,
 } from "./episode-credits-selection";
+import { EpisodeStatusPrice } from "./episode-status-price";
 
 interface EpisodesSortableListProps {
   /** The series the reorder is sent for. */
@@ -201,12 +202,9 @@ export const EpisodesSortableList = ({
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                <ClientMessage
-                  message="admin.series.episodes.status_price"
-                  values={{
-                    price: episode.price,
-                    status: episode.status,
-                  }}
+                <EpisodeStatusPrice
+                  price={episode.price}
+                  status={episode.status}
                 />
               </p>
               {episode.status === "scheduled" && episode.scheduledAt ? (
