@@ -50,7 +50,7 @@ describe("PlatformConsolePasswordResetEmail", () => {
       return;
     }
 
-    expect(result.html).toContain("Platform Console パスワードの再設定");
+    expect(result.html).toContain("プラットフォーム管理画面パスワードの再設定");
     expect(result.html).toContain(data.reset_url);
     expect(result.html).toContain(
       formatDateTime(data.expires_at, { locale: "ja", timeZone })

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ErrorBoundaryMessage } from "./error-boundary-message";
 
-const JA_TITLE = "Platform Console を表示できませんでした";
+const JA_TITLE = "プラットフォーム管理画面を表示できませんでした";
 const EN_TITLE = "Could not display Platform Console";
 
 const setCookies = (...pairs: string[]) => {

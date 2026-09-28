@@ -45,20 +45,20 @@
       "current_email": "目前的電子郵件地址：{$current_email}",
       "expires": "此連結將於 {$expires_at} 失效。",
       "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
-      "heading": "確認 Platform Console 的電子郵件地址變更",
+      "heading": "確認平台主控台的電子郵件地址變更",
       "ignore": "如果您並未預期收到這封郵件，可以直接忽略。",
-      "intro": "我們收到了變更您 Platform Console 帳戶電子郵件地址的請求。",
+      "intro": "我們收到了變更您平台主控台帳戶電子郵件地址的請求。",
       "new_email": "新的電子郵件地址：{$new_email}",
-      "preview": "確認 Platform Console 的電子郵件地址變更。",
-      "subject": "Publira Platform Console 電子郵件地址變更確認"
+      "preview": "確認平台主控台的電子郵件地址變更。",
+      "subject": "Publira 平台主控台電子郵件地址變更確認"
     },
     "platform_console_email_changed_notice": {
-      "body": "您 Platform Console 帳戶的電子郵件地址已變更。",
-      "heading": "Platform Console 的電子郵件地址已變更",
+      "body": "您平台主控台帳戶的電子郵件地址已變更。",
+      "heading": "平台主控台的電子郵件地址已變更",
       "new_email": "變更後：{$new_email}",
-      "preview": "您 Platform Console 帳戶的電子郵件地址已變更。",
+      "preview": "您平台主控台帳戶的電子郵件地址已變更。",
       "previous_email": "變更前：{$previous_email}",
-      "subject": "Publira Platform Console 電子郵件地址已變更",
+      "subject": "Publira 平台主控台電子郵件地址已變更",
       "warning": "如果這不是您本人的操作，請立即重設密碼。"
     },
     "platform_console_password_reset": {
@@ -66,11 +66,11 @@
       "body": "請開啟下方按鈕設定新密碼。",
       "expires": "此連結將於 {$expires_at} 失效。",
       "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
-      "heading": "重設 Platform Console 的密碼",
+      "heading": "重設平台主控台的密碼",
       "ignore": "如果您並未預期收到這封郵件，可以直接忽略。",
-      "intro": "我們收到了重設您 Platform Console 帳戶密碼的請求。",
-      "preview": "設定新的 Platform Console 密碼。",
-      "subject": "Publira Platform Console 密碼重設"
+      "intro": "我們收到了重設您平台主控台帳戶密碼的請求。",
+      "preview": "設定新的平台主控台密碼。",
+      "subject": "Publira 平台主控台密碼重設"
     },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",
@@ -4186,7 +4186,7 @@
         "password_required": "請輸入密碼。"
       },
       "login": {
-        "eyebrow": "Platform Console 登入",
+        "eyebrow": "平台主控台登入",
         "failed": "電子郵件地址或密碼不正確。",
         "forgot_password": "忘記密碼？",
         "pending": "正在登入…",
@@ -4323,8 +4323,8 @@
     "errors": {
       "console_description": "請稍後再試。如果問題持續發生，請提供錯誤 ID 聯絡管理員。",
       "console_title": "無法顯示此頁面",
-      "root_description": "無法載入 Platform Console。請稍後再試。",
-      "root_title": "無法顯示 Platform Console"
+      "root_description": "無法載入平台主控台。請稍後再試。",
+      "root_title": "無法顯示平台主控台"
     },
     "nav": {
       "audit_label": "稽核記錄",

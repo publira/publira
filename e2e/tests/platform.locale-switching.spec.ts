@@ -138,7 +138,7 @@ test.describe("web-platform display language", () => {
       await visitor.goto(platformUrl("/login"));
 
       await expect(
-        visitor.getByText("Platform Console ログイン")
+        visitor.getByText("プラットフォーム管理画面ログイン")
       ).toBeVisible();
       await expect(
         visitor.getByRole("button", { exact: true, name: "ログイン" })
