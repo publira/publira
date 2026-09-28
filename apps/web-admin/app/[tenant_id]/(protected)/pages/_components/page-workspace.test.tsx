@@ -40,7 +40,8 @@ const page: PageListItem = {
   createdAt: "2030-01-01T00:00:00Z",
   displayInFooter: false,
   id: "PAGE001",
-  publishedVersionId: "",
+  locale: "en",
+  publishedVersionId: "VERSION001",
   slug: "/privacy",
   title: "Privacy policy",
   updatedAt: "2030-01-01T00:00:00Z",
@@ -53,8 +54,8 @@ const version: PageVersionListItem = {
   id: "VERSION001",
   pageId: page.id,
   publishAt: "",
-  publishedAt: "",
-  status: "draft",
+  publishedAt: "2030-01-01T00:00:00Z",
+  status: "published",
   versionNumber: 1,
 };
 
@@ -102,6 +103,18 @@ const submittedControls = () => [
 ];
 
 describe("PageWorkspace", () => {
+  it("keeps every form on the translation it shows", async () => {
+    await renderWorkspace();
+
+    const forms = [...document.querySelectorAll("form")];
+
+    // Save, unpublish, and the version row's publish and roll back.
+    expect(forms).toHaveLength(4);
+    for (const form of forms) {
+      expect(new FormData(form).get("translation_locale")).toBe("en");
+    }
+  });
+
   it("saves the title and the body through one control", async () => {
     await renderWorkspace();
 

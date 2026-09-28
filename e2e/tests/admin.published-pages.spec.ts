@@ -287,6 +287,89 @@ test.describe("admin published pages", () => {
     await expect(page.getByText(body)).toHaveCount(0);
   });
 
+  test("a translation in another language keeps its own title, history, and publication", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Translated Page ${suffix}`;
+    const translatedTitle = `E2E 翻訳ページ ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## English\n\nEnglish body ${suffix}`,
+        slug,
+        title,
+      })
+    );
+
+    // The seed tenant's default locale is English, so the page starts with
+    // that one translation and every other locale is waiting to be added.
+    const languages = page.getByRole("navigation", { name: "Languages" });
+    await expect(
+      languages.getByRole("link", { exact: true, name: "English" })
+    ).toHaveAttribute("aria-current", "page");
+    await languages.getByRole("link", { name: /^日本語/u }).click();
+    await expect(
+      page.getByRole("heading", { name: "No 日本語 translation yet" })
+    ).toBeVisible();
+
+    await fillField(
+      page.getByRole("textbox", { name: "Title" }),
+      translatedTitle
+    );
+    await page.getByRole("button", { name: "Add translation" }).click();
+    await expect(page.getByText("Translation added.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      translatedTitle
+    );
+    await expect(
+      page.getByText("No versions yet.", { exact: false })
+    ).toBeVisible();
+
+    await fillField(
+      page.getByRole("textbox", { name: "Content" }),
+      `## 日本語\n\n日本語の本文 ${suffix}`
+    );
+    await page.getByRole("button", { name: "Save page" }).click();
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible({
+      timeout: 30_000,
+    });
+    await publishVersion(page, 1);
+
+    // The English translation is untouched: its title, its single version,
+    // and that version still a draft.
+    await languages.getByRole("link", { exact: true, name: "English" }).click();
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      title
+    );
+    await expect(versionStatus(page, 1, "Draft")).toBeVisible();
+    await expect(versionRow(page, 2)).toHaveCount(0);
+
+    // Deleting the Japanese translation leaves the page with its English one.
+    await page.goto(adminUrl(`/pages/${pageId}?locale=ja`));
+    await page.getByRole("button", { name: "Delete this translation" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Delete" })
+      .click();
+    await expect(page.getByText("Translation deleted.")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+      title
+    );
+    await expect(
+      languages.getByRole("link", { name: /^日本語\s?\(not added\)$/u })
+    ).toBeVisible();
+    // The last translation offers no deletion at all.
+    await expect(
+      page.getByRole("button", { name: "Delete this translation" })
+    ).toHaveCount(0);
+  });
+
   test("a slug that collides with an existing page is refused", async ({
     page,
   }) => {

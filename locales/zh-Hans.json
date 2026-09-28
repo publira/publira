@@ -218,6 +218,7 @@
         "label": "品牌",
         "page": "页面",
         "page_version": "页面版本",
+        "page_translation": "页面翻译",
         "payment_config": "支付设置",
         "royalty_config": "版税结算设置",
         "royalty_statement": "版税明细",
@@ -286,6 +287,8 @@
         "page_version_created": "创建了页面版本",
         "page_version_published": "发布了页面版本",
         "page_version_rolled_back": "回滚了页面版本",
+        "page_translation_created": "添加了页面翻译",
+        "page_translation_deleted": "删除了页面翻译",
         "announcement_created": "创建了公告",
         "announcement_unpinned": "取消了公告的横幅展示",
         "comment_approved": "通过了评论",
@@ -1144,6 +1147,7 @@
         "submitting": "正在提交…",
         "title": "标题",
         "title_placeholder": "隐私政策",
+        "locale_description": "页面将以站点的默认语言{$language}创建。其他语言的翻译可在创建后从编辑页面添加。",
         "body": "内容",
         "body_placeholder": "# 隐私政策",
         "slug_description": "公开 URL 将是 {$path}。留空表示 /。开头的 / 可以省略；请使用小写 ASCII 字母、数字和连字符（多级路径用 / 分隔）。",
@@ -1154,6 +1158,7 @@
       "validation": {
         "title_required": "标题为必填项。",
         "title_too_long": "标题请控制在 255 个字符以内。",
+        "locale_invalid": "请选择支持的语言。",
         "slug_too_long": "slug 请控制在 255 个字符以内。",
         "tenant_missing": "缺少租户 ID。",
         "update_id_missing": "缺少要更新的页面 ID。"
@@ -1211,6 +1216,25 @@
           "actions": "操作"
         },
         "version_option": "v{$version} · {$status}"
+      },
+      "translations": {
+        "tabs_label": "语言",
+        "not_added": "（未添加）",
+        "add_title": "尚无{$language}翻译",
+        "add_description": "在发布{$language}翻译之前，{$language}站点的读者会看到此页面的其他语言版本。输入标题以添加翻译，然后撰写并发布正文。",
+        "add_action": "添加翻译",
+        "adding": "正在添加…",
+        "added": "翻译已添加。",
+        "add_failed": "无法添加翻译。请稍后再试。",
+        "already_exists": "此页面已有该语言的翻译。请重新加载页面。",
+        "delete_action": "删除此翻译",
+        "deleting": "正在删除…",
+        "delete_confirm_title": "要删除{$language}翻译吗？",
+        "delete_confirm_description": "其标题和正文的所有版本都将被删除，{$language}站点的读者将看到此页面的其他语言版本。此操作无法撤销。",
+        "delete_confirm_action": "删除",
+        "deleted": "翻译已删除。",
+        "delete_failed": "无法删除翻译。请稍后再试。",
+        "last_translation": "页面至少需要保留一个翻译，因此无法删除最后一个翻译。"
       }
     },
     "readers": {

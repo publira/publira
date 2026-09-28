@@ -151,6 +151,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "page_version_rolled_back",
             },
             {
+              label: t("admin.audit.actions.page_translation_created"),
+              value: "page_translation_created",
+            },
+            {
+              label: t("admin.audit.actions.page_translation_deleted"),
+              value: "page_translation_deleted",
+            },
+            {
               label: t("admin.audit.actions.announcement_created"),
               value: "announcement_created",
             },

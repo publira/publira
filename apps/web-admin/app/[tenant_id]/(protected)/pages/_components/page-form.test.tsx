@@ -197,3 +197,15 @@ it("closes every field while the save is in flight", async () => {
     }
   });
 });
+
+it("names the language the page is created in", async () => {
+  render(
+    await PageForm({ action, defaultLocale: "ja", tenantId: "TENANT001" })
+  );
+
+  expect(
+    screen.getByText(
+      "The page is created in 日本語, the site's default language. Translations into other languages are added from the edit screen once it exists."
+    )
+  ).toBeDefined();
+});

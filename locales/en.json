@@ -218,6 +218,7 @@
         "label": "Label",
         "page": "Page",
         "page_version": "Page version",
+        "page_translation": "Page translation",
         "payment_config": "Payment settings",
         "royalty_config": "Royalty closing settings",
         "royalty_statement": "Royalty statement",
@@ -286,6 +287,8 @@
         "page_version_created": "Page version created",
         "page_version_published": "Page version published",
         "page_version_rolled_back": "Page rolled back to a version",
+        "page_translation_created": "Page translation added",
+        "page_translation_deleted": "Page translation deleted",
         "announcement_created": "Announcement created",
         "announcement_unpinned": "Announcement taken down from the site banner",
         "comment_approved": "Comment approved",
@@ -1144,6 +1147,7 @@
         "submitting": "Submitting...",
         "title": "Title",
         "title_placeholder": "Privacy policy",
+        "locale_description": "The page is created in {$language}, the site's default language. Translations into other languages are added from the edit screen once it exists.",
         "body": "Content",
         "body_placeholder": "# Privacy policy",
         "slug_description": "The public URL will be {$path}. Leave blank for /. A leading / is optional; use lowercase ASCII letters, numbers, and hyphens (separate nested paths with /).",
@@ -1154,6 +1158,7 @@
       "validation": {
         "title_required": "Title is required.",
         "title_too_long": "Title must be 255 characters or fewer.",
+        "locale_invalid": "Choose a supported language.",
         "slug_too_long": "Slug must be 255 characters or fewer.",
         "tenant_missing": "Tenant ID is missing.",
         "update_id_missing": "The page ID to update is missing."
@@ -1211,6 +1216,25 @@
           "actions": "Actions"
         },
         "version_option": "v{$version} · {$status}"
+      },
+      "translations": {
+        "tabs_label": "Languages",
+        "not_added": "(not added)",
+        "add_title": "No {$language} translation yet",
+        "add_description": "Until a {$language} translation is published, readers of the {$language} site see this page in another language. Enter a title to add one, then write and publish its content.",
+        "add_action": "Add translation",
+        "adding": "Adding...",
+        "added": "Translation added.",
+        "add_failed": "Could not add the translation. Please try again later.",
+        "already_exists": "This page already has a translation in that language. Reload the page.",
+        "delete_action": "Delete this translation",
+        "deleting": "Deleting...",
+        "delete_confirm_title": "Delete the {$language} translation?",
+        "delete_confirm_description": "Its title and every version of its content are deleted, and readers of the {$language} site see the page in another language. This cannot be undone.",
+        "delete_confirm_action": "Delete",
+        "deleted": "Translation deleted.",
+        "delete_failed": "Could not delete the translation. Please try again later.",
+        "last_translation": "A page keeps at least one translation, so its last one cannot be deleted."
       }
     },
     "readers": {

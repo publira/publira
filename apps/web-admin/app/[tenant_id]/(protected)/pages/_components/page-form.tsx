@@ -1,3 +1,5 @@
+import { getLocaleLabel } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormFieldset,
@@ -28,6 +30,11 @@ interface PageFormProps {
     prevState: PageFormState,
     formData: FormData
   ) => Promise<PageFormState>;
+  /**
+   * The tenant's default locale, which the page's first translation is created
+   * in. Absent when it could not be read; the server decides it either way.
+   */
+  defaultLocale?: Locale;
   tenantId: string;
 }
 
@@ -35,7 +42,11 @@ interface PageFormProps {
  * Creates a page, which the Action then redirects to. Awaits the catalog for
  * its placeholders, which are attributes rather than nodes.
  */
-export const PageForm = async ({ action, tenantId }: PageFormProps) => {
+export const PageForm = async ({
+  action,
+  defaultLocale,
+  tenantId,
+}: PageFormProps) => {
   const t = await getMessages();
 
   return (
@@ -58,6 +69,16 @@ export const PageForm = async ({ action, tenantId }: PageFormProps) => {
               required
               type="text"
             />
+            {defaultLocale ? (
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message
+                    message="admin.pages.form.locale_description"
+                    values={{ language: getLocaleLabel(defaultLocale) }}
+                  />
+                </Suspense>
+              </FieldDescription>
+            ) : null}
           </FieldContent>
         </Field>
 

@@ -218,6 +218,7 @@
         "label": "品牌",
         "page": "頁面",
         "page_version": "頁面版本",
+        "page_translation": "頁面翻譯",
         "payment_config": "付款設定",
         "royalty_config": "版稅結算設定",
         "royalty_statement": "版稅明細",
@@ -286,6 +287,8 @@
         "page_version_created": "建立了頁面版本",
         "page_version_published": "發布了頁面版本",
         "page_version_rolled_back": "還原了頁面版本",
+        "page_translation_created": "新增了頁面翻譯",
+        "page_translation_deleted": "刪除了頁面翻譯",
         "announcement_created": "建立了公告",
         "announcement_unpinned": "取消了公告的橫幅展示",
         "comment_approved": "通過了留言",
@@ -1144,6 +1147,7 @@
         "submitting": "正在送出…",
         "title": "標題",
         "title_placeholder": "隱私權政策",
+        "locale_description": "頁面將以網站的預設語言{$language}建立。其他語言的翻譯可在建立後從編輯畫面新增。",
         "body": "內容",
         "body_placeholder": "# 隱私權政策",
         "slug_description": "公開網址將是 {$path}。留空表示 /。開頭的 / 可以省略；請使用小寫 ASCII 字母、數字與連字號（多層路徑以 / 分隔）。",
@@ -1154,6 +1158,7 @@
       "validation": {
         "title_required": "標題為必填。",
         "title_too_long": "標題請控制在 255 個字元以內。",
+        "locale_invalid": "請選擇支援的語言。",
         "slug_too_long": "slug 請控制在 255 個字元以內。",
         "tenant_missing": "缺少租戶 ID。",
         "update_id_missing": "缺少要更新的頁面 ID。"
@@ -1211,6 +1216,25 @@
           "actions": "操作"
         },
         "version_option": "v{$version} · {$status}"
+      },
+      "translations": {
+        "tabs_label": "語言",
+        "not_added": "（未新增）",
+        "add_title": "尚無{$language}翻譯",
+        "add_description": "在發布{$language}翻譯之前，{$language}網站的讀者會看到此頁面的其他語言版本。輸入標題以新增翻譯，然後撰寫並發布內文。",
+        "add_action": "新增翻譯",
+        "adding": "正在新增…",
+        "added": "翻譯已新增。",
+        "add_failed": "無法新增翻譯。請稍後再試。",
+        "already_exists": "此頁面已有該語言的翻譯。請重新載入頁面。",
+        "delete_action": "刪除此翻譯",
+        "deleting": "正在刪除…",
+        "delete_confirm_title": "要刪除{$language}翻譯嗎？",
+        "delete_confirm_description": "其標題和內文的所有版本都將被刪除，{$language}網站的讀者將看到此頁面的其他語言版本。此操作無法復原。",
+        "delete_confirm_action": "刪除",
+        "deleted": "翻譯已刪除。",
+        "delete_failed": "無法刪除翻譯。請稍後再試。",
+        "last_translation": "頁面至少需要保留一個翻譯，因此無法刪除最後一個翻譯。"
       }
     },
     "readers": {

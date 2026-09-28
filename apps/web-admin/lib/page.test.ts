@@ -5,13 +5,27 @@ import {
 } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCreatePage, mockGetAccessToken, mockListPages } = vi.hoisted(
-  () => ({
-    mockCreatePage: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockListPages: vi.fn(),
-  })
-);
+const {
+  mockCacheTag,
+  mockCreatePage,
+  mockCreatePageTranslation,
+  mockCreateVersion,
+  mockDeletePageTranslation,
+  mockGetAccessToken,
+  mockGetPage,
+  mockListPages,
+  mockListPageTranslations,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockCreatePage: vi.fn(),
+  mockCreatePageTranslation: vi.fn(),
+  mockCreateVersion: vi.fn(),
+  mockDeletePageTranslation: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetPage: vi.fn(),
+  mockListPageTranslations: vi.fn(),
+  mockListPages: vi.fn(),
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -21,6 +35,11 @@ vi.mock("./api", () => ({
   apiClient: {
     pages: {
       createPage: mockCreatePage,
+      createPageTranslation: mockCreatePageTranslation,
+      createVersion: mockCreateVersion,
+      deletePageTranslation: mockDeletePageTranslation,
+      getPage: mockGetPage,
+      listPageTranslations: mockListPageTranslations,
       listPages: mockListPages,
     },
   },
@@ -30,7 +49,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
-  cacheTag: vi.fn(),
+  cacheTag: mockCacheTag,
 }));
 
 const page = (id: string, title: string) => ({
@@ -291,5 +310,244 @@ describe("createPage", () => {
 
     expect(result).not.toHaveProperty("field");
     expect(result.ok).toBe(false);
+  });
+});
+
+const SESSION_HEADERS = { headers: { Authorization: "Bearer session-token" } };
+
+const translation = (locale: string, title: string) => ({
+  createdAt: "2026-01-01T00:00:00Z",
+  id: `TRANSLATION-${locale}`,
+  locale,
+  pageId: "PAGE001",
+  publishedVersionId: "",
+  title,
+  updatedAt: "2026-01-01T00:00:00Z",
+});
+
+describe("listPageTranslations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("returns the translations in the server's order, under the page's tags", async () => {
+    mockListPageTranslations.mockResolvedValue({
+      translations: [
+        translation("ja", "Privacy policy (ja)"),
+        translation("en", "Privacy policy"),
+      ],
+    });
+
+    const { listPageTranslations } = await import("./page");
+    const result = await listPageTranslations(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockListPageTranslations).toHaveBeenCalledWith(
+      { pageId: "PAGE001", tenant: { tenantId: "TENANT001" } },
+      SESSION_HEADERS
+    );
+    expect(result).toEqual({
+      ok: true,
+      translations: [
+        {
+          id: "TRANSLATION-ja",
+          locale: "ja",
+          publishedVersionId: "",
+          title: "Privacy policy (ja)",
+        },
+        {
+          id: "TRANSLATION-en",
+          locale: "en",
+          publishedVersionId: "",
+          title: "Privacy policy",
+        },
+      ],
+    });
+    expect(mockCacheTag).toHaveBeenCalledWith("pages-TENANT001");
+    expect(mockCacheTag).toHaveBeenCalledWith("page-TENANT001-PAGE001");
+  });
+
+  it("leaves out a translation in a locale this build does not serve", async () => {
+    mockListPageTranslations.mockResolvedValue({
+      translations: [
+        translation("ja", "Privacy policy (ja)"),
+        translation("fr", "Politique de confidentialité"),
+      ],
+    });
+
+    const { listPageTranslations } = await import("./page");
+    const result = await listPageTranslations(
+      { pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(
+      result.ok ? result.translations.map((item) => item.locale) : []
+    ).toEqual(["ja"]);
+  });
+
+  it("reports a page that is missing as not found", async () => {
+    mockListPageTranslations.mockRejectedValue(
+      new ConnectError("page not found", Code.NotFound)
+    );
+
+    const { listPageTranslations } = await import("./page");
+    const result = await listPageTranslations(
+      { pageId: "PAGE404", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ notFound: true, ok: false });
+  });
+});
+
+describe("the translation a page RPC works on", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("names the translation's locale in the request", async () => {
+    mockGetPage.mockResolvedValue({
+      page: { ...page("PAGE001", "Privacy"), locale: "en" },
+    });
+
+    const { getPage } = await import("./page");
+    const result = await getPage(
+      { pageId: "PAGE001", tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+
+    expect(mockGetPage).toHaveBeenCalledWith(
+      { locale: "en", pageId: "PAGE001", tenant: { tenantId: "TENANT001" } },
+      SESSION_HEADERS
+    );
+    expect(result).toMatchObject({ ok: true, page: { locale: "en" } });
+  });
+
+  it("leaves the locale empty for the translation the tenant's default resolves to", async () => {
+    mockCreateVersion.mockResolvedValue({
+      version: { id: "VERSION001", pageId: "PAGE001" },
+    });
+
+    const { createPageVersion } = await import("./page");
+    await createPageVersion(
+      {
+        contentMarkdown: "# Privacy",
+        pageId: "PAGE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockCreateVersion).toHaveBeenCalledWith(
+      {
+        contentMarkdown: "# Privacy",
+        locale: "",
+        pageId: "PAGE001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      SESSION_HEADERS
+    );
+  });
+});
+
+describe("createPageTranslation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const input = {
+    pageId: "PAGE001",
+    tenantId: "TENANT001",
+    title: "Privacy policy",
+    translationLocale: "en" as const,
+  };
+
+  it("returns the translation it added", async () => {
+    mockCreatePageTranslation.mockResolvedValue({
+      translation: translation("en", "Privacy policy"),
+    });
+
+    const { createPageTranslation } = await import("./page");
+    const result = await createPageTranslation(input, "en");
+
+    expect(mockCreatePageTranslation).toHaveBeenCalledWith(
+      {
+        locale: "en",
+        pageId: "PAGE001",
+        tenant: { tenantId: "TENANT001" },
+        title: "Privacy policy",
+      },
+      SESSION_HEADERS
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      translation: { locale: "en", title: "Privacy policy" },
+    });
+  });
+
+  it("says the page already has a translation in that locale", async () => {
+    mockCreatePageTranslation.mockRejectedValue(
+      new ConnectError("exists", Code.AlreadyExists)
+    );
+
+    const { createPageTranslation } = await import("./page");
+    const result = await createPageTranslation(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "This page already has a translation in that language. Reload the page.",
+      ok: false,
+    });
+  });
+});
+
+describe("deletePageTranslation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  const input = {
+    pageId: "PAGE001",
+    tenantId: "TENANT001",
+    translationLocale: "ja" as const,
+  };
+
+  it("deletes the translation in the locale it names", async () => {
+    mockDeletePageTranslation.mockResolvedValue({});
+
+    const { deletePageTranslation } = await import("./page");
+    const result = await deletePageTranslation(input, "en");
+
+    expect(mockDeletePageTranslation).toHaveBeenCalledWith(
+      { locale: "ja", pageId: "PAGE001", tenant: { tenantId: "TENANT001" } },
+      SESSION_HEADERS
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("explains why the page's last translation stays", async () => {
+    mockDeletePageTranslation.mockRejectedValue(
+      new ConnectError("last translation", Code.FailedPrecondition)
+    );
+
+    const { deletePageTranslation } = await import("./page");
+    const result = await deletePageTranslation(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "A page keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
+    });
   });
 });

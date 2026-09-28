@@ -1,3 +1,4 @@
+import { getLocales } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -12,6 +13,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import { searchParamEnum } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -34,12 +36,17 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getPage, listPageVersions } from "#lib/page";
+import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { PageTranslationAddForm } from "../_components/page-translation-add-form";
+import { PageTranslationDeleteButton } from "../_components/page-translation-delete-button";
+import { PageTranslationTabs } from "../_components/page-translation-tabs";
 import { PageWorkspace } from "../_components/page-workspace";
 import {
+  addPageTranslationAction,
+  deletePageTranslationAction,
   publishVersionAction,
   rollbackVersionAction,
   savePageAction,
@@ -51,10 +58,19 @@ interface EditPagePageProps {
     page_id: string;
     tenant_id: string;
   }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 const editPageParamsSchema = z.object({
   page_id: routeParamString(),
+});
+
+/**
+ * The translation to show. Absent, or naming a locale this build does not
+ * serve, it is the one the tenant's default locale resolves to.
+ */
+const editPageSearchParamsSchema = z.object({
+  locale: searchParamEnum(getLocales(), { fallback: "" }),
 });
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -93,26 +109,69 @@ const PageLoadError = ({ message }: { message: string }) => (
 
 const PageWorkspaceData = async ({
   params,
-}: Pick<EditPagePageProps, "params">) => {
+  searchParams,
+}: EditPagePageProps) => {
   const parsedParams = parseRouteParams(editPageParamsSchema, await params);
   if (!parsedParams) {
     notFound();
   }
   const { page_id: pageId } = parsedParams;
+  const requestedLocale =
+    editPageSearchParamsSchema.parse(await searchParams).locale || undefined;
 
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+  const translationsResult = await listPageTranslations(
+    { pageId, tenantId },
+    locale
+  );
+
+  if (!translationsResult.ok) {
+    if (translationsResult.notFound) {
+      // Missing, another tenant's page, or an id the URL could never address —
+      // never told apart. Renders `(protected)/not-found.tsx` inside the
+      // console chrome.
+      notFound();
+    }
+
+    await redirectToLoginIfSessionRejected(translationsResult);
+
+    return <PageLoadError message={translationsResult.message} />;
+  }
+
+  const translatedLocales = translationsResult.translations.map(
+    (translation) => translation.locale
+  );
+
+  if (requestedLocale && !translatedLocales.includes(requestedLocale)) {
+    return (
+      <AdminSections>
+        <PageTranslationTabs
+          pageId={pageId}
+          selectedLocale={requestedLocale}
+          translatedLocales={translatedLocales}
+        />
+        <PageTranslationAddForm
+          action={addPageTranslationAction}
+          pageId={pageId}
+          tenantId={tenantId}
+          translationLocale={requestedLocale}
+        />
+      </AdminSections>
+    );
+  }
+
   const [pageResult, versionsResult, timeZone] = await Promise.all([
-    getPage({ pageId, tenantId }, locale),
-    listPageVersions({ pageId, tenantId }, locale),
+    getPage({ pageId, tenantId, translationLocale: requestedLocale }, locale),
+    listPageVersions(
+      { pageId, tenantId, translationLocale: requestedLocale },
+      locale
+    ),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
   if (!pageResult.ok) {
     if (pageResult.notFound) {
-      // Missing, another tenant's page, or an id the URL could never address —
-      // never told apart. Renders `(protected)/not-found.tsx` inside the
-      // console chrome.
       notFound();
     }
 
@@ -127,22 +186,44 @@ const PageWorkspaceData = async ({
     return <PageLoadError message={versionsResult.message} />;
   }
 
+  const selectedLocale = pageResult.page.locale;
+
   return (
-    <PageWorkspace
-      initialPage={pageResult.page}
-      initialVersions={versionsResult.versions}
-      locale={locale}
-      publishAction={publishVersionAction}
-      rollbackAction={rollbackVersionAction}
-      saveAction={savePageAction}
-      tenantId={tenantId}
-      timeZone={timeZone}
-      unpublishAction={unpublishPageAction}
-    />
+    <AdminSections>
+      {selectedLocale ? (
+        <PageTranslationTabs
+          pageId={pageId}
+          selectedLocale={selectedLocale}
+          translatedLocales={translatedLocales}
+        >
+          {translatedLocales.length > 1 ? (
+            <PageTranslationDeleteButton
+              action={deletePageTranslationAction}
+              pageId={pageId}
+              tenantId={tenantId}
+              translationLocale={selectedLocale}
+            />
+          ) : null}
+        </PageTranslationTabs>
+      ) : null}
+      {/* A key per translation, so the editor's unsaved body never carries over to another language. */}
+      <PageWorkspace
+        initialPage={pageResult.page}
+        initialVersions={versionsResult.versions}
+        key={selectedLocale}
+        locale={locale}
+        publishAction={publishVersionAction}
+        rollbackAction={rollbackVersionAction}
+        saveAction={savePageAction}
+        tenantId={tenantId}
+        timeZone={timeZone}
+        unpublishAction={unpublishPageAction}
+      />
+    </AdminSections>
   );
 };
 
-const EditPagePage = ({ params }: EditPagePageProps) => (
+const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -171,6 +252,14 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
       <FlashToast keyName="published" message="admin.pages.published_success" />
       <FlashToast keyName="unpublished" message="admin.pages.unpublished" />
       <FlashToast keyName="rolled_back" message="admin.pages.rolled_back" />
+      <FlashToast
+        keyName="translation_added"
+        message="admin.pages.translations.added"
+      />
+      <FlashToast
+        keyName="translation_deleted"
+        message="admin.pages.translations.deleted"
+      />
 
       <SectionErrorBoundary
         title={
@@ -180,7 +269,7 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
         }
       >
         <Suspense fallback={<PageWorkspaceSkeleton />}>
-          <PageWorkspaceData params={params} />
+          <PageWorkspaceData params={params} searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
     </AdminPageContent>
