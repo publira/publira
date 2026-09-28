@@ -69,6 +69,28 @@ test.describe("web-host canonical and language alternate links", () => {
     });
   });
 
+  test("a page published in one language alternates only that language", async ({
+    page,
+  }) => {
+    await page.goto(hostPath("/privacy"));
+
+    await expectCanonical(page, `${SEED_ORIGIN}/privacy`);
+    await expectLanguageAlternates(page, {
+      en: `${SEED_ORIGIN}/privacy`,
+      "x-default": `${SEED_ORIGIN}/privacy`,
+    });
+
+    // The Japanese URL serves the same English page. It is not a second
+    // language, so it points search engines back at the English address.
+    await page.goto(localeHostPath("ja", "/privacy"));
+
+    await expectCanonical(page, `${SEED_ORIGIN}/privacy`);
+    await expectLanguageAlternates(page, {
+      en: `${SEED_ORIGIN}/privacy`,
+      "x-default": `${SEED_ORIGIN}/privacy`,
+    });
+  });
+
   test("the tenant default locale is canonical at the unprefixed URL", async ({
     page,
   }) => {

@@ -50,9 +50,24 @@ export const tenantThemeTag = (tenantId: string) =>
 export const tenantMobileAppAssociationTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:mobile-app-association`;
 
+/**
+ * Every published page of a tenant, the footer links included.
+ *
+ * The locale stays out of the tag. Each locale is already its own cache entry,
+ * because the read takes the locale as an argument, and a publish drops this
+ * one tag — not a per-locale one — so every locale of the list is cleared
+ * together.
+ */
 export const tenantPagesTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:pages`;
 
+/**
+ * One published page, in every locale.
+ *
+ * Same boundary as {@link tenantPagesTag}: the entry is per locale, the tag is
+ * not, and publishing any translation of the page drops
+ * `tenant:{id}:pages:{pageId}` once.
+ */
 export const tenantPageTag = (tenantId: string, pageId: string) =>
   `tenant:${normalized(tenantId)}:pages:${pageId.trim()}`;
 

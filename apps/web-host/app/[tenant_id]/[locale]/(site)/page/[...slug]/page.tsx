@@ -14,9 +14,13 @@ import { z } from "zod";
 import { PageLoadError } from "#components/page-load-error";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getPublishedPage, publishedPageHrefFromSlug } from "#lib/pages";
+import {
+  getPublishedPage,
+  publishedPageFallbackLanguage,
+  publishedPageHrefFromSlug,
+} from "#lib/pages";
 import { getTenantId } from "#lib/tenant-id";
-import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
+import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { PublishedPageContent } from "./_components/published-page-view";
 
@@ -45,14 +49,9 @@ export const generateMetadata = async (
   }
   const { slug } = parsedParams;
 
-  const [result, t, alternates] = await Promise.all([
+  const [result, t] = await Promise.all([
     getPublishedPage(tenantId, slug, locale),
     getMessagesFor(locale),
-    tenantLocaleAlternates(
-      tenantId,
-      locale,
-      publishedPageHrefFromSlug(slug.join("/"))
-    ),
   ]);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
@@ -62,6 +61,15 @@ export const generateMetadata = async (
   if (!page) {
     return { title: t("host.errors.not_found_title") };
   }
+
+  // Alternates wait on the page: only a published translation is a language
+  // of this URL, and which those are is part of the read above.
+  const alternates = await tenantPublishedLocaleAlternates(
+    tenantId,
+    publishedPageHrefFromSlug(slug.join("/")),
+    page.publishedLocales,
+    page.locale
+  );
 
   return { alternates, title: page.title };
 };
@@ -104,7 +112,15 @@ const PublishedPageBody = async (
     notFound();
   }
 
-  return <PublishedPageContent page={result.value} />;
+  return (
+    <PublishedPageContent
+      fallbackLanguage={publishedPageFallbackLanguage(
+        locale,
+        result.value.locale
+      )}
+      page={result.value}
+    />
+  );
 };
 
 const Page = (props: PageProps<"/[tenant_id]/[locale]/page/[...slug]">) => (

@@ -3233,6 +3233,7 @@
     },
     "pages": {
       "body_empty": "This page has no content yet.",
+      "fallback_notice": "This page is not published in your language, so it is shown in {$language}.",
       "read_failed": "Could not load the page content. Please try again later.",
       "untitled": "Page"
     },

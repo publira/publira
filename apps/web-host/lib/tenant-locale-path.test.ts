@@ -8,8 +8,12 @@ vi.mock("./tenant", () => ({
   getTenantPublicOrigin,
 }));
 
-const { tenantLocaleAlternates, tenantLocalePath, tenantLocaleUrl } =
-  await import("./tenant-locale-path");
+const {
+  tenantLocaleAlternates,
+  tenantLocalePath,
+  tenantLocaleUrl,
+  tenantPublishedLocaleAlternates,
+} = await import("./tenant-locale-path");
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
@@ -69,11 +73,32 @@ describe("tenantLocaleAlternates", () => {
     expect(alternates?.languages["x-default"]).toBe("/ranking");
   });
 
+  it("limits a tenant page to the locales it publishes", async () => {
+    const alternates = await tenantPublishedLocaleAlternates(
+      TENANT_ID,
+      "/privacy",
+      ["ja", "en"],
+      "en"
+    );
+
+    expect(alternates).toEqual({
+      canonical: "/en/privacy",
+      languages: {
+        en: "/en/privacy",
+        ja: "/privacy",
+        "x-default": "/privacy",
+      },
+    });
+  });
+
   it("answers with nothing when there is no origin to resolve them against", async () => {
     getTenantPublicOrigin.mockResolvedValue(null);
 
     await expect(
       tenantLocaleAlternates(TENANT_ID, "ja", "/ranking")
+    ).resolves.toBeUndefined();
+    await expect(
+      tenantPublishedLocaleAlternates(TENANT_ID, "/privacy", ["en"], "en")
     ).resolves.toBeUndefined();
     expect(getTenantDefaultLocale).not.toHaveBeenCalled();
   });

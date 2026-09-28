@@ -99,10 +99,16 @@ export const withLocalePrefix = (
   return href === "/" ? `/${locale}` : `/${locale}${href}`;
 };
 
-/** The `alternates` a page's metadata carries, as paths against `metadataBase`. */
+/**
+ * The `alternates` a page's metadata carries, as paths against `metadataBase`.
+ *
+ * `languages` lists the locales the page actually publishes. A page that exists
+ * in every locale fills every key; a tenant page fills only its published
+ * translations, plus `x-default`.
+ */
 export interface LocaleAlternates {
   canonical: string;
-  languages: Record<Locale | "x-default", string>;
+  languages: Partial<Record<Locale, string>> & { "x-default": string };
 }
 
 /**
@@ -127,6 +133,43 @@ export const localeAlternates = (
   return {
     canonical: withLocalePrefix(locale, defaultLocale, href),
     languages: { ...languages, "x-default": href },
+  };
+};
+
+/**
+ * Language alternates for a page published in only some locales.
+ *
+ * A locale with no published translation is left out: that URL serves another
+ * language, and listing it would tell a search engine the translation exists.
+ * The canonical URL is the served language's own address, so a fallback URL is
+ * not indexed as a second copy. `x-default` is the tenant default's public
+ * path when that locale is published, and the served language's path otherwise.
+ */
+export const publishedLocaleAlternates = (
+  defaultLocale: Locale,
+  href: string,
+  publishedLocales: readonly Locale[],
+  servedLocale: Locale
+): LocaleAlternates => {
+  const published = new Set<Locale>([...publishedLocales, servedLocale]);
+
+  const languages: Partial<Record<Locale, string>> = {};
+  for (const code of getLocales()) {
+    if (published.has(code)) {
+      languages[code] = withLocalePrefix(code, defaultLocale, href);
+    }
+  }
+
+  const xDefaultLocale = published.has(defaultLocale)
+    ? defaultLocale
+    : servedLocale;
+
+  return {
+    canonical: withLocalePrefix(servedLocale, defaultLocale, href),
+    languages: {
+      ...languages,
+      "x-default": withLocalePrefix(xDefaultLocale, defaultLocale, href),
+    },
   };
 };
 

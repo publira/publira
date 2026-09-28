@@ -5,12 +5,20 @@ import {
   getPublishedPage,
   listPublishedPageLinks,
   normalizePublishedPageSlug,
+  publishedPageFallbackLanguage,
   publishedPageHrefFromSlug,
 } from "./pages";
 
-const { mockGetPublishedPage, mockListPublishedPages } = vi.hoisted(() => ({
-  mockGetPublishedPage: vi.fn(),
-  mockListPublishedPages: vi.fn(),
+const { mockCacheTag, mockGetPublishedPage, mockListPublishedPages } =
+  vi.hoisted(() => ({
+    mockCacheTag: vi.fn(),
+    mockGetPublishedPage: vi.fn(),
+    mockListPublishedPages: vi.fn(),
+  }));
+
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -48,8 +56,20 @@ describe("publishedPageHrefFromSlug", () => {
   });
 });
 
+describe("publishedPageFallbackLanguage", () => {
+  it("names the served language when the reader asked for another", () => {
+    expect(publishedPageFallbackLanguage("ja", "en")).toBe("English");
+    expect(publishedPageFallbackLanguage("en", "ja")).toBe("日本語");
+  });
+
+  it("is absent when the requested translation was served", () => {
+    expect(publishedPageFallbackLanguage("en", "en")).toBeNull();
+  });
+});
+
 describe("listPublishedPageLinks", () => {
   beforeEach(() => {
+    mockCacheTag.mockReset();
     mockListPublishedPages.mockReset();
   });
 
@@ -71,11 +91,13 @@ describe("listPublishedPageLinks", () => {
       ],
     });
 
-    const links = await listPublishedPageLinks("tenant-uuid");
+    const links = await listPublishedPageLinks("tenant-uuid", "ja");
 
     expect(mockListPublishedPages).toHaveBeenCalledWith({
+      locale: "ja",
       tenant: { tenantId: "tenant-uuid" },
     });
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:tenant-uuid:pages");
     expect(links).toEqual([
       {
         href: "/privacy",
@@ -93,11 +115,11 @@ describe("listPublishedPageLinks", () => {
   });
 
   it("Returns an empty array in case of empty tenant or API failure (assuming failure is not cached)", async () => {
-    expect(await listPublishedPageLinks("")).toEqual([]);
+    expect(await listPublishedPageLinks("", "en")).toEqual([]);
     expect(mockListPublishedPages).not.toHaveBeenCalled();
 
     mockListPublishedPages.mockRejectedValueOnce(new Error("boom"));
-    expect(await listPublishedPageLinks("tenant-uuid")).toEqual([]);
+    expect(await listPublishedPageLinks("tenant-uuid", "en")).toEqual([]);
     expect(mockListPublishedPages).toHaveBeenCalledTimes(1);
 
     // A subsequent success after a soft failure still hits the API (failure was not cached).
@@ -111,7 +133,7 @@ describe("listPublishedPageLinks", () => {
         },
       ],
     });
-    const links = await listPublishedPageLinks("tenant-uuid");
+    const links = await listPublishedPageLinks("tenant-uuid", "en");
     expect(mockListPublishedPages).toHaveBeenCalledTimes(2);
     expect(links).toEqual([
       {
@@ -126,6 +148,7 @@ describe("listPublishedPageLinks", () => {
 
 describe("getPublishedPage", () => {
   beforeEach(() => {
+    mockCacheTag.mockReset();
     mockGetPublishedPage.mockReset();
   });
 
@@ -147,6 +170,7 @@ describe("getPublishedPage", () => {
     const result = await getPublishedPage("tenant-uuid", "privacy", "en");
 
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
+      locale: "en",
       slug: "/privacy",
       tenant: { tenantId: "tenant-uuid" },
     });
@@ -155,13 +179,56 @@ describe("getPublishedPage", () => {
       value: {
         contentMarkdown: "# Heading\n\nBody",
         id: "page-1",
+        locale: "en",
         publishedAt: "2026-04-01T00:00:00Z",
+        publishedLocales: ["en"],
         slug: "/privacy",
         title: "Privacy Policy",
         versionId: "ver-1",
         versionNumber: 2,
       },
     });
+    // The locale is a cache-key argument, not part of the tag, so dropping
+    // the page tag clears every locale of it.
+    expect(mockCacheTag.mock.calls.map((call) => call[0])).toEqual([
+      "tenant:tenant-uuid:pages",
+      "tenant:tenant-uuid:pages:page-1",
+    ]);
+  });
+
+  it("keeps the served translation and only its published locales", async () => {
+    mockGetPublishedPage.mockResolvedValueOnce({
+      page: {
+        id: "page-1",
+        locale: "ja",
+        slug: "/terms",
+        title: "Terms of Service",
+      },
+      publishedLocales: ["ja", "zz", "en"],
+      version: {
+        contentMarkdown: "Body",
+        id: "ver-1",
+        publishedAt: "2026-04-01T00:00:00Z",
+        versionNumber: 1,
+      },
+    });
+
+    const result = await getPublishedPage("tenant-uuid", "terms", "en");
+
+    expect(mockGetPublishedPage).toHaveBeenCalledWith({
+      locale: "en",
+      slug: "/terms",
+      tenant: { tenantId: "tenant-uuid" },
+    });
+    expect(result.ok && result.value).toMatchObject({
+      locale: "ja",
+      publishedLocales: ["ja", "en"],
+      title: "Terms of Service",
+    });
+    expect(mockCacheTag.mock.calls.map((call) => call[0])).toEqual([
+      "tenant:tenant-uuid:pages",
+      "tenant:tenant-uuid:pages:page-1",
+    ]);
   });
 
   it("API not_found is null (caller throws it to notFound())", async () => {
@@ -178,10 +245,12 @@ describe("getPublishedPage", () => {
 
     // Leading-slash form first, then bare form for legacy storage.
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
+      locale: "en",
       slug: "/missing",
       tenant: { tenantId: "tenant-uuid" },
     });
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
+      locale: "en",
       slug: "missing",
       tenant: { tenantId: "tenant-uuid" },
     });
@@ -207,10 +276,12 @@ describe("getPublishedPage", () => {
     const result = await getPublishedPage("tenant-uuid", "privacy", "en");
     expect(result.ok && result.value?.slug).toBe("privacy");
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(1, {
+      locale: "en",
       slug: "/privacy",
       tenant: { tenantId: "tenant-uuid" },
     });
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(2, {
+      locale: "en",
       slug: "privacy",
       tenant: { tenantId: "tenant-uuid" },
     });

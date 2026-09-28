@@ -3233,6 +3233,7 @@
     },
     "pages": {
       "body_empty": "此页面还没有内容。",
+      "fallback_notice": "此页面没有以你所用的语言发布的版本，因此以{$language}显示。",
       "read_failed": "无法加载页面内容。请稍后再试。",
       "untitled": "页面"
     },

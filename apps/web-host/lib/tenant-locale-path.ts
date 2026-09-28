@@ -1,6 +1,10 @@
 import type { Locale } from "@publira/i18n";
 
-import { localeAlternates, withLocalePrefix } from "./locale-path";
+import {
+  localeAlternates,
+  publishedLocaleAlternates,
+  withLocalePrefix,
+} from "./locale-path";
 import type { LocaleAlternates } from "./locale-path";
 import { getTenantDefaultLocale, getTenantPublicOrigin } from "./tenant";
 
@@ -57,4 +61,30 @@ export const tenantLocaleAlternates = async (
 
   const defaultLocale = await getTenantDefaultLocale(tenantId);
   return localeAlternates(currentLocale, defaultLocale, href);
+};
+
+/**
+ * {@link publishedLocaleAlternates} for a known tenant.
+ *
+ * `undefined` where {@link tenantLocaleAlternates} is: there is no origin to
+ * resolve the paths against.
+ */
+export const tenantPublishedLocaleAlternates = async (
+  tenantId: string,
+  href: string,
+  publishedLocales: readonly Locale[],
+  servedLocale: Locale
+): Promise<LocaleAlternates | undefined> => {
+  const origin = await getTenantPublicOrigin(tenantId);
+  if (!origin) {
+    return undefined;
+  }
+
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  return publishedLocaleAlternates(
+    defaultLocale,
+    href,
+    publishedLocales,
+    servedLocale
+  );
 };
