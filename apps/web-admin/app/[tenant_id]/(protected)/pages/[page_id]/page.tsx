@@ -40,9 +40,6 @@ import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import { PageTranslationAddForm } from "../_components/page-translation-add-form";
-import { PageTranslationDeleteButton } from "../_components/page-translation-delete-button";
-import { PageTranslationTabs } from "../_components/page-translation-tabs";
 import { PageWorkspace } from "../_components/page-workspace";
 import {
   addPageTranslationAction,
@@ -52,6 +49,9 @@ import {
   savePageAction,
   unpublishPageAction,
 } from "../_lib/actions";
+import { PageTranslationAddForm } from "./_components/page-translation-add-form";
+import { PageTranslationDeleteButton } from "./_components/page-translation-delete-button";
+import { PageTranslationTabs } from "./_components/page-translation-tabs";
 
 interface EditPagePageProps {
   params: Promise<{

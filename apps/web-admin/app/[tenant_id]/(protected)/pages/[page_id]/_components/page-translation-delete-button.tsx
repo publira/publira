@@ -22,7 +22,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import type { PageFormState } from "../page-types";
+import type { PageFormState } from "../../page-types";
 
 interface PageTranslationDeleteButtonProps {
   action: (

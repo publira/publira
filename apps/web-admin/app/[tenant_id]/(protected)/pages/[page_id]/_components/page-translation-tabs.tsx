@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
-import { pageEditPath } from "../page-types";
+import { pageEditPath } from "../../page-types";
 
 interface PageTranslationTabsProps {
   /** Shown at the end of the row, for the control that acts on the selected translation. */

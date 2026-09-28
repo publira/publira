@@ -21,7 +21,7 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 
-import type { PageFormState } from "../page-types";
+import type { PageFormState } from "../../page-types";
 
 interface PageTranslationAddFormProps {
   action: (

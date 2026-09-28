@@ -13,7 +13,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { PageFormState } from "../page-types";
+import type { PageFormState } from "../../page-types";
 import { PageTranslationAddForm } from "./page-translation-add-form";
 
 vi.mock("#components/message", () => ({
