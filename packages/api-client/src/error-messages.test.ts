@@ -104,7 +104,7 @@ describe("smtpTestFailureMessage", () => {
       "SMTP authentication failed. Check the SMTP settings and try again."
     );
     expect(smtpTestFailureMessage("SMTP_TEST_AUTHENTICATION", "ja")).toBe(
-      "SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。"
+      "SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。"
     );
   });
 });

@@ -101,7 +101,7 @@ describe("sendTenantSmtpTestEmail", () => {
     await expect(sendTenantSmtpTestEmail(smtpTestInput, "ja")).resolves.toEqual(
       {
         message:
-          "SMTP 認証に失敗しました。SMTP の設定を確認して再試行してください。",
+          "SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。",
         ok: false,
       }
     );

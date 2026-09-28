@@ -296,7 +296,7 @@ test.describe("admin list reordering", () => {
       name: `${name} を並べ替え`,
     });
     await expect(japaneseHandle).toHaveAccessibleDescription(
-      /^行を持ち上げるには Space キーまたは Enter キーを押します。/u
+      /^行を持ち上げるには SpaceキーまたはEnterキーを押します。/u
     );
     await expect(japaneseHandle).toHaveAttribute(
       "aria-roledescription",

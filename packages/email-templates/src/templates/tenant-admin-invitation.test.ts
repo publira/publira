@@ -67,7 +67,7 @@ describe("TenantAdminInvitationEmail", () => {
       timeZone,
     });
 
-    expect(result.html).toContain("Aoto Press の管理画面へ招待されました。");
+    expect(result.html).toContain("Aoto Pressの管理画面へ招待されました。");
     expect(result.html).not.toContain("Publira");
     expect(result.html).not.toContain("招待を受け付けました");
     expect(result.html).toContain("招待を承諾する");

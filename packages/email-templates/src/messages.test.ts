@@ -25,6 +25,6 @@ describe("loadEmailMessages", () => {
       emailMessage(ja, "email.tenant_admin_invitation.subject", {
         tenant_name: "Aoto Press",
       })
-    ).toBe("Aoto Press 管理者招待");
+    ).toBe("Aoto Press管理者招待");
   });
 });

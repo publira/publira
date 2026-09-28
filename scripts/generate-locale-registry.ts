@@ -11,6 +11,10 @@ import path from "node:path";
 // Node strips the types and resolves `messageformat` from the package the file
 // lives in.
 import { simpleMessageSyntaxError } from "../packages/i18n/src/mf2.ts";
+import {
+  cjkLatinSpaces,
+  leavesSpacingToRenderer,
+} from "./cjk-latin-spacing.ts";
 import { renderDartMessages } from "./dart-messages.ts";
 import { renderGoDateTimeFormats } from "./go-datetime.ts";
 import { renderGoMessages } from "./go-messages.ts";
@@ -48,7 +52,9 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
  * Every leaf is a MessageFormat 2 simple message. `@publira/i18n` formats them
  * at render time, so a leaf `messageformat` rejects — or one that reaches for
  * a feature the catalog does not use — would only fail once the screen that
- * shows it renders. Returns the parsed catalog for the generators that read it.
+ * shows it renders. A Japanese or Chinese leaf also writes no space between
+ * CJK text and a Latin or digit run, which the renderer draws. Returns the
+ * parsed catalog for the generators that read it.
  */
 const checkCatalog = (code: string): unknown => {
   const catalogPath = `locales/${code}.json`;
@@ -56,12 +62,20 @@ const checkCatalog = (code: string): unknown => {
     readFileSync(path.resolve(root, catalogPath), "utf-8")
   );
   const problems: string[] = [];
+  const spacingIsRendered = leavesSpacingToRenderer(code);
 
   const walk = (node: unknown, key: string) => {
     if (typeof node === "string") {
       const problem = simpleMessageSyntaxError(node);
       if (problem) {
         problems.push(`  ${key}: ${problem}`);
+      }
+      if (spacingIsRendered) {
+        for (const excerpt of cjkLatinSpaces(node)) {
+          problems.push(
+            `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
+          );
+        }
       }
       return;
     }
