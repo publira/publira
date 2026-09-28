@@ -11,6 +11,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -20,6 +21,10 @@ import (
 // seeding helpers are shared with the reader tests.
 func newAdminEmailEnv(t *testing.T) (*testutil.PostgresEnv, testutil.Tenant, emailsettings.SecretManager) {
 	t.Helper()
+	// The links asserted below are on the default origin, whatever the shell
+	// running the tests exports.
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	t.Setenv(tenantorigin.PortEnv, "")
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

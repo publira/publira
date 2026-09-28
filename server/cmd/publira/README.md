@@ -59,6 +59,7 @@ Manael uses libvips, so building and running require `libvips-dev` (`libvips42` 
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_HOST_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
+- `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT` (optional, the scheme and the port of every tenant host, set to the values `publira worker` runs with. Here they build the storefront URL Stripe Checkout returns the browser to)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset. Determines `deployment.environment.name` and the default sampling rate)
 
@@ -279,6 +280,7 @@ The connection uses `publira_outbox`, the BYPASSRLS login the baseline seed crea
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the HTML part of the emails above. Unset, the mail goes out as text alone; see [What a mail is made of](#what-a-mail-is-made-of))
 - `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, where `next_cache_revalidation` sends cache tags: `POST /api/v1/revalidate` on each `web-*` app whose URL is set, as `publira server` does. A worker without the token retries every such event until an operator restarts it with one, because the drop is owed whoever wrote it)
 - `PUBLIRA_PLATFORM_APP_URL` (optional, the base URL the Platform Console links in the platform auth mail are built from. `http://platform.localhost:3080` when unset)
+- `PUBLIRA_TENANT_URL_SCHEME` / `PUBLIRA_TENANT_URL_PORT` (optional, the scheme and the port the links in the reader and tenant console mail are built on, joined to the tenant's `domain` or `admin_domain`. `https` and no port when unset. A port that is the scheme's own is left out of the link, and a value that is neither `http` nor `https`, or not a port number, leaves the mail pending until the worker is restarted with a valid one)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional, the keys used to decrypt the SMTP password, the object store's access key, the Web Push VAPID private key, and each tenant's FCM service account key. Set the same values as the platform API. Push takes no variable of its own: mobile push is sent with each tenant's stored FCM credentials, see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging), and Web Push with the platform's stored VAPID key pair once an operator has saved a subject, see [Web Push](../../README.md#web-push))
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default)
 - `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (optional, `development` when unset)

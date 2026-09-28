@@ -418,6 +418,10 @@ dev_env_load_profile() {
   # server shares with the web apps under names of its own.
   export PNCH_REDIS_URL="${PUBLIRA_REDIS_URL}"
   export PNCH_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}"
+  # The mail and checkout links name the tenant host on the profile's edge,
+  # which serves plain HTTP.
+  export PUBLIRA_TENANT_URL_SCHEME=http
+  export PUBLIRA_TENANT_URL_PORT="${PUBLIRA_EDGE_PORT}"
 }
 
 dev_env_selected_profile() {

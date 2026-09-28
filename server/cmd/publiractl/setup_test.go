@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -23,6 +24,10 @@ type setupEnv struct {
 
 func startSetupEnv(t *testing.T) *setupEnv {
 	t.Helper()
+	// The links asserted below are on the default origin, whatever the shell
+	// running the tests exports.
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	t.Setenv(tenantorigin.PortEnv, "")
 	pg := startPlatformDB(t)
 	setEncryptionKeys(t)
 	s3 := testutil.StartRustFS(t)
@@ -229,6 +234,20 @@ func TestSetupDoesNotSaveAStoreThatFailsTheTest(t *testing.T) {
 	}
 	if got := countPlatformRows(t, env.pg, `SELECT count(*) FROM platform_storage_config`); got != 0 {
 		t.Fatalf("platform_storage_config rows = %d, want 0", got)
+	}
+}
+
+func TestSetupRefusesAMalformedTenantURLSchemeBeforeWriting(t *testing.T) {
+	env := startSetupEnv(t)
+	t.Setenv(tenantorigin.SchemeEnv, "ftp")
+	var stderr bytes.Buffer
+	everyFlag := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password")
+	code, _ := runSetup(t, pipedConsole("", &stderr), everyFlag...)
+	if code != 1 || !strings.Contains(stderr.String(), tenantorigin.SchemeEnv) {
+		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
+	}
+	if got := installState(t, env.pg); got != "0,0,0,0,0,0,0,0" {
+		t.Fatalf("state = %s, want nothing written", got)
 	}
 }
 

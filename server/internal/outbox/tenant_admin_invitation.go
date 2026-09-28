@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -101,7 +102,7 @@ func NewTenantAdminInvitationHandler(cfg EmailHandlerConfig) Handler {
 		}
 		request, err := tenantAdminInvitationRequest(ctx, queries, tenant, invitation, payload.Token, tenantLocale)
 		if err != nil {
-			return Permanent(fmt.Errorf("build tenant admin invitation email: %w", err))
+			return fmt.Errorf("build tenant admin invitation email: %w", err)
 		}
 		return deliverEmail(ctx, cfg, settings, invitation.Email, request)
 	}
@@ -214,19 +215,15 @@ func tenantAdminInvitationRequest(ctx context.Context, queries *dbmodels.Queries
 
 // tenantAdminConsoleURL builds a link into the tenant's admin console. The
 // worker runs outside the request that produced the event, so the origin comes
-// from the tenant's configured admin domain — or, when none is saved, the
-// `admin.` host under its storefront domain — rather than from an incoming Host
-// header.
+// from the tenant's configured admin domain rather than from an incoming Host
+// header. It fails like tenantSiteURL does.
 func tenantAdminConsoleURL(tenant dbmodels.Tenant, path, token string) (string, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
-		domain = strings.TrimSpace(tenant.AdminDomain.String)
-	} else if domain != "" {
-		domain = "admin." + domain
+	origin, err := tenantorigin.AdminConsole(tenant)
+	if errors.Is(err, tenantorigin.ErrAdminDomainNotConfigured) {
+		return "", Permanent(err)
 	}
-	domain = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(domain, "https://"), "http://"), "/")
-	if domain == "" {
-		return "", errors.New("tenant admin domain is not configured")
+	if err != nil {
+		return "", err
 	}
-	return "https://" + domain + path + "?token=" + url.QueryEscape(token), nil
+	return origin.JoinPath(path).String() + "?token=" + url.QueryEscape(token), nil
 }

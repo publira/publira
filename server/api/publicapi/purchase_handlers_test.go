@@ -3,8 +3,6 @@ package publicapi
 import (
 	"net/url"
 	"testing"
-
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
 func TestPurchaseReturnURL(t *testing.T) {
@@ -44,18 +42,5 @@ func TestMobilePurchaseReturnURL(t *testing.T) {
 	}
 	if got.Query().Get("episode") != "episode" || got.Query().Get("status") != "success" {
 		t.Fatalf("query = %q", got.RawQuery)
-	}
-}
-
-func TestTenantSiteURL(t *testing.T) {
-	got, err := tenantSiteURL(dbmodels.Tenant{Domain: "https://store.example/"})
-	if err != nil {
-		t.Fatalf("tenantSiteURL: %v", err)
-	}
-	if got.String() != "https://store.example" {
-		t.Fatalf("tenantSiteURL = %q, want https://store.example", got.String())
-	}
-	if _, err := tenantSiteURL(dbmodels.Tenant{}); err == nil {
-		t.Fatal("tenantSiteURL empty domain error = nil")
 	}
 }

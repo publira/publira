@@ -22,6 +22,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/tenantorigin"
 )
 
 const (
@@ -32,17 +33,6 @@ const (
 	// post.
 	maxPaymentWebhookPayload = 64 << 10
 )
-
-func tenantSiteURL(tenant dbmodels.Tenant) (*url.URL, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	domain = strings.TrimSuffix(domain, "/")
-	if domain == "" {
-		return nil, errors.New("tenant domain is not configured")
-	}
-	return &url.URL{Scheme: "https", Host: domain}, nil
-}
 
 // checkoutSurface is the surface a checkout is started from, named by the
 // client it returns to. Every client other than the app is the storefront, as
@@ -76,10 +66,13 @@ func (s *apiServer) StartEpisodeCheckout(
 			return nil, err
 		}
 	}
-	origin, err := tenantSiteURL(tenant)
-	if err != nil {
+	origin, err := tenantorigin.Site(tenant)
+	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
 		s.logger.WarnContext(ctx, "checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
 	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/outbox"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -51,6 +52,10 @@ func (r *recordingReaderRenderer) Render(_ context.Context, request emailrendere
 // reader auth mail needs before its own row is looked at.
 func newReaderEmailEnv(t *testing.T) (*testutil.PostgresEnv, testutil.Tenant, emailsettings.SecretManager) {
 	t.Helper()
+	// The links asserted below are on the default origin, whatever the shell
+	// running the tests exports.
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	t.Setenv(tenantorigin.PortEnv, "")
 
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -193,6 +198,64 @@ func TestReaderEmailVerificationEmailRendersTheStoredSignup(t *testing.T) {
 	}
 	if mailer.emails[0].HTML == "" || mailer.emails[0].Text == "" {
 		t.Fatalf("delivered email = %+v, want both alternatives", mailer.emails[0])
+	}
+}
+
+// A deployment serving its tenant sites over plain HTTP on another port names
+// both, so the link opens on that stack rather than on an https origin it does
+// not serve.
+func TestReaderEmailVerificationEmailLinksTheDeploymentOrigin(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	t.Setenv(tenantorigin.SchemeEnv, "http")
+	t.Setenv(tenantorigin.PortEnv, "3180")
+	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB16", "reader@example.com", "Reader")
+	tokenID := seedReaderVerificationToken(t, pg, tenant.ID, reader.ID, "verify-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingReaderRenderer{}
+	handler := outbox.NewReaderEmailVerificationEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: &recordingReaderMailer{}, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderEmailVerificationEmail,
+		outbox.ReaderEmailVerificationEmailPayload{TenantID: tenant.ID.String(), TokenID: tokenID.String(), Token: "verify-token"},
+		"reader_email_verification_email:"+tokenID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	if url, _ := renderer.requests[0].Data["verify_url"].(string); url != "http://"+tenant.Domain+":3180/verify?token=verify-token" {
+		t.Fatalf("verify_url = %v", renderer.requests[0].Data["verify_url"])
+	}
+}
+
+// A malformed deployment setting is fixed by an operator restarting the worker,
+// so it leaves the event to be retried rather than spending the reader's link.
+func TestReaderEmailVerificationEmailRetriesOnAMalformedTenantURLScheme(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	t.Setenv(tenantorigin.SchemeEnv, "ftp")
+	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB17", "reader@example.com", "Reader")
+	tokenID := seedReaderVerificationToken(t, pg, tenant.ID, reader.ID, "verify-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewReaderEmailVerificationEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderEmailVerificationEmail,
+		outbox.ReaderEmailVerificationEmailPayload{TenantID: tenant.ID.String(), TokenID: tokenID.String(), Token: "verify-token"},
+		"reader_email_verification_email:"+tokenID.String())
+
+	err := handler(context.Background(), event)
+	if err == nil {
+		t.Fatal("handler returned no error on a malformed scheme")
+	}
+	if outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a retriable failure", err)
+	}
+	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
 	}
 }
 

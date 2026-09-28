@@ -29,6 +29,7 @@ import (
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/storagesettings"
 	"github.com/publira/publira/server/internal/tenantmembers"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/webpushsettings"
 )
@@ -163,6 +164,11 @@ func outcome(found bool, before, after int64) string {
 func (r *setupRun) run(ctx context.Context) error {
 	if r.flags.generateAdminPassword && r.flags.adminPassword.given() {
 		return fmt.Errorf("--generate-admin-password and %s cannot both be given", r.flags.adminPassword.source())
+	}
+	// The summary prints the tenant's URLs once every step has committed, so a
+	// run that could not build them stops here with nothing written.
+	if err := tenantorigin.CheckEnv(); err != nil {
+		return err
 	}
 	// SMTP always stores a password, so a run that could not encrypt one
 	// stops here with nothing written.
@@ -706,12 +712,16 @@ func (r *setupRun) adminPassword() (string, error) {
 func (r *setupRun) printSummary() error {
 	var b strings.Builder
 	b.WriteString(r.steps.String())
-	adminDomain := "admin." + r.tenant.Domain
-	if r.tenant.AdminDomain.Valid {
-		adminDomain = r.tenant.AdminDomain.String
+	site, err := tenantorigin.Site(r.tenant)
+	if err != nil {
+		return err
 	}
-	fmt.Fprintf(&b, "\nTenant site:\thttps://%s\n", r.tenant.Domain)
-	fmt.Fprintf(&b, "Tenant console:\thttps://%s\n", adminDomain)
+	console, err := tenantorigin.AdminConsole(r.tenant)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(&b, "\nTenant site:\t%s\n", site)
+	fmt.Fprintf(&b, "Tenant console:\t%s\n", console)
 	if r.generatedPassword != "" {
 		fmt.Fprintf(&b, "Administrator password:\t%s\n", r.generatedPassword)
 	}

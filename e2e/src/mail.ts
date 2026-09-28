@@ -146,12 +146,27 @@ export const waitForMessageTo = async (
 const LINK_PATTERN = /https?:\/\/\S+/gu;
 
 /**
+ * The first link in `message` whose path is `pathname`, exactly as mailed.
+ *
+ * The API builds it on the tenant's domain and the stack's edge, so a suite
+ * whose base URL is that edge can open it as it is.
+ */
+export const linkFrom = (message: Message, pathname: string): string => {
+  for (const [link] of message.text.matchAll(LINK_PATTERN)) {
+    if (new URL(link).pathname === pathname) {
+      return link;
+    }
+  }
+  throw new Error(`no ${pathname} link in "${message.subject}"`);
+};
+
+/**
  * The `token` query value of the first link in `message` whose path is
  * `pathname`.
  *
  * Matching the path rather than the whole URL keeps this independent of the
- * tenant domain the API builds the link from: that is the seeded `localhost`,
- * not the origin with the port the browser reaches web-host on.
+ * origin the API builds the link on: that is the stack's edge, not the port a
+ * suite may reach the app on directly.
  */
 export const tokenFromLink = (message: Message, pathname: string): string => {
   for (const [link] of message.text.matchAll(LINK_PATTERN)) {

@@ -98,7 +98,7 @@ func NewAdminPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		resetURL, err := tenantAdminConsoleURL(delivery.tenant, "/confirm-password", payload.Token)
 		if err != nil {
-			return Permanent(fmt.Errorf("build admin password reset url: %w", err))
+			return fmt.Errorf("build admin password reset url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, admin.Email, emailrenderer.Request{
@@ -159,7 +159,7 @@ func NewAdminEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handler
 		}
 		confirmURL, err := tenantAdminConsoleURL(delivery.tenant, "/confirm-email", payload.Token)
 		if err != nil {
-			return Permanent(fmt.Errorf("build admin email change confirmation url: %w", err))
+			return fmt.Errorf("build admin email change confirmation url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{

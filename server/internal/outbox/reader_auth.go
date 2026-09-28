@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -141,7 +142,7 @@ func NewReaderEmailVerificationEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		verifyURL, err := tenantSiteTokenURL(delivery.tenant, "/verify", payload.Token)
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader email verification url: %w", err))
+			return fmt.Errorf("build reader email verification url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
@@ -212,7 +213,7 @@ func NewReaderEmailChangeConfirmationEmailHandler(cfg EmailHandlerConfig) Handle
 		}
 		confirmURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-email", payload.Token)
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader email change confirmation url: %w", err))
+			return fmt.Errorf("build reader email change confirmation url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, recipient, emailrenderer.Request{
@@ -341,7 +342,7 @@ func NewReaderPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		resetURL, err := tenantSiteTokenURL(delivery.tenant, "/confirm-password", payload.Token)
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
+			return fmt.Errorf("build reader password reset url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
@@ -400,7 +401,7 @@ func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler 
 		}
 		resetURL, err := tenantSiteURL(delivery.tenant, "/reset-password")
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader password reset url: %w", err))
+			return fmt.Errorf("build reader password reset url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
@@ -468,7 +469,7 @@ func NewReaderSignupAttemptNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 		}
 		actionURL, err := tenantSiteURL(delivery.tenant, actionPath)
 		if err != nil {
-			return Permanent(fmt.Errorf("build reader signup attempt notice url: %w", err))
+			return fmt.Errorf("build reader signup attempt notice url: %w", err)
 		}
 
 		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
@@ -562,14 +563,18 @@ func resolveTenantDelivery(
 
 // tenantSiteURL builds a link into the tenant's own storefront. The worker runs
 // outside the request that produced the event, so the origin comes from the
-// tenant's configured domain rather than from an incoming Host header.
+// tenant's configured domain rather than from an incoming Host header. A
+// tenant without one fails the mail for good, while a malformed deployment
+// setting is retried until an operator fixes it.
 func tenantSiteURL(tenant dbmodels.Tenant, path string) (string, error) {
-	domain := strings.TrimSpace(tenant.Domain)
-	domain = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(domain, "https://"), "http://"), "/")
-	if domain == "" {
-		return "", errors.New("tenant domain is not configured")
+	origin, err := tenantorigin.Site(tenant)
+	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
+		return "", Permanent(err)
 	}
-	return "https://" + domain + path, nil
+	if err != nil {
+		return "", err
+	}
+	return origin.JoinPath(path).String(), nil
 }
 
 // tenantSiteTokenURL is the same link carrying the secret the mail exists to
