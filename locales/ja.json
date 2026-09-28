@@ -1141,7 +1141,6 @@
       "hidden": "非表示",
       "form": {
         "create": "ページを作成",
-        "update": "基本情報を更新",
         "submitting": "送信中...",
         "title": "タイトル",
         "title_placeholder": "プライバシーポリシー",

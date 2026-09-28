@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -16,10 +20,18 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { LabelActionState, LabelListItem } from "../label-types";
 import { LabelEyeCatchForm } from "./label-eye-catch-form";
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
+// The image field is a client control, which reads its own copy from the
+// catalog the console layout provides.
 const EnglishConsole = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
 );
@@ -64,10 +76,12 @@ describe("LabelEyeCatchForm", () => {
 
     await act(() => {
       render(
-        <LabelEyeCatchForm action={pendingAction} initialLabel={label} />,
-        {
-          wrapper: EnglishConsole,
-        }
+        <LabelEyeCatchForm
+          action={pendingAction}
+          initialLabel={label}
+          tenantId="TENANT001"
+        />,
+        { wrapper: EnglishConsole }
       );
     });
 
@@ -82,5 +96,14 @@ describe("LabelEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
+    const [, formData] = pendingAction.mock.calls[0] as unknown as [
+      LabelActionState,
+      FormData,
+    ];
+    expect(formData.get("label_id")).toBe("label-1");
+    expect(formData.get("name")).toBe("Monthly Novels");
+    expect(formData.get("current_eye_catch_image_updated_at")).toBe(
+      "2026-01-01T00:00:00Z"
+    );
   });
 });

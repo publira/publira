@@ -131,9 +131,11 @@ const PageWorkspaceData = async ({
     <PageWorkspace
       initialPage={pageResult.page}
       initialVersions={versionsResult.versions}
+      locale={locale}
       publishAction={publishVersionAction}
       rollbackAction={rollbackVersionAction}
       saveAction={savePageAction}
+      tenantId={tenantId}
       timeZone={timeZone}
       unpublishAction={unpublishPageAction}
     />

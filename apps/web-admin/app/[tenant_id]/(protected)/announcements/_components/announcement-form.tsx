@@ -1,73 +1,63 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
-import { useTenantId } from "#lib/use-tenant-id";
+import { InstantInput } from "#components/instant-input";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 import type { CreateAnnouncementActionState } from "../announcement-types";
+import {
+  AnnouncementPinned,
+  AnnouncementPinnedCheckbox,
+  AnnouncementPinnedWhile,
+} from "./announcement-pinned-controls";
 
 interface AnnouncementFormProps {
-  /** The tenant's display zone, which the banner's stop time is written in. */
-  timeZone: string;
   action: (
     prevState: CreateAnnouncementActionState,
     formData: FormData
   ) => Promise<CreateAnnouncementActionState>;
+  tenantId: string;
+  /** The tenant's display zone, which the banner's stop time is written in. */
+  timeZone: string;
 }
 
-export const AnnouncementForm = ({
-  timeZone,
+/**
+ * Awaits the catalog for its placeholders, which are attributes rather than
+ * nodes. A delivery redirects from the Action to the list.
+ */
+export const AnnouncementForm = async ({
   action,
+  tenantId,
+  timeZone,
 }: AnnouncementFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  const [pinned, setPinned] = useState(false);
-
-  const handlePinnedChange = useCallback((checked: boolean) => {
-    setPinned(checked);
-  }, []);
-
-  // The stop time is typed as a wall clock and stored as an instant. The
-  // conversion happens against the zone the field was rendered in, so a browser
-  // somewhere else does not shift the hour the operator wrote.
-  const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      fillInstantFromDateTimeLocal(event.currentTarget, {
-        isoName: "pinned_until",
-        localName: "pinned_until_local",
-        timeZone,
-      });
-    },
-    [timeZone]
-  );
+  const t = await getMessages();
 
   return (
-    <form action={formAction} className="grid gap-5" onSubmit={handleSubmit}>
+    <ActionForm action={action} className="grid gap-5">
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <Fieldset className="grid gap-5" disabled={isPending}>
+      <ActionFormFieldset className="grid gap-5">
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.announcements.form.title" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.announcements.form.title" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -82,7 +72,9 @@ export const AnnouncementForm = ({
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.announcements.form.body" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.announcements.form.body" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Textarea
@@ -97,7 +89,9 @@ export const AnnouncementForm = ({
 
         <Field>
           <FieldLabel>
-            <ClientMessage message="admin.announcements.form.link" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.announcements.form.link" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -106,67 +100,71 @@ export const AnnouncementForm = ({
               type="text"
             />
             <FieldDescription>
-              <ClientMessage message="admin.announcements.form.link_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.announcements.form.link_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
-        <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.announcements.form.pinned" />
-          </FieldLabel>
-          <FieldContent>
-            <Checkbox
-              checked={pinned}
-              name="pinned"
-              onCheckedChange={handlePinnedChange}
-              value="on"
-            />
-            <FieldDescription>
-              <ClientMessage message="admin.announcements.form.pinned_description" />
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-
-        {pinned ? (
+        <AnnouncementPinned>
           <Field>
             <FieldLabel>
-              <ClientMessage message="admin.announcements.form.pinned_until" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="admin.announcements.form.pinned" />
+              </Suspense>
             </FieldLabel>
             <FieldContent>
-              <input defaultValue="" name="pinned_until" type="hidden" />
-              <Input
-                name="pinned_until_local"
-                step={60}
-                type="datetime-local"
-              />
+              <AnnouncementPinnedCheckbox />
               <FieldDescription>
-                <ClientMessage
-                  message="admin.announcements.form.pinned_until_description"
-                  values={{ time_zone: timeZone }}
-                />
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.announcements.form.pinned_description" />
+                </Suspense>
               </FieldDescription>
             </FieldContent>
           </Field>
-        ) : null}
-      </Fieldset>
 
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
+          <AnnouncementPinnedWhile>
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.announcements.form.pinned_until" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <InstantInput
+                  name="pinned_until"
+                  step={60}
+                  timeZone={timeZone}
+                />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message
+                      message="admin.announcements.form.pinned_until_description"
+                      values={{ time_zone: timeZone }}
+                    />
+                  </Suspense>
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          </AnnouncementPinnedWhile>
+        </AnnouncementPinned>
+      </ActionFormFieldset>
 
       <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
+        <ActionFormSubmit>
           <ActionFormIdle>
-            <ClientMessage message="admin.announcements.form.submit" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="admin.announcements.form.submit" />
+            </Suspense>
           </ActionFormIdle>
           <ActionFormPending>
-            <ClientMessage message="admin.announcements.form.submitting" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.announcements.form.submitting" />
+            </Suspense>
           </ActionFormPending>
-        </Button>
+        </ActionFormSubmit>
       </div>
-    </form>
+    </ActionForm>
   );
 };

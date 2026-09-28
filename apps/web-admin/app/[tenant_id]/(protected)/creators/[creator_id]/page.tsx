@@ -129,6 +129,7 @@ const EditCreatorFormData = async ({
       initialCreator={result.creator}
       key={result.creator.publicId}
       mode="update"
+      tenantId={tenantId}
     />
   );
 };

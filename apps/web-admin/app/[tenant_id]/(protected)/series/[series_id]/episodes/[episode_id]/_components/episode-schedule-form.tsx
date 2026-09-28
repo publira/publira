@@ -1,14 +1,12 @@
-"use client";
-
 import {
+  ActionForm,
+  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
+  ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
-import { Fieldset } from "@publira/ui-components/fieldset";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { toDateTimeLocalValue } from "@publira/utils";
-import { useActionState, useCallback } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
 import {
   AdminSection,
@@ -17,9 +15,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
-import { ClientMessage } from "#components/client-message";
-import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
 
 import { PublishAtInput } from "../../_components/publish-at-input";
 import type { EpisodeEditActionState } from "../episode-edit-types";
@@ -33,6 +29,7 @@ interface EpisodeScheduleFormProps {
     prevState: EpisodeEditActionState,
     formData: FormData
   ) => Promise<EpisodeEditActionState>;
+  tenantId: string;
   timeZone: string;
 }
 
@@ -42,69 +39,55 @@ export const EpisodeScheduleForm = ({
   episodePublicId,
   scheduledAt = "",
   action,
+  tenantId,
   timeZone,
-}: EpisodeScheduleFormProps) => {
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
+}: EpisodeScheduleFormProps) => (
+  <AdminSection>
+    <AdminSectionHeader>
+      <AdminSectionHeading>
+        <AdminSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+            <Message message="admin.series.episodes.schedule_title" />
+          </Suspense>
+        </AdminSectionTitle>
+        <AdminSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+            <Message message="admin.series.episodes.schedule_description" />
+          </Suspense>
+        </AdminSectionDescription>
+      </AdminSectionHeading>
+    </AdminSectionHeader>
+    <ActionForm action={action} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="series_public_id" type="hidden" value={seriesPublicId} />
+      <input name="episode_id" type="hidden" value={episodeId} />
+      <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-  const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      fillInstantFromDateTimeLocal(event.currentTarget, {
-        isoName: "publish_at",
-        localName: "publish_at_local",
-        timeZone,
-      });
-    },
-    [timeZone]
-  );
-
-  return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
-            <ClientMessage message="admin.series.episodes.schedule_title" />
-          </AdminSectionTitle>
-          <AdminSectionDescription>
-            <ClientMessage message="admin.series.episodes.schedule_description" />
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
-      <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
-        <input name="tenant_id" type="hidden" value={tenantId} />
-        <input name="series_public_id" type="hidden" value={seriesPublicId} />
-        <input name="episode_id" type="hidden" value={episodeId} />
-        <input name="episode_public_id" type="hidden" value={episodePublicId} />
-
-        <Fieldset disabled={isPending}>
-          <PublishAtInput
-            defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
-            name="publish_at"
-          >
-            <ClientMessage
+      <ActionFormFieldset>
+        <PublishAtInput initialValue={scheduledAt} timeZone={timeZone}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message
               message="admin.series.episodes.schedule_publish_at_description"
               values={{ time_zone: timeZone }}
             />
-          </PublishAtInput>
-        </Fieldset>
+          </Suspense>
+        </PublishAtInput>
+      </ActionFormFieldset>
 
-        {state && state.mode === "schedule" ? (
-          <FormMessage variant={state.ok ? "success" : "destructive"}>
-            {state.message}
-          </FormMessage>
-        ) : null}
-
-        <div className="mt-2 flex justify-end gap-2">
-          <Button disabled={isPending} type="submit">
-            <ActionFormIdle>
-              <ClientMessage message="admin.series.episodes.schedule_update" />
-            </ActionFormIdle>
-            <ActionFormPending>
-              <ClientMessage message="admin.series.episodes.updating" />
-            </ActionFormPending>
-          </Button>
-        </div>
-      </form>
-    </AdminSection>
-  );
-};
+      <div className="mt-2 flex justify-end gap-2">
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.episodes.schedule_update" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.series.episodes.updating" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
+      </div>
+    </ActionForm>
+  </AdminSection>
+);

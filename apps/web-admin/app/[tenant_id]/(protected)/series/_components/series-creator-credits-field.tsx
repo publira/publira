@@ -26,6 +26,7 @@ import {
   SortableList,
   withItemMoved,
 } from "#components/sortable-list";
+import { useSetSubmittable } from "#components/submit-gate";
 import {
   isCreditShareTotalSavable,
   shareBpsToPercentText,
@@ -34,7 +35,6 @@ import {
 } from "#lib/credit-share";
 
 import type { SeriesCreatorCredit } from "../series-types";
-import { useSetSeriesFormSavable } from "./series-form-save";
 
 export interface CreatorOption {
   id: string;
@@ -310,7 +310,7 @@ export const SeriesCreatorCreditsField = ({
   const locale = useAdminLocale();
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
-  const setSavable = useSetSeriesFormSavable();
+  const setSavable = useSetSubmittable();
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' credits.
   const [rows, setRows] = useState(() =>

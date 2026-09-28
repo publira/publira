@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   act,
   cleanup,
@@ -19,8 +23,14 @@ import type {
 } from "../page-types";
 import { PageWorkspace } from "./page-workspace";
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
 const noopFormAction = () => Promise.resolve();
@@ -57,9 +67,11 @@ const renderWorkspace = async (
         <PageWorkspace
           initialPage={page}
           initialVersions={[version]}
+          locale="en"
           publishAction={noopFormAction}
           rollbackAction={noopFormAction}
           saveAction={saveAction}
+          tenantId="TENANT001"
           timeZone="UTC"
           unpublishAction={noopFormAction}
         />
@@ -131,20 +143,57 @@ describe("PageWorkspace", () => {
   // submitted, so an edit made while it is in flight — typed, or loaded from a
   // version — would sit in the editor unsaved.
   it("closes the title, the body, and loading a version while the save is in flight", async () => {
-    // Never resolved: the assertions are about the window the save is open in.
     const save = Promise.withResolvers<PageFormState>();
     await renderWorkspace(() => save.promise);
 
     for (const control of submittedControls()) {
-      expect(control.disabled).toBe(false);
+      expect(control.matches(":disabled")).toBe(false);
     }
 
     fireEvent.click(screen.getByRole("button", { name: "Save page" }));
 
     await waitFor(() => {
       for (const control of submittedControls()) {
-        expect(control.disabled).toBe(true);
+        expect(control.matches(":disabled")).toBe(true);
       }
     });
+
+    // A submission left in flight would hold back the next test's transitions.
+    await act(async () => {
+      save.resolve(null);
+      await save.promise;
+    });
+  });
+  it("puts a version's body back in the editor", async () => {
+    await renderWorkspace();
+
+    const body = screen.getByRole<HTMLTextAreaElement>("textbox", {
+      name: /Content/u,
+    });
+    fireEvent.change(body, { target: { value: "Unsaved body." } });
+    fireEvent.click(screen.getByRole("button", { name: "Load content" }));
+
+    expect(body.value).toBe(version.contentMarkdown);
+  });
+
+  it("opens loading a version again once a refused save returns", async () => {
+    const save = Promise.withResolvers<PageFormState>();
+    await renderWorkspace(() => save.promise);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save page" }));
+    const load = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Load content",
+    });
+    await waitFor(() => {
+      expect(load.disabled).toBe(true);
+    });
+
+    await act(async () => {
+      save.resolve({ message: "Could not save.", ok: false });
+      await save.promise;
+    });
+
+    expect(await screen.findByText("Could not save.")).toBeDefined();
+    expect(load.disabled).toBe(false);
   });
 });

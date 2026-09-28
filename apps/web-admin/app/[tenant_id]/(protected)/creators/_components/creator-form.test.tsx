@@ -11,7 +11,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -30,18 +30,32 @@ vi.mock("#components/client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en")),
 }));
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
 
 const action = () => Promise.resolve(null);
 
-const render = (ui: React.ReactNode) =>
+const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
       <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
+
+const renderForm = async (
+  props: Omit<Parameters<typeof CreatorForm>[0], "tenantId">
+) => render(await CreatorForm({ ...props, tenantId: "TENANT001" }));
 
 const creator: CreatorListItem = {
   iconImageFileSizeBytes: 0,
@@ -58,20 +72,31 @@ const creator: CreatorListItem = {
  * for its router bfcache, so the create form and the edit form are in the
  * document at the same time.
  */
-const renderBothForms = () =>
+const renderBothForms = async () => {
+  const [createForm, updateForm] = await Promise.all([
+    CreatorForm({ action, mode: "create", tenantId: "TENANT001" }),
+    CreatorForm({
+      action,
+      initialCreator: creator,
+      mode: "update",
+      tenantId: "TENANT001",
+    }),
+  ]);
+
   render(
     <>
-      <CreatorForm action={action} mode="create" />
-      <CreatorForm action={action} initialCreator={creator} mode="update" />
+      {createForm}
+      {updateForm}
     </>
   );
+};
 
 afterEach(() => {
   cleanup();
 });
 
-it("keeps the ids unique when it is mounted twice", () => {
-  renderBothForms();
+it("keeps the ids unique when it is mounted twice", async () => {
+  await renderBothForms();
 
   const ids = [...document.querySelectorAll("[id]")].map(
     (element) => element.id
@@ -81,8 +106,8 @@ it("keeps the ids unique when it is mounted twice", () => {
   expect(ids).toHaveLength(new Set(ids).size);
 });
 
-it("points each label at its own input when it is mounted twice", () => {
-  renderBothForms();
+it("points each label at its own input when it is mounted twice", async () => {
+  await renderBothForms();
 
   const names = screen.getAllByLabelText<HTMLInputElement>(/^Name/u);
 
@@ -109,14 +134,16 @@ const pickIcon = (container: HTMLElement, width: number, height: number) => {
   fireEvent.load(framed);
 };
 
-it("frames a picked icon at the centre square the API would have cut", () => {
+it("frames a picked icon at the centre square the API would have cut", async () => {
   const createObjectURL = vi.fn(() => "blob:picked-file");
   const revokeObjectURL = vi.fn();
   vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
 
-  const { container } = render(
-    <CreatorForm action={action} initialCreator={creator} mode="update" />
-  );
+  const { container } = await renderForm({
+    action,
+    initialCreator: creator,
+    mode: "update",
+  });
 
   // Nothing has been decoded yet, so the upload states no rectangle and the
   // API takes the cut from the centre as it always has.
@@ -133,14 +160,16 @@ it("frames a picked icon at the centre square the API would have cut", () => {
   vi.unstubAllGlobals();
 });
 
-it("previews the framed square rather than the whole picked file", () => {
+it("previews the framed square rather than the whole picked file", async () => {
   const createObjectURL = vi.fn(() => "blob:picked-file");
   const revokeObjectURL = vi.fn();
   vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
 
-  const { container } = render(
-    <CreatorForm action={action} initialCreator={creator} mode="update" />
-  );
+  const { container } = await renderForm({
+    action,
+    initialCreator: creator,
+    mode: "update",
+  });
 
   pickIcon(container, 600, 400);
 
@@ -169,17 +198,15 @@ const submittedControls = () => [
 it("closes every field while the save is in flight", async () => {
   // Never resolved: the assertions are about the window the save is open in.
   const save = Promise.withResolvers<CreatorActionState>();
-  render(
-    <CreatorForm
-      action={() => save.promise}
-      initialCreator={{
-        ...creator,
-        iconImageUpdatedAt: "2030-01-01T00:00:00Z",
-        iconImageUrl: "https://cdn.example.com/creators/CREATOR001/icon.webp",
-      }}
-      mode="update"
-    />
-  );
+  await renderForm({
+    action: () => save.promise,
+    initialCreator: {
+      ...creator,
+      iconImageUpdatedAt: "2030-01-01T00:00:00Z",
+      iconImageUrl: "https://cdn.example.com/creators/CREATOR001/icon.webp",
+    },
+    mode: "update",
+  });
 
   for (const control of submittedControls()) {
     expect(control.matches(":disabled")).toBe(false);

@@ -1141,7 +1141,6 @@
       "hidden": "隐藏",
       "form": {
         "create": "创建页面",
-        "update": "更新信息",
         "submitting": "正在提交…",
         "title": "标题",
         "title_placeholder": "隐私政策",

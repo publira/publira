@@ -48,7 +48,11 @@ const AnnouncementFormData = async () => {
   const timeZone = await getTenantDisplayTimeZone(tenantId);
 
   return (
-    <AnnouncementForm action={createAnnouncementAction} timeZone={timeZone} />
+    <AnnouncementForm
+      action={createAnnouncementAction}
+      tenantId={tenantId}
+      timeZone={timeZone}
+    />
   );
 };
 

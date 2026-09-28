@@ -206,7 +206,7 @@ describe("createPageAction", () => {
     vi.resetModules();
   });
 
-  it("keeps the field a slug failure belongs to", async () => {
+  it("puts a slug failure on the slug field", async () => {
     mockCreatePage.mockResolvedValueOnce({
       field: "slug",
       message: "The site keeps this path.",
@@ -217,8 +217,8 @@ describe("createPageAction", () => {
     const state = await createPageAction(null, createForm());
 
     expect(state).toEqual({
-      field: "slug",
-      message: "The site keeps this path.",
+      fieldErrors: { slug: "The site keeps this path." },
+      message: "Please check the information you entered.",
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();

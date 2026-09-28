@@ -1,183 +1,121 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useState } from "react";
-import type { ChangeEvent } from "react";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
-import { formatPagePath, normalizePageSlugInput } from "../page-types";
-import type { PageFormState, PageListItem } from "../page-types";
+import type { PageFormState } from "../page-types";
+import { PageSlugField } from "./page-slug-field";
 
 interface PageFormProps {
   action: (
     prevState: PageFormState,
     formData: FormData
   ) => Promise<PageFormState>;
-  initialPage?: PageListItem;
-  mode: "create" | "update";
+  tenantId: string;
 }
 
-export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  // Initial values only; entity switch must remount the form via key on the parent.
-  const [contentMarkdown, setContentMarkdown] = useState("");
-  const [slug, setSlug] = useState(initialPage?.slug ?? "");
-  const [title, setTitle] = useState(initialPage?.title ?? "");
-  const [displayInFooter, setDisplayInFooter] = useState(
-    initialPage?.displayInFooter ?? false
-  );
-
-  const isUpdate = mode === "update";
-  const slugError = state?.field === "slug" ? state.message : null;
-  const formError = state && !slugError ? state.message : null;
-  const handleSlugBlur = useCallback(() => {
-    setSlug((current) => normalizePageSlugInput(current));
-  }, []);
-  const handleSlugChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setSlug(event.target.value);
-    },
-    []
-  );
-  const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setTitle(event.target.value);
-    },
-    []
-  );
-  const handleDisplayInFooterChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setDisplayInFooter(event.target.checked);
-    },
-    []
-  );
-  const handleContentMarkdownChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setContentMarkdown(event.target.value);
-    },
-    []
-  );
-
-  let submitLabel = t("admin.pages.form.create");
-  if (isPending) {
-    submitLabel = t("admin.pages.form.submitting");
-  } else if (isUpdate) {
-    submitLabel = t("admin.pages.form.update");
-  }
+/**
+ * Creates a page, which the Action then redirects to. Awaits the catalog for
+ * its placeholders, which are attributes rather than nodes.
+ */
+export const PageForm = async ({ action, tenantId }: PageFormProps) => {
+  const t = await getMessages();
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <ActionForm action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="page_id" type="hidden" value={initialPage?.id ?? ""} />
-      <input
-        name="display_in_footer"
-        type="hidden"
-        value={displayInFooter ? "true" : "false"}
-      />
 
-      <Fieldset className="grid gap-4" disabled={isPending}>
-        <Field invalid={slugError !== null}>
-          <FieldLabel>slug</FieldLabel>
-          <FieldContent>
-            <Input
-              disabled={isUpdate}
-              name="slug"
-              onBlur={handleSlugBlur}
-              onChange={handleSlugChange}
-              placeholder="/privacy"
-              type="text"
-              value={slug}
-            />
-            <FieldDescription>
-              <ClientMessage
-                message="admin.pages.form.slug_description"
-                values={{
-                  path: formatPagePath(slug),
-                }}
-              />
-            </FieldDescription>
-            {slugError ? (
-              <FormMessage variant="destructive">{slugError}</FormMessage>
-            ) : null}
-          </FieldContent>
-        </Field>
+      <ActionFormFieldset className="grid gap-4">
+        <PageSlugField />
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.pages.form.title" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.pages.form.title" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
               name="title"
-              onChange={handleTitleChange}
               placeholder={t("admin.pages.form.title_placeholder")}
               required
               type="text"
-              value={title}
             />
           </FieldContent>
         </Field>
 
         <Field>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              name="display_in_footer"
+              uncheckedValue="false"
+              value="true"
+            />
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.pages.form.footer_visible" />
+              </Suspense>
+            </FieldLabel>
+          </div>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+              <Message message="admin.pages.form.footer_description" />
+            </Suspense>
+          </FieldDescription>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.pages.form.body" />
+            </Suspense>
+          </FieldLabel>
           <FieldContent>
-            <label className="inline-flex items-center gap-2 text-sm text-foreground">
-              <input
-                checked={displayInFooter}
-                onChange={handleDisplayInFooterChange}
-                type="checkbox"
-              />
-              <ClientMessage message="admin.pages.form.footer_visible" />
-            </label>
+            <Textarea
+              name="content_markdown"
+              placeholder={t("admin.pages.form.body_placeholder")}
+              rows={16}
+            />
             <FieldDescription>
-              <ClientMessage message="admin.pages.form.footer_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.pages.form.body_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
-
-        {isUpdate ? null : (
-          <Field>
-            <FieldLabel>
-              <ClientMessage message="admin.pages.form.body" />
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                name="content_markdown"
-                onChange={handleContentMarkdownChange}
-                placeholder={t("admin.pages.form.body_placeholder")}
-                rows={16}
-                value={contentMarkdown}
-              />
-              <FieldDescription>
-                <ClientMessage message="admin.pages.form.body_description" />
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        )}
-      </Fieldset>
-
-      {formError ? (
-        <FormMessage variant="destructive">{formError}</FormMessage>
-      ) : null}
+      </ActionFormFieldset>
 
       <div className="flex justify-end">
-        <Button disabled={isPending} type="submit">
-          {submitLabel}
-        </Button>
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.pages.form.create" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.pages.form.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </div>
-    </form>
+    </ActionForm>
   );
 };

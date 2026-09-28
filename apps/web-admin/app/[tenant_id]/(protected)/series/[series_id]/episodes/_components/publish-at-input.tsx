@@ -1,39 +1,42 @@
-"use client";
-
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { ClientMessage } from "#components/client-message";
+import { InstantInput } from "#components/instant-input";
+import { Message } from "#components/message";
 
 interface PublishAtInputProps {
   /** What a value means on this form; the create form and the schedule differ. */
   children: ReactNode;
-  defaultValue?: string;
-  name?: string;
+  /** The stored publication instant, empty while there is none. */
+  initialValue?: string;
+  timeZone: string;
 }
 
+/** When the episode is published, posted as `publish_at`. */
 export const PublishAtInput = ({
   children,
-  defaultValue,
-  name = "publish_at",
+  initialValue,
+  timeZone,
 }: PublishAtInputProps) => (
   <Field>
     <FieldLabel>
-      <ClientMessage message="admin.series.episodes.form.publish_at" />
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <Message message="admin.series.episodes.form.publish_at" />
+      </Suspense>
     </FieldLabel>
     <FieldContent>
-      <input defaultValue="" name={name} type="hidden" />
-      <Input
-        defaultValue={defaultValue}
-        name={`${name}_local`}
+      <InstantInput
+        initialValue={initialValue}
+        name="publish_at"
         step={60}
-        type="datetime-local"
+        timeZone={timeZone}
       />
       <FieldDescription>{children}</FieldDescription>
     </FieldContent>

@@ -135,6 +135,7 @@ const NewEpisodeFormData = async ({
           : undefined
       }
       seriesPublicId={seriesId}
+      tenantId={tenantId}
       timeZone={timeZone}
     />
   );

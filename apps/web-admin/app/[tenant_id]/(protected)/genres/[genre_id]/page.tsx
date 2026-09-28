@@ -172,6 +172,7 @@ const EditGenreFormData = async ({
         <EyeCatchAspectImages
           id={result.genre.id}
           idField="genre_id"
+          tenantId={tenantId}
           uploadAction={uploadGenreEyeCatchAspectImageAction}
           variants={result.genre.eyeCatchImageVariants}
         />

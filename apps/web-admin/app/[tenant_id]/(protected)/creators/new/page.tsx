@@ -41,9 +41,17 @@ const NewCreatorFormSkeleton = () => (
   </div>
 );
 
-const NewCreatorFormData = () => (
-  <CreatorForm action={createCreatorAction} mode="create" />
-);
+const NewCreatorFormData = async () => {
+  const tenantId = await getTenantId();
+
+  return (
+    <CreatorForm
+      action={createCreatorAction}
+      mode="create"
+      tenantId={tenantId}
+    />
+  );
+};
 
 const NewCreatorPage = () => (
   <AdminPage>

@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -18,7 +22,15 @@ import type {
 } from "../episode-edit-types";
 import { EpisodeCreatorCreditsForm } from "./episode-creator-credits-form";
 
-vi.mock("#lib/use-tenant-id", () => ({ useTenantId: () => "TENANT001" }));
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
 vi.mock("@publira/ui-components/combobox", () => ({
   Combobox: ({
     id,
@@ -88,6 +100,7 @@ const renderForm = (
       episodePublicId="EP001"
       initialCredits={initialCredits}
       seriesPublicId="SERIES001"
+      tenantId="TENANT001"
     />,
     {
       wrapper: ({ children }) => (

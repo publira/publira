@@ -24,6 +24,5 @@ export type LabelActionState =
       ok: true;
       message: string;
       mode: LabelMutationMode;
-      label: LabelListItem;
     }
   | null;

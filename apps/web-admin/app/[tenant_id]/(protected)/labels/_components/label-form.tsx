@@ -1,14 +1,22 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useState } from "react";
-import type { ChangeEvent } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { useTenantId } from "#lib/use-tenant-id";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
 
@@ -19,96 +27,86 @@ interface LabelFormProps {
     formData: FormData
   ) => Promise<LabelActionState>;
   initialLabel?: LabelListItem;
+  tenantId: string;
 }
 
-const LabelFormSubmitLabel = ({
-  isPending,
-  isUpdate,
-}: {
-  isPending: boolean;
-  isUpdate: boolean;
-}) => {
-  if (isPending) {
-    return <ClientMessage message="admin.labels.form.submitting" />;
-  }
-
-  return isUpdate ? (
-    <ClientMessage message="admin.labels.form.update" />
-  ) : (
-    <ClientMessage message="admin.labels.form.create" />
-  );
-};
-
-export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-  // Seeded once per mount: the edit route keys this form by the label's public
-  // id, so switching to another label remounts it with that label's name.
-  const [name, setName] = useState(initialLabel?.name ?? "");
-
-  // Successful create redirects from the server action (see createLabelAction).
-  const handleNameChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setName(event.target.value);
-    },
-    []
-  );
-
+/**
+ * Awaits the catalog for the name's placeholder, which is an attribute rather
+ * than a node. A create redirects from the Action (see `createLabelAction`).
+ */
+export const LabelForm = async ({
+  mode,
+  action,
+  initialLabel,
+  tenantId,
+}: LabelFormProps) => {
+  const t = await getMessages();
   const isUpdate = mode === "update";
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <ActionForm action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="label_id" type="hidden" value={initialLabel?.id ?? ""} />
 
-      <Field>
-        <FieldLabel required>
-          <ClientMessage message="admin.labels.form.name" />
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            disabled={isPending}
-            name="name"
-            onChange={handleNameChange}
-            placeholder={t("admin.labels.form.name_placeholder")}
-            required
-            type="text"
-            value={name}
-          />
-        </FieldContent>
-      </Field>
-
-      {isUpdate ? null : (
+      <ActionFormFieldset className="grid gap-4">
         <Field>
-          <FieldLabel>
-            <ClientMessage message="admin.labels.form.eye_catch" />
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.labels.form.name" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
-              accept="image/jpeg,image/png,image/webp"
-              disabled={isPending}
-              name="eye_catch_image"
-              type="file"
+              defaultValue={initialLabel?.name}
+              name="name"
+              placeholder={t("admin.labels.form.name_placeholder")}
+              required
+              type="text"
             />
-            <p className="text-sm text-muted-foreground">
-              <ClientMessage message="admin.labels.form.eye_catch_description" />
-            </p>
           </FieldContent>
         </Field>
-      )}
 
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
+        {isUpdate ? null : (
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.labels.form.eye_catch" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                accept="image/jpeg,image/png,image/webp"
+                name="eye_catch_image"
+                type="file"
+              />
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.labels.form.eye_catch_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        )}
+      </ActionFormFieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <Button disabled={isPending} type="submit">
-          <LabelFormSubmitLabel isPending={isPending} isUpdate={isUpdate} />
-        </Button>
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              {isUpdate ? (
+                <Message message="admin.labels.form.update" />
+              ) : (
+                <Message message="admin.labels.form.create" />
+              )}
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.labels.form.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </div>
-    </form>
+    </ActionForm>
   );
 };

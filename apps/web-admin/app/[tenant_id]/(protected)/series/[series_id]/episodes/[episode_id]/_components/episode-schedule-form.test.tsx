@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+import { bindMessages } from "@publira/i18n";
+import type { MessageKey, MessageValues } from "@publira/i18n";
+import { sharedCatalog } from "@publira/i18n/catalog";
+import type { SharedMessages } from "@publira/i18n/catalog";
 import {
   cleanup,
   fireEvent,
@@ -7,7 +11,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -16,15 +20,25 @@ import { EpisodeForm } from "../../_components/episode-form";
 import type { EpisodeEditActionState } from "../episode-edit-types";
 import { EpisodeScheduleForm } from "./episode-schedule-form";
 
-const render = (ui: React.ReactNode) =>
+const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
       <AdminLocaleTestProvider locale="en">{children}</AdminLocaleTestProvider>
     ),
   });
 
-vi.mock("#lib/use-tenant-id", () => ({
-  useTenantId: () => "TENANT001",
+vi.mock("#components/message", () => ({
+  Message: ({
+    message,
+    values,
+  }: {
+    message: MessageKey<SharedMessages>;
+    values?: MessageValues;
+  }) => bindMessages(sharedCatalog("en"))(message, values),
+}));
+
+vi.mock("#lib/get-messages", () => ({
+  getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"))),
 }));
 
 afterEach(() => {
@@ -42,6 +56,7 @@ describe("EpisodeScheduleForm", () => {
         episodePublicId="EP001"
         scheduledAt="2030-01-01T01:00:00Z"
         seriesPublicId="SERIES001"
+        tenantId="TENANT001"
         timeZone="Asia/Seoul"
       />
     );
@@ -51,6 +66,10 @@ describe("EpisodeScheduleForm", () => {
     );
 
     expect(localInput.value).toBe("2030-01-01T10:00");
+    expect(
+      document.querySelector<HTMLInputElement>('input[name="publish_at"]')
+        ?.value
+    ).toBe("2030-01-01T01:00:00Z");
   });
 
   // Rescheduling keeps its future-only rule, so the field does not promise
@@ -63,6 +82,7 @@ describe("EpisodeScheduleForm", () => {
         episodePublicId="EP001"
         scheduledAt=""
         seriesPublicId="SERIES001"
+        tenantId="TENANT001"
         timeZone="Asia/Seoul"
       />
     );
@@ -82,6 +102,7 @@ describe("EpisodeScheduleForm", () => {
         episodeId="EP001-ID"
         episodePublicId="EP001"
         seriesPublicId="SERIES001"
+        tenantId="TENANT001"
         timeZone="Asia/Seoul"
       />
     );
@@ -93,21 +114,25 @@ describe("EpisodeScheduleForm", () => {
     expect(localInput.value).toBe("");
   });
 
-  it("keeps the ids unique when it is mounted alongside the create form", () => {
+  it("keeps the ids unique when it is mounted alongside the create form", async () => {
+    const createForm = await EpisodeForm({
+      action: () => Promise.resolve(null),
+      seriesId: "SERIES001-ID",
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+      timeZone: "Asia/Seoul",
+    });
+
     render(
       <>
-        <EpisodeForm
-          action={() => Promise.resolve(null)}
-          seriesId="SERIES001-ID"
-          seriesPublicId="SERIES001"
-          timeZone="Asia/Seoul"
-        />
+        {createForm}
         <EpisodeScheduleForm
           action={action}
           episodeId="EP001-ID"
           episodePublicId="EP001"
           scheduledAt="2030-01-01T01:00:00Z"
           seriesPublicId="SERIES001"
+          tenantId="TENANT001"
           timeZone="Asia/Seoul"
         />
       </>
@@ -137,6 +162,7 @@ describe("EpisodeScheduleForm", () => {
         episodeId="EP001-ID"
         episodePublicId="EP001"
         seriesPublicId="SERIES001"
+        tenantId="TENANT001"
         timeZone="UTC"
       />
     );

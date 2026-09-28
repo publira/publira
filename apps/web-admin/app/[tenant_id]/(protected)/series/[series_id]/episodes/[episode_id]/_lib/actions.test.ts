@@ -141,7 +141,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "Series ID is missing.",
-      mode: "pages",
       ok: false,
     });
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();
@@ -449,7 +448,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "Tenant ID is missing.",
-      mode: "schedule",
       ok: false,
     });
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
@@ -469,7 +467,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "The publication date and time is invalid.",
-      mode: "schedule",
       ok: false,
     });
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
@@ -547,7 +544,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "The publication date and time is invalid.",
-      mode: "schedule",
       ok: false,
     });
     expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
@@ -566,7 +562,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "Select page images to add.",
-      mode: "pages",
       ok: false,
     });
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();
@@ -590,7 +585,6 @@ describe("episode actions", () => {
 
     expect(result).toEqual({
       message: "Select a ZIP (.zip) file.",
-      mode: "pages",
       ok: false,
     });
     expect(mockUploadEpisodePages).not.toHaveBeenCalled();

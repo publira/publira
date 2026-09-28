@@ -41,10 +41,7 @@ import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import type {
-  EpisodeEditActionState,
-  EpisodeEditMode,
-} from "../episode-edit-types";
+import type { EpisodeEditActionState } from "../episode-edit-types";
 
 const hiddenParamsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -181,12 +178,8 @@ const confirmEpisodeTarget = async (
   return t("admin.series.episodes.validation.episode_missing");
 };
 
-const toFailure = (
-  message: string,
-  mode: EpisodeEditMode
-): { message: string; mode: EpisodeEditMode; ok: false } => ({
+const toFailure = (message: string): { message: string; ok: false } => ({
   message,
-  mode,
   ok: false,
 });
 
@@ -209,17 +202,11 @@ const parsePublishAtToRFC3339 = async (
   const iso = toInstantIsoString(value, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {
-    return toFailure(
-      t("admin.series.episodes.validation.publish_at_invalid"),
-      "schedule"
-    );
+    return toFailure(t("admin.series.episodes.validation.publish_at_invalid"));
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return toFailure(
-      t("admin.series.episodes.validation.publish_at_future"),
-      "schedule"
-    );
+    return toFailure(t("admin.series.episodes.validation.publish_at_future"));
   }
 
   return { iso, ok: true };
@@ -239,7 +226,7 @@ export const updateEpisodeScheduleAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "schedule");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const schedule = await parsePublishAtToRFC3339(
@@ -253,7 +240,7 @@ export const updateEpisodeScheduleAction = async (
 
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
   if (mismatch) {
-    return toFailure(mismatch, "schedule");
+    return toFailure(mismatch);
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -268,7 +255,7 @@ export const updateEpisodeScheduleAction = async (
   );
 
   if (!result.ok) {
-    return toFailure(result.message, "schedule");
+    return toFailure(result.message);
   }
 
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
@@ -491,11 +478,11 @@ export const replaceEpisodeCreditsAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "credits");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
   if (mismatch) {
-    return toFailure(mismatch, "credits");
+    return toFailure(mismatch);
   }
   const result = await withAdminSessionReauth(() =>
     replaceEpisodeCredits(
@@ -508,7 +495,7 @@ export const replaceEpisodeCreditsAction = async (
     )
   );
   if (!result.ok) {
-    return toFailure(result.message, "credits");
+    return toFailure(result.message);
   }
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?credits_updated=1`
@@ -534,7 +521,7 @@ export const uploadEpisodePagesAction = async (
     })
   );
   if (!parsed.success) {
-    return toFailure(toFormErrorMessage(parsed.error, { locale }), "pages");
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const {
@@ -550,23 +537,19 @@ export const uploadEpisodePagesAction = async (
 
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
   if (mismatch) {
-    return toFailure(mismatch, "pages");
+    return toFailure(mismatch);
   }
 
   if (uploadMode === "zip" || uploadMode === "epub") {
     // An archive is unpacked against its series, which the API cannot infer.
     if (seriesId === "") {
-      return toFailure(
-        t("admin.series.episodes.validation.series_missing"),
-        "pages"
-      );
+      return toFailure(t("admin.series.episodes.validation.series_missing"));
     }
     if (!archive) {
       return toFailure(
         uploadMode === "zip"
           ? t("admin.series.episodes.validation.zip_required")
-          : t("admin.series.episodes.validation.epub_required"),
-        "pages"
+          : t("admin.series.episodes.validation.epub_required")
       );
     }
 
@@ -582,8 +565,7 @@ export const uploadEpisodePagesAction = async (
       return toFailure(
         uploadMode === "zip"
           ? t("admin.series.episodes.validation.zip_invalid")
-          : t("admin.series.episodes.validation.epub_invalid"),
-        "pages"
+          : t("admin.series.episodes.validation.epub_invalid")
       );
     }
 
@@ -600,7 +582,7 @@ export const uploadEpisodePagesAction = async (
     );
 
     if (!result.ok) {
-      return toFailure(result.message, "pages");
+      return toFailure(result.message);
     }
 
     updateTag(episodeCacheTag(tenantId, episodeId));
@@ -611,10 +593,7 @@ export const uploadEpisodePagesAction = async (
   }
 
   if (pages.length === 0) {
-    return toFailure(
-      t("admin.series.episodes.validation.pages_required"),
-      "pages"
-    );
+    return toFailure(t("admin.series.episodes.validation.pages_required"));
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -629,7 +608,7 @@ export const uploadEpisodePagesAction = async (
   );
 
   if (!result.ok) {
-    return toFailure(result.message, "pages");
+    return toFailure(result.message);
   }
 
   updateTag(episodeCacheTag(tenantId, episodeId));

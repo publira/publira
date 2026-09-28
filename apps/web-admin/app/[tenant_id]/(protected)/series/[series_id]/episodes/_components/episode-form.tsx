@@ -1,21 +1,23 @@
-"use client";
-
-import { Button } from "@publira/ui-components/button";
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
-import { Fieldset } from "@publira/ui-components/fieldset";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback } from "react";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import { ClientMessage, useClientMessages } from "#components/client-message";
-import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
-import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeAvailabilityField } from "./episode-availability-field";
@@ -39,47 +41,34 @@ interface EpisodeFormProps {
    * option that follows it. Absent when that could not be read.
    */
   seriesPurchaseAvailability?: SurfaceAvailabilityValue;
+  tenantId: string;
   timeZone: string;
 }
 
-export const EpisodeForm = ({
+/** Awaits the catalog for the title's placeholder, which is an attribute rather than a node. */
+export const EpisodeForm = async ({
   seriesId,
   seriesPublicId,
   action,
   seriesAvailability,
   seriesPurchaseAvailability,
+  tenantId,
   timeZone,
 }: EpisodeFormProps) => {
-  const t = useClientMessages();
-  const tenantId = useTenantId();
-  const [state, formAction, isPending] = useActionState(action, null);
-
-  const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      fillInstantFromDateTimeLocal(event.currentTarget, {
-        isoName: "publish_at",
-        localName: "publish_at_local",
-        timeZone,
-      });
-    },
-    [timeZone]
-  );
-
-  let submitLabel = t("admin.series.episodes.form.create");
-  if (isPending) {
-    submitLabel = t("admin.series.episodes.form.submitting");
-  }
+  const t = await getMessages();
 
   return (
-    <form action={formAction} className="grid gap-4" onSubmit={handleSubmit}>
+    <ActionForm action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
-      <Fieldset className="grid gap-4" disabled={isPending}>
+      <ActionFormFieldset className="grid gap-4">
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.series.episodes.form.title" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.series.episodes.form.title" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -93,7 +82,9 @@ export const EpisodeForm = ({
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.series.episodes.form.price" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+              <Message message="admin.series.episodes.form.price" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -104,14 +95,18 @@ export const EpisodeForm = ({
               type="number"
             />
             <FieldDescription>
-              <ClientMessage message="admin.series.episodes.form.price_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.series.episodes.form.price_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
         <Field>
           <FieldLabel required>
-            <ClientMessage message="admin.series.episodes.form.reading_period" />
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.series.episodes.form.reading_period" />
+            </Suspense>
           </FieldLabel>
           <FieldContent>
             <Input
@@ -122,16 +117,20 @@ export const EpisodeForm = ({
               type="number"
             />
             <FieldDescription>
-              <ClientMessage message="admin.series.episodes.form.reading_period_description" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.series.episodes.form.reading_period_description" />
+              </Suspense>
             </FieldDescription>
           </FieldContent>
         </Field>
 
-        <PublishAtInput>
-          <ClientMessage
-            message="admin.series.episodes.form.publish_at_description"
-            values={{ time_zone: timeZone }}
-          />
+        <PublishAtInput timeZone={timeZone}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message
+              message="admin.series.episodes.form.publish_at_description"
+              values={{ time_zone: timeZone }}
+            />
+          </Suspense>
         </PublishAtInput>
 
         <EpisodeAvailabilityField
@@ -143,19 +142,22 @@ export const EpisodeForm = ({
           initialValue=""
           seriesPurchaseAvailability={seriesPurchaseAvailability}
         />
-      </Fieldset>
-
-      {state ? (
-        <FormMessage variant={state.ok ? "success" : "destructive"}>
-          {state.message}
-        </FormMessage>
-      ) : null}
+      </ActionFormFieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <Button disabled={isPending} type="submit">
-          {submitLabel}
-        </Button>
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.series.episodes.form.create" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.series.episodes.form.submitting" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
       </div>
-    </form>
+    </ActionForm>
   );
 };

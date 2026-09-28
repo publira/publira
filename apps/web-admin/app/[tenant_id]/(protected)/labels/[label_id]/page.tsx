@@ -181,10 +181,12 @@ const EditLabelFormData = async ({
         <LabelEyeCatchForm
           action={updateLabelEyeCatchAction}
           initialLabel={result.label}
+          tenantId={tenantId}
         />
         <EyeCatchAspectImages
           id={result.label.id}
           idField="label_id"
+          tenantId={tenantId}
           uploadAction={uploadLabelEyeCatchAspectImageAction}
           variants={result.label.eyeCatchImageVariants}
         />
@@ -198,6 +200,7 @@ const EditLabelFormData = async ({
       initialLabel={result.label}
       key={result.label.publicId}
       mode="update"
+      tenantId={tenantId}
     />
   );
 };

@@ -117,8 +117,12 @@ export const createPageAction = async (
   );
 
   if (!result.ok) {
-    return result.field
-      ? { field: result.field, message: result.message, ok: false }
+    return result.field === "slug"
+      ? {
+          fieldErrors: { slug: result.message },
+          message: t("errors.validation"),
+          ok: false,
+        }
       : toFailure(result.message);
   }
 

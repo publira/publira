@@ -8,17 +8,7 @@ export interface EpisodeCreatorCredit {
   source: CreatorCreditSource;
 }
 
-export type EpisodeEditMode = "credits" | "schedule" | "pages";
-
-export type EpisodeEditActionState =
-  | {
-      ok: false;
-      message: string;
-      mode: EpisodeEditMode;
-    }
-  | {
-      ok: true;
-      message: string;
-      mode: EpisodeEditMode;
-    }
-  | null;
+export type EpisodeEditActionState = {
+  ok: boolean;
+  message: string;
+} | null;
