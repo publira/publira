@@ -41,6 +41,9 @@ vi.mock("#lib/page", () => ({
   createPageTranslation: mockCreatePageTranslation,
   createPageVersion: mockCreatePageVersion,
   deletePageTranslation: mockDeletePageTranslation,
+  pageCacheTag: (tenantId: string, pageId: string) =>
+    `page-${tenantId}-${pageId}`,
+  pagesCacheTag: (tenantId: string) => `pages-${tenantId}`,
   publishPageVersion: mockPublishPageVersion,
   rollbackPageVersion: vi.fn(),
   unpublishPage: vi.fn(),

@@ -13,6 +13,7 @@ import {
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
+import { pagesCacheTag } from "./page";
 import { getAccessToken } from "./session";
 import type { TenantLegalPages } from "./tenant-legal-pages-shared";
 
@@ -75,7 +76,7 @@ const getTenantLegalPagesForSession = async (
   }
 
   cacheTag(tenantLegalPagesCacheTag(normalizedTenantId));
-  cacheTag(`pages-${normalizedTenantId}`);
+  cacheTag(pagesCacheTag(normalizedTenantId));
 
   try {
     const response = await apiClient.tenantSettings.getTenantLegalPages(

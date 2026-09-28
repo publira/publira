@@ -21,6 +21,8 @@ import {
   createPageTranslation,
   createPageVersion,
   deletePageTranslation,
+  pageCacheTag,
+  pagesCacheTag,
   publishPageVersion,
   rollbackPageVersion,
   unpublishPage,
@@ -140,7 +142,7 @@ export const createPageAction = async (
       : toFailure(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
 
   if (parsed.data.contentMarkdown.trim()) {
     const versionResult = await withAdminSessionReauth(() =>
@@ -159,7 +161,7 @@ export const createPageAction = async (
       return toFailure(versionResult.message);
     }
 
-    updateTag(`page-${parsed.data.tenantId}-${result.page.id}`);
+    updateTag(pageCacheTag(parsed.data.tenantId, result.page.id));
   }
 
   redirect(pageEditPath(result.page.id, result.page.locale, "created"));
@@ -217,8 +219,8 @@ export const savePageAction = async (
       );
     }
 
-    updateTag(`pages-${parsed.data.tenantId}`);
-    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+    updateTag(pagesCacheTag(parsed.data.tenantId));
+    updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
   }
 
   if (contentChanged) {
@@ -246,7 +248,7 @@ export const savePageAction = async (
       );
     }
 
-    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+    updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
   }
 
   redirect(
@@ -278,8 +280,8 @@ export const publishVersionAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
   redirect(
     pageEditPath(parsed.data.pageId, parsed.data.translationLocale, "published")
@@ -309,8 +311,8 @@ export const unpublishPageAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
   redirect(
     pageEditPath(
@@ -345,7 +347,7 @@ export const rollbackVersionAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
   redirect(
     pageEditPath(
@@ -392,8 +394,8 @@ export const addPageTranslationAction = async (
     return toFailure(result.message);
   }
 
-  updateTag(`pages-${tenantId}`);
-  updateTag(`page-${tenantId}-${pageId}`);
+  updateTag(pagesCacheTag(tenantId));
+  updateTag(pageCacheTag(tenantId, pageId));
 
   redirect(pageEditPath(pageId, translationLocale, "translation_added"));
 };
@@ -432,8 +434,8 @@ export const deletePageTranslationAction = async (
     return toFailure(result.message);
   }
 
-  updateTag(`pages-${tenantId}`);
-  updateTag(`page-${tenantId}-${pageId}`);
+  updateTag(pagesCacheTag(tenantId));
+  updateTag(pageCacheTag(tenantId, pageId));
 
   redirect(pageEditPath(pageId, undefined, "translation_deleted"));
 };

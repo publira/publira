@@ -166,6 +166,13 @@ export type DeletePageTranslationResult =
   | { ok: true }
   | { ok: false; message: string };
 
+/** The tag every page read is filed under, and every write to the page list drops. */
+export const pagesCacheTag = (tenantId: string): string => `pages-${tenantId}`;
+
+/** The tag one page's reads carry, for a write that changes that page alone. */
+export const pageCacheTag = (tenantId: string, pageId: string): string =>
+  `page-${tenantId}-${pageId}`;
+
 const slugInvalidMessage = (
   error: unknown,
   t: Awaited<ReturnType<typeof getMessagesFor>>
@@ -304,7 +311,7 @@ const listPagesForSession = async (
   sessionId: string
 ): Promise<ListPagesResult> => {
   "use cache: private";
-  cacheTag(`pages-${tenantId}`);
+  cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -367,7 +374,7 @@ const listPublishedPagesForSession = async (
   sessionId: string
 ): Promise<ListPublishedPagesResult> => {
   "use cache: private";
-  cacheTag(`pages-${tenantId}`);
+  cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -452,8 +459,8 @@ const getPageForSession = async (
   sessionId: string
 ): Promise<GetPageResult> => {
   "use cache: private";
-  cacheTag(`pages-${input.tenantId}`);
-  cacheTag(`page-${input.tenantId}-${input.pageId}`);
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -528,7 +535,7 @@ const listPageVersionsForSession = async (
   sessionId: string
 ): Promise<ListPageVersionsResult> => {
   "use cache: private";
-  cacheTag(`page-${input.tenantId}-${input.pageId}`);
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -930,8 +937,8 @@ const listPageTranslationsForSession = async (
   sessionId: string
 ): Promise<ListPageTranslationsResult> => {
   "use cache: private";
-  cacheTag(`pages-${input.tenantId}`);
-  cacheTag(`page-${input.tenantId}-${input.pageId}`);
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
