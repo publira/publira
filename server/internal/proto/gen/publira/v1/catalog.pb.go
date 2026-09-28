@@ -5651,11 +5651,15 @@ func (x *GetMyEpisodeRatingRequest) GetEpisodeId() string {
 type GetMyEpisodeRatingResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 0 when this reader has not rated the episode, 1 to 5 once they have.
-	Score         int32             `protobuf:"varint,1,opt,name=score,proto3" json:"score,omitempty"`
-	RatingCount   int64             `protobuf:"varint,2,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
-	Mode          EpisodeRatingMode `protobuf:"varint,3,opt,name=mode,proto3,enum=publira.v1.EpisodeRatingMode" json:"mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Score       int32             `protobuf:"varint,1,opt,name=score,proto3" json:"score,omitempty"`
+	RatingCount int64             `protobuf:"varint,2,opt,name=rating_count,json=ratingCount,proto3" json:"rating_count,omitempty"`
+	Mode        EpisodeRatingMode `protobuf:"varint,3,opt,name=mode,proto3,enum=publira.v1.EpisodeRatingMode" json:"mode,omitempty"`
+	// Whether the reader's account is linked to a creator the episode credits,
+	// free or not. RateEpisode refuses such a reader, so a client can withhold
+	// the control instead of offering a press that ends in that refusal.
+	ReaderCredited bool `protobuf:"varint,4,opt,name=reader_credited,json=readerCredited,proto3" json:"reader_credited,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetMyEpisodeRatingResponse) Reset() {
@@ -5707,6 +5711,13 @@ func (x *GetMyEpisodeRatingResponse) GetMode() EpisodeRatingMode {
 		return x.Mode
 	}
 	return EpisodeRatingMode_EPISODE_RATING_MODE_UNSPECIFIED
+}
+
+func (x *GetMyEpisodeRatingResponse) GetReaderCredited() bool {
+	if x != nil {
+		return x.ReaderCredited
+	}
+	return false
 }
 
 type GetMySeriesRatingRequest struct {
@@ -7168,11 +7179,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x04 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"\x88\x01\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"\xb1\x01\n" +
 	"\x1aGetMyEpisodeRatingResponse\x12\x14\n" +
 	"\x05score\x18\x01 \x01(\x05R\x05score\x12!\n" +
 	"\frating_count\x18\x02 \x01(\x03R\vratingCount\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\"\xc3\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.publira.v1.EpisodeRatingModeR\x04mode\x12'\n" +
+	"\x0freader_credited\x18\x04 \x01(\bR\x0ereaderCredited\"\xc3\x01\n" +
 	"\x18GetMySeriesRatingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +

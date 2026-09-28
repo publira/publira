@@ -1215,6 +1215,10 @@ type RatingServiceClient interface {
 	// It asks only that the episode be published, not that this reader may open
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
+	//
+	// It also says whether the reader is credited on the episode, which is what
+	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
+	// EPISODE_ACCESS_ENTITLED.
 	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
@@ -1305,6 +1309,10 @@ type RatingServiceHandler interface {
 	// It asks only that the episode be published, not that this reader may open
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
+	//
+	// It also says whether the reader is credited on the episode, which is what
+	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
+	// EPISODE_ACCESS_ENTITLED.
 	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
