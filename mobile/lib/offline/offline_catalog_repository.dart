@@ -134,7 +134,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<List<RankedSeriesItem>> listRankedSeries({
     required int limit,
     required RankingPeriod period,
-  }) => _origin.listRankedSeries(limit: limit, period: period);
+    required SeriesAgeRating ageRating,
+  }) => _origin.listRankedSeries(
+    limit: limit,
+    period: period,
+    ageRating: ageRating,
+  );
 
   @override
   Future<SeriesDetail?> getSeries(String publicId) async {

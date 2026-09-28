@@ -196,6 +196,7 @@ void main() {
     final ranked = await catalog.listRankedSeries(
       limit: 10,
       period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
     );
 
     expect(ranked, hasLength(2));
@@ -209,10 +210,15 @@ void main() {
     final request = server.requestsTo('ListRankedSeries').single;
     expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
     expect(request.body['limit'], 10);
+    expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
   });
 
   test('listRankedSeries names the day the daily chart asks for', () async {
-    await catalog.listRankedSeries(limit: 3, period: RankingPeriod.daily);
+    await catalog.listRankedSeries(
+      limit: 3,
+      period: RankingPeriod.daily,
+      ageRating: SeriesAgeRating.all,
+    );
 
     expect(
       server.requestsTo('ListRankedSeries').single.body['period'],
@@ -224,7 +230,11 @@ void main() {
     server.rankedSeries = const [];
 
     expect(
-      await catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+      await catalog.listRankedSeries(
+        limit: 10,
+        period: RankingPeriod.weekly,
+        ageRating: SeriesAgeRating.all,
+      ),
       isEmpty,
     );
   });
@@ -233,7 +243,11 @@ void main() {
     server.rankedStatus = HttpStatus.serviceUnavailable;
 
     expect(
-      () => catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+      () => catalog.listRankedSeries(
+        limit: 10,
+        period: RankingPeriod.weekly,
+        ageRating: SeriesAgeRating.all,
+      ),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -1520,7 +1534,11 @@ void main() {
     test('every catalog read names the app', () async {
       await catalog.listSeries();
       await catalog.listNewestSeries(limit: 3);
-      await catalog.listRankedSeries(limit: 3, period: RankingPeriod.daily);
+      await catalog.listRankedSeries(
+        limit: 3,
+        period: RankingPeriod.daily,
+        ageRating: SeriesAgeRating.all,
+      );
       await catalog.searchSeries(query: 'Seed');
       await catalog.searchCreators(query: 'Seed');
       await catalog.searchLabels(query: 'Seed');
@@ -1561,6 +1579,7 @@ void main() {
         final ranked = await catalog.listRankedSeries(
           limit: 3,
           period: RankingPeriod.weekly,
+          ageRating: SeriesAgeRating.all,
         );
         final searched = await catalog.searchSeries(query: 'Seed');
 

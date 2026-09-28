@@ -748,7 +748,11 @@ void main() {
 
       expect(() => catalog.listNewestSeries(limit: 10), throwsA(_network));
       expect(
-        () => catalog.listRankedSeries(limit: 10, period: RankingPeriod.weekly),
+        () => catalog.listRankedSeries(
+          limit: 10,
+          period: RankingPeriod.weekly,
+          ageRating: SeriesAgeRating.all,
+        ),
         throwsA(_network),
       );
     },
@@ -789,9 +793,11 @@ void main() {
     final ranked = await build().listRankedSeries(
       limit: 10,
       period: RankingPeriod.weekly,
+      ageRating: SeriesAgeRating.all,
     );
 
     expect(ranked.single.rank, 1);
     expect(origin.rankedSeriesPeriods, [RankingPeriod.weekly]);
+    expect(origin.rankedSeriesAgeRatings, [SeriesAgeRating.all]);
   });
 }

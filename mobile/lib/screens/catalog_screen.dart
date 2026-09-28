@@ -201,7 +201,8 @@ class _ContinueReadingShelf extends StatelessWidget {
   }
 }
 
-/// The week's chart, in the positions the last ranking snapshot recorded.
+/// The week's all-ages chart, in the positions the last ranking snapshot
+/// recorded. The app offers no rated chart, so this is the only one it shows.
 ///
 /// A tenant the ranking batch has not run for yet has no chart, and is shown
 /// no row rather than an empty one.
@@ -221,6 +222,7 @@ class _RankingShelf extends StatelessWidget {
       load: (catalog) => catalog.listRankedSeries(
         limit: _rankingLimit,
         period: RankingPeriod.weekly,
+        ageRating: SeriesAgeRating.all,
       ),
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('catalog-ranking-${item.series.id}'),

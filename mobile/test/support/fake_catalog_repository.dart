@@ -224,6 +224,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Periods [listRankedSeries] was called with, in order.
   final List<RankingPeriod> rankedSeriesPeriods = <RankingPeriod>[];
 
+  /// Age ratings [listRankedSeries] was called with, in order.
+  final List<SeriesAgeRating> rankedSeriesAgeRatings = <SeriesAgeRating>[];
+
   /// Pages over [series], [seriesPageSize] at a time.
   ///
   /// The token stands in for the API's opaque cursor and is the index of the
@@ -430,8 +433,10 @@ class FakeCatalogRepository implements CatalogRepository {
   Future<List<RankedSeriesItem>> listRankedSeries({
     required int limit,
     required RankingPeriod period,
+    required SeriesAgeRating ageRating,
   }) async {
     rankedSeriesPeriods.add(period);
+    rankedSeriesAgeRatings.add(ageRating);
     final error = rankedSeriesError;
     if (error != null) {
       throw error;

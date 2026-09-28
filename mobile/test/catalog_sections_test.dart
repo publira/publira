@@ -102,6 +102,8 @@ void main() {
       );
     }
     expect(catalog.rankedSeriesPeriods, [RankingPeriod.weekly]);
+    // The rated charts are rankings of their own, and the app shows none.
+    expect(catalog.rankedSeriesAgeRatings, [SeriesAgeRating.all]);
   });
 
   testWidgets('a tenant the ranking batch has not run for is shown no chart', (

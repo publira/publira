@@ -212,10 +212,21 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<List<RankedSeriesItem>> listRankedSeries({
     required int limit,
     required RankingPeriod period,
+    required SeriesAgeRating ageRating,
   }) async {
     try {
       final tenantId = await _tenants.resolve();
       final body = await _client.unary(_rankedProcedure, {
+        'ageRating': switch (ageRating) {
+          SeriesAgeRating.all => 'SERIES_AGE_RATING_ALL',
+          SeriesAgeRating.r15 => 'SERIES_AGE_RATING_R15',
+          SeriesAgeRating.r18 => 'SERIES_AGE_RATING_R18',
+          SeriesAgeRating.unknown => throw ArgumentError.value(
+            ageRating,
+            'ageRating',
+            'names no ranking',
+          ),
+        },
         'limit': limit,
         'period': switch (period) {
           RankingPeriod.daily => 'RANKING_PERIOD_DAILY',
