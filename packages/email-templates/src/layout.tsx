@@ -21,6 +21,22 @@ const bodyStyle: CSSProperties = {
   padding: "32px 16px",
 };
 
+/**
+ * The locales the web apps turn `text-autospace` on for, so that a client that
+ * implements the property spaces CJK and Latin text the way a browser does.
+ */
+const autospacedLocales: ReadonlySet<Locale> = new Set([
+  "ja",
+  "ko",
+  "zh-Hans",
+  "zh-Hant",
+]);
+
+const autospacedBodyStyle: CSSProperties = {
+  ...bodyStyle,
+  textAutospace: "normal",
+};
+
 const containerStyle: CSSProperties = {
   margin: "0 auto",
   maxWidth: "560px",
@@ -73,7 +89,10 @@ export const EmailLayout = ({
   <Html dir="ltr" lang={locale}>
     <Head />
     <Preview>{preview}</Preview>
-    <Body lang={locale} style={bodyStyle}>
+    <Body
+      lang={locale}
+      style={autospacedLocales.has(locale) ? autospacedBodyStyle : bodyStyle}
+    >
       <Container style={containerStyle}>
         <Text style={brandStyle}>{brand}</Text>
         <Section style={cardStyle}>{children}</Section>
