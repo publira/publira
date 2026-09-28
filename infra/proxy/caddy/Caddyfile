@@ -1,4 +1,5 @@
-# The routing contract for Caddy.
+# A sample of the routing in infra/proxy/README.md for Caddy, which a
+# deployment adapts to its own hosts.
 #
 # Backend addresses come from the environment rather than from a second file:
 # a Caddyfile substitutes {$VAR}, and the value after the first colon is the
@@ -74,6 +75,8 @@
 			}
 		}
 
+		# An install that runs no web-platform omits this block and the @platform
+		# matcher, and a platform. host then reaches web-host below.
 		handle @platform {
 			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_PLATFORM:app:4100} {
 				import publira_forwarded

@@ -1,18 +1,18 @@
 # Edge routing
 
-Every Publira deployment puts one reverse proxy in front of four backends, and this directory is that proxy's configuration. The contract below is what the edge has to do; each subdirectory writes it for one proxy.
+Every Publira deployment puts one reverse proxy in front of four backends. This directory holds sample configurations of that proxy, one per subdirectory, and a deployment adapts one of them to its own hosts and addresses: they are not rules the application depends on. The routing below is what the three samples share; each subdirectory writes it for one proxy.
 
 | Proxy | Files | Where it runs |
 | --- | --- | --- |
-| Traefik | [`traefik/`](./traefik/) | The Dev Container edge on `localhost:3080`, the E2E edge, and the edge of each `dev-env` profile, all through the file provider |
-| nginx | [`nginx/`](./nginx/) | Deployment example |
-| Caddy | [`caddy/`](./caddy/) | Deployment example |
+| Traefik | [`traefik/`](./traefik/) | The Dev Container edge on `localhost:3080`, the E2E edge, and the edge of each `dev-env` profile, all through the file provider; a sample for a deployment as well |
+| nginx | [`nginx/`](./nginx/) | Sample for a deployment |
+| Caddy | [`caddy/`](./caddy/) | Sample for a deployment |
 
 The Dev Container mounts `traefik/dynamic` into its `traefik` container and runs the file provider with `watch=true`, so an edit to `routes.yaml` or `services.yaml` takes effect without restarting the stack. Where the bind mount delivers no file events, `docker compose restart traefik` picks the edit up.
 
 Image builds are a separate concern and live under [`infra/docker/`](../docker/README.md).
 
-## The contract
+## The routing the samples share
 
 ### Backends
 
@@ -34,6 +34,10 @@ The hostname decides which Next.js app answers. Matching ignores the port the `H
 | Anything else                            | `web-host`     |
 
 `\d*` is zero or more digits, so a numbered console host (`admin2.example.com`) is an admin host while `administrator.example.com` is a tenant site.
+
+The prefix is how the samples recognise a console host, not what makes one: a tenant's console host is the one it was given (`admin_domain`), or `admin.<domain>` without one, and the application answers on whichever it is. A deployment whose tenants use console hosts outside the prefix routes those hosts to `web-admin` as well.
+
+An install that runs no `web-platform` leaves out the platform row and the `web-platform` upstream, and a `platform.` host then falls to the last row like any other host no tenant holds; every other row stays as it is.
 
 ### Path rules
 
@@ -87,4 +91,4 @@ Two things are deployment decisions, and each proxy's files mark them.
 
 ## Verification
 
-`task e2e:routing` runs the contract against all three proxies. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, so every row above is a probe. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

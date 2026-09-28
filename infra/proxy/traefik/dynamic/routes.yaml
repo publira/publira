@@ -1,7 +1,8 @@
-# The routing contract: routers and middlewares, identical in every
-# environment. The backend addresses live next to this file in services.yaml,
-# which is the half that changes per deployment; the file provider reads the
-# whole directory and merges the two.
+# The routing in infra/proxy/README.md for Traefik: routers and middlewares,
+# identical in the Dev Container, the E2E stack, and each dev-env profile, and a
+# sample a deployment adapts to its own hosts. The backend addresses live next
+# to this file in services.yaml, which is the half that changes per deployment;
+# the file provider reads the whole directory and merges the two.
 #
 # Router and service names have to match across the two files. `task
 # e2e:routing` fails on a mismatch, because a router whose service is missing

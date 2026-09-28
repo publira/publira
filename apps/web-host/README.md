@@ -32,6 +32,10 @@ Reader-facing copy comes from `host.*` in the repo-root [`locales/{locale}.json`
 
 Series titles, synopses, episode bodies, and the contents of a published page are written by the tenant and are not translated. They stay as written whatever the locale. The stand-in label for a tenant with no name set comes from `getTenantSiteLabel(tenantId, locale)` in `lib/tenant.ts`.
 
+### API connection
+
+- `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
+
 ### Session cookie (JWE)
 
 Required environment variables:
