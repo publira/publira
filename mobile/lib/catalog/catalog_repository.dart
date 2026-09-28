@@ -60,8 +60,9 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<List<SeriesItem>> listNewestSeries({required int limit});
 
-  /// One page of the tenant's latest ranking snapshot for [period], in the
-  /// positions that snapshot recorded.
+  /// One page of the tenant's latest ranking snapshot for [period] and
+  /// [ageRating], in the positions that snapshot recorded. Each rating is a
+  /// ranking of its own, so the all-ages one holds no rated work.
   ///
   /// Empty for a tenant the ranking batch has not run for yet, which is an
   /// answer rather than a failure: nothing has been computed.
@@ -69,6 +70,7 @@ abstract class CatalogRepository {
   Future<List<RankedSeriesItem>> listRankedSeries({
     required int limit,
     required RankingPeriod period,
+    required SeriesAgeRating ageRating,
   });
 
   /// Detail for [publicId]. Returns `null` when the series is missing,
