@@ -374,3 +374,71 @@ func TestDBCreateVersionForAnotherTenantsPageReturnsNotFound(t *testing.T) {
 		t.Fatalf("page_versions rows = %d, want 0", count)
 	}
 }
+
+// Rolling back copies the chosen version's body into a new draft numbered after
+// the latest one, and leaves the live version where it was.
+func TestDBRollbackToVersionCreatesADraftFromTheTarget(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.pagesClient()
+
+	page, err := client.CreatePage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreatePageRequest{
+		Tenant: tenant.tenantContext(),
+		Slug:   "/terms",
+		Title:  "Terms",
+	}))
+	if err != nil {
+		t.Fatalf("CreatePage: %v", err)
+	}
+	pageID := page.Msg.Page.Id
+
+	var versionIDs []string
+	for _, body := range []string{"# Terms\n\nFirst revision.", "# Terms\n\nSecond revision."} {
+		version, err := client.CreateVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateVersionRequest{
+			Tenant:          tenant.tenantContext(),
+			PageId:          pageID,
+			ContentMarkdown: body,
+		}))
+		if err != nil {
+			t.Fatalf("CreateVersion: %v", err)
+		}
+		versionIDs = append(versionIDs, version.Msg.Version.Id)
+	}
+	if _, err := client.PublishVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+		Tenant:    tenant.tenantContext(),
+		PageId:    pageID,
+		VersionId: versionIDs[1],
+	})); err != nil {
+		t.Fatalf("PublishVersion: %v", err)
+	}
+
+	rolledBack, err := client.RollbackToVersion(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.RollbackToVersionRequest{
+		Tenant:    tenant.tenantContext(),
+		PageId:    pageID,
+		VersionId: versionIDs[0],
+	}))
+	if err != nil {
+		t.Fatalf("RollbackToVersion: %v", err)
+	}
+	version := rolledBack.Msg.Version
+	if version.VersionNumber != 3 {
+		t.Fatalf("version_number = %d, want 3", version.VersionNumber)
+	}
+	if version.ContentMarkdown != "# Terms\n\nFirst revision." {
+		t.Fatalf("content_markdown = %q, want the first revision", version.ContentMarkdown)
+	}
+	if version.Status != "draft" {
+		t.Fatalf("status = %q, want draft", version.Status)
+	}
+
+	reloaded, err := client.GetPage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetPageRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: pageID,
+	}))
+	if err != nil {
+		t.Fatalf("GetPage: %v", err)
+	}
+	if reloaded.Msg.Page.PublishedVersionId != versionIDs[1] {
+		t.Fatalf("published_version_id = %q, want the second revision still live", reloaded.Msg.Page.PublishedVersionId)
+	}
+}

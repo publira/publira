@@ -709,6 +709,7 @@ func (s *adminServer) RollbackToVersion(
 		ContentMarkdown: target.ContentMarkdown,
 	}
 	params.AuthorUserID = uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true}
+	params.TenantID = tenant.ID
 	newVersion, err := s.queriesFor(ctx).CreatePageVersion(ctx, params)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create rollback page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
