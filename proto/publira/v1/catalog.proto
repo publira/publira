@@ -669,6 +669,61 @@ message ListRelatedSeriesResponse {
   string next_token = 3;
 }
 
+// What a sitemap entry links to. The numbers are the order ListSitemapEntries
+// walks the kinds in, so a token can name its position with the kind alone.
+enum SitemapEntryKind {
+  SITEMAP_ENTRY_KIND_UNSPECIFIED = 0;
+  SITEMAP_ENTRY_KIND_SERIES = 1;
+  SITEMAP_ENTRY_KIND_EPISODE = 2;
+  SITEMAP_ENTRY_KIND_LABEL = 3;
+  SITEMAP_ENTRY_KIND_CREATOR = 4;
+  SITEMAP_ENTRY_KIND_GENRE = 5;
+  SITEMAP_ENTRY_KIND_PAGE = 6;
+}
+
+// One page of the web storefront, named by the identifiers its URL is made of.
+message SitemapEntry {
+  SitemapEntryKind kind = 1;
+  // The public ID of the series, episode, label, creator, or genre. Empty for a
+  // page, which is addressed by slug.
+  string public_id = 2;
+  // The public ID of the series an episode belongs to. Empty for every other
+  // kind.
+  string series_public_id = 3;
+  // A page's slug in storage form ("/privacy"). Empty for every other kind.
+  string slug = 4;
+  // When what the page shows last changed, RFC 3339. A series counts its
+  // newest published episode, since its page lists them, and a page counts
+  // its published translations. Empty for a label, a creator, and a genre,
+  // whose rows keep no such time.
+  string last_modified_at = 5;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Every page the web storefront publishes for the tenant: its published series
+// and their published episodes, the labels and creators ListPublishedLabels and
+// ListPublishedCreators list, every genre, and every page with a published
+// translation. Sorted by kind in SitemapEntryKind order, then by id. There is
+// no surface field: a sitemap is for the web, so the read answers for the web
+// storefront.
+message ListSitemapEntriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max entries in one page. <= 0 or > 1000 falls back to 1000: a sitemap is
+  // walked to the end rather than browsed, so a page holds as much as a
+  // response comfortably carries.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListSitemapEntriesResponse {
+  repeated SitemapEntry entries = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 service CatalogService {
   // Every label of the tenant, including one with no published series, so a
   // label's URL keeps working after its last series is taken down. A label
@@ -746,6 +801,10 @@ service CatalogService {
   // Nothing here depends on who is reading, so a response can be cached and
   // shared between readers.
   rpc ListRelatedSeries(ListRelatedSeriesRequest) returns (ListRelatedSeriesResponse) {}
+  // Every page the web storefront publishes for the tenant, with the time each
+  // last changed, for the storefront's sitemap. It reads nothing about the
+  // caller, so a response can be cached and shared.
+  rpc ListSitemapEntries(ListSitemapEntriesRequest) returns (ListSitemapEntriesResponse) {}
 }
 
 message MarkEpisodeAsReadRequest {
