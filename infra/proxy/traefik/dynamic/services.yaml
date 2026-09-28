@@ -3,8 +3,9 @@
 #
 # These are the Dev Container's, where every backend is a process inside the
 # one `app` container. Another deployment replaces this file with its own
-# addresses and keeps routes.yaml as it is; the E2E stack writes its own into
-# the run directory, naming the host ports its processes listen on.
+# addresses and adapts routes.yaml only where its hosts differ; the E2E stack
+# writes its own into the run directory, naming the host ports its processes
+# listen on.
 http:
   services:
     web-host:

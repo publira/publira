@@ -21,7 +21,7 @@ Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's p
 
 | Service | Used by | What it holds |
 | --- | --- | --- |
-| A reverse proxy | Browsers and the mobile app | The routing contract in [`infra/proxy/README.md`](../proxy/README.md); the nginx and Caddy examples there are written to be dropped in |
+| A reverse proxy | Browsers and the mobile app | The routing in [`infra/proxy/README.md`](../proxy/README.md), from one of the sample configurations there adapted to the install's hosts |
 | PostgreSQL | Every process | Everything the install stores |
 | Valkey, or any Redis-protocol server | `publira server`, `web-host`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
