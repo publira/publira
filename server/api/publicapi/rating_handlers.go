@@ -77,8 +77,9 @@ func (s *apiServer) resolveRatingEpisode(
 }
 
 // readerMayReadEpisode answers whether this reader may open the episode's body:
-// free to everyone, or granted to them by a purchase or an access ticket. It is
-// the same rule the episode detail applies before it attaches that body.
+// free to everyone, or granted to them by a purchase, an access ticket, or a
+// credit on the episode. It is the same rule the episode detail applies before
+// it attaches that body.
 func (s *apiServer) readerMayReadEpisode(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,

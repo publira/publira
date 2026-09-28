@@ -1149,6 +1149,7 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
+	entitlementSource := publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED
 	includeImages := false
 	mediaToken := ""
 	// A priced episode whose free window is open is as public as one that costs
@@ -1209,16 +1210,21 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 		mediaToken = token
 	case hasReader:
-		hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
+		grantKind, grantErr := s.queriesFor(ctx).GetEpisodeEntitlementSource(ctx, dbmodels.GetEpisodeEntitlementSourceParams{
 			TenantID:  tenant.ID,
 			UserID:    reader.ID,
 			EpisodeID: row.ID,
 		})
-		if accessErr != nil {
-			return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		if grantErr != nil && !errors.Is(grantErr, sql.ErrNoRows) {
+			return nil, s.internalDBError(ctx, "failed to check episode content access", grantErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 		}
-		if hasAccess {
+		if grantErr == nil {
+			source, sourceErr := episodeEntitlementSourceFromGrantKind(grantKind)
+			if sourceErr != nil {
+				return nil, s.internalError(ctx, "episode grant holds a kind this build does not know", sourceErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			}
 			access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
+			entitlementSource = source
 			includeImages = true
 			// The reader fetches these images from image-server with an
 			// <img>, which cannot carry the bearer this RPC was called
@@ -1292,12 +1298,13 @@ func (s *apiServer) GetEpisodeDetail(
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 	}
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
-		Episode:         episode,
-		Series:          series,
-		Images:          make([]*publirattypesv1.EpisodeImage, 0),
-		Access:          access,
-		PreviousEpisode: previousEpisode,
-		NextEpisode:     nextEpisode,
+		Episode:           episode,
+		Series:            series,
+		Images:            make([]*publirattypesv1.EpisodeImage, 0),
+		Access:            access,
+		PreviousEpisode:   previousEpisode,
+		NextEpisode:       nextEpisode,
+		EntitlementSource: entitlementSource,
 	})
 	if row.FreeUntil.Valid {
 		res.Msg.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
@@ -1316,6 +1323,21 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 
 	return res, nil
+}
+
+// episodeEntitlementSourceFromGrantKind maps an episode_content_grants kind to
+// the reason GetEpisodeDetail reports beside EPISODE_ACCESS_ENTITLED.
+func episodeEntitlementSourceFromGrantKind(kind string) (publirav1.EpisodeEntitlementSource, error) {
+	switch kind {
+	case "purchase":
+		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE, nil
+	case "access_ticket":
+		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET, nil
+	case "creator":
+		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR, nil
+	default:
+		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED, fmt.Errorf("unknown episode grant kind %q", kind)
+	}
 }
 
 // publishedEpisodeNeighborRows reads the published episodes either side of the

@@ -187,7 +187,7 @@ Which JWT a body is bound to depends on which rule let the request through:
 
 | Body | Bound to | `Cache-Control` |
 | --- | --- | --- |
-| Unlocked by a purchase or a ticket | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
+| Unlocked by a grant — a purchase, a ticket, or a credit on the episode | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
 | Free (`price = 0`) | The episode's rotating media token (see [Media tokens](#media-tokens-audience-media)) and its synthetic `sub` | `public, max-age=3600` |
 
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`
@@ -404,7 +404,7 @@ Bodies that are free to everyone — `price = 0`, or a priced episode inside an 
 | Scope | Only the single episode it was issued for (claim `eid`) |
 | Revocation | None to revoke: it carries no reader, and rotation is what ends a copied URL |
 
-Every reader who opens one free episode within one window is handed the identical URL, which is what keeps a free page shareable. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a purchase or a ticket are `403` whether the token is present or not.
+Every reader who opens one free episode within one window is handed the identical URL, which is what keeps a free page shareable. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a grant are `403` whether the token is present or not.
 
 ### Admin media tokens (audience `admin-media`)
 

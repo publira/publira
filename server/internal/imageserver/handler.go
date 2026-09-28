@@ -399,9 +399,9 @@ func (h *Handler) episodeImageCredential(r *http.Request, tenantID uuid.UUID) (*
 
 // grantedEpisodeImage evaluates a verified credential against one image. A nil
 // row with a nil error means the credential unlocks nothing here — an unknown,
-// disabled, or password-rotated user, an unpublished episode, no purchase or
-// ticket, or a media token issued for a different episode — and the caller
-// falls back to the public rule, which is the same one the API applies.
+// disabled, or password-rotated user, an unpublished episode, no grant, or a
+// media token issued for a different episode — and the caller falls back to
+// the public rule, which is the same one the API applies.
 func (h *Handler) grantedEpisodeImage(
 	ctx context.Context,
 	tenantQueries TenantScopedQuerier,

@@ -323,6 +323,23 @@ func (e *PostgresEnv) SeedEpisodeCreator(t *testing.T, tenantID, episodeID, crea
 	}
 }
 
+// SeedCreatorAccount links a reader account to a creator, the way the admin
+// console does.
+func (e *PostgresEnv) SeedCreatorAccount(t *testing.T, tenantID, creatorID, userID uuid.UUID) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO creator_accounts (tenant_id, creator_id, user_id)
+		VALUES ($1, $2, $3)
+	`, tenantID, creatorID, userID); err != nil {
+		t.Fatalf("insert creator_accounts creator=%s user=%s: %v", creatorID, userID, err)
+	}
+}
+
 // SeedSeriesCreatorWithoutRole credits the creator on the series stating no
 // role, which is the shape a credit written before the tenant had a role
 // vocabulary still has. Nothing writes one any more, so this is the only way
