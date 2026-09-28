@@ -173,6 +173,7 @@ var publicDataTables = []struct {
 	// tenant's store transaction.
 	{name: "unapplied_store_refunds", count: "SELECT count(*) FROM unapplied_store_refunds"},
 	{name: "pages", count: "SELECT count(*) FROM pages"},
+	{name: "page_translations", count: "SELECT count(*) FROM page_translations"},
 	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
 	// The page versions a reader agreed to at sign-up, which the storefront's
 	// connection is what records.

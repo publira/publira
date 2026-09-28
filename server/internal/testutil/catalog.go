@@ -105,10 +105,11 @@ type EpisodeSeed struct {
 
 // Page is a seeded page together with the version the seed created.
 type Page struct {
-	ID        uuid.UUID
-	VersionID uuid.UUID
-	Slug      string
-	Title     string
+	ID            uuid.UUID
+	TranslationID uuid.UUID
+	VersionID     uuid.UUID
+	Slug          string
+	Title         string
 }
 
 // PageSeed describes one page and its single version. The zero value is a draft
@@ -647,9 +648,11 @@ func (e *PostgresEnv) SeedPurchase(t *testing.T, tenantID, userID, episodeID uui
 	}
 }
 
-// SeedPage inserts a page and one version of it. A published seed also points
-// pages.published_version_id at that version, which is the join the public page
-// queries rely on; a draft leaves it null the way an unpublished page is stored.
+// SeedPage inserts a page, its translation in the tenant's default locale, and
+// one version of that translation. A published seed also points the
+// translation's published_version_id at that version, which is the join the
+// public page queries rely on; a draft leaves it null the way an unpublished
+// page is stored.
 func (e *PostgresEnv) SeedPage(t *testing.T, tenantID uuid.UUID, seed PageSeed) Page {
 	t.Helper()
 	e.requireDB(t)
@@ -657,6 +660,7 @@ func (e *PostgresEnv) SeedPage(t *testing.T, tenantID uuid.UUID, seed PageSeed) 
 	slug := normalizeSeedSlug(defaultIfEmpty(seed.Slug, "page"))
 	title := defaultIfEmpty(seed.Title, "Page")
 	pageID := uuid.Must(uuid.NewV7())
+	translationID := uuid.Must(uuid.NewV7())
 	versionID := uuid.Must(uuid.NewV7())
 
 	status := "draft"
@@ -670,28 +674,36 @@ func (e *PostgresEnv) SeedPage(t *testing.T, tenantID uuid.UUID, seed PageSeed) 
 	defer cancel()
 
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO pages (id, tenant_id, slug, title, display_in_footer)
-		VALUES ($1, $2, $3, $4, $5)
-	`, pageID, tenantID, slug, title, seed.DisplayInFooter); err != nil {
+		INSERT INTO pages (id, tenant_id, slug, display_in_footer)
+		VALUES ($1, $2, $3, $4)
+	`, pageID, tenantID, slug, seed.DisplayInFooter); err != nil {
 		t.Fatalf("insert page %s: %v", slug, err)
 	}
 	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+		SELECT $1, $2, t.id, t.default_locale, $4
+		FROM tenants t
+		WHERE t.id = $3
+	`, translationID, pageID, tenantID, title); err != nil {
+		t.Fatalf("insert page_translations for %s: %v", slug, err)
+	}
+	if _, err := e.DB.ExecContext(ctx, `
 		INSERT INTO page_versions (
-			id, tenant_id, page_id, version_number, content_markdown, status, published_at
+			id, tenant_id, page_id, translation_id, version_number, content_markdown, status, published_at
 		)
-		VALUES ($1, $2, $3, 1, $4, $5, $6)
-	`, versionID, tenantID, pageID, seed.ContentMarkdown, status, publishedAt); err != nil {
+		VALUES ($1, $2, $3, $4, 1, $5, $6, $7)
+	`, versionID, tenantID, pageID, translationID, seed.ContentMarkdown, status, publishedAt); err != nil {
 		t.Fatalf("insert page_versions for %s: %v", slug, err)
 	}
 	if seed.Published {
 		if _, err := e.DB.ExecContext(ctx,
-			"UPDATE pages SET published_version_id = $1 WHERE id = $2", versionID, pageID,
+			"UPDATE page_translations SET published_version_id = $1 WHERE id = $2", versionID, translationID,
 		); err != nil {
 			t.Fatalf("point page %s at its published version: %v", slug, err)
 		}
 	}
 
-	return Page{ID: pageID, VersionID: versionID, Slug: slug, Title: title}
+	return Page{ID: pageID, TranslationID: translationID, VersionID: versionID, Slug: slug, Title: title}
 }
 
 // normalizeSeedSlug stores a slug the way the admin API does, so a seeded page

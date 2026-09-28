@@ -29,8 +29,13 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedPagesForTenant)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at"}).
-			AddRow(pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now))
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "slug", "display_in_footer", "created_at", "updated_at",
+			"id", "page_id", "tenant_id", "locale", "title", "published_version_id", "created_at", "updated_at",
+		}).AddRow(
+			pageID, tenantID, "/privacy", true, now, now,
+			uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Privacy Policy", versionID, now, now,
+		))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
@@ -95,15 +100,18 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	versionID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 
+	// The translation was retitled after the page itself last changed.
+	retitledAt := now.Add(time.Hour)
+
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// Lookup normalizes client slug "privacy" → "/privacy" to match admin storage.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 		WithArgs(tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
+			"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
 			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
 		}).AddRow(
-			pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now,
+			pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now, retitledAt,
 			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now,
 		))
 
@@ -120,6 +128,9 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	}
 	if resp.Msg.Version == nil || resp.Msg.Version.ContentMarkdown != "# Privacy" {
 		t.Fatalf("version = %+v, want markdown", resp.Msg.Version)
+	}
+	if want := retitledAt.Format("2006-01-02T15:04:05Z07:00"); resp.Msg.Page.UpdatedAt != want {
+		t.Fatalf("updated_at = %q, want the translation's %q", resp.Msg.Page.UpdatedAt, want)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -149,7 +160,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
 			WithArgs(tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
+				"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
 				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
 			}))
 

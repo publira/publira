@@ -45,26 +45,42 @@ SELECT
     'en'
 FROM tenant_seed ts;
 
-INSERT INTO pages (id, tenant_id, slug, title)
-SELECT seed.id, t.id, seed.slug, seed.title
+INSERT INTO pages (id, tenant_id, slug)
+SELECT seed.id, t.id, seed.slug
 FROM (
     VALUES
         (
             '018f0ff0-0002-7000-8000-000000000001'::uuid,
-            '/terms',
-            'Terms of service'
+            '/terms'
         ),
         (
             '018f0ff0-0002-7000-8000-000000000002'::uuid,
-            '/privacy',
+            '/privacy'
+        )
+) AS seed (id, slug)
+JOIN tenants t ON t.public_id = 'CnstTNNTAAA1';
+
+INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+SELECT seed.id, seed.page_id, t.id, t.default_locale, seed.title
+FROM (
+    VALUES
+        (
+            '018f0ff0-0004-7000-8000-000000000001'::uuid,
+            '018f0ff0-0002-7000-8000-000000000001'::uuid,
+            'Terms of service'
+        ),
+        (
+            '018f0ff0-0004-7000-8000-000000000002'::uuid,
+            '018f0ff0-0002-7000-8000-000000000002'::uuid,
             'Privacy policy'
         )
-) AS seed (id, slug, title)
+) AS seed (id, page_id, title)
 JOIN tenants t ON t.public_id = 'CnstTNNTAAA1';
 
 INSERT INTO page_versions (
     id,
     page_id,
+    translation_id,
     tenant_id,
     version_number,
     content_markdown,
@@ -73,7 +89,8 @@ INSERT INTO page_versions (
 )
 SELECT
     seed.id,
-    seed.page_id,
+    pt.page_id,
+    pt.id,
     t.id,
     seed.version_number,
     seed.content_markdown,
@@ -83,39 +100,40 @@ FROM (
     VALUES
         (
             '018f0ff0-0003-7000-8000-000000000001'::uuid,
-            '018f0ff0-0002-7000-8000-000000000001'::uuid,
+            '018f0ff0-0004-7000-8000-000000000001'::uuid,
             1,
             E'## Terms\n\nThe first terms of service.'
         ),
         (
             '018f0ff0-0003-7000-8000-000000000002'::uuid,
-            '018f0ff0-0002-7000-8000-000000000001'::uuid,
+            '018f0ff0-0004-7000-8000-000000000001'::uuid,
             2,
             E'## Terms\n\nThe revised terms of service.'
         ),
         (
             '018f0ff0-0003-7000-8000-000000000003'::uuid,
-            '018f0ff0-0002-7000-8000-000000000002'::uuid,
+            '018f0ff0-0004-7000-8000-000000000002'::uuid,
             1,
             E'## Privacy\n\nThe privacy policy.'
         )
-) AS seed (id, page_id, version_number, content_markdown)
-JOIN tenants t ON t.public_id = 'CnstTNNTAAA1';
+) AS seed (id, translation_id, version_number, content_markdown)
+JOIN page_translations pt ON pt.id = seed.translation_id
+JOIN tenants t ON t.id = pt.tenant_id;
 
-UPDATE pages p
+UPDATE page_translations pt
 SET published_version_id = seed.version_id
 FROM (
     VALUES
         (
-            '018f0ff0-0002-7000-8000-000000000001'::uuid,
+            '018f0ff0-0004-7000-8000-000000000001'::uuid,
             '018f0ff0-0003-7000-8000-000000000002'::uuid
         ),
         (
-            '018f0ff0-0002-7000-8000-000000000002'::uuid,
+            '018f0ff0-0004-7000-8000-000000000002'::uuid,
             '018f0ff0-0003-7000-8000-000000000003'::uuid
         )
-) AS seed (page_id, version_id)
-WHERE p.id = seed.page_id;
+) AS seed (translation_id, version_id)
+WHERE pt.id = seed.translation_id;
 
 INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
 SELECT
@@ -144,17 +162,26 @@ VALUES (
     'en'
 );
 
-INSERT INTO pages (id, tenant_id, slug, title)
+INSERT INTO pages (id, tenant_id, slug)
 VALUES (
     '018f0ff0-0002-7000-8000-000000000003'::uuid,
     '018f0ff0-0001-7000-8000-000000000002'::uuid,
-    '/legal',
+    '/legal'
+);
+
+INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+VALUES (
+    '018f0ff0-0004-7000-8000-000000000003'::uuid,
+    '018f0ff0-0002-7000-8000-000000000003'::uuid,
+    '018f0ff0-0001-7000-8000-000000000002'::uuid,
+    'en',
     'Terms and privacy'
 );
 
 INSERT INTO page_versions (
     id,
     page_id,
+    translation_id,
     tenant_id,
     version_number,
     content_markdown,
@@ -164,6 +191,7 @@ INSERT INTO page_versions (
 VALUES (
     '018f0ff0-0003-7000-8000-000000000004'::uuid,
     '018f0ff0-0002-7000-8000-000000000003'::uuid,
+    '018f0ff0-0004-7000-8000-000000000003'::uuid,
     '018f0ff0-0001-7000-8000-000000000002'::uuid,
     1,
     E'## Terms and privacy\n\nThe terms of service and the privacy policy.',
@@ -171,9 +199,9 @@ VALUES (
     NOW()
 );
 
-UPDATE pages
+UPDATE page_translations
 SET published_version_id = '018f0ff0-0003-7000-8000-000000000004'::uuid
-WHERE id = '018f0ff0-0002-7000-8000-000000000003'::uuid;
+WHERE id = '018f0ff0-0004-7000-8000-000000000003'::uuid;
 
 INSERT INTO tenant_config (tenant_id, terms_page_id, privacy_page_id)
 VALUES (

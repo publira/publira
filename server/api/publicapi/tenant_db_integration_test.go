@@ -162,7 +162,7 @@ func TestDBGetTenantReportsItsPublishedLegalPages(t *testing.T) {
 		t.Fatalf("tenant B legal pages = %v / %v, want none", other.TermsPage, other.PrivacyPage)
 	}
 
-	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE pages SET published_version_id = NULL WHERE id = $1", terms.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE page_translations SET published_version_id = NULL WHERE id = $1", terms.TranslationID); err != nil {
 		t.Fatalf("unpublish terms: %v", err)
 	}
 	got = getDBTenant(t, env, first)

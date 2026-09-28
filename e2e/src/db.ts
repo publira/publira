@@ -273,9 +273,9 @@ export const deleteCreatorRolesByNames = (names: readonly string[]): void => {
 /**
  * Remove pages created by admin published-page tests.
  *
- * `page_versions` cascade from the page, and `pages.published_version_id`
- * is `ON DELETE SET NULL` against a row that is going away with it, so one
- * delete clears the whole page.
+ * `page_translations` and `page_versions` cascade from the page, and
+ * `page_translations.published_version_id` is `ON DELETE SET NULL` against a
+ * row that is going away with it, so one delete clears the whole page.
  */
 export const deletePagesByIds = (ids: readonly string[]): void => {
   const quoted: string[] = [];

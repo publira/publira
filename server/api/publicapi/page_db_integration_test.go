@@ -13,8 +13,8 @@ import (
 )
 
 // Static pages are published through a version row rather than a flag, so what
-// the storefront may serve is decided by the join between pages and
-// page_versions. Only a real database exercises that join.
+// the storefront may serve is decided by the join between pages, their
+// translations, and page_versions. Only a real database exercises that join.
 
 func TestDBListPublishedPagesReturnsOnlyPublishedFooterPages(t *testing.T) {
 	env := newPublicDBEnv(t)
@@ -161,5 +161,47 @@ func TestDBGetPublishedPageHidesPagesThatAreNotPublishedYet(t *testing.T) {
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetPublishedPage %q code = %v, want not_found (err=%v)", slug, connect.CodeOf(err), err)
 		}
+	}
+}
+
+// A tenant that moves to a default locale none of a page's translations is in
+// keeps serving the page, in the translation it already had.
+func TestDBPublishedPagesSurviveADefaultLocaleChange(t *testing.T) {
+	env := newPublicDBEnv(t)
+	first, _ := env.seedTwoTenants(t)
+
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{
+		Slug:            "privacy",
+		Title:           "Privacy Policy",
+		ContentMarkdown: "# Privacy",
+		Published:       true,
+		DisplayInFooter: true,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, first.ID); err != nil {
+		t.Fatalf("change default locale: %v", err)
+	}
+
+	list, err := env.pagesClient().ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+		Tenant: tenantContext(first),
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedPages: %v", err)
+	}
+	if len(list.Msg.Pages) != 1 || list.Msg.Pages[0].Title != "Privacy Policy" {
+		t.Fatalf("pages = %v, want the privacy policy", list.Msg.Pages)
+	}
+
+	page, err := env.pagesClient().GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		Tenant: tenantContext(first),
+		Slug:   "privacy",
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedPage: %v", err)
+	}
+	if page.Msg.Version.GetContentMarkdown() != "# Privacy" {
+		t.Fatalf("content = %q, want # Privacy", page.Msg.Version.GetContentMarkdown())
 	}
 }

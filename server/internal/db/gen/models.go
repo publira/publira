@@ -462,12 +462,21 @@ type OutboxEvent struct {
 }
 
 type Page struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Slug            string    `json:"slug"`
+	DisplayInFooter bool      `json:"display_in_footer"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type PageTranslation struct {
 	ID                 uuid.UUID     `json:"id"`
+	PageID             uuid.UUID     `json:"page_id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
-	Slug               string        `json:"slug"`
+	Locale             string        `json:"locale"`
 	Title              string        `json:"title"`
 	PublishedVersionID uuid.NullUUID `json:"published_version_id"`
-	DisplayInFooter    bool          `json:"display_in_footer"`
 	CreatedAt          time.Time     `json:"created_at"`
 	UpdatedAt          time.Time     `json:"updated_at"`
 }
@@ -483,6 +492,7 @@ type PageVersion struct {
 	CreatedAt       time.Time     `json:"created_at"`
 	PublishedAt     sql.NullTime  `json:"published_at"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
+	TranslationID   uuid.UUID     `json:"translation_id"`
 }
 
 type PlatformAuditLog struct {

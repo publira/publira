@@ -72,7 +72,7 @@ func (s *adminServer) GetTenantLegalPages(
 // up.
 func (s *adminServer) resolveLegalPage(
 	ctx context.Context,
-	tenantID uuid.UUID,
+	tenant dbmodels.Tenant,
 	raw string,
 	current uuid.NullUUID,
 	field string,
@@ -87,18 +87,19 @@ func (s *adminServer) resolveLegalPage(
 	}
 	page, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
 		ID:       pageID,
-		TenantID: tenantID,
+		TenantID: tenant.ID,
+		Locale:   tenant.DefaultLocale,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("page not found"), field)
 		}
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to get page for tenant legal pages", err, "tenant_id", tenantID.String(), "page_id", pageID.String())
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to get page for tenant legal pages", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
-	if !page.PublishedVersionID.Valid && (!current.Valid || current.UUID != page.ID) {
+	if !page.PageTranslation.PublishedVersionID.Valid && (!current.Valid || current.UUID != page.Page.ID) {
 		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("page is not published"), field)
 	}
-	return uuid.NullUUID{UUID: page.ID, Valid: true}, nil
+	return uuid.NullUUID{UUID: page.Page.ID, Valid: true}, nil
 }
 
 func (s *adminServer) UpdateTenantLegalPages(
@@ -117,11 +118,11 @@ func (s *adminServer) UpdateTenantLegalPages(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
-	termsPageID, err := s.resolveLegalPage(ctx, tenant.ID, req.Msg.GetTermsPageId(), current.TermsPageID, "terms_page_id")
+	termsPageID, err := s.resolveLegalPage(ctx, tenant, req.Msg.GetTermsPageId(), current.TermsPageID, "terms_page_id")
 	if err != nil {
 		return nil, err
 	}
-	privacyPageID, err := s.resolveLegalPage(ctx, tenant.ID, req.Msg.GetPrivacyPageId(), current.PrivacyPageID, "privacy_page_id")
+	privacyPageID, err := s.resolveLegalPage(ctx, tenant, req.Msg.GetPrivacyPageId(), current.PrivacyPageID, "privacy_page_id")
 	if err != nil {
 		return nil, err
 	}

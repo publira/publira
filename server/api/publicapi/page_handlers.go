@@ -14,17 +14,21 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
-func pageFromPublishedModel(p dbmodels.Page) *publirattypesv1.Page {
+func pageFromPublishedModel(p dbmodels.Page, t dbmodels.PageTranslation) *publirattypesv1.Page {
+	updatedAt := p.UpdatedAt
+	if t.UpdatedAt.After(updatedAt) {
+		updatedAt = t.UpdatedAt
+	}
 	item := &publirattypesv1.Page{
 		Id:              p.ID.String(),
 		Slug:            p.Slug,
-		Title:           p.Title,
+		Title:           t.Title,
 		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:       p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:       updatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		DisplayInFooter: p.DisplayInFooter,
 	}
-	if p.PublishedVersionID.Valid {
-		item.PublishedVersionId = p.PublishedVersionID.UUID.String()
+	if t.PublishedVersionID.Valid {
+		item.PublishedVersionId = t.PublishedVersionID.UUID.String()
 	}
 	return item
 }
@@ -66,7 +70,7 @@ func (s *apiServer) ListPublishedPages(
 
 	pages := make([]*publirattypesv1.Page, 0, len(rows))
 	for _, row := range rows {
-		pages = append(pages, pageFromPublishedModel(row))
+		pages = append(pages, pageFromPublishedModel(row.Page, row.PageTranslation))
 	}
 
 	return connect.NewResponse(&publirav1.ListPublishedPagesResponse{Pages: pages}), nil
@@ -142,14 +146,16 @@ func (s *apiServer) GetPublishedPage(
 
 	return connect.NewResponse(&publirav1.GetPublishedPageResponse{
 		Page: pageFromPublishedModel(dbmodels.Page{
-			ID:                 row.ID,
-			TenantID:           row.TenantID,
-			Slug:               row.Slug,
+			ID:              row.ID,
+			TenantID:        row.TenantID,
+			Slug:            row.Slug,
+			DisplayInFooter: row.DisplayInFooter,
+			CreatedAt:       row.CreatedAt,
+			UpdatedAt:       row.UpdatedAt,
+		}, dbmodels.PageTranslation{
 			Title:              row.Title,
 			PublishedVersionID: row.PublishedVersionID,
-			DisplayInFooter:    row.DisplayInFooter,
-			CreatedAt:          row.CreatedAt,
-			UpdatedAt:          row.UpdatedAt,
+			UpdatedAt:          row.TranslationUpdatedAt,
 		}),
 		Version: pageVersionFromPublishedRow(row),
 	}), nil

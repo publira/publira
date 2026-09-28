@@ -84,21 +84,25 @@ const REPUBLISHED_TERMS_VERSION_ID = "018f0ff0-0003-7000-8000-000000000005";
 const republishTermsPage = (): void => {
   runSql(`
     INSERT INTO page_versions (
-        id, page_id, tenant_id, version_number, content_markdown, status,
-        published_at
+        id, page_id, translation_id, tenant_id, version_number,
+        content_markdown, status, published_at
     )
     SELECT
-        '${REPUBLISHED_TERMS_VERSION_ID}', p.id, p.tenant_id, 3,
+        '${REPUBLISHED_TERMS_VERSION_ID}', p.id, pt.id, p.tenant_id, 3,
         'The terms of service, revised again.', 'published', NOW()
     FROM pages p
     JOIN tenants t ON t.id = p.tenant_id
+    JOIN page_translations pt ON pt.page_id = p.id
+      AND pt.locale = t.default_locale
     WHERE t.public_id = '${SIGNUP_CONSENT_TENANT}'
       AND p.slug = '${SIGNUP_CONSENT_TERMS_PAGE.path}';
 
-    UPDATE pages p
+    UPDATE page_translations pt
     SET published_version_id = '${REPUBLISHED_TERMS_VERSION_ID}'
-    FROM tenants t
-    WHERE t.id = p.tenant_id
+    FROM pages p
+    JOIN tenants t ON t.id = p.tenant_id
+    WHERE pt.page_id = p.id
+      AND pt.locale = t.default_locale
       AND t.public_id = '${SIGNUP_CONSENT_TENANT}'
       AND p.slug = '${SIGNUP_CONSENT_TERMS_PAGE.path}';
   `);
