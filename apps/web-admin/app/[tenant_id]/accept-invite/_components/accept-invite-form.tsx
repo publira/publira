@@ -44,7 +44,7 @@ export const AcceptInviteForm = ({
         </Suspense>
 
         <Field>
-          <FieldLabel htmlFor="password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.auth.fields.password_label" />
             </Suspense>
@@ -52,7 +52,6 @@ export const AcceptInviteForm = ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               required
@@ -62,7 +61,7 @@ export const AcceptInviteForm = ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="confirm_password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
               <Message message="admin.auth.accept_invite.password_confirm_label" />
             </Suspense>
@@ -70,7 +69,6 @@ export const AcceptInviteForm = ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="confirm_password"
               name="confirm_password"
               placeholder="••••••••"
               required

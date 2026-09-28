@@ -12,7 +12,7 @@ import {
 } from "@publira/ui-components/combobox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { useId, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
@@ -57,91 +57,85 @@ const EpisodeCreditRow = ({
   position: number;
   onChange: (row: CreditEditorRow) => void;
   onRemove: () => void;
-}) => {
-  const creatorId = useId();
-  const roleId = useId();
-  return (
-    <li className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3">
-      <Field className="min-w-40 flex-1">
-        <FieldLabel className="sr-only" htmlFor={creatorId}>
-          <ClientMessage
-            message="admin.series.form.creators_creator_field_label"
-            values={{ position: String(position) }}
-          />
-        </FieldLabel>
-        <FieldContent>
-          <Combobox
-            id={creatorId}
-            items={creators}
-            onValueChange={(nextCreatorId) =>
-              onChange({ ...row, creatorId: nextCreatorId })
-            }
-            value={row.creatorId}
-          >
-            <ComboboxInput />
-            <ComboboxPopup>
-              <ComboboxEmpty>
-                <ClientMessage message="admin.series.form.creators_no_match" />
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
-      <Field className="min-w-32 flex-1 sm:max-w-48">
-        <FieldLabel className="sr-only" htmlFor={roleId}>
-          <ClientMessage
-            message="admin.series.form.creators_role_field_label"
-            values={{ position: String(position) }}
-          />
-        </FieldLabel>
-        <FieldContent>
-          <Combobox
-            id={roleId}
-            items={roles}
-            onValueChange={(nextRoleId) =>
-              onChange({ ...row, roleId: nextRoleId })
-            }
-            value={row.roleId}
-          >
-            <ComboboxInput />
-            <ComboboxPopup>
-              <ComboboxEmpty>
-                <ClientMessage message="admin.series.form.creators_role_no_match" />
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
-      <CreditShareInput
-        onChange={(shareText) => onChange({ ...row, shareText })}
-        position={position}
-        value={row.shareText}
-      />
-      {row.source === CreatorCreditSource.EPISODE ? (
-        <span className="text-xs text-muted-foreground">
-          <ClientMessage message="admin.series.episodes.credits.episode_only" />
-        </span>
-      ) : null}
-      <Button
-        className="shrink-0"
-        onClick={onRemove}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <CloseIcon aria-hidden="true" className="size-4" />
-        <span className="sr-only">
-          <ClientMessage
-            message="admin.series.form.creators_remove"
-            values={{ position: String(position) }}
-          />
-        </span>
-      </Button>
-    </li>
-  );
-};
+}) => (
+  <li className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3">
+    <Field className="min-w-40 flex-1">
+      <FieldLabel className="sr-only">
+        <ClientMessage
+          message="admin.series.form.creators_creator_field_label"
+          values={{ position: String(position) }}
+        />
+      </FieldLabel>
+      <FieldContent>
+        <Combobox
+          items={creators}
+          onValueChange={(nextCreatorId) =>
+            onChange({ ...row, creatorId: nextCreatorId })
+          }
+          value={row.creatorId}
+        >
+          <ComboboxInput />
+          <ComboboxPopup>
+            <ComboboxEmpty>
+              <ClientMessage message="admin.series.form.creators_no_match" />
+            </ComboboxEmpty>
+            <ComboboxItems />
+          </ComboboxPopup>
+        </Combobox>
+      </FieldContent>
+    </Field>
+    <Field className="min-w-32 flex-1 sm:max-w-48">
+      <FieldLabel className="sr-only">
+        <ClientMessage
+          message="admin.series.form.creators_role_field_label"
+          values={{ position: String(position) }}
+        />
+      </FieldLabel>
+      <FieldContent>
+        <Combobox
+          items={roles}
+          onValueChange={(nextRoleId) =>
+            onChange({ ...row, roleId: nextRoleId })
+          }
+          value={row.roleId}
+        >
+          <ComboboxInput />
+          <ComboboxPopup>
+            <ComboboxEmpty>
+              <ClientMessage message="admin.series.form.creators_role_no_match" />
+            </ComboboxEmpty>
+            <ComboboxItems />
+          </ComboboxPopup>
+        </Combobox>
+      </FieldContent>
+    </Field>
+    <CreditShareInput
+      onChange={(shareText) => onChange({ ...row, shareText })}
+      position={position}
+      value={row.shareText}
+    />
+    {row.source === CreatorCreditSource.EPISODE ? (
+      <span className="text-xs text-muted-foreground">
+        <ClientMessage message="admin.series.episodes.credits.episode_only" />
+      </span>
+    ) : null}
+    <Button
+      className="shrink-0"
+      onClick={onRemove}
+      size="icon"
+      type="button"
+      variant="outline"
+    >
+      <CloseIcon aria-hidden="true" className="size-4" />
+      <span className="sr-only">
+        <ClientMessage
+          message="admin.series.form.creators_remove"
+          values={{ position: String(position) }}
+        />
+      </span>
+    </Button>
+  </li>
+);
 
 /**
  * The credits the episode is baked with. The rows are this field's own state,

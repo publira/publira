@@ -105,9 +105,16 @@ const testButton = () =>
   });
 
 const overrideCheckbox = () =>
-  screen.getByRole<HTMLInputElement>("checkbox", {
-    name: /Enable the override/u,
-  });
+  screen.getByRole("checkbox", { name: "Use this tenant's own SMTP server" });
+
+/**
+ * Whether a control refuses input, whichever way it says so. A native control
+ * its `<fieldset>` closes keeps `disabled` false and matches `:disabled`, and
+ * the override checkbox is a Base UI one that says so with `aria-disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true";
 
 const settingsControls = () => [
   overrideCheckbox(),
@@ -157,17 +164,15 @@ describe("TenantEmailSettingsForm", () => {
     const save = Promise.withResolvers<TenantEmailSettingsFormState>();
     await renderForm(storedSettings(), { saveAction: () => save.promise });
 
-    // A control its `<fieldset>` closes keeps `disabled` false and matches
-    // `:disabled` instead.
     for (const control of settingsControls()) {
-      expect(control.matches(":disabled")).toBe(false);
+      expect(isClosed(control)).toBe(false);
     }
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       for (const control of settingsControls()) {
-        expect(control.matches(":disabled")).toBe(true);
+        expect(isClosed(control)).toBe(true);
       }
     });
 

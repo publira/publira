@@ -14,7 +14,7 @@ import {
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -145,9 +145,7 @@ interface CreatorCreditRowProps {
  * that role. Both halves stay editable, so correcting a credit is changing the
  * row rather than deleting it and writing it again.
  *
- * A component of its own because each picker needs an id for its label to
- * point at, and `useId` cannot be called from inside the list's `map`. Neither
- * picker carries a visible label — the value in the box is the answer, and the
+ * Neither picker carries a visible label — the value in the box is the answer, and the
  * placeholder says what is being asked — so the accessible name comes from a
  * visually hidden one naming the row's position.
  *
@@ -170,8 +168,6 @@ const CreatorCreditRow = ({
   shareText,
 }: CreatorCreditRowProps) => {
   const t = useClientMessages();
-  const creatorComboboxId = useId();
-  const roleComboboxId = useId();
   // The author the row credits, or the position its unfilled picker is named by.
   const label =
     creatorItems.find((item) => item.value === creatorId)?.label ??
@@ -195,7 +191,7 @@ const CreatorCreditRow = ({
         />
       </SortableItemHandle>
       <Field className="min-w-40 flex-1">
-        <FieldLabel className="sr-only" htmlFor={creatorComboboxId}>
+        <FieldLabel className="sr-only">
           <ClientMessage
             message="admin.series.form.creators_creator_field_label"
             values={{ position: String(position) }}
@@ -203,7 +199,6 @@ const CreatorCreditRow = ({
         </FieldLabel>
         <FieldContent>
           <Combobox
-            id={creatorComboboxId}
             items={creatorItems}
             onValueChange={onCreatorChange}
             value={creatorId}
@@ -221,7 +216,7 @@ const CreatorCreditRow = ({
         </FieldContent>
       </Field>
       <Field className="min-w-32 flex-1 sm:max-w-48">
-        <FieldLabel className="sr-only" htmlFor={roleComboboxId}>
+        <FieldLabel className="sr-only">
           <ClientMessage
             message="admin.series.form.creators_role_field_label"
             values={{ position: String(position) }}
@@ -229,7 +224,6 @@ const CreatorCreditRow = ({
         </FieldLabel>
         <FieldContent>
           <Combobox
-            id={roleComboboxId}
             items={roleItems}
             onValueChange={onRoleChange}
             value={roleId}

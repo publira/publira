@@ -4,7 +4,7 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
 import type { ReactNode } from "react";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
 import { isReadingDirectionValue } from "#lib/reading-layout";
@@ -62,9 +62,6 @@ export const ReadingDirectionField = ({
   seriesDirection?: ReadingDirectionValue;
 }) => {
   const [value, setValue] = useState(() => initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (next === "" || isReadingDirectionValue(next)) {
@@ -74,10 +71,9 @@ export const ReadingDirectionField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <ReadingDirectionSelect
-          id={selectId}
           onValueChange={handleValueChange}
           seriesDirection={seriesDirection}
           value={value}
@@ -143,7 +139,6 @@ export const SpreadStartSourceField = ({
   seriesSpreadStartPage?: number;
 }) => {
   const [value, setValue] = useState(() => initialValue);
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (isSpreadStartSource(next)) {
@@ -154,11 +149,10 @@ export const SpreadStartSourceField = ({
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+        <FieldLabel>{label}</FieldLabel>
         <FieldContent>
           <SpreadStartSourceSelect
             hasNoPages={hasNoPages}
-            id={selectId}
             onValueChange={handleValueChange}
             seriesSpreadStartPage={seriesSpreadStartPage}
             value={value}

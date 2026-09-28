@@ -120,7 +120,7 @@ const ConfirmPasswordPageContent = async ({
         <input name="token" type="hidden" value={token} />
 
         <Field>
-          <FieldLabel htmlFor="password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
               <Message message="admin.auth.confirm_password.password_label" />
             </Suspense>
@@ -128,7 +128,6 @@ const ConfirmPasswordPageContent = async ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               required
@@ -138,7 +137,7 @@ const ConfirmPasswordPageContent = async ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="confirm_password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
               <Message message="admin.auth.confirm_password.confirm_password_label" />
             </Suspense>
@@ -146,7 +145,6 @@ const ConfirmPasswordPageContent = async ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="confirm_password"
               name="confirm_password"
               placeholder="••••••••"
               required

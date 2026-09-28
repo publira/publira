@@ -57,7 +57,6 @@ export const SeriesEyeCatchForm = ({
         do not outlive the save they were sent with. */}
     <EyeCatchFormField
       eyeCatchImageUpdatedAt={series.eyeCatchImageUpdatedAt}
-      fileInputId="series_eye_catch_image"
       key={series.eyeCatchImageUpdatedAt}
       variants={series.eyeCatchImageVariants}
     />

@@ -84,7 +84,7 @@ const LoginPageContent = async ({
           <input name="next" type="hidden" value={nextPath} />
 
           <Field>
-            <FieldLabel htmlFor="email" required>
+            <FieldLabel required>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.auth.fields.email_label" />
               </Suspense>
@@ -93,7 +93,6 @@ const LoginPageContent = async ({
               <Input
                 autoComplete="email"
                 defaultValue={defaultEmail}
-                id="email"
                 name="email"
                 placeholder="admin@example.com"
                 required
@@ -103,7 +102,7 @@ const LoginPageContent = async ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="password" required>
+            <FieldLabel required>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.auth.fields.password_label" />
               </Suspense>
@@ -111,7 +110,6 @@ const LoginPageContent = async ({
             <FieldContent>
               <Input
                 autoComplete="current-password"
-                id="password"
                 name="password"
                 placeholder="••••••••"
                 required

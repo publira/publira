@@ -2,7 +2,7 @@
 
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useClientMessages } from "#components/client-message";
@@ -29,9 +29,6 @@ export const SeriesPurchaseAvailabilityField = ({
 }) => {
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   let followTenant = t("admin.series.form.purchase_availability_follow_tenant");
   if (tenantPurchaseAvailability === "all") {
@@ -59,10 +56,9 @@ export const SeriesPurchaseAvailabilityField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <Select
-          id={selectId}
           items={[
             { label: followTenant, value: "" },
             { label: t("admin.series.availability.all"), value: "all" },

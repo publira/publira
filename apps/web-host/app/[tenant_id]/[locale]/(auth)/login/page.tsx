@@ -84,7 +84,7 @@ const LoginForm = ({
         <input name="returnTo" type="hidden" value={returnToPath} />
 
         <Field>
-          <FieldLabel htmlFor="email" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="host.auth.fields.email_label" />
             </Suspense>
@@ -92,7 +92,6 @@ const LoginForm = ({
           <FieldContent>
             <Input
               autoComplete="email"
-              id="email"
               name="email"
               placeholder="your@email.com"
               required
@@ -102,7 +101,7 @@ const LoginForm = ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="password" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="host.auth.fields.password_label" />
             </Suspense>
@@ -110,7 +109,6 @@ const LoginForm = ({
           <FieldContent>
             <Input
               autoComplete="current-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               required

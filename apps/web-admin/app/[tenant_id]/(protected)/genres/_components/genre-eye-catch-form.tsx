@@ -31,7 +31,6 @@ export const GenreEyeCatchForm = ({
         do not outlive the save they were sent with. */}
     <EyeCatchFormField
       eyeCatchImageUpdatedAt={genre.eyeCatchImageUpdatedAt}
-      fileInputId="genre_eye_catch_image"
       key={genre.eyeCatchImageUpdatedAt}
       variants={genre.eyeCatchImageVariants}
     />

@@ -10,7 +10,6 @@ import type { EyeCatchVariantItem } from "./types";
 interface EyeCatchFormFieldProps {
   /** When the saved eye-catch last changed, which the Action compares against. */
   eyeCatchImageUpdatedAt: string;
-  fileInputId: string;
   variants: EyeCatchVariantItem[];
 }
 
@@ -22,7 +21,6 @@ interface EyeCatchFormFieldProps {
  */
 export const EyeCatchFormField = ({
   eyeCatchImageUpdatedAt,
-  fileInputId,
   variants,
 }: EyeCatchFormFieldProps) => {
   const { pending } = useFormStatus();
@@ -75,7 +73,6 @@ export const EyeCatchFormField = ({
       <EyeCatchImageField
         clearEyeCatchImage={clearEyeCatchImage}
         disabled={pending}
-        fileInputId={fileInputId}
         fileInputRef={fileInputRef}
         hasVariants={variants.length > 0}
         localPreviewUrl={localPreviewUrl}

@@ -7,19 +7,13 @@ import {
 } from "@publira/ui-components/action-form";
 import type { ActionFormControlAction } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import { DialogTrigger } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  createContext,
-  use,
-  useActionState,
-  useId,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, use, useActionState, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -39,7 +33,6 @@ type SavedSettingsState = NonNullable<TenantEmailSettingsFormState>;
 
 interface SmtpOverrideContextValue {
   canEdit: boolean;
-  checkboxId: string;
   /** Whether the SMTP fields can be edited: the override is on for an admin. */
   interactive: boolean;
   setEnabled: (enabled: boolean) => void;
@@ -72,17 +65,15 @@ export const SmtpOverride = ({
   children: ReactNode;
   initialEnabled: boolean;
 }) => {
-  const checkboxId = useId();
   const [enabled, setEnabled] = useState(initialEnabled);
   const context = useMemo(
     () => ({
       canEdit,
-      checkboxId,
       enabled,
       interactive: canEdit && enabled,
       setEnabled,
     }),
-    [canEdit, checkboxId, enabled]
+    [canEdit, enabled]
   );
 
   useActionFormSettled<SavedSettingsState>((settled) => {
@@ -94,28 +85,17 @@ export const SmtpOverride = ({
   return <SmtpOverrideContext value={context}>{children}</SmtpOverrideContext>;
 };
 
-/** The override field's label, pointing at the checkbox. */
-export const SmtpOverrideLabel = ({ children }: { children: ReactNode }) => {
-  const { checkboxId } = useSmtpOverride();
-
-  return <FieldLabel htmlFor={checkboxId}>{children}</FieldLabel>;
-};
-
 /** The checkbox the form posts as `smtp_override_enabled`, with `children` beside it. */
 export const SmtpOverrideCheckbox = ({ children }: { children: ReactNode }) => {
-  const { canEdit, checkboxId, enabled, setEnabled } = useSmtpOverride();
+  const { canEdit, enabled, setEnabled } = useSmtpOverride();
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
-      <input
+      <Checkbox
         checked={enabled}
         disabled={!canEdit}
-        id={checkboxId}
         name="smtp_override_enabled"
-        onChange={(event) => {
-          setEnabled(event.target.checked);
-        }}
-        type="checkbox"
+        onCheckedChange={setEnabled}
       />
       {children}
     </label>

@@ -122,10 +122,20 @@ afterEach(() => {
   action.current = () => Promise.resolve(null);
 });
 
-// A control its `<fieldset>` closes keeps `disabled` false and matches
-// `:disabled` instead.
+/**
+ * Whether a control refuses input, whichever way it says so. A native control
+ * its `<fieldset>` closes keeps `disabled` false and matches `:disabled`, and
+ * the payments checkbox is a Base UI one that says so with `aria-disabled`.
+ */
+const isClosed = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true";
+
+const paymentsCheckbox = () =>
+  screen.getByRole("checkbox", { name: "Enable payments" });
+
 const submittedControls = () => [
-  screen.getByLabelText("Enable payments"),
+  paymentsCheckbox(),
   screen.getByRole("button", { name: "Change" }),
   screen.getByLabelText(/Webhook signing secret/u),
 ];
@@ -349,11 +359,7 @@ describe("TenantPaymentSettingsForm", () => {
       />
     );
 
-    expect(
-      screen
-        .getByLabelText<HTMLInputElement>("Enable payments")
-        .matches(":disabled")
-    ).toBe(true);
+    expect(isClosed(paymentsCheckbox())).toBe(true);
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
     ).toBe(true);
@@ -503,7 +509,7 @@ describe("TenantPaymentSettingsForm", () => {
     );
 
     for (const control of submittedControls()) {
-      expect(control.matches(":disabled")).toBe(false);
+      expect(isClosed(control)).toBe(false);
     }
 
     fireEvent.change(screen.getByLabelText(/Webhook signing secret/u), {
@@ -513,7 +519,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     await waitFor(() => {
       for (const control of submittedControls()) {
-        expect(control.matches(":disabled")).toBe(true);
+        expect(isClosed(control)).toBe(true);
       }
     });
   });

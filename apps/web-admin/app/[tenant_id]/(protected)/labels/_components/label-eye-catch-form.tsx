@@ -36,7 +36,6 @@ export const LabelEyeCatchForm = ({
         do not outlive the save they were sent with. */}
     <EyeCatchFormField
       eyeCatchImageUpdatedAt={initialLabel.eyeCatchImageUpdatedAt}
-      fileInputId="label_eye_catch_image"
       key={initialLabel.eyeCatchImageUpdatedAt}
       variants={initialLabel.eyeCatchImageVariants}
     />

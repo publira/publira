@@ -41,9 +41,13 @@ export const Field = ({ className, ...props }: FieldProps) => {
   );
 };
 
+/**
+ * `htmlFor` is omitted because Base UI renders a control's explicit `id` only
+ * after hydration, so a label pointing at it is unassociated in the server HTML.
+ */
 export type FieldLabelProps = Omit<
   BaseField.Label.Props,
-  "nativeLabel" | "render"
+  "htmlFor" | "nativeLabel" | "render"
 > & {
   required?: boolean;
 };

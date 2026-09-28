@@ -3,7 +3,7 @@
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useClientMessages } from "#components/client-message";
@@ -40,9 +40,6 @@ export const SeriesReadingDirectionField = ({
   label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (isReadingDirectionValue(next)) {
@@ -52,10 +49,9 @@ export const SeriesReadingDirectionField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <ReadingDirectionSelect
-          id={selectId}
           onValueChange={handleValueChange}
           value={value}
         />

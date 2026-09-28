@@ -46,39 +46,44 @@ vi.mock("#components/client-message", () => ({
 
 // The real combobox drops a floating popup jsdom cannot drive, and what is
 // under test is which options this field offers and what it does with the one
-// that is chosen — so it stands in as a native control keeping the accessible
-// name its label gives it. The blank entry is what "nothing picked yet" is.
-vi.mock("@publira/ui-components/combobox", () => ({
-  Combobox: ({
-    id,
-    items,
-    onValueChange,
-    value,
-  }: {
-    children: ReactNode;
-    id?: string;
-    items: { label: string; value: string }[];
-    onValueChange: (next: string) => void;
-    value: string;
-  }) => (
-    <select
-      id={id}
-      onChange={(event) => onValueChange(event.target.value)}
-      value={value}
-    >
-      <option value="">-</option>
-      {items.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
-        </option>
-      ))}
-    </select>
-  ),
-  ComboboxEmpty: () => null,
-  ComboboxInput: () => null,
-  ComboboxItems: () => null,
-  ComboboxPopup: () => null,
-}));
+// that is chosen — so it stands in as a native control, rendered through
+// `Input` so that its Field names it. The blank entry is what "nothing picked
+// yet" is.
+vi.mock("@publira/ui-components/combobox", async () => {
+  const { Input } = await import("@publira/ui-components/input");
+
+  return {
+    Combobox: ({
+      items,
+      onValueChange,
+      value,
+    }: {
+      children: ReactNode;
+      items: { label: string; value: string }[];
+      onValueChange: (next: string) => void;
+      value: string;
+    }) => (
+      <Input
+        onChange={(event) => onValueChange(event.target.value)}
+        render={
+          <select>
+            <option value="">-</option>
+            {items.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        }
+        value={value}
+      />
+    ),
+    ComboboxEmpty: () => null,
+    ComboboxInput: () => null,
+    ComboboxItems: () => null,
+    ComboboxPopup: () => null,
+  };
+});
 
 // dnd-kit measures the elements it sorts, which jsdom cannot do. Dragging is
 // covered by the e2e suite; here the provider and the handle only have to

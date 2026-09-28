@@ -106,7 +106,7 @@ const ConfirmPasswordForm = ({
         <input name="token" type="hidden" value={token} />
 
         <Field>
-          <FieldLabel htmlFor="newPassword" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="host.auth.confirm_password.password_label" />
             </Suspense>
@@ -114,7 +114,6 @@ const ConfirmPasswordForm = ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="newPassword"
               name="newPassword"
               placeholder="••••••••"
               required
@@ -124,7 +123,7 @@ const ConfirmPasswordForm = ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="confirmPassword" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
               <Message message="host.auth.confirm_password.password_confirm_label" />
             </Suspense>
@@ -132,7 +131,6 @@ const ConfirmPasswordForm = ({
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="confirmPassword"
               name="confirmPassword"
               placeholder="••••••••"
               required

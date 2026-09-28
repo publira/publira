@@ -11,7 +11,7 @@ import {
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -39,9 +39,6 @@ export const SeriesLabelField = ({
   const locale = useAdminLocale();
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
-  // Combobox renders its own input instead of a Field control, so the label
-  // needs an id to point at.
-  const comboboxId = useId();
   const items = useMemo<ComboboxItem[]>(
     () =>
       labels
@@ -54,20 +51,13 @@ export const SeriesLabelField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={comboboxId} required>
-        {label}
-      </FieldLabel>
+      <FieldLabel required>{label}</FieldLabel>
       <FieldContent>
         {labelsErrorMessage ? (
           <FormMessage variant="destructive">{labelsErrorMessage}</FormMessage>
         ) : null}
 
-        <Combobox
-          id={comboboxId}
-          items={items}
-          onValueChange={setValue}
-          value={value}
-        >
+        <Combobox items={items} onValueChange={setValue} value={value}>
           <ComboboxInput
             placeholder={t("admin.series.form.label_placeholder")}
           />
