@@ -26,16 +26,19 @@ const (
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
 	// ReasonLastTenantAdmin refuses removing or demoting the tenant's last
 	// active tenant_admin.
-	ReasonLastTenantAdmin        = "LAST_TENANT_ADMIN"
-	ReasonMfaInvalidCode         = "MFA_INVALID_CODE"
-	ReasonMfaLocked              = "MFA_LOCKED"
-	ReasonSMTPTestAuthentication = "SMTP_TEST_AUTHENTICATION"
-	ReasonSMTPTestConnection     = "SMTP_TEST_CONNECTION"
-	ReasonSMTPTestRecipient      = "SMTP_TEST_RECIPIENT"
-	ReasonSMTPTestStartTLS       = "SMTP_TEST_STARTTLS"
-	ReasonSMTPTestTLS            = "SMTP_TEST_TLS"
-	ReasonSMTPTestTimeout        = "SMTP_TEST_TIMEOUT"
-	ReasonSMTPTestUnknown        = "SMTP_TEST_UNKNOWN"
+	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"
+	ReasonMfaInvalidCode  = "MFA_INVALID_CODE"
+	ReasonMfaLocked       = "MFA_LOCKED"
+	// ReasonReaderCreditedOnEpisode refuses buying or rating an episode that
+	// credits a creator the reader's account is linked to.
+	ReasonReaderCreditedOnEpisode = "READER_CREDITED_ON_EPISODE"
+	ReasonSMTPTestAuthentication  = "SMTP_TEST_AUTHENTICATION"
+	ReasonSMTPTestConnection      = "SMTP_TEST_CONNECTION"
+	ReasonSMTPTestRecipient       = "SMTP_TEST_RECIPIENT"
+	ReasonSMTPTestStartTLS        = "SMTP_TEST_STARTTLS"
+	ReasonSMTPTestTLS             = "SMTP_TEST_TLS"
+	ReasonSMTPTestTimeout         = "SMTP_TEST_TIMEOUT"
+	ReasonSMTPTestUnknown         = "SMTP_TEST_UNKNOWN"
 	// ReasonStorageNotConfigured refuses an upload on a platform whose
 	// operator has saved no object store yet.
 	ReasonStorageNotConfigured = "STORAGE_NOT_CONFIGURED"

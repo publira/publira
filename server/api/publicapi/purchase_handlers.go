@@ -100,6 +100,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	if !soldHere {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold on this surface"))
 	}
+	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
+		return nil, err
+	}
 
 	hasPurchase, err := s.queriesFor(ctx).UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
 		TenantID:  tenant.ID,

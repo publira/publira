@@ -2926,7 +2926,9 @@ export const RecordContentViewResponseSchema: GenMessage<RecordContentViewRespon
  * `client` also names the surface the checkout is started from: CLIENT_MOBILE
  * is the app, and every other value the storefront. An episode that surface
  * may not show is not_found, as it is in the catalog, and one it shows but may
- * not sell (Episode.purchase_availability) is failed_precondition.
+ * not sell (Episode.purchase_availability) is failed_precondition. An episode
+ * that credits a creator the reader's account is linked to is
+ * permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE.
  *
  * @generated from message publira.v1.StartEpisodeCheckoutRequest
  */
@@ -3188,8 +3190,10 @@ export const ProcessPaymentWebhookResponseSchema: GenMessage<ProcessPaymentWebho
  * Signed-in readers only. An episode the app may not show is not_found; one it
  * may not sell, a free one, a tenant whose app does not sell through the
  * store, and a `store` that is not ready are failed_precondition, and an
- * episode the reader already holds is already_exists. Asking again for the
- * same episode at the same price answers the same intent.
+ * episode the reader already holds is already_exists. An episode that credits
+ * a creator the reader's account is linked to is permission_denied with the
+ * ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
+ * episode at the same price answers the same intent.
  *
  * @generated from message publira.v1.StartStorePurchaseRequest
  */
@@ -4080,6 +4084,10 @@ export const RatingService: GenService<{
    * permission_denied, matching MarkEpisodeAsRead: publication, tenant, and
    * entitlement failures share one answer so this RPC cannot be used to probe
    * for content the reader may not have.
+   *
+   * An episode that credits a creator the reader's account is linked to is
+   * permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
+   * free or not: the credit opens the body but not the rating.
    *
    * @generated from rpc publira.v1.RatingService.RateEpisode
    */

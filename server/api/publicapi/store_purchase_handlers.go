@@ -102,6 +102,9 @@ func (s *apiServer) StartStorePurchase(
 	if !soldHere {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold in the app"))
 	}
+	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
+		return nil, err
+	}
 	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
