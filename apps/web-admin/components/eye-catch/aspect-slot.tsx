@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useFormStatus } from "react-dom";
 
 import { useClientMessages } from "#components/client-message";
 import type { CropSource } from "#components/image-crop/crop";
@@ -172,6 +173,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
   const { aspect, crop, currentUrl, fileInputRef, localPreviewUrl, source } =
     useEyeCatchAspectSlot();
+  const { pending } = useFormStatus();
   const { variantType } = aspect;
   const previewUrl = localPreviewUrl || currentUrl;
   /**
@@ -192,6 +194,8 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
         "relative overflow-hidden rounded-surface border border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary disabled:pointer-events-none disabled:opacity-50",
         eyeCatchAspectClassName(variantType)
       )}
+      // Picking replaces the file an upload in flight has already taken.
+      disabled={pending}
       onClick={() => fileInputRef.current?.click()}
       type="button"
     >
@@ -221,10 +225,12 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
 /** The file picked for the ratio, posted as `aspect_image`. */
 export const EyeCatchAspectFileInput = () => {
   const { fileInputRef, onImageFileChange } = useEyeCatchAspectSlot();
+  const { pending } = useFormStatus();
 
   return (
     <Input
       accept="image/jpeg,image/png,image/webp"
+      disabled={pending}
       name="aspect_image"
       onChange={onImageFileChange}
       ref={fileInputRef}

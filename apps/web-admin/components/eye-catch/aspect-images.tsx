@@ -1,6 +1,5 @@
 import {
   ActionForm,
-  ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
 } from "@publira/ui-components/action-form";
@@ -115,52 +114,48 @@ export const EyeCatchAspectImages = ({
                   ) : null}
                 </div>
 
-                <ActionFormFieldset className="grid gap-3">
-                  <EyeCatchAspectPicker>
-                    <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
-                      <Message message="admin.eye_catch.aspect.empty" />
-                    </Suspense>
-                  </EyeCatchAspectPicker>
+                <EyeCatchAspectPicker>
+                  <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+                    <Message message="admin.eye_catch.aspect.empty" />
+                  </Suspense>
+                </EyeCatchAspectPicker>
 
-                  <p className="text-xs text-muted-foreground">
-                    <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
-                      <Message
-                        message="admin.eye_catch.aspect.minimum"
-                        values={{
-                          height: String(minHeight),
-                          width: String(minWidth),
-                        }}
-                      />
-                    </Suspense>
-                  </p>
+                <p className="text-xs text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
+                    <Message
+                      message="admin.eye_catch.aspect.minimum"
+                      values={{
+                        height: String(minHeight),
+                        width: String(minWidth),
+                      }}
+                    />
+                  </Suspense>
+                </p>
 
-                  <div className="grid gap-2">
-                    <EyeCatchAspectFileInput />
-                    <EyeCatchAspectAdjust>
+                <div className="grid gap-2">
+                  <EyeCatchAspectFileInput />
+                  <EyeCatchAspectAdjust>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                      <Message message="admin.image_crop.adjust" />
+                    </Suspense>
+                  </EyeCatchAspectAdjust>
+                  <EyeCatchAspectUpload>
+                    <ActionFormIdle>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-16" />}
+                      >
+                        <Message message="admin.eye_catch.aspect.upload" />
+                      </Suspense>
+                    </ActionFormIdle>
+                    <ActionFormPending>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
                       >
-                        <Message message="admin.image_crop.adjust" />
+                        <Message message="admin.eye_catch.aspect.uploading" />
                       </Suspense>
-                    </EyeCatchAspectAdjust>
-                    <EyeCatchAspectUpload>
-                      <ActionFormIdle>
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-16" />}
-                        >
-                          <Message message="admin.eye_catch.aspect.upload" />
-                        </Suspense>
-                      </ActionFormIdle>
-                      <ActionFormPending>
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-20" />}
-                        >
-                          <Message message="admin.eye_catch.aspect.uploading" />
-                        </Suspense>
-                      </ActionFormPending>
-                    </EyeCatchAspectUpload>
-                  </div>
-                </ActionFormFieldset>
+                    </ActionFormPending>
+                  </EyeCatchAspectUpload>
+                </div>
 
                 <EyeCatchAspectCropDialog>
                   <ImageCropDialogTitle>
