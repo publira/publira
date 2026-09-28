@@ -1,5 +1,5 @@
 # Ephemeral dependency stack for E2E (project name: publira-e2e).
-# Apps (api-server, web-host) run on the host; only data stores are containerized.
+# Apps (publira server, web-host) run on the host; only data stores are containerized.
 #
 # The exceptions are traefik, the edge in front of those host processes, and
 # the browser the screenshot projects render in.
@@ -99,8 +99,8 @@ services:
 
   # The public edge, matching what Traefik serves in the Dev Container: an
   # episode body image is `/images/episodes/{id}` on the reader's own origin,
-  # so without something joining web-host and image-server under one host and
-  # port the browser cannot reach a page at all.
+  # so without something joining web-host and publira server's image routes under
+  # one host and port the browser cannot reach a page at all.
   #
   # `network_mode: host` because every backend is a host process on loopback,
   # which a bridged container has no route to. Only the viewer performance

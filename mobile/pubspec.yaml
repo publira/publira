@@ -12,7 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # HMAC-SHA256 for the image-server page stream (see lib/api/image_cipher.dart).
+  # HMAC-SHA256 for the page stream the image routes send
+  # (see lib/api/image_cipher.dart).
   crypto: 3.0.7
   cupertino_icons: 1.0.9
   firebase_core: 4.15.0

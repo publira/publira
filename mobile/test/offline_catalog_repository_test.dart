@@ -170,7 +170,7 @@ void main() {
     await build().listSeries();
     origin.listError = _network;
 
-    // An unreachable API is not an unreachable image-server: the saved catalog
+    // A failed catalog call is not a failed cover request: the saved catalog
     // has to come back with the headers a cover request needs.
     final page = await build().listSeries();
 

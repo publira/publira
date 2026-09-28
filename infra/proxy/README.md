@@ -69,7 +69,7 @@ Highest first. A proxy with no numeric priorities reaches the same result by ord
 
 The edge is the trust boundary for W3C Trace Context. It **removes** `traceparent`, `tracestate`, and `baggage` from every inbound request, because the Go servers and the Next.js apps adopt an inbound `traceparent` as the parent span: a caller who could set it would pick the trace ID and the sampled flag, grafting spans onto someone else's trace or forcing export past the deployment's sampling ratio. With the headers gone, each backend opens a fresh root span.
 
-First-party server-to-server traffic keeps its trace context, because none of it passes through the edge: the SSR clients dial the gRPC ports directly, and the Go APIs call the Next.js revalidate endpoints over their `PUBLIRA_WEB_*_INTERNAL_URL`.
+First-party server-to-server traffic keeps its trace context, because none of it passes through the edge: the SSR clients dial the gRPC ports directly, and publira server and worker call the Next.js revalidate endpoints over their `PUBLIRA_WEB_*_INTERNAL_URL`.
 
 The edge **adds** what a backend reads back:
 

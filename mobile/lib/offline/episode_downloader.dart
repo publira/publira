@@ -10,8 +10,8 @@ import 'package:publira/offline/offline_library.dart';
 
 /// Why an episode could not be saved for offline reading.
 enum EpisodeDownloadFailureKind {
-  /// The API or image-server could not be reached or failed, so trying again
-  /// may work.
+  /// The API or the image routes could not be reached or failed, so trying
+  /// again may work.
   network,
 
   /// The API answered, but not with a body this reader may keep: the episode

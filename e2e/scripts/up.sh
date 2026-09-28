@@ -15,7 +15,7 @@ acquire_e2e_lock
 # variables of its own.
 #
 # `localhost` rather than a literal address: web-host is started with
-# HOSTNAME=localhost and Next resolves that to ::1 alone, while image-server
+# HOSTNAME=localhost and Next resolves that to ::1 alone, while publira server
 # binds every address. Only a name covers both, and it keeps working when
 # PUBLIRA_E2E_WEB_BIND_HOST moves web-host to an IPv4 address instead.
 e2e_log "writing traefik services to ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml"

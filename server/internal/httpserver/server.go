@@ -1,5 +1,5 @@
 // Package httpserver builds the http.Server used by long-lived HTTP
-// process entrypoints (API and image servers), with the shared timeout
+// process entrypoints (publira server and worker), with the shared timeout
 // and protocol policy.
 //
 // Timeouts:
@@ -16,7 +16,7 @@
 //     to 1000 entries is capped at 20 MiB uncompressed). A timeout short
 //     enough to stop a slow-body attack would fail legitimate uploads.
 //     WriteTimeout similarly covers handler work plus the response: image
-//     processing can run 15s per image, and the image servers stream
+//     processing can run 15s per image, and the image routes stream
 //     object bytes to the client. Per-route deadlines belong on the
 //     handler once those paths have explicit budgets.
 //   - ShutdownTimeout is the single deadline Serve uses after the process

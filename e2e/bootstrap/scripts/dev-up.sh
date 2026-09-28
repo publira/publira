@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 4a: start `task dev` (all Go APIs, image servers, and Next.js apps)
+# Phase 4a: start `task dev` (publira server, the worker, and the Next.js apps)
 # in its own process group so the whole tree can be torn down later.
 set -euo pipefail
 

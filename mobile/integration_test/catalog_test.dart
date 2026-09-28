@@ -33,7 +33,7 @@ import 'support/artifacts.dart';
 import 'support/test_app.dart';
 import 'support/type_text.dart';
 
-/// Live public API, used when CI / `task mobile:e2e` starts api-server.
+/// Live public API, used when CI / `task mobile:e2e` starts publira server.
 const _liveApi = bool.fromEnvironment('PUBLIRA_LIVE_API');
 
 /// The seed member's session, as a launch that restores one from the keychain
@@ -595,7 +595,7 @@ void main() {
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-viewer-plain', () async {
-        // What an image-server instance a rolling deploy has not replaced
+        // What a server instance a rolling deploy has not replaced
         // yet answers with: the image itself, under no stream to reverse.
         server.encryptImages = false;
         await pumpApp(

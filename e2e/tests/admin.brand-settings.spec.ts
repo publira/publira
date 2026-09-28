@@ -25,7 +25,7 @@ const otherHostUrl = (pathname: string): string =>
 
 /**
  * A delivered logo or icon is `/images/tenants/{id}/{logo,icon}` on the
- * reader's origin, and only the Traefik edge joins web-host and image-server
+ * reader's origin, and only the Traefik edge joins web-host and the image routes
  * under one host and port. The header's brand mark falls back to the site-name
  * text when that request fails, so those assertions run against the edge.
  */

@@ -264,7 +264,7 @@ Propagation uses W3C Trace Context (`traceparent`) and Baggage. An inbound `trac
 
 Because the headers are gone, the RPC becomes a **new root span** on the API side. The caller's trace ID is not adopted, and setting `sampled=01` does not override the 10% sampling in production. A trace is joined up only inside the gateway.
 
-First-party server-to-server traffic does not pass through the gateway, so this removal does not apply to it. SSR (web-host / web-admin / web-platform) connects directly to the API's gRPC port, and the Go APIs call the Next.js revalidation endpoints directly through `PUBLIRA_WEB_*_INTERNAL_URL`. `traceparent` passes through in both cases, so "web app → API → DB query" remains a single trace.
+First-party server-to-server traffic does not pass through the gateway, so this removal does not apply to it. SSR (web-host / web-admin / web-platform) connects directly to the API's gRPC port, and publira server and worker call the Next.js revalidation endpoints directly through `PUBLIRA_WEB_*_INTERNAL_URL`. `traceparent` passes through in both cases, so "web app → API → DB query" remains a single trace.
 
 The mobile app and the browser run on the user's device, so they are not first-party and their trace context is stripped at the gateway.
 

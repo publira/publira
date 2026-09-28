@@ -443,7 +443,7 @@ Two rules follow:
 - **Answer the paths that must survive an outage above the read.** `isHealthProbePath()` and `/setup` return before any RPC is attempted, so a probe never reports the API's health as its own.
 - **Never fall back to a value that changes what the operator is asked to do.** "Setup is not completed" during an outage re-opens the bootstrap form on a platform that was set up long ago. The fallback is the state the API last confirmed, and a fixed default only where it has never confirmed one.
 
-No lint covers this. The `*.error-boundary` e2e specs measure it: each stops that app's API server and asserts the app answers `200` with its own error screen instead of a bare 500.
+No lint covers this. The `*.error-boundary` e2e specs measure it: each stops `publira server` and asserts the app answers `200` with its own error screen instead of a bare 500.
 
 ## UI locale
 

@@ -7,8 +7,8 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
-# Isolation helpers first: a regression here would let one run's stopApiServer
-# kill another run's api-server. Keep this before the project lock so the
+# Isolation helpers first: a regression here would let one run's stopServer
+# kill another run's server. Keep this before the project lock so the
 # tests can take (and release) throwaway locks of their own.
 bash "${PUBLIRA_E2E_SCRIPTS_DIR}/lib_test.sh"
 acquire_e2e_lock

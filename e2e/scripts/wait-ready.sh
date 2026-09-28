@@ -58,7 +58,7 @@ wait_http() {
 require_wait4x
 e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 
-# Checked from the host (not the compose healthcheck): the API servers reach
+# Checked from the host (not the compose healthcheck): publira server reaches
 # RustFS through the published port, so a container-only probe would miss it.
 wait_http "rustfs" "http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}/health"
 
