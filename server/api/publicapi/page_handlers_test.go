@@ -28,7 +28,7 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedPagesForTenant)).
-		WithArgs(tenantID).
+		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "slug", "display_in_footer", "created_at", "updated_at",
 			"id", "page_id", "tenant_id", "locale", "title", "published_version_id", "created_at", "updated_at",
@@ -40,6 +40,7 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "en",
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
@@ -56,6 +57,10 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	}
 	if !resp.Msg.Pages[0].DisplayInFooter {
 		t.Fatalf("display_in_footer = false, want true")
+	}
+	// The page has no English translation, so it is listed in the one served.
+	if resp.Msg.Pages[0].Locale != "ja" {
+		t.Fatalf("locale = %q, want the served ja", resp.Msg.Pages[0].Locale)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -106,13 +111,13 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	// Lookup normalizes client slug "privacy" → "/privacy" to match admin storage.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
-		WithArgs(tenantID, "/privacy").
+		WithArgs("ja", tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
-			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
+			"id", "tenant_id", "slug", "locale", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
+			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at", "published_locales",
 		}).AddRow(
-			pageID, tenantID, "/privacy", "Privacy Policy", versionID, true, now, now, retitledAt,
-			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now,
+			pageID, tenantID, "/privacy", "ja", "Privacy Policy", versionID, true, now, now, retitledAt,
+			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now, "{en,ja}",
 		))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
@@ -131,6 +136,12 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	}
 	if want := retitledAt.Format("2006-01-02T15:04:05Z07:00"); resp.Msg.Page.UpdatedAt != want {
 		t.Fatalf("updated_at = %q, want the translation's %q", resp.Msg.Page.UpdatedAt, want)
+	}
+	if resp.Msg.Page.Locale != "ja" {
+		t.Fatalf("locale = %q, want ja", resp.Msg.Page.Locale)
+	}
+	if got := strings.Join(resp.Msg.PublishedLocales, ","); got != "en,ja" {
+		t.Fatalf("published_locales = %q, want en,ja", got)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -151,6 +162,24 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		}
 	})
 
+	t.Run("unsupported-locale", func(t *testing.T) {
+		testServer, mock := newTestPublicServer(t)
+
+		tenantID := uuid.Must(uuid.NewV7())
+		expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
+
+		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
+		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			Slug:   "privacy",
+			Locale: "xx",
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+		}
+		assertPublicExpectations(t, mock)
+	})
+
 	t.Run("not-found", func(t *testing.T) {
 		testServer, mock := newTestPublicServer(t)
 
@@ -158,10 +187,10 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		now := time.Now().UTC()
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
-			WithArgs(tenantID, "/missing").
+			WithArgs("ja", tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
-				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
+				"id", "tenant_id", "slug", "locale", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
+				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at", "published_locales",
 			}))
 
 		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
@@ -183,7 +212,7 @@ func TestPagesGetPublishedPageDatabaseErrorIsHidden(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
-		WithArgs(tenantID, "/privacy").
+		WithArgs("ja", tenantID, "/privacy").
 		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
@@ -207,7 +236,7 @@ func TestPagesGetPublishedPagePreservesContextCanceled(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedPageBySlugForTenant)).
-		WithArgs(tenantID, "/privacy").
+		WithArgs("ja", tenantID, "/privacy").
 		WillReturnError(context.Canceled)
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
@@ -221,21 +250,16 @@ func TestPagesGetPublishedPagePreservesContextCanceled(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// Which translations count as published is published_page_translation_for's
+// to decide, so every public read goes through it rather than restating it.
 func TestPagesPublishedQueriesHavePublicationGuards(t *testing.T) {
-	required := []string{
-		"pv.status = 'published'",
-		"pv.published_at IS NOT NULL",
-		"pv.published_at <= NOW()",
-	}
-	for _, snippet := range required {
-		if !strings.Contains(dbmodels.ListPublishedPagesForTenant, snippet) {
-			t.Fatalf("dbmodels.ListPublishedPagesForTenant does not contain %q", snippet)
-		}
-		if !strings.Contains(dbmodels.ListPublishedPageSlugsForTenant, snippet) {
-			t.Fatalf("dbmodels.ListPublishedPageSlugsForTenant does not contain %q", snippet)
-		}
-		if !strings.Contains(dbmodels.GetPublishedPageBySlugForTenant, snippet) {
-			t.Fatalf("dbmodels.GetPublishedPageBySlugForTenant does not contain %q", snippet)
+	for name, query := range map[string]string{
+		"ListPublishedPagesForTenant":     dbmodels.ListPublishedPagesForTenant,
+		"ListPublishedPageSlugsForTenant": dbmodels.ListPublishedPageSlugsForTenant,
+		"GetPublishedPageBySlugForTenant": dbmodels.GetPublishedPageBySlugForTenant,
+	} {
+		if !strings.Contains(query, "published_page_translation_for(") {
+			t.Fatalf("dbmodels.%s does not choose its translation with published_page_translation_for", name)
 		}
 	}
 	if !strings.Contains(dbmodels.ListPublishedPagesForTenant, "p.display_in_footer = true") {

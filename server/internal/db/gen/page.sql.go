@@ -11,7 +11,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
+
+const CountPageTranslations = `-- name: CountPageTranslations :one
+SELECT count(*)::int AS translations
+FROM page_translations
+WHERE page_id = $1
+`
+
+func (q *Queries) CountPageTranslations(ctx context.Context, pageID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, CountPageTranslations, pageID)
+	var translations int32
+	err := row.Scan(&translations)
+	return translations, err
+}
 
 const CreatePage = `-- name: CreatePage :one
 INSERT INTO pages (id, tenant_id, slug, display_in_footer)
@@ -126,6 +140,35 @@ func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionPa
 	return i, err
 }
 
+const DeletePageTranslation = `-- name: DeletePageTranslation :one
+DELETE FROM page_translations
+WHERE id = $1
+	AND tenant_id = $2
+RETURNING id, page_id, tenant_id, locale, title, published_version_id, created_at, updated_at
+`
+
+type DeletePageTranslationParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
+func (q *Queries) DeletePageTranslation(ctx context.Context, arg DeletePageTranslationParams) (PageTranslation, error) {
+	row := q.db.QueryRowContext(ctx, DeletePageTranslation, arg.ID, arg.TenantID)
+	var i PageTranslation
+	err := row.Scan(
+		&i.ID,
+		&i.PageID,
+		&i.TenantID,
+		&i.Locale,
+		&i.Title,
+		&i.PublishedVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetMaxPageVersionNumberByTranslationID = `-- name: GetMaxPageVersionNumberByTranslationID :one
 SELECT COALESCE(MAX(version_number), 0)::int AS max_version
 FROM page_versions
@@ -183,6 +226,34 @@ func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTe
 	return i, err
 }
 
+const GetPagePublicationForTenant = `-- name: GetPagePublicationForTenant :one
+SELECT p.id,
+	(published_page_translation_for(p.id, t.default_locale) IS NOT NULL)::boolean AS published
+FROM pages p
+	JOIN tenants t ON t.id = p.tenant_id
+WHERE p.id = $1
+	AND p.tenant_id = $2
+`
+
+type GetPagePublicationForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPagePublicationForTenantRow struct {
+	ID        uuid.UUID `json:"id"`
+	Published bool      `json:"published"`
+}
+
+// Whether the storefront serves the page, which it does while any translation
+// of it is published.
+func (q *Queries) GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPagePublicationForTenant, arg.ID, arg.TenantID)
+	var i GetPagePublicationForTenantRow
+	err := row.Scan(&i.ID, &i.Published)
+	return i, err
+}
+
 const GetPageVersionByIDForTranslation = `-- name: GetPageVersionByIDForTranslation :one
 SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id FROM page_versions
 WHERE id = $1 AND translation_id = $2
@@ -212,10 +283,55 @@ func (q *Queries) GetPageVersionByIDForTranslation(ctx context.Context, arg GetP
 	return i, err
 }
 
+const GetPageWithTranslationForTenant = `-- name: GetPageWithTranslationForTenant :one
+SELECT p.id, p.tenant_id, p.slug, p.display_in_footer, p.created_at, p.updated_at, pt.id, pt.page_id, pt.tenant_id, pt.locale, pt.title, pt.published_version_id, pt.created_at, pt.updated_at
+FROM pages p
+	JOIN page_translations pt ON pt.page_id = p.id
+	AND pt.locale = $1
+WHERE p.id = $2
+	AND p.tenant_id = $3
+`
+
+type GetPageWithTranslationForTenantParams struct {
+	Locale   string    `json:"locale"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPageWithTranslationForTenantRow struct {
+	Page            Page            `json:"page"`
+	PageTranslation PageTranslation `json:"page_translation"`
+}
+
+// The page with its translation in exactly this locale, and no row when the
+// page has none: an edit aimed at one language must not land on another.
+func (q *Queries) GetPageWithTranslationForTenant(ctx context.Context, arg GetPageWithTranslationForTenantParams) (GetPageWithTranslationForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPageWithTranslationForTenant, arg.Locale, arg.ID, arg.TenantID)
+	var i GetPageWithTranslationForTenantRow
+	err := row.Scan(
+		&i.Page.ID,
+		&i.Page.TenantID,
+		&i.Page.Slug,
+		&i.Page.DisplayInFooter,
+		&i.Page.CreatedAt,
+		&i.Page.UpdatedAt,
+		&i.PageTranslation.ID,
+		&i.PageTranslation.PageID,
+		&i.PageTranslation.TenantID,
+		&i.PageTranslation.Locale,
+		&i.PageTranslation.Title,
+		&i.PageTranslation.PublishedVersionID,
+		&i.PageTranslation.CreatedAt,
+		&i.PageTranslation.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetPublishedPageBySlugForTenant = `-- name: GetPublishedPageBySlugForTenant :one
 SELECT p.id,
 	p.tenant_id,
 	p.slug,
+	pt.locale,
 	pt.title,
 	pt.published_version_id,
 	p.display_in_footer,
@@ -230,20 +346,25 @@ SELECT p.id,
 	pv.status,
 	pv.publish_at,
 	pv.created_at AS version_created_at,
-	pv.published_at
+	pv.published_at,
+	-- A translation is published exactly when it is the one chosen for its own
+	-- locale.
+	ARRAY(
+		SELECT alternate.locale
+		FROM page_translations alternate
+		WHERE alternate.page_id = p.id
+			AND published_page_translation_for(p.id, alternate.locale) = alternate.id
+		ORDER BY alternate.locale
+	)::text [] AS published_locales
 FROM pages p
-	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
+	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, $1)
 	JOIN page_versions pv ON pv.id = pt.published_version_id
-WHERE p.tenant_id = $1
-	AND p.slug = $2
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
-LIMIT 1
+WHERE p.tenant_id = $2
+	AND p.slug = $3
 `
 
 type GetPublishedPageBySlugForTenantParams struct {
+	Locale   string    `json:"locale"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	Slug     string    `json:"slug"`
 }
@@ -252,6 +373,7 @@ type GetPublishedPageBySlugForTenantRow struct {
 	ID                   uuid.UUID     `json:"id"`
 	TenantID             uuid.UUID     `json:"tenant_id"`
 	Slug                 string        `json:"slug"`
+	Locale               string        `json:"locale"`
 	Title                string        `json:"title"`
 	PublishedVersionID   uuid.NullUUID `json:"published_version_id"`
 	DisplayInFooter      bool          `json:"display_in_footer"`
@@ -267,16 +389,19 @@ type GetPublishedPageBySlugForTenantRow struct {
 	PublishAt            sql.NullTime  `json:"publish_at"`
 	VersionCreatedAt     time.Time     `json:"version_created_at"`
 	PublishedAt          sql.NullTime  `json:"published_at"`
+	PublishedLocales     []string      `json:"published_locales"`
 }
 
-// Served in the translation ListPublishedPagesForTenant serves.
+// Served in the translation ListPublishedPagesForTenant lists, and names its
+// locale so the reader can be told when it is not the one asked for.
 func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedPageBySlugForTenant, arg.TenantID, arg.Slug)
+	row := q.db.QueryRowContext(ctx, GetPublishedPageBySlugForTenant, arg.Locale, arg.TenantID, arg.Slug)
 	var i GetPublishedPageBySlugForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.Slug,
+		&i.Locale,
 		&i.Title,
 		&i.PublishedVersionID,
 		&i.DisplayInFooter,
@@ -292,8 +417,56 @@ func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPu
 		&i.PublishAt,
 		&i.VersionCreatedAt,
 		&i.PublishedAt,
+		pq.Array(&i.PublishedLocales),
 	)
 	return i, err
+}
+
+const ListPageTranslationsForTenant = `-- name: ListPageTranslationsForTenant :many
+SELECT id, page_id, tenant_id, locale, title, published_version_id, created_at, updated_at
+FROM page_translations
+WHERE page_id = $1
+	AND tenant_id = $2
+ORDER BY created_at ASC, id ASC
+`
+
+type ListPageTranslationsForTenantParams struct {
+	PageID   uuid.UUID `json:"page_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Empty only for a page the tenant does not have, since a page always keeps at
+// least one translation.
+func (q *Queries) ListPageTranslationsForTenant(ctx context.Context, arg ListPageTranslationsForTenantParams) ([]PageTranslation, error) {
+	rows, err := q.db.QueryContext(ctx, ListPageTranslationsForTenant, arg.PageID, arg.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PageTranslation
+	for rows.Next() {
+		var i PageTranslation
+		if err := rows.Scan(
+			&i.ID,
+			&i.PageID,
+			&i.TenantID,
+			&i.Locale,
+			&i.Title,
+			&i.PublishedVersionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListPageVersionsByTranslationID = `-- name: ListPageVersionsByTranslationID :many
@@ -503,17 +676,15 @@ const ListPublishedPageSlugsForTenant = `-- name: ListPublishedPageSlugsForTenan
 SELECT p.slug
 FROM pages p
 	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
-	JOIN page_versions pv ON pv.id = pt.published_version_id
 WHERE p.tenant_id = $1
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
+	AND published_page_translation_for(p.id, t.default_locale) IS NOT NULL
 ORDER BY p.slug ASC
 `
 
 // Every published page, footer or not: the public site routes a path to a page
 // by this set, so a page left out of the footer is still reachable at its slug.
+// A page with any published translation is served in every locale, so the
+// locale handed to published_page_translation_for does not matter here.
 func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedPageSlugsForTenant, tenantID)
 	if err != nil {
@@ -540,16 +711,16 @@ func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID 
 const ListPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
 SELECT p.id, p.tenant_id, p.slug, p.display_in_footer, p.created_at, p.updated_at, pt.id, pt.page_id, pt.tenant_id, pt.locale, pt.title, pt.published_version_id, pt.created_at, pt.updated_at
 FROM pages p
-	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
-	JOIN page_versions pv ON pv.id = pt.published_version_id
-WHERE p.tenant_id = $1
+	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, $1)
+WHERE p.tenant_id = $2
 	AND p.display_in_footer = true
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
 ORDER BY p.created_at ASC
 `
+
+type ListPublishedPagesForTenantParams struct {
+	Locale   string    `json:"locale"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
 
 type ListPublishedPagesForTenantRow struct {
 	Page            Page            `json:"page"`
@@ -557,10 +728,10 @@ type ListPublishedPagesForTenantRow struct {
 }
 
 // Restricted to the pages flagged for the footer, which is the only place a
-// reader navigates to them from. A page is served in the translation
-// page_translation_for picks for its tenant's default locale.
-func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListPublishedPagesForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedPagesForTenant, tenantID)
+// reader navigates to them from. Each page is listed in the translation
+// published_page_translation_for picks for the reader's locale.
+func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, arg ListPublishedPagesForTenantParams) ([]ListPublishedPagesForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedPagesForTenant, arg.Locale, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -595,6 +766,27 @@ func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockPageForTenant = `-- name: LockPageForTenant :one
+SELECT id
+FROM pages
+WHERE id = $1
+	AND tenant_id = $2
+FOR UPDATE
+`
+
+type LockPageForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// Serializes the writers that must not leave a page without a translation.
+func (q *Queries) LockPageForTenant(ctx context.Context, arg LockPageForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockPageForTenant, arg.ID, arg.TenantID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const PublishPageVersion = `-- name: PublishPageVersion :one
@@ -690,25 +882,19 @@ func (q *Queries) UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, e
 const UpdatePageTranslationTitle = `-- name: UpdatePageTranslationTitle :one
 UPDATE page_translations
 SET title = $1, updated_at = NOW()
-WHERE id = page_translation_for($2, $3)
-	AND tenant_id = $4
+WHERE id = $2
+	AND tenant_id = $3
 RETURNING id, page_id, tenant_id, locale, title, published_version_id, created_at, updated_at
 `
 
 type UpdatePageTranslationTitleParams struct {
 	Title    string    `json:"title"`
-	PageID   uuid.UUID `json:"page_id"`
-	Locale   string    `json:"locale"`
+	ID       uuid.UUID `json:"id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) UpdatePageTranslationTitle(ctx context.Context, arg UpdatePageTranslationTitleParams) (PageTranslation, error) {
-	row := q.db.QueryRowContext(ctx, UpdatePageTranslationTitle,
-		arg.Title,
-		arg.PageID,
-		arg.Locale,
-		arg.TenantID,
-	)
+	row := q.db.QueryRowContext(ctx, UpdatePageTranslationTitle, arg.Title, arg.ID, arg.TenantID)
 	var i PageTranslation
 	err := row.Scan(
 		&i.ID,

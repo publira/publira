@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/page.proto.
  */
 export const file_publira_v1_page: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL3BhZ2UucHJvdG8SCnB1YmxpcmEudjEiTAoZTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiQwoaTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2USJQoFcGFnZXMYASADKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UiUAodTGlzdFB1Ymxpc2hlZFBhZ2VTbHVnc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii8KHkxpc3RQdWJsaXNoZWRQYWdlU2x1Z3NSZXNwb25zZRINCgVzbHVncxgBIAMoCSJYChdHZXRQdWJsaXNoZWRQYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEc2x1ZxgCIAEoCSJwChhHZXRQdWJsaXNoZWRQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZRIuCgd2ZXJzaW9uGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbjLPAgoSUHVibGljUGFnZXNTZXJ2aWNlEmUKEkxpc3RQdWJsaXNoZWRQYWdlcxIlLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBomLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2UiABJxChZMaXN0UHVibGlzaGVkUGFnZVNsdWdzEikucHVibGlyYS52MS5MaXN0UHVibGlzaGVkUGFnZVNsdWdzUmVxdWVzdBoqLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VTbHVnc1Jlc3BvbnNlIgASXwoQR2V0UHVibGlzaGVkUGFnZRIjLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldFB1Ymxpc2hlZFBhZ2VSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL3BhZ2UucHJvdG8SCnB1YmxpcmEudjEiXAoZTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGbG9jYWxlGAIgASgJIkMKGkxpc3RQdWJsaXNoZWRQYWdlc1Jlc3BvbnNlEiUKBXBhZ2VzGAEgAygLMhYucHVibGlyYS50eXBlcy52MS5QYWdlIlAKHUxpc3RQdWJsaXNoZWRQYWdlU2x1Z3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCIvCh5MaXN0UHVibGlzaGVkUGFnZVNsdWdzUmVzcG9uc2USDQoFc2x1Z3MYASADKAkiaAoXR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHNsdWcYAiABKAkSDgoGbG9jYWxlGAMgASgJIosBChhHZXRQdWJsaXNoZWRQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZRIuCgd2ZXJzaW9uGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbhIZChFwdWJsaXNoZWRfbG9jYWxlcxgDIAMoCTLPAgoSUHVibGljUGFnZXNTZXJ2aWNlEmUKEkxpc3RQdWJsaXNoZWRQYWdlcxIlLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVxdWVzdBomLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VzUmVzcG9uc2UiABJxChZMaXN0UHVibGlzaGVkUGFnZVNsdWdzEikucHVibGlyYS52MS5MaXN0UHVibGlzaGVkUGFnZVNsdWdzUmVxdWVzdBoqLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFBhZ2VTbHVnc1Jlc3BvbnNlIgASXwoQR2V0UHVibGlzaGVkUGFnZRIjLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkUGFnZVJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldFB1Ymxpc2hlZFBhZ2VSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedPagesRequest
@@ -22,6 +22,16 @@ export type ListPublishedPagesRequest = Message<"publira.v1.ListPublishedPagesRe
    * @generated from field: publira.types.v1.TenantContext tenant = 1;
    */
   tenant?: TenantContext | undefined;
+
+  /**
+   * The reader's locale. Each page is listed in its published translation in
+   * this locale, else the tenant's default locale, else its oldest published
+   * one, and Page.locale names the one listed. Empty means the tenant's
+   * default locale.
+   *
+   * @generated from field: string locale = 2;
+   */
+  locale: string;
 };
 
 /**
@@ -99,6 +109,13 @@ export type GetPublishedPageRequest = Message<"publira.v1.GetPublishedPageReques
    * @generated from field: string slug = 2;
    */
   slug: string;
+
+  /**
+   * The reader's locale, resolved as ListPublishedPagesRequest.locale is.
+   *
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
 };
 
 /**
@@ -121,6 +138,14 @@ export type GetPublishedPageResponse = Message<"publira.v1.GetPublishedPageRespo
    * @generated from field: publira.types.v1.PageVersion version = 2;
    */
   version?: PageVersion | undefined;
+
+  /**
+   * Every locale the page has a published translation in, the served one
+   * included, in code order: the language alternates of the page.
+   *
+   * @generated from field: repeated string published_locales = 3;
+   */
+  publishedLocales: string[];
 };
 
 /**

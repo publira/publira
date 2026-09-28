@@ -6,6 +6,8 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// Creates the page together with its translation in the tenant's default
+// locale, titled title, so a page never exists without a translation.
 message CreatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string slug = 2;
@@ -24,6 +26,7 @@ message UpdatePageRequest {
   // optional so title-only updates do not clear an existing true value
   // (proto3 non-optional bool maps omitted fields to false).
   optional bool display_in_footer = 4;
+  string locale = 5;
 }
 
 message UpdatePageResponse {
@@ -50,6 +53,7 @@ message ListPagesResponse {
 message GetPageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
+  string locale = 3;
 }
 
 message GetPageResponse {
@@ -60,6 +64,7 @@ message CreateVersionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
   string content_markdown = 3;
+  string locale = 4;
 }
 
 message CreateVersionResponse {
@@ -69,6 +74,7 @@ message CreateVersionResponse {
 message ListVersionsRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
+  string locale = 3;
 }
 
 message ListVersionsResponse {
@@ -79,6 +85,7 @@ message PublishVersionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
   string version_id = 3;
+  string locale = 4;
 }
 
 message PublishVersionResponse {
@@ -88,6 +95,7 @@ message PublishVersionResponse {
 message UnpublishPageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
+  string locale = 3;
 }
 
 message UnpublishPageResponse {
@@ -98,12 +106,48 @@ message RollbackToVersionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
   string version_id = 3;
+  string locale = 4;
 }
 
 message RollbackToVersionResponse {
   publira.types.v1.PageVersion version = 1;
 }
 
+message CreatePageTranslationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  // A supported UI locale the page has no translation in yet.
+  string locale = 3;
+  string title = 4;
+}
+
+message CreatePageTranslationResponse {
+  publira.types.v1.PageTranslation translation = 1;
+}
+
+message ListPageTranslationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+}
+
+message ListPageTranslationsResponse {
+  // Oldest first. Never empty for a page the tenant has.
+  repeated publira.types.v1.PageTranslation translations = 1;
+}
+
+message DeletePageTranslationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  string locale = 3;
+}
+
+message DeletePageTranslationResponse {}
+
+// A request that carries a locale beside a page_id works on that one
+// translation. An empty locale means the translation page_translation_for picks
+// for the tenant's default locale; any other must name a translation the page
+// has, or the call is not_found, so an edit aimed at one language never lands
+// on another.
 service AdminPagesService {
   rpc CreatePage(CreatePageRequest) returns (CreatePageResponse) {}
   rpc UpdatePage(UpdatePageRequest) returns (UpdatePageResponse) {}
@@ -116,4 +160,9 @@ service AdminPagesService {
   // the page can go back up without its body being entered again.
   rpc UnpublishPage(UnpublishPageRequest) returns (UnpublishPageResponse) {}
   rpc RollbackToVersion(RollbackToVersionRequest) returns (RollbackToVersionResponse) {}
+  rpc CreatePageTranslation(CreatePageTranslationRequest) returns (CreatePageTranslationResponse) {}
+  rpc ListPageTranslations(ListPageTranslationsRequest) returns (ListPageTranslationsResponse) {}
+  // Deletes one translation with its versions. A page's last translation
+  // cannot be deleted (failed_precondition).
+  rpc DeletePageTranslation(DeletePageTranslationRequest) returns (DeletePageTranslationResponse) {}
 }

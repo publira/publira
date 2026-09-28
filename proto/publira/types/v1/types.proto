@@ -354,6 +354,8 @@ message TenantTheme {
   string sans_font_family = 35;
 }
 
+// A page as seen through one of its translations, which supplies the title and
+// the published version.
 message Page {
   string id = 1;
   string slug = 2;
@@ -362,6 +364,22 @@ message Page {
   string created_at = 5;
   string updated_at = 6;
   bool display_in_footer = 7;
+  // The locale of the translation the title and published version come from.
+  // A public read names the one it served, which differs from the one asked
+  // for when the page has no published translation in that locale.
+  string locale = 8;
+}
+
+// One locale's rendering of a page: its title and the version of its own
+// history that is live.
+message PageTranslation {
+  string id = 1;
+  string page_id = 2;
+  string locale = 3;
+  string title = 4;
+  string published_version_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
 }
 
 message PageVersion {

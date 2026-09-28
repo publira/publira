@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pageslug"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -29,8 +30,7 @@ const (
 	maxPageListLimit     = int32(100)
 )
 
-// pageRow is a page with the translation an admin request works on: the one
-// page_translation_for picks for the tenant's default locale.
+// pageRow is a page with the translation an admin request works on.
 type pageRow struct {
 	Page            dbmodels.Page
 	PageTranslation dbmodels.PageTranslation
@@ -92,6 +92,39 @@ func (s *adminServer) getPage(ctx context.Context, tenant dbmodels.Tenant, pageI
 	return pageRow(row), nil
 }
 
+// pageTranslation answers the page with the translation a request carrying
+// rawLocale works on, as AdminPagesService describes: getPage's for an empty
+// locale, else exactly that locale's, or not_found.
+func (s *adminServer) pageTranslation(ctx context.Context, tenant dbmodels.Tenant, pageID uuid.UUID, rawLocale, operation string) (pageRow, error) {
+	if strings.TrimSpace(rawLocale) == "" {
+		return s.getPage(ctx, tenant, pageID, operation)
+	}
+	code, err := parsePageLocale(rawLocale)
+	if err != nil {
+		return pageRow{}, err
+	}
+	row, err := s.queriesFor(ctx).GetPageWithTranslationForTenant(ctx, dbmodels.GetPageWithTranslationForTenantParams{
+		ID:       pageID,
+		TenantID: tenant.ID,
+		Locale:   code,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pageRow{}, connect.NewError(connect.CodeNotFound, errors.New("page translation not found"))
+		}
+		return pageRow{}, s.internalDBError(ctx, "failed to get page translation for "+operation, err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "locale", code)
+	}
+	return pageRow(row), nil
+}
+
+func parsePageLocale(raw string) (string, error) {
+	code, err := locale.Normalize(raw)
+	if err != nil {
+		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("locale must be a supported locale"), "locale")
+	}
+	return code, nil
+}
+
 func pageFromModel(p dbmodels.Page, t dbmodels.PageTranslation) *publirattypesv1.Page {
 	updatedAt := p.UpdatedAt
 	if t.UpdatedAt.After(updatedAt) {
@@ -104,6 +137,22 @@ func pageFromModel(p dbmodels.Page, t dbmodels.PageTranslation) *publirattypesv1
 		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:       updatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		DisplayInFooter: p.DisplayInFooter,
+		Locale:          t.Locale,
+	}
+	if t.PublishedVersionID.Valid {
+		proto.PublishedVersionId = t.PublishedVersionID.UUID.String()
+	}
+	return proto
+}
+
+func pageTranslationFromModel(t dbmodels.PageTranslation) *publirattypesv1.PageTranslation {
+	proto := &publirattypesv1.PageTranslation{
+		Id:        t.ID.String(),
+		PageId:    t.PageID.String(),
+		Locale:    t.Locale,
+		Title:     t.Title,
+		CreatedAt: t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: t.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	}
 	if t.PublishedVersionID.Valid {
 		proto.PublishedVersionId = t.PublishedVersionID.UUID.String()
@@ -332,16 +381,16 @@ func (s *adminServer) UpdatePage(
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
+	current, err := s.pageTranslation(txCtx, tenant, pageID, req.Msg.Locale, "update page")
+	if err != nil {
+		return nil, err
+	}
 	translation, err := s.queriesFor(txCtx).UpdatePageTranslationTitle(txCtx, dbmodels.UpdatePageTranslationTitleParams{
 		Title:    title,
-		PageID:   pageID,
+		ID:       current.PageTranslation.ID,
 		TenantID: tenant.ID,
-		Locale:   tenant.DefaultLocale,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
-		}
 		return nil, s.internalDBError(ctx, "failed to update page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	// Only overwrite display_in_footer when the client sets the optional field.
@@ -449,7 +498,7 @@ func (s *adminServer) GetPage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "get page")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "get page")
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +523,7 @@ func (s *adminServer) CreateVersion(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "create version")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "create version")
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +578,7 @@ func (s *adminServer) ListVersions(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "list versions")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "list versions")
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +615,7 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "publish version")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "publish version")
 	if err != nil {
 		return nil, err
 	}
@@ -626,7 +675,7 @@ func (s *adminServer) UnpublishPage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "unpublish page")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "unpublish page")
 	if err != nil {
 		return nil, err
 	}
@@ -678,7 +727,7 @@ func (s *adminServer) RollbackToVersion(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.getPage(ctx, tenant, pageID, "rollback")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "rollback")
 	if err != nil {
 		return nil, err
 	}
@@ -727,4 +776,173 @@ func (s *adminServer) RollbackToVersion(
 	return connect.NewResponse(&publiraadminv1.RollbackToVersionResponse{
 		Version: pageVersionFromModel(newVersion),
 	}), nil
+}
+
+func (s *adminServer) CreatePageTranslation(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.CreatePageTranslationRequest],
+) (*connect.Response[publiraadminv1.CreatePageTranslationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pageID, err := parsePageID(req.Msg.PageId)
+	if err != nil {
+		return nil, err
+	}
+	code, err := parsePageLocale(req.Msg.Locale)
+	if err != nil {
+		return nil, err
+	}
+	title, err := validatePageTitle(req.Msg.Title)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.getPage(ctx, tenant, pageID, "create page translation"); err != nil {
+		return nil, err
+	}
+	translationID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	translation, err := s.queriesFor(ctx).CreatePageTranslation(ctx, dbmodels.CreatePageTranslationParams{
+		ID:       translationID,
+		PageID:   pageID,
+		TenantID: tenant.ID,
+		Locale:   code,
+		Title:    title,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "page_translations_page_id_locale_key") {
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("the page already has a translation in this locale"))
+		}
+		return nil, s.internalDBError(ctx, "failed to create page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "locale", code)
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "page_translation_created",
+		TargetType:  "page_translation",
+		TargetID:    translation.ID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+	})
+	return connect.NewResponse(&publiraadminv1.CreatePageTranslationResponse{
+		Translation: pageTranslationFromModel(translation),
+	}), nil
+}
+
+func (s *adminServer) ListPageTranslations(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListPageTranslationsRequest],
+) (*connect.Response[publiraadminv1.ListPageTranslationsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+	pageID, err := parsePageID(req.Msg.PageId)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queriesFor(ctx).ListPageTranslationsForTenant(ctx, dbmodels.ListPageTranslationsForTenantParams{
+		PageID:   pageID,
+		TenantID: tenant.ID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list page translations", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	if len(rows) == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+	}
+	translations := make([]*publirattypesv1.PageTranslation, 0, len(rows))
+	for _, row := range rows {
+		translations = append(translations, pageTranslationFromModel(row))
+	}
+	return connect.NewResponse(&publiraadminv1.ListPageTranslationsResponse{
+		Translations: translations,
+	}), nil
+}
+
+func (s *adminServer) DeletePageTranslation(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.DeletePageTranslationRequest],
+) (*connect.Response[publiraadminv1.DeletePageTranslationResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pageID, err := parsePageID(req.Msg.PageId)
+	if err != nil {
+		return nil, err
+	}
+	code, err := parsePageLocale(req.Msg.Locale)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin delete page translation transaction", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	queries := s.queriesFor(txCtx)
+
+	// The lock keeps two deletions from each seeing the other's translation
+	// still there and together leaving the page with none.
+	if _, err := queries.LockPageForTenant(txCtx, dbmodels.LockPageForTenantParams{ID: pageID, TenantID: tenant.ID}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to lock page for translation deletion", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	target, err := s.pageTranslation(txCtx, tenant, pageID, code, "delete page translation")
+	if err != nil {
+		return nil, err
+	}
+	count, err := queries.CountPageTranslations(txCtx, pageID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count page translations", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	if count <= 1 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a page must keep at least one translation"))
+	}
+	if _, err := queries.DeletePageTranslation(txCtx, dbmodels.DeletePageTranslationParams{
+		ID:       target.PageTranslation.ID,
+		TenantID: tenant.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to delete page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "locale", code)
+	}
+	// The translation may have been the one a locale was served.
+	owed, err := s.recordRevalidation(txCtx, tenant.ID, pageRevalidateTags(tenant.ID, pageID))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the deleted page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit delete page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	}
+	s.reval.Send(ctx, owed)
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenant.ID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "page_translation_deleted",
+		TargetType:  "page_translation",
+		TargetID:    target.PageTranslation.ID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+	})
+	return connect.NewResponse(&publiraadminv1.DeletePageTranslationResponse{}), nil
 }

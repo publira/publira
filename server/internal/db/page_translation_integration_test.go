@@ -164,3 +164,52 @@ func TestPageTranslationForFallsBackToTheDefaultThenTheOldest(t *testing.T) {
 		t.Fatalf("translation for fr with no fr default = %v, want the oldest en one %v", got, fixture.english)
 	}
 }
+
+// published_page_translation_for chooses in page_translation_for's order, but
+// only among translations whose live version is published and due, so a draft
+// or an embargoed translation never displaces one a reader can read.
+func TestPublishedPageTranslationForSkipsTranslationsThatAreNotLive(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	fixture := seedPageTranslationFixture(t, ctx, pg)
+
+	pick := func(locale string) uuid.NullUUID {
+		t.Helper()
+		var id uuid.NullUUID
+		mustQueryRow(t, ctx, pg.DB, `SELECT published_page_translation_for($1, $2)`, &id, fixture.pageID, locale)
+		return id
+	}
+	publish := func(translation, version uuid.UUID, at string) {
+		t.Helper()
+		mustExec(t, ctx, pg.DB, `UPDATE page_versions SET status = 'published', published_at = now() + $2::interval WHERE id = $1`, version, at)
+		mustExec(t, ctx, pg.DB, `UPDATE page_translations SET published_version_id = $2 WHERE id = $1`, translation, version)
+	}
+
+	if got := pick("en"); got.Valid {
+		t.Fatalf("translation with nothing published = %v, want NULL", got.UUID)
+	}
+
+	publish(fixture.english, fixture.enVersion, "1 day")
+	if got := pick("en"); got.Valid {
+		t.Fatalf("translation with only an embargoed en = %v, want NULL", got.UUID)
+	}
+
+	// The default locale is ja, but only en is live, so every locale is served en.
+	publish(fixture.english, fixture.enVersion, "-1 day")
+	for _, locale := range []string{"en", "ja", "fr"} {
+		if got := pick(locale); got.UUID != fixture.english {
+			t.Fatalf("translation for %s with only en live = %v, want the en one %v", locale, got.UUID, fixture.english)
+		}
+	}
+
+	publish(fixture.japanese, fixture.jaVersion, "-1 day")
+	if got := pick("en"); got.UUID != fixture.english {
+		t.Fatalf("translation for en = %v, want the en one %v", got.UUID, fixture.english)
+	}
+	if got := pick("fr"); got.UUID != fixture.japanese {
+		t.Fatalf("translation for fr = %v, want the default-locale ja one %v", got.UUID, fixture.japanese)
+	}
+}

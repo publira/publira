@@ -181,3 +181,30 @@ func TestDBCreateUserNeedsNoConsentWhereNothingIsNamed(t *testing.T) {
 		t.Fatalf("CreateUser against a tenant whose named page is unpublished: %v", err)
 	}
 }
+
+// A named page whose only published translation is not in the default locale
+// is served, so a sign-up has to agree to it, in the version a reader of any
+// locale was shown.
+func TestDBCreateUserNeedsConsentToAPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms (ja draft)"})
+	english := env.PG.SeedPageTranslation(t, tenant.ID, terms.ID, testutil.PageTranslationSeed{
+		Locale:    "en",
+		Title:     "Terms of Service",
+		Published: true,
+	})
+	privacy := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	nameLegalPages(t, env, tenant.ID, terms.ID, privacy.ID)
+
+	assertConsentRefused(t, env,
+		signUpAgreeing(env, tenant, "privacy-only@tenant-a.example.com", privacy.VersionID), "privacy-only@tenant-a.example.com")
+
+	if err := signUpAgreeing(env, tenant, "both@tenant-a.example.com", english.VersionID, privacy.VersionID); err != nil {
+		t.Fatalf("CreateUser agreeing to both pages: %v", err)
+	}
+	got := agreedVersions(t, env, "both@tenant-a.example.com")
+	if len(got) != 2 || !got[english.VersionID] || !got[privacy.VersionID] {
+		t.Fatalf("agreed versions = %v, want %s and %s", got, english.VersionID, privacy.VersionID)
+	}
+}

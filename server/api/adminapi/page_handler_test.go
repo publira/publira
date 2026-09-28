@@ -381,11 +381,18 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	translationID := uuid.Must(uuid.NewV7())
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPageByIDForTenant)).
+		WithArgs("ja", pageID, tenantID).
+		WillReturnRows(pageRows().AddRow(
+			pageID, tenantID, "/privacy", true, now, now,
+			translationID, pageID, tenantID, "ja", "Before", uuid.NullUUID{}, now, now,
+		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePageTranslationTitle)).
-		WithArgs("Updated Title", pageID, "ja", tenantID).
+		WithArgs("Updated Title", translationID, tenantID).
 		WillReturnRows(sqlmock.NewRows(pageTranslationColumns()).
-			AddRow(uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Updated Title", uuid.NullUUID{}, now, now))
+			AddRow(translationID, pageID, tenantID, "ja", "Updated Title", uuid.NullUUID{}, now, now))
 	// Omitted optional field → sql.NullBool{Valid: false} → driver nil arg.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePage)).
 		WithArgs(nil, pageID, tenantID).
@@ -431,11 +438,18 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
+	translationID := uuid.Must(uuid.NewV7())
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPageByIDForTenant)).
+		WithArgs("ja", pageID, tenantID).
+		WillReturnRows(pageRows().AddRow(
+			pageID, tenantID, "/privacy", true, now, now,
+			translationID, pageID, tenantID, "ja", "Before", uuid.NullUUID{}, now, now,
+		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePageTranslationTitle)).
-		WithArgs("Title", pageID, "ja", tenantID).
+		WithArgs("Title", translationID, tenantID).
 		WillReturnRows(sqlmock.NewRows(pageTranslationColumns()).
-			AddRow(uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Title", uuid.NullUUID{}, now, now))
+			AddRow(translationID, pageID, tenantID, "ja", "Title", uuid.NullUUID{}, now, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePage)).
 		WithArgs(sql.NullBool{Bool: false, Valid: true}, pageID, tenantID).
 		WillReturnRows(sqlmock.NewRows(pageOnlyColumns()).

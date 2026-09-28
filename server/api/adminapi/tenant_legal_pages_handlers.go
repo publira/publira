@@ -85,10 +85,9 @@ func (s *adminServer) resolveLegalPage(
 	if err != nil {
 		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("page id is invalid"), field)
 	}
-	page, err := s.queriesFor(ctx).GetPageByIDForTenant(ctx, dbmodels.GetPageByIDForTenantParams{
+	page, err := s.queriesFor(ctx).GetPagePublicationForTenant(ctx, dbmodels.GetPagePublicationForTenantParams{
 		ID:       pageID,
 		TenantID: tenant.ID,
-		Locale:   tenant.DefaultLocale,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -96,10 +95,10 @@ func (s *adminServer) resolveLegalPage(
 		}
 		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to get page for tenant legal pages", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
-	if !page.PageTranslation.PublishedVersionID.Valid && (!current.Valid || current.UUID != page.Page.ID) {
+	if !page.Published && (!current.Valid || current.UUID != page.ID) {
 		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("page is not published"), field)
 	}
-	return uuid.NullUUID{UUID: page.Page.ID, Valid: true}, nil
+	return uuid.NullUUID{UUID: page.ID, Valid: true}, nil
 }
 
 func (s *adminServer) UpdateTenantLegalPages(

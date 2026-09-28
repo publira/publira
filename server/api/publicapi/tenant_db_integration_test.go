@@ -173,3 +173,28 @@ func TestDBGetTenantReportsItsPublishedLegalPages(t *testing.T) {
 		t.Fatalf("privacy_page after unpublishing terms = %v, want /privacy", got.PrivacyPage)
 	}
 }
+
+// A named page whose only published translation is not in the default locale
+// is still served, so it is still linked, in that translation.
+func TestDBGetTenantLinksALegalPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	seedTenantBranding(t, env, tenant, "© Tenant A", "", "", "#111111")
+	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms (ja draft)"})
+	english := env.PG.SeedPageTranslation(t, tenant.ID, terms.ID, testutil.PageTranslationSeed{
+		Locale:    "en",
+		Title:     "Terms of Service",
+		Published: true,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `UPDATE tenant_config SET terms_page_id = $2 WHERE tenant_id = $1`, tenant.ID, terms.ID); err != nil {
+		t.Fatalf("name the terms page: %v", err)
+	}
+
+	got := getDBTenant(t, env, tenant)
+	if got.TermsPage.GetTitle() != "Terms of Service" || got.TermsPage.GetVersionId() != english.VersionID.String() {
+		t.Fatalf("terms_page = %v, want the en translation at version %s", got.TermsPage, english.VersionID)
+	}
+}
