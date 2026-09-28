@@ -31,10 +31,10 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, seriesOnly.ID, "")
 	uncredited := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Uncredited"})
 
-	author := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERAUT01", "author@tenant-a.example.com", "Author")
-	env.PG.SeedCreatorAccount(t, tenant.ID, credited.ID, author.ID)
-	seriesAuthor := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERSER01", "series@tenant-a.example.com", "Series Author")
-	env.PG.SeedCreatorAccount(t, tenant.ID, seriesOnly.ID, seriesAuthor.ID)
+	creatorAccount := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERCRE01", "creator@tenant-a.example.com", "Creator Account")
+	env.PG.SeedCreatorAccount(t, tenant.ID, credited.ID, creatorAccount.ID)
+	seriesCreatorAccount := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERSER01", "series@tenant-a.example.com", "Series Creator Account")
+	env.PG.SeedCreatorAccount(t, tenant.ID, seriesOnly.ID, seriesCreatorAccount.ID)
 	stranger := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERSTR01", "stranger@tenant-a.example.com", "Stranger")
 	env.PG.SeedCreatorAccount(t, tenant.ID, uncredited.ID, stranger.ID)
 
@@ -52,7 +52,7 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 	}
 
 	t.Run("the credited creator's account", func(t *testing.T) {
-		got := detail(t, author)
+		got := detail(t, creatorAccount)
 		if got.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
 			t.Fatalf("access = %v, want entitled", got.Access)
 		}
@@ -62,13 +62,13 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 		if len(got.Images) != 1 {
 			t.Fatalf("images = %d, want 1", len(got.Images))
 		}
-		if subject := mediaTokenSubject(t, got.Images[0].ImageUrl); subject != author.PublicID {
-			t.Fatalf("media token subject = %q, want the author %q", subject, author.PublicID)
+		if subject := mediaTokenSubject(t, got.Images[0].ImageUrl); subject != creatorAccount.PublicID {
+			t.Fatalf("media token subject = %q, want the creator's account %q", subject, creatorAccount.PublicID)
 		}
 
 		access, err := client.GetSeriesEpisodeAccess(context.Background(), newBearerRequest(
 			&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenantContext(tenant), SeriesId: series.ID.String()},
-			tokenFor(t, tenant, author),
+			tokenFor(t, tenant, creatorAccount),
 		))
 		if err != nil {
 			t.Fatalf("GetSeriesEpisodeAccess: %v", err)
@@ -82,7 +82,7 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 		name string
 		user testutil.TenantUser
 	}{
-		{name: "an account linked to a creator only the series credits", user: seriesAuthor},
+		{name: "an account linked to a creator only the series credits", user: seriesCreatorAccount},
 		{name: "an account linked to a creator nothing credits", user: stranger},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 	}
 }
 
-// Being the author is not proof of an age any more than a purchase is.
+// Being a credited creator is not proof of an age any more than a purchase is.
 func TestDBGetEpisodeDetailAgeRuleOutranksTheCreatorGrant(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -120,12 +120,12 @@ func TestDBGetEpisodeDetailAgeRuleOutranksTheCreatorGrant(t *testing.T) {
 	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Credited"})
 	env.PG.SeedEpisodeCreator(t, tenant.ID, episode.ID, creator.ID, "")
-	author := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERAUT01", "author@tenant-a.example.com", "Author")
-	env.PG.SeedCreatorAccount(t, tenant.ID, creator.ID, author.ID)
+	creatorAccount := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERCRE01", "creator@tenant-a.example.com", "Creator Account")
+	env.PG.SeedCreatorAccount(t, tenant.ID, creator.ID, creatorAccount.ID)
 
 	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
 		&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-		tokenFor(t, tenant, author),
+		tokenFor(t, tenant, creatorAccount),
 	))
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)

@@ -44,10 +44,10 @@ func TestCreatorGrantFollowsTheEpisodeCredit(t *testing.T) {
 	unlinked := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{Name: "Unlinked"})
 	pg.SeedEpisodeCreator(t, tenant.ID, episode.ID, unlinked.ID, "")
 
-	author := pg.SeedEndUser(t, tenant.ID, "ENDUSERAUT01", "author@tenant-a.example.com", "Author")
-	pg.SeedCreatorAccount(t, tenant.ID, credited.ID, author.ID)
-	seriesAuthor := pg.SeedEndUser(t, tenant.ID, "ENDUSERSER01", "series@tenant-a.example.com", "Series Author")
-	pg.SeedCreatorAccount(t, tenant.ID, seriesOnly.ID, seriesAuthor.ID)
+	creatorAccount := pg.SeedEndUser(t, tenant.ID, "ENDUSERCRE01", "creator@tenant-a.example.com", "Creator Account")
+	pg.SeedCreatorAccount(t, tenant.ID, credited.ID, creatorAccount.ID)
+	seriesCreatorAccount := pg.SeedEndUser(t, tenant.ID, "ENDUSERSER01", "series@tenant-a.example.com", "Series Creator Account")
+	pg.SeedCreatorAccount(t, tenant.ID, seriesOnly.ID, seriesCreatorAccount.ID)
 	stranger := pg.SeedEndUser(t, tenant.ID, "ENDUSERSTR01", "stranger@tenant-a.example.com", "Stranger")
 	pg.SeedCreatorAccount(t, tenant.ID, uncredited.ID, stranger.ID)
 	reader := pg.SeedEndUser(t, tenant.ID, "ENDUSERREA01", "reader@tenant-a.example.com", "Reader")
@@ -57,8 +57,8 @@ func TestCreatorGrantFollowsTheEpisodeCredit(t *testing.T) {
 		userID uuid.UUID
 		want   bool
 	}{
-		{name: "linked to a creator the episode credits", userID: author.ID, want: true},
-		{name: "linked to a creator only the series credits", userID: seriesAuthor.ID, want: false},
+		{name: "linked to a creator the episode credits", userID: creatorAccount.ID, want: true},
+		{name: "linked to a creator only the series credits", userID: seriesCreatorAccount.ID, want: false},
 		{name: "linked to a creator nothing credits", userID: stranger.ID, want: false},
 		{name: "linked to nobody", userID: reader.ID, want: false},
 	} {
