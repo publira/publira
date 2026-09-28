@@ -659,10 +659,11 @@ type Querier interface {
 	GetTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (TenantFcmConfig, error)
 	GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantGooglePlayConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
-	// The pages a tenant names as its terms of service and its privacy policy,
-	// each in the translation page_translation_for picks for the tenant's default
-	// locale, with its published version, if any. No row where the tenant has no
-	// config.
+	// The pages a tenant names as its terms of service and its privacy policy. A
+	// page is published when any translation of it is, as the storefront serves it
+	// then, and is read in the translation published_page_translation_for picks for
+	// the tenant's default locale; an unpublished page is read in the one
+	// page_translation_for picks. No row where the tenant has no config.
 	GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	// GetTenantReaderByPublicID keyed by the primary key. A staff account and an

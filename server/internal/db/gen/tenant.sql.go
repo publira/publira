@@ -340,21 +340,27 @@ const GetTenantLegalPages = `-- name: GetTenantLegalPages :one
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
     terms_translation.title AS terms_title,
-    (terms_translation.published_version_id IS NOT NULL)::boolean AS terms_published,
+    (published_page_translation_for(terms.id, t.default_locale) IS NOT NULL)::boolean AS terms_published,
     terms_translation.published_version_id AS terms_published_version_id,
     tc.privacy_page_id,
     privacy.slug AS privacy_slug,
     privacy_translation.title AS privacy_title,
-    (privacy_translation.published_version_id IS NOT NULL)::boolean AS privacy_published,
+    (published_page_translation_for(privacy.id, t.default_locale) IS NOT NULL)::boolean AS privacy_published,
     privacy_translation.published_version_id AS privacy_published_version_id
 FROM tenant_config tc
     JOIN tenants t ON t.id = tc.tenant_id
     LEFT JOIN pages terms ON terms.tenant_id = tc.tenant_id
     AND terms.id = tc.terms_page_id
-    LEFT JOIN page_translations terms_translation ON terms_translation.id = page_translation_for(terms.id, t.default_locale)
+    LEFT JOIN page_translations terms_translation ON terms_translation.id = COALESCE(
+        published_page_translation_for(terms.id, t.default_locale),
+        page_translation_for(terms.id, t.default_locale)
+    )
     LEFT JOIN pages privacy ON privacy.tenant_id = tc.tenant_id
     AND privacy.id = tc.privacy_page_id
-    LEFT JOIN page_translations privacy_translation ON privacy_translation.id = page_translation_for(privacy.id, t.default_locale)
+    LEFT JOIN page_translations privacy_translation ON privacy_translation.id = COALESCE(
+        published_page_translation_for(privacy.id, t.default_locale),
+        page_translation_for(privacy.id, t.default_locale)
+    )
 WHERE tc.tenant_id = $1
 `
 
@@ -371,10 +377,11 @@ type GetTenantLegalPagesRow struct {
 	PrivacyPublishedVersionID uuid.NullUUID  `json:"privacy_published_version_id"`
 }
 
-// The pages a tenant names as its terms of service and its privacy policy,
-// each in the translation page_translation_for picks for the tenant's default
-// locale, with its published version, if any. No row where the tenant has no
-// config.
+// The pages a tenant names as its terms of service and its privacy policy. A
+// page is published when any translation of it is, as the storefront serves it
+// then, and is read in the translation published_page_translation_for picks for
+// the tenant's default locale; an unpublished page is read in the one
+// page_translation_for picks. No row where the tenant has no config.
 func (q *Queries) GetTenantLegalPages(ctx context.Context, tenantID uuid.UUID) (GetTenantLegalPagesRow, error) {
 	row := q.db.QueryRowContext(ctx, GetTenantLegalPages, tenantID)
 	var i GetTenantLegalPagesRow
