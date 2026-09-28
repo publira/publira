@@ -2216,6 +2216,8 @@ func (x *TenantTheme) GetSansFontFamily() string {
 	return ""
 }
 
+// A page as seen through one of its translations, which supplies the title and
+// the published version.
 type Page struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -2225,8 +2227,12 @@ type Page struct {
 	CreatedAt          string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          string                 `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	DisplayInFooter    bool                   `protobuf:"varint,7,opt,name=display_in_footer,json=displayInFooter,proto3" json:"display_in_footer,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The locale of the translation the title and published version come from.
+	// A public read names the one it served, which differs from the one asked
+	// for when the page has no published translation in that locale.
+	Locale        string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Page) Reset() {
@@ -2308,6 +2314,107 @@ func (x *Page) GetDisplayInFooter() bool {
 	return false
 }
 
+func (x *Page) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// One locale's rendering of a page: its title and the version of its own
+// history that is live.
+type PageTranslation struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PageId             string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Locale             string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	Title              string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	PublishedVersionId string                 `protobuf:"bytes,5,opt,name=published_version_id,json=publishedVersionId,proto3" json:"published_version_id,omitempty"`
+	CreatedAt          string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt          string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *PageTranslation) Reset() {
+	*x = PageTranslation{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PageTranslation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PageTranslation) ProtoMessage() {}
+
+func (x *PageTranslation) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PageTranslation.ProtoReflect.Descriptor instead.
+func (*PageTranslation) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PageTranslation) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetPublishedVersionId() string {
+	if x != nil {
+		return x.PublishedVersionId
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *PageTranslation) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
 type PageVersion struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -2325,7 +2432,7 @@ type PageVersion struct {
 
 func (x *PageVersion) Reset() {
 	*x = PageVersion{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[16]
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2337,7 +2444,7 @@ func (x *PageVersion) String() string {
 func (*PageVersion) ProtoMessage() {}
 
 func (x *PageVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[16]
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2350,7 +2457,7 @@ func (x *PageVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageVersion.ProtoReflect.Descriptor instead.
 func (*PageVersion) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{16}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PageVersion) GetId() string {
@@ -2435,7 +2542,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	mi := &file_publira_types_v1_types_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2447,7 +2554,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	mi := &file_publira_types_v1_types_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2460,7 +2567,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{17}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -2649,7 +2756,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x15logo_image_updated_at\x18  \x01(\tR\x12logoImageUpdatedAt\x12T\n" +
 	"\x13logo_image_variants\x18! \x03(\v2$.publira.types.v1.TenantImageVariantR\x11logoImageVariants\x12*\n" +
 	"\x11serif_font_family\x18\" \x01(\tR\x0fserifFontFamily\x12(\n" +
-	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamilyJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xdc\x01\n" +
+	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamilyJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xf4\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -2659,7 +2766,18 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x06 \x01(\tR\tupdatedAt\x12*\n" +
-	"\x11display_in_footer\x18\a \x01(\bR\x0fdisplayInFooter\"\xa7\x02\n" +
+	"\x11display_in_footer\x18\a \x01(\bR\x0fdisplayInFooter\x12\x16\n" +
+	"\x06locale\x18\b \x01(\tR\x06locale\"\xd8\x01\n" +
+	"\x0fPageTranslation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x120\n" +
+	"\x14published_version_id\x18\x05 \x01(\tR\x12publishedVersionId\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt\"\xa7\x02\n" +
 	"\vPageVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12%\n" +
@@ -2732,7 +2850,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -2759,8 +2877,9 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantImageVariant)(nil),    // 22: publira.types.v1.TenantImageVariant
 	(*TenantTheme)(nil),           // 23: publira.types.v1.TenantTheme
 	(*Page)(nil),                  // 24: publira.types.v1.Page
-	(*PageVersion)(nil),           // 25: publira.types.v1.PageVersion
-	(*RetentionPeriods)(nil),      // 26: publira.types.v1.RetentionPeriods
+	(*PageTranslation)(nil),       // 25: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 26: publira.types.v1.PageVersion
+	(*RetentionPeriods)(nil),      // 27: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	12, // 0: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
@@ -2799,7 +2918,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

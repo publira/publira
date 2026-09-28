@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pageslug"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -26,6 +27,7 @@ func pageFromPublishedModel(p dbmodels.Page, t dbmodels.PageTranslation) *publir
 		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:       updatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		DisplayInFooter: p.DisplayInFooter,
+		Locale:          t.Locale,
 	}
 	if t.PublishedVersionID.Valid {
 		item.PublishedVersionId = t.PublishedVersionID.UUID.String()
@@ -54,6 +56,20 @@ func pageVersionFromPublishedRow(row dbmodels.GetPublishedPageBySlugForTenantRow
 	return item
 }
 
+// readerPageLocale is the locale a reader asked to read pages in: the tenant's
+// default for an empty value, since that is what the unprefixed public URLs
+// are served in.
+func readerPageLocale(raw string, tenant dbmodels.Tenant) (string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return tenant.DefaultLocale, nil
+	}
+	code, err := locale.Normalize(raw)
+	if err != nil {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("locale must be a supported locale"))
+	}
+	return code, nil
+}
+
 func (s *apiServer) ListPublishedPages(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListPublishedPagesRequest],
@@ -63,7 +79,15 @@ func (s *apiServer) ListPublishedPages(
 		return nil, err
 	}
 
-	rows, err := s.queriesFor(ctx).ListPublishedPagesForTenant(ctx, tenant.ID)
+	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.queriesFor(ctx).ListPublishedPagesForTenant(ctx, dbmodels.ListPublishedPagesForTenantParams{
+		TenantID: tenant.ID,
+		Locale:   readerLocale,
+	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published pages", err, "tenant_id", tenant.ID.String())
 	}
@@ -133,9 +157,15 @@ func (s *apiServer) GetPublishedPage(
 		return nil, err
 	}
 
+	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
 	row, err := s.queriesFor(ctx).GetPublishedPageBySlugForTenant(ctx, dbmodels.GetPublishedPageBySlugForTenantParams{
 		TenantID: tenant.ID,
 		Slug:     slug,
+		Locale:   readerLocale,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -153,6 +183,7 @@ func (s *apiServer) GetPublishedPage(
 			CreatedAt:       row.CreatedAt,
 			UpdatedAt:       row.UpdatedAt,
 		}, dbmodels.PageTranslation{
+			Locale:             row.Locale,
 			Title:              row.Title,
 			PublishedVersionID: row.PublishedVersionID,
 			UpdatedAt:          row.TranslationUpdatedAt,

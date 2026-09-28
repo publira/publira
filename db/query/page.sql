@@ -18,6 +18,45 @@ FROM pages p
 WHERE p.id = sqlc.arg('id')
 	AND p.tenant_id = sqlc.arg('tenant_id');
 
+-- name: GetPageWithTranslationForTenant :one
+-- The page with its translation in exactly this locale, and no row when the
+-- page has none: an edit aimed at one language must not land on another.
+SELECT sqlc.embed(p), sqlc.embed(pt)
+FROM pages p
+	JOIN page_translations pt ON pt.page_id = p.id
+	AND pt.locale = sqlc.arg('locale')
+WHERE p.id = sqlc.arg('id')
+	AND p.tenant_id = sqlc.arg('tenant_id');
+
+-- name: ListPageTranslationsForTenant :many
+-- Empty only for a page the tenant does not have, since a page always keeps at
+-- least one translation.
+SELECT *
+FROM page_translations
+WHERE page_id = sqlc.arg('page_id')
+	AND tenant_id = sqlc.arg('tenant_id')
+ORDER BY created_at ASC, id ASC;
+
+-- name: LockPageForTenant :one
+-- Serializes the writers that must not leave a page without a translation.
+SELECT id
+FROM pages
+WHERE id = sqlc.arg('id')
+	AND tenant_id = sqlc.arg('tenant_id')
+FOR UPDATE;
+
+-- name: CountPageTranslations :one
+SELECT count(*)::int AS translations
+FROM page_translations
+WHERE page_id = sqlc.arg('page_id');
+
+-- name: DeletePageTranslation :one
+-- The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
+DELETE FROM page_translations
+WHERE id = sqlc.arg('id')
+	AND tenant_id = sqlc.arg('tenant_id')
+RETURNING *;
+
 -- Admin ListPages is (created_at, id) ASC. Forward uses the ASC query;
 -- backward uses DESC so the index can be scanned in reverse. The handler
 -- flips DESC rows back into display order.
@@ -72,7 +111,7 @@ RETURNING *;
 -- name: UpdatePageTranslationTitle :one
 UPDATE page_translations
 SET title = sqlc.arg('title'), updated_at = NOW()
-WHERE id = page_translation_for(sqlc.arg('page_id'), sqlc.arg('locale'))
+WHERE id = sqlc.arg('id')
 	AND tenant_id = sqlc.arg('tenant_id')
 RETURNING *;
 
@@ -111,39 +150,34 @@ RETURNING *;
 
 -- name: ListPublishedPagesForTenant :many
 -- Restricted to the pages flagged for the footer, which is the only place a
--- reader navigates to them from. A page is served in the translation
--- page_translation_for picks for its tenant's default locale.
+-- reader navigates to them from. Each page is listed in the translation
+-- published_page_translation_for picks for the reader's locale.
 SELECT sqlc.embed(p), sqlc.embed(pt)
 FROM pages p
-	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
-	JOIN page_versions pv ON pv.id = pt.published_version_id
+	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, sqlc.arg('locale'))
 WHERE p.tenant_id = sqlc.arg('tenant_id')
 	AND p.display_in_footer = true
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
 ORDER BY p.created_at ASC;
 
 -- name: ListPublishedPageSlugsForTenant :many
 -- Every published page, footer or not: the public site routes a path to a page
 -- by this set, so a page left out of the footer is still reachable at its slug.
+-- A page with any published translation is served in every locale, so the
+-- locale handed to published_page_translation_for does not matter here.
 SELECT p.slug
 FROM pages p
 	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
-	JOIN page_versions pv ON pv.id = pt.published_version_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
+	AND published_page_translation_for(p.id, t.default_locale) IS NOT NULL
 ORDER BY p.slug ASC;
 
 -- name: GetPublishedPageBySlugForTenant :one
--- Served in the translation ListPublishedPagesForTenant serves.
+-- Served in the translation ListPublishedPagesForTenant lists, and names its
+-- locale so the reader can be told when it is not the one asked for.
 SELECT p.id,
 	p.tenant_id,
 	p.slug,
+	pt.locale,
 	pt.title,
 	pt.published_version_id,
 	p.display_in_footer,
@@ -160,12 +194,7 @@ SELECT p.id,
 	pv.created_at AS version_created_at,
 	pv.published_at
 FROM pages p
-	JOIN tenants t ON t.id = p.tenant_id
-	JOIN page_translations pt ON pt.id = page_translation_for(p.id, t.default_locale)
+	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, sqlc.arg('locale'))
 	JOIN page_versions pv ON pv.id = pt.published_version_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
-	AND p.slug = sqlc.arg('slug')
-	AND pv.status = 'published'
-	AND pv.published_at IS NOT NULL
-	AND pv.published_at <= NOW()
-LIMIT 1;
+	AND p.slug = sqlc.arg('slug');

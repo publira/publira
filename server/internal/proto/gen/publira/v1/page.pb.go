@@ -23,8 +23,13 @@ const (
 )
 
 type ListPublishedPagesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The reader's locale. Each page is listed in its published translation in
+	// this locale, else the tenant's default locale, else its oldest published
+	// one, and Page.locale names the one listed. Empty means the tenant's
+	// default locale.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,6 +69,13 @@ func (x *ListPublishedPagesRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *ListPublishedPagesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListPublishedPagesResponse struct {
@@ -202,9 +214,11 @@ func (x *ListPublishedPageSlugsResponse) GetSlugs() []string {
 }
 
 type GetPublishedPageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Slug   string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	// The reader's locale, resolved as ListPublishedPagesRequest.locale is.
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,6 +263,13 @@ func (x *GetPublishedPageRequest) GetTenant() *v1.TenantContext {
 func (x *GetPublishedPageRequest) GetSlug() string {
 	if x != nil {
 		return x.Slug
+	}
+	return ""
+}
+
+func (x *GetPublishedPageRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -310,18 +331,20 @@ var File_publira_v1_page_proto protoreflect.FileDescriptor
 const file_publira_v1_page_proto_rawDesc = "" +
 	"\n" +
 	"\x15publira/v1/page.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"T\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"l\n" +
 	"\x19ListPublishedPagesRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"J\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"J\n" +
 	"\x1aListPublishedPagesResponse\x12,\n" +
 	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\"X\n" +
 	"\x1dListPublishedPageSlugsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"6\n" +
 	"\x1eListPublishedPageSlugsResponse\x12\x14\n" +
-	"\x05slugs\x18\x01 \x03(\tR\x05slugs\"f\n" +
+	"\x05slugs\x18\x01 \x03(\tR\x05slugs\"~\n" +
 	"\x17GetPublishedPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\x7f\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"\x7f\n" +
 	"\x18GetPublishedPageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\x127\n" +
 	"\aversion\x18\x02 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xcf\x02\n" +

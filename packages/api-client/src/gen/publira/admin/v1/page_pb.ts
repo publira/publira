@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Page, PageVersion, TenantContext } from "../../types/v1/types_pb";
+import type { Page, PageTranslation, PageVersion, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,9 +12,12 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/page.proto.
  */
 export const file_publira_admin_v1_page: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3BhZ2UucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEifAoRQ3JlYXRlUGFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHNsdWcYAiABKAkSDQoFdGl0bGUYAyABKAkSGQoRZGlzcGxheV9pbl9mb290ZXIYBCABKAgiOgoSQ3JlYXRlUGFnZVJlc3BvbnNlEiQKBHBhZ2UYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UimgEKEVVwZGF0ZVBhZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwYWdlX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEh4KEWRpc3BsYXlfaW5fZm9vdGVyGAQgASgISACIAQFCFAoSX2Rpc3BsYXlfaW5fZm9vdGVyIjoKElVwZGF0ZVBhZ2VSZXNwb25zZRIkCgRwYWdlGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5QYWdlImEKEExpc3RQYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJImYKEUxpc3RQYWdlc1Jlc3BvbnNlEiUKBXBhZ2VzGAEgAygLMhYucHVibGlyYS50eXBlcy52MS5QYWdlEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiUgoOR2V0UGFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkiNwoPR2V0UGFnZVJlc3BvbnNlEiQKBHBhZ2UYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UicgoUQ3JlYXRlVmVyc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSGAoQY29udGVudF9tYXJrZG93bhgDIAEoCSJHChVDcmVhdGVWZXJzaW9uUmVzcG9uc2USLgoHdmVyc2lvbhgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuUGFnZVZlcnNpb24iVwoTTGlzdFZlcnNpb25zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGFnZV9pZBgCIAEoCSJHChRMaXN0VmVyc2lvbnNSZXNwb25zZRIvCgh2ZXJzaW9ucxgBIAMoCzIdLnB1YmxpcmEudHlwZXMudjEuUGFnZVZlcnNpb24ibQoVUHVibGlzaFZlcnNpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwYWdlX2lkGAIgASgJEhIKCnZlcnNpb25faWQYAyABKAkiSAoWUHVibGlzaFZlcnNpb25SZXNwb25zZRIuCgd2ZXJzaW9uGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbiJYChRVbnB1Ymxpc2hQYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGFnZV9pZBgCIAEoCSI9ChVVbnB1Ymxpc2hQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZSJwChhSb2xsYmFja1RvVmVyc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSEgoKdmVyc2lvbl9pZBgDIAEoCSJLChlSb2xsYmFja1RvVmVyc2lvblJlc3BvbnNlEi4KB3ZlcnNpb24YASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlBhZ2VWZXJzaW9uMvMGChFBZG1pblBhZ2VzU2VydmljZRJZCgpDcmVhdGVQYWdlEiMucHVibGlyYS5hZG1pbi52MS5DcmVhdGVQYWdlUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlUGFnZVJlc3BvbnNlIgASWQoKVXBkYXRlUGFnZRIjLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlUGFnZVJlcXVlc3QaJC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVBhZ2VSZXNwb25zZSIAElYKCUxpc3RQYWdlcxIiLnB1YmxpcmEuYWRtaW4udjEuTGlzdFBhZ2VzUmVxdWVzdBojLnB1YmxpcmEuYWRtaW4udjEuTGlzdFBhZ2VzUmVzcG9uc2UiABJQCgdHZXRQYWdlEiAucHVibGlyYS5hZG1pbi52MS5HZXRQYWdlUmVxdWVzdBohLnB1YmxpcmEuYWRtaW4udjEuR2V0UGFnZVJlc3BvbnNlIgASYgoNQ3JlYXRlVmVyc2lvbhImLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlVmVyc2lvblJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVZlcnNpb25SZXNwb25zZSIAEl8KDExpc3RWZXJzaW9ucxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdFZlcnNpb25zUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdFZlcnNpb25zUmVzcG9uc2UiABJlCg5QdWJsaXNoVmVyc2lvbhInLnB1YmxpcmEuYWRtaW4udjEuUHVibGlzaFZlcnNpb25SZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5QdWJsaXNoVmVyc2lvblJlc3BvbnNlIgASYgoNVW5wdWJsaXNoUGFnZRImLnB1YmxpcmEuYWRtaW4udjEuVW5wdWJsaXNoUGFnZVJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVucHVibGlzaFBhZ2VSZXNwb25zZSIAEm4KEVJvbGxiYWNrVG9WZXJzaW9uEioucHVibGlyYS5hZG1pbi52MS5Sb2xsYmFja1RvVmVyc2lvblJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLlJvbGxiYWNrVG9WZXJzaW9uUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3BhZ2UucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEifAoRQ3JlYXRlUGFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBHNsdWcYAiABKAkSDQoFdGl0bGUYAyABKAkSGQoRZGlzcGxheV9pbl9mb290ZXIYBCABKAgiOgoSQ3JlYXRlUGFnZVJlc3BvbnNlEiQKBHBhZ2UYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UiqgEKEVVwZGF0ZVBhZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwYWdlX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEh4KEWRpc3BsYXlfaW5fZm9vdGVyGAQgASgISACIAQESDgoGbG9jYWxlGAUgASgJQhQKEl9kaXNwbGF5X2luX2Zvb3RlciI6ChJVcGRhdGVQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZSJhChBMaXN0UGFnZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJmChFMaXN0UGFnZXNSZXNwb25zZRIlCgVwYWdlcxgBIAMoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJImIKDkdldFBhZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwYWdlX2lkGAIgASgJEg4KBmxvY2FsZRgDIAEoCSI3Cg9HZXRQYWdlUmVzcG9uc2USJAoEcGFnZRgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuUGFnZSKCAQoUQ3JlYXRlVmVyc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSGAoQY29udGVudF9tYXJrZG93bhgDIAEoCRIOCgZsb2NhbGUYBCABKAkiRwoVQ3JlYXRlVmVyc2lvblJlc3BvbnNlEi4KB3ZlcnNpb24YASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlBhZ2VWZXJzaW9uImcKE0xpc3RWZXJzaW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSDgoGbG9jYWxlGAMgASgJIkcKFExpc3RWZXJzaW9uc1Jlc3BvbnNlEi8KCHZlcnNpb25zGAEgAygLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbiJ9ChVQdWJsaXNoVmVyc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSEgoKdmVyc2lvbl9pZBgDIAEoCRIOCgZsb2NhbGUYBCABKAkiSAoWUHVibGlzaFZlcnNpb25SZXNwb25zZRIuCgd2ZXJzaW9uGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5QYWdlVmVyc2lvbiJoChRVbnB1Ymxpc2hQYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGFnZV9pZBgCIAEoCRIOCgZsb2NhbGUYAyABKAkiPQoVVW5wdWJsaXNoUGFnZVJlc3BvbnNlEiQKBHBhZ2UYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlBhZ2UigAEKGFJvbGxiYWNrVG9WZXJzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGFnZV9pZBgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSJLChlSb2xsYmFja1RvVmVyc2lvblJlc3BvbnNlEi4KB3ZlcnNpb24YASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlBhZ2VWZXJzaW9uIn8KHENyZWF0ZVBhZ2VUcmFuc2xhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BhZ2VfaWQYAiABKAkSDgoGbG9jYWxlGAMgASgJEg0KBXRpdGxlGAQgASgJIlcKHUNyZWF0ZVBhZ2VUcmFuc2xhdGlvblJlc3BvbnNlEjYKC3RyYW5zbGF0aW9uGAEgASgLMiEucHVibGlyYS50eXBlcy52MS5QYWdlVHJhbnNsYXRpb24iXwobTGlzdFBhZ2VUcmFuc2xhdGlvbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwYWdlX2lkGAIgASgJIlcKHExpc3RQYWdlVHJhbnNsYXRpb25zUmVzcG9uc2USNwoMdHJhbnNsYXRpb25zGAEgAygLMiEucHVibGlyYS50eXBlcy52MS5QYWdlVHJhbnNsYXRpb24icAocRGVsZXRlUGFnZVRyYW5zbGF0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGFnZV9pZBgCIAEoCRIOCgZsb2NhbGUYAyABKAkiHwodRGVsZXRlUGFnZVRyYW5zbGF0aW9uUmVzcG9uc2Uy5AkKEUFkbWluUGFnZXNTZXJ2aWNlElkKCkNyZWF0ZVBhZ2USIy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVBhZ2VSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVQYWdlUmVzcG9uc2UiABJZCgpVcGRhdGVQYWdlEiMucHVibGlyYS5hZG1pbi52MS5VcGRhdGVQYWdlUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlUGFnZVJlc3BvbnNlIgASVgoJTGlzdFBhZ2VzEiIucHVibGlyYS5hZG1pbi52MS5MaXN0UGFnZXNSZXF1ZXN0GiMucHVibGlyYS5hZG1pbi52MS5MaXN0UGFnZXNSZXNwb25zZSIAElAKB0dldFBhZ2USIC5wdWJsaXJhLmFkbWluLnYxLkdldFBhZ2VSZXF1ZXN0GiEucHVibGlyYS5hZG1pbi52MS5HZXRQYWdlUmVzcG9uc2UiABJiCg1DcmVhdGVWZXJzaW9uEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVWZXJzaW9uUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlVmVyc2lvblJlc3BvbnNlIgASXwoMTGlzdFZlcnNpb25zEiUucHVibGlyYS5hZG1pbi52MS5MaXN0VmVyc2lvbnNSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5MaXN0VmVyc2lvbnNSZXNwb25zZSIAEmUKDlB1Ymxpc2hWZXJzaW9uEicucHVibGlyYS5hZG1pbi52MS5QdWJsaXNoVmVyc2lvblJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlB1Ymxpc2hWZXJzaW9uUmVzcG9uc2UiABJiCg1VbnB1Ymxpc2hQYWdlEiYucHVibGlyYS5hZG1pbi52MS5VbnB1Ymxpc2hQYWdlUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuVW5wdWJsaXNoUGFnZVJlc3BvbnNlIgASbgoRUm9sbGJhY2tUb1ZlcnNpb24SKi5wdWJsaXJhLmFkbWluLnYxLlJvbGxiYWNrVG9WZXJzaW9uUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuUm9sbGJhY2tUb1ZlcnNpb25SZXNwb25zZSIAEnoKFUNyZWF0ZVBhZ2VUcmFuc2xhdGlvbhIuLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlUGFnZVRyYW5zbGF0aW9uUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlUGFnZVRyYW5zbGF0aW9uUmVzcG9uc2UiABJ3ChRMaXN0UGFnZVRyYW5zbGF0aW9ucxItLnB1YmxpcmEuYWRtaW4udjEuTGlzdFBhZ2VUcmFuc2xhdGlvbnNSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5MaXN0UGFnZVRyYW5zbGF0aW9uc1Jlc3BvbnNlIgASegoVRGVsZXRlUGFnZVRyYW5zbGF0aW9uEi4ucHVibGlyYS5hZG1pbi52MS5EZWxldGVQYWdlVHJhbnNsYXRpb25SZXF1ZXN0Gi8ucHVibGlyYS5hZG1pbi52MS5EZWxldGVQYWdlVHJhbnNsYXRpb25SZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
+ * Creates the page together with its translation in the tenant's default
+ * locale, titled title, so a page never exists without a translation.
+ *
  * @generated from message publira.admin.v1.CreatePageRequest
  */
 export type CreatePageRequest = Message<"publira.admin.v1.CreatePageRequest"> & {
@@ -89,6 +92,11 @@ export type UpdatePageRequest = Message<"publira.admin.v1.UpdatePageRequest"> & 
    * @generated from field: optional bool display_in_footer = 4;
    */
   displayInFooter?: boolean | undefined;
+
+  /**
+   * @generated from field: string locale = 5;
+   */
+  locale: string;
 };
 
 /**
@@ -192,6 +200,11 @@ export type GetPageRequest = Message<"publira.admin.v1.GetPageRequest"> & {
    * @generated from field: string page_id = 2;
    */
   pageId: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
 };
 
 /**
@@ -236,6 +249,11 @@ export type CreateVersionRequest = Message<"publira.admin.v1.CreateVersionReques
    * @generated from field: string content_markdown = 3;
    */
   contentMarkdown: string;
+
+  /**
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
 };
 
 /**
@@ -275,6 +293,11 @@ export type ListVersionsRequest = Message<"publira.admin.v1.ListVersionsRequest"
    * @generated from field: string page_id = 2;
    */
   pageId: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
 };
 
 /**
@@ -319,6 +342,11 @@ export type PublishVersionRequest = Message<"publira.admin.v1.PublishVersionRequ
    * @generated from field: string version_id = 3;
    */
   versionId: string;
+
+  /**
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
 };
 
 /**
@@ -358,6 +386,11 @@ export type UnpublishPageRequest = Message<"publira.admin.v1.UnpublishPageReques
    * @generated from field: string page_id = 2;
    */
   pageId: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
 };
 
 /**
@@ -402,6 +435,11 @@ export type RollbackToVersionRequest = Message<"publira.admin.v1.RollbackToVersi
    * @generated from field: string version_id = 3;
    */
   versionId: string;
+
+  /**
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
 };
 
 /**
@@ -429,6 +467,144 @@ export const RollbackToVersionResponseSchema: GenMessage<RollbackToVersionRespon
   messageDesc(file_publira_admin_v1_page, 17);
 
 /**
+ * @generated from message publira.admin.v1.CreatePageTranslationRequest
+ */
+export type CreatePageTranslationRequest = Message<"publira.admin.v1.CreatePageTranslationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string page_id = 2;
+   */
+  pageId: string;
+
+  /**
+   * A supported UI locale the page has no translation in yet.
+   *
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: string title = 4;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.CreatePageTranslationRequest.
+ * Use `create(CreatePageTranslationRequestSchema)` to create a new message.
+ */
+export const CreatePageTranslationRequestSchema: GenMessage<CreatePageTranslationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 18);
+
+/**
+ * @generated from message publira.admin.v1.CreatePageTranslationResponse
+ */
+export type CreatePageTranslationResponse = Message<"publira.admin.v1.CreatePageTranslationResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.PageTranslation translation = 1;
+   */
+  translation?: PageTranslation | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.CreatePageTranslationResponse.
+ * Use `create(CreatePageTranslationResponseSchema)` to create a new message.
+ */
+export const CreatePageTranslationResponseSchema: GenMessage<CreatePageTranslationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 19);
+
+/**
+ * @generated from message publira.admin.v1.ListPageTranslationsRequest
+ */
+export type ListPageTranslationsRequest = Message<"publira.admin.v1.ListPageTranslationsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string page_id = 2;
+   */
+  pageId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListPageTranslationsRequest.
+ * Use `create(ListPageTranslationsRequestSchema)` to create a new message.
+ */
+export const ListPageTranslationsRequestSchema: GenMessage<ListPageTranslationsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 20);
+
+/**
+ * @generated from message publira.admin.v1.ListPageTranslationsResponse
+ */
+export type ListPageTranslationsResponse = Message<"publira.admin.v1.ListPageTranslationsResponse"> & {
+  /**
+   * Oldest first. Never empty for a page the tenant has.
+   *
+   * @generated from field: repeated publira.types.v1.PageTranslation translations = 1;
+   */
+  translations: PageTranslation[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ListPageTranslationsResponse.
+ * Use `create(ListPageTranslationsResponseSchema)` to create a new message.
+ */
+export const ListPageTranslationsResponseSchema: GenMessage<ListPageTranslationsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 21);
+
+/**
+ * @generated from message publira.admin.v1.DeletePageTranslationRequest
+ */
+export type DeletePageTranslationRequest = Message<"publira.admin.v1.DeletePageTranslationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string page_id = 2;
+   */
+  pageId: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeletePageTranslationRequest.
+ * Use `create(DeletePageTranslationRequestSchema)` to create a new message.
+ */
+export const DeletePageTranslationRequestSchema: GenMessage<DeletePageTranslationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 22);
+
+/**
+ * @generated from message publira.admin.v1.DeletePageTranslationResponse
+ */
+export type DeletePageTranslationResponse = Message<"publira.admin.v1.DeletePageTranslationResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.DeletePageTranslationResponse.
+ * Use `create(DeletePageTranslationResponseSchema)` to create a new message.
+ */
+export const DeletePageTranslationResponseSchema: GenMessage<DeletePageTranslationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_page, 23);
+
+/**
+ * A request that carries a locale beside a page_id works on that one
+ * translation. An empty locale means the translation page_translation_for picks
+ * for the tenant's default locale; any other must name a translation the page
+ * has, or the call is not_found, so an edit aimed at one language never lands
+ * on another.
+ *
  * @generated from service publira.admin.v1.AdminPagesService
  */
 export const AdminPagesService: GenService<{
@@ -506,6 +682,33 @@ export const AdminPagesService: GenService<{
     methodKind: "unary";
     input: typeof RollbackToVersionRequestSchema;
     output: typeof RollbackToVersionResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminPagesService.CreatePageTranslation
+   */
+  createPageTranslation: {
+    methodKind: "unary";
+    input: typeof CreatePageTranslationRequestSchema;
+    output: typeof CreatePageTranslationResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminPagesService.ListPageTranslations
+   */
+  listPageTranslations: {
+    methodKind: "unary";
+    input: typeof ListPageTranslationsRequestSchema;
+    output: typeof ListPageTranslationsResponseSchema;
+  },
+  /**
+   * Deletes one translation with its versions. A page's last translation
+   * cannot be deleted (failed_precondition).
+   *
+   * @generated from rpc publira.admin.v1.AdminPagesService.DeletePageTranslation
+   */
+  deletePageTranslation: {
+    methodKind: "unary";
+    input: typeof DeletePageTranslationRequestSchema;
+    output: typeof DeletePageTranslationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_page, 0);

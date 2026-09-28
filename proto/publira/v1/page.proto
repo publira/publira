@@ -8,6 +8,11 @@ import "publira/types/v1/types.proto";
 
 message ListPublishedPagesRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale. Each page is listed in its published translation in
+  // this locale, else the tenant's default locale, else its oldest published
+  // one, and Page.locale names the one listed. Empty means the tenant's
+  // default locale.
+  string locale = 2;
 }
 
 message ListPublishedPagesResponse {
@@ -28,6 +33,8 @@ message ListPublishedPageSlugsResponse {
 message GetPublishedPageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string slug = 2;
+  // The reader's locale, resolved as ListPublishedPagesRequest.locale is.
+  string locale = 3;
 }
 
 message GetPublishedPageResponse {

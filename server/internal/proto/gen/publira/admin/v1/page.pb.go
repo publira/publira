@@ -22,6 +22,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Creates the page together with its translation in the tenant's default
+// locale, titled title, so a page never exists without a translation.
 type CreatePageRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -141,7 +143,8 @@ type UpdatePageRequest struct {
 	Title  string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	// optional so title-only updates do not clear an existing true value
 	// (proto3 non-optional bool maps omitted fields to false).
-	DisplayInFooter *bool `protobuf:"varint,4,opt,name=display_in_footer,json=displayInFooter,proto3,oneof" json:"display_in_footer,omitempty"`
+	DisplayInFooter *bool  `protobuf:"varint,4,opt,name=display_in_footer,json=displayInFooter,proto3,oneof" json:"display_in_footer,omitempty"`
+	Locale          string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -202,6 +205,13 @@ func (x *UpdatePageRequest) GetDisplayInFooter() bool {
 		return *x.DisplayInFooter
 	}
 	return false
+}
+
+func (x *UpdatePageRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type UpdatePageResponse struct {
@@ -377,6 +387,7 @@ type GetPageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -421,6 +432,13 @@ func (x *GetPageRequest) GetTenant() *v1.TenantContext {
 func (x *GetPageRequest) GetPageId() string {
 	if x != nil {
 		return x.PageId
+	}
+	return ""
+}
+
+func (x *GetPageRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -474,6 +492,7 @@ type CreateVersionRequest struct {
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId          string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
 	ContentMarkdown string                 `protobuf:"bytes,3,opt,name=content_markdown,json=contentMarkdown,proto3" json:"content_markdown,omitempty"`
+	Locale          string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -529,6 +548,13 @@ func (x *CreateVersionRequest) GetContentMarkdown() string {
 	return ""
 }
 
+func (x *CreateVersionRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type CreateVersionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       *v1.PageVersion        `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -577,6 +603,7 @@ type ListVersionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -621,6 +648,13 @@ func (x *ListVersionsRequest) GetTenant() *v1.TenantContext {
 func (x *ListVersionsRequest) GetPageId() string {
 	if x != nil {
 		return x.PageId
+	}
+	return ""
+}
+
+func (x *ListVersionsRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -674,6 +708,7 @@ type PublishVersionRequest struct {
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
 	VersionId     string                 `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -729,6 +764,13 @@ func (x *PublishVersionRequest) GetVersionId() string {
 	return ""
 }
 
+func (x *PublishVersionRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type PublishVersionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       *v1.PageVersion        `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -777,6 +819,7 @@ type UnpublishPageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -821,6 +864,13 @@ func (x *UnpublishPageRequest) GetTenant() *v1.TenantContext {
 func (x *UnpublishPageRequest) GetPageId() string {
 	if x != nil {
 		return x.PageId
+	}
+	return ""
+}
+
+func (x *UnpublishPageRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -874,6 +924,7 @@ type RollbackToVersionRequest struct {
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
 	VersionId     string                 `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -929,6 +980,13 @@ func (x *RollbackToVersionRequest) GetVersionId() string {
 	return ""
 }
 
+func (x *RollbackToVersionRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type RollbackToVersionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       *v1.PageVersion        `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -973,6 +1031,312 @@ func (x *RollbackToVersionResponse) GetVersion() *v1.PageVersion {
 	return nil
 }
 
+type CreatePageTranslationRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	// A supported UI locale the page has no translation in yet.
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	Title         string `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePageTranslationRequest) Reset() {
+	*x = CreatePageTranslationRequest{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePageTranslationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePageTranslationRequest) ProtoMessage() {}
+
+func (x *CreatePageTranslationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePageTranslationRequest.ProtoReflect.Descriptor instead.
+func (*CreatePageTranslationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CreatePageTranslationRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *CreatePageTranslationRequest) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+func (x *CreatePageTranslationRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *CreatePageTranslationRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CreatePageTranslationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Translation   *v1.PageTranslation    `protobuf:"bytes,1,opt,name=translation,proto3" json:"translation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePageTranslationResponse) Reset() {
+	*x = CreatePageTranslationResponse{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePageTranslationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePageTranslationResponse) ProtoMessage() {}
+
+func (x *CreatePageTranslationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePageTranslationResponse.ProtoReflect.Descriptor instead.
+func (*CreatePageTranslationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CreatePageTranslationResponse) GetTranslation() *v1.PageTranslation {
+	if x != nil {
+		return x.Translation
+	}
+	return nil
+}
+
+type ListPageTranslationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPageTranslationsRequest) Reset() {
+	*x = ListPageTranslationsRequest{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPageTranslationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPageTranslationsRequest) ProtoMessage() {}
+
+func (x *ListPageTranslationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPageTranslationsRequest.ProtoReflect.Descriptor instead.
+func (*ListPageTranslationsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ListPageTranslationsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ListPageTranslationsRequest) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+type ListPageTranslationsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Oldest first. Never empty for a page the tenant has.
+	Translations  []*v1.PageTranslation `protobuf:"bytes,1,rep,name=translations,proto3" json:"translations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPageTranslationsResponse) Reset() {
+	*x = ListPageTranslationsResponse{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPageTranslationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPageTranslationsResponse) ProtoMessage() {}
+
+func (x *ListPageTranslationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPageTranslationsResponse.ProtoReflect.Descriptor instead.
+func (*ListPageTranslationsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListPageTranslationsResponse) GetTranslations() []*v1.PageTranslation {
+	if x != nil {
+		return x.Translations
+	}
+	return nil
+}
+
+type DeletePageTranslationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePageTranslationRequest) Reset() {
+	*x = DeletePageTranslationRequest{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePageTranslationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePageTranslationRequest) ProtoMessage() {}
+
+func (x *DeletePageTranslationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePageTranslationRequest.ProtoReflect.Descriptor instead.
+func (*DeletePageTranslationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *DeletePageTranslationRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *DeletePageTranslationRequest) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+func (x *DeletePageTranslationRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+type DeletePageTranslationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePageTranslationResponse) Reset() {
+	*x = DeletePageTranslationResponse{}
+	mi := &file_publira_admin_v1_page_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePageTranslationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePageTranslationResponse) ProtoMessage() {}
+
+func (x *DeletePageTranslationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_page_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePageTranslationResponse.ProtoReflect.Descriptor instead.
+func (*DeletePageTranslationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_page_proto_rawDescGZIP(), []int{23}
+}
+
 var File_publira_admin_v1_page_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_page_proto_rawDesc = "" +
@@ -984,12 +1348,13 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12*\n" +
 	"\x11display_in_footer\x18\x04 \x01(\bR\x0fdisplayInFooter\"@\n" +
 	"\x12CreatePageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xc2\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xda\x01\n" +
 	"\x11UpdatePageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12/\n" +
-	"\x11display_in_footer\x18\x04 \x01(\bH\x00R\x0fdisplayInFooter\x88\x01\x01B\x14\n" +
+	"\x11display_in_footer\x18\x04 \x01(\bH\x00R\x0fdisplayInFooter\x88\x01\x01\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06localeB\x14\n" +
 	"\x12_display_in_footer\"@\n" +
 	"\x12UpdatePageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"w\n" +
@@ -1001,42 +1366,65 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"b\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"z\n" +
 	"\x0eGetPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
-	"\apage_id\x18\x02 \x01(\tR\x06pageId\"=\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"=\n" +
 	"\x0fGetPageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\x93\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xab\x01\n" +
 	"\x14CreateVersionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12)\n" +
-	"\x10content_markdown\x18\x03 \x01(\tR\x0fcontentMarkdown\"P\n" +
+	"\x10content_markdown\x18\x03 \x01(\tR\x0fcontentMarkdown\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"P\n" +
 	"\x15CreateVersionResponse\x127\n" +
-	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"g\n" +
+	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"\x7f\n" +
 	"\x13ListVersionsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
-	"\apage_id\x18\x02 \x01(\tR\x06pageId\"Q\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"Q\n" +
 	"\x14ListVersionsResponse\x129\n" +
-	"\bversions\x18\x01 \x03(\v2\x1d.publira.types.v1.PageVersionR\bversions\"\x88\x01\n" +
+	"\bversions\x18\x01 \x03(\v2\x1d.publira.types.v1.PageVersionR\bversions\"\xa0\x01\n" +
 	"\x15PublishVersionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x03 \x01(\tR\tversionId\"Q\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"Q\n" +
 	"\x16PublishVersionResponse\x127\n" +
-	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"h\n" +
+	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"\x80\x01\n" +
 	"\x14UnpublishPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
-	"\apage_id\x18\x02 \x01(\tR\x06pageId\"C\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"C\n" +
 	"\x15UnpublishPageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\x8b\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xa3\x01\n" +
 	"\x18RollbackToVersionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x03 \x01(\tR\tversionId\"T\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"T\n" +
 	"\x19RollbackToVersionResponse\x127\n" +
-	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xf3\x06\n" +
+	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"\x9e\x01\n" +
+	"\x1cCreatePageTranslationRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\"d\n" +
+	"\x1dCreatePageTranslationResponse\x12C\n" +
+	"\vtranslation\x18\x01 \x01(\v2!.publira.types.v1.PageTranslationR\vtranslation\"o\n" +
+	"\x1bListPageTranslationsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\"e\n" +
+	"\x1cListPageTranslationsResponse\x12E\n" +
+	"\ftranslations\x18\x01 \x03(\v2!.publira.types.v1.PageTranslationR\ftranslations\"\x88\x01\n" +
+	"\x1cDeletePageTranslationRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"\x1f\n" +
+	"\x1dDeletePageTranslationResponse2\xe4\t\n" +
 	"\x11AdminPagesService\x12Y\n" +
 	"\n" +
 	"CreatePage\x12#.publira.admin.v1.CreatePageRequest\x1a$.publira.admin.v1.CreatePageResponse\"\x00\x12Y\n" +
@@ -1048,7 +1436,10 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\fListVersions\x12%.publira.admin.v1.ListVersionsRequest\x1a&.publira.admin.v1.ListVersionsResponse\"\x00\x12e\n" +
 	"\x0ePublishVersion\x12'.publira.admin.v1.PublishVersionRequest\x1a(.publira.admin.v1.PublishVersionResponse\"\x00\x12b\n" +
 	"\rUnpublishPage\x12&.publira.admin.v1.UnpublishPageRequest\x1a'.publira.admin.v1.UnpublishPageResponse\"\x00\x12n\n" +
-	"\x11RollbackToVersion\x12*.publira.admin.v1.RollbackToVersionRequest\x1a+.publira.admin.v1.RollbackToVersionResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x11RollbackToVersion\x12*.publira.admin.v1.RollbackToVersionRequest\x1a+.publira.admin.v1.RollbackToVersionResponse\"\x00\x12z\n" +
+	"\x15CreatePageTranslation\x12..publira.admin.v1.CreatePageTranslationRequest\x1a/.publira.admin.v1.CreatePageTranslationResponse\"\x00\x12w\n" +
+	"\x14ListPageTranslations\x12-.publira.admin.v1.ListPageTranslationsRequest\x1a..publira.admin.v1.ListPageTranslationsResponse\"\x00\x12z\n" +
+	"\x15DeletePageTranslation\x12..publira.admin.v1.DeletePageTranslationRequest\x1a/.publira.admin.v1.DeletePageTranslationResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_page_proto_rawDescOnce sync.Once
@@ -1062,72 +1453,90 @@ func file_publira_admin_v1_page_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_page_proto_rawDescData
 }
 
-var file_publira_admin_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_publira_admin_v1_page_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_publira_admin_v1_page_proto_goTypes = []any{
-	(*CreatePageRequest)(nil),         // 0: publira.admin.v1.CreatePageRequest
-	(*CreatePageResponse)(nil),        // 1: publira.admin.v1.CreatePageResponse
-	(*UpdatePageRequest)(nil),         // 2: publira.admin.v1.UpdatePageRequest
-	(*UpdatePageResponse)(nil),        // 3: publira.admin.v1.UpdatePageResponse
-	(*ListPagesRequest)(nil),          // 4: publira.admin.v1.ListPagesRequest
-	(*ListPagesResponse)(nil),         // 5: publira.admin.v1.ListPagesResponse
-	(*GetPageRequest)(nil),            // 6: publira.admin.v1.GetPageRequest
-	(*GetPageResponse)(nil),           // 7: publira.admin.v1.GetPageResponse
-	(*CreateVersionRequest)(nil),      // 8: publira.admin.v1.CreateVersionRequest
-	(*CreateVersionResponse)(nil),     // 9: publira.admin.v1.CreateVersionResponse
-	(*ListVersionsRequest)(nil),       // 10: publira.admin.v1.ListVersionsRequest
-	(*ListVersionsResponse)(nil),      // 11: publira.admin.v1.ListVersionsResponse
-	(*PublishVersionRequest)(nil),     // 12: publira.admin.v1.PublishVersionRequest
-	(*PublishVersionResponse)(nil),    // 13: publira.admin.v1.PublishVersionResponse
-	(*UnpublishPageRequest)(nil),      // 14: publira.admin.v1.UnpublishPageRequest
-	(*UnpublishPageResponse)(nil),     // 15: publira.admin.v1.UnpublishPageResponse
-	(*RollbackToVersionRequest)(nil),  // 16: publira.admin.v1.RollbackToVersionRequest
-	(*RollbackToVersionResponse)(nil), // 17: publira.admin.v1.RollbackToVersionResponse
-	(*v1.TenantContext)(nil),          // 18: publira.types.v1.TenantContext
-	(*v1.Page)(nil),                   // 19: publira.types.v1.Page
-	(*v1.PageVersion)(nil),            // 20: publira.types.v1.PageVersion
+	(*CreatePageRequest)(nil),             // 0: publira.admin.v1.CreatePageRequest
+	(*CreatePageResponse)(nil),            // 1: publira.admin.v1.CreatePageResponse
+	(*UpdatePageRequest)(nil),             // 2: publira.admin.v1.UpdatePageRequest
+	(*UpdatePageResponse)(nil),            // 3: publira.admin.v1.UpdatePageResponse
+	(*ListPagesRequest)(nil),              // 4: publira.admin.v1.ListPagesRequest
+	(*ListPagesResponse)(nil),             // 5: publira.admin.v1.ListPagesResponse
+	(*GetPageRequest)(nil),                // 6: publira.admin.v1.GetPageRequest
+	(*GetPageResponse)(nil),               // 7: publira.admin.v1.GetPageResponse
+	(*CreateVersionRequest)(nil),          // 8: publira.admin.v1.CreateVersionRequest
+	(*CreateVersionResponse)(nil),         // 9: publira.admin.v1.CreateVersionResponse
+	(*ListVersionsRequest)(nil),           // 10: publira.admin.v1.ListVersionsRequest
+	(*ListVersionsResponse)(nil),          // 11: publira.admin.v1.ListVersionsResponse
+	(*PublishVersionRequest)(nil),         // 12: publira.admin.v1.PublishVersionRequest
+	(*PublishVersionResponse)(nil),        // 13: publira.admin.v1.PublishVersionResponse
+	(*UnpublishPageRequest)(nil),          // 14: publira.admin.v1.UnpublishPageRequest
+	(*UnpublishPageResponse)(nil),         // 15: publira.admin.v1.UnpublishPageResponse
+	(*RollbackToVersionRequest)(nil),      // 16: publira.admin.v1.RollbackToVersionRequest
+	(*RollbackToVersionResponse)(nil),     // 17: publira.admin.v1.RollbackToVersionResponse
+	(*CreatePageTranslationRequest)(nil),  // 18: publira.admin.v1.CreatePageTranslationRequest
+	(*CreatePageTranslationResponse)(nil), // 19: publira.admin.v1.CreatePageTranslationResponse
+	(*ListPageTranslationsRequest)(nil),   // 20: publira.admin.v1.ListPageTranslationsRequest
+	(*ListPageTranslationsResponse)(nil),  // 21: publira.admin.v1.ListPageTranslationsResponse
+	(*DeletePageTranslationRequest)(nil),  // 22: publira.admin.v1.DeletePageTranslationRequest
+	(*DeletePageTranslationResponse)(nil), // 23: publira.admin.v1.DeletePageTranslationResponse
+	(*v1.TenantContext)(nil),              // 24: publira.types.v1.TenantContext
+	(*v1.Page)(nil),                       // 25: publira.types.v1.Page
+	(*v1.PageVersion)(nil),                // 26: publira.types.v1.PageVersion
+	(*v1.PageTranslation)(nil),            // 27: publira.types.v1.PageTranslation
 }
 var file_publira_admin_v1_page_proto_depIdxs = []int32{
-	18, // 0: publira.admin.v1.CreatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 1: publira.admin.v1.CreatePageResponse.page:type_name -> publira.types.v1.Page
-	18, // 2: publira.admin.v1.UpdatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 3: publira.admin.v1.UpdatePageResponse.page:type_name -> publira.types.v1.Page
-	18, // 4: publira.admin.v1.ListPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 5: publira.admin.v1.ListPagesResponse.pages:type_name -> publira.types.v1.Page
-	18, // 6: publira.admin.v1.GetPageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 7: publira.admin.v1.GetPageResponse.page:type_name -> publira.types.v1.Page
-	18, // 8: publira.admin.v1.CreateVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 9: publira.admin.v1.CreateVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	18, // 10: publira.admin.v1.ListVersionsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 11: publira.admin.v1.ListVersionsResponse.versions:type_name -> publira.types.v1.PageVersion
-	18, // 12: publira.admin.v1.PublishVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 13: publira.admin.v1.PublishVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	18, // 14: publira.admin.v1.UnpublishPageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 15: publira.admin.v1.UnpublishPageResponse.page:type_name -> publira.types.v1.Page
-	18, // 16: publira.admin.v1.RollbackToVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 17: publira.admin.v1.RollbackToVersionResponse.version:type_name -> publira.types.v1.PageVersion
-	0,  // 18: publira.admin.v1.AdminPagesService.CreatePage:input_type -> publira.admin.v1.CreatePageRequest
-	2,  // 19: publira.admin.v1.AdminPagesService.UpdatePage:input_type -> publira.admin.v1.UpdatePageRequest
-	4,  // 20: publira.admin.v1.AdminPagesService.ListPages:input_type -> publira.admin.v1.ListPagesRequest
-	6,  // 21: publira.admin.v1.AdminPagesService.GetPage:input_type -> publira.admin.v1.GetPageRequest
-	8,  // 22: publira.admin.v1.AdminPagesService.CreateVersion:input_type -> publira.admin.v1.CreateVersionRequest
-	10, // 23: publira.admin.v1.AdminPagesService.ListVersions:input_type -> publira.admin.v1.ListVersionsRequest
-	12, // 24: publira.admin.v1.AdminPagesService.PublishVersion:input_type -> publira.admin.v1.PublishVersionRequest
-	14, // 25: publira.admin.v1.AdminPagesService.UnpublishPage:input_type -> publira.admin.v1.UnpublishPageRequest
-	16, // 26: publira.admin.v1.AdminPagesService.RollbackToVersion:input_type -> publira.admin.v1.RollbackToVersionRequest
-	1,  // 27: publira.admin.v1.AdminPagesService.CreatePage:output_type -> publira.admin.v1.CreatePageResponse
-	3,  // 28: publira.admin.v1.AdminPagesService.UpdatePage:output_type -> publira.admin.v1.UpdatePageResponse
-	5,  // 29: publira.admin.v1.AdminPagesService.ListPages:output_type -> publira.admin.v1.ListPagesResponse
-	7,  // 30: publira.admin.v1.AdminPagesService.GetPage:output_type -> publira.admin.v1.GetPageResponse
-	9,  // 31: publira.admin.v1.AdminPagesService.CreateVersion:output_type -> publira.admin.v1.CreateVersionResponse
-	11, // 32: publira.admin.v1.AdminPagesService.ListVersions:output_type -> publira.admin.v1.ListVersionsResponse
-	13, // 33: publira.admin.v1.AdminPagesService.PublishVersion:output_type -> publira.admin.v1.PublishVersionResponse
-	15, // 34: publira.admin.v1.AdminPagesService.UnpublishPage:output_type -> publira.admin.v1.UnpublishPageResponse
-	17, // 35: publira.admin.v1.AdminPagesService.RollbackToVersion:output_type -> publira.admin.v1.RollbackToVersionResponse
-	27, // [27:36] is the sub-list for method output_type
-	18, // [18:27] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	24, // 0: publira.admin.v1.CreatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 1: publira.admin.v1.CreatePageResponse.page:type_name -> publira.types.v1.Page
+	24, // 2: publira.admin.v1.UpdatePageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 3: publira.admin.v1.UpdatePageResponse.page:type_name -> publira.types.v1.Page
+	24, // 4: publira.admin.v1.ListPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 5: publira.admin.v1.ListPagesResponse.pages:type_name -> publira.types.v1.Page
+	24, // 6: publira.admin.v1.GetPageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 7: publira.admin.v1.GetPageResponse.page:type_name -> publira.types.v1.Page
+	24, // 8: publira.admin.v1.CreateVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 9: publira.admin.v1.CreateVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	24, // 10: publira.admin.v1.ListVersionsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 11: publira.admin.v1.ListVersionsResponse.versions:type_name -> publira.types.v1.PageVersion
+	24, // 12: publira.admin.v1.PublishVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 13: publira.admin.v1.PublishVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	24, // 14: publira.admin.v1.UnpublishPageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 15: publira.admin.v1.UnpublishPageResponse.page:type_name -> publira.types.v1.Page
+	24, // 16: publira.admin.v1.RollbackToVersionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 17: publira.admin.v1.RollbackToVersionResponse.version:type_name -> publira.types.v1.PageVersion
+	24, // 18: publira.admin.v1.CreatePageTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 19: publira.admin.v1.CreatePageTranslationResponse.translation:type_name -> publira.types.v1.PageTranslation
+	24, // 20: publira.admin.v1.ListPageTranslationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 21: publira.admin.v1.ListPageTranslationsResponse.translations:type_name -> publira.types.v1.PageTranslation
+	24, // 22: publira.admin.v1.DeletePageTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 23: publira.admin.v1.AdminPagesService.CreatePage:input_type -> publira.admin.v1.CreatePageRequest
+	2,  // 24: publira.admin.v1.AdminPagesService.UpdatePage:input_type -> publira.admin.v1.UpdatePageRequest
+	4,  // 25: publira.admin.v1.AdminPagesService.ListPages:input_type -> publira.admin.v1.ListPagesRequest
+	6,  // 26: publira.admin.v1.AdminPagesService.GetPage:input_type -> publira.admin.v1.GetPageRequest
+	8,  // 27: publira.admin.v1.AdminPagesService.CreateVersion:input_type -> publira.admin.v1.CreateVersionRequest
+	10, // 28: publira.admin.v1.AdminPagesService.ListVersions:input_type -> publira.admin.v1.ListVersionsRequest
+	12, // 29: publira.admin.v1.AdminPagesService.PublishVersion:input_type -> publira.admin.v1.PublishVersionRequest
+	14, // 30: publira.admin.v1.AdminPagesService.UnpublishPage:input_type -> publira.admin.v1.UnpublishPageRequest
+	16, // 31: publira.admin.v1.AdminPagesService.RollbackToVersion:input_type -> publira.admin.v1.RollbackToVersionRequest
+	18, // 32: publira.admin.v1.AdminPagesService.CreatePageTranslation:input_type -> publira.admin.v1.CreatePageTranslationRequest
+	20, // 33: publira.admin.v1.AdminPagesService.ListPageTranslations:input_type -> publira.admin.v1.ListPageTranslationsRequest
+	22, // 34: publira.admin.v1.AdminPagesService.DeletePageTranslation:input_type -> publira.admin.v1.DeletePageTranslationRequest
+	1,  // 35: publira.admin.v1.AdminPagesService.CreatePage:output_type -> publira.admin.v1.CreatePageResponse
+	3,  // 36: publira.admin.v1.AdminPagesService.UpdatePage:output_type -> publira.admin.v1.UpdatePageResponse
+	5,  // 37: publira.admin.v1.AdminPagesService.ListPages:output_type -> publira.admin.v1.ListPagesResponse
+	7,  // 38: publira.admin.v1.AdminPagesService.GetPage:output_type -> publira.admin.v1.GetPageResponse
+	9,  // 39: publira.admin.v1.AdminPagesService.CreateVersion:output_type -> publira.admin.v1.CreateVersionResponse
+	11, // 40: publira.admin.v1.AdminPagesService.ListVersions:output_type -> publira.admin.v1.ListVersionsResponse
+	13, // 41: publira.admin.v1.AdminPagesService.PublishVersion:output_type -> publira.admin.v1.PublishVersionResponse
+	15, // 42: publira.admin.v1.AdminPagesService.UnpublishPage:output_type -> publira.admin.v1.UnpublishPageResponse
+	17, // 43: publira.admin.v1.AdminPagesService.RollbackToVersion:output_type -> publira.admin.v1.RollbackToVersionResponse
+	19, // 44: publira.admin.v1.AdminPagesService.CreatePageTranslation:output_type -> publira.admin.v1.CreatePageTranslationResponse
+	21, // 45: publira.admin.v1.AdminPagesService.ListPageTranslations:output_type -> publira.admin.v1.ListPageTranslationsResponse
+	23, // 46: publira.admin.v1.AdminPagesService.DeletePageTranslation:output_type -> publira.admin.v1.DeletePageTranslationResponse
+	35, // [35:47] is the sub-list for method output_type
+	23, // [23:35] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_page_proto_init() }
@@ -1142,7 +1551,7 @@ func file_publira_admin_v1_page_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_page_proto_rawDesc), len(file_publira_admin_v1_page_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
