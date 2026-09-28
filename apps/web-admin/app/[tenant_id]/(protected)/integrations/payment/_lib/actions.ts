@@ -23,9 +23,11 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
+  getPaymentProvider,
   tenantPaymentSettingsCacheTag,
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
+import type { PaymentCredentialFieldUpdate } from "#lib/payment-settings";
 import {
   tenantStorePaymentSettingsCacheTag,
   updateTenantStorePaymentSettings,
@@ -39,6 +41,7 @@ import {
 } from "#lib/tenant-purchase-settings";
 
 import type {
+  TenantPaymentSettingsFieldErrors,
   TenantPaymentSettingsFormState,
   TenantPurchaseSettingsFormState,
   TenantStorePaymentSettingsFormState,
@@ -52,53 +55,52 @@ const optionalSecretSchema = z.preprocess(
 const tenantPaymentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return z
-    .object({
-      enabled: checkboxOnFormSchema,
-      secretKey: optionalSecretSchema,
-      secretKeyConfigured: flagOneFormSchema,
-      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
-      webhookSecret: optionalSecretSchema,
-      webhookSecretConfigured: flagOneFormSchema,
-    })
-    .superRefine((value, ctx) => {
-      if (!value.enabled) {
-        return;
-      }
-      if (!value.secretKeyConfigured && value.secretKey.trim() === "") {
-        ctx.addIssue({
-          code: "custom",
-          message: t("admin.settings.payment.validation.secret_key_required"),
-          path: ["secretKey"],
-        });
-      }
-      if (!value.webhookSecretConfigured && value.webhookSecret.trim() === "") {
-        ctx.addIssue({
-          code: "custom",
-          message: t(
-            "admin.settings.payment.validation.webhook_secret_required"
-          ),
-          path: ["webhookSecret"],
-        });
-      }
-    });
+  return z.object({
+    enabled: checkboxOnFormSchema,
+    provider: requiredTrimmedString(
+      t("admin.settings.payment.validation.provider_invalid")
+    ),
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
 };
-const tenantPaymentSettingsFormFields = {
-  enabled: "value",
-  secretKey: { kind: "value", name: "secret_key" },
-  secretKeyConfigured: { kind: "value", name: "secret_key_configured" },
-  tenantId: { kind: "value", name: "tenant_id" },
-  webhookSecret: { kind: "value", name: "webhook_secret" },
-  webhookSecretConfigured: {
-    kind: "value",
-    name: "webhook_secret_configured",
-  },
-} as const;
 
-const secretUpdateMode = (value: string): number =>
-  value.trim() === ""
-    ? SECRET_UPDATE_MODE_UNCHANGED
-    : SECRET_UPDATE_MODE_REPLACE;
+/**
+ * What the form did with a stored credential: kept it, replaced it, or
+ * removed it. A replace with nothing entered leaves the stored value as it is.
+ */
+const CREDENTIAL_MODES = ["keep", "replace", "clear"] as const;
+
+const credentialSchema = z.object({
+  configured: flagOneFormSchema,
+  mode: z.enum(CREDENTIAL_MODES),
+  value: optionalSecretSchema.transform((value) => value.trim()),
+});
+
+type CredentialInput = z.output<typeof credentialSchema>;
+
+const credentialFormInput = (formData: FormData, name: string) =>
+  toFormDataInput(formData, {
+    configured: { kind: "value", name: `credential_${name}_configured` },
+    mode: { kind: "value", name: `credential_${name}_mode` },
+    value: { kind: "value", name: `credential_${name}` },
+  });
+
+const credentialUpdateMode = (credential: CredentialInput): number => {
+  if (credential.mode === "clear") {
+    return SECRET_UPDATE_MODE_CLEAR;
+  }
+  return credential.mode === "replace" && credential.value !== ""
+    ? SECRET_UPDATE_MODE_REPLACE
+    : SECRET_UPDATE_MODE_UNCHANGED;
+};
+
+const isCredentialStored = (credential: CredentialInput): boolean => {
+  const mode = credentialUpdateMode(credential);
+  return (
+    mode === SECRET_UPDATE_MODE_REPLACE ||
+    (mode === SECRET_UPDATE_MODE_UNCHANGED && credential.configured)
+  );
+};
 
 export const updateTenantPaymentSettingsAction = async (
   _prevState: TenantPaymentSettingsFormState,
@@ -111,7 +113,11 @@ export const updateTenantPaymentSettingsAction = async (
     tenantPaymentSettingsSchema(locale),
   ]);
   const parsed = schema.safeParse(
-    toFormDataInput(formData, tenantPaymentSettingsFormFields)
+    toFormDataInput(formData, {
+      enabled: "value",
+      provider: "value",
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
   );
   if (!parsed.success) {
     return {
@@ -121,18 +127,48 @@ export const updateTenantPaymentSettingsAction = async (
     };
   }
 
-  const secretKey = parsed.data.secretKey.trim();
-  const webhookSecret = parsed.data.webhookSecret.trim();
+  const declared = await withAdminSessionReauth(() =>
+    getPaymentProvider(parsed.data.tenantId, parsed.data.provider, locale)
+  );
+  if (!declared.ok) {
+    return { message: declared.message, ok: false };
+  }
+
+  const fields: PaymentCredentialFieldUpdate[] = [];
+  const fieldErrors: TenantPaymentSettingsFieldErrors = {};
+  for (const field of declared.provider.fields) {
+    const credential = credentialSchema.safeParse(
+      credentialFormInput(formData, field.name)
+    );
+    if (!credential.success) {
+      return { message: t("errors.validation"), ok: false };
+    }
+    if (
+      parsed.data.enabled &&
+      field.required &&
+      !isCredentialStored(credential.data)
+    ) {
+      fieldErrors[`credential_${field.name}`] = t(
+        "admin.settings.payment.validation.field_required"
+      );
+    }
+    fields.push({
+      mode: credentialUpdateMode(credential.data),
+      name: field.name,
+      value: credential.data.value,
+    });
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { fieldErrors, message: t("errors.validation"), ok: false };
+  }
 
   const result = await withAdminSessionReauth(() =>
     updateTenantPaymentSettings(
       {
         enabled: parsed.data.enabled,
-        secretKey,
-        secretKeyUpdateMode: secretUpdateMode(secretKey),
+        fields,
+        provider: declared.provider.id,
         tenantId: parsed.data.tenantId,
-        webhookSecret,
-        webhookSecretUpdateMode: secretUpdateMode(webhookSecret),
       },
       locale
     )

@@ -2142,36 +2142,45 @@
       },
       "payment": {
         "title": "決済設定",
-        "description": "このテナントの Stripe シークレットを登録・更新・無効化します。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
+        "description": "このテナントの決済プロバイダを選び、その認証情報を登録・更新・無効化します。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
         "provider": "決済プロバイダ",
-        "provider_description": "現在選択できるプロバイダは Stripe のみです。",
-        "enabled": "Stripe 決済を有効にする",
+        "provider_description": "読者はここで選んだプロバイダで支払います。認証情報は下の欄で登録します。",
+        "provider_change_warning": "別のプロバイダで保存すると、{$provider} の保存済みの認証情報は削除されます。",
+        "enabled": "決済を有効にする",
         "enabled_checkbox": "有効化",
         "enabled_description": "OFF の場合、有料エピソードの Checkout と Webhook はこのテナントでは動きません。",
-        "secret_key": "シークレットキー",
-        "webhook_secret": "Webhook 署名シークレット",
+        "fields": {
+          "stripe": {
+            "secret_key": "シークレットキー",
+            "webhook_secret": "Webhook 署名シークレット"
+          }
+        },
         "secret_change": "変更する",
         "secret_change_cancel": "変更を取り消す",
+        "secret_remove": "削除する",
+        "secret_removed": "保存すると削除されます。",
+        "secret_remove_cancel": "削除を取り消す",
         "secret_description": "入力した値は保存後に表示しません。登録済みの値は先頭と末尾だけがマスキングされます。",
+        "public_description": "この値は決済時に読者のブラウザへ渡されるため、保存した値をそのまま表示します。",
         "webhook_url": "Webhook URL",
-        "webhook_url_description": "Stripe ダッシュボードにこの URL を登録してください。署名シークレットは上の欄で保存します。",
+        "webhook_url_description": "{$provider} に、決済の通知の送信先としてこの URL を登録してください。",
         "webhook_url_legacy_description": "以前に登録した /api/v1/webhook/stripe のエンドポイントも引き続き動きますが、この URL は非推奨で、今後のリリースで削除されます。上の URL に置き換えてください。",
         "saved": "決済設定を保存しました。",
         "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",
         "save_failed": "決済設定の保存に失敗しました。時間をおいて再試行してください。",
         "status": {
           "disabled": "無効",
-          "disabled_description": "シークレットは保存されていますが、決済は無効です。Checkout と Webhook は動きません。",
+          "disabled_description": "認証情報は保存されていますが、決済は無効です。Checkout と Webhook は動きません。",
           "incomplete": "設定不足",
-          "incomplete_description": "有効ですがシークレットが揃っていないため、決済は開始されません。",
+          "incomplete_description": "有効ですが必須の認証情報が揃っていないため、決済は開始されません。",
           "ready": "利用可能",
           "ready_description": "有料エピソードの Checkout と Webhook にこのテナントの設定が使われます。",
           "unset": "未設定",
-          "unset_description": "Stripe のシークレットを登録すると、有料エピソードの決済を開始できます。"
+          "unset_description": "プロバイダを選んで認証情報を登録すると、有料エピソードの決済を開始できます。"
         },
         "validation": {
-          "secret_key_required": "シークレットキーを入力してください。",
-          "webhook_secret_required": "Webhook 署名シークレットを入力してください。"
+          "field_required": "決済を有効にするには、この値を入力してください。",
+          "provider_invalid": "決済プロバイダを選んでください。"
         }
       },
       "purchase": {
@@ -2206,7 +2215,7 @@
         "route_description": "そもそもアプリで購入できるかは「販売先」で設定します。ここではアプリがどの購入手段を提示するかだけを決めます。",
         "routes": {
           "external_checkout": "Web の決済",
-          "external_checkout_description": "アプリはブラウザで Web の決済画面を開き、支払いを終えた読者はアプリに戻ります。請求は Stripe が行います。",
+          "external_checkout_description": "アプリはブラウザで Web の決済画面を開き、支払いを終えた読者はアプリに戻ります。請求は決済設定で選んだ決済プロバイダが行います。",
           "store": "アプリ内課金",
           "store_description": "アプリはストアの決済画面で販売し、Web の決済画面は開きません。請求はストアが行い、手数料もストアが差し引きます。",
           "store_unavailable": "下の App Store か Google Play のいずれかが利用可能になると選べます。"
@@ -2456,7 +2465,7 @@
       "email_description": "テナントごとのメール送信設定を管理します。",
       "email_error": "メール設定を表示できませんでした",
       "payment_title": "外部連携 - 決済",
-      "payment_description": "このテナントが読者に請求する方法を管理します。Web の決済は Stripe、アプリ内課金は App Store と Google Play です。",
+      "payment_description": "このテナントが読者に請求する方法を管理します。Web の決済は選んだ決済プロバイダ、アプリ内課金は App Store と Google Play です。",
       "payment_error": "決済設定を表示できませんでした",
       "mobile_push_title": "外部連携 - モバイルプッシュ",
       "mobile_push_description": "このテナントのモバイルアプリへプッシュ通知を送るための Firebase 認証情報を管理します。",

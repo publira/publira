@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockGetAccessToken,
+  mockGetPaymentProvider,
   mockUpdateTag,
   mockUpdateTenantPaymentSettings,
   mockUpdateTenantPurchaseSettings,
@@ -10,6 +11,7 @@ const {
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetPaymentProvider: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantPaymentSettings: vi.fn(),
   mockUpdateTenantPurchaseSettings: vi.fn(),
@@ -36,8 +38,7 @@ vi.mock("#lib/session", () => ({
 }));
 
 vi.mock("#lib/payment-settings", () => ({
-  SECRET_UPDATE_MODE_REPLACE: 2,
-  SECRET_UPDATE_MODE_UNCHANGED: 1,
+  getPaymentProvider: mockGetPaymentProvider,
   tenantPaymentSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:payment-settings`,
   updateTenantPaymentSettings: mockUpdateTenantPaymentSettings,
@@ -65,12 +66,33 @@ const textFormData = (values: Record<string, string>): FormData => {
 
 const storedPaymentSettings = {
   enabled: true,
+  fields: [
+    { configured: true, hint: "sk_test_••••••••KLMN", name: "secret_key" },
+    { configured: true, hint: "whsec_••••••••WXYZ", name: "webhook_secret" },
+  ],
   provider: "stripe",
   ready: true,
-  secretKeyConfigured: true,
-  secretKeyHint: "sk_test_••••••••KLMN",
-  webhookSecretConfigured: true,
-  webhookSecretHint: "whsec_••••••••WXYZ",
+};
+
+const stripe = {
+  displayName: "Stripe",
+  fields: [
+    { name: "secret_key", public: false, required: true, secret: true },
+    { name: "webhook_secret", public: false, required: true, secret: true },
+  ],
+  id: "stripe",
+  webhookPath: "/api/v1/webhook/payment/stripe",
+};
+
+const examplePay = {
+  displayName: "Example Pay",
+  fields: [
+    { name: "secret_key", public: false, required: true, secret: true },
+    { name: "public_key", public: true, required: true, secret: false },
+    { name: "webhook_token", public: false, required: false, secret: true },
+  ],
+  id: "examplepay",
+  webhookPath: "/api/v1/webhook/payment/examplepay",
 };
 
 describe("updateTenantPaymentSettingsAction", () => {
@@ -78,9 +100,21 @@ describe("updateTenantPaymentSettingsAction", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetPaymentProvider.mockImplementation(
+      (_tenantId: string, providerId: string) => {
+        const provider = [stripe, examplePay].find(
+          (candidate) => candidate.id === providerId
+        );
+        return Promise.resolve(
+          provider
+            ? { ok: true, provider }
+            : { message: "Choose a payment provider.", ok: false }
+        );
+      }
+    );
   });
 
-  it("replaces and saves the secret, then revalidates the cache tag", async () => {
+  it("replaces and saves the secrets, then revalidates the cache tag", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
       ok: true,
       settings: storedPaymentSettings,
@@ -91,10 +125,13 @@ describe("updateTenantPaymentSettingsAction", () => {
     const result = await updateTenantPaymentSettingsAction(
       null,
       textFormData({
+        credential_secret_key: "sk_test_51NEW",
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret: "whsec_NEW",
+        credential_webhook_secret_mode: "replace",
         enabled: "on",
-        secret_key: "sk_test_51NEW",
+        provider: "stripe",
         tenant_id: "TENANT001",
-        webhook_secret: "whsec_NEW",
       })
     );
 
@@ -102,14 +139,20 @@ describe("updateTenantPaymentSettingsAction", () => {
       message: "The payment settings were saved.",
       ok: true,
     });
+    expect(mockGetPaymentProvider).toHaveBeenCalledWith(
+      "TENANT001",
+      "stripe",
+      "en"
+    );
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
         enabled: true,
-        secretKey: "sk_test_51NEW",
-        secretKeyUpdateMode: 2,
+        fields: [
+          { mode: 2, name: "secret_key", value: "sk_test_51NEW" },
+          { mode: 2, name: "webhook_secret", value: "whsec_NEW" },
+        ],
+        provider: "stripe",
         tenantId: "TENANT001",
-        webhookSecret: "whsec_NEW",
-        webhookSecretUpdateMode: 2,
       },
       "en"
     );
@@ -118,7 +161,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
   });
 
-  it("sends an empty secret as unchanged and can still enable an already registered one", async () => {
+  it("sends a kept or empty secret as unchanged and can still enable an already registered one", async () => {
     mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
       ok: true,
       settings: storedPaymentSettings,
@@ -129,10 +172,14 @@ describe("updateTenantPaymentSettingsAction", () => {
     const result = await updateTenantPaymentSettingsAction(
       null,
       textFormData({
+        credential_secret_key_configured: "1",
+        credential_secret_key_mode: "keep",
+        credential_webhook_secret: "  ",
+        credential_webhook_secret_configured: "1",
+        credential_webhook_secret_mode: "replace",
         enabled: "on",
-        secret_key_configured: "1",
+        provider: "stripe",
         tenant_id: "TENANT001",
-        webhook_secret_configured: "1",
       })
     );
 
@@ -140,31 +187,76 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
         enabled: true,
-        secretKey: "",
-        secretKeyUpdateMode: 1,
+        fields: [
+          { mode: 1, name: "secret_key", value: "" },
+          { mode: 1, name: "webhook_secret", value: "" },
+        ],
+        provider: "stripe",
         tenantId: "TENANT001",
-        webhookSecret: "",
-        webhookSecretUpdateMode: 1,
       },
       "en"
     );
   });
 
-  it("returns a field error and skips the API when enabling without any configuration", async () => {
+  it("sends only the fields the chosen provider declares, clearing a removed one", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        credential_public_key: "pk_test_4242",
+        credential_public_key_mode: "replace",
+        credential_secret_key: "sk_test_EXAMPLE",
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret: "whsec_STALE",
+        credential_webhook_secret_mode: "replace",
+        credential_webhook_token_configured: "1",
+        credential_webhook_token_mode: "clear",
+        enabled: "on",
+        provider: "examplepay",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
+      {
+        enabled: true,
+        fields: [
+          { mode: 2, name: "secret_key", value: "sk_test_EXAMPLE" },
+          { mode: 2, name: "public_key", value: "pk_test_4242" },
+          { mode: 3, name: "webhook_token", value: "" },
+        ],
+        provider: "examplepay",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+  });
+
+  it("returns a field error per required credential and skips the API when enabling without them", async () => {
     const { updateTenantPaymentSettingsAction } = await import("./actions");
 
     const result = await updateTenantPaymentSettingsAction(
       null,
       textFormData({
+        credential_public_key_mode: "replace",
+        credential_secret_key_mode: "replace",
+        credential_webhook_token_mode: "replace",
         enabled: "on",
+        provider: "examplepay",
         tenant_id: "TENANT001",
       })
     );
 
     expect(result).toEqual({
       fieldErrors: {
-        secretKey: "Enter the secret key.",
-        webhookSecret: "Enter the webhook signing secret.",
+        credential_public_key: "Enter this value to turn payments on.",
+        credential_secret_key: "Enter this value to turn payments on.",
       },
       message: "Please check the information you entered.",
       ok: false,
@@ -173,7 +265,43 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
-  it("does not save when the tenant id is missing", async () => {
+  it("saves a disabled provider with nothing stored", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret_mode: "replace",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result?.ok).toBe(true);
+  });
+
+  it("refuses a provider the server does not register", async () => {
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({ provider: "unknown", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "Choose a payment provider.",
+      ok: false,
+    });
+    expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
+  });
+
+  it("does not save when the tenant id and the provider are missing", async () => {
     const { updateTenantPaymentSettingsAction } = await import("./actions");
 
     const result = await updateTenantPaymentSettingsAction(
@@ -183,11 +311,13 @@ describe("updateTenantPaymentSettingsAction", () => {
 
     expect(result).toEqual({
       fieldErrors: {
+        provider: "Choose a payment provider.",
         tenantId: "The tenant ID is missing.",
       },
       message: "Please check the information you entered.",
       ok: false,
     });
+    expect(mockGetPaymentProvider).not.toHaveBeenCalled();
     expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
   });
 
@@ -203,6 +333,9 @@ describe("updateTenantPaymentSettingsAction", () => {
     const result = await updateTenantPaymentSettingsAction(
       null,
       textFormData({
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret_mode: "replace",
+        provider: "stripe",
         tenant_id: "TENANT001",
       })
     );

@@ -16,20 +16,28 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 import { emptyTenantPaymentSettings } from "#lib/payment-settings-shared";
-import type { TenantPaymentSettings } from "#lib/payment-settings-shared";
+import type {
+  PaymentProvider,
+  TenantPaymentSettings,
+} from "#lib/payment-settings-shared";
 
 import type { TenantPaymentSettingsFormState } from "../payment-types";
 import { TenantPaymentSettingsForm } from "./tenant-payment-settings-form";
 
 const { action } = vi.hoisted(() => ({
   action: {
-    current: (): Promise<TenantPaymentSettingsFormState> =>
-      Promise.resolve(null),
+    current: (
+      _state: TenantPaymentSettingsFormState,
+      _formData: FormData
+    ): Promise<TenantPaymentSettingsFormState> => Promise.resolve(null),
   },
 }));
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantPaymentSettingsAction: () => action.current(),
+  updateTenantPaymentSettingsAction: (
+    state: TenantPaymentSettingsFormState,
+    formData: FormData
+  ) => action.current(state, formData),
 }));
 
 vi.mock("#components/message", () => ({
@@ -42,27 +50,64 @@ vi.mock("#components/message", () => ({
   }) => bindMessages(sharedCatalog("en"))(message, values),
 }));
 
+const stripe: PaymentProvider = {
+  displayName: "Stripe",
+  fields: [
+    { name: "secret_key", public: false, required: true, secret: true },
+    { name: "webhook_secret", public: false, required: true, secret: true },
+  ],
+  id: "stripe",
+  webhookPath: "/api/v1/webhook/payment/stripe",
+};
+
+// A provider no catalog has copy for, so its fields are named as declared.
+const examplePay: PaymentProvider = {
+  displayName: "Example Pay",
+  fields: [
+    { name: "secret_key", public: false, required: true, secret: true },
+    { name: "public_key", public: true, required: true, secret: false },
+    { name: "webhook_token", public: false, required: false, secret: true },
+  ],
+  id: "examplepay",
+  webhookPath: "/api/v1/webhook/payment/examplepay",
+};
+
+const providers = [examplePay, stripe];
+
+const stripeFields = (
+  secretKeyHint: string,
+  webhookSecretHint: string
+): TenantPaymentSettings["fields"] => [
+  {
+    configured: secretKeyHint !== "",
+    hint: secretKeyHint,
+    name: "secret_key",
+  },
+  {
+    configured: webhookSecretHint !== "",
+    hint: webhookSecretHint,
+    name: "webhook_secret",
+  },
+];
+
 const readySettings: TenantPaymentSettings = {
   enabled: true,
+  fields: stripeFields("sk_test_••••••••KLMN", "whsec_••••••••WXYZ"),
   provider: "stripe",
   ready: true,
-  secretKeyConfigured: true,
-  secretKeyHint: "sk_test_••••••••KLMN",
-  webhookSecretConfigured: true,
-  webhookSecretHint: "whsec_••••••••WXYZ",
 };
 
 const incompleteSettings: TenantPaymentSettings = {
   ...emptyTenantPaymentSettings,
   enabled: true,
+  fields: stripeFields("", ""),
+  provider: "stripe",
 };
 
 const disabledSettings: TenantPaymentSettings = {
   ...emptyTenantPaymentSettings,
-  secretKeyConfigured: true,
-  secretKeyHint: "sk_test_••••••••KLMN",
-  webhookSecretConfigured: true,
-  webhookSecretHint: "whsec_••••••••WXYZ",
+  fields: stripeFields("sk_test_••••••••KLMN", "whsec_••••••••WXYZ"),
+  provider: "stripe",
 };
 
 const render = (ui: ReactNode) =>
@@ -80,7 +125,7 @@ afterEach(() => {
 // A control its `<fieldset>` closes keeps `disabled` false and matches
 // `:disabled` instead.
 const submittedControls = () => [
-  screen.getByLabelText("Enable Stripe payments"),
+  screen.getByLabelText("Enable payments"),
   screen.getByRole("button", { name: "Change" }),
   screen.getByLabelText(/Webhook signing secret/u),
 ];
@@ -89,6 +134,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows an unconfigured tenant as its own status", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={[stripe]}
         canEdit
         tenantId="TENANT001"
         initialSettings={emptyTenantPaymentSettings}
@@ -100,9 +146,158 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByLabelText("Webhook signing secret")).toBeDefined();
   });
 
+  it("renders every field another provider declares and shows a public one as stored", () => {
+    render(
+      <TenantPaymentSettingsForm
+        providers={providers}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{
+          enabled: false,
+          fields: [
+            {
+              configured: true,
+              hint: "sk_test_••••••••KLMN",
+              name: "secret_key",
+            },
+            { configured: true, hint: "pk_test_4242", name: "public_key" },
+            { configured: false, hint: "", name: "webhook_token" },
+          ],
+          provider: "examplepay",
+          ready: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "Payment provider" }).textContent
+    ).toContain("Example Pay");
+    expect(screen.getByLabelText<HTMLInputElement>("secret_key").value).toBe(
+      "sk_test_••••••••KLMN"
+    );
+    const publicKey = screen.getByLabelText<HTMLInputElement>("public_key");
+    expect(publicKey.type).toBe("text");
+    expect(publicKey.value).toBe("pk_test_4242");
+    expect(screen.getByLabelText<HTMLInputElement>("webhook_token").type).toBe(
+      "password"
+    );
+    expect(screen.queryByLabelText("Webhook signing secret")).toBeNull();
+  });
+
+  it("shows the chosen provider's fields and webhook URL, and warns that the stored credentials go", async () => {
+    render(
+      <TenantPaymentSettingsForm
+        providers={providers}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={readySettings}
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    expect(
+      screen.getByDisplayValue(
+        "https://comics.example/api/v1/webhook/payment/stripe"
+      )
+    ).toBeDefined();
+    expect(
+      screen.queryByText(
+        "Saving with a different provider deletes the credentials stored for Stripe."
+      )
+    ).toBeNull();
+
+    const select = screen.getByRole("combobox", { name: "Payment provider" });
+    fireEvent.click(select);
+    fireEvent.keyDown(select, { key: "ArrowDown" });
+    fireEvent.keyDown(
+      await screen.findByRole("option", { name: "Example Pay" }),
+      { key: "Enter" }
+    );
+
+    await screen.findByText(
+      "Saving with a different provider deletes the credentials stored for Stripe."
+    );
+    // Payments are on, so the label carries the required marker.
+    expect(screen.getByLabelText(/^public_key/u)).toBeDefined();
+    expect(screen.queryByDisplayValue("sk_test_••••••••KLMN")).toBeNull();
+    expect(
+      screen.getByDisplayValue(
+        "https://comics.example/api/v1/webhook/payment/examplepay"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Register this URL with Example Pay as where it sends payment notifications."
+      )
+    ).toBeDefined();
+  });
+
+  it("posts each credential with what the form did to it", async () => {
+    const submit = vi.fn<typeof action.current>().mockResolvedValue(null);
+    action.current = submit;
+
+    render(
+      <TenantPaymentSettingsForm
+        providers={providers}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{
+          enabled: true,
+          fields: [
+            {
+              configured: true,
+              hint: "sk_test_••••••••KLMN",
+              name: "secret_key",
+            },
+            { configured: true, hint: "pk_test_4242", name: "public_key" },
+            {
+              configured: true,
+              hint: "whtok_••••••••WXYZ",
+              name: "webhook_token",
+            },
+          ],
+          provider: "examplepay",
+          ready: true,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.getByText("Removed when you save.")).toBeDefined();
+    fireEvent.change(screen.getByLabelText("public_key"), {
+      target: { value: "pk_test_9999" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalled();
+    });
+    const formData = submit.mock.calls[0]?.[1];
+    expect(formData?.get("provider")).toBe("examplepay");
+    expect(formData?.get("credential_secret_key_mode")).toBe("keep");
+    expect(formData?.get("credential_public_key_mode")).toBe("replace");
+    expect(formData?.get("credential_public_key")).toBe("pk_test_9999");
+    expect(formData?.get("credential_webhook_token_mode")).toBe("clear");
+  });
+
+  it("offers no removal of a credential the provider requires", () => {
+    render(
+      <TenantPaymentSettingsForm
+        providers={providers}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={readySettings}
+      />
+    );
+
+    expect(screen.getAllByRole("button", { name: "Change" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+
   it("shows only the hint and never the plaintext of a usable configuration", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={readySettings}
@@ -121,6 +316,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("reports missing configuration when it is enabled without a secret", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={incompleteSettings}
@@ -133,6 +329,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows a saved but disabled configuration as disabled", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={disabledSettings}
@@ -145,6 +342,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("stays read-only for someone who is not a tenant admin", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit={false}
         tenantId="TENANT001"
         initialSettings={readySettings}
@@ -153,7 +351,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     expect(
       screen
-        .getByLabelText<HTMLInputElement>("Enable Stripe payments")
+        .getByLabelText<HTMLInputElement>("Enable payments")
         .matches(":disabled")
     ).toBe(true);
     expect(
@@ -174,6 +372,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("blocks editing and shows the reason when the fetch fails", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={[]}
         canEdit
         tenantId="TENANT001"
         initialSettings={emptyTenantPaymentSettings}
@@ -194,6 +393,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("turns the fields write-only and keeps the hint once change is pressed", () => {
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={readySettings}
@@ -221,6 +421,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={disabledSettings}
@@ -238,7 +439,7 @@ describe("TenantPaymentSettingsForm", () => {
     const leakedSecret = "plaintext-secret-value";
     const savedSettings = {
       ...readySettings,
-      secretKeyHint: "sk_test_••••••••NEW1",
+      fields: stripeFields("sk_test_••••••••NEW1", "whsec_••••••••WXYZ"),
     };
     action.current = vi.fn().mockResolvedValue({
       message: "The payment settings were saved.",
@@ -247,6 +448,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     const { rerender } = render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         initialSettings={readySettings}
         tenantId="TENANT001"
@@ -269,6 +471,7 @@ describe("TenantPaymentSettingsForm", () => {
     // The save's `updateTag` redraws the page with the settings it stored.
     rerender(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         initialSettings={savedSettings}
         tenantId="TENANT001"
@@ -289,12 +492,12 @@ describe("TenantPaymentSettingsForm", () => {
 
     render(
       <TenantPaymentSettingsForm
+        providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={{
           ...incompleteSettings,
-          secretKeyConfigured: true,
-          secretKeyHint: "sk_test_••••••••KLMN",
+          fields: stripeFields("sk_test_••••••••KLMN", ""),
         }}
       />
     );
