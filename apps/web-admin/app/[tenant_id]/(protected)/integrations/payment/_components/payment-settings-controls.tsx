@@ -2,16 +2,16 @@
 
 import { useActionFormSettled } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import { FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import { createContext, use, useId, useMemo, useState } from "react";
+import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 interface PaymentProviderChoiceContextValue {
   credentialsProvider: string;
   provider: string;
-  selectId: string;
   setProvider: (provider: string) => void;
 }
 
@@ -43,11 +43,10 @@ export const PaymentProviderChoice = ({
   credentialsProvider: string;
   initialProvider: string;
 }) => {
-  const selectId = useId();
   const [provider, setProvider] = useState(initialProvider);
   const context = useMemo(
-    () => ({ credentialsProvider, provider, selectId, setProvider }),
-    [credentialsProvider, provider, selectId]
+    () => ({ credentialsProvider, provider, setProvider }),
+    [credentialsProvider, provider]
   );
 
   return (
@@ -57,26 +56,18 @@ export const PaymentProviderChoice = ({
   );
 };
 
-/** The field's label, pointing at the select. */
-export const PaymentProviderLabel = ({ children }: { children: ReactNode }) => {
-  const { selectId } = usePaymentProviderChoice();
-
-  return <FieldLabel htmlFor={selectId}>{children}</FieldLabel>;
-};
-
 /** The select, posted as `provider`. Each option is the provider's own name. */
 export const PaymentProviderSelect = ({
   providers,
 }: {
   providers: readonly { displayName: string; id: string }[];
 }) => {
-  const { provider, selectId, setProvider } = usePaymentProviderChoice();
+  const { provider, setProvider } = usePaymentProviderChoice();
 
   return (
     <>
       <Select
         disabled={providers.length === 0}
-        id={selectId}
         items={providers.map((candidate) => ({
           label: candidate.displayName,
           value: candidate.id,
@@ -115,7 +106,6 @@ export const PaymentProviderChangeNotice = ({
 };
 
 interface PaymentEnabledContextValue {
-  checkboxId: string;
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
 }
@@ -146,23 +136,12 @@ export const PaymentEnabled = ({
   children: ReactNode;
   initialEnabled: boolean;
 }) => {
-  const checkboxId = useId();
   const [enabled, setEnabled] = useState(initialEnabled);
-  const context = useMemo(
-    () => ({ checkboxId, enabled, setEnabled }),
-    [checkboxId, enabled]
-  );
+  const context = useMemo(() => ({ enabled, setEnabled }), [enabled]);
 
   return (
     <PaymentEnabledContext value={context}>{children}</PaymentEnabledContext>
   );
-};
-
-/** The field's label, pointing at the checkbox. */
-export const PaymentEnabledLabel = ({ children }: { children: ReactNode }) => {
-  const { checkboxId } = usePaymentEnabled();
-
-  return <FieldLabel htmlFor={checkboxId}>{children}</FieldLabel>;
 };
 
 /** The checkbox the form posts as `enabled`, with `children` beside it. */
@@ -171,19 +150,11 @@ export const PaymentEnabledCheckbox = ({
 }: {
   children: ReactNode;
 }) => {
-  const { checkboxId, enabled, setEnabled } = usePaymentEnabled();
+  const { enabled, setEnabled } = usePaymentEnabled();
 
   return (
     <label className="inline-flex items-center gap-2 text-sm text-foreground">
-      <input
-        checked={enabled}
-        id={checkboxId}
-        name="enabled"
-        onChange={(event) => {
-          setEnabled(event.target.checked);
-        }}
-        type="checkbox"
-      />
+      <Checkbox checked={enabled} name="enabled" onCheckedChange={setEnabled} />
       {children}
     </label>
   );

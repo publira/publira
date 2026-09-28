@@ -82,9 +82,6 @@ export const SeriesStatusField = ({
   label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     // The trigger only ever offers the three above; the guard is what keeps
@@ -96,10 +93,9 @@ export const SeriesStatusField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <Select
-          id={selectId}
           items={SERIES_STATUS_ITEMS}
           onValueChange={handleValueChange}
           value={value}
@@ -121,7 +117,6 @@ export const SeriesAgeRatingField = ({
   label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (next === "all" || next === "r15" || next === "r18") {
@@ -131,10 +126,9 @@ export const SeriesAgeRatingField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <Select
-          id={selectId}
           items={SERIES_AGE_RATING_ITEMS}
           onValueChange={handleValueChange}
           value={value}
@@ -231,9 +225,6 @@ export const SeriesGenreField = ({
 }) => {
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
-  // `MultiCombobox` renders its own input instead of a Field control, so the
-  // label needs an id to point at.
-  const comboboxId = useId();
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
   const items = useMemo<MultiComboboxItem[]>(
@@ -243,7 +234,7 @@ export const SeriesGenreField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={comboboxId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         {genresErrorMessage ? (
           <FormMessage variant="destructive">{genresErrorMessage}</FormMessage>
@@ -252,12 +243,7 @@ export const SeriesGenreField = ({
         {items.length === 0 ? (
           empty
         ) : (
-          <MultiCombobox
-            id={comboboxId}
-            items={items}
-            onValueChange={setValue}
-            value={value}
-          >
+          <MultiCombobox items={items} onValueChange={setValue} value={value}>
             <MultiComboboxInputGroup>
               <MultiComboboxChips>
                 {(selected) => (
@@ -323,7 +309,6 @@ export const SeriesTagField = ({
 }) => {
   const locale = useAdminLocale();
   const [value, setValue] = useState(initialValue);
-  const inputId = useId();
   const suggestionsId = useId();
   const [draft, setDraft] = useState("");
   const isFull = value.length >= MAX_SERIES_TAGS;
@@ -379,7 +364,7 @@ export const SeriesTagField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         {suggestionsErrorMessage ? (
           <FormMessage variant="destructive">
@@ -416,7 +401,6 @@ export const SeriesTagField = ({
         <div className="flex gap-2">
           <Input
             disabled={isFull}
-            id={inputId}
             list={suggestionsId}
             maxLength={CATALOG_NAME_MAX_LENGTH}
             onChange={handleDraftChange}

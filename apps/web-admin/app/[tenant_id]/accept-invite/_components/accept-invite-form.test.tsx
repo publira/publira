@@ -44,9 +44,9 @@ vi.mock("./name-field", async () => {
   return {
     NameField: () => (
       <Field>
-        <FieldLabel htmlFor="name">Full name</FieldLabel>
+        <FieldLabel>Full name</FieldLabel>
         <FieldContent>
-          <Input id="name" name="name" type="text" />
+          <Input name="name" type="text" />
         </FieldContent>
       </Field>
     ),

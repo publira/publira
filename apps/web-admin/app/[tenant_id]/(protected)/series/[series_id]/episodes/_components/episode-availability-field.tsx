@@ -9,7 +9,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import {
@@ -75,9 +75,6 @@ export const EpisodeAvailabilityField = ({
   seriesAvailability?: SurfaceAvailabilityValue;
 }) => {
   const [value, setValue] = useState(() => initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (isEpisodeAvailabilityOverride(next)) {
@@ -91,12 +88,11 @@ export const EpisodeAvailabilityField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
+      <FieldLabel>
         <ClientMessage message="admin.series.episodes.availability.label" />
       </FieldLabel>
       <FieldContent>
         <EpisodeAvailabilitySelect
-          id={selectId}
           onValueChange={handleValueChange}
           seriesAvailability={seriesAvailability}
           value={value}

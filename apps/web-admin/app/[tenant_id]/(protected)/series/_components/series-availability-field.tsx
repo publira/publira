@@ -2,7 +2,7 @@
 
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
@@ -34,9 +34,6 @@ export const SeriesAvailabilityField = ({
   label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (isSurfaceAvailabilityValue(next)) {
@@ -46,10 +43,9 @@ export const SeriesAvailabilityField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <Select
-          id={selectId}
           items={SERIES_AVAILABILITY_ITEMS}
           onValueChange={handleValueChange}
           value={value}

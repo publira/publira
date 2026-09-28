@@ -91,7 +91,7 @@ const ForgotPasswordPageContent = async ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="email" required>
+            <FieldLabel required>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.auth.fields.email_label" />
               </Suspense>
@@ -100,7 +100,6 @@ const ForgotPasswordPageContent = async ({
               <Input
                 autoComplete="email"
                 defaultValue={defaultEmail}
-                id="email"
                 name="email"
                 placeholder="admin@example.com"
                 required

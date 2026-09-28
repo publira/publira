@@ -4,7 +4,6 @@ import { toIntlLocale } from "@publira/i18n";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useId } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage } from "#components/client-message";
@@ -28,36 +27,31 @@ export const CreditShareInput = ({
   onChange: (nextValue: string) => void;
   position: number;
   value: string;
-}) => {
-  const id = useId();
-
-  return (
-    <Field className="w-28 shrink-0">
-      <FieldLabel className="sr-only" htmlFor={id}>
-        <ClientMessage
-          message="admin.series.form.creators_share_field_label"
-          values={{ position: String(position) }}
+}) => (
+  <Field className="w-28 shrink-0">
+    <FieldLabel className="sr-only">
+      <ClientMessage
+        message="admin.series.form.creators_share_field_label"
+        values={{ position: String(position) }}
+      />
+    </FieldLabel>
+    <FieldContent>
+      <div className="flex items-center gap-1.5">
+        <Input
+          aria-invalid={sharePercentToBps(value) === undefined}
+          className="text-right tabular-nums"
+          inputMode="decimal"
+          onChange={(event) => onChange(event.currentTarget.value)}
+          placeholder="0"
+          value={value}
         />
-      </FieldLabel>
-      <FieldContent>
-        <div className="flex items-center gap-1.5">
-          <Input
-            aria-invalid={sharePercentToBps(value) === undefined}
-            className="text-right tabular-nums"
-            id={id}
-            inputMode="decimal"
-            onChange={(event) => onChange(event.currentTarget.value)}
-            placeholder="0"
-            value={value}
-          />
-          <span aria-hidden="true" className="text-sm text-muted-foreground">
-            %
-          </span>
-        </div>
-      </FieldContent>
-    </Field>
-  );
-};
+        <span aria-hidden="true" className="text-sm text-muted-foreground">
+          %
+        </span>
+      </div>
+    </FieldContent>
+  </Field>
+);
 
 /**
  * What the shares add up to, as the editor types: the authors' total and the

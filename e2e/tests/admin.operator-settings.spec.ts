@@ -328,7 +328,11 @@ test.describe("web-admin operator settings", () => {
     await expect(fromName).toBeDisabled();
     expect(smtpOverrideEnabled()).toBe(false);
 
-    await page.getByRole("checkbox", { name: "Enable the override" }).check();
+    await page
+      .getByRole("checkbox", {
+        name: "Use this tenant's own SMTP server",
+      })
+      .check();
     await expect(fromName).toBeEnabled();
     await fillField(fromName, ADMIN_OPERATOR_SETTINGS_FROM_NAME);
     await page.getByRole("button", { name: "Save" }).click();
@@ -342,7 +346,9 @@ test.describe("web-admin operator settings", () => {
       ADMIN_OPERATOR_SETTINGS_FROM_NAME
     );
     await expect(
-      page.getByRole("checkbox", { name: "Enable the override" })
+      page.getByRole("checkbox", {
+        name: "Use this tenant's own SMTP server",
+      })
     ).toBeChecked();
   });
 });

@@ -22,7 +22,6 @@ interface EyeCatchImageFieldProps {
    * the form submits.
    */
   disabled?: boolean;
-  fileInputId: string;
   fileInputRef: RefObject<HTMLInputElement | null>;
   hasVariants: boolean;
   localPreviewUrl: string;
@@ -37,7 +36,6 @@ interface EyeCatchImageFieldProps {
 export const EyeCatchImageField = ({
   clearEyeCatchImage,
   disabled = false,
-  fileInputId,
   fileInputRef,
   hasVariants,
   localPreviewUrl,
@@ -52,7 +50,7 @@ export const EyeCatchImageField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={fileInputId}>
+      <FieldLabel>
         <ClientMessage message="admin.eye_catch.label" />
       </FieldLabel>
       <FieldContent>
@@ -108,7 +106,6 @@ export const EyeCatchImageField = ({
         <Input
           accept="image/jpeg,image/png,image/webp"
           disabled={disabled}
-          id={fileInputId}
           name="eye_catch_image"
           onChange={onImageFileChange}
           ref={fileInputRef}

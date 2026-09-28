@@ -47,10 +47,8 @@ import {
   PaymentCredentialWhile,
   PaymentEnabled,
   PaymentEnabledCheckbox,
-  PaymentEnabledLabel,
   PaymentProviderChangeNotice,
   PaymentProviderChoice,
-  PaymentProviderLabel,
   PaymentProviderPanel,
   PaymentProviderSelect,
 } from "./payment-settings-controls";
@@ -326,11 +324,11 @@ export const TenantPaymentSettingsForm = ({
             initialProvider={initialProvider}
           >
             <Field>
-              <PaymentProviderLabel>
+              <FieldLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.settings.payment.provider" />
                 </Suspense>
-              </PaymentProviderLabel>
+              </FieldLabel>
               <FieldContent>
                 <PaymentProviderSelect providers={providers} />
                 <FieldDescription>
@@ -353,11 +351,11 @@ export const TenantPaymentSettingsForm = ({
 
             <PaymentEnabled initialEnabled={settings.enabled}>
               <Field>
-                <PaymentEnabledLabel>
+                <FieldLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.payment.enabled" />
                   </Suspense>
-                </PaymentEnabledLabel>
+                </FieldLabel>
                 <FieldContent>
                   <PaymentEnabledCheckbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>

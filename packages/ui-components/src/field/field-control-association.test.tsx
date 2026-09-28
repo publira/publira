@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { Suspense, use, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
@@ -276,6 +277,72 @@ describe("for/id association between Field and the form parts", () => {
     label.click();
     expect(activated).toBe(true);
   });
+});
+
+const renderServerMarkup = (element: ReactElement) => {
+  const markup = new DOMParser().parseFromString(
+    renderToString(element),
+    "text/html"
+  );
+  const container = document.createElement("div");
+  container.append(...markup.body.childNodes);
+  document.body.append(container);
+  onTestFinished(() => container.remove());
+  return container;
+};
+
+describe("for/id association in the server-rendered HTML", () => {
+  it.each([
+    {
+      name: "Input",
+      renderControl: () => <Input />,
+    },
+    {
+      name: "Input with an explicit id",
+      renderControl: () => <Input id="explicit-input" />,
+    },
+    {
+      name: "Textarea",
+      renderControl: () => <Textarea />,
+    },
+    {
+      name: "Checkbox",
+      renderControl: () => <Checkbox />,
+    },
+    {
+      name: "Switch",
+      renderControl: () => <Switch />,
+    },
+    {
+      name: "RadioGroup",
+      renderControl: () => <RadioGroup items={radioItems} />,
+    },
+    {
+      name: "Select",
+      renderControl: () => <Select items={selectItems} />,
+    },
+    {
+      name: "Combobox",
+      renderControl: () => <StatefulCombobox />,
+    },
+    {
+      name: "MultiCombobox",
+      renderControl: () => <StatefulMultiCombobox />,
+    },
+  ])(
+    "FieldLabel's for points at the $name before hydration",
+    ({ renderControl }) => {
+      const container = renderServerMarkup(
+        <Field>
+          <FieldLabel>Label</FieldLabel>
+          {renderControl()}
+        </Field>
+      );
+
+      const { control, htmlFor } = getAssociation(container, "Label");
+      expect(control.id).toBe(htmlFor);
+    }
+  );
 });
 
 const LateSelect = ({ ready }: { ready: PromiseLike<unknown> }) => {

@@ -7,7 +7,7 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isPurchaseAvailabilityOverride } from "#lib/purchase-availability";
@@ -29,9 +29,6 @@ export const EpisodePurchaseAvailabilityField = ({
 }) => {
   const t = useClientMessages();
   const [value, setValue] = useState(() => initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const handleValueChange = useCallback((next: string) => {
     if (isPurchaseAvailabilityOverride(next)) {
@@ -61,12 +58,11 @@ export const EpisodePurchaseAvailabilityField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>
+      <FieldLabel>
         <ClientMessage message="admin.series.episodes.purchase_availability.label" />
       </FieldLabel>
       <FieldContent>
         <Select
-          id={selectId}
           items={[
             { label: followSeries, value: "" },
             { label: t("admin.series.availability.all"), value: "all" },

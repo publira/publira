@@ -49,7 +49,7 @@ const ReplyToEmailField = async () => {
 
   return (
     <Field>
-      <FieldLabel htmlFor="replyToEmail" required>
+      <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
           <Message message="host.contact.email_label" />
         </Suspense>
@@ -58,7 +58,6 @@ const ReplyToEmailField = async () => {
         <RetainedInput
           autoComplete="email"
           defaultValue={me?.email ?? ""}
-          id="replyToEmail"
           name="replyToEmail"
           placeholder="your@email.com"
           required
@@ -107,18 +106,18 @@ const ContactPage = () => (
       </Suspense>
 
       <Field>
-        <FieldLabel htmlFor="subject">
+        <FieldLabel>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="host.contact.subject_label" />
           </Suspense>
         </FieldLabel>
         <FieldContent>
-          <RetainedInput id="subject" name="subject" type="text" />
+          <RetainedInput name="subject" type="text" />
         </FieldContent>
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="body" required>
+        <FieldLabel required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="host.contact.body_label" />
           </Suspense>
@@ -126,7 +125,7 @@ const ContactPage = () => (
         <FieldContent>
           {/* No `maxLength`: it counts UTF-16 code units, while the API counts
               Unicode code points. The Action checks the real limit. */}
-          <RetainedTextarea id="body" name="body" required rows={8} />
+          <RetainedTextarea name="body" required rows={8} />
         </FieldContent>
       </Field>
 

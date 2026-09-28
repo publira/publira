@@ -48,7 +48,6 @@ import {
   SmtpOverride,
   SmtpOverrideCheckbox,
   SmtpOverrideFieldset,
-  SmtpOverrideLabel,
   SmtpPassword,
   SmtpPasswordEditor,
   SmtpPasswordLabel,
@@ -114,11 +113,11 @@ export const TenantEmailSettingsForm = ({
       >
         <ActionFormFieldset className="grid gap-5">
           <Field>
-            <SmtpOverrideLabel>
+            <FieldLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.email.override" />
               </Suspense>
-            </SmtpOverrideLabel>
+            </FieldLabel>
             <FieldContent>
               <SmtpOverrideCheckbox>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>

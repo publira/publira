@@ -16,14 +16,13 @@ export const NameField = async () => {
 
   return (
     <Field>
-      <FieldLabel htmlFor="name" required>
+      <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="admin.auth.accept_invite.name_label" />
         </Suspense>
       </FieldLabel>
       <FieldContent>
         <Input
-          id="name"
           name="name"
           placeholder={t("admin.auth.accept_invite.name_placeholder")}
           required

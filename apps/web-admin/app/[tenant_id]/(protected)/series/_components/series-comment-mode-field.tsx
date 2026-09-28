@@ -2,7 +2,7 @@
 
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -86,9 +86,6 @@ export const SeriesCommentModeField = ({
   tenantCommentMode?: TenantCommentMode;
 }) => {
   const [value, setValue] = useState(initialValue);
-  // `Select` renders a trigger rather than a Field control, so the label needs
-  // an id to point at.
-  const selectId = useId();
 
   const items = useMemo(
     () => [
@@ -116,14 +113,9 @@ export const SeriesCommentModeField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <FieldContent>
-        <Select
-          id={selectId}
-          items={items}
-          onValueChange={handleValueChange}
-          value={value}
-        />
+        <Select items={items} onValueChange={handleValueChange} value={value} />
         <input name="comment_mode" type="hidden" value={value} />
         {description}
       </FieldContent>

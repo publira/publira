@@ -41,7 +41,6 @@ const NameInput = async () => {
 
   return (
     <Input
-      id="name"
       name="name"
       placeholder={t("host.auth.signup.name_placeholder")}
       type="text"
@@ -71,16 +70,9 @@ const BirthDateField = async () => {
 
   return (
     <Field>
-      <FieldLabel htmlFor="birthDate">
-        {t("host.auth.signup.birth_date_label")}
-      </FieldLabel>
+      <FieldLabel>{t("host.auth.signup.birth_date_label")}</FieldLabel>
       <FieldContent>
-        <Input
-          autoComplete="bday"
-          id="birthDate"
-          name="birthDate"
-          type="date"
-        />
+        <Input autoComplete="bday" name="birthDate" type="date" />
         <FieldDescription>
           {t("host.auth.signup.birth_date_help")}
         </FieldDescription>
@@ -149,7 +141,7 @@ export const SignupForm = () => (
         <TenantIdField />
 
         <Field>
-          <FieldLabel htmlFor="name">
+          <FieldLabel>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="host.auth.signup.name_label" />
             </Suspense>
@@ -166,7 +158,7 @@ export const SignupForm = () => (
         </Suspense>
 
         <Field>
-          <FieldLabel htmlFor="email">
+          <FieldLabel>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="host.auth.fields.email_label" />
             </Suspense>
@@ -174,7 +166,6 @@ export const SignupForm = () => (
           <FieldContent>
             <Input
               autoComplete="email"
-              id="email"
               name="email"
               placeholder="your@email.com"
               type="email"
@@ -183,7 +174,7 @@ export const SignupForm = () => (
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="password">
+          <FieldLabel>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="host.auth.fields.password_label" />
             </Suspense>
@@ -191,7 +182,6 @@ export const SignupForm = () => (
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               type="password"
@@ -200,7 +190,7 @@ export const SignupForm = () => (
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="confirmPassword">
+          <FieldLabel>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="host.auth.signup.password_confirm_label" />
             </Suspense>
@@ -208,7 +198,6 @@ export const SignupForm = () => (
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="confirmPassword"
               name="confirmPassword"
               placeholder="••••••••"
               type="password"

@@ -66,9 +66,9 @@ A refused submission may carry `fieldErrors`, keyed by field. `ActionFormFieldEr
 ```tsx
 <ActionForm action={saveSettings}>
   <Field>
-    <FieldLabel htmlFor="close-day">Close day</FieldLabel>
+    <FieldLabel>Close day</FieldLabel>
     <FieldContent>
-      <CloseDaySelect id="close-day" />
+      <CloseDaySelect />
       <ActionFormFieldError name="autoCloseDay" />
     </FieldContent>
   </Field>

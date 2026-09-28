@@ -38,7 +38,7 @@ export const ResendVerificationForm = () => (
         <TenantIdField />
 
         <Field>
-          <FieldLabel htmlFor="email" required>
+          <FieldLabel required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="host.auth.fields.email_label" />
             </Suspense>
@@ -46,7 +46,6 @@ export const ResendVerificationForm = () => (
           <FieldContent>
             <Input
               autoComplete="email"
-              id="email"
               name="email"
               placeholder="your@email.com"
               required

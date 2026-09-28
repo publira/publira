@@ -67,11 +67,10 @@ const expectMessage = (scope: Page | Locator, text: string): Promise<void> =>
   });
 
 /** Upload one image as the whole eye-catch, filling every ratio at once. */
-const uploadEyeCatchSource = async (
-  page: Page,
-  fileInputId: string
-): Promise<void> => {
-  await page.locator(`#${fileInputId}`).setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
+const uploadEyeCatchSource = async (page: Page): Promise<void> => {
+  await page
+    .locator('input[name="eye_catch_image"]')
+    .setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
   await page.getByRole("button", { name: "Update cover image" }).click();
   await expectMessage(page, "Cover image updated.");
 };
@@ -300,7 +299,7 @@ test.describe("admin eye-catch upload", () => {
     // No eye-catch yet: the ratios are not offered at all.
     await expectNoEyeCatchYet(page);
 
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "series");
@@ -328,7 +327,7 @@ test.describe("admin eye-catch upload", () => {
     request,
   }) => {
     await openSeriesEyeCatchTab(page);
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const delivered = await deliveredEyeCatch(page, request);
     await replaceEachAspectInTurn(page, request, delivered, EYE_CATCH_ASPECTS);
@@ -339,7 +338,7 @@ test.describe("admin eye-catch upload", () => {
     request,
   }) => {
     await openSeriesEyeCatchTab(page);
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const before = await deliveredEyeCatch(page, request);
 
@@ -363,7 +362,7 @@ test.describe("admin eye-catch upload", () => {
     request,
   }) => {
     await openSeriesEyeCatchTab(page);
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const before = await deliveredEyeCatch(page, request);
 
@@ -387,7 +386,7 @@ test.describe("admin eye-catch upload", () => {
     request,
   }) => {
     await openSeriesEyeCatchTab(page);
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const centred = await deliveredEyeCatch(page, request);
 
@@ -413,7 +412,7 @@ test.describe("admin eye-catch upload", () => {
     page,
   }) => {
     const { publicId, title } = await openSeriesEyeCatchTab(page);
-    await uploadEyeCatchSource(page, "series_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     // First host request for this public_id, so nothing was cached back when
     // the series had no eye-catch. The edge, not web-host's own port:
@@ -441,7 +440,7 @@ test.describe("admin eye-catch upload", () => {
     await openLabelEyeCatchTab(page);
     await expectNoEyeCatchYet(page);
 
-    await uploadEyeCatchSource(page, "label_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "labels");
@@ -489,7 +488,7 @@ test.describe("admin eye-catch upload", () => {
     await openEyeCatchTab();
     await expectNoEyeCatchYet(page);
 
-    await uploadEyeCatchSource(page, "genre_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     const sources = await aspectSources(page);
     expectAspectPaths(sources, "genres");
@@ -558,7 +557,7 @@ test.describe("admin eye-catch upload", () => {
     };
 
     await openEyeCatchTab();
-    await uploadEyeCatchSource(page, "genre_eye_catch_image");
+    await uploadEyeCatchSource(page);
 
     // The genre carries no series, so without its eye-catch the tile is one
     // flat frame, and any image in it is the one the console uploaded.

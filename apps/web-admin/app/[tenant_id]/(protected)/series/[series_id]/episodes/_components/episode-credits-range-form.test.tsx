@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { InputHTMLAttributes, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -22,39 +22,44 @@ vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "TENANT001",
 }));
 
-vi.mock("@publira/ui-components/combobox", () => ({
-  Combobox: ({
-    disabled,
-    id,
-    items,
-    onValueChange,
-    value,
-  }: {
-    disabled?: boolean;
-    id?: string;
-    items: { label: string; value: string }[];
-    onValueChange: (next: string) => void;
-    value: string;
-  }) => (
-    <select
-      disabled={disabled}
-      id={id}
-      onChange={(event) => onValueChange(event.target.value)}
-      value={value}
-    >
-      <option value="">-</option>
-      {items.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
-        </option>
-      ))}
-    </select>
-  ),
-  ComboboxEmpty: () => null,
-  ComboboxInput: () => null,
-  ComboboxItems: () => null,
-  ComboboxPopup: () => null,
-}));
+// Rendered through `Input`, the stand-in is the control its Field names.
+vi.mock("@publira/ui-components/combobox", async () => {
+  const { Input } = await import("@publira/ui-components/input");
+
+  return {
+    Combobox: ({
+      disabled,
+      items,
+      onValueChange,
+      value,
+    }: {
+      disabled?: boolean;
+      items: { label: string; value: string }[];
+      onValueChange: (next: string) => void;
+      value: string;
+    }) => (
+      <Input
+        disabled={disabled}
+        onChange={(event) => onValueChange(event.target.value)}
+        render={
+          <select>
+            <option value="">-</option>
+            {items.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        }
+        value={value}
+      />
+    ),
+    ComboboxEmpty: () => null,
+    ComboboxInput: () => null,
+    ComboboxItems: () => null,
+    ComboboxPopup: () => null,
+  };
+});
 
 vi.mock("@publira/ui-components/checkbox", () => ({
   Checkbox: ({
@@ -76,10 +81,6 @@ vi.mock("@publira/ui-components/checkbox", () => ({
       type="checkbox"
     />
   ),
-}));
-
-vi.mock("@publira/ui-components/input", () => ({
-  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
 vi.mock("@publira/ui-components/dialog", () => ({

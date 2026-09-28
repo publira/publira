@@ -54,18 +54,13 @@ const CreditPairFields = ({
   roleItems,
 }: CreditPairFieldsProps) => {
   const t = useClientMessages();
-  const creatorId = useId();
-  const roleId = useId();
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field>
-        <FieldLabel htmlFor={creatorId}>
-          {t("admin.series.episodes.credits.creator")}
-        </FieldLabel>
+        <FieldLabel>{t("admin.series.episodes.credits.creator")}</FieldLabel>
         <FieldContent>
           <Combobox
-            id={creatorId}
             items={creatorItems}
             onValueChange={onCreatorChange}
             value={pair.creatorId}
@@ -83,12 +78,9 @@ const CreditPairFields = ({
         </FieldContent>
       </Field>
       <Field>
-        <FieldLabel htmlFor={roleId}>
-          {t("admin.series.episodes.credits.role")}
-        </FieldLabel>
+        <FieldLabel>{t("admin.series.episodes.credits.role")}</FieldLabel>
         <FieldContent>
           <Combobox
-            id={roleId}
             items={roleItems}
             onValueChange={onRoleChange}
             value={pair.roleId}
@@ -118,20 +110,16 @@ const ShareField = ({
   shareText: string;
 }) => {
   const t = useClientMessages();
-  const shareId = useId();
   const invalid =
     shareText.trim().length > 0 && sharePercentToBps(shareText) === undefined;
 
   return (
     <Field className="sm:max-w-40">
-      <FieldLabel htmlFor={shareId}>
-        {t("admin.series.episodes.credits.share")}
-      </FieldLabel>
+      <FieldLabel>{t("admin.series.episodes.credits.share")}</FieldLabel>
       <FieldContent>
         <Input
           aria-invalid={invalid}
           className="text-right tabular-nums"
-          id={shareId}
           inputMode="decimal"
           onChange={(event) => onShareChange(event.currentTarget.value)}
           value={shareText}
@@ -274,7 +262,6 @@ const EpisodeSelectionFields = ({
   selectionTooMany: boolean;
 }) => {
   const t = useClientMessages();
-  const searchId = useId();
   const selectVisibleId = useId();
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -296,13 +283,12 @@ const EpisodeSelectionFields = ({
         {t("admin.series.episodes.credits.selection")}
       </legend>
       <Field>
-        <FieldLabel htmlFor={searchId}>
+        <FieldLabel>
           {t("admin.series.episodes.credits.selection_search")}
         </FieldLabel>
         <FieldContent>
           <Input
             disabled={listDisabled}
-            id={searchId}
             onChange={(event) => setQuery(event.currentTarget.value)}
             placeholder={t("admin.series.episodes.credits.selection_search")}
             type="search"
@@ -493,7 +479,6 @@ export const EpisodeCreditsRangeEditor = ({
   to,
 }: EpisodeCreditsRangeEditorProps) => {
   const t = useClientMessages();
-  const operationId = useId();
 
   return (
     <form action={formAction} className="grid gap-5">
@@ -515,12 +500,11 @@ export const EpisodeCreditsRangeEditor = ({
 
       <Fieldset className="grid gap-5" disabled={isPending}>
         <Field>
-          <FieldLabel htmlFor={operationId}>
+          <FieldLabel>
             {t("admin.series.episodes.credits.operation")}
           </FieldLabel>
           <FieldContent>
             <RadioGroup
-              id={operationId}
               items={[
                 {
                   description: t(
