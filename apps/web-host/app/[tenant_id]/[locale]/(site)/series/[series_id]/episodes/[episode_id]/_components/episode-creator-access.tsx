@@ -12,7 +12,7 @@ import { getLocale } from "#lib/locale";
  * it, which `entitled` alone does not tell apart from a purchase. It shares the
  * body's private read and cache entry, so a failure is the body's to report.
  */
-export const EpisodeAuthorAccess = async ({
+export const EpisodeCreatorAccess = async ({
   access,
   checkoutSessionId,
   episodePublicId,
@@ -53,7 +53,7 @@ export const EpisodeAuthorAccess = async ({
   return (
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-        <Message message="host.episode.author_access" />
+        <Message message="host.episode.creator_access" />
       </Suspense>
     </span>
   );

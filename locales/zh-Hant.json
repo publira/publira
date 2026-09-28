@@ -2960,7 +2960,6 @@
         "title": "本章設有年齡限制",
         "too_young_description": "本作品不適用於您的年齡。"
       },
-      "author_access": "您作為作者可以閱讀本章",
       "body_error": "無法顯示該章節",
       "body_label": "章節正文",
       "checkout_cancelled": "購買已取消，未產生任何扣款。",
@@ -3011,6 +3010,7 @@
         "submit": "發表留言",
         "title": "留言"
       },
+      "creator_access": "您作為作者可以閱讀本章",
       "detail_failed": "無法載入該章節。請稍後再試。",
       "end": {
         "back_to_series": "返回系列",

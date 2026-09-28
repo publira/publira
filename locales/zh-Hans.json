@@ -2960,7 +2960,6 @@
         "title": "本章设有年龄限制",
         "too_young_description": "本作品不适用于您的年龄。"
       },
-      "author_access": "您作为作者可以阅读本章",
       "body_error": "无法显示该章节",
       "body_label": "章节正文",
       "checkout_cancelled": "购买已取消，未产生任何扣款。",
@@ -3011,6 +3010,7 @@
         "submit": "发表评论",
         "title": "评论"
       },
+      "creator_access": "您作为作者可以阅读本章",
       "detail_failed": "无法加载该章节。请稍后再试。",
       "end": {
         "back_to_series": "返回系列",

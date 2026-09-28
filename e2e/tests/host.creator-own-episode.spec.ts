@@ -19,7 +19,7 @@ import { turnToEndPage } from "../src/viewer";
 
 const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
 
-const AUTHOR_ACCESS = "Open to you as its author";
+const CREATOR_ACCESS = "Open to you as its author";
 
 /** The canvas the viewer lays out for the paid episode's first page. */
 const paidFirstPage = (page: Page) =>
@@ -55,7 +55,7 @@ test.describe("web-host creator's own episode", () => {
     );
 
     await expect(paidFirstPage(page)).toBeVisible();
-    await expect(page.getByText(AUTHOR_ACCESS)).toBeVisible();
+    await expect(page.getByText(CREATOR_ACCESS)).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Buy this episode" })
     ).toHaveCount(0);
@@ -72,7 +72,7 @@ test.describe("web-host creator's own episode", () => {
     );
 
     await expect(paidFirstPage(page)).toBeVisible();
-    await expect(page.getByText(AUTHOR_ACCESS)).toHaveCount(0);
+    await expect(page.getByText(CREATOR_ACCESS)).toHaveCount(0);
   });
 
   test("the author is not offered a reaction to their own free episode", async ({
@@ -100,6 +100,6 @@ test.describe("web-host creator's own episode", () => {
     await expect(
       endPage(page).getByRole("button", { name: /React to this episode/u })
     ).toHaveCount(0);
-    await expect(page.getByText(AUTHOR_ACCESS)).toHaveCount(0);
+    await expect(page.getByText(CREATOR_ACCESS)).toHaveCount(0);
   });
 });

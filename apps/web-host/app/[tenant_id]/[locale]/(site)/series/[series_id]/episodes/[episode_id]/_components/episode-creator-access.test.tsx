@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeAccessState } from "#lib/catalog";
 
-import { EpisodeAuthorAccess } from "./episode-author-access";
+import { EpisodeCreatorAccess } from "./episode-creator-access";
 
 const { mockGetEpisodeViewer, mockResolveAccessToken } = vi.hoisted(() => ({
   mockGetEpisodeViewer: vi.fn(),
@@ -50,10 +50,10 @@ const props = {
   tenantId: "TENANT_001",
 };
 
-const renderAuthorAccess = async (access: EpisodeAccessState = "locked") =>
-  render(<div>{await EpisodeAuthorAccess({ ...props, access })}</div>);
+const renderCreatorAccess = async (access: EpisodeAccessState = "locked") =>
+  render(<div>{await EpisodeCreatorAccess({ ...props, access })}</div>);
 
-describe("EpisodeAuthorAccess", () => {
+describe("EpisodeCreatorAccess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveAccessToken.mockResolvedValue("session-token");
@@ -65,7 +65,7 @@ describe("EpisodeAuthorAccess", () => {
       value: { access: "entitled", entitlementSource: "creator", images: [] },
     });
 
-    await renderAuthorAccess();
+    await renderCreatorAccess();
 
     expect(screen.getByText("Open to you as its author")).toBeTruthy();
     expect(mockGetEpisodeViewer).toHaveBeenCalledWith(
@@ -84,7 +84,7 @@ describe("EpisodeAuthorAccess", () => {
       value: { access: "entitled", entitlementSource: "purchase", images: [] },
     });
 
-    const { container } = await renderAuthorAccess();
+    const { container } = await renderCreatorAccess();
 
     expect(container.textContent).toBe("");
   });
@@ -92,14 +92,14 @@ describe("EpisodeAuthorAccess", () => {
   it("says nothing to a guest, without reading the body", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    const { container } = await renderAuthorAccess();
+    const { container } = await renderCreatorAccess();
 
     expect(container.textContent).toBe("");
     expect(mockGetEpisodeViewer).not.toHaveBeenCalled();
   });
 
   it("reads nothing for a body free to everyone", async () => {
-    const { container } = await renderAuthorAccess("free");
+    const { container } = await renderCreatorAccess("free");
 
     expect(container.textContent).toBe("");
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe("EpisodeAuthorAccess", () => {
       ok: false,
     });
 
-    const { container } = await renderAuthorAccess();
+    const { container } = await renderCreatorAccess();
 
     expect(container.textContent).toBe("");
   });

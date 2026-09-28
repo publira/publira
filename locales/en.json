@@ -2960,7 +2960,6 @@
         "title": "This episode is age-restricted",
         "too_young_description": "This work is not available for your age."
       },
-      "author_access": "Open to you as its author",
       "body_error": "Could not show the episode",
       "body_label": "Episode body",
       "checkout_cancelled": "The purchase was cancelled. You have not been charged.",
@@ -3011,6 +3010,7 @@
         "submit": "Post comment",
         "title": "Comments"
       },
+      "creator_access": "Open to you as its author",
       "detail_failed": "Could not load the episode. Please try again later.",
       "end": {
         "back_to_series": "Back to the series",

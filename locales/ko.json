@@ -2960,7 +2960,6 @@
         "title": "이 에피소드에는 연령 제한이 있습니다",
         "too_young_description": "이 작품은 현재 나이로는 열람할 수 없습니다."
       },
-      "author_access": "작가로서 열람할 수 있습니다",
       "body_error": "에피소드를 표시할 수 없습니다",
       "body_label": "에피소드 본문",
       "checkout_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
@@ -3011,6 +3010,7 @@
         "submit": "댓글 등록",
         "title": "댓글"
       },
+      "creator_access": "작가로서 열람할 수 있습니다",
       "detail_failed": "에피소드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "end": {
         "back_to_series": "시리즈로 돌아가기",

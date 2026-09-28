@@ -2960,7 +2960,6 @@
         "title": "このエピソードには年齢制限があります",
         "too_young_description": "この作品はお客様の年齢では閲覧できません。"
       },
-      "author_access": "著者として閲覧できます",
       "body_error": "本文を表示できませんでした",
       "body_label": "エピソード本文",
       "checkout_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
@@ -3011,6 +3010,7 @@
         "submit": "コメントを投稿",
         "title": "コメント"
       },
+      "creator_access": "著者として閲覧できます",
       "detail_failed": "エピソードを取得できませんでした。時間をおいて再試行してください。",
       "end": {
         "back_to_series": "シリーズに戻る",
