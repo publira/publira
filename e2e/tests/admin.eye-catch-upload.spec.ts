@@ -177,15 +177,16 @@ const displayedDigest = async (image: Locator): Promise<string> => {
   return createHash("sha256").update(encoded).digest("hex");
 };
 
-/** The image each ratio's slot is showing. */
+/** The image each ratio's slot is showing. The four slots are read together. */
 const displayedEyeCatch = async (page: Page): Promise<AspectDigests> => {
-  const digests: Partial<AspectDigests> = {};
-  for (const aspect of EYE_CATCH_ASPECTS) {
-    const image = aspectSlot(page, aspect).getByRole("img");
-    await expect(image).toBeVisible();
-    digests[aspect] = await displayedDigest(image);
-  }
-  return digests as AspectDigests;
+  const entries = await Promise.all(
+    EYE_CATCH_ASPECTS.map(async (aspect) => {
+      const image = aspectSlot(page, aspect).getByRole("img");
+      await expect(image).toBeVisible();
+      return [aspect, await displayedDigest(image)] as const;
+    })
+  );
+  return Object.fromEntries(entries) as AspectDigests;
 };
 
 const expectAspectPaths = (
