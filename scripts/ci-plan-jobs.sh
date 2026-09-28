@@ -5,7 +5,7 @@
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
 #   FILTER_FORMAT, FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_BASH, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_MOBILE_IOS, FILTER_TEST_E2E,
-#   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_BUILD
+#   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_TEST_DEPLOY, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_SERVER, FILTER_DOCKER_PUBLIRACTL, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
@@ -68,15 +68,17 @@ test_mobile_ios=false
 test_e2e=false
 test_bootstrap=false
 test_routing=false
+test_deploy=false
 build=false
 matrix_items=()
 
 case "${event}" in
   schedule)
-    # Nightly: Docker full matrix, plus the bootstrap check. Its path filter is
-    # deliberately narrow (config paths), so a nightly run is what catches dev
-    # environment drift coming from ordinary server/ or apps/ changes.
+    # Nightly: Docker full matrix, plus the bootstrap and deploy checks. Their
+    # path filters are deliberately narrow (config paths), so a nightly run is
+    # what catches drift coming from ordinary server/ or apps/ changes.
     test_bootstrap=true
+    test_deploy=true
     matrix_items=(
       "${full_web_host}"
       "${full_web_admin}"
@@ -101,6 +103,7 @@ case "${event}" in
     test_e2e=true
     test_bootstrap=true
     test_routing=true
+    test_deploy=true
     build=true
     if [[ "${docker_mode_input}" == "full" ]]; then
       matrix_items=(
@@ -130,6 +133,7 @@ case "${event}" in
     if flag FILTER_TEST_E2E; then test_e2e=true; fi
     if flag FILTER_TEST_BOOTSTRAP; then test_bootstrap=true; fi
     if flag FILTER_TEST_ROUTING; then test_routing=true; fi
+    if flag FILTER_TEST_DEPLOY; then test_deploy=true; fi
     if flag FILTER_BUILD; then build=true; fi
     if flag FILTER_DOCKER_CORE; then
       matrix_items=(
@@ -172,13 +176,14 @@ fi
   echo "test_e2e=${test_e2e}"
   echo "test_bootstrap=${test_bootstrap}"
   echo "test_routing=${test_routing}"
+  echo "test_deploy=${test_deploy}"
   echo "build=${build}"
   echo "docker_any=${docker_any}"
   echo "docker_matrix=${docker_matrix}"
 } >> "${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} test_routing=${test_routing} build=${build} docker_any=${docker_any}"
+echo "format=${format} check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_bash=${test_bash} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_mobile_e2e=${test_mobile_e2e} test_mobile_ios=${test_mobile_ios} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} test_routing=${test_routing} test_deploy=${test_deploy} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

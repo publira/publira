@@ -4,6 +4,9 @@ includes:
   db:
     taskfile: ./db/Taskfile.yaml
     dir: ./db
+  deploy:
+    # Keep cwd at repository root, where the scripts resolve their paths.
+    taskfile: ./infra/deploy/Taskfile.yaml
   docker:
     # Keep cwd at repository root so docker build context stays `.`
     taskfile: ./infra/docker/Taskfile.yaml
