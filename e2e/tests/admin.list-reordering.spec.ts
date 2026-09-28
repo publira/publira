@@ -293,10 +293,10 @@ test.describe("admin list reordering", () => {
 
     const japaneseHandle = page.getByRole("button", {
       exact: true,
-      name: `${name} を並べ替え`,
+      name: `${name}を並べ替え`,
     });
     await expect(japaneseHandle).toHaveAccessibleDescription(
-      /^行を持ち上げるには SpaceキーまたはEnterキーを押します。/u
+      /^行を持ち上げるにはSpaceキーまたはEnterキーを押します。/u
     );
     await expect(japaneseHandle).toHaveAttribute(
       "aria-roledescription",
@@ -306,7 +306,7 @@ test.describe("admin list reordering", () => {
     await japaneseHandle.focus();
     await page.keyboard.press("Space");
     await expect(announcement(page)).toHaveText(
-      new RegExp(`^${name}を持ち上げました。現在 \\d+ 番目です。$`, "u")
+      new RegExp(`^${name}を持ち上げました。現在\\d+番目です。$`, "u")
     );
   });
 });
