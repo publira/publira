@@ -2,7 +2,37 @@
 
 @source "./dist";
 
+/**
+ * Tailwind has no utility for `text-autospace`. The keywords are quoted
+ * because that is how `--value()` takes a literal; the emitted value is not.
+ */
+@utility text-autospace-* {
+  text-autospace: --value(
+    "normal",
+    "no-autospace",
+    "ideograph-alpha",
+    "ideograph-numeric",
+    "punctuation",
+    "insert",
+    "replace",
+    "auto",
+    [*],
+    --default(normal)
+  );
+}
+
 @layer base {
+  /**
+   * Browsers ship `no-autospace` as the initial value, so the spacing between
+   * CJK text and a Latin or digit run is only drawn when a stylesheet asks.
+   */
+  :lang(ja),
+  :lang(ko),
+  :lang(zh-Hans),
+  :lang(zh-Hant) {
+    @apply text-autospace;
+  }
+
   :root {
     @apply scheme-light;
   }
