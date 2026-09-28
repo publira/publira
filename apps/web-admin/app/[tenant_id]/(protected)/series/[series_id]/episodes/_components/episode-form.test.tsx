@@ -191,7 +191,6 @@ const submittedControls = () => [
 // The Action carries what the fields held when the form was submitted, so a
 // change made while it is in flight would not be the episode that gets created.
 it("closes every field while the save is in flight", async () => {
-  // Never resolved: the assertions are about the window the save is open in.
   const save = Promise.withResolvers<EpisodeActionState>();
   const pendingAction = vi.fn(() => save.promise);
 
@@ -217,4 +216,89 @@ it("closes every field while the save is in flight", async () => {
       expect(control.matches(":disabled")).toBe(true);
     }
   });
+
+  // React entangles every async transition in flight, so a save left pending
+  // would hold the next test's submission open too.
+  save.resolve(null);
+  await waitFor(() => {
+    for (const control of submittedControls()) {
+      expect(control.matches(":disabled")).toBe(false);
+    }
+  });
+});
+
+const choose = async (select: string, option: string) => {
+  const trigger = screen.getByRole("combobox", { name: select });
+  fireEvent.click(trigger);
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  fireEvent.keyDown(await screen.findByRole("option", { name: option }), {
+    key: "Enter",
+  });
+};
+
+// A refused submission costs the editor the one field it names, not the rest
+// of what they typed.
+it("keeps what was entered when the Action refuses the submission", async () => {
+  const refuse = vi.fn((): Promise<EpisodeActionState> =>
+    Promise.resolve({
+      message: "The publication date and time is invalid.",
+      mode: "create",
+      ok: false,
+    })
+  );
+
+  await renderForm({
+    action: refuse,
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    timeZone: "UTC",
+  });
+
+  fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {
+    target: { value: "Chapter 1" },
+  });
+  fireEvent.change(screen.getByRole("spinbutton", { name: /Price/u }), {
+    target: { value: "120" },
+  });
+  fireEvent.change(
+    screen.getByRole("spinbutton", { name: /Reading period/u }),
+    {
+      target: { value: "72" },
+    }
+  );
+  fireEvent.change(screen.getByLabelText(/Publication date and time/u), {
+    target: { value: "2026-10-01T09:00" },
+  });
+  await choose("Shown on", "Web only");
+  await choose("Sold on", "App only");
+
+  fireEvent.click(screen.getByRole("button", { name: "Create episode" }));
+
+  await waitFor(() => {
+    expect(
+      screen.getByText("The publication date and time is invalid.")
+    ).toBeTruthy();
+  });
+  expect(refuse).toHaveBeenCalledOnce();
+  expect(screen.getByRole("textbox", { name: /Title/u })).toHaveProperty(
+    "value",
+    "Chapter 1"
+  );
+  expect(screen.getByRole("spinbutton", { name: /Price/u })).toHaveProperty(
+    "value",
+    "120"
+  );
+  expect(
+    screen.getByRole("spinbutton", { name: /Reading period/u })
+  ).toHaveProperty("value", "72");
+  expect(screen.getByLabelText(/Publication date and time/u)).toHaveProperty(
+    "value",
+    "2026-10-01T09:00"
+  );
+  expect(screen.getByRole("combobox", { name: "Shown on" }).textContent).toBe(
+    "Web only"
+  );
+  expect(screen.getByRole("combobox", { name: "Sold on" }).textContent).toBe(
+    "App only"
+  );
 });
