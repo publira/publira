@@ -1,7 +1,8 @@
 import { cn } from "@publira/utils";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MarkdownContentProps {
   content: string;
@@ -16,6 +17,31 @@ interface MarkdownContentProps {
  * them.
  */
 const HEADING_CLASS_NAME = cn("font-serif text-xl leading-tight");
+
+const hasClassName = (className: string | undefined, token: string): boolean =>
+  className?.split(/\s+/u).includes(token) ?? false;
+
+// A task list's marker is the checkbox, so the bullet or the number is dropped.
+const listClassName = (
+  className: string | undefined,
+  markerClassName: string
+): string =>
+  hasClassName(className, "contains-task-list")
+    ? "list-none space-y-1 pl-6"
+    : `${markerClassName} space-y-1 pl-6`;
+
+// GFM sets a column's alignment as `text-align`. Left is already the table's.
+const horizontalAlignClassName = (
+  style: CSSProperties | undefined
+): string | undefined => {
+  if (style?.textAlign === "center") {
+    return "text-center";
+  }
+  if (style?.textAlign === "right") {
+    return "text-right";
+  }
+  return undefined;
+};
 
 const markdownComponents: Components = {
   a: ({ href, children }) => (
@@ -45,15 +71,42 @@ const markdownComponents: Components = {
       </code>
     );
   },
+  // Struck words recede. The line is the mark; the muted ink says they are
+  // no longer the sentence.
+  del: ({ children }) => (
+    <del className="text-muted-foreground line-through">{children}</del>
+  ),
   h1: ({ children }) => <h1 className={HEADING_CLASS_NAME}>{children}</h1>,
   h2: ({ children }) => <h2 className={HEADING_CLASS_NAME}>{children}</h2>,
   h3: ({ children }) => <h3 className={HEADING_CLASS_NAME}>{children}</h3>,
   h4: ({ children }) => <h4 className={HEADING_CLASS_NAME}>{children}</h4>,
   h5: ({ children }) => <h5 className={HEADING_CLASS_NAME}>{children}</h5>,
   h6: ({ children }) => <h6 className={HEADING_CLASS_NAME}>{children}</h6>,
-  li: ({ children }) => <li>{children}</li>,
-  ol: ({ children }) => (
-    <ol className="list-decimal space-y-1 pl-6">{children}</ol>
+  // Disabled, so a reader cannot toggle it. `readOnly` is what keeps a
+  // controlled checkbox from warning.
+  input: ({ checked, type }) =>
+    type === "checkbox" ? (
+      <input
+        checked={checked === true}
+        className="mt-1 size-4 shrink-0 rounded-control border-input accent-primary"
+        disabled
+        readOnly
+        type="checkbox"
+      />
+    ) : (
+      <input disabled type={type} />
+    ),
+  // The item's words are the checkbox's accessible name.
+  li: ({ children, className }) =>
+    hasClassName(className, "task-list-item") ? (
+      <li>
+        <label className="flex items-start gap-2">{children}</label>
+      </li>
+    ) : (
+      <li>{children}</li>
+    ),
+  ol: ({ children, className }) => (
+    <ol className={listClassName(className, "list-decimal")}>{children}</ol>
   ),
   p: ({ children }) => <p>{children}</p>,
   // Code keeps the monospace face, the wash behind it, and its own line
@@ -67,8 +120,36 @@ const markdownComponents: Components = {
     </div>
   ),
   strong: ({ children }) => <strong>{children}</strong>,
-  ul: ({ children }) => (
-    <ul className="list-disc space-y-1 pl-6">{children}</ul>
+  // A table is wider than the measure as soon as it has two columns.
+  table: ({ children }) => (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-left">{children}</table>
+    </div>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="[&_tr:last-child]:border-0">{children}</tbody>
+  ),
+  td: ({ children, style }) => (
+    <td className={cn("px-3 py-2 align-top", horizontalAlignClassName(style))}>
+      {children}
+    </td>
+  ),
+  th: ({ children, style }) => (
+    <th
+      className={cn(
+        "px-3 py-2 align-bottom font-medium",
+        horizontalAlignClassName(style)
+      )}
+    >
+      {children}
+    </th>
+  ),
+  thead: ({ children }) => (
+    <thead className="[&_tr]:border-b-2 [&_tr]:border-border">{children}</thead>
+  ),
+  tr: ({ children }) => <tr className="border-b border-border">{children}</tr>,
+  ul: ({ children, className }) => (
+    <ul className={listClassName(className, "list-disc")}>{children}</ul>
   ),
 };
 
@@ -95,7 +176,12 @@ export const MarkdownContent = ({
 
   return (
     <div className="grid max-w-measure-prose gap-[1lh] font-serif text-base leading-(--leading-reading-cjk) text-foreground sm:text-lg">
-      <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+      <ReactMarkdown
+        components={markdownComponents}
+        remarkPlugins={[remarkGfm]}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 };
