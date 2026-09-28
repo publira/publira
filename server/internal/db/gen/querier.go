@@ -477,6 +477,9 @@ type Querier interface {
 	GetOutboxEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (OutboxEvent, error)
 	// The page with the translation page_translation_for picks for the locale.
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (GetPageByIDForTenantRow, error)
+	// Whether the storefront serves the page, which it does while any translation
+	// of it is published.
+	GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error)
 	GetPageVersionByIDForTranslation(ctx context.Context, arg GetPageVersionByIDForTranslationParams) (PageVersion, error)
 	// The page with its translation in exactly this locale, and no row when the
 	// page has none: an edit aimed at one language must not land on another.

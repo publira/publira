@@ -226,6 +226,34 @@ func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTe
 	return i, err
 }
 
+const GetPagePublicationForTenant = `-- name: GetPagePublicationForTenant :one
+SELECT p.id,
+	(published_page_translation_for(p.id, t.default_locale) IS NOT NULL)::boolean AS published
+FROM pages p
+	JOIN tenants t ON t.id = p.tenant_id
+WHERE p.id = $1
+	AND p.tenant_id = $2
+`
+
+type GetPagePublicationForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPagePublicationForTenantRow struct {
+	ID        uuid.UUID `json:"id"`
+	Published bool      `json:"published"`
+}
+
+// Whether the storefront serves the page, which it does while any translation
+// of it is published.
+func (q *Queries) GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPagePublicationForTenant, arg.ID, arg.TenantID)
+	var i GetPagePublicationForTenantRow
+	err := row.Scan(&i.ID, &i.Published)
+	return i, err
+}
+
 const GetPageVersionByIDForTranslation = `-- name: GetPageVersionByIDForTranslation :one
 SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id FROM page_versions
 WHERE id = $1 AND translation_id = $2

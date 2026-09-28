@@ -211,3 +211,48 @@ func TestDBUpdateTenantLegalPagesRequiresTenantAdmin(t *testing.T) {
 		t.Fatalf("terms page after a refused save = %v, want none", got.TermsPage)
 	}
 }
+
+// A page whose only published translation is not in the default locale is
+// served, so it can be named, and is reported as published in that translation.
+func TestDBTenantLegalPagesNameAPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.pagesClient()
+	ctx := context.Background()
+
+	termsID := createDBPage(t, env, tenant, "tos", "Terms (ja draft)", false)
+	if _, err := client.CreatePageTranslation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreatePageTranslationRequest{
+		Tenant: tenant.tenantContext(),
+		PageId: termsID,
+		Locale: "en",
+		Title:  "Terms of Service",
+	})); err != nil {
+		t.Fatalf("CreatePageTranslation: %v", err)
+	}
+	version, err := client.CreateVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateVersionRequest{
+		Tenant:          tenant.tenantContext(),
+		PageId:          termsID,
+		Locale:          "en",
+		ContentMarkdown: "# Terms of Service",
+	}))
+	if err != nil {
+		t.Fatalf("CreateVersion en: %v", err)
+	}
+	if _, err := client.PublishVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+		Tenant:    tenant.tenantContext(),
+		PageId:    termsID,
+		Locale:    "en",
+		VersionId: version.Msg.Version.Id,
+	})); err != nil {
+		t.Fatalf("PublishVersion en: %v", err)
+	}
+
+	saved, err := updateDBTenantLegalPages(env, tenant, termsID, "")
+	if err != nil {
+		t.Fatalf("UpdateTenantLegalPages: %v", err)
+	}
+	assertLegalPage(t, "terms", saved.TermsPage, termsID, "/tos", true)
+	if saved.TermsPage.Title != "Terms of Service" {
+		t.Fatalf("terms title = %q, want the published en one", saved.TermsPage.Title)
+	}
+}

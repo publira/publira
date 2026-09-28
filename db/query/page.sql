@@ -18,6 +18,16 @@ FROM pages p
 WHERE p.id = sqlc.arg('id')
 	AND p.tenant_id = sqlc.arg('tenant_id');
 
+-- name: GetPagePublicationForTenant :one
+-- Whether the storefront serves the page, which it does while any translation
+-- of it is published.
+SELECT p.id,
+	(published_page_translation_for(p.id, t.default_locale) IS NOT NULL)::boolean AS published
+FROM pages p
+	JOIN tenants t ON t.id = p.tenant_id
+WHERE p.id = sqlc.arg('id')
+	AND p.tenant_id = sqlc.arg('tenant_id');
+
 -- name: GetPageWithTranslationForTenant :one
 -- The page with its translation in exactly this locale, and no row when the
 -- page has none: an edit aimed at one language must not land on another.
