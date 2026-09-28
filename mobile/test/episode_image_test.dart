@@ -114,7 +114,7 @@ void main() {
   });
 
   testWidgets('a plaintext page is drawn the same way', (tester) async {
-    // The reader has to keep working when an image-server instance a rolling
+    // The reader has to keep working when a server instance a rolling
     // deploy has not replaced yet answers with the image itself.
     final client = EpisodeImageClient(
       httpClient: MockClient(

@@ -1415,7 +1415,7 @@ void main() {
     expect(detail.imageRequestHeaders.containsKey('authorization'), isFalse);
   });
 
-  test('an access token reaches both the API and image-server', () async {
+  test('an access token reaches both the API and the image routes', () async {
     var accessToken = '';
     final config = AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost');
     final authenticated = HttpCatalogRepository(

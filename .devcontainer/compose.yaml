@@ -77,9 +77,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_TRACES_EXPORTER: otlp
-      # Key the Go APIs and image servers sign HS256 access tokens with.
-      # Required — the servers refuse to start without it. Local development
-      # only: it is published in this repository, so never reuse it elsewhere.
+      # Key publira server signs and verifies HS256 access tokens with, on the
+      # image routes too. Required — it refuses to start without it. Local
+      # development only: it is published in this repository, so never reuse it
+      # elsewhere.
       PUBLIRA_AUTH_JWT_SECRET: publira-dev-only-insecure-access-token-secret
       # Key the Next.js apps seal their session cookie (JWE) with. Required —
       # `resolveAuthSecret()` has no fallback. Local development only: it is
@@ -89,7 +90,8 @@ services:
       # (@publira/next-cache-handlers) both use; the two names carry one value.
       PUBLIRA_REDIS_URL: redis://redis:6379
       PNCH_REDIS_URL: redis://redis:6379
-      # The Go APIs call every web app directly for cache-tag revalidation.
+      # publira server and worker call every web app directly for cache-tag
+      # revalidation.
       # These are private loopback endpoints inside the shared app container;
       # public browser URLs and Traefik are deliberately not part of this path.
       PUBLIRA_REVALIDATE_TOKEN: publira-dev-only-revalidate-token

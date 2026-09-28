@@ -41,7 +41,7 @@ export const WEB_HOST_BASE_URL = envUrl(
  * The same web-host, reached through the E2E Traefik edge.
  *
  * An episode body image is `/images/episodes/{id}` on the reader's own origin,
- * and only the edge joins web-host and image-server under one host and port.
+ * and only the edge joins web-host and the image routes under one host and port.
  * Suites that never open an episode body keep using WEB_HOST_BASE_URL, so one
  * more hop does not sit in front of every navigation they time out on.
  *

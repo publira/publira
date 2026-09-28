@@ -9,7 +9,7 @@ import (
 
 // tieredStore charges Redis and this process at once.
 //
-// Redis is what makes a limit mean what it says: the API servers run several
+// Redis is what makes a limit mean what it says: publira server runs several
 // instances behind the edge, and a counter each of them kept privately would
 // multiply every limit by the number of instances. Keeping the in-process
 // counters alongside it rather than instead of it is what a Redis outage falls

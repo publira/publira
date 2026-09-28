@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fast checks for PUBLIRA_E2E_RUN_DIR isolation and the compose-project lock.
 # No Docker, no compiled binaries. Invoked from run.sh so a regression cannot
-# ship as "two stacks share api-server.pid" again.
+# ship as "two stacks share server.pid" again.
 set -euo pipefail
 
 PUBLIRA_E2E_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

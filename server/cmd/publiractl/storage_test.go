@@ -219,8 +219,8 @@ func TestStorageTestWithNothingSaved(t *testing.T) {
 	}
 }
 
-// A running api-server uploads to, and a running image server reads from, the
-// store storage set saves, and follow it to the next one without a restart.
+// A running server uploads to, and serves its images from, the store storage
+// set saves, and follow it to the next one without a restart.
 // Both resolve the row as they do in production, only rereading it on every
 // call rather than every platformstorage.RefreshInterval.
 func TestStorageSetReachesRunningServers(t *testing.T) {

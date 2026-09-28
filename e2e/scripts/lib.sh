@@ -59,7 +59,7 @@ export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
-# The API server's internal listener, which every app dials: one process
+# publira server's internal listener, which every app dials: one process
 # carries all three Connect namespaces.
 export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
 export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}}"
@@ -92,7 +92,7 @@ export PNCH_CACHE_APP="${PNCH_CACHE_APP:-web-host}"
 # because nothing here depends on which key it is, only that one is set.
 export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-e2e-only-insecure-web-session-secret}"
 
-# Access token (HS256) signing key for the Go API servers. Required — they exit
+# Access token (HS256) signing key for publira server. Required — it exits
 # at startup without it. Same reasoning as PUBLIRA_AUTH_SECRET above: any value
 # works as long as every process in the stack shares it.
 export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-insecure-access-token-secret}"

@@ -58,7 +58,7 @@ Outside the Dev Container you install the toolchain yourself. Install the versio
 | [pnpm](https://pnpm.io/) | `packageManager` in [`package.json`](package.json) | The web apps and shared packages |
 | Node.js | `devEngines.runtime` in [`package.json`](package.json) | Downloaded by pnpm on demand (`onFail: download`); nothing to install by hand |
 | Go | `go-version` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml); [`server/go.mod`](server/go.mod) states the minimum the module accepts | The Go backend |
-| libvips (`libvips-dev` and `pkg-config`) | Not pinned; installed by the Go jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Building and testing the Go backend, whose image servers link libvips through Manael |
+| libvips (`libvips-dev` and `pkg-config`) | Not pinned; installed by the Go jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Building and testing the Go backend, whose image delivery in `publira server` links libvips through Manael |
 | [golangci-lint](https://golangci-lint.run/) | `GOLANGCI_LINT_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task server:lint` |
 | [sqlc](https://sqlc.dev/) | `SQLC_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` and `sqlc diff` |
 | [buf](https://buf.build/) | `BUF_VERSION` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `task gen` |
@@ -88,8 +88,8 @@ task dev-env:create NAME=issue-1178
 # Database migration/seed and creation of the dedicated bucket. Safe to re-run.
 task dev-env:init
 
-# Start the API, image server, worker, email-renderer, and the three Next.js
-# apps together, behind an edge of this profile's own
+# Start publira server (the API and images), the worker, email-renderer, and
+# the three Next.js apps together, behind an edge of this profile's own
 task dev-env:start
 
 # Show the URLs, the logs, and the assigned DB/Redis/bucket
@@ -99,7 +99,7 @@ task dev-env:show
 task dev-env:stop
 ```
 
-All three apps of a profile answer on one address, the port the profile's own edge listens on: it is the tenant site, `admin.localhost` on the same port is the tenant console, and `platform.localhost` the platform console, the way `localhost:3080` works in the Dev Container. That edge is a Traefik container running the routing every environment runs ([`infra/proxy/README.md`](infra/proxy/README.md)) against the profile's ports, so `task dev-env:start` needs Docker and `task dev-env:stop` takes the container down with the processes. Reaching an app on the port it listens on itself skips the edge, and `/images…` belongs to the image server rather than to any app, so a page opened that way shows every eye-catch, logo, and episode page as a broken image.
+All three apps of a profile answer on one address, the port the profile's own edge listens on: it is the tenant site, `admin.localhost` on the same port is the tenant console, and `platform.localhost` the platform console, the way `localhost:3080` works in the Dev Container. That edge is a Traefik container running the routing every environment runs ([`infra/proxy/README.md`](infra/proxy/README.md)) against the profile's ports, so `task dev-env:start` needs Docker and `task dev-env:stop` takes the container down with the processes. Reaching an app on the port it listens on itself skips the edge, and `/images…` belongs to `publira server` rather than to any app, so a page opened that way shows every eye-catch, logo, and episode page as a broken image.
 
 Load the same environment variables first when starting a single app as well. Each app's `dev` honors `PORT`, so you do not have to resolve default port collisions by hand.
 

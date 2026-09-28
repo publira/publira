@@ -126,7 +126,7 @@ const screenshotDependencies = [
 
 /**
  * CI is `ubuntu-latest`, which a public repository gets with 4 vCPU. Three
- * workers leave headroom for the Next servers, Go APIs, and Chromium. The same
+ * workers leave headroom for the Next servers, the Go server, and Chromium. The same
  * count is used locally so isolation assumptions match CI. CLI `--workers=1`
  * still overrides.
  */
@@ -407,7 +407,7 @@ export default defineConfig({
     // Last, and on its own: it measures elapsed time, so nothing else may be
     // competing for the CPU. Depending on the tail of every chain above is what
     // empties the worker pool for it. Its baseURL is the Traefik edge, the only
-    // origin where `/images/episodes/{id}` resolves to image-server.
+    // origin where `/images/episodes/{id}` resolves to publira server.
     {
       dependencies: [
         "catalog-error-boundary",

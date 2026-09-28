@@ -700,8 +700,8 @@ class ConnectFixtureServer {
   String tenantName;
   Map<String, Object?>? tenantTheme;
 
-  /// Whether a page leaves as ciphertext. Set it to false to act out an
-  /// image-server instance a rolling deploy has not replaced yet, which the
+  /// Whether a page leaves as ciphertext. Set it to false to act out a
+  /// server instance a rolling deploy has not replaced yet, which the
   /// reader still has to work against for the length of the rollout.
   bool encryptImages;
 

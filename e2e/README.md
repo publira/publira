@@ -83,7 +83,7 @@ e2e/
 
 ### Mail
 
-The `mailpit` service is the stack's SMTP sink: intake on `PUBLIRA_E2E_MAILPIT_SMTP_PORT` (default `1026`), messages on `PUBLIRA_E2E_MAILPIT_HTTP_PORT` (default `8026`). `task e2e:db` points the platform and tenant SMTP settings at that intake, so what the API servers send lands there.
+The `mailpit` service is the stack's SMTP sink: intake on `PUBLIRA_E2E_MAILPIT_SMTP_PORT` (default `1026`), messages on `PUBLIRA_E2E_MAILPIT_HTTP_PORT` (default `8026`). `task e2e:db` points the platform and tenant SMTP settings at that intake, so what publira server and the worker send lands there.
 
 `src/mail.ts` reads it back over that API, at the origin `MAILPIT_BASE_URL` in `src/urls.ts` names (`PUBLIRA_E2E_MAILPIT_BASE_URL`): `waitForMessageTo(recipient)` returns the newest message for one address, `clearMessagesTo(recipient)` deletes that address's mail, and `tokenFromLink(message, pathname)` returns the `token` query value of the link whose path matches.
 

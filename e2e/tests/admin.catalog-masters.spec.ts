@@ -143,7 +143,7 @@ const uploadIcon = async (
   // next visit.
   await page.goto(adminUrl(`/creators/${creatorPublicId}`));
   const path = await savedIconPath(page);
-  // Only the Traefik edge joins web-host and image-server under one host and
+  // Only the Traefik edge joins web-host and the image routes under one host and
   // port, so the console names the path and the bytes are read from the edge.
   const response = await request.get(`${WEB_HOST_EDGE_BASE_URL}${path}`);
   expect(response.status(), path).toBe(200);

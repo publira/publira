@@ -417,7 +417,7 @@ test.describe("admin eye-catch upload", () => {
 
     // First host request for this public_id, so nothing was cached back when
     // the series had no eye-catch. The edge, not web-host's own port:
-    // `/images` resolves to image-server only there.
+    // `/images` resolves to publira server only there.
     const response = await page.goto(edgeUrl(hostPath(`/series/${publicId}`)));
     expect(response?.status(), await page.content()).toBe(200);
 

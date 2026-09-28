@@ -926,9 +926,9 @@ func unpublishedPaidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credent
 	return q
 }
 
-// Admin-image-server accepts a distinct audience so a copied preview URL
-// cannot be replayed against public image-server, and tenant staff can see
-// draft / paid bodies the public rule would 403.
+// An image requested on the console host accepts a distinct audience so a
+// copied preview URL cannot be replayed on the storefront, and tenant staff
+// can see draft / paid bodies the public rule would 403.
 func TestEpisodeImageAdminMediaToken(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")

@@ -43,9 +43,9 @@ class OfflineCatalogRepository implements CatalogRepository {
   ///
   /// They name the tenant this build was pointed at rather than anything the
   /// API said, which is why they are not written down. Restoring them matters
-  /// because the API being unreachable does not mean image-server is: an
-  /// api-server outage leaves a device that is otherwise online reading the
-  /// saved catalog, and its covers still load.
+  /// because a catalog call that failed does not mean a cover request will:
+  /// the device reads the saved catalog after any failed call, and its covers
+  /// still load.
   final Map<String, String> imageRequestHeaders;
 
   final ReaderIdReader _readerId;

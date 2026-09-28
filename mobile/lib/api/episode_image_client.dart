@@ -42,8 +42,8 @@ class EpisodeImageException implements Exception {
 /// entitled to, that material is the credential itself; for a free body it is
 /// the media token the API put on the image URL, which is what lets a
 /// signed-out reader recover the page. A response with no such header is
-/// passed through untouched, so a reader a rolling deploy still routes to an
-/// image-server instance it has not replaced yet keeps reading.
+/// passed through untouched, so a reader a rolling deploy still routes to a
+/// server instance it has not replaced yet keeps reading.
 class EpisodeImageClient {
   EpisodeImageClient({
     http.Client? httpClient,
