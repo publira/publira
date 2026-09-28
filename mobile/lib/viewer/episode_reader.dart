@@ -6,6 +6,7 @@ import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/episode_page.dart';
 import 'package:publira/viewer/page_spreads.dart';
@@ -586,7 +587,7 @@ class _ReaderControls extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: rtl ? nextButtons : previousButtons.reversed.toList(),
             ),
-            Text(
+            AutospacedText(
               key: const ValueKey('episode-page-status'),
               _status(messages),
               style: const TextStyle(color: Colors.white),

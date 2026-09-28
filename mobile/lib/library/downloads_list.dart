@@ -9,6 +9,7 @@ import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What the device keeps for reading offline, as the library shows it: the
 /// bytes it spends against the cap, the saved episodes by series, and the way
@@ -114,7 +115,7 @@ class _DownloadsListState extends State<DownloadsList> {
     );
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
+        content: AutospacedText(
           messages.downloadsDeleted(title: episode.detail.episode.title),
         ),
       ),
@@ -132,17 +133,17 @@ class _DownloadsListState extends State<DownloadsList> {
       context: context,
       builder: (context) => AlertDialog(
         key: const ValueKey('downloads-clear-dialog'),
-        title: Text(messages.downloadsClearConfirmTitle),
-        content: Text(messages.downloadsClearConfirmDescription),
+        title: AutospacedText(messages.downloadsClearConfirmTitle),
+        content: AutospacedText(messages.downloadsClearConfirmDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(messages.commonCancel),
+            child: AutospacedText(messages.commonCancel),
           ),
           FilledButton(
             key: const ValueKey('downloads-clear-confirm'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(messages.downloadsClearConfirm),
+            child: AutospacedText(messages.downloadsClearConfirm),
           ),
         ],
       ),
@@ -151,7 +152,9 @@ class _DownloadsListState extends State<DownloadsList> {
       return;
     }
     await library.clear();
-    messenger.showSnackBar(SnackBar(content: Text(messages.downloadsCleared)));
+    messenger.showSnackBar(
+      SnackBar(content: AutospacedText(messages.downloadsCleared)),
+    );
   }
 
   @override
@@ -212,7 +215,7 @@ class _SavedEpisodes extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: AutospacedText(
                       key: const ValueKey('downloads-usage'),
                       messages.downloadsUsage(
                         used: messages.formatByteSize(storage.bytes),
@@ -225,7 +228,7 @@ class _SavedEpisodes extends StatelessWidget {
                     TextButton(
                       key: const ValueKey('downloads-clear'),
                       onPressed: onClear,
-                      child: Text(messages.downloadsClear),
+                      child: AutospacedText(messages.downloadsClear),
                     ),
                 ],
               ),
@@ -243,13 +246,16 @@ class _SavedEpisodes extends StatelessWidget {
           Padding(
             key: const ValueKey('downloads-empty'),
             padding: const EdgeInsets.all(24),
-            child: Text(messages.downloadsEmpty, textAlign: TextAlign.center),
+            child: AutospacedText(
+              messages.downloadsEmpty,
+              textAlign: TextAlign.center,
+            ),
           )
         else
           for (final episodes in bySeries.values) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
+              child: AutospacedText(
                 key: ValueKey(
                   'downloads-series-${episodes.first.episode.detail.seriesId}',
                 ),
@@ -285,11 +291,11 @@ class _DownloadTile extends StatelessWidget {
     final until = offlineReadableUntil(episode);
     return ListTile(
       key: ValueKey('downloads-episode-${detail.episode.id}'),
-      title: Text(detail.episode.title),
+      title: AutospacedText(detail.episode.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          AutospacedText(
             messages.downloadsSavedAt(
               date: messages.formatDateTime(episode.checkedAt),
               size: messages.formatByteSize(stored.bytes),
@@ -298,7 +304,7 @@ class _DownloadTile extends StatelessWidget {
           // The size alone does not say an episode stops partway, and its
           // row on the series screen is where the rest is fetched.
           if (!stored.isWhole)
-            Text(
+            AutospacedText(
               key: ValueKey('downloads-partial-${detail.episode.id}'),
               messages.downloadsPartial(
                 saved: messages.formatInteger(stored.savedPages),
@@ -307,7 +313,7 @@ class _DownloadTile extends StatelessWidget {
               style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
             ),
           if (until != null)
-            Text(
+            AutospacedText(
               key: ValueKey('downloads-expiry-${detail.episode.id}'),
               until.isAfter(now)
                   ? messages.downloadsReadableUntil(

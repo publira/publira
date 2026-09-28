@@ -19,6 +19,7 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Home / catalog screen: shelves of the tenant's catalog above the whole of
 /// it.
@@ -117,7 +118,7 @@ class _CatalogTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final tenant = TenantBrandScope.maybeOf(context);
     final brand = tenant?.brand;
-    final name = Text(brand?.name ?? '');
+    final name = AutospacedText(brand?.name ?? '');
     final logo = brand?.logo;
     if (logo == null) {
       return name;
@@ -192,7 +193,9 @@ class _ContinueReadingShelf extends StatelessWidget {
       cardBuilder: (context, item) => _ShelfCard(
         key: ValueKey('continue-reading-${item.series.id}'),
         series: item.series,
-        subtitle: item.episode.title.isEmpty ? null : Text(item.episode.title),
+        subtitle: item.episode.title.isEmpty
+            ? null
+            : AutospacedText(item.episode.title),
         onTap: () => context.pushInTab(
           AppRoutes.episodeViewerPath(item.series.id, item.episode.id),
         ),
@@ -290,7 +293,7 @@ class _GenresShelf extends StatelessWidget {
       action: TextButton(
         key: const ValueKey('catalog-genres-all'),
         onPressed: () => context.pushInTab(AppRoutes.genresPath),
-        child: Text(messages.catalogGenresViewAll),
+        child: AutospacedText(messages.catalogGenresViewAll),
       ),
       load: (catalog) => catalog.listGenres(),
       cardBuilder: (context, genre) => Center(child: GenreChip(genre: genre)),
@@ -525,7 +528,10 @@ class _SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+      child: AutospacedText(
+        text,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
     );
   }
 }
@@ -650,7 +656,7 @@ class _ShelfCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Flexible(
-              child: Text(
+              child: AutospacedText(
                 series.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -694,7 +700,7 @@ class _RankBadge extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: Text(
+          child: AutospacedText(
             AppMessages.of(context).formatInteger(rank),
             style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.onPrimary,

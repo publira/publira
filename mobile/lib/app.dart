@@ -59,6 +59,7 @@ import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/screen_captures.dart';
 
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
@@ -632,7 +633,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       }
       _messengerKey.currentState?.showSnackBar(
         SnackBar(
-          content: Text(messages.errorsRpcUnauthenticated),
+          content: AutospacedText(messages.errorsRpcUnauthenticated),
           action: SnackBarAction(
             label: messages.commonSignIn,
             // The account tab's, which is where a reader goes to sign in, so
@@ -674,7 +675,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       final target = message.route;
       _messengerKey.currentState?.showSnackBar(
         SnackBar(
-          content: Text(
+          content: AutospacedText(
             message.body.isEmpty ? message.title : message.body,
             key: const ValueKey('push-foreground-message'),
           ),

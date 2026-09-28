@@ -3,6 +3,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
 
 /// What the reader is offered once the pages run out: the next episode, or the
@@ -82,13 +83,13 @@ class EpisodeEndPanel extends StatelessWidget {
                 ),
                 onPressed: onOpenComments,
                 icon: const Icon(Icons.mode_comment_outlined),
-                label: Text(messages.commentsTitle),
+                label: AutospacedText(messages.commentsTitle),
               ),
             TextButton(
               key: const ValueKey('episode-end-back-to-series'),
               style: TextButton.styleFrom(foregroundColor: Colors.white70),
               onPressed: onBackToSeries,
-              child: Text(messages.viewerBackToSeries),
+              child: AutospacedText(messages.viewerBackToSeries),
             ),
           ],
         ),
@@ -130,7 +131,7 @@ class _UpNext extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        AutospacedText(
           messages.viewerEndUpNext,
           textAlign: TextAlign.center,
           style: theme.textTheme.titleMedium?.copyWith(color: Colors.white70),
@@ -149,7 +150,7 @@ class _UpNext extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
+                      AutospacedText(
                         '#${messages.formatInteger(episode.orderIndex)}',
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: Colors.white70,
@@ -157,7 +158,7 @@ class _UpNext extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Flexible(
-                        child: Text(
+                        child: AutospacedText(
                           price,
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: Colors.white,
@@ -180,7 +181,7 @@ class _UpNext extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  AutospacedText(
                     episode.title,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
@@ -210,13 +211,13 @@ class _UpToDate extends StatelessWidget {
     return Column(
       key: const ValueKey('episode-end-up-to-date'),
       children: [
-        Text(
+        AutospacedText(
           messages.viewerEndUpToDateTitle,
           textAlign: TextAlign.center,
           style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
         ),
         const SizedBox(height: 8),
-        Text(
+        AutospacedText(
           messages.viewerEndUpToDateDescription(title: seriesTitle),
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),

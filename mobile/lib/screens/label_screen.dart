@@ -10,6 +10,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/published_label.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A label: its artwork, and its published series, one cursor page at a time.
 class LabelScreen extends StatefulWidget {
@@ -67,7 +68,9 @@ class _LabelScreenState extends State<LabelScreen> {
       builder: (context, child) {
         final label = pager.header;
         return Scaffold(
-          appBar: AppBar(title: Text(label?.name ?? messages.labelTitle)),
+          appBar: AppBar(
+            title: AutospacedText(label?.name ?? messages.labelTitle),
+          ),
           body: _body(messages, pager, label),
         );
       },
@@ -151,10 +154,10 @@ class _LabelHeader extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          Text(label.name, style: theme.textTheme.headlineSmall),
+          AutospacedText(label.name, style: theme.textTheme.headlineSmall),
           if (label.seriesCount case final count?) ...[
             const SizedBox(height: 4),
-            Text(
+            AutospacedText(
               messages.commonSeriesCount(count: messages.formatInteger(count)),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -162,7 +165,10 @@ class _LabelHeader extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          Text(messages.labelSeriesHeading, style: theme.textTheme.titleMedium),
+          AutospacedText(
+            messages.labelSeriesHeading,
+            style: theme.textTheme.titleMedium,
+          ),
         ],
       ),
     );

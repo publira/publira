@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/api/episode_image_client.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_image.dart';
 import 'package:publira/viewer/page_fit.dart';
 
@@ -100,7 +101,7 @@ class _PageError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            AutospacedText(
               messages.viewerPageFailed,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),
@@ -113,7 +114,7 @@ class _PageError extends StatelessWidget {
                 side: const BorderSide(color: Colors.white70),
               ),
               onPressed: onRetry,
-              child: Text(messages.viewerReload),
+              child: AutospacedText(messages.viewerReload),
             ),
           ],
         ),

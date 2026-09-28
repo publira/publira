@@ -10,6 +10,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the library's lists use.
@@ -26,7 +27,9 @@ class PurchasesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(AppMessages.of(context).purchasesTitle)),
+      appBar: AppBar(
+        title: AutospacedText(AppMessages.of(context).purchasesTitle),
+      ),
       body: const SafeArea(child: _PurchasesList()),
     );
   }
@@ -293,11 +296,11 @@ class _PurchaseRow extends StatelessWidget {
     return ListTile(
       key: ValueKey('purchase-row-${purchase.id}'),
       isThreeLine: true,
-      title: Text(
+      title: AutospacedText(
         title,
         style: purchase.isActive ? null : TextStyle(color: muted),
       ),
-      subtitle: Text(
+      subtitle: AutospacedText(
         [
           if (purchase.seriesTitle.isNotEmpty) purchase.seriesTitle,
           details.join(' · '),
@@ -324,7 +327,7 @@ class _PurchaseState extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Chip(
       key: ValueKey(isActive ? 'purchase-readable' : 'purchase-expired'),
-      label: Text(
+      label: AutospacedText(
         isActive ? messages.purchasesReadable : messages.purchasesExpired,
       ),
       backgroundColor: isActive

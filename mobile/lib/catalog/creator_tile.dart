@@ -4,6 +4,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One row of a list of authors, which opens the author's screen.
 class CreatorTile extends StatelessWidget {
@@ -17,8 +18,8 @@ class CreatorTile extends StatelessWidget {
     return ListTile(
       key: ValueKey('creator-tile-${creator.id}'),
       leading: CreatorPortrait(creator: creator, radius: 20),
-      title: Text(creator.name),
-      subtitle: Text(
+      title: AutospacedText(creator.name),
+      subtitle: AutospacedText(
         messages.commonSeriesCount(
           count: messages.formatInteger(creator.seriesCount),
         ),

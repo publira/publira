@@ -12,6 +12,7 @@ import 'package:publira/links/tenant_link.dart';
 import 'package:publira/models/announcement.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One announcement: its title, when it was posted, its body, and the link
 /// the operator gave it.
@@ -109,7 +110,7 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.announcementsTitle)),
+      appBar: AppBar(title: AutospacedText(messages.announcementsTitle)),
       body: SafeArea(child: _body(messages)),
     );
   }
@@ -157,10 +158,10 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
       key: ValueKey('announcement-${announcement.id}'),
       padding: const EdgeInsets.all(16),
       children: [
-        Text(announcement.title, style: theme.textTheme.titleLarge),
+        AutospacedText(announcement.title, style: theme.textTheme.titleLarge),
         if (createdAt != null) ...[
           const SizedBox(height: 4),
-          Text(
+          AutospacedText(
             messages.formatDateTime(createdAt),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -168,7 +169,14 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
           ),
         ],
         const SizedBox(height: 16),
-        SelectableText(announcement.body, style: theme.textTheme.bodyLarge),
+        SelectableText.rich(
+          autospaceIn(
+            context,
+            TextSpan(text: announcement.body),
+            style: theme.textTheme.bodyLarge,
+          ),
+          style: theme.textTheme.bodyLarge,
+        ),
         if (destination != null) ...[
           const SizedBox(height: 24),
           Align(
@@ -180,7 +188,7 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
                     ? Icons.open_in_new
                     : Icons.arrow_forward,
               ),
-              label: Text(messages.announcementsOpenLink),
+              label: AutospacedText(messages.announcementsOpenLink),
               onPressed: () => followTenantLink(context, destination),
             ),
           ),

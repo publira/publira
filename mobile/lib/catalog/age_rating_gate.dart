@@ -4,6 +4,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Stands where a rated series or episode body would be until this install
 /// confirms the rating, or the reader's birth date proves it.
@@ -69,18 +70,18 @@ class _AgeRatingPromptState extends State<_AgeRatingPrompt> {
     return Center(
       child: AlertDialog(
         key: const ValueKey('age-rating-gate'),
-        title: Text(_title(messages)),
-        content: Text(_description(messages)),
+        title: AutospacedText(_title(messages)),
+        content: AutospacedText(_description(messages)),
         actions: [
           TextButton(
             key: const ValueKey('age-rating-cancel'),
             onPressed: _busy ? null : () => _dismiss(context),
-            child: Text(messages.commonCancel),
+            child: AutospacedText(messages.commonCancel),
           ),
           FilledButton(
             key: const ValueKey('age-rating-confirm'),
             onPressed: _busy ? null : _confirm,
-            child: Text(_confirmLabel(messages)),
+            child: AutospacedText(_confirmLabel(messages)),
           ),
         ],
       ),

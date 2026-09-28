@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Deletes the signed-in account through `AuthService/DeleteMe`.
 ///
@@ -44,13 +45,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         final messages = AppMessages.of(context);
         return AlertDialog(
           key: const ValueKey('delete-account-confirm'),
-          title: Text(messages.deleteAccountConfirmTitle),
-          content: Text(messages.deleteAccountConfirmDescription),
+          title: AutospacedText(messages.deleteAccountConfirmTitle),
+          content: AutospacedText(messages.deleteAccountConfirmDescription),
           actions: [
             TextButton(
               key: const ValueKey('delete-account-cancel'),
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text(messages.commonCancel),
+              child: AutospacedText(messages.commonCancel),
             ),
             FilledButton(
               key: const ValueKey('delete-account-confirm-delete'),
@@ -59,7 +60,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(messages.deleteAccountConfirm),
+              child: AutospacedText(messages.deleteAccountConfirm),
             ),
           ],
         );
@@ -86,7 +87,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     }
     if (failure == null) {
       messenger.showSnackBar(
-        SnackBar(content: Text(messages.deleteAccountDeleted)),
+        SnackBar(content: AutospacedText(messages.deleteAccountDeleted)),
       );
       router.go(AppRoutes.catalog);
       return;
@@ -105,7 +106,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     final messages = AppMessages.of(context);
     final signedIn = AuthScope.of(context).isSignedIn;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.deleteAccountTitle)),
+      appBar: AppBar(title: AutospacedText(messages.deleteAccountTitle)),
       body: SafeArea(
         // A deletion that has just gone through signs out before the screen
         // is left, which is not the signed-out state the notice is for.
@@ -127,10 +128,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(messages.deleteAccountDescription),
+          AutospacedText(messages.deleteAccountDescription),
           const SizedBox(height: 24),
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('delete-account-error'),
               style: TextStyle(color: colors.error),
@@ -141,12 +142,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             key: const ValueKey('delete-account-password'),
             controller: _passwordController,
             decoration: InputDecoration(
-              labelText: messages.deleteAccountPasswordLabel,
+              label: AutospacedText(messages.deleteAccountPasswordLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.password],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => (value ?? '').trim().isEmpty
                 ? messages.authPasswordRequired
                 : null,
@@ -165,7 +167,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.deleteAccountSubmit),
+                : AutospacedText(messages.deleteAccountSubmit),
           ),
         ],
       ),

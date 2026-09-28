@@ -11,6 +11,7 @@ import 'package:publira/models/episode_comment.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What the API accepts, in Unicode code points rather than UTF-16 units, so
 /// an emoji-heavy comment is measured the way `PostEpisodeComment` measures it
@@ -203,7 +204,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.commentsTitle)),
+      appBar: AppBar(title: AutospacedText(messages.commentsTitle)),
       body: FutureBuilder<_Section>(
         future: _future,
         builder: (context, snapshot) {
@@ -272,7 +273,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
           Padding(
             key: const ValueKey('episode-comments-approval-notice'),
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
+            child: AutospacedText(
               messages.commentsApprovalNotice,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -301,7 +302,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
           ),
         const SizedBox(height: 24),
         if (section.comments.isEmpty)
-          Text(
+          AutospacedText(
             key: const ValueKey('episode-comments-empty'),
             _token.isEmpty
                 ? messages.commentsEmpty
@@ -359,11 +360,11 @@ class _SignInPrompt extends StatelessWidget {
       key: const ValueKey('episode-comments-sign-in'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(messages.commentsSignInPrompt),
+        AutospacedText(messages.commentsSignInPrompt),
         const SizedBox(height: 8),
         FilledButton(
           onPressed: () => context.pushInTab(AppRoutes.signIn),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ],
     );
@@ -475,8 +476,8 @@ class _CommentFormState extends State<_CommentForm> {
           minLines: 3,
           textInputAction: TextInputAction.newline,
           decoration: InputDecoration(
-            labelText: messages.commentsBodyLabel,
-            hintText: messages.commentsBodyPlaceholder,
+            label: AutospacedText(messages.commentsBodyLabel),
+            hint: AutospacedText(messages.commentsBodyPlaceholder),
             border: const OutlineInputBorder(),
           ),
         ),
@@ -484,7 +485,7 @@ class _CommentFormState extends State<_CommentForm> {
         FilledButton(
           key: const ValueKey('comment-submit'),
           onPressed: _pending ? null : _submit,
-          child: Text(
+          child: AutospacedText(
             _pending ? messages.commentsPosting : messages.commentsSubmit,
           ),
         ),
@@ -492,7 +493,7 @@ class _CommentFormState extends State<_CommentForm> {
           Padding(
             key: const ValueKey('comment-form-message'),
             padding: const EdgeInsets.only(top: 8),
-            child: _failed ? _ErrorText(message) : Text(message),
+            child: _failed ? _ErrorText(message) : AutospacedText(message),
           ),
       ],
     );
@@ -636,12 +637,12 @@ class _CommentTileState extends State<_CommentTile> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      AutospacedText(
                         comment.authorName,
                         style: theme.textTheme.titleSmall,
                       ),
                       if (at.isNotEmpty)
-                        Text(
+                        AutospacedText(
                           at,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -654,7 +655,7 @@ class _CommentTileState extends State<_CommentTile> {
                   Padding(
                     key: const ValueKey('comment-awaiting-approval'),
                     padding: const EdgeInsets.only(left: 8),
-                    child: Text(
+                    child: AutospacedText(
                       messages.commentsAwaitingApproval,
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.primary,
@@ -664,13 +665,13 @@ class _CommentTileState extends State<_CommentTile> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(comment.body),
+            AutospacedText(comment.body),
             if (_control(messages, at) case final control?)
               Align(alignment: Alignment.centerRight, child: control),
             if (message != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: _failed ? _ErrorText(message) : Text(message),
+                child: _failed ? _ErrorText(message) : AutospacedText(message),
               ),
           ],
         ),
@@ -691,7 +692,7 @@ class _CommentTileState extends State<_CommentTile> {
       return TextButton(
         key: ValueKey('comment-delete-${widget.comment.id}'),
         onPressed: _pending ? null : _withdraw,
-        child: Text(
+        child: AutospacedText(
           _pending ? messages.commentsDeleting : messages.commentsDelete,
           semanticsLabel: at.isEmpty
               ? null
@@ -702,7 +703,7 @@ class _CommentTileState extends State<_CommentTile> {
     return TextButton(
       key: ValueKey('comment-report-${widget.comment.id}'),
       onPressed: _pending ? null : _report,
-      child: Text(
+      child: AutospacedText(
         _pending ? messages.commentsReporting : messages.commentsReport,
         semanticsLabel: at.isEmpty
             ? null
@@ -776,15 +777,15 @@ class _ReportDialogState extends State<_ReportDialog> {
     final error = _error;
     return AlertDialog(
       key: const ValueKey('comment-report-dialog'),
-      title: Text(messages.commentsReportTitle),
+      title: AutospacedText(messages.commentsReportTitle),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(messages.commentsReportDescription),
+            AutospacedText(messages.commentsReportDescription),
             const SizedBox(height: 16),
-            Text(messages.commentsReportReasonLabel),
+            AutospacedText(messages.commentsReportReasonLabel),
             RadioGroup<CommentReportReason>(
               groupValue: _reason,
               onChanged: (value) => setState(() => _reason = value ?? _reason),
@@ -796,7 +797,7 @@ class _ReportDialogState extends State<_ReportDialog> {
                       key: ValueKey('comment-report-reason-${reason.name}'),
                       contentPadding: EdgeInsets.zero,
                       value: reason,
-                      title: Text(_label(messages, reason)),
+                      title: AutospacedText(_label(messages, reason)),
                     ),
                 ],
               ),
@@ -807,8 +808,8 @@ class _ReportDialogState extends State<_ReportDialog> {
               controller: _note,
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: messages.commentsReportNoteLabel,
-                hintText: messages.commentsReportNotePlaceholder,
+                label: AutospacedText(messages.commentsReportNoteLabel),
+                hint: AutospacedText(messages.commentsReportNotePlaceholder),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -823,12 +824,12 @@ class _ReportDialogState extends State<_ReportDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(messages.commonCancel),
+          child: AutospacedText(messages.commonCancel),
         ),
         FilledButton(
           key: const ValueKey('comment-report-confirm'),
           onPressed: _confirm,
-          child: Text(messages.commentsReportConfirm),
+          child: AutospacedText(messages.commentsReportConfirm),
         ),
       ],
     );
@@ -857,14 +858,14 @@ class _Pagination extends StatelessWidget {
           onPressed: page.previousToken.isEmpty
               ? null
               : () => onShowPage(page.previousToken),
-          child: Text(messages.commentsNewer),
+          child: AutospacedText(messages.commentsNewer),
         ),
         TextButton(
           key: const ValueKey('comment-older-page'),
           onPressed: page.nextToken.isEmpty
               ? null
               : () => onShowPage(page.nextToken),
-          child: Text(messages.commentsOlder),
+          child: AutospacedText(messages.commentsOlder),
         ),
       ],
     );
@@ -880,7 +881,7 @@ class _ErrorText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(
+    return AutospacedText(
       message,
       style: theme.textTheme.bodyMedium?.copyWith(
         color: theme.colorScheme.error,
@@ -915,13 +916,13 @@ class _CommentsMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center),
+            AutospacedText(message, textAlign: TextAlign.center),
             if (label != null && onAction != null) ...[
               const SizedBox(height: 16),
               FilledButton(
                 key: actionKey,
                 onPressed: onAction,
-                child: Text(label),
+                child: AutospacedText(label),
               ),
             ],
           ],

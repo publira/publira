@@ -10,6 +10,7 @@ import 'package:publira/offline/offline_library.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -87,7 +88,7 @@ void main() {
 
     expect(
       tester
-          .widget<Text>(
+          .widget<AutospacedText>(
             find.byKey(
               ValueKey('series-tile-classification-${fixtureSeries.first.id}'),
             ),
@@ -241,7 +242,9 @@ void main() {
     // The name stands as text: what would open the label screen is the id
     // this copy does not carry.
     expect(
-      tester.widget<Text>(find.byKey(const ValueKey('series-label'))).data,
+      tester
+          .widget<AutospacedText>(find.byKey(const ValueKey('series-label')))
+          .data,
       'Seed Label 01',
     );
   });
@@ -256,11 +259,15 @@ void main() {
     await pumpUntilFound(tester, find.text('Episodes', skipOffstage: false));
 
     expect(
-      tester.widget<Text>(find.byKey(const ValueKey('series-status'))).data,
+      tester
+          .widget<AutospacedText>(find.byKey(const ValueKey('series-status')))
+          .data,
       'Ongoing',
     );
     expect(
-      tester.widget<Text>(find.byKey(const ValueKey('series-schedule'))).data,
+      tester
+          .widget<AutospacedText>(find.byKey(const ValueKey('series-schedule')))
+          .data,
       'Updates on Monday and Thursday',
     );
     expect(
@@ -376,7 +383,11 @@ void main() {
 
     expect(find.text(fixtureRatedSeries.description), findsOneWidget);
     expect(
-      tester.widget<Text>(find.byKey(const ValueKey('series-age-rating'))).data,
+      tester
+          .widget<AutospacedText>(
+            find.byKey(const ValueKey('series-age-rating')),
+          )
+          .data,
       'R15',
     );
 

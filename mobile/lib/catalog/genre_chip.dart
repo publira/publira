@@ -4,6 +4,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One genre as a way into its series, with the count that tells a reader
 /// whether following it is worth it.
@@ -18,7 +19,7 @@ class GenreChip extends StatelessWidget {
     final messages = AppMessages.of(context);
     return ActionChip(
       key: ValueKey('genre-chip-${genre.id}'),
-      label: Text.rich(
+      label: AutospacedText.rich(
         TextSpan(
           children: [
             TextSpan(text: genre.name),

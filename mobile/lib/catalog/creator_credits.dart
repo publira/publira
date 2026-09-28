@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One run of neighbouring credits that name the same role.
 class CreditGroup {
@@ -90,7 +91,7 @@ class _CreatorCreditsState extends State<CreatorCredits> {
     final muted = TextStyle(color: widget.roleColor ?? colors.onSurfaceVariant);
     final reading = TextStyle(color: widget.nameColor ?? colors.onSurface);
     final groups = creditGroups(widget.credits);
-    return Text.rich(
+    return AutospacedText.rich(
       TextSpan(
         style: widget.style,
         children: [

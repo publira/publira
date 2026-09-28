@@ -6,6 +6,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One genre of the genre list: its leading covers, then its name and how many
 /// series are published under it, all one way into its series.
@@ -32,14 +33,14 @@ class GenreTile extends StatelessWidget {
             children: [
               _GenreCovers(genre: genre),
               const SizedBox(height: 8),
-              Text(
+              AutospacedText(
                 genre.name,
                 style: theme.textTheme.titleSmall,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
-              Text(
+              AutospacedText(
                 messages.commonSeriesCount(
                   count: messages.formatInteger(genre.seriesCount),
                 ),
@@ -167,7 +168,7 @@ class _NameFrame extends StatelessWidget {
             child: Center(
               // The name is read out beneath the frame already.
               child: ExcludeSemantics(
-                child: Text(
+                child: AutospacedText(
                   genre.name,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

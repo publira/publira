@@ -5,6 +5,7 @@ import 'package:publira/library/continue_reading_list.dart';
 import 'package:publira/library/downloads_list.dart';
 import 'package:publira/library/follows_list.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What the reader reads, gathered on one screen: what they are in the middle
 /// of, what they follow, and what the device keeps for reading offline.
@@ -24,7 +25,7 @@ class LibraryScreen extends StatelessWidget {
       length: 1 + (follows ? 1 : 0) + (downloads ? 1 : 0),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(messages.libraryTitle),
+          title: AutospacedText(messages.libraryTitle),
           bottom: TabBar(
             // A third of a phone is narrower than some languages' labels, so
             // each tab takes the width of its own label instead.

@@ -8,6 +8,7 @@ import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A link to set a new password with, through
 /// `AuthService/RequestPasswordReset`.
@@ -80,7 +81,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final messages = AppMessages.of(context);
     final sentTo = _sentTo;
     return Scaffold(
-      appBar: AppBar(title: Text(messages.resetPasswordTitle)),
+      appBar: AppBar(title: AutospacedText(messages.resetPasswordTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -98,25 +99,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       key: const ValueKey('reset-password-sent'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        AutospacedText(
           messages.resetPasswordSentHeading,
           style: theme.textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text(messages.resetPasswordSent),
+        AutospacedText(messages.resetPasswordSent),
         const SizedBox(height: 8),
-        Text(
+        AutospacedText(
           messages.authSentTo(email: email),
           key: const ValueKey('reset-password-sent-to'),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 8),
-        Text(messages.authCheckSpam, style: theme.textTheme.bodySmall),
+        AutospacedText(
+          messages.authCheckSpam,
+          style: theme.textTheme.bodySmall,
+        ),
         const SizedBox(height: 24),
         FilledButton(
           key: const ValueKey('reset-password-sign-in'),
           onPressed: _openSignIn,
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ],
     );
@@ -129,10 +133,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(messages.resetPasswordDescription),
+          AutospacedText(messages.resetPasswordDescription),
           const SizedBox(height: 24),
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('reset-password-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -143,13 +147,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             key: const ValueKey('reset-password-email'),
             controller: _emailController,
             decoration: InputDecoration(
-              labelText: messages.authEmailLabel,
+              label: AutospacedText(messages.authEmailLabel),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             autofillHints: const [AutofillHints.email],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateAuthEmail(messages, value ?? ''),
             onFieldSubmitted: (_) => unawaited(_submit()),
           ),
@@ -162,7 +167,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.resetPasswordSubmit),
+                : AutospacedText(messages.resetPasswordSubmit),
           ),
         ],
       ),

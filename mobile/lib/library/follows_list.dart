@@ -13,6 +13,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the catalog and the search results use.
@@ -283,8 +284,8 @@ class _FollowRow extends StatelessWidget {
     ];
     return ListTile(
       key: ValueKey('follow-row-${follow.targetId}'),
-      title: Text(target.name),
-      subtitle: Text(details.join(' · ')),
+      title: AutospacedText(target.name),
+      subtitle: AutospacedText(details.join(' · ')),
       trailing: FollowControl(
         kind: follow.kind,
         targetId: follow.targetInternalId,

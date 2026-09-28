@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
+import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/screen_captures.dart';
 
 /// Answers a screenshot of [episodeId]'s pages with a notice over [child]
@@ -107,7 +108,7 @@ class _Notice extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
+                child: AutospacedText(
                   tenant.isEmpty
                       ? messages.viewerCaptureNoticeBodyUnnamed
                       : messages.viewerCaptureNoticeBody(tenant: tenant),

@@ -7,6 +7,7 @@ import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/genre_tile.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_classification.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Every genre the tenant curates, in the tenant's order, each a way into its
 /// series.
@@ -64,7 +65,7 @@ class _GenresScreenState extends State<GenresScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.genresTitle)),
+      appBar: AppBar(title: AutospacedText(messages.genresTitle)),
       body: _body(messages),
     );
   }

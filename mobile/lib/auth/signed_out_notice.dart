@@ -4,6 +4,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// What an account settings screen shows once nobody is signed in, such as
 /// after the API stopped accepting the session mid-edit: the form has no
@@ -19,12 +20,15 @@ class SignedOutNotice extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(messages.accountSignedOut, textAlign: TextAlign.center),
+          AutospacedText(
+            messages.accountSignedOut,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 16),
           FilledButton(
             key: const ValueKey('account-settings-sign-in'),
             onPressed: () => context.pushInTab(AppRoutes.signIn),
-            child: Text(messages.commonSignIn),
+            child: AutospacedText(messages.commonSignIn),
           ),
         ],
       ),

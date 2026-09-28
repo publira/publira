@@ -9,6 +9,7 @@ import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/forms/email_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// A message to the people who run the tenant, sent through
 /// `ContactService/SubmitContactMessage`.
@@ -124,7 +125,7 @@ class _ContactScreenState extends State<ContactScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.contactTitle)),
+      appBar: AppBar(title: AutospacedText(messages.contactTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -139,17 +140,17 @@ class _ContactScreenState extends State<ContactScreen> {
       key: const ValueKey('contact-sent'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        AutospacedText(
           messages.contactSentHeading,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text(messages.contactSentDescription),
+        AutospacedText(messages.contactSentDescription),
         const SizedBox(height: 24),
         FilledButton(
           key: const ValueKey('contact-done'),
           onPressed: _close,
-          child: Text(messages.contactDone),
+          child: AutospacedText(messages.contactDone),
         ),
       ],
     );
@@ -162,10 +163,10 @@ class _ContactScreenState extends State<ContactScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(messages.contactDescription),
+          AutospacedText(messages.contactDescription),
           const SizedBox(height: 24),
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('contact-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -176,14 +177,15 @@ class _ContactScreenState extends State<ContactScreen> {
             key: const ValueKey('contact-email'),
             controller: _emailController,
             decoration: InputDecoration(
-              labelText: messages.contactEmailLabel,
-              helperText: messages.contactEmailHelp,
+              label: AutospacedText(messages.contactEmailLabel),
+              helper: AutospacedText(messages.contactEmailHelp),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             autofillHints: const [AutofillHints.email],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => _validateEmail(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
@@ -191,10 +193,11 @@ class _ContactScreenState extends State<ContactScreen> {
             key: const ValueKey('contact-subject'),
             controller: _subjectController,
             decoration: InputDecoration(
-              labelText: messages.contactSubjectLabel,
+              label: AutospacedText(messages.contactSubjectLabel),
               border: const OutlineInputBorder(),
             ),
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) =>
                 (value ?? '').trim().runes.length >
                     ContactScreen.maxSubjectLength
@@ -208,13 +211,14 @@ class _ContactScreenState extends State<ContactScreen> {
             key: const ValueKey('contact-body'),
             controller: _bodyController,
             decoration: InputDecoration(
-              labelText: messages.contactBodyLabel,
+              label: AutospacedText(messages.contactBodyLabel),
               border: const OutlineInputBorder(),
               alignLabelWithHint: true,
             ),
             keyboardType: TextInputType.multiline,
             minLines: 6,
             maxLines: null,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => _validateBody(messages, value ?? ''),
           ),
           const SizedBox(height: 24),
@@ -226,7 +230,7 @@ class _ContactScreenState extends State<ContactScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.contactSubmit),
+                : AutospacedText(messages.contactSubmit),
           ),
         ],
       ),

@@ -8,6 +8,7 @@ import 'package:publira/forms/password_input.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Where a password reset link lands: it takes a new password and spends the
 /// link's token on it through `AuthService/ConfirmPasswordReset`.
@@ -83,7 +84,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(messages.confirmPasswordTitle)),
+      appBar: AppBar(title: AutospacedText(messages.confirmPasswordTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -99,7 +100,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
   List<Widget> _body(AppMessages messages) {
     if (_done) {
       return [
-        Text(
+        AutospacedText(
           messages.confirmPasswordDone,
           key: const ValueKey('confirm-password-done'),
         ),
@@ -107,7 +108,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
         FilledButton(
           key: const ValueKey('confirm-password-sign-in'),
           onPressed: () => _leaveFor(AppRoutes.signIn),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ];
     }
@@ -117,7 +118,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
     if (failure == AuthFailureKind.linkInvalid ||
         failure == AuthFailureKind.linkExpired) {
       return [
-        Text(
+        AutospacedText(
           failure == AuthFailureKind.linkExpired
               ? messages.confirmPasswordExpired
               : messages.confirmPasswordInvalidToken,
@@ -128,7 +129,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
         FilledButton(
           key: const ValueKey('confirm-password-request-again'),
           onPressed: () => _leaveFor(AppRoutes.resetPassword),
-          child: Text(messages.confirmPasswordRequestAgain),
+          child: AutospacedText(messages.confirmPasswordRequestAgain),
         ),
       ];
     }
@@ -139,7 +140,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (failure != null) ...[
-              Text(
+              AutospacedText(
                 _failureCopy(messages, failure),
                 key: const ValueKey('confirm-password-error'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -150,12 +151,13 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               key: const ValueKey('confirm-password-password'),
               controller: _passwordController,
               decoration: InputDecoration(
-                labelText: messages.confirmPasswordPasswordLabel,
+                label: AutospacedText(messages.confirmPasswordPasswordLabel),
                 border: const OutlineInputBorder(),
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.next,
+              errorBuilder: (context, error) => AutospacedText(error),
               validator: (value) => validateNewPassword(messages, value ?? ''),
             ),
             const SizedBox(height: 16),
@@ -163,12 +165,15 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               key: const ValueKey('confirm-password-password-confirm'),
               controller: _confirmController,
               decoration: InputDecoration(
-                labelText: messages.confirmPasswordPasswordConfirmLabel,
+                label: AutospacedText(
+                  messages.confirmPasswordPasswordConfirmLabel,
+                ),
                 border: const OutlineInputBorder(),
               ),
               obscureText: true,
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.done,
+              errorBuilder: (context, error) => AutospacedText(error),
               validator: (value) => validatePasswordConfirmation(
                 messages,
                 value ?? '',
@@ -185,7 +190,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
                       dimension: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(messages.confirmPasswordSubmit),
+                  : AutospacedText(messages.confirmPasswordSubmit),
             ),
           ],
         ),

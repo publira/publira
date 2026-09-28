@@ -7,6 +7,7 @@ import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// The one-way reaction a reader can give after finishing an episode.
 ///
@@ -142,7 +143,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
             key: const ValueKey('episode-reaction-sign-in'),
             onPressed: () => context.pushInTab(AppRoutes.signIn),
             icon: const Icon(Icons.favorite_border),
-            label: Text(messages.viewerReactionSignIn),
+            label: AutospacedText(messages.viewerReactionSignIn),
           )
         else
           FilledButton.icon(
@@ -153,7 +154,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
                   ? Icons.favorite_border
                   : Icons.favorite,
             ),
-            label: Text(
+            label: AutospacedText(
               _submitting
                   ? messages.viewerReactionSubmitting
                   : reaction != null && reaction.allowsMultiplePresses
@@ -164,7 +165,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
             ),
           ),
         const SizedBox(height: 8),
-        Text(
+        AutospacedText(
           key: const ValueKey('episode-reaction-count'),
           ratingCount == 1
               ? messages.viewerReactionCountSingle(
@@ -178,7 +179,7 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         ),
         if (_error != null) ...[
           const SizedBox(height: 8),
-          Text(
+          AutospacedText(
             key: const ValueKey('episode-reaction-error'),
             messages.viewerReactionFailed,
             textAlign: TextAlign.center,

@@ -13,6 +13,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Creating a reader account through `AuthService/CreateUser`, and what
 /// follows it until the address is confirmed.
@@ -189,7 +190,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final pendingEmail = _pendingEmail;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: AutospacedText(
           pendingEmail == null
               ? messages.signUpTitle
               : messages.signUpPendingTitle,
@@ -214,14 +215,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (failure != null) ...[
-            Text(
+            AutospacedText(
               _failureCopy(messages, failure),
               key: const ValueKey('sign-up-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 16),
           ] else if (_legalPagesChanged) ...[
-            Text(
+            AutospacedText(
               messages.signUpConsentChanged,
               key: const ValueKey('sign-up-consent-changed'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -232,11 +233,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
             key: const ValueKey('sign-up-name'),
             controller: _nameController,
             decoration: InputDecoration(
-              labelText: messages.signUpNameLabel,
+              label: AutospacedText(messages.signUpNameLabel),
               border: const OutlineInputBorder(),
             ),
             autofillHints: const [AutofillHints.name],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateDisplayName(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
@@ -244,13 +246,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
             key: const ValueKey('sign-up-email'),
             controller: _emailController,
             decoration: InputDecoration(
-              labelText: messages.authEmailLabel,
+              label: AutospacedText(messages.authEmailLabel),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             autofillHints: const [AutofillHints.newUsername],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateAuthEmail(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
@@ -258,12 +261,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             key: const ValueKey('sign-up-password'),
             controller: _passwordController,
             decoration: InputDecoration(
-              labelText: messages.authPasswordLabel,
+              label: AutospacedText(messages.authPasswordLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validateNewPassword(messages, value ?? ''),
           ),
           const SizedBox(height: 16),
@@ -271,12 +275,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             key: const ValueKey('sign-up-password-confirm'),
             controller: _confirmController,
             decoration: InputDecoration(
-              labelText: messages.signUpPasswordConfirmLabel,
+              label: AutospacedText(messages.signUpPasswordConfirmLabel),
               border: const OutlineInputBorder(),
             ),
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
             textInputAction: TextInputAction.done,
+            errorBuilder: (context, error) => AutospacedText(error),
             validator: (value) => validatePasswordConfirmation(
               messages,
               value ?? '',
@@ -306,10 +311,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     dimension: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(messages.signUpSubmit),
+                : AutospacedText(messages.signUpSubmit),
           ),
           const SizedBox(height: 24),
-          Text(
+          AutospacedText(
             messages.signUpHaveAccount,
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -317,7 +322,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           OutlinedButton(
             key: const ValueKey('sign-up-to-sign-in'),
             onPressed: () => _openSignIn(context),
-            child: Text(messages.commonSignIn),
+            child: AutospacedText(messages.commonSignIn),
           ),
         ],
       ),
@@ -363,8 +368,8 @@ class _BirthDateField extends StatelessWidget {
         InputDecorator(
           key: const ValueKey('sign-up-birth-date'),
           decoration: InputDecoration(
-            labelText: messages.signUpBirthDateLabel,
-            helperText: messages.signUpBirthDateHelp,
+            label: AutospacedText(messages.signUpBirthDateLabel),
+            helper: AutospacedText(messages.signUpBirthDateHelp),
             helperMaxLines: 4,
             border: const OutlineInputBorder(),
             suffixIcon: picked == null
@@ -383,7 +388,7 @@ class _BirthDateField extends StatelessWidget {
           ),
           child: InkWell(
             onTap: onPick,
-            child: Text(
+            child: AutospacedText(
               picked == null ? '' : messages.formatCalendarDate(picked),
             ),
           ),
@@ -419,7 +424,7 @@ class _ConsentField extends StatelessWidget {
             key: const ValueKey('sign-up-consent'),
             value: field.value ?? false,
             onChanged: field.didChange,
-            title: Text(messages.signUpConsentLabel),
+            title: AutospacedText(messages.signUpConsentLabel),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
           ),
@@ -434,12 +439,12 @@ class _ConsentField extends StatelessWidget {
                       AppRoutes.publishedPagePath(page.slug),
                     ),
                   ),
-                  child: Text(page.title),
+                  child: AutospacedText(page.title),
                 ),
             ],
           ),
           if (field.errorText case final error?)
-            Text(
+            AutospacedText(
               error,
               key: const ValueKey('sign-up-consent-error'),
               style: theme.textTheme.bodySmall?.copyWith(
@@ -507,25 +512,28 @@ class _SignUpPendingState extends State<_SignUpPending> {
       key: const ValueKey('sign-up-pending'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(messages.signUpPendingSent),
+        AutospacedText(messages.signUpPendingSent),
         const SizedBox(height: 8),
-        Text(
+        AutospacedText(
           messages.authSentTo(email: widget.email),
           key: const ValueKey('sign-up-pending-email'),
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 8),
-        Text(messages.authCheckSpam, style: theme.textTheme.bodySmall),
+        AutospacedText(
+          messages.authCheckSpam,
+          style: theme.textTheme.bodySmall,
+        ),
         if (_resent) ...[
           const SizedBox(height: 16),
-          Text(
+          AutospacedText(
             messages.authVerificationSent,
             key: const ValueKey('sign-up-pending-resent'),
           ),
         ],
         if (failure != null) ...[
           const SizedBox(height: 16),
-          Text(
+          AutospacedText(
             _resendFailureCopy(messages, failure),
             key: const ValueKey('sign-up-pending-error'),
             style: TextStyle(color: theme.colorScheme.error),
@@ -540,13 +548,13 @@ class _SignUpPendingState extends State<_SignUpPending> {
                   dimension: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(messages.authResendVerification),
+              : AutospacedText(messages.authResendVerification),
         ),
         const SizedBox(height: 16),
         FilledButton(
           key: const ValueKey('sign-up-pending-sign-in'),
           onPressed: () => _openSignIn(context),
-          child: Text(messages.commonSignIn),
+          child: AutospacedText(messages.commonSignIn),
         ),
       ],
     );

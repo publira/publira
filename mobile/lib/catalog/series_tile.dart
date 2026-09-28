@@ -7,6 +7,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// One row of a vertical list of series: the catalog itself, and the search
 /// results, which are the same catalog answered for a keyword.
@@ -35,7 +36,7 @@ class SeriesTile extends StatelessWidget {
           aspectRatio: 3 / 4,
         ),
       ),
-      title: Text(series.title),
+      title: AutospacedText(series.title),
       subtitle:
           series.creators.isEmpty &&
               classification.isEmpty &&
@@ -53,14 +54,14 @@ class SeriesTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 if (classification.isNotEmpty)
-                  Text(
+                  AutospacedText(
                     key: ValueKey('series-tile-classification-${series.id}'),
                     classification,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 if (series.description.isNotEmpty)
-                  Text(
+                  AutospacedText(
                     series.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -80,13 +81,13 @@ class SeriesTile extends StatelessWidget {
       return null;
     }
     if (series.labelId.isEmpty) {
-      return Text(series.labelName);
+      return AutospacedText(series.labelName);
     }
     return TextButton(
       key: ValueKey('series-tile-label-${series.id}'),
       onPressed: () =>
           context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
-      child: Text(series.labelName),
+      child: AutospacedText(series.labelName),
     );
   }
 }

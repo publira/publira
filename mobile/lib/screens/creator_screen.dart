@@ -12,6 +12,7 @@ import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// An author: who they are, and the published series credited to them, one
 /// cursor page at a time.
@@ -74,7 +75,9 @@ class _CreatorScreenState extends State<CreatorScreen> {
       builder: (context, child) {
         final creator = pager.header;
         return Scaffold(
-          appBar: AppBar(title: Text(creator?.name ?? messages.creatorTitle)),
+          appBar: AppBar(
+            title: AutospacedText(creator?.name ?? messages.creatorTitle),
+          ),
           body: _body(messages, pager, creator),
         );
       },
@@ -151,9 +154,12 @@ class _CreatorHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(creator.name, style: theme.textTheme.headlineSmall),
+                    AutospacedText(
+                      creator.name,
+                      style: theme.textTheme.headlineSmall,
+                    ),
                     const SizedBox(height: 4),
-                    Text(
+                    AutospacedText(
                       messages.commonSeriesCount(
                         count: messages.formatInteger(creator.seriesCount),
                       ),
@@ -166,13 +172,13 @@ class _CreatorHeader extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (creator.profileText.isEmpty)
-            Text(
+            AutospacedText(
               key: const ValueKey('creator-profile-empty'),
               messages.creatorProfileEmpty,
               style: theme.textTheme.bodyMedium?.merge(muted),
             )
           else
-            Text(
+            AutospacedText(
               key: const ValueKey('creator-profile'),
               creator.profileText,
               style: theme.textTheme.bodyLarge,
@@ -186,7 +192,7 @@ class _CreatorHeader extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          Text(
+          AutospacedText(
             messages.creatorSeriesHeading,
             style: theme.textTheme.titleMedium,
           ),

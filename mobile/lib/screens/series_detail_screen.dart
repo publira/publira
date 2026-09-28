@@ -29,6 +29,7 @@ import 'package:publira/purchase/buy_episode_button.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 /// Series detail. Loads the published series and its episodes from the API.
 class SeriesDetailScreen extends StatefulWidget {
@@ -107,7 +108,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: AppBar(title: Text(messages.seriesTitle)),
+            appBar: AppBar(title: AutospacedText(messages.seriesTitle)),
             body: const Center(
               key: ValueKey('series-detail-loading'),
               child: CircularProgressIndicator(),
@@ -116,7 +117,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(title: Text(messages.seriesTitle)),
+            appBar: AppBar(title: AutospacedText(messages.seriesTitle)),
             body: _DetailMessage(
               key: const ValueKey('series-detail-error'),
               message: _errorCopy(messages, snapshot.error),
@@ -128,7 +129,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         final open = snapshot.data;
         if (open == null) {
           return Scaffold(
-            appBar: AppBar(title: Text(messages.seriesTitle)),
+            appBar: AppBar(title: AutospacedText(messages.seriesTitle)),
             body: _DetailMessage(
               key: const ValueKey('series-not-found'),
               message: messages.seriesNotFound(id: widget.seriesId),
@@ -140,7 +141,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         final detail = open.detail;
         return Scaffold(
           appBar: AppBar(
-            title: Text(detail.series.title),
+            title: AutospacedText(detail.series.title),
             actions: [
               if (LinkScope.maybeOf(context)?.share != null)
                 ShareAction(
@@ -200,9 +201,12 @@ class _DetailMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center),
+            AutospacedText(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(onPressed: onAction, child: Text(actionLabel)),
+            FilledButton(
+              onPressed: onAction,
+              child: AutospacedText(actionLabel),
+            ),
           ],
         ),
       ),
@@ -331,7 +335,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     // The save outlives the screen, and so does the messenger it reports to,
     // unless the whole app was replaced while it ran.
     if (messenger.mounted) {
-      messenger.showSnackBar(SnackBar(content: Text(copy)));
+      messenger.showSnackBar(SnackBar(content: AutospacedText(copy)));
     }
   }
 
@@ -394,10 +398,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(series.title, style: theme.textTheme.headlineSmall),
+        AutospacedText(series.title, style: theme.textTheme.headlineSmall),
         if (series.ratingCount > 0) ...[
           const SizedBox(height: 8),
-          Text(
+          AutospacedText(
             key: const ValueKey('series-rating'),
             series.ratingCount == 1
                 ? messages.seriesRatingSingle(
@@ -424,7 +428,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           ),
         ],
         const SizedBox(height: 8),
-        Text(
+        AutospacedText(
           messages.seriesEpisodeCount(
             count: messages.formatInteger(series.episodeCount),
           ),
@@ -445,14 +449,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             children: [
               if (series.labelName.isNotEmpty) _SeriesLabel(series: series),
               if (series.status != null)
-                Text(
+                AutospacedText(
                   key: const ValueKey('series-status'),
                   messages.seriesStatusLabel(series.status!),
                   style: theme.textTheme.labelLarge,
                 ),
               if (messages.seriesAgeRatingLabel(series.ageRating)
                   case final rating?)
-                Text(
+                AutospacedText(
                   key: const ValueKey('series-age-rating'),
                   rating,
                   style: theme.textTheme.labelLarge?.copyWith(
@@ -460,7 +464,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                   ),
                 ),
               if (series.scheduleWeekdays.isNotEmpty)
-                Text(
+                AutospacedText(
                   key: const ValueKey('series-schedule'),
                   messages.seriesSchedule(
                     weekdays: messages.formatList([
@@ -488,7 +492,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               for (final genre in series.genres)
                 ActionChip(
                   key: ValueKey('series-genre-${genre.id}'),
-                  label: Text(genre.name),
+                  label: AutospacedText(genre.name),
                   visualDensity: VisualDensity.compact,
                   onPressed: () =>
                       context.pushInTab(AppRoutes.genreDetailPath(genre.id)),
@@ -497,7 +501,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 ActionChip(
                   key: ValueKey('series-tag-${tag.slug}'),
                   avatar: const Icon(Icons.tag),
-                  label: Text(tag.name),
+                  label: AutospacedText(tag.name),
                   visualDensity: VisualDensity.compact,
                   onPressed: () =>
                       context.pushInTab(AppRoutes.tagDetailPath(tag.slug)),
@@ -515,12 +519,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
         ],
         if (series.description.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Text(series.description, style: theme.textTheme.bodyLarge),
+          AutospacedText(series.description, style: theme.textTheme.bodyLarge),
         ],
         // Each author is followed on their own, and the row opens the author.
         if (follows && series.creators.isNotEmpty) ...[
           const SizedBox(height: 24),
-          Text(
+          AutospacedText(
             messages.seriesCreatorsHeading,
             style: theme.textTheme.titleMedium,
           ),
@@ -532,7 +536,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ListTile(
               key: ValueKey('series-creator-${creator.id}'),
               contentPadding: EdgeInsets.zero,
-              title: Text(creator.name),
+              title: AutospacedText(creator.name),
               trailing: FollowControl(
                 kind: FollowTargetKind.creator,
                 targetId: creator.internalId,
@@ -543,19 +547,19 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
             ),
         ],
         const SizedBox(height: 24),
-        Text(
+        AutospacedText(
           messages.seriesEpisodesHeading,
           style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         if (widget.detail.episodes.isEmpty)
-          Text(messages.seriesEpisodesEmpty)
+          AutospacedText(messages.seriesEpisodesEmpty)
         else
           for (final episode in widget.detail.episodes)
             ListTile(
               key: ValueKey('episode-tile-${episode.id}'),
               contentPadding: EdgeInsets.zero,
-              title: Text(episode.title),
+              title: AutospacedText(episode.title),
               trailing: _EpisodeTrailing(
                 price: episode.price,
                 soldOnWeb:
@@ -622,7 +626,7 @@ class _SeriesLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (series.labelId.isEmpty) {
-      return Text(
+      return AutospacedText(
         key: const ValueKey('series-label'),
         series.labelName,
         style: theme.textTheme.labelLarge,
@@ -637,7 +641,7 @@ class _SeriesLabel extends StatelessWidget {
       ),
       onPressed: () =>
           context.pushInTab(AppRoutes.labelDetailPath(series.labelId)),
-      child: Text(series.labelName),
+      child: AutospacedText(series.labelName),
     );
   }
 }
@@ -688,12 +692,12 @@ class _EpisodeTrailing extends StatelessWidget {
         if (buy != null)
           buy
         else if (price > 0 && soldOnWeb)
-          Text(
+          AutospacedText(
             key: const ValueKey('episode-sold-on-web'),
             messages.purchaseSoldOnWeb,
           )
         else if (price > 0)
-          Text('¥${messages.formatInteger(price)}'),
+          AutospacedText('¥${messages.formatInteger(price)}'),
       ],
     );
   }
