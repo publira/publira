@@ -40,6 +40,8 @@ func TestUnreachableFirstSegment(t *testing.T) {
 		{slug: "/api/x", wantSegment: "api", wantUnreachable: true},
 		{slug: "/livez", wantSegment: "livez", wantUnreachable: true},
 		{slug: "/readyz", wantSegment: "readyz", wantUnreachable: true},
+		{slug: "/sitemap/help", wantSegment: "sitemap", wantUnreachable: true},
+		{slug: "/sitemaps", wantSegment: "sitemaps"},
 		{slug: "/japan", wantSegment: "japan"},
 		{slug: "/about/en", wantSegment: "about"},
 		{slug: "/apis", wantSegment: "apis"},

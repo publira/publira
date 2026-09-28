@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/pageslug"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -97,6 +98,16 @@ func (s *apiServer) sitemapEntryPage(
 	return page, nil
 }
 
+// servedPageSlug reports whether the public site serves a published page at its
+// slug, which it does not for a reserved or an unreachable first segment.
+func servedPageSlug(slug string) bool {
+	if _, reserved := pageslug.ReservedFirstSegment(slug); reserved {
+		return false
+	}
+	_, unreachable := pageslug.UnreachableFirstSegment(slug)
+	return !unreachable
+}
+
 // ListSitemapEntries hands the storefront every page it publishes for the
 // tenant, with the time each last changed, so its sitemap is built from one
 // walk rather than from a read per series.
@@ -140,6 +151,12 @@ func (s *apiServer) ListSitemapEntries(
 
 	entries := make([]*publirav1.SitemapEntry, 0, len(rows))
 	for _, row := range rows {
+		// A page stored at a path the site keeps for itself, before the admin API
+		// refused it, is never served there. The row still bounds the page, so
+		// the tokens below are built from rows rather than from entries.
+		if row.kind == int32(publirav1.SitemapEntryKind_SITEMAP_ENTRY_KIND_PAGE) && !servedPageSlug(row.slug) {
+			continue
+		}
 		entry := &publirav1.SitemapEntry{
 			Kind:           publirav1.SitemapEntryKind(row.kind),
 			PublicId:       row.publicID,

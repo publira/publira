@@ -66,6 +66,10 @@ func seedSitemapCatalog(t *testing.T, env *publicDBEnv) testutil.Tenant {
 	env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREEMPTY01", Name: "Empty Genre"})
 	env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 	env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "draft", Title: "Draft Page"})
+	// Published, but at paths the site answers before it looks for a page: rows
+	// the admin API refuses today and a tenant may have stored before it did.
+	env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "settings/help", Title: "Reserved Page", Published: true})
+	env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "sitemap/help", Title: "Unreachable Page", Published: true})
 
 	env.PG.SeedSeries(t, other.ID, testutil.SeriesSeed{PublicID: "SERIESOTHER1", Title: "Other Series", Published: true})
 	env.PG.SeedGenre(t, other.ID, testutil.GenreSeed{PublicID: "GENREOTHER01", Name: "Other Genre"})
