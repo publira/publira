@@ -37,7 +37,8 @@ DEV_LOG="${LOG_DIR}/task-dev.log"
 DEV_PGID_FILE="${STATE_DIR}/task-dev.pgid"
 
 # `task db:setup` reads PUBLIRA_DB_URL (db/Taskfile.yaml); the Go servers read
-# one role URL each. Roles and dev passwords come from db/seeds/baseline.
+# one role URL each. Roles come from db/seeds/baseline, their dev passwords
+# from db/seeds/dev/000_role_passwords.sql.
 export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${PUBLIRA_BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"

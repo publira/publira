@@ -2,6 +2,7 @@
 
 -- Development seed: includes production seed + local dev sample dataset.
 \ir prod.sql
+\ir dev/000_role_passwords.sql
 
 BEGIN;
 \ir dev/001_tenant_users.sql

@@ -3,7 +3,8 @@
 // on a deployment that serves no platform API.
 //
 // The first argument names a command group. db applies db/migrations to the
-// database PUBLIRA_DB_URL names and reports its schema version. job runs one of
+// database PUBLIRA_DB_URL names, creates the login roles every process
+// connects as, and reports its schema version. job runs one of
 // the worker's maintenance jobs by hand: the second argument names the job,
 // which is configured through environment variables, rebuilds, purges, or
 // closes a period of data once, and exits. The worker schedules the same jobs,
@@ -190,7 +191,7 @@ func usageError(w io.Writer, reason, usage string) int {
 func usage() string {
 	var b strings.Builder
 	b.WriteString("\nUsage: publiractl <command>\n\nCommands:\n" +
-		"  db                        Apply the database migrations and report the schema version\n" +
+		"  db                        Apply the database migrations, create the login roles, and report the schema version\n" +
 		"  job                       Run one of the worker's maintenance jobs by hand\n" +
 		"  setup                     Set up an install from an empty database to a tenant an administrator signs in to\n")
 	for _, g := range groups {

@@ -39,6 +39,11 @@ func runDB(args []string, stderr io.Writer) int {
 	if len(args) == 0 {
 		return usageError(stderr, "a db command is required", dbUsage())
 	}
+	if args[0] == dbRolesCommand.name {
+		con := osConsole()
+		con.stderr = stderr
+		return runCommand("db "+dbRolesCommand.name, &dbRolesCommand, args[1:], con, os.Stdout)
+	}
 	var c *dbCommand
 	for i := range dbCommands {
 		if dbCommands[i].name == args[0] {
@@ -153,10 +158,11 @@ func resolveMigrationsDir() (string, error) {
 
 func dbUsage() string {
 	var b strings.Builder
-	b.WriteString("\nUsage: publiractl db <command>\n\nCommands:\n")
+	b.WriteString("\nUsage: publiractl db <command> [flags]\n\nCommands:\n")
 	for _, c := range dbCommands {
 		fmt.Fprintf(&b, "  %-25s %s\n", c.name, c.summary)
 	}
+	fmt.Fprintf(&b, "  %-25s %s\n", dbRolesCommand.name, dbRolesCommand.summary)
 	b.WriteString("\nThe db commands connect with PUBLIRA_DB_URL and nothing else.\n")
 	return b.String()
 }

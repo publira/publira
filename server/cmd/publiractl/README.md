@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a command group: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -21,12 +21,28 @@ docker run --rm publira/publiractl:local job purge-content-events
 
 ## db
 
-Applies `db/migrations/` to a database and reports what it holds, so a deployment brings its schema forward with the image it runs rather than with a separately installed golang-migrate CLI.
+Applies `db/migrations/` to a database, creates the PostgreSQL login roles every process connects as, and reports what the database holds, so a deployment brings its schema and its roles forward with the image it runs rather than with a separately installed golang-migrate CLI, `psql`, or a checkout of this repository.
 
 | Command | What it does |
 | --- | --- |
 | `db migrate` | Applies every pending migration and exits zero, also when there is nothing to apply. The structured log records the version it started from and the version it ended at. A dirty database is refused before anything runs |
+| `db roles` | Applies `db/seeds/baseline/` — the same files `task db:seed ENV=prod` applies with `psql` — in one transaction: the six login roles and `publira_rls_bypass`, their grants, the default privileges, the `publira_take_back_default_grants` event trigger, and the transfer of River's objects to `publira_outbox`. Then it sets the passwords it is given, and prints what it did to each login role |
 | `db version` | Prints the version `schema_migrations` records (`0` for a database no migration has touched) and whether it is dirty |
+
+`db roles` takes one password per login role, named after the role without its `publira_` prefix: `--public-password-*`, `--admin-password-*`, `--platform-password-*`, `--outbox-password-*`, `--ticker-password-*`, and `--content-stats-password-*`. Each is read from a file with its `-file` flag, from stdin with its `-stdin` flag (one per invocation), or from a masked prompt, and is sent to the server as a SCRAM-SHA-256 verifier rather than as the password. A role that does not exist yet needs its password: on a terminal it is asked for, and anywhere else the command exits `2` naming the flag, with nothing created. A role that exists keeps its password unless one is given, so running the command again changes nothing but the passwords it was given, and rotating a password is the same command with that one flag:
+
+```bash
+publiractl db roles --admin-password-file /run/secrets/publira-admin-db-password
+```
+
+### Order of first use
+
+An install goes from an empty database to serving in this order, every step from the publiractl image:
+
+1. `db migrate` on the superuser connection creates the schema.
+2. `db roles` on the same connection creates the roles with their passwords. It grants on the tables the migrations created, so it runs after them — also on every release, next to `db migrate`, since a release can change the grants.
+3. Every process starts with its `PUBLIRA_*_DB_URL` set to its role and the password given above: the Database users table in [`server/README.md`](../../README.md#database-users) names which.
+4. [`setup`](#setup) saves what the install needs to serve its first tenant, on the `publira_platform` connection.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -35,8 +51,10 @@ go run ./server/cmd/publiractl db version
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: the connection that owns the schema. Required: unlike the `job` group, the `db` group reads no other variable and never falls back to the development URL, so an unset variable fails before connecting.
+- `PUBLIRA_DB_URL`: the connection that owns the schema, which for `db roles` has to be a superuser: it creates roles and an event trigger. Required: unlike the `job` group, the `db` group reads no other variable and never falls back to the development URL, so an unset variable fails before connecting.
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
+
+`db roles` reads the role definitions the same way, from `roles` beside the binary (`/app/roles` in the image), else from the `db/seeds/baseline` of the checkout.
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
 

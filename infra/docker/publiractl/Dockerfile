@@ -2,7 +2,8 @@
 
 # Image for server/cmd/publiractl, the command that operates a Publira install.
 # The command group and its subcommand are passed as container arguments:
-# `db migrate` applies the db/migrations this image carries, and `job <kind>`
+# `db migrate` applies the db/migrations this image carries, `db roles` creates
+# the login roles from the db/seeds/baseline it carries, and `job <kind>`
 # runs one of the maintenance jobs, which the worker also schedules, so nothing
 # runs this on a timer.
 #
@@ -47,6 +48,9 @@ COPY --from=builder /out/publiractl /app/publiractl
 # `db migrate` reads the migrations directory beside the binary, so the schema
 # an image applies is the one it was built with.
 COPY db/migrations/ /app/migrations/
+# `db roles` reads the roles directory beside the binary the same way, and
+# `task db:seed ENV=prod` applies the same files through psql.
+COPY db/seeds/baseline/ /app/roles/
 
 USER nonroot
 

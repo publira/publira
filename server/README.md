@@ -569,24 +569,15 @@ The platform console's own tables (`platform_*`) sit outside that split. They ca
 
 `PUBLIRA_TICKER_DB_URL` resolves on its own for the same reason, and the worker opens it as a second pool: the periodic jobs run inside that process but must not inherit the `CREATE ON SCHEMA public` their host holds for `rivermigrate`. `publira_ticker` is also the one role the seed grants table by table — it is named in no blanket `GRANT ... ON ALL TABLES` and in no `ALTER DEFAULT PRIVILEGES`, so a table a later migration adds reaches it only when someone puts it in that list. The jobs read a known set of catalog, follow, announcement, and recipient tables and write a handful of them, which is little enough to enumerate, and `TestTickerRole*` in `internal/db` runs them on this connection so a query that starts reading a table the seed never granted fails there rather than in production.
 
-River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed, so re-running `task db:setup` against an existing database is the fix.
+River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed and with `publiractl db roles`, so running either again against an existing database is the fix.
 
 ### Local development
 
-`task db:setup` applies `db/seeds/baseline/000_rls_bypass_role.sql`, which creates the six login users in the table above.
+`task db:setup` applies `db/seeds/baseline/`, which creates the six login users in the table above without a password, and then `db/seeds/dev/000_role_passwords.sql`, which gives them the development passwords the local defaults above connect with.
 
 ### Production
 
-After running the seed, change each user's password to a secure value:
-
-```sql
-ALTER ROLE publira_platform PASSWORD '<secure_password>';
-ALTER ROLE publira_content_stats PASSWORD '<secure_password>';
-ALTER ROLE publira_outbox PASSWORD '<secure_password>';
-ALTER ROLE publira_ticker PASSWORD '<secure_password>';
-ALTER ROLE publira_admin    PASSWORD '<secure_password>';
-ALTER ROLE publira_public   PASSWORD '<secure_password>';
-```
+`publiractl db roles` creates the users from the same files and sets the password each is given, after `publiractl db migrate` and on the same superuser connection; [its README](cmd/publiractl/README.md#db) has the flags and the order of first use. `task db:seed ENV=prod` applies the same files through `psql` and leaves every new user without a password, to be set with `ALTER ROLE ... PASSWORD` or with `publiractl db roles`.
 
 Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `publiractl job` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 

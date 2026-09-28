@@ -313,6 +313,7 @@ jobs:
               - 'server/**'
               - 'infra/docker/publiractl/**'
               - 'db/migrations/**'
+              - 'db/seeds/baseline/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
@@ -1172,7 +1173,7 @@ jobs:
           PORT: ${{ matrix.port }}
         run: task docker:smoke:node "APP_NAME=${APP_NAME}" "PORT=${PORT}"
 
-      - name: Smoke / publiractl db migrate
+      - name: Smoke / publiractl db migrate and db roles
         if: matrix.role == 'publiractl'
         run: task docker:smoke:publiractl
 

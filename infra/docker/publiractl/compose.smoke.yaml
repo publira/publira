@@ -1,6 +1,6 @@
 # Smoke check for the publiractl image: `task docker:smoke:publiractl` migrates
-# an empty database with nothing but PUBLIRA_DB_URL set, which only works when
-# the image carries db/migrations.
+# an empty database and creates its roles with nothing but PUBLIRA_DB_URL set,
+# which only works when the image carries db/migrations and db/seeds/baseline.
 
 services:
   db:

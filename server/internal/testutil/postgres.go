@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dbmigrate"
+	"github.com/publira/publira/server/internal/dbroles"
 )
 
 const (
@@ -137,6 +138,43 @@ func StartPostgres(t *testing.T) *PostgresEnv {
 	}
 	sharedEnv = env
 	return sharedEnv
+}
+
+// StartBarePostgres starts a PostgreSQL container of the test's own, with no
+// migration applied and no role of this repository created, which roles being
+// cluster-wide makes the shared one unable to stand in for. It returns the
+// superuser URL and terminates the container when the test ends.
+func StartBarePostgres(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping PostgreSQL integration test in short mode")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
+	container, err := postgres.Run(
+		ctx,
+		defaultPostgresImage,
+		postgres.WithDatabase(defaultDatabase),
+		postgres.WithUsername(defaultUser),
+		postgres.WithPassword(defaultPassword),
+		postgres.BasicWaitStrategies(),
+	)
+	if err != nil {
+		if isDockerUnavailable(err) {
+			t.Skipf("skipping PostgreSQL integration test: Docker unavailable: %v", err)
+		}
+		t.Fatalf("start postgres container: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(container); err != nil {
+			t.Errorf("terminate postgres container: %v", err)
+		}
+	})
+	connURL, err := container.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatalf("connection string: %v", err)
+	}
+	return connURL
 }
 
 func startPostgres(ctx context.Context) (*PostgresEnv, error) {
@@ -561,44 +599,26 @@ func runMigrations(postgresURL string) error {
 	return nil
 }
 
+// applyAppRoles creates the login roles the way publiractl db roles does, with
+// the development passwords every URL above connects with.
 func applyAppRoles(ctx context.Context, db *sql.DB) error {
-	seedPath, err := findAppRolesSeedPath()
+	dir, err := dbroles.RepoDir()
 	if err != nil {
 		return err
 	}
-	sqlBytes, err := os.ReadFile(seedPath)
-	if err != nil {
-		return fmt.Errorf("read app roles seed: %w", err)
-	}
-	if _, err := db.ExecContext(ctx, string(sqlBytes)); err != nil {
-		return fmt.Errorf("exec app roles seed: %w", err)
-	}
-	return nil
+	_, err = dbroles.Apply(ctx, db, dir, map[string]string{
+		platformDBUser:     platformDBPassword,
+		adminDBUser:        adminDBPassword,
+		publicDBUser:       publicDBPassword,
+		tickerDBUser:       tickerDBPassword,
+		outboxDBUser:       outboxDBPassword,
+		contentStatsDBUser: contentStatsDBPassword,
+	})
+	return err
 }
 
 func findMigrationsDir() (string, error) {
 	return dbmigrate.RepoDir()
-}
-
-func findAppRolesSeedPath() (string, error) {
-	root, err := findRepoRoot()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(root, "db", "seeds", "baseline", "000_rls_bypass_role.sql")
-	if _, err := os.Stat(path); err != nil {
-		return "", fmt.Errorf("app roles seed not found at %s: %w", path, err)
-	}
-	return path, nil
-}
-
-// findRepoRoot returns the monorepo root, the directory db/migrations is in.
-func findRepoRoot() (string, error) {
-	migrationsDir, err := dbmigrate.RepoDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Dir(filepath.Dir(migrationsDir)), nil
 }
 
 func appConnectionString(superuserURL, user, password string) (string, error) {

@@ -12,10 +12,10 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | Server (long-running) | [`server/Dockerfile`](./server/Dockerfile) | `server/cmd/publira`, run as `publira server` (the API and image delivery, Manael / libvips) or `publira worker` | `VERSION` |
-| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations, which the image carries, manual runs of every maintenance job, saving and testing the platform's SMTP settings and object store, creating and managing a tenant, and turning on Web Push) | none |
+| publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations and the login roles, which the image carries, manual runs of every maintenance job, saving and testing the platform's SMTP settings and object store, creating and managing a tenant, and turning on Web Push) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
 
-A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations it carries (`db migrate`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.
+A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations and the role grants it carries (`db migrate`, then `db roles`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.
 
 Keep the Dev Container separate from production images. Its image, `ghcr.io/publira/base-images/publira-dev`, is built in the `publira/base-images` repository; `.devcontainer/` holds only the configuration that runs it.
 
@@ -100,11 +100,15 @@ docker build -f infra/docker/server/Dockerfile \
 docker run --rm publira/publira:local          # publira server
 docker run --rm publira/publira:local worker   # publira worker
 
-# publiractl (the migrations and all jobs share one image; choose the command with container arguments)
+# publiractl (the migrations, the roles, and all jobs share one image; choose the command with container arguments)
 docker build -f infra/docker/publiractl/Dockerfile \
   -t publira/publiractl:local .
 
 docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
+docker run --rm -e PUBLIRA_DB_URL -v "$PWD/secrets:/run/secrets:ro" publira/publiractl:local db roles \
+  --public-password-file /run/secrets/public --admin-password-file /run/secrets/admin \
+  --platform-password-file /run/secrets/platform --outbox-password-file /run/secrets/outbox \
+  --ticker-password-file /run/secrets/ticker --content-stats-password-file /run/secrets/content-stats
 docker run --rm publira/publiractl:local job purge-content-events
 
 # Node
