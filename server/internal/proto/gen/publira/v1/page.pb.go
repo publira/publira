@@ -275,11 +275,14 @@ func (x *GetPublishedPageRequest) GetLocale() string {
 }
 
 type GetPublishedPageResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          *v1.Page               `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
-	Version       *v1.PageVersion        `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Page    *v1.Page               `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
+	Version *v1.PageVersion        `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// Every locale the page has a published translation in, the served one
+	// included, in code order: the language alternates of the page.
+	PublishedLocales []string `protobuf:"bytes,3,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetPublishedPageResponse) Reset() {
@@ -326,6 +329,13 @@ func (x *GetPublishedPageResponse) GetVersion() *v1.PageVersion {
 	return nil
 }
 
+func (x *GetPublishedPageResponse) GetPublishedLocales() []string {
+	if x != nil {
+		return x.PublishedLocales
+	}
+	return nil
+}
+
 var File_publira_v1_page_proto protoreflect.FileDescriptor
 
 const file_publira_v1_page_proto_rawDesc = "" +
@@ -344,10 +354,11 @@ const file_publira_v1_page_proto_rawDesc = "" +
 	"\x17GetPublishedPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
-	"\x06locale\x18\x03 \x01(\tR\x06locale\"\x7f\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"\xac\x01\n" +
 	"\x18GetPublishedPageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\x127\n" +
-	"\aversion\x18\x02 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion2\xcf\x02\n" +
+	"\aversion\x18\x02 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\x12+\n" +
+	"\x11published_locales\x18\x03 \x03(\tR\x10publishedLocales2\xcf\x02\n" +
 	"\x12PublicPagesService\x12e\n" +
 	"\x12ListPublishedPages\x12%.publira.v1.ListPublishedPagesRequest\x1a&.publira.v1.ListPublishedPagesResponse\"\x00\x12q\n" +
 	"\x16ListPublishedPageSlugs\x12).publira.v1.ListPublishedPageSlugsRequest\x1a*.publira.v1.ListPublishedPageSlugsResponse\"\x00\x12_\n" +

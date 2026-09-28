@@ -192,7 +192,16 @@ SELECT p.id,
 	pv.status,
 	pv.publish_at,
 	pv.created_at AS version_created_at,
-	pv.published_at
+	pv.published_at,
+	-- A translation is published exactly when it is the one chosen for its own
+	-- locale.
+	ARRAY(
+		SELECT alternate.locale
+		FROM page_translations alternate
+		WHERE alternate.page_id = p.id
+			AND published_page_translation_for(p.id, alternate.locale) = alternate.id
+		ORDER BY alternate.locale
+	)::text [] AS published_locales
 FROM pages p
 	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, sqlc.arg('locale'))
 	JOIN page_versions pv ON pv.id = pt.published_version_id

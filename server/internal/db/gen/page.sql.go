@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const CountPageTranslations = `-- name: CountPageTranslations :one
@@ -317,7 +318,16 @@ SELECT p.id,
 	pv.status,
 	pv.publish_at,
 	pv.created_at AS version_created_at,
-	pv.published_at
+	pv.published_at,
+	-- A translation is published exactly when it is the one chosen for its own
+	-- locale.
+	ARRAY(
+		SELECT alternate.locale
+		FROM page_translations alternate
+		WHERE alternate.page_id = p.id
+			AND published_page_translation_for(p.id, alternate.locale) = alternate.id
+		ORDER BY alternate.locale
+	)::text [] AS published_locales
 FROM pages p
 	JOIN page_translations pt ON pt.id = published_page_translation_for(p.id, $1)
 	JOIN page_versions pv ON pv.id = pt.published_version_id
@@ -351,6 +361,7 @@ type GetPublishedPageBySlugForTenantRow struct {
 	PublishAt            sql.NullTime  `json:"publish_at"`
 	VersionCreatedAt     time.Time     `json:"version_created_at"`
 	PublishedAt          sql.NullTime  `json:"published_at"`
+	PublishedLocales     []string      `json:"published_locales"`
 }
 
 // Served in the translation ListPublishedPagesForTenant lists, and names its
@@ -378,6 +389,7 @@ func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPu
 		&i.PublishAt,
 		&i.VersionCreatedAt,
 		&i.PublishedAt,
+		pq.Array(&i.PublishedLocales),
 	)
 	return i, err
 }

@@ -40,6 +40,9 @@ message GetPublishedPageRequest {
 message GetPublishedPageResponse {
   publira.types.v1.Page page = 1;
   publira.types.v1.PageVersion version = 2;
+  // Every locale the page has a published translation in, the served one
+  // included, in code order: the language alternates of the page.
+  repeated string published_locales = 3;
 }
 
 service PublicPagesService {

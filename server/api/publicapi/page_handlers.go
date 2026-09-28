@@ -188,6 +188,7 @@ func (s *apiServer) GetPublishedPage(
 			PublishedVersionID: row.PublishedVersionID,
 			UpdatedAt:          row.TranslationUpdatedAt,
 		}),
-		Version: pageVersionFromPublishedRow(row),
+		Version:          pageVersionFromPublishedRow(row),
+		PublishedLocales: row.PublishedLocales,
 	}), nil
 }

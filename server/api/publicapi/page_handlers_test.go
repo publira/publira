@@ -114,10 +114,10 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 		WithArgs("ja", tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "slug", "locale", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
-			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
+			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at", "published_locales",
 		}).AddRow(
 			pageID, tenantID, "/privacy", "ja", "Privacy Policy", versionID, true, now, now, retitledAt,
-			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now,
+			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now, "{en,ja}",
 		))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
@@ -139,6 +139,9 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	}
 	if resp.Msg.Page.Locale != "ja" {
 		t.Fatalf("locale = %q, want ja", resp.Msg.Page.Locale)
+	}
+	if got := strings.Join(resp.Msg.PublishedLocales, ","); got != "en,ja" {
+		t.Fatalf("published_locales = %q, want en,ja", got)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -187,7 +190,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 			WithArgs("ja", tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
 				"id", "tenant_id", "slug", "locale", "title", "published_version_id", "display_in_footer", "created_at", "updated_at", "translation_updated_at",
-				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
+				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at", "published_locales",
 			}))
 
 		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)

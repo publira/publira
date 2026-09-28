@@ -277,13 +277,14 @@ func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
 		}
 	}
 
+	// The draft English terms is not an alternate either.
 	for _, tc := range []struct {
-		slug, locale, wantLocale, wantBody string
+		slug, locale, wantLocale, wantBody, wantAlternates string
 	}{
-		{slug: "privacy", locale: "en", wantLocale: "en", wantBody: "# Privacy"},
-		{slug: "privacy", locale: "ja", wantLocale: "ja", wantBody: "# Privacy (ja)"},
-		{slug: "terms", locale: "en", wantLocale: "ja", wantBody: "# Terms (ja)"},
-		{slug: "terms", locale: "", wantLocale: "ja", wantBody: "# Terms (ja)"},
+		{slug: "privacy", locale: "en", wantLocale: "en", wantBody: "# Privacy", wantAlternates: "en,ja"},
+		{slug: "privacy", locale: "ja", wantLocale: "ja", wantBody: "# Privacy (ja)", wantAlternates: "en,ja"},
+		{slug: "terms", locale: "en", wantLocale: "ja", wantBody: "# Terms (ja)", wantAlternates: "ja"},
+		{slug: "terms", locale: "", wantLocale: "ja", wantBody: "# Terms (ja)", wantAlternates: "ja"},
 	} {
 		page, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
 			Tenant: tenantContext(first),
@@ -296,6 +297,9 @@ func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
 		if page.Msg.Page.Locale != tc.wantLocale || page.Msg.Version.ContentMarkdown != tc.wantBody {
 			t.Fatalf("GetPublishedPage %s %q = %s %q, want %s %q",
 				tc.slug, tc.locale, page.Msg.Page.Locale, page.Msg.Version.ContentMarkdown, tc.wantLocale, tc.wantBody)
+		}
+		if got := strings.Join(page.Msg.PublishedLocales, ","); got != tc.wantAlternates {
+			t.Fatalf("GetPublishedPage %s %q published_locales = %q, want %q", tc.slug, tc.locale, got, tc.wantAlternates)
 		}
 	}
 }
@@ -351,5 +355,8 @@ func TestDBPageWithOnlyANonDefaultTranslationPublishedIsServed(t *testing.T) {
 	}
 	if served.Msg.Page.Locale != "en" || served.Msg.Version.ContentMarkdown != "# Notice" {
 		t.Fatalf("served = %s %q, want the en notice", served.Msg.Page.Locale, served.Msg.Version.ContentMarkdown)
+	}
+	if got := strings.Join(served.Msg.PublishedLocales, ","); got != "en" {
+		t.Fatalf("published_locales = %q, want en alone", got)
 	}
 }
