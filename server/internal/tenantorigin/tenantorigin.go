@@ -68,28 +68,45 @@ func normalizeHost(domain string) string {
 	return strings.TrimSuffix(domain, "/")
 }
 
+// CheckEnv reports a scheme or port the environment names that no origin can
+// be built on, for a caller that must refuse before it writes anything.
+func CheckEnv() error {
+	_, _, err := deployment()
+	return err
+}
+
 func origin(host string) (*url.URL, error) {
-	scheme := strings.ToLower(strings.TrimSpace(os.Getenv(SchemeEnv)))
-	switch scheme {
-	case "":
-		scheme = "https"
-	case "http", "https":
-	default:
-		return nil, fmt.Errorf("%s must be http or https, not %q", SchemeEnv, scheme)
-	}
-	port := strings.TrimSpace(os.Getenv(PortEnv))
-	if port != "" {
-		number, err := strconv.Atoi(port)
-		if err != nil || number < 1 || number > 65535 {
-			return nil, fmt.Errorf("%s must be a port number, not %q", PortEnv, port)
-		}
-		port = strconv.Itoa(number)
-		if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") {
-			port = ""
-		}
+	scheme, port, err := deployment()
+	if err != nil {
+		return nil, err
 	}
 	if port != "" {
 		host = net.JoinHostPort(host, port)
 	}
 	return &url.URL{Scheme: scheme, Host: host}, nil
+}
+
+// deployment reads the scheme and the port, leaving the port empty when it is
+// the scheme's own.
+func deployment() (scheme, port string, err error) {
+	scheme = strings.ToLower(strings.TrimSpace(os.Getenv(SchemeEnv)))
+	switch scheme {
+	case "":
+		scheme = "https"
+	case "http", "https":
+	default:
+		return "", "", fmt.Errorf("%s must be http or https, not %q", SchemeEnv, scheme)
+	}
+	port = strings.TrimSpace(os.Getenv(PortEnv))
+	if port == "" {
+		return scheme, "", nil
+	}
+	number, err := strconv.Atoi(port)
+	if err != nil || number < 1 || number > 65535 {
+		return "", "", fmt.Errorf("%s must be a port number, not %q", PortEnv, port)
+	}
+	if (scheme == "https" && number == 443) || (scheme == "http" && number == 80) {
+		return scheme, "", nil
+	}
+	return scheme, strconv.Itoa(number), nil
 }

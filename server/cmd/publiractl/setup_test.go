@@ -237,6 +237,20 @@ func TestSetupDoesNotSaveAStoreThatFailsTheTest(t *testing.T) {
 	}
 }
 
+func TestSetupRefusesAMalformedTenantURLSchemeBeforeWriting(t *testing.T) {
+	env := startSetupEnv(t)
+	t.Setenv(tenantorigin.SchemeEnv, "ftp")
+	var stderr bytes.Buffer
+	everyFlag := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password")
+	code, _ := runSetup(t, pipedConsole("", &stderr), everyFlag...)
+	if code != 1 || !strings.Contains(stderr.String(), tenantorigin.SchemeEnv) {
+		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
+	}
+	if got := installState(t, env.pg); got != "0,0,0,0,0,0,0,0" {
+		t.Fatalf("state = %s, want nothing written", got)
+	}
+}
+
 // A run stopped after the object store is finished by a second run that asks
 // only for the steps still missing, and a flag given is not asked for.
 func TestSetupResumesAnInterruptedRun(t *testing.T) {

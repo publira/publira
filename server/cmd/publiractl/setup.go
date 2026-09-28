@@ -165,6 +165,11 @@ func (r *setupRun) run(ctx context.Context) error {
 	if r.flags.generateAdminPassword && r.flags.adminPassword.given() {
 		return fmt.Errorf("--generate-admin-password and %s cannot both be given", r.flags.adminPassword.source())
 	}
+	// The summary prints the tenant's URLs once every step has committed, so a
+	// run that could not build them stops here with nothing written.
+	if err := tenantorigin.CheckEnv(); err != nil {
+		return err
+	}
 	// SMTP always stores a password, so a run that could not encrypt one
 	// stops here with nothing written.
 	secrets, err := r.env.secretManager()

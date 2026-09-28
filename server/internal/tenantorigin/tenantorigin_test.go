@@ -102,6 +102,19 @@ func TestOriginRejectsAnInvalidEnvironment(t *testing.T) {
 			if _, err := Site(dbmodels.Tenant{Domain: "store.example"}); err == nil {
 				t.Fatal("Site error = nil")
 			}
+			if err := CheckEnv(); err == nil {
+				t.Fatal("CheckEnv error = nil")
+			}
 		})
+	}
+}
+
+func TestCheckEnvAcceptsTheDefaultsAndAnOverride(t *testing.T) {
+	for _, env := range [][2]string{{"", ""}, {"http", "3180"}} {
+		t.Setenv(SchemeEnv, env[0])
+		t.Setenv(PortEnv, env[1])
+		if err := CheckEnv(); err != nil {
+			t.Fatalf("CheckEnv(%q, %q) = %v", env[0], env[1], err)
+		}
 	}
 }
