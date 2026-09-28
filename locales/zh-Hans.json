@@ -45,20 +45,20 @@
       "current_email": "当前邮箱地址：{$current_email}",
       "expires": "此链接将于 {$expires_at} 失效。",
       "fallback_link": "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。",
-      "heading": "确认 Platform Console 邮箱地址变更",
+      "heading": "确认平台控制台邮箱地址变更",
       "ignore": "如果您并未预期收到这封邮件，可以忽略它。",
-      "intro": "我们收到了变更您 Platform Console 账户邮箱地址的请求。",
+      "intro": "我们收到了变更您平台控制台账户邮箱地址的请求。",
       "new_email": "新的邮箱地址：{$new_email}",
-      "preview": "确认 Platform Console 邮箱地址变更。",
-      "subject": "Publira Platform Console 邮箱地址变更确认"
+      "preview": "确认平台控制台邮箱地址变更。",
+      "subject": "Publira 平台控制台邮箱地址变更确认"
     },
     "platform_console_email_changed_notice": {
-      "body": "您 Platform Console 账户的邮箱地址已变更。",
-      "heading": "Platform Console 邮箱地址已变更",
+      "body": "您平台控制台账户的邮箱地址已变更。",
+      "heading": "平台控制台邮箱地址已变更",
       "new_email": "变更后：{$new_email}",
-      "preview": "您 Platform Console 账户的邮箱地址已变更。",
+      "preview": "您平台控制台账户的邮箱地址已变更。",
       "previous_email": "变更前：{$previous_email}",
-      "subject": "Publira Platform Console 邮箱地址已变更",
+      "subject": "Publira 平台控制台邮箱地址已变更",
       "warning": "如果这不是您本人的操作，请立即重设密码。"
     },
     "platform_console_password_reset": {
@@ -66,11 +66,11 @@
       "body": "请打开下方按钮设置新密码。",
       "expires": "此链接将于 {$expires_at} 失效。",
       "fallback_link": "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。",
-      "heading": "重设 Platform Console 密码",
+      "heading": "重设平台控制台密码",
       "ignore": "如果您并未预期收到这封邮件，可以忽略它。",
-      "intro": "我们收到了重设您 Platform Console 账户密码的请求。",
-      "preview": "设置新的 Platform Console 密码。",
-      "subject": "Publira Platform Console 密码重设"
+      "intro": "我们收到了重设您平台控制台账户密码的请求。",
+      "preview": "设置新的平台控制台密码。",
+      "subject": "Publira 平台控制台密码重设"
     },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",
@@ -4186,7 +4186,7 @@
         "password_required": "请输入密码。"
       },
       "login": {
-        "eyebrow": "Platform Console 登录",
+        "eyebrow": "平台控制台登录",
         "failed": "邮箱地址或密码不正确。",
         "forgot_password": "忘记密码？",
         "pending": "正在登录…",
@@ -4323,8 +4323,8 @@
     "errors": {
       "console_description": "请稍后再试。如果问题持续出现，请携带错误 ID 联系管理员。",
       "console_title": "无法显示此页面",
-      "root_description": "无法加载 Platform Console。请稍后再试。",
-      "root_title": "无法显示 Platform Console"
+      "root_description": "无法加载平台控制台。请稍后再试。",
+      "root_title": "无法显示平台控制台"
     },
     "nav": {
       "audit_label": "审计日志",

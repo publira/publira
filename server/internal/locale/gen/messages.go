@@ -138,43 +138,43 @@ var Messages = map[string]map[string][]Part{
 			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "Platform Console メールアドレス変更の確認"},
+			{Text: "プラットフォーム管理画面メールアドレス変更の確認"},
 		},
 		"email.platform_console_email_change_confirmation.ignore": {
 			{Text: "心当たりがない場合、このメールは破棄してください。"},
 		},
 		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "Platform Console アカウントのメールアドレス変更リクエストを受け付けました。"},
+			{Text: "プラットフォーム管理画面アカウントのメールアドレス変更リクエストを受け付けました。"},
 		},
 		"email.platform_console_email_change_confirmation.new_email": {
 			{Text: "新しいメールアドレス: "},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "Platform Console のメールアドレス変更の確認を完了してください。"},
+			{Text: "プラットフォーム管理画面のメールアドレス変更の確認を完了してください。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira Platform Console メールアドレス変更確認"},
+			{Text: "Publira プラットフォーム管理画面メールアドレス変更確認"},
 		},
 		"email.platform_console_email_changed_notice.body": {
-			{Text: "Platform Console アカウントのメールアドレスが変更されました。"},
+			{Text: "プラットフォーム管理画面アカウントのメールアドレスが変更されました。"},
 		},
 		"email.platform_console_email_changed_notice.heading": {
-			{Text: "Platform Console メールアドレス変更の完了"},
+			{Text: "プラットフォーム管理画面メールアドレス変更の完了"},
 		},
 		"email.platform_console_email_changed_notice.new_email": {
 			{Text: "変更後: "},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_changed_notice.preview": {
-			{Text: "Platform Console アカウントのメールアドレスが変更されました。"},
+			{Text: "プラットフォーム管理画面アカウントのメールアドレスが変更されました。"},
 		},
 		"email.platform_console_email_changed_notice.previous_email": {
 			{Text: "変更前: "},
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira Platform Console メールアドレス変更完了"},
+			{Text: "Publira プラットフォーム管理画面メールアドレス変更完了"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"},
@@ -194,19 +194,19 @@ var Messages = map[string]map[string][]Part{
 			{Text: "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。"},
 		},
 		"email.platform_console_password_reset.heading": {
-			{Text: "Platform Console パスワードの再設定"},
+			{Text: "プラットフォーム管理画面パスワードの再設定"},
 		},
 		"email.platform_console_password_reset.ignore": {
 			{Text: "心当たりがない場合、このメールは破棄してください。"},
 		},
 		"email.platform_console_password_reset.intro": {
-			{Text: "Platform Console アカウントのパスワード再設定リクエストを受け付けました。"},
+			{Text: "プラットフォーム管理画面アカウントのパスワード再設定リクエストを受け付けました。"},
 		},
 		"email.platform_console_password_reset.preview": {
-			{Text: "Platform Console の新しいパスワードを設定してください。"},
+			{Text: "プラットフォーム管理画面の新しいパスワードを設定してください。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira Platform Console パスワード再設定"},
+			{Text: "Publira プラットフォーム管理画面パスワード再設定"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "メールアドレス変更を確認する"},
@@ -1075,43 +1075,43 @@ var Messages = map[string]map[string][]Part{
 			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "Platform Console 이메일 주소 변경 확인"},
+			{Text: "플랫폼 콘솔 이메일 주소 변경 확인"},
 		},
 		"email.platform_console_email_change_confirmation.ignore": {
 			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
 		},
 		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "Platform Console 계정의 이메일 주소 변경 요청을 접수했습니다."},
+			{Text: "플랫폼 콘솔 계정의 이메일 주소 변경 요청을 접수했습니다."},
 		},
 		"email.platform_console_email_change_confirmation.new_email": {
 			{Text: "새 이메일 주소: "},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "Platform Console 이메일 주소 변경을 확인해 주세요."},
+			{Text: "플랫폼 콘솔 이메일 주소 변경을 확인해 주세요."},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira Platform Console 이메일 주소 변경 확인"},
+			{Text: "Publira 플랫폼 콘솔 이메일 주소 변경 확인"},
 		},
 		"email.platform_console_email_changed_notice.body": {
-			{Text: "Platform Console 계정의 이메일 주소가 변경되었습니다."},
+			{Text: "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다."},
 		},
 		"email.platform_console_email_changed_notice.heading": {
-			{Text: "Platform Console 이메일 주소가 변경되었습니다"},
+			{Text: "플랫폼 콘솔 이메일 주소가 변경되었습니다"},
 		},
 		"email.platform_console_email_changed_notice.new_email": {
 			{Text: "변경 후: "},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_changed_notice.preview": {
-			{Text: "Platform Console 계정의 이메일 주소가 변경되었습니다."},
+			{Text: "플랫폼 콘솔 계정의 이메일 주소가 변경되었습니다."},
 		},
 		"email.platform_console_email_changed_notice.previous_email": {
 			{Text: "변경 전: "},
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira Platform Console 이메일 주소 변경 완료"},
+			{Text: "Publira 플랫폼 콘솔 이메일 주소 변경 완료"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."},
@@ -1131,19 +1131,19 @@ var Messages = map[string]map[string][]Part{
 			{Text: "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요."},
 		},
 		"email.platform_console_password_reset.heading": {
-			{Text: "Platform Console 비밀번호 재설정"},
+			{Text: "플랫폼 콘솔 비밀번호 재설정"},
 		},
 		"email.platform_console_password_reset.ignore": {
 			{Text: "짐작 가는 바가 없다면 이 메일은 무시하셔도 됩니다."},
 		},
 		"email.platform_console_password_reset.intro": {
-			{Text: "Platform Console 계정의 비밀번호 재설정 요청을 접수했습니다."},
+			{Text: "플랫폼 콘솔 계정의 비밀번호 재설정 요청을 접수했습니다."},
 		},
 		"email.platform_console_password_reset.preview": {
-			{Text: "새 Platform Console 비밀번호를 설정해 주세요."},
+			{Text: "새 플랫폼 콘솔 비밀번호를 설정해 주세요."},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira Platform Console 비밀번호 재설정"},
+			{Text: "Publira 플랫폼 콘솔 비밀번호 재설정"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "이메일 주소 변경 확인하기"},
@@ -1539,43 +1539,43 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "确认 Platform Console 邮箱地址变更"},
+			{Text: "确认平台控制台邮箱地址变更"},
 		},
 		"email.platform_console_email_change_confirmation.ignore": {
 			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
 		},
 		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "我们收到了变更您 Platform Console 账户邮箱地址的请求。"},
+			{Text: "我们收到了变更您平台控制台账户邮箱地址的请求。"},
 		},
 		"email.platform_console_email_change_confirmation.new_email": {
 			{Text: "新的邮箱地址："},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "确认 Platform Console 邮箱地址变更。"},
+			{Text: "确认平台控制台邮箱地址变更。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira Platform Console 邮箱地址变更确认"},
+			{Text: "Publira 平台控制台邮箱地址变更确认"},
 		},
 		"email.platform_console_email_changed_notice.body": {
-			{Text: "您 Platform Console 账户的邮箱地址已变更。"},
+			{Text: "您平台控制台账户的邮箱地址已变更。"},
 		},
 		"email.platform_console_email_changed_notice.heading": {
-			{Text: "Platform Console 邮箱地址已变更"},
+			{Text: "平台控制台邮箱地址已变更"},
 		},
 		"email.platform_console_email_changed_notice.new_email": {
 			{Text: "变更后："},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_changed_notice.preview": {
-			{Text: "您 Platform Console 账户的邮箱地址已变更。"},
+			{Text: "您平台控制台账户的邮箱地址已变更。"},
 		},
 		"email.platform_console_email_changed_notice.previous_email": {
 			{Text: "变更前："},
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira Platform Console 邮箱地址已变更"},
+			{Text: "Publira 平台控制台邮箱地址已变更"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "如果这不是您本人的操作，请立即重设密码。"},
@@ -1595,19 +1595,19 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果按钮无法使用，请将以下 URL 粘贴到浏览器中打开。"},
 		},
 		"email.platform_console_password_reset.heading": {
-			{Text: "重设 Platform Console 密码"},
+			{Text: "重设平台控制台密码"},
 		},
 		"email.platform_console_password_reset.ignore": {
 			{Text: "如果您并未预期收到这封邮件，可以忽略它。"},
 		},
 		"email.platform_console_password_reset.intro": {
-			{Text: "我们收到了重设您 Platform Console 账户密码的请求。"},
+			{Text: "我们收到了重设您平台控制台账户密码的请求。"},
 		},
 		"email.platform_console_password_reset.preview": {
-			{Text: "设置新的 Platform Console 密码。"},
+			{Text: "设置新的平台控制台密码。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira Platform Console 密码重设"},
+			{Text: "Publira 平台控制台密码重设"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "确认邮箱地址变更"},
@@ -2009,43 +2009,43 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
 		},
 		"email.platform_console_email_change_confirmation.heading": {
-			{Text: "確認 Platform Console 的電子郵件地址變更"},
+			{Text: "確認平台主控台的電子郵件地址變更"},
 		},
 		"email.platform_console_email_change_confirmation.ignore": {
 			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
 		},
 		"email.platform_console_email_change_confirmation.intro": {
-			{Text: "我們收到了變更您 Platform Console 帳戶電子郵件地址的請求。"},
+			{Text: "我們收到了變更您平台主控台帳戶電子郵件地址的請求。"},
 		},
 		"email.platform_console_email_change_confirmation.new_email": {
 			{Text: "新的電子郵件地址："},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_change_confirmation.preview": {
-			{Text: "確認 Platform Console 的電子郵件地址變更。"},
+			{Text: "確認平台主控台的電子郵件地址變更。"},
 		},
 		"email.platform_console_email_change_confirmation.subject": {
-			{Text: "Publira Platform Console 電子郵件地址變更確認"},
+			{Text: "Publira 平台主控台電子郵件地址變更確認"},
 		},
 		"email.platform_console_email_changed_notice.body": {
-			{Text: "您 Platform Console 帳戶的電子郵件地址已變更。"},
+			{Text: "您平台主控台帳戶的電子郵件地址已變更。"},
 		},
 		"email.platform_console_email_changed_notice.heading": {
-			{Text: "Platform Console 的電子郵件地址已變更"},
+			{Text: "平台主控台的電子郵件地址已變更"},
 		},
 		"email.platform_console_email_changed_notice.new_email": {
 			{Text: "變更後："},
 			{Variable: "new_email"},
 		},
 		"email.platform_console_email_changed_notice.preview": {
-			{Text: "您 Platform Console 帳戶的電子郵件地址已變更。"},
+			{Text: "您平台主控台帳戶的電子郵件地址已變更。"},
 		},
 		"email.platform_console_email_changed_notice.previous_email": {
 			{Text: "變更前："},
 			{Variable: "previous_email"},
 		},
 		"email.platform_console_email_changed_notice.subject": {
-			{Text: "Publira Platform Console 電子郵件地址已變更"},
+			{Text: "Publira 平台主控台電子郵件地址已變更"},
 		},
 		"email.platform_console_email_changed_notice.warning": {
 			{Text: "如果這不是您本人的操作，請立即重設密碼。"},
@@ -2065,19 +2065,19 @@ var Messages = map[string]map[string][]Part{
 			{Text: "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。"},
 		},
 		"email.platform_console_password_reset.heading": {
-			{Text: "重設 Platform Console 的密碼"},
+			{Text: "重設平台主控台的密碼"},
 		},
 		"email.platform_console_password_reset.ignore": {
 			{Text: "如果您並未預期收到這封郵件，可以直接忽略。"},
 		},
 		"email.platform_console_password_reset.intro": {
-			{Text: "我們收到了重設您 Platform Console 帳戶密碼的請求。"},
+			{Text: "我們收到了重設您平台主控台帳戶密碼的請求。"},
 		},
 		"email.platform_console_password_reset.preview": {
-			{Text: "設定新的 Platform Console 密碼。"},
+			{Text: "設定新的平台主控台密碼。"},
 		},
 		"email.platform_console_password_reset.subject": {
-			{Text: "Publira Platform Console 密碼重設"},
+			{Text: "Publira 平台主控台密碼重設"},
 		},
 		"email.reader_email_change_confirmation.action": {
 			{Text: "確認電子郵件地址變更"},

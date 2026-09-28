@@ -45,20 +45,20 @@
       "current_email": "現在のメールアドレス: {$current_email}",
       "expires": "このリンクの有効期限は {$expires_at} です。",
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
-      "heading": "Platform Console メールアドレス変更の確認",
+      "heading": "プラットフォーム管理画面メールアドレス変更の確認",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Platform Console アカウントのメールアドレス変更リクエストを受け付けました。",
+      "intro": "プラットフォーム管理画面アカウントのメールアドレス変更リクエストを受け付けました。",
       "new_email": "新しいメールアドレス: {$new_email}",
-      "preview": "Platform Console のメールアドレス変更の確認を完了してください。",
-      "subject": "Publira Platform Console メールアドレス変更確認"
+      "preview": "プラットフォーム管理画面のメールアドレス変更の確認を完了してください。",
+      "subject": "Publira プラットフォーム管理画面メールアドレス変更確認"
     },
     "platform_console_email_changed_notice": {
-      "body": "Platform Console アカウントのメールアドレスが変更されました。",
-      "heading": "Platform Console メールアドレス変更の完了",
+      "body": "プラットフォーム管理画面アカウントのメールアドレスが変更されました。",
+      "heading": "プラットフォーム管理画面メールアドレス変更の完了",
       "new_email": "変更後: {$new_email}",
-      "preview": "Platform Console アカウントのメールアドレスが変更されました。",
+      "preview": "プラットフォーム管理画面アカウントのメールアドレスが変更されました。",
       "previous_email": "変更前: {$previous_email}",
-      "subject": "Publira Platform Console メールアドレス変更完了",
+      "subject": "Publira プラットフォーム管理画面メールアドレス変更完了",
       "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
     },
     "platform_console_password_reset": {
@@ -66,11 +66,11 @@
       "body": "以下のボタンから新しいパスワードを設定してください。",
       "expires": "このリンクの有効期限は {$expires_at} です。",
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
-      "heading": "Platform Console パスワードの再設定",
+      "heading": "プラットフォーム管理画面パスワードの再設定",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Platform Console アカウントのパスワード再設定リクエストを受け付けました。",
-      "preview": "Platform Console の新しいパスワードを設定してください。",
-      "subject": "Publira Platform Console パスワード再設定"
+      "intro": "プラットフォーム管理画面アカウントのパスワード再設定リクエストを受け付けました。",
+      "preview": "プラットフォーム管理画面の新しいパスワードを設定してください。",
+      "subject": "Publira プラットフォーム管理画面パスワード再設定"
     },
     "reader_email_change_confirmation": {
       "action": "メールアドレス変更を確認する",
@@ -4186,7 +4186,7 @@
         "password_required": "パスワードを入力してください。"
       },
       "login": {
-        "eyebrow": "Platform Console ログイン",
+        "eyebrow": "プラットフォーム管理画面ログイン",
         "failed": "メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。",
         "forgot_password": "パスワードを忘れた場合",
         "pending": "ログイン中...",
@@ -4323,8 +4323,8 @@
     "errors": {
       "console_description": "時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。",
       "console_title": "画面を表示できませんでした",
-      "root_description": "Platform Console の読み込みに失敗しました。時間をおいて再試行してください。",
-      "root_title": "Platform Console を表示できませんでした"
+      "root_description": "プラットフォーム管理画面の読み込みに失敗しました。時間をおいて再試行してください。",
+      "root_title": "プラットフォーム管理画面を表示できませんでした"
     },
     "nav": {
       "audit_label": "監査ログ",

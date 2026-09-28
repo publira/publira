@@ -76,7 +76,9 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
       return;
     }
 
-    expect(result.html).toContain("Platform Console メールアドレス変更の確認");
+    expect(result.html).toContain(
+      "プラットフォーム管理画面メールアドレス変更の確認"
+    );
     expect(result.html).toContain(data.confirm_url);
     expect(result.html).toContain(
       formatDateTime(data.expires_at, { locale: "ja", timeZone })

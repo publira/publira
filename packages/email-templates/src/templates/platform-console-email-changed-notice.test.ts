@@ -41,7 +41,9 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
       return;
     }
 
-    expect(result.html).toContain("Platform Console メールアドレス変更の完了");
+    expect(result.html).toContain(
+      "プラットフォーム管理画面メールアドレス変更の完了"
+    );
     expect(result.html).toContain(data.previous_email);
     expect(result.html).toContain(data.new_email);
     expect(result.html).toContain("この変更に心当たりがない場合");

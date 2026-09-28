@@ -177,7 +177,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_email_change_confirmation",
-		subjects: map[string]string{"en": "Publira Platform Console email address change confirmation", "ja": "Publira Platform Console メールアドレス変更確認"},
+		subjects: map[string]string{"en": "Publira Platform Console email address change confirmation", "ja": "Publira プラットフォーム管理画面メールアドレス変更確認"},
 		request: emailrenderer.Request{
 			Template: "platform_console_email_change_confirmation",
 			Data: map[string]any{
@@ -191,7 +191,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_email_changed_notice",
-		subjects: map[string]string{"en": "Publira Platform Console email address changed", "ja": "Publira Platform Console メールアドレス変更完了"},
+		subjects: map[string]string{"en": "Publira Platform Console email address changed", "ja": "Publira プラットフォーム管理画面メールアドレス変更完了"},
 		request: emailrenderer.Request{
 			Template: "platform_console_email_changed_notice",
 			Data: map[string]any{
@@ -202,7 +202,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "platform_console_password_reset",
-		subjects: map[string]string{"en": "Publira Platform Console password reset", "ja": "Publira Platform Console パスワード再設定"},
+		subjects: map[string]string{"en": "Publira Platform Console password reset", "ja": "Publira プラットフォーム管理画面パスワード再設定"},
 		request: emailrenderer.Request{
 			Template: "platform_console_password_reset",
 			Data: map[string]any{
