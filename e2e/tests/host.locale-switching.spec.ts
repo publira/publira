@@ -233,6 +233,9 @@ test.describe("web-host locale in the URL", () => {
       page.getByRole("heading", { level: 1, name: "Privacy policy" })
     ).toBeVisible();
     await expect(
+      page.getByText("This page is not published in your language")
+    ).toHaveCount(0);
+    await expect(
       page.getByRole("link", { exact: true, name: "Labels" })
     ).toBeVisible();
 
@@ -241,10 +244,19 @@ test.describe("web-host locale in the URL", () => {
       page.getByRole("link", { exact: true, name: "レーベル" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
-    // The site chrome is Japanese; what the tenant wrote is not translated, and
-    // a build that started translating it would fail here.
+    // The site chrome is Japanese. The tenant has not published a Japanese
+    // translation, so the page stays the English one and says so.
     await expect(
       page.getByRole("heading", { level: 1, name: "Privacy policy" })
+    ).toBeVisible();
+    await expect(page.locator("article")).toHaveAttribute("lang", "en");
+    await expect(
+      page.getByText(
+        "このページはお使いの言語では公開されていないため、Englishで表示しています。"
+      )
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Privacy policy" })
     ).toBeVisible();
   });
 });

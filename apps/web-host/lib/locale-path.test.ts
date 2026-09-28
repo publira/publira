@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isLocaleExemptPathname,
   localeAlternates,
+  publishedLocaleAlternates,
   splitLocalePathname,
   toBarePathname,
   withLocalePrefix,
@@ -87,6 +88,41 @@ describe("localeAlternates", () => {
         "x-default": "/",
         "zh-Hans": "/zh-Hans",
         "zh-Hant": "/zh-Hant",
+      },
+    });
+  });
+});
+
+describe("publishedLocaleAlternates", () => {
+  it("lists only the published locales and keeps the default as x-default", () => {
+    expect(
+      publishedLocaleAlternates("ja", "/privacy", ["en", "ja"], "en")
+    ).toEqual({
+      canonical: "/en/privacy",
+      languages: {
+        en: "/en/privacy",
+        ja: "/privacy",
+        "x-default": "/privacy",
+      },
+    });
+  });
+
+  it("points canonical and x-default at the served language when the default is unpublished", () => {
+    expect(publishedLocaleAlternates("ja", "/privacy", ["en"], "en")).toEqual({
+      canonical: "/en/privacy",
+      languages: {
+        en: "/en/privacy",
+        "x-default": "/en/privacy",
+      },
+    });
+  });
+
+  it("includes the served locale when the alternate list omitted it", () => {
+    expect(publishedLocaleAlternates("en", "/terms", [], "ja")).toEqual({
+      canonical: "/ja/terms",
+      languages: {
+        ja: "/ja/terms",
+        "x-default": "/ja/terms",
       },
     });
   });

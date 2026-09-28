@@ -1,4 +1,6 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import type { Page, PageVersion } from "@publira/api-client/public/types";
+import { getLocaleLabel, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -16,7 +18,71 @@ export interface PublishedPage {
   publishedAt: string;
   versionId: string;
   versionNumber: number;
+  /**
+   * The locale of the translation that was served. It differs from the locale
+   * the reader asked for when that one has no published translation.
+   */
+  locale: Locale;
+  /** Every locale with a published translation, the served one included. */
+  publishedLocales: readonly Locale[];
 }
+
+/**
+ * The autonym of the language a page is shown in when that is not the language
+ * the reader asked for, or `null` when the requested translation was served.
+ *
+ * The name comes from the locale registry — the same autonym the language
+ * switcher shows — so the sentence around it is the only part the catalog owns.
+ */
+export const publishedPageFallbackLanguage = (
+  requestedLocale: Locale,
+  servedLocale: Locale
+): string | null =>
+  requestedLocale === servedLocale ? null : getLocaleLabel(servedLocale);
+
+/**
+ * The generated `Page` fields a public read keeps. Naming them against the
+ * message is what makes a proto rename fail here.
+ */
+type PublishedPageFields = Pick<Page, "id" | "locale" | "slug" | "title">;
+
+/** The generated `PageVersion` fields a public read keeps. */
+type PublishedPageVersionFields = Pick<
+  PageVersion,
+  "contentMarkdown" | "id" | "publishedAt" | "versionNumber"
+>;
+
+const publishedLocalesFrom = (
+  codes: readonly string[] | undefined,
+  servedLocale: Locale
+): readonly Locale[] => {
+  const locales: Locale[] = [];
+  const seen = new Set<Locale>();
+  const add = (code: string) => {
+    if (!isLocale(code) || seen.has(code)) {
+      return;
+    }
+    seen.add(code);
+    locales.push(code);
+  };
+
+  for (const code of codes ?? []) {
+    add(code);
+  }
+  // The served translation is published by definition, even when the list of
+  // alternates omitted it.
+  add(servedLocale);
+  return locales;
+};
+
+/**
+ * An unreadable served locale is treated as the one the reader asked for: the
+ * page still renders, and it does not claim a fallback it cannot name.
+ */
+const servedLocaleFrom = (
+  locale: string | undefined,
+  requestedLocale: Locale
+): Locale => (isLocale(locale) ? locale : requestedLocale);
 
 export interface PublishedPageLink {
   href: string;
@@ -58,13 +124,15 @@ type GetPublishedPageResponse = Awaited<
 
 const fetchPublishedPageBySlug = async (
   tenantId: string,
-  slug: string
+  slug: string,
+  locale: Locale
 ): Promise<
   | { ok: true; response: GetPublishedPageResponse }
   | { error: unknown; ok: false }
 > => {
   try {
     const response = await apiClient.pages.getPublishedPage({
+      locale,
       slug,
       tenant: { tenantId },
     });
@@ -92,9 +160,12 @@ export const publishedPageHrefFromSlug = (slug: string): string => {
  * the API does instead of a soft-empty result sticking until revalidation.
  */
 const listPublishedPageLinksCached = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<PublishedPageLink[]> => {
   // Shared public content: remote so multi-instance hosts share entries.
+  // `locale` is an argument, so each language is its own entry; the tag below
+  // names every one of them.
   "use cache: remote";
 
   applyCacheTag(tenantPagesTag(tenantId));
@@ -102,6 +173,7 @@ const listPublishedPageLinksCached = async (
   let response: Awaited<ReturnType<typeof apiClient.pages.listPublishedPages>>;
   try {
     response = await apiClient.pages.listPublishedPages({
+      locale,
       tenant: { tenantId },
     });
   } catch (error) {
@@ -132,17 +204,37 @@ const listPublishedPageLinksCached = async (
   return links;
 };
 
-/** Public footer links. */
+/** Public footer links, titled in `locale` or the translation it falls back to. */
 export const listPublishedPageLinks = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<PublishedPageLink[]> => {
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId) {
     return [];
   }
 
-  return await listPublishedPageLinksCached(normalizedTenantId);
+  return await listPublishedPageLinksCached(normalizedTenantId, locale);
 };
+
+const toPublishedPage = (
+  page: PublishedPageFields,
+  version: PublishedPageVersionFields,
+  publishedLocales: readonly Locale[],
+  normalizedSlug: string,
+  servedLocale: Locale,
+  t: Awaited<ReturnType<typeof getMessagesFor>>
+): PublishedPage => ({
+  contentMarkdown: version.contentMarkdown ?? "",
+  id: page.id,
+  locale: servedLocale,
+  publishedAt: version.publishedAt ?? "",
+  publishedLocales,
+  slug: page.slug ?? normalizedSlug,
+  title: page.title?.trim() || t("host.pages.untitled"),
+  versionId: version.id ?? "",
+  versionNumber: version.versionNumber ?? 0,
+});
 
 /**
  * `ok: true` with a `null` value when the page does not exist, is unpublished,
@@ -180,7 +272,8 @@ export const getPublishedPage = async (
   // Prefer storage form `/privacy`. Fall back to bare `privacy` for legacy rows.
   const primary = await fetchPublishedPageBySlug(
     normalizedTenantId,
-    normalizedSlug
+    normalizedSlug,
+    locale
   );
 
   let response: GetPublishedPageResponse;
@@ -190,7 +283,8 @@ export const getPublishedPage = async (
     const bareSlug = normalizedSlug.slice(1);
     const secondary = await fetchPublishedPageBySlug(
       normalizedTenantId,
-      bareSlug
+      bareSlug,
+      locale
     );
     if (secondary.ok) {
       ({ response } = secondary);
@@ -211,7 +305,7 @@ export const getPublishedPage = async (
     );
   }
 
-  const { page, version } = response;
+  const { page, publishedLocales, version } = response;
   if (!(page?.id && version)) {
     return { ok: true, value: null };
   }
@@ -219,17 +313,17 @@ export const getPublishedPage = async (
   applyCacheTag(tenantPageTag(normalizedTenantId, page.id));
 
   const t = await getMessagesFor(locale);
+  const servedLocale = servedLocaleFrom(page.locale, locale);
 
   return {
     ok: true,
-    value: {
-      contentMarkdown: version.contentMarkdown ?? "",
-      id: page.id,
-      publishedAt: version.publishedAt ?? "",
-      slug: page.slug ?? normalizedSlug,
-      title: page.title?.trim() || t("host.pages.untitled"),
-      versionId: version.id ?? "",
-      versionNumber: version.versionNumber ?? 0,
-    },
+    value: toPublishedPage(
+      page,
+      version,
+      publishedLocalesFrom(publishedLocales, servedLocale),
+      normalizedSlug,
+      servedLocale,
+      t
+    ),
   };
 };

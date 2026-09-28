@@ -326,7 +326,7 @@ const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const [defaultLocale, links, t] = await Promise.all([
     getTenantDefaultLocale(tenantId),
-    listPublishedPageLinks(tenantId),
+    listPublishedPageLinks(tenantId, locale),
     getMessagesFor(locale),
   ]);
 
