@@ -1,4 +1,8 @@
-import type { Page, PageVersion } from "@publira/api-client/admin/types";
+import type {
+  Page,
+  PageTranslation,
+  PageVersion,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
@@ -10,7 +14,7 @@ import {
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
-import { toIntlLocale } from "@publira/i18n";
+import { parseLocale, toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cacheTag } from "next/cache";
 
@@ -34,8 +38,21 @@ export interface PageItem {
   title: string;
   publishedVersionId: string;
   displayInFooter: boolean;
+  /**
+   * The locale of the translation the title and published version come from;
+   * absent when the server names one this build does not serve.
+   */
+  locale?: Locale;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One locale's title and published version of a page. */
+export interface PageTranslationItem {
+  id: string;
+  locale: Locale;
+  title: string;
+  publishedVersionId: string;
 }
 
 export interface PageVersionItem {
@@ -92,6 +109,17 @@ export type GetPageResult =
       requiresSignIn?: boolean;
     };
 
+export type ListPageTranslationsResult =
+  | { ok: true; translations: PageTranslationItem[] }
+  | { notFound: true; ok: false }
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
+
 export type ListPageVersionsResult =
   | { ok: true; versions: PageVersionItem[] }
   | {
@@ -129,6 +157,21 @@ export type UnpublishPageResult =
 export type RollbackPageVersionResult =
   | { ok: true; version: PageVersionItem }
   | { ok: false; message: string };
+
+export type CreatePageTranslationResult =
+  | { ok: true; translation: PageTranslationItem }
+  | { ok: false; message: string };
+
+export type DeletePageTranslationResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** The tag every page read is filed under, and every write to the page list drops. */
+export const pagesCacheTag = (tenantId: string): string => `pages-${tenantId}`;
+
+/** The tag one page's reads carry, for a write that changes that page alone. */
+export const pageCacheTag = (tenantId: string, pageId: string): string =>
+  `page-${tenantId}-${pageId}`;
 
 const slugInvalidMessage = (
   error: unknown,
@@ -187,6 +230,7 @@ type RawPage = Pick<
   | "createdAt"
   | "displayInFooter"
   | "id"
+  | "locale"
   | "publishedVersionId"
   | "slug"
   | "title"
@@ -197,11 +241,42 @@ const mapPage = (page: RawPage): PageItem => ({
   createdAt: page.createdAt ?? "",
   displayInFooter: page.displayInFooter === true,
   id: page.id,
+  locale: parseLocale(page.locale),
   publishedVersionId: page.publishedVersionId ?? "",
   slug: page.slug,
   title: page.title,
   updatedAt: page.updatedAt ?? "",
 });
+
+/** The generated `PageTranslation` fields {@link mapPageTranslations} reads (see `series.ts`). */
+type RawPageTranslation = Pick<
+  PageTranslation,
+  "id" | "locale" | "publishedVersionId" | "title"
+>;
+
+const mapPageTranslation = (
+  translation: RawPageTranslation
+): PageTranslationItem | null => {
+  const locale = parseLocale(translation.locale);
+
+  return locale
+    ? {
+        id: translation.id,
+        locale,
+        publishedVersionId: translation.publishedVersionId ?? "",
+        title: translation.title,
+      }
+    : null;
+};
+
+/** A translation in a locale this build no longer serves has no tab to show it in. */
+const mapPageTranslations = (
+  translations: RawPageTranslation[]
+): PageTranslationItem[] =>
+  translations.flatMap((translation) => {
+    const item = mapPageTranslation(translation);
+    return item ? [item] : [];
+  });
 
 /** The generated `PageVersion` fields {@link mapPageVersion} reads (see `series.ts`). */
 type RawPageVersion = Pick<
@@ -236,7 +311,7 @@ const listPagesForSession = async (
   sessionId: string
 ): Promise<ListPagesResult> => {
   "use cache: private";
-  cacheTag(`pages-${tenantId}`);
+  cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -299,7 +374,7 @@ const listPublishedPagesForSession = async (
   sessionId: string
 ): Promise<ListPublishedPagesResult> => {
   "use cache: private";
-  cacheTag(`pages-${tenantId}`);
+  cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -378,13 +453,14 @@ const getPageForSession = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
   },
   locale: Locale,
   sessionId: string
 ): Promise<GetPageResult> => {
   "use cache: private";
-  cacheTag(`pages-${input.tenantId}`);
-  cacheTag(`page-${input.tenantId}-${input.pageId}`);
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -398,6 +474,7 @@ const getPageForSession = async (
   try {
     const response = await apiClient.pages.getPage(
       {
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
       },
@@ -442,6 +519,7 @@ export const getPage = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
   },
   locale: Locale
 ): Promise<GetPageResult> =>
@@ -451,12 +529,13 @@ const listPageVersionsForSession = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
   },
   locale: Locale,
   sessionId: string
 ): Promise<ListPageVersionsResult> => {
   "use cache: private";
-  cacheTag(`page-${input.tenantId}-${input.pageId}`);
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -471,6 +550,7 @@ const listPageVersionsForSession = async (
   try {
     const response = await apiClient.pages.listVersions(
       {
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
       },
@@ -502,6 +582,7 @@ export const listPageVersions = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
   },
   locale: Locale
 ): Promise<ListPageVersionsResult> =>
@@ -568,6 +649,7 @@ export const updatePage = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
     title: string;
     displayInFooter?: boolean;
   },
@@ -591,6 +673,7 @@ export const updatePage = async (
         ...(input.displayInFooter === undefined
           ? {}
           : { displayInFooter: input.displayInFooter }),
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
         title: input.title,
@@ -627,6 +710,7 @@ export const createPageVersion = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
     contentMarkdown: string;
   },
   locale: Locale
@@ -646,6 +730,7 @@ export const createPageVersion = async (
     const response = await apiClient.pages.createVersion(
       {
         contentMarkdown: input.contentMarkdown,
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
       },
@@ -681,6 +766,7 @@ export const publishPageVersion = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
     versionId: string;
   },
   locale: Locale
@@ -699,6 +785,7 @@ export const publishPageVersion = async (
   try {
     const response = await apiClient.pages.publishVersion(
       {
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
         versionId: input.versionId,
@@ -735,6 +822,7 @@ export const unpublishPage = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
   },
   locale: Locale
 ): Promise<UnpublishPageResult> => {
@@ -752,6 +840,7 @@ export const unpublishPage = async (
   try {
     const response = await apiClient.pages.unpublishPage(
       {
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
       },
@@ -787,6 +876,7 @@ export const rollbackPageVersion = async (
   input: {
     tenantId: string;
     pageId: string;
+    translationLocale?: Locale;
     versionId: string;
   },
   locale: Locale
@@ -805,6 +895,7 @@ export const rollbackPageVersion = async (
   try {
     const response = await apiClient.pages.rollbackToVersion(
       {
+        locale: input.translationLocale ?? "",
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
         versionId: input.versionId,
@@ -830,6 +921,190 @@ export const rollbackPageVersion = async (
       message: await mapErrorToMessage(
         error,
         t("admin.pages.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+const listPageTranslationsForSession = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale,
+  sessionId: string
+): Promise<ListPageTranslationsResult> => {
+  "use cache: private";
+  cacheTag(pagesCacheTag(input.tenantId));
+  cacheTag(pageCacheTag(input.tenantId, input.pageId));
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.listPageTranslations(
+      {
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      translations: mapPageTranslations(response.translations ?? []),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    // The same reading of `invalid_argument` as `getPage`: the id in the URL
+    // is the only input the server can reject.
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { notFound: true, ok: false };
+    }
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.pages.list_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/** Every translation of a page, oldest first. A page always has one. */
+export const listPageTranslations = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+  },
+  locale: Locale
+): Promise<ListPageTranslationsResult> =>
+  listPageTranslationsForSession(input, locale, await getAccessToken());
+
+const mapTranslationErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      conflict: t("admin.pages.translations.already_exists"),
+      "not-found": t("admin.pages.not_found"),
+      precondition: t("admin.pages.translations.last_translation"),
+    },
+  });
+};
+
+export const createPageTranslation = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale: Locale;
+    title: string;
+  },
+  locale: Locale
+): Promise<CreatePageTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.pages.createPageTranslation(
+      {
+        locale: input.translationLocale,
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+        title: input.title,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const translation = response.translation
+      ? mapPageTranslation(response.translation)
+      : null;
+    if (!translation?.id.trim()) {
+      return {
+        message: t("admin.pages.translations.add_failed"),
+        ok: false,
+      };
+    }
+
+    return { ok: true, translation };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapTranslationErrorToMessage(
+        error,
+        t("admin.pages.translations.add_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** Deletes one translation with its versions. The server refuses the last one. */
+export const deletePageTranslation = async (
+  input: {
+    tenantId: string;
+    pageId: string;
+    translationLocale: Locale;
+  },
+  locale: Locale
+): Promise<DeletePageTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.pages.deletePageTranslation(
+      {
+        locale: input.translationLocale,
+        pageId: input.pageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapTranslationErrorToMessage(
+        error,
+        t("admin.pages.translations.delete_failed"),
         locale
       ),
       ok: false,

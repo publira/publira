@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -17,14 +18,18 @@ import {
 import { getMessagesFor } from "#lib/messages";
 import {
   createPage,
+  createPageTranslation,
   createPageVersion,
+  deletePageTranslation,
+  pageCacheTag,
+  pagesCacheTag,
   publishPageVersion,
   rollbackPageVersion,
   unpublishPage,
   updatePage,
 } from "#lib/page";
 
-import { normalizePageSlugInput } from "../page-types";
+import { normalizePageSlugInput, pageEditPath } from "../page-types";
 import type { PageFormState } from "../page-types";
 
 const displayInFooterSchema = z.preprocess((value) => {
@@ -61,6 +66,16 @@ const pageCommonSchema = async (locale: Locale) => {
       255,
       t("admin.pages.validation.title_too_long")
     ),
+    // The translation a form edits. Blank only on the create form, whose page
+    // has the one translation the server made with it.
+    translationLocale: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z
+        .enum(getLocales(), {
+          error: t("admin.pages.validation.locale_invalid"),
+        })
+        .optional()
+    ),
     versionId: optionalTrimmedString(),
   });
 };
@@ -73,6 +88,7 @@ const pageFormFields = {
   slug: "value",
   tenantId: { kind: "value", name: "tenant_id" },
   title: "value",
+  translationLocale: { kind: "value", name: "translation_locale" },
   versionId: { kind: "value", name: "version_id" },
 } as const;
 
@@ -126,7 +142,7 @@ export const createPageAction = async (
       : toFailure(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
 
   if (parsed.data.contentMarkdown.trim()) {
     const versionResult = await withAdminSessionReauth(() =>
@@ -135,6 +151,7 @@ export const createPageAction = async (
           contentMarkdown: parsed.data.contentMarkdown,
           pageId: result.page.id,
           tenantId: parsed.data.tenantId,
+          translationLocale: result.page.locale,
         },
         locale
       )
@@ -144,15 +161,15 @@ export const createPageAction = async (
       return toFailure(versionResult.message);
     }
 
-    updateTag(`page-${parsed.data.tenantId}-${result.page.id}`);
+    updateTag(pageCacheTag(parsed.data.tenantId, result.page.id));
   }
 
-  redirect(`/pages/${result.page.id}?created=1`);
+  redirect(pageEditPath(result.page.id, result.page.locale, "created"));
 };
 
 /**
- * The edit screen's one save. The title lives on the page and the body lives on
- * a version, so each half is written only where the editor changed it and a
+ * The edit screen's one save, within the translation the screen is showing. The
+ * title lives on the translation and the body lives on a version, so each half is written only where the editor changed it and a
  * failure names the half it belongs to — the two are separate RPCs, and the
  * first can be written before the second fails.
  */
@@ -188,6 +205,7 @@ export const savePageAction = async (
           pageId: parsed.data.pageId,
           tenantId: parsed.data.tenantId,
           title: parsed.data.title,
+          translationLocale: parsed.data.translationLocale,
         },
         locale
       )
@@ -201,8 +219,8 @@ export const savePageAction = async (
       );
     }
 
-    updateTag(`pages-${parsed.data.tenantId}`);
-    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+    updateTag(pagesCacheTag(parsed.data.tenantId));
+    updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
   }
 
   if (contentChanged) {
@@ -212,6 +230,7 @@ export const savePageAction = async (
           contentMarkdown: parsed.data.contentMarkdown,
           pageId: parsed.data.pageId,
           tenantId: parsed.data.tenantId,
+          translationLocale: parsed.data.translationLocale,
         },
         locale
       )
@@ -229,10 +248,12 @@ export const savePageAction = async (
       );
     }
 
-    updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+    updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
   }
 
-  redirect(`/pages/${parsed.data.pageId}?saved=1`);
+  redirect(
+    pageEditPath(parsed.data.pageId, parsed.data.translationLocale, "saved")
+  );
 };
 
 export const publishVersionAction = async (formData: FormData) => {
@@ -248,6 +269,7 @@ export const publishVersionAction = async (formData: FormData) => {
       {
         pageId: parsed.data.pageId,
         tenantId: parsed.data.tenantId,
+        translationLocale: parsed.data.translationLocale,
         versionId: parsed.data.versionId,
       },
       locale
@@ -258,10 +280,12 @@ export const publishVersionAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
-  redirect(`/pages/${parsed.data.pageId}?published=1`);
+  redirect(
+    pageEditPath(parsed.data.pageId, parsed.data.translationLocale, "published")
+  );
 };
 
 export const unpublishPageAction = async (formData: FormData) => {
@@ -277,6 +301,7 @@ export const unpublishPageAction = async (formData: FormData) => {
       {
         pageId: parsed.data.pageId,
         tenantId: parsed.data.tenantId,
+        translationLocale: parsed.data.translationLocale,
       },
       locale
     )
@@ -286,10 +311,16 @@ export const unpublishPageAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`pages-${parsed.data.tenantId}`);
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pagesCacheTag(parsed.data.tenantId));
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
-  redirect(`/pages/${parsed.data.pageId}?unpublished=1`);
+  redirect(
+    pageEditPath(
+      parsed.data.pageId,
+      parsed.data.translationLocale,
+      "unpublished"
+    )
+  );
 };
 
 export const rollbackVersionAction = async (formData: FormData) => {
@@ -305,6 +336,7 @@ export const rollbackVersionAction = async (formData: FormData) => {
       {
         pageId: parsed.data.pageId,
         tenantId: parsed.data.tenantId,
+        translationLocale: parsed.data.translationLocale,
         versionId: parsed.data.versionId,
       },
       locale
@@ -315,7 +347,95 @@ export const rollbackVersionAction = async (formData: FormData) => {
     throw new Error(result.message);
   }
 
-  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
+  updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
 
-  redirect(`/pages/${parsed.data.pageId}?rolled_back=1`);
+  redirect(
+    pageEditPath(
+      parsed.data.pageId,
+      parsed.data.translationLocale,
+      "rolled_back"
+    )
+  );
+};
+
+/** Adds a translation of a page in a locale it has none in yet, titled as submitted. */
+export const addPageTranslationAction = async (
+  _prevState: PageFormState,
+  formData: FormData
+): Promise<PageFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parsePageForm(formData, locale),
+  ]);
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+  const { pageId, tenantId, title, translationLocale } = parsed.data;
+  if (!pageId) {
+    return toFailure(t("admin.pages.validation.update_id_missing"));
+  }
+  if (!translationLocale) {
+    return toFailure(t("admin.pages.validation.locale_invalid"));
+  }
+  if (!title) {
+    return toFailure(t("admin.pages.validation.title_required"));
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    createPageTranslation(
+      { pageId, tenantId, title, translationLocale },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  updateTag(pagesCacheTag(tenantId));
+  updateTag(pageCacheTag(tenantId, pageId));
+
+  redirect(pageEditPath(pageId, translationLocale, "translation_added"));
+};
+
+/**
+ * Deletes the translation the screen is showing, with its versions, and returns
+ * to the page's default one. The server refuses to delete a page's last
+ * translation, and that refusal is what the form reports.
+ */
+export const deletePageTranslationAction = async (
+  _prevState: PageFormState,
+  formData: FormData
+): Promise<PageFormState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parsePageForm(formData, locale),
+  ]);
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+  const { pageId, tenantId, translationLocale } = parsed.data;
+  if (!pageId) {
+    return toFailure(t("admin.pages.validation.update_id_missing"));
+  }
+  if (!translationLocale) {
+    return toFailure(t("admin.pages.validation.locale_invalid"));
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deletePageTranslation({ pageId, tenantId, translationLocale }, locale)
+  );
+
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  updateTag(pagesCacheTag(tenantId));
+  updateTag(pageCacheTag(tenantId, pageId));
+
+  redirect(pageEditPath(pageId, undefined, "translation_deleted"));
 };

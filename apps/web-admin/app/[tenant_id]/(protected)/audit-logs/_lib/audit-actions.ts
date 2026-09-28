@@ -31,6 +31,8 @@ export const auditActions = [
   "page_version_created",
   "page_version_published",
   "page_version_rolled_back",
+  "page_translation_created",
+  "page_translation_deleted",
   "announcement_created",
   "announcement_unpinned",
   "comment_approved",

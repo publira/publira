@@ -150,6 +150,11 @@ const PublicationStatus = ({
           <form action={unpublishAction}>
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="page_id" type="hidden" value={page.id} />
+            <input
+              name="translation_locale"
+              type="hidden"
+              value={page.locale ?? ""}
+            />
             <Button type="submit" variant="outline">
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.pages.workspace.unpublish" />
@@ -198,6 +203,11 @@ export const PageWorkspace = ({
         <PageSaveForm action={saveAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="page_id" type="hidden" value={initialPage.id} />
+          <input
+            name="translation_locale"
+            type="hidden"
+            value={initialPage.locale ?? ""}
+          />
           {/* What this screen loaded, so the save writes each half only where it changed. */}
           <input name="initial_title" type="hidden" value={initialPage.title} />
           <input
@@ -394,6 +404,11 @@ export const PageWorkspace = ({
                           value={initialPage.id}
                         />
                         <input
+                          name="translation_locale"
+                          type="hidden"
+                          value={initialPage.locale ?? ""}
+                        />
+                        <input
                           name="version_id"
                           type="hidden"
                           value={version.id}
@@ -423,6 +438,11 @@ export const PageWorkspace = ({
                           name="page_id"
                           type="hidden"
                           value={initialPage.id}
+                        />
+                        <input
+                          name="translation_locale"
+                          type="hidden"
+                          value={initialPage.locale ?? ""}
                         />
                         <input
                           name="version_id"

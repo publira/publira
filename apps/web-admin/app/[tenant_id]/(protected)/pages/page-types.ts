@@ -43,6 +43,28 @@ export const formatPagePath = (slug: string): string => {
   return normalized || "/";
 };
 
+/**
+ * The edit screen of one translation of a page, with the flag its toast reads.
+ * Without a locale it opens the translation the tenant's default locale
+ * resolves to.
+ */
+export const pageEditPath = (
+  pageId: string,
+  translationLocale: Locale | undefined,
+  flash?: string
+): string => {
+  const query = new URLSearchParams();
+  if (translationLocale) {
+    query.set("locale", translationLocale);
+  }
+  if (flash) {
+    query.set(flash, "1");
+  }
+  const search = query.toString();
+
+  return search ? `/pages/${pageId}?${search}` : `/pages/${pageId}`;
+};
+
 /** `fieldErrors.slug` puts the reason beside the slug input. */
 export type PageFormState = {
   fieldErrors?: { slug?: string };

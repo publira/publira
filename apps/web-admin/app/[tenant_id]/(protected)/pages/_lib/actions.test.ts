@@ -3,14 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockCreatePage,
+  mockCreatePageTranslation,
   mockCreatePageVersion,
+  mockDeletePageTranslation,
+  mockPublishPageVersion,
   mockRedirect,
   mockUpdatePage,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreatePage: vi.fn(),
+  mockCreatePageTranslation: vi.fn(),
   mockCreatePageVersion: vi.fn(),
+  mockDeletePageTranslation: vi.fn(),
+  mockPublishPageVersion: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdatePage: vi.fn(),
   mockUpdateTag: vi.fn(),
@@ -32,8 +38,13 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/page", () => ({
   createPage: mockCreatePage,
+  createPageTranslation: mockCreatePageTranslation,
   createPageVersion: mockCreatePageVersion,
-  publishPageVersion: vi.fn(),
+  deletePageTranslation: mockDeletePageTranslation,
+  pageCacheTag: (tenantId: string, pageId: string) =>
+    `page-${tenantId}-${pageId}`,
+  pagesCacheTag: (tenantId: string) => `pages-${tenantId}`,
+  publishPageVersion: mockPublishPageVersion,
   rollbackPageVersion: vi.fn(),
   unpublishPage: vi.fn(),
   updatePage: mockUpdatePage,
@@ -124,6 +135,42 @@ describe("savePageAction", () => {
 
     expect(mockUpdatePage).toHaveBeenCalledTimes(1);
     expect(mockCreatePageVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes to the translation the screen is showing and returns to it", async () => {
+    const data = saveForm({
+      ...unchanged,
+      contentMarkdown: "# Privacy\n\nRevised.\n",
+      title: "Privacy notice",
+    });
+    data.set("translation_locale", "en");
+
+    await savePage(data);
+
+    expect(mockUpdatePage).toHaveBeenCalledWith(
+      expect.objectContaining({ translationLocale: "en" }),
+      "en"
+    );
+    expect(mockCreatePageVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ translationLocale: "en" }),
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/pages/${PAGE_ID}?locale=en&saved=1`
+    );
+  });
+
+  it("refuses a translation locale the console does not serve", async () => {
+    const data = saveForm({ ...unchanged, title: "Privacy notice" });
+    data.set("translation_locale", "fr");
+
+    const state = await savePage(data);
+
+    expect(mockUpdatePage).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      message: "Choose a supported language.",
+      ok: false,
+    });
   });
 
   it("writes nothing when neither half changed", async () => {
@@ -222,5 +269,196 @@ describe("createPageAction", () => {
       ok: false,
     });
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("createPageAction's first version", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockCreatePage.mockResolvedValue({
+      ok: true,
+      page: { id: PAGE_ID, locale: "ja" },
+    });
+    mockCreatePageVersion.mockResolvedValue({
+      ok: true,
+      version: { id: "VERSION001" },
+    });
+  });
+
+  it("goes into the translation the page was created with", async () => {
+    const data = createForm();
+    data.set("content_markdown", "# Help\n");
+
+    const { createPageAction } = await import("./actions");
+    await createPageAction(null, data);
+
+    expect(mockCreatePageVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ pageId: PAGE_ID, translationLocale: "ja" }),
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/pages/${PAGE_ID}?locale=ja&created=1`
+    );
+  });
+});
+
+describe("publishVersionAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockPublishPageVersion.mockResolvedValue({
+      ok: true,
+      version: { id: "VERSION002" },
+    });
+  });
+
+  it("publishes within the translation the version belongs to", async () => {
+    const data = new FormData();
+    data.set("tenant_id", TENANT_ID);
+    data.set("page_id", PAGE_ID);
+    data.set("version_id", "VERSION002");
+    data.set("translation_locale", "en");
+
+    const { publishVersionAction } = await import("./actions");
+    await publishVersionAction(data);
+
+    expect(mockPublishPageVersion).toHaveBeenCalledWith(
+      {
+        pageId: PAGE_ID,
+        tenantId: TENANT_ID,
+        translationLocale: "en",
+        versionId: "VERSION002",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(`pages-${TENANT_ID}`);
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/pages/${PAGE_ID}?locale=en&published=1`
+    );
+  });
+});
+
+const translationForm = (values: Record<string, string>): FormData => {
+  const data = new FormData();
+  data.set("tenant_id", TENANT_ID);
+  data.set("page_id", PAGE_ID);
+  for (const [name, value] of Object.entries(values)) {
+    data.set(name, value);
+  }
+  return data;
+};
+
+describe("addPageTranslationAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockCreatePageTranslation.mockResolvedValue({
+      ok: true,
+      translation: { id: "TRANSLATION002", locale: "en" },
+    });
+  });
+
+  it("adds the translation and opens it", async () => {
+    const { addPageTranslationAction } = await import("./actions");
+    await addPageTranslationAction(
+      null,
+      translationForm({ title: " Privacy policy ", translation_locale: "en" })
+    );
+
+    expect(mockCreatePageTranslation).toHaveBeenCalledWith(
+      {
+        pageId: PAGE_ID,
+        tenantId: TENANT_ID,
+        title: "Privacy policy",
+        translationLocale: "en",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(`pages-${TENANT_ID}`);
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/pages/${PAGE_ID}?locale=en&translation_added=1`
+    );
+  });
+
+  it("asks for a title before sending anything", async () => {
+    const { addPageTranslationAction } = await import("./actions");
+    const state = await addPageTranslationAction(
+      null,
+      translationForm({ title: "  ", translation_locale: "en" })
+    );
+
+    expect(mockCreatePageTranslation).not.toHaveBeenCalled();
+    expect(state).toEqual({ message: "Title is required.", ok: false });
+  });
+
+  it("reports what the server refused", async () => {
+    mockCreatePageTranslation.mockResolvedValueOnce({
+      message:
+        "This page already has a translation in that language. Reload the page.",
+      ok: false,
+    });
+
+    const { addPageTranslationAction } = await import("./actions");
+    const state = await addPageTranslationAction(
+      null,
+      translationForm({ title: "Privacy policy", translation_locale: "en" })
+    );
+
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      message:
+        "This page already has a translation in that language. Reload the page.",
+      ok: false,
+    });
+  });
+});
+
+describe("deletePageTranslationAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockDeletePageTranslation.mockResolvedValue({ ok: true });
+  });
+
+  it("deletes the translation and returns to the page's default one", async () => {
+    const { deletePageTranslationAction } = await import("./actions");
+    await deletePageTranslationAction(
+      null,
+      translationForm({ translation_locale: "en" })
+    );
+
+    expect(mockDeletePageTranslation).toHaveBeenCalledWith(
+      { pageId: PAGE_ID, tenantId: TENANT_ID, translationLocale: "en" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(`pages-${TENANT_ID}`);
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/pages/${PAGE_ID}?translation_deleted=1`
+    );
+  });
+
+  it("reports the refusal to delete the last translation", async () => {
+    mockDeletePageTranslation.mockResolvedValueOnce({
+      message:
+        "A page keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
+    });
+
+    const { deletePageTranslationAction } = await import("./actions");
+    const state = await deletePageTranslationAction(
+      null,
+      translationForm({ translation_locale: "ja" })
+    );
+
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      message:
+        "A page keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
+    });
   });
 });

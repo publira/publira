@@ -138,6 +138,12 @@ const siteActionName = (action: string) => {
     case "page_version_rolled_back": {
       return <Message message="admin.audit.actions.page_version_rolled_back" />;
     }
+    case "page_translation_created": {
+      return <Message message="admin.audit.actions.page_translation_created" />;
+    }
+    case "page_translation_deleted": {
+      return <Message message="admin.audit.actions.page_translation_deleted" />;
+    }
     case "announcement_created": {
       return <Message message="admin.audit.actions.announcement_created" />;
     }
@@ -355,6 +361,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "page_version": {
       return <Message message="admin.audit.targets.page_version" />;
+    }
+    case "page_translation": {
+      return <Message message="admin.audit.targets.page_translation" />;
     }
     case "series": {
       return <Message message="admin.audit.targets.series" />;

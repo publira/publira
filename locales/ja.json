@@ -218,6 +218,7 @@
         "label": "レーベル",
         "page": "ページ",
         "page_version": "ページのバージョン",
+        "page_translation": "ページの翻訳",
         "payment_config": "決済設定",
         "royalty_config": "印税の締めの設定",
         "royalty_statement": "印税明細",
@@ -286,6 +287,8 @@
         "page_version_created": "ページのバージョン作成",
         "page_version_published": "ページのバージョン公開",
         "page_version_rolled_back": "ページのバージョンのロールバック",
+        "page_translation_created": "ページの翻訳の追加",
+        "page_translation_deleted": "ページの翻訳の削除",
         "announcement_created": "お知らせ作成",
         "announcement_unpinned": "お知らせのバナー掲出終了",
         "comment_approved": "コメント承認",
@@ -1144,6 +1147,7 @@
         "submitting": "送信中...",
         "title": "タイトル",
         "title_placeholder": "プライバシーポリシー",
+        "locale_description": "ページはサイトの既定の言語である{$language}で作成されます。ほかの言語の翻訳は、作成後に編集画面から追加できます。",
         "body": "本文",
         "body_placeholder": "# プライバシーポリシー",
         "slug_description": "公開 URL は {$path} になります。空欄は /。先頭の / は任意で、半角小文字・数字・ハイフン（複数階層は / 区切り）を利用できます。",
@@ -1154,6 +1158,7 @@
       "validation": {
         "title_required": "タイトルは必須です。",
         "title_too_long": "タイトルは255文字以内で入力してください。",
+        "locale_invalid": "対応している言語を選んでください。",
         "slug_too_long": "slug は255文字以内で入力してください。",
         "tenant_missing": "テナント ID が見つかりません。",
         "update_id_missing": "更新対象のページ ID が見つかりません。"
@@ -1211,6 +1216,25 @@
           "actions": "操作"
         },
         "version_option": "v{$version}・{$status}"
+      },
+      "translations": {
+        "tabs_label": "言語",
+        "not_added": "（未追加）",
+        "add_title": "{$language}の翻訳はまだありません",
+        "add_description": "{$language}の翻訳を公開するまで、{$language}のサイトの読者にはこのページが別の言語で表示されます。タイトルを入力して翻訳を追加し、本文を書いて公開してください。",
+        "add_action": "翻訳を追加",
+        "adding": "追加中...",
+        "added": "翻訳を追加しました。",
+        "add_failed": "翻訳を追加できませんでした。時間をおいて再試行してください。",
+        "already_exists": "このページにはすでにその言語の翻訳があります。ページを再読み込みしてください。",
+        "delete_action": "この翻訳を削除",
+        "deleting": "削除中...",
+        "delete_confirm_title": "{$language}の翻訳を削除しますか?",
+        "delete_confirm_description": "タイトルと本文のすべてのバージョンが削除され、{$language}のサイトの読者にはこのページが別の言語で表示されます。この操作は取り消せません。",
+        "delete_confirm_action": "削除",
+        "deleted": "翻訳を削除しました。",
+        "delete_failed": "翻訳を削除できませんでした。時間をおいて再試行してください。",
+        "last_translation": "ページには少なくとも1つの翻訳が必要なため、最後の翻訳は削除できません。"
       }
     },
     "readers": {
